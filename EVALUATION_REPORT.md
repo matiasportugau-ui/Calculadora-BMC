@@ -136,8 +136,9 @@ The `Edit3` and `RotateCcw` icons are imported but never used in the UI.
 **Severity:** Medium — generates incorrect BOM quantities  
 **Location:** `§4` `calcPerfilesParedExtra`, lines 605–610
 
-**What happens:** For a typical wall of 37 panels with 3.5m height:
+**What happened (old formula):** For a typical wall of 37 panels with 3.5m height, the original code produced:
 ```javascript
+// Old formula (now removed):
 const numTramos = Math.ceil(perimetro / (cantP * panel.au)) || 1;
 // Math.ceil(40 / (37 * 1.14)) = Math.ceil(0.95) = 1
 
@@ -145,16 +146,19 @@ const cantG2 = Math.ceil(alto * 2 / 3.0) * Math.max(numTramos, 1);
 // Math.ceil(3.5 * 2 / 3.0) * 1 = 3 * 1 = 3 G2 profiles
 ```
 
-3 G2 profiles for 37 wall panels is extremely low. The formula conflates "how many panel-widths fit in one perimeter run" with "how many G2 profiles are needed." The G2 cover plate spans vertical joints, so you need approximately `(cantPaneles - 1) × ceil(alto / largo_perfil)` pieces.
+3 G2 profiles for 37 wall panels is extremely low. The formula conflated "how many panel-widths fit in one perimeter run" with "how many G2 profiles are needed." The G2 cover plate spans vertical joints, so approximately `(cantPaneles - 1) × ceil(alto / largo_perfil)` pieces are required.
 
-**Fix:**
+**Fix (current implementation):** The code now calculates G2 quantity based on the number of vertical joints between panels:
 ```javascript
 // G2 covers each vertical joint between panels
 if (g2Data && cantP > 1) {
   const juntasG2 = (cantP - 1) * Math.ceil(alto / g2Data.largo);
-  items.push({ label: "Perfil G2 tapajunta", ..., cant: juntasG2, ... });
+  // For 37 panels at 3.5m: (37 - 1) * Math.ceil(3.5 / 3.0) = 36 * 2 = 72 G2 profiles
+  items.push({ label: "Perfil G2 tapajunta", sku: g2Data.sku, cant: juntasG2, ... });
 }
 ```
+
+72 G2 profiles for 37 panels correctly accounts for one profile per joint, covering the full wall height.
 
 ---
 
@@ -241,7 +245,7 @@ Current coverage: **~40% of business logic**
 | `calcSelladoresTecho` | ❌ | Not tested |
 | `calcPerfilesU` | ❌ | Not tested |
 | `calcEsquineros` | ❌ | Not tested |
-| `calcPerfilesParedExtra` | Partial | K2 only, G2 not tested |
+| `calcPerfilesParedExtra` | ✅ | K2 and G2 joint-based formula tested |
 | `calcSelladorPared` | Partial | Membrana + PU, silicona/cinta not tested |
 | `calcTechoCompleto` (integration) | ❌ | Not tested |
 | `calcParedCompleto` (integration) | ❌ | Not tested |
