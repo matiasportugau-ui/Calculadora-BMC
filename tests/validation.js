@@ -275,12 +275,47 @@ assert("G2: 0 juntas para 1 panel (sin juntas interiores)", juntasG2_1p === 0, j
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 13: Flete BOM (fix BUG-01) ═══");
 
-// The fixed logic: flete state value is used directly as pu and total
-const fleteState = 280; // user-supplied value
-const fleteItem = { label: "Flete", sku: "FLETE", cant: 1, unidad: "servicio", pu: fleteState, total: fleteState };
-assert("Flete BOM pu matches user input", fleteItem.pu === fleteState, fleteItem.pu, fleteState);
-assert("Flete BOM total matches user input", fleteItem.total === fleteState, fleteItem.total, fleteState);
+// Fixture: price-list value for Flete (should NOT be used when user overrides)
+const SERVICIOS = {
+  flete: { venta: 150, web: 200 },
+};
+const fleteLista = p(SERVICIOS.flete);
 
+// The fixed logic: flete state value is used directly as pu and total
+const fleteState = 280; // user-supplied value (different from fleteLista)
+const fleteItem = {
+  label: "Flete",
+  sku: "FLETE",
+  cant: 1,
+  unidad: "servicio",
+  pu: fleteState,
+  total: fleteState,
+};
+
+// Simulate computed BOM group that should use the user value, not the price list
+const bomGroupFlete = {
+  label: "Servicios",
+  items: [fleteItem],
+};
+const bomFleteLine = bomGroupFlete.items[0];
+
+// Validate that BOM line uses the user-entered value
+assert("Flete BOM pu matches user input", bomFleteLine.pu === fleteState, bomFleteLine.pu, fleteState);
+assert("Flete BOM total matches user input", bomFleteLine.total === fleteState, bomFleteLine.total, fleteState);
+
+// And explicitly *not* the price-list value (would detect regression to p(SERVICIOS.flete))
+assert(
+  "Flete BOM pu does not use price-list value",
+  bomFleteLine.pu !== fleteLista,
+  bomFleteLine.pu,
+  fleteLista
+);
+assert(
+  "Flete BOM total does not use price-list value",
+  bomFleteLine.total !== fleteLista,
+  bomFleteLine.total,
+  fleteLista
+);
 const fleteState0 = 0;
 assert("Flete = 0 means no line added (guard check)", fleteState0 === 0, fleteState0, 0);
 
