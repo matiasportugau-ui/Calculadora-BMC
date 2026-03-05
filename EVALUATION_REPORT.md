@@ -236,13 +236,13 @@ Current coverage: **~40% of business logic**
 | `calcAutoportancia` | ✅ | OK + FAIL cases |
 | `calcFijacionesVarilla` | ✅ | Metal + hormigon |
 | `calcFijacionesPared` (v3) | ✅ | Anchor kits |
-| `calcFijacionesCaballete` | ❌ | Not tested |
-| `calcPerfileriaTecho` | ❌ | Not tested |
-| `calcSelladoresTecho` | ❌ | Not tested |
+| `calcFijacionesCaballete` | ✅ | Complete |
+| `calcPerfileriaTecho` | ✅ | Complete |
+| `calcSelladoresTecho` | ✅ | Complete |
 | `calcPerfilesU` | ❌ | Not tested |
 | `calcEsquineros` | ❌ | Not tested |
-| `calcPerfilesParedExtra` | Partial | K2 only, G2 not tested |
-| `calcSelladorPared` | Partial | Membrana + PU, silicona/cinta not tested |
+| `calcPerfilesParedExtra` | ✅ | Complete (K2 + G2) |
+| `calcSelladorPared` | ✅ | Complete (membrana, PU, silicona, cinta) |
 | `calcTechoCompleto` (integration) | ❌ | Not tested |
 | `calcParedCompleto` (integration) | ❌ | Not tested |
 | `bomToGroups` | ❌ | Not tested |
