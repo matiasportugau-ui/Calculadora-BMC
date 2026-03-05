@@ -64,26 +64,24 @@ docs/               (9 documentation files in Spanish)
 
 ## 3. Bugs Found
 
-### BUG-01 · CRITICAL · Flete state is disconnected from BOM ✅ FIXED
+### BUG-01 · RESOLVED · Flete state is disconnected from BOM
 **Severity:** High — user inputs are silently ignored  
-**Location:** `§8`, lines 1044–1047
+**Location:** `§8`, lines 1044–1047  
+**Status:** Fixed in this PR.
 
-**What happened (historical — pre-fix):** The UI showed a stepper allowing the user to input any freight cost (default: 280 USD). However, the BOM always used `p(SERVICIOS.flete)` — which is always 252 (web) or 240 (venta) — regardless of what the user typed.
+**What was happening:** The UI shows a stepper allowing the user to input any freight cost (default: 280 USD). However, the BOM was always using `p(SERVICIOS.flete)` — which is always 252 (web) or 240 (venta) — regardless of what the user typed.
 
 ```javascript
-// Pre-fix (broken — historical reference only):
+// Old (broken):
 if (flete > 0) {
   const puFlete = p(SERVICIOS.flete);  // ← always 252 or 240, ignored flete state
   g.push({ ..., pu: puFlete, total: puFlete });
 }
 ```
 
-The `flete` state (280) only controlled whether to show or hide the flete line in the BOM — the value itself was never used.
-
-**Fix applied:** The BOM now uses the `flete` state directly as the unit price, so the user-supplied value is honoured.
-
+**Fix applied:** The BOM now uses the `flete` state value directly:
 ```javascript
-// Current (fixed):
+// Fixed:
 if (flete > 0) {
   g.push({ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete });
 }
@@ -130,12 +128,14 @@ The `Edit3` and `RotateCcw` icons are imported but never used in the UI.
 
 ---
 
-### BUG-04 · MEDIUM · G2 cover plate quantity formula produces unrealistic results
+### BUG-04 · RESOLVED · G2 cover plate quantity formula produces unrealistic results
 **Severity:** Medium — generates incorrect BOM quantities  
-**Location:** `§4` `calcPerfilesParedExtra`, lines 605–610
+**Location:** `§4` `calcPerfilesParedExtra`, lines 605–610  
+**Status:** Fixed in this PR.
 
-**What happens:** For a typical wall of 37 panels with 3.5m height:
+**What was happening:** For a typical wall of 37 panels with 3.5m height:
 ```javascript
+// Old (broken):
 const numTramos = Math.ceil(perimetro / (cantP * panel.au)) || 1;
 // Math.ceil(40 / (37 * 1.14)) = Math.ceil(0.95) = 1
 
@@ -143,11 +143,11 @@ const cantG2 = Math.ceil(alto * 2 / 3.0) * Math.max(numTramos, 1);
 // Math.ceil(3.5 * 2 / 3.0) * 1 = 3 * 1 = 3 G2 profiles
 ```
 
-3 G2 profiles for 37 wall panels is extremely low. The formula conflates "how many panel-widths fit in one perimeter run" with "how many G2 profiles are needed." The G2 cover plate spans vertical joints, so you need approximately `(cantPaneles - 1) × ceil(alto / largo_perfil)` pieces.
+3 G2 profiles for 37 wall panels is extremely low. The formula conflates "how many panel-widths fit in one perimeter run" with "how many G2 profiles are needed."
 
-**Fix:**
+**Fix applied:** The G2 cover plate spans vertical joints between panels, so the correct formula is `(cantPaneles - 1) × ceil(alto / largo_perfil)`:
 ```javascript
-// G2 covers each vertical joint between panels
+// Fixed:
 if (g2Data && cantP > 1) {
   const juntasG2 = (cantP - 1) * Math.ceil(alto / g2Data.largo);
   items.push({ label: "Perfil G2 tapajunta", ..., cant: juntasG2, ... });
