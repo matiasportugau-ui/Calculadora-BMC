@@ -1,7 +1,7 @@
 # Evaluation Report — Panelin Calculadora BMC v3.0
 **Date:** March 5, 2026  
 **Scope:** Full codebase audit · Bug identification · Improvement roadmap  
-**Status:** 31/31 tests passing · 6 bugs confirmed · 18 improvement areas identified
+**Status:** 50/50 tests passing · 6 bugs confirmed · 18 improvement areas identified
 
 ---
 
@@ -64,31 +64,27 @@ docs/               (9 documentation files in Spanish)
 
 ## 3. Bugs Found
 
-### BUG-01 · CRITICAL · Flete state is disconnected from BOM
+### BUG-01 · RESOLVED · Flete state is disconnected from BOM
 **Severity:** High — user inputs are silently ignored  
-**Location:** `§8`, lines 1044–1047
+**Location:** `§8`, lines 1044–1047  
+**Status:** Fixed in this PR.
 
-**What happens:** The UI shows a stepper allowing the user to input any freight cost (default: 280 USD). However, the BOM always uses `p(SERVICIOS.flete)` — which is always 252 (web) or 240 (venta) — regardless of what the user typed.
+**What happened (historical):** The UI showed a stepper allowing the user to input any freight cost (default: 280 USD). However, the BOM always used `p(SERVICIOS.flete)` — which is always 252 (web) or 240 (venta) — regardless of what the user typed.
 
 ```javascript
-// Current (broken):
+// Old (broken):
 if (flete > 0) {
   const puFlete = p(SERVICIOS.flete);  // ← always 252 or 240, ignores flete state
   g.push({ ..., pu: puFlete, total: puFlete });
 }
 ```
 
-The `flete` state (280) only controls whether to show or hide the flete line in the BOM — the value itself is never used.
-
-**Fix:**
+**Fix applied:**
 ```javascript
-// Option A — use flete state directly as the price:
+// Fixed — flete state value used directly as pu and total:
 if (flete > 0) {
   g.push({ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete });
 }
-
-// Option B — use p(SERVICIOS.flete) and remove the stepper (since the price comes from the DB):
-// Remove flete stepper from UI; flete is added automatically from price list
 ```
 
 ---
@@ -132,12 +128,15 @@ The `Edit3` and `RotateCcw` icons are imported but never used in the UI.
 
 ---
 
-### BUG-04 · MEDIUM · G2 cover plate quantity formula produces unrealistic results
+### BUG-04 · RESOLVED · G2 cover plate quantity formula produces unrealistic results
 **Severity:** Medium — generates incorrect BOM quantities  
-**Location:** `§4` `calcPerfilesParedExtra`, lines 605–610
+**Location:** `§4` `calcPerfilesParedExtra`, lines 605–610  
+**Status:** Fixed in this PR.
 
-**What happens:** For a typical wall of 37 panels with 3.5m height:
+**What happened (historical):** For a typical wall of 37 panels with 3.5m height the old formula produced only 3 G2 profiles — far too low. It conflated "how many panel-widths fit in one perimeter run" with "how many G2 profiles are needed."
+
 ```javascript
+// Old (broken):
 const numTramos = Math.ceil(perimetro / (cantP * panel.au)) || 1;
 // Math.ceil(40 / (37 * 1.14)) = Math.ceil(0.95) = 1
 
@@ -145,11 +144,10 @@ const cantG2 = Math.ceil(alto * 2 / 3.0) * Math.max(numTramos, 1);
 // Math.ceil(3.5 * 2 / 3.0) * 1 = 3 * 1 = 3 G2 profiles
 ```
 
-3 G2 profiles for 37 wall panels is extremely low. The formula conflates "how many panel-widths fit in one perimeter run" with "how many G2 profiles are needed." The G2 cover plate spans vertical joints, so you need approximately `(cantPaneles - 1) × ceil(alto / largo_perfil)` pieces.
+**Fix applied:** The G2 cover plate spans vertical joints, so the correct quantity is `(cantPaneles - 1) × ceil(alto / largo_perfil)`:
 
-**Fix:**
 ```javascript
-// G2 covers each vertical joint between panels
+// Fixed — G2 covers each vertical joint between panels:
 if (g2Data && cantP > 1) {
   const juntasG2 = (cantP - 1) * Math.ceil(alto / g2Data.largo);
   items.push({ label: "Perfil G2 tapajunta", ..., cant: juntasG2, ... });

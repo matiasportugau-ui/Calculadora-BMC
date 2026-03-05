@@ -592,7 +592,7 @@ function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipoEst) {
 }
 
 // §C NUEVOS PERFILES: K2, G2, 5852
-function calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) {
+function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
   const items = [];
   // Perfil K2 — junta interior entre paneles
   const k2Data = PERFIL_PARED.perfil_k2._all;
@@ -661,7 +661,7 @@ function calcParedCompleto(inputs) {
   const perfilesU = calcPerfilesU(panel, espesor, perimetro);
   const esquineros = calcEsquineros(alto, numEsqExt || 0, numEsqInt || 0);
   const fijaciones = calcFijacionesPared(panel, espesor, paneles.cantPaneles, alto, perimetro, tipoEst || "metal");
-  const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, perimetro, { incl5852 });
+  const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, { incl5852 });
   let sellador = { items: [], total: 0 };
   if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto);
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
