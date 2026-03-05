@@ -64,31 +64,29 @@ docs/               (9 documentation files in Spanish)
 
 ## 3. Bugs Found
 
-### BUG-01 · CRITICAL · Flete state is disconnected from BOM
+### BUG-01 · CRITICAL · Flete state is disconnected from BOM ✅ FIXED
 **Severity:** High — user inputs are silently ignored  
 **Location:** `§8`, lines 1044–1047
 
-**What happens:** The UI shows a stepper allowing the user to input any freight cost (default: 280 USD). However, the BOM always uses `p(SERVICIOS.flete)` — which is always 252 (web) or 240 (venta) — regardless of what the user typed.
+**What happened (historical — pre-fix):** The UI showed a stepper allowing the user to input any freight cost (default: 280 USD). However, the BOM always used `p(SERVICIOS.flete)` — which is always 252 (web) or 240 (venta) — regardless of what the user typed.
 
 ```javascript
-// Current (broken):
+// Pre-fix (broken — historical reference only):
 if (flete > 0) {
-  const puFlete = p(SERVICIOS.flete);  // ← always 252 or 240, ignores flete state
+  const puFlete = p(SERVICIOS.flete);  // ← always 252 or 240, ignored flete state
   g.push({ ..., pu: puFlete, total: puFlete });
 }
 ```
 
-The `flete` state (280) only controls whether to show or hide the flete line in the BOM — the value itself is never used.
+The `flete` state (280) only controlled whether to show or hide the flete line in the BOM — the value itself was never used.
 
-**Fix:**
+**Fix applied:** The BOM now uses the `flete` state directly as the unit price, so the user-supplied value is honoured.
+
 ```javascript
-// Option A — use flete state directly as the price:
+// Current (fixed):
 if (flete > 0) {
   g.push({ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete });
 }
-
-// Option B — use p(SERVICIOS.flete) and remove the stepper (since the price comes from the DB):
-// Remove flete stepper from UI; flete is added automatically from price list
 ```
 
 ---
