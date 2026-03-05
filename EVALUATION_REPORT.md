@@ -215,12 +215,10 @@ So after selecting a roof family, the dropdown immediately reverts to showing th
 ### CQ-04 · `setFamilia` does not reset espesor when switching wall families
 When a user switches from `ISOPANEL_EPS` (espesores: 50/100/150/200/250) to `ISOWALL_PIR` (espesores: 50/80/100), if the current espesor is 150/200/250, the pared engine receives an invalid espesor silently (returns null).
 
-### CQ-05 · `useReducer` is imported but never used
-```javascript
-import { useState, useMemo, useCallback, useRef, useEffect, useReducer } from "react";
-```
-`useReducer` is imported at line 7 but never used anywhere in the file. Minor dead import.
+### CQ-05 · RESOLVED — `useReducer` dead import
+This issue is no longer present. The `useReducer` named import was removed from `src/PanelinCalculadoraV3.jsx` in this PR, so there is no unused React hook import anymore.
 
+*(Historical note: CQ-05 originally flagged an unused `useReducer` import in the main React import statement.)*
 ### CQ-06 · No `vite.config.js`
 The project uses Vite but has no `vite.config.js`. It relies on Vite's default behavior. Adding explicit config would enable proper JSX transforms, port configuration, and build optimizations.
 
