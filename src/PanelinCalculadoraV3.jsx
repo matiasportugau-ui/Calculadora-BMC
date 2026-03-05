@@ -4,7 +4,7 @@
 // Precios SIN IVA · IVA 22% al final · Doble lista (venta/web)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef, useEffect, useReducer } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
@@ -601,13 +601,12 @@ function calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) {
     const puK2 = p(k2Data);
     items.push({ label: k2Data.label, sku: k2Data.sku, cant: juntasK2, unidad: "unid", pu: puK2, total: +(juntasK2 * puK2).toFixed(2) });
   }
-  // Perfil G2 — tapajunta exterior
+  // Perfil G2 — tapajunta exterior: 1 por cada junta vertical entre paneles
   const g2Data = resolvePerfilPared("perfil_g2", panel.fam, espesor);
-  if (g2Data) {
-    const numTramos = Math.ceil(perimetro / (cantP * panel.au)) || 1;
-    const cantG2 = Math.ceil(alto * 2 / 3.0) * Math.max(numTramos, 1);
+  if (g2Data && cantP > 1) {
+    const juntasG2 = (cantP - 1) * Math.ceil(alto / g2Data.largo);
     const puG2 = p(g2Data);
-    items.push({ label: "Perfil G2 tapajunta", sku: g2Data.sku, cant: cantG2, unidad: "unid", pu: puG2, total: +(cantG2 * puG2).toFixed(2) });
+    items.push({ label: "Perfil G2 tapajunta", sku: g2Data.sku, cant: juntasG2, unidad: "unid", pu: puG2, total: +(juntasG2 * puG2).toFixed(2) });
   }
   // Perfil 5852 aluminio — OPCIONAL
   if (opts && opts.incl5852) {
@@ -1040,10 +1039,9 @@ export default function PanelinCalculadoraV3() {
   const groups = useMemo(() => {
     if (!results || results.error) return [];
     let g = bomToGroups(results);
-    // Add flete
+    // Add flete — uses the user-supplied value from the stepper (pre-VAT)
     if (flete > 0) {
-      const puFlete = p(SERVICIOS.flete);
-      g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: puFlete, total: puFlete }] });
+      g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
     }
     return applyOverrides(g, overrides);
   }, [results, overrides, flete, listaPrecios]);
@@ -1097,12 +1095,11 @@ export default function PanelinCalculadoraV3() {
     const all = { ...PANELS_TECHO, ...PANELS_PARED };
     const pd = all[fam];
     if (!pd) return;
-    if (pd.tipo === "techo") uT("familia", fam);
-    else uP("familia", fam);
-    // Also set the espesor to first available
-    const firstEsp = Object.keys(pd.esp)[0];
-    if (pd.tipo === "techo") uT("espesor", Number(firstEsp));
-    else uP("espesor", Number(firstEsp));
+    const firstEsp = Number(Object.keys(pd.esp)[0]);
+    // Always reset espesor to first available for the new family to avoid
+    // a stale espesor that doesn't exist in the new family's esp map.
+    if (pd.tipo === "techo") { uT("familia", fam); uT("espesor", firstEsp); }
+    else { uP("familia", fam); uP("espesor", firstEsp); }
   };
 
   // ── Section style ──
