@@ -3,6 +3,8 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { calcTechoCompleto, calcParedCompleto } from "../src/utils/calculations.js";
+
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
 let LISTA_ACTIVA = "web";
@@ -318,6 +320,47 @@ assert(
 );
 const fleteState0 = 0;
 assert("Flete = 0 means no line added (guard check)", fleteState0 === 0, fleteState0, 0);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 14: Integration — real calcTechoCompleto / calcParedCompleto
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 14: Integration — calcTechoCompleto / calcParedCompleto ═══");
+
+// --- calcTechoCompleto ---
+const techoInput = {
+  familia: "ISODEC_EPS", espesor: 100,
+  largo: 5.0, ancho: 5.6,
+  tipoEst: "metal", ptsHorm: 0,
+  borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+  color: "Blanco",
+};
+const techoResult = calcTechoCompleto(techoInput);
+
+assert("calcTechoCompleto: no error", !techoResult.error, techoResult.error, undefined);
+assert("calcTechoCompleto: cantPaneles = 5", techoResult.paneles?.cantPaneles === 5, techoResult.paneles?.cantPaneles, 5);
+assert("calcTechoCompleto: areaTotal ≈ 28.00 m²", approx(techoResult.paneles?.areaTotal, 28.00), techoResult.paneles?.areaTotal, 28.00);
+assert("calcTechoCompleto: allItems is non-empty array", Array.isArray(techoResult.allItems) && techoResult.allItems.length > 0, techoResult.allItems?.length, ">0");
+assert("calcTechoCompleto: totales.subtotalSinIVA > 0", techoResult.totales?.subtotalSinIVA > 0, techoResult.totales?.subtotalSinIVA, ">0");
+assert("calcTechoCompleto: autoportancia.ok = true", techoResult.autoportancia?.ok === true, techoResult.autoportancia?.ok, true);
+
+// --- calcParedCompleto ---
+const paredInput = {
+  familia: "ISOPANEL_EPS", espesor: 100,
+  alto: 3.5, perimetro: 40,
+  numEsqExt: 4, numEsqInt: 0,
+  aberturas: [{ ancho: 0.9, alto: 2.1, cant: 1 }, { ancho: 1.2, alto: 1.0, cant: 2 }],
+  tipoEst: "metal", inclSell: true, incl5852: false, color: "Blanco",
+};
+const paredResult = calcParedCompleto(paredInput);
+
+assert("calcParedCompleto: no error", !paredResult.error, paredResult.error, undefined);
+assert("calcParedCompleto: cantPaneles = 36", paredResult.paneles?.cantPaneles === 36, paredResult.paneles?.cantPaneles, 36);
+assert("calcParedCompleto: areaBruta ≈ 143.64 m²", approx(paredResult.paneles?.areaBruta, 143.64), paredResult.paneles?.areaBruta, 143.64);
+assert("calcParedCompleto: areaAberturas ≈ 4.29 m²", approx(paredResult.paneles?.areaAberturas, 4.29), paredResult.paneles?.areaAberturas, 4.29);
+assert("calcParedCompleto: areaNeta ≈ 139.35 m²", approx(paredResult.paneles?.areaNeta, 139.35), paredResult.paneles?.areaNeta, 139.35);
+assert("calcParedCompleto: allItems is non-empty array", Array.isArray(paredResult.allItems) && paredResult.allItems.length > 0, paredResult.allItems?.length, ">0");
+assert("calcParedCompleto: totales.subtotalSinIVA > 0", paredResult.totales?.subtotalSinIVA > 0, paredResult.totales?.subtotalSinIVA, ">0");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
