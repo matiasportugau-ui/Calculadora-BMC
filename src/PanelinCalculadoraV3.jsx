@@ -592,7 +592,7 @@ function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipoEst) {
 }
 
 // §C NUEVOS PERFILES: K2, G2, 5852
-function calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) {
+function calcPerfilesParedExtra(panel, espesor, cantP, alto, _perimetro, opts) {
   const items = [];
   // Perfil K2 — junta interior entre paneles
   const k2Data = PERFIL_PARED.perfil_k2._all;
