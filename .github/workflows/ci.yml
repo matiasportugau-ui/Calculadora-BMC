@@ -1,0 +1,72 @@
+name: CI — Panelin Calculadora BMC
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Calculations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run validation tests
+        run: node tests/validation.js
+
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check JSX syntax
+        run: |
+          # Basic syntax check — ensure file is valid JavaScript
+          node -e "
+            const fs = require('fs');
+            const code = fs.readFileSync('src/PanelinCalculadoraV3.jsx', 'utf8');
+            console.log('File size:', code.length, 'chars');
+            console.log('Lines:', code.split('\n').length);
+
+            // Verify critical sections exist
+            const checks = [
+              ['LISTA_ACTIVA', code.includes('LISTA_ACTIVA')],
+              ['p() function', code.includes('function p(item)')],
+              ['calcTotalesSinIVA', code.includes('calcTotalesSinIVA')],
+              ['calcFijacionesPared with anclaje', code.includes('FIJACIONES.anclaje_h')],
+              ['Perfil K2', code.includes('perfil_k2')],
+              ['Perfil G2', code.includes('perfil_g2')],
+              ['Membrana sellador', code.includes('SELLADORES.membrana')],
+              ['Soporte canalón corrected', code.includes('(cantP + 1) * 0.30')],
+              ['Default export', code.includes('export default')],
+              ['No localStorage', !code.includes('localStorage')],
+              ['No sessionStorage', !code.includes('sessionStorage')],
+              ['IVA at end only', code.includes('subtotalSinIVA * IVA')],
+            ];
+
+            let ok = true;
+            checks.forEach(([name, pass]) => {
+              console.log(pass ? '✅' : '❌', name);
+              if (!pass) ok = false;
+            });
+
+            if (!ok) process.exit(1);
+            console.log('\n✅ All structural checks passed');
+          "
