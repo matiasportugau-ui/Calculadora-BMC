@@ -7,12 +7,12 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
-  RotateCcw, Edit3, Home, Layers, Grid, Snowflake
+  RotateCcw, Edit3
 } from "lucide-react";
 
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
-  IVA, LISTA_ACTIVA, setListaPrecios,
+  setListaPrecios,
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS, STEP_SECTIONS,
 } from "../data/constants.js";
@@ -141,7 +141,7 @@ function Toast({ message, visible }) {
   return <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 50, background: C.success, color: "#fff", borderRadius: 12, padding: "12px 20px", fontSize: 14, fontWeight: 500, fontFamily: FONT, boxShadow: "0 4px 24px rgba(52,199,89,0.35)", animation: "bmc-slideUp 220ms", display: "flex", alignItems: "center", gap: 8 }}><CheckCircle size={16} color="#fff" />{message}</div>;
 }
 
-function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, overrides, onOverride, onRevert }) {
+function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, onOverride, onRevert }) {
   const [editingCell, setEditingCell] = useState(null); // { lineId, field }
   const [editValue, setEditValue] = useState("");
   const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr 56px";
@@ -250,13 +250,6 @@ export default function PanelinCalculadoraV3() {
   const vis = VIS[scenario] || VIS.solo_techo;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
 
-  // ── Get active panel info ──
-  const getActivePanel = useCallback(() => {
-    if (scenarioDef?.hasTecho && !scenarioDef?.hasPared) return { ...techo, source: PANELS_TECHO };
-    if (scenarioDef?.hasPared && !scenarioDef?.hasTecho) return { ...pared, source: PANELS_PARED };
-    return { ...techo, source: PANELS_TECHO }; // default
-  }, [scenario, techo, pared]);
-
   // ── Available families for current scenario ──
   const familyOptions = useMemo(() => {
     if (!scenarioDef) return [];
@@ -284,7 +277,6 @@ export default function PanelinCalculadoraV3() {
 
   // ── Calculate results ──
   const results = useMemo(() => {
-    setListaPrecios(listaPrecios);
     const sc = scenario;
     try {
       if (sc === "solo_techo") {
@@ -314,7 +306,7 @@ export default function PanelinCalculadoraV3() {
       }
     } catch (e) { return { error: e.message }; }
     return null;
-  }, [listaPrecios, scenario, techo, pared, camara, flete]);
+  }, [listaPrecios, scenario, techo, pared, camara]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -591,7 +583,7 @@ export default function PanelinCalculadoraV3() {
 
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
-            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} overrides={overrides} onOverride={handleOverride} onRevert={handleRevert} />)}
+            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} />)}
           </div>}
 
           {/* Totals */}

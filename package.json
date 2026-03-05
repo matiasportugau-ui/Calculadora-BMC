@@ -4,7 +4,7 @@
   "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
   "private": true,
   "type": "module",
-  "main": "src/PanelinCalculadoraV3.jsx",
+  "main": "src/components/PanelinCalculadoraV3.jsx",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
