@@ -219,8 +219,8 @@ When a user switches from `ISOPANEL_EPS` (espesores: 50/100/150/200/250) to `ISO
 This issue is no longer present. The `useReducer` named import was removed from `src/PanelinCalculadoraV3.jsx` in this PR, so there is no unused React hook import anymore.
 
 *(Historical note: CQ-05 originally flagged an unused `useReducer` import in the main React import statement.)*
-### CQ-06 · No `vite.config.js`
-The project uses Vite but has no `vite.config.js`. It relies on Vite's default behavior. Adding explicit config would enable proper JSX transforms, port configuration, and build optimizations.
+### CQ-06 · Vite config now explicit (resolved in this PR)
+Previously, the project used Vite without a `vite.config.js`, relying on Vite's default behavior. This has now been addressed in this PR by adding a `vite.config.js` with explicit configuration (e.g., JSX handling, dev server options, and build settings), so no further action is required for this item.
 
 ---
 
