@@ -1,4 +1,4 @@
-import PanelinCalculadora from './PanelinCalculadoraV3';
+import PanelinCalculadora from './components/PanelinCalculadoraV3';
 
 export default function App() {
   return <PanelinCalculadora />;

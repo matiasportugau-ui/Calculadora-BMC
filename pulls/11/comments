@@ -1,1 +1,0 @@
-Closing as superseded by PR #10, which takes the cleaner approach of fully removing the dead `perimetro` parameter instead of just prefixing it with `_`. The removal is preferred since the parameter is no longer consumed anywhere after the G2 formula rewrite.
