@@ -1,7 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// PanelinCalculadoraV3.jsx — BMC Uruguay · Calculadora de Cotización v3.0
+// PanelinCalculadoraV3.jsx — BMC Uruguay · Calculadora de Cotización v3.1
 // Un solo archivo React — Default export, sin props
 // Precios SIN IVA · IVA 22% al final · Doble lista (venta/web)
+// Repo: github.com/matiasportugau-ui/GPT-Panelin-Calc (frontend/)
+// Integración: Compatible con GPT Panelin v5 + Calculadora API v4.0
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useMemo, useCallback, useRef, useEffect, useReducer } from "react";
@@ -147,6 +149,19 @@ const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  ISOFRIG_PIR: {
+    label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
+    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    esp: {
+      40:  { venta: 43.53, web: 53.11, costo: 36.27, ap: null },
+      60:  { venta: 47.40, web: 57.83, costo: 41.22, ap: null },
+      80:  { venta: 52.29, web: 63.80, costo: 45.47, ap: null },
+      100: { venta: 58.01, web: 70.77, costo: 50.44, ap: null },
+      150: { venta: 70.37, web: 85.85, costo: 61.19, ap: null },
+    },
+    col: ["Blanco"], colNotes: { _all: "Solo Blanco sanitario" }, colMax: {},
+    notaFrig: "Panel para cámaras frigoríficas y salas limpias. Junta macho-hembra.",
+  },
 };
 
 const FIJACIONES = {
@@ -286,6 +301,13 @@ const PERFIL_PARED = {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
       80:  { sku: "PU50MM", venta: 13.12, web: 16.01, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+    },
+    ISOFRIG: {
+      40:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
+      60:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
+      80:  { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, largo: 3.0 },
     },
   },
   perfil_g2: {
@@ -679,7 +701,7 @@ const SCENARIOS_DEF = [
   { id: "solo_techo", label: "Solo Techo", icon: "🏠", description: "Cubierta con ISODEC o ISOROOF", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS"], hasTecho: true, hasPared: false },
   { id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true },
   { id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: true, hasPared: true },
-  { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
+  { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
 ];
 
 const VIS = {
@@ -1027,10 +1049,13 @@ export default function PanelinCalculadoraV3() {
         if (!pared.familia || !pared.espesor) return null;
         const perim = 2 * (camara.largo_int + camara.ancho_int);
         const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-        const rT = calcTechoCompleto({ familia: pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS", espesor: pared.espesor, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color });
+        // Techo: use ISODEC_EPS 100mm as default roof for cámaras (wall panels don't go on roof)
+        const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
+        const techoEsp = pared.familia in PANELS_TECHO ? pared.espesor : 100;
+        const rT = calcTechoCompleto({ familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color || "Blanco" });
         const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
         const totales = calcTotalesSinIVA(allItems);
-        return { ...rP, techoResult: rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || [])] };
+        return { ...rP, techoResult: rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), "Techo calculado con " + techoFam + " " + techoEsp + "mm"] };
       }
     } catch (e) { return { error: e.message }; }
     return null;
@@ -1122,7 +1147,7 @@ export default function PanelinCalculadoraV3() {
       <div style={{ background: C.brand, color: "#fff", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.0</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.1</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
