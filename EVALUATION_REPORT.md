@@ -74,7 +74,7 @@ docs/               (9 documentation files in Spanish)
 ```javascript
 // Old (broken):
 if (flete > 0) {
-  const puFlete = p(SERVICIOS.flete);  // ← always 252 or 240, ignores flete state
+  const puFlete = p(SERVICIOS.flete);  // ← always 252 or 240, ignored flete state
   g.push({ ..., pu: puFlete, total: puFlete });
 }
 ```
