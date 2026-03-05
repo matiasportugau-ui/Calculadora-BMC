@@ -700,17 +700,25 @@ const BORDER_OPTIONS = {
 // Override helpers
 function createLineId(groupTitle, idx) { return groupTitle.toUpperCase().replace(/\s/g, "_") + "-" + idx; }
 function applyOverrides(groups, overrides) {
-  if (!overrides || Object.keys(overrides).length === 0) return groups.map(g => ({ ...g, items: g.items.map(i => ({ ...i, isOverridden: false })) }));
   return groups.map(g => ({ ...g, items: g.items.map((item, idx) => {
     const lid = createLineId(g.title, idx);
-    const ovr = overrides[lid];
-    if (!ovr) return { ...item, isOverridden: false };
+    const ovr = overrides && overrides[lid];
+    if (!ovr) return { ...item, isOverridden: false, lineId: lid };
     const patched = { ...item, isOverridden: true, lineId: lid };
     if (ovr.field === "cant") { patched.cant = ovr.value; patched.total = +(ovr.value * patched.pu).toFixed(2); }
     else if (ovr.field === "pu") { patched.pu = ovr.value; patched.total = +(patched.cant * ovr.value).toFixed(2); }
     return patched;
   }) }));
 }
+
+// STEP_SECTIONS: maps each progress tab index to the section keys visible in the left panel.
+// Tab 0=Proyecto, 1=Panel, 2=Bordes, 3=Opciones
+const STEP_SECTIONS = {
+  0: ["lista", "escenario", "proyecto"],
+  1: ["panel", "dimensiones"],
+  2: ["bordes", "estructura"],
+  3: ["opciones", "aberturas", "flete"],
+};
 
 function bomToGroups(result) {
   if (!result || result.error) return [];
@@ -841,7 +849,28 @@ function Toast({ message, visible }) {
 }
 
 function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, overrides, onOverride, onRevert }) {
-  const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr";
+  const [editingCell, setEditingCell] = useState(null); // { lineId, field }
+  const [editValue, setEditValue] = useState("");
+  const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr 56px";
+
+  const startEdit = (lineId, field, currentVal) => {
+    setEditingCell({ lineId, field });
+    setEditValue(String(currentVal));
+  };
+
+  const commitEdit = (lineId, field) => {
+    const num = parseFloat(editValue);
+    if (!isNaN(num) && num >= 0 && onOverride) onOverride(lineId, field, num);
+    setEditingCell(null);
+  };
+
+  const handleKeyDown = (e, lineId, field) => {
+    if (e.key === "Enter") commitEdit(lineId, field);
+    if (e.key === "Escape") setEditingCell(null);
+  };
+
+  const editInputS = { width: "100%", padding: "2px 4px", borderRadius: 6, border: `1.5px solid ${C.primary}`, fontSize: 12, textAlign: "right", outline: "none", fontFamily: FONT, boxShadow: SHI, ...TN };
+
   return (
     <div style={{ borderRadius: 12, overflow: "hidden", boxShadow: SHC, fontFamily: FONT, marginBottom: 12 }}>
       <div onClick={onToggle} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", background: C.brandLight, cursor: "pointer" }}>
@@ -850,15 +879,30 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
       </div>
       {!collapsed && <div>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
-          {["Descripción", "Cant.", "Unid.", "P.Unit.", "Total"].map((h, i) => <div key={h} style={{ fontSize: 11, fontWeight: 600, color: C.ts, padding: "4px 12px", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i > 1 ? "right" : "left" }}>{h}</div>)}
+          {["Descripción", "Cant.", "Unid.", "P.Unit.", "Total", "Acciones"].map((h, i) => <div key={i} style={{ fontSize: 11, fontWeight: 600, color: C.ts, padding: "4px 12px", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i > 1 ? "right" : "left" }}>{h}</div>)}
         </div>
-        {items.map((item, idx) => <div key={idx} style={{ display: "grid", gridTemplateColumns: cols, background: item.isOverridden ? C.warningSoft : idx % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ padding: "8px 12px", fontSize: 13, color: C.tp }}>{item.label}</div>
-          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant}</div>
-          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.tt }}>{item.unidad}</div>
-          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{typeof item.pu === "number" ? item.pu.toFixed(2) : item.pu}</div>
-          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
-        </div>)}
+        {items.map((item, idx) => {
+          const isEditing = editingCell && editingCell.lineId === item.lineId;
+          return <div key={idx} style={{ display: "grid", gridTemplateColumns: cols, background: item.isOverridden ? C.warningSoft : idx % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.border}`, alignItems: "center" }}>
+            <div style={{ padding: "8px 12px", fontSize: 13, color: item.isOverridden ? C.warning : C.tp, fontWeight: item.isOverridden ? 600 : 400 }}>{item.label}</div>
+            <div style={{ padding: "4px 8px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>
+              {isEditing && editingCell.field === "cant"
+                ? <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => commitEdit(item.lineId, "cant")} onKeyDown={e => handleKeyDown(e, item.lineId, "cant")} autoFocus style={editInputS} />
+                : <span onClick={() => onOverride && startEdit(item.lineId, "cant", item.cant)} style={{ cursor: onOverride ? "text" : "default" }}>{typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant}</span>}
+            </div>
+            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.tt }}>{item.unidad}</div>
+            <div style={{ padding: "4px 8px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>
+              {isEditing && editingCell.field === "pu"
+                ? <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => commitEdit(item.lineId, "pu")} onKeyDown={e => handleKeyDown(e, item.lineId, "pu")} autoFocus style={editInputS} />
+                : <span onClick={() => onOverride && startEdit(item.lineId, "pu", item.pu)} style={{ cursor: onOverride ? "text" : "default" }}>{typeof item.pu === "number" ? item.pu.toFixed(2) : item.pu}</span>}
+            </div>
+            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
+            <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+              {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
+              {onRevert && item.isOverridden && <button title="Revertir" aria-label="Revertir cambios" onClick={() => onRevert(item.lineId)} style={{ background: "none", border: "none", cursor: "pointer", color: C.warning, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><RotateCcw size={13} /></button>}
+            </div>
+          </div>;
+        })}
       </div>}
     </div>
   );
@@ -1091,6 +1135,14 @@ export default function PanelinCalculadoraV3() {
   const uP = (k, v) => setPared(pd => ({ ...pd, [k]: v }));
   const uPr = (k, v) => setProyecto(pr => ({ ...pr, [k]: v }));
 
+  const handleOverride = useCallback((lineId, field, value) => {
+    setOverrides(prev => ({ ...prev, [lineId]: { field, value: +value } }));
+  }, []);
+
+  const handleRevert = useCallback((lineId) => {
+    setOverrides(prev => { const next = { ...prev }; delete next[lineId]; return next; });
+  }, []);
+
   const setFamilia = (fam) => {
     const all = { ...PANELS_TECHO, ...PANELS_PARED };
     const pd = all[fam];
@@ -1138,13 +1190,13 @@ export default function PanelinCalculadoraV3() {
         {/* LEFT PANEL */}
         <div style={{ flex: "1 1 420px", minWidth: 360, maxWidth: 520 }}>
           {/* Lista precios */}
-          <div style={sectionS}>
+          {STEP_SECTIONS[activeStep].includes("lista") && <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
             <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
-          </div>
+          </div>}
 
           {/* Escenario */}
-          <div style={sectionS}>
+          {STEP_SECTIONS[activeStep].includes("escenario") && <div style={sectionS}>
             <div style={labelS}>ESCENARIO DE OBRA</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {SCENARIOS_DEF.map(sc => {
@@ -1156,10 +1208,10 @@ export default function PanelinCalculadoraV3() {
                 </div>;
               })}
             </div>
-          </div>
+          </div>}
 
           {/* Datos proyecto */}
-          <div style={sectionS}>
+          {STEP_SECTIONS[activeStep].includes("proyecto") && <div style={sectionS}>
             <div style={labelS}>DATOS DEL PROYECTO</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
@@ -1179,10 +1231,10 @@ export default function PanelinCalculadoraV3() {
               <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
               <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
             </div>
-          </div>
+          </div>}
 
           {/* Panel selector */}
-          <div style={sectionS}>
+          {STEP_SECTIONS[activeStep].includes("panel") && <div style={sectionS}>
             <div style={labelS}>PANEL</div>
             <CustomSelect label="Familia" value={currentFamilia} options={familyOptions} onChange={setFamilia} />
             <div style={{ marginTop: 12 }}>
@@ -1192,10 +1244,10 @@ export default function PanelinCalculadoraV3() {
               <div style={labelS}>Color</div>
               <ColorChips colors={activePanelData.col} value={currentColor} onChange={c => { if (scenarioDef?.hasTecho && !scenarioDef?.hasPared) uT("color", c); else uP("color", c); }} notes={activePanelData.colNotes || {}} />
             </div>}
-          </div>
+          </div>}
 
           {/* Dimensiones Techo */}
-          {vis.largoAncho && <div style={sectionS}>
+          {vis.largoAncho && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
             <div style={labelS}>DIMENSIONES TECHO</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <StepperInput label="Largo (m)" value={techo.largo} onChange={v => uT("largo", v)} min={1} max={20} step={0.5} unit="m" />
@@ -1204,7 +1256,7 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Dimensiones Pared */}
-          {vis.altoPerim && <div style={sectionS}>
+          {vis.altoPerim && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
             <div style={labelS}>DIMENSIONES PARED</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <StepperInput label="Alto (m)" value={pared.alto} onChange={v => uP("alto", v)} min={1} max={14} step={0.5} unit="m" />
@@ -1217,7 +1269,7 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Cámara frigorífica */}
-          {vis.camara && <div style={sectionS}>
+          {vis.camara && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
             <div style={labelS}>DIMENSIONES CÁMARA (internas)</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <StepperInput label="Largo (m)" value={camara.largo_int} onChange={v => setCamara(c => ({ ...c, largo_int: v }))} min={1} max={30} step={0.5} unit="m" />
@@ -1227,19 +1279,19 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Bordes techo */}
-          {vis.borders && <div style={sectionS}>
+          {vis.borders && STEP_SECTIONS[activeStep].includes("bordes") && <div style={sectionS}>
             <div style={labelS}>BORDES Y PERFILERÍA</div>
             <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} />
           </div>}
 
           {/* Estructura */}
-          <div style={sectionS}>
+          {STEP_SECTIONS[activeStep].includes("estructura") && <div style={sectionS}>
             <div style={labelS}>ESTRUCTURA</div>
             <SegmentedControl value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.tipoEst : pared.tipoEst} onChange={v => { uT("tipoEst", v); uP("tipoEst", v); }} options={[{ id: "metal", label: "Metal" }, { id: "hormigon", label: "Hormigón" }, { id: "mixto", label: "Mixto" }, { id: "madera", label: "Madera" }]} />
-          </div>
+          </div>}
 
           {/* Opciones */}
-          <div style={sectionS}>
+          {STEP_SECTIONS[activeStep].includes("opciones") && <div style={sectionS}>
             <div style={labelS}>OPCIONES</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {vis.canalGot && <>
@@ -1252,10 +1304,10 @@ export default function PanelinCalculadoraV3() {
                 <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Aberturas */}
-          {vis.aberturas && <div style={sectionS}>
+          {vis.aberturas && STEP_SECTIONS[activeStep].includes("aberturas") && <div style={sectionS}>
             <div style={labelS}>ABERTURAS</div>
             {pared.aberturas.map((ab, i) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: 8, borderRadius: 8, background: C.surfaceAlt }}>
@@ -1302,7 +1354,7 @@ export default function PanelinCalculadoraV3() {
 
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
-            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} />)}
+            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} overrides={overrides} onOverride={handleOverride} onRevert={handleRevert} />)}
           </div>}
 
           {/* Totals */}
