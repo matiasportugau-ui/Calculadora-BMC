@@ -8,4 +8,9 @@ export default defineConfig({
     port: 5173,
   },
   build: { outDir: 'dist' },
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/**/*.test.{js,mjs}'],
+  },
 });
