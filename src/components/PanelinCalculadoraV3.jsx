@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════════════
+/a/ ═══════════════════════════════════════════════════════════════════════════
 // src/components/PanelinCalculadoraV3.jsx — React UI component
 // BMC Uruguay · Calculadora de Cotización v3.0
 // ═══════════════════════════════════════════════════════════════════════════
@@ -250,30 +250,33 @@ export default function PanelinCalculadoraV3() {
   const vis = VIS[scenario] || VIS.solo_techo;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
 
-  // ── Available families for current scenario ──
-  const familyOptions = useMemo(() => {
-    if (!scenarioDef) return [];
-    const allPanels = { ...PANELS_TECHO, ...PANELS_PARED };
-    return scenarioDef.familias.map(fk => {
-      const pd = allPanels[fk];
-      return pd ? { value: fk, label: pd.label, sublabel: pd.sub } : null;
-    }).filter(Boolean);
+  // ── Available families for current scenario (separate techo/pared) ──
+  const techoFamilyOptions = useMemo(() => {
+    if (!scenarioDef?.hasTecho) return [];
+    return Object.entries(PANELS_TECHO).map(([fk, pd]) => ({ value: fk, label: pd.label, sublabel: pd.sub }));
   }, [scenarioDef]);
 
-  // ── Get espesor options ──
-  const currentFamilia = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.familia : pared.familia;
-  const activePanelData = useMemo(() => {
-    const all = { ...PANELS_TECHO, ...PANELS_PARED };
-    return all[currentFamilia] || null;
-  }, [currentFamilia]);
+  const paredFamilyOptions = useMemo(() => {
+    if (!scenarioDef?.hasPared) return [];
+    return Object.entries(PANELS_PARED).map(([fk, pd]) => ({ value: fk, label: pd.label, sublabel: pd.sub }));
+  }, [scenarioDef]);
 
-  const espesorOptions = useMemo(() => {
-    if (!activePanelData) return [];
-    return Object.keys(activePanelData.esp).map(e => ({ value: Number(e), label: `${e} mm`, badge: activePanelData.esp[e].ap ? `AP ${activePanelData.esp[e].ap}m` : undefined }));
-  }, [activePanelData]);
+  // ── Panel data for techo ──
+  const techoPanelData = useMemo(() => PANELS_TECHO[techo.familia] || null, [techo.familia]);
+  const techoEspesorOptions = useMemo(() => {
+    if (!techoPanelData) return [];
+    return Object.keys(techoPanelData.esp).map(e => ({ value: Number(e), label: `${e} mm`, badge: techoPanelData.esp[e].ap ? `AP ${techoPanelData.esp[e].ap}m` : undefined }));
+  }, [techoPanelData]);
 
-  const currentEspesor = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.espesor : pared.espesor;
-  const currentColor = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.color : pared.color;
+  // ── Panel data for pared ──
+  const paredPanelData = useMemo(() => PANELS_PARED[pared.familia] || null, [pared.familia]);
+  const paredEspesorOptions = useMemo(() => {
+    if (!paredPanelData) return [];
+    return Object.keys(paredPanelData.esp).map(e => ({ value: Number(e), label: `${e} mm` }));
+  }, [paredPanelData]);
+
+  // ── Combined scenario flag ──
+  const isCombined = scenarioDef?.hasTecho && scenarioDef?.hasPared;
 
   // ── Calculate results ──
   const results = useMemo(() => {
@@ -329,10 +332,22 @@ export default function PanelinCalculadoraV3() {
   // ── Helpers ──
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
+  // Build panel info for output (supports combined scenarios)
+  const panelInfo = useMemo(() => {
+    if (isCombined) {
+      const parts = [];
+      if (techoPanelData && techo.espesor) parts.push(`Techo: ${techoPanelData.label} ${techo.espesor}mm ${techo.color}`);
+      if (paredPanelData && pared.espesor) parts.push(`Pared: ${paredPanelData.label} ${pared.espesor}mm ${pared.color}`);
+      return { label: parts.join(" + "), espesor: "", color: "" };
+    }
+    if (scenarioDef?.hasTecho) return { label: techoPanelData?.label || "", espesor: techo.espesor, color: techo.color };
+    return { label: paredPanelData?.label || "", espesor: pared.espesor, color: pared.color };
+  }, [isCombined, scenarioDef, techoPanelData, paredPanelData, techo, pared]);
+
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
       client: proyecto, project: proyecto, scenario,
-      panel: { label: activePanelData?.label || "", espesor: currentEspesor, color: currentColor },
+      panel: panelInfo,
       totals: grandTotal,
       listaLabel: listaPrecios === "venta" ? "BMC directo" : "Web",
     });
@@ -342,8 +357,8 @@ export default function PanelinCalculadoraV3() {
   const handlePrint = () => {
     const html = generatePrintHTML({
       client: proyecto, project: proyecto, scenario,
-      panel: { label: activePanelData?.label || "", espesor: currentEspesor, color: currentColor },
-      autoportancia: results?.autoportancia,
+      panel: panelInfo,
+      autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
       groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
       totals: grandTotal,
       warnings: results?.warnings || [],
@@ -372,15 +387,20 @@ export default function PanelinCalculadoraV3() {
     setOverrides(prev => { const next = { ...prev }; delete next[lineId]; return next; });
   }, []);
 
-  const setFamilia = (fam) => {
-    const all = { ...PANELS_TECHO, ...PANELS_PARED };
-    const pd = all[fam];
+  const setTechoFamilia = (fam) => {
+    const pd = PANELS_TECHO[fam];
     if (!pd) return;
     const firstEsp = Number(Object.keys(pd.esp)[0]);
-    // Always reset espesor to first available for the new family to avoid
-    // a stale espesor that doesn't exist in the new family's esp map.
-    if (pd.tipo === "techo") { uT("familia", fam); uT("espesor", firstEsp); }
-    else { uP("familia", fam); uP("espesor", firstEsp); }
+    uT("familia", fam);
+    uT("espesor", firstEsp);
+  };
+
+  const setParedFamilia = (fam) => {
+    const pd = PANELS_PARED[fam];
+    if (!pd) return;
+    const firstEsp = Number(Object.keys(pd.esp)[0]);
+    uP("familia", fam);
+    uP("espesor", firstEsp);
   };
 
   // ── Section style ──
@@ -388,11 +408,40 @@ export default function PanelinCalculadoraV3() {
   const labelS = { fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" };
   const inputS = { width: "100%", padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${C.border}`, fontSize: 14, color: C.tp, outline: "none", fontFamily: FONT, boxShadow: SHI };
 
-  // ── KPI values ──
-  const kpiArea = results?.paneles?.areaTotal || results?.paneles?.areaNeta || 0;
-  const kpiPaneles = results?.paneles?.cantPaneles || 0;
-  const kpiApoyos = results?.autoportancia?.apoyos || (results?.paneles ? (pared.numEsqExt + pared.numEsqInt) : 0);
-  const kpiFij = results?.fijaciones?.puntosFijacion || 0;
+  // ── KPI values (aggregate for combined scenarios) ──
+  const kpiArea = useMemo(() => {
+    if (!results) return 0;
+    let total = 0;
+    if (results.paneles) total += results.paneles.areaTotal || results.paneles.areaNeta || 0;
+    if (results.paredResult?.paneles) total += results.paredResult.paneles.areaNeta || 0;
+    if (results.techoResult?.paneles) total += results.techoResult.paneles.areaTotal || 0;
+    return total;
+  }, [results]);
+  
+  const kpiPaneles = useMemo(() => {
+    if (!results) return 0;
+    let total = 0;
+    if (results.paneles) total += results.paneles.cantPaneles || 0;
+    if (results.paredResult?.paneles) total += results.paredResult.paneles.cantPaneles || 0;
+    if (results.techoResult?.paneles) total += results.techoResult.paneles.cantPaneles || 0;
+    return total;
+  }, [results]);
+  
+  const kpiApoyos = useMemo(() => {
+    if (!results) return 0;
+    if (results.autoportancia?.apoyos) return results.autoportancia.apoyos;
+    if (results.techoResult?.autoportancia?.apoyos) return results.techoResult.autoportancia.apoyos;
+    return pared.numEsqExt + pared.numEsqInt;
+  }, [results, pared.numEsqExt, pared.numEsqInt]);
+  
+  const kpiFij = useMemo(() => {
+    if (!results) return 0;
+    let total = 0;
+    if (results.fijaciones?.puntosFijacion) total += results.fijaciones.puntosFijacion;
+    if (results.paredResult?.fijaciones?.items) total += results.paredResult.fijaciones.items.reduce((s, i) => s + (i.cant || 0), 0);
+    if (results.techoResult?.fijaciones?.puntosFijacion) total += results.techoResult.fijaciones.puntosFijacion;
+    return total;
+  }, [results]);
 
   return (
     <div style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
@@ -462,16 +511,33 @@ export default function PanelinCalculadoraV3() {
             </div>
           </div>}
 
-          {/* Panel selector */}
-          {STEP_SECTIONS[activeStep].includes("panel") && <div style={sectionS}>
-            <div style={labelS}>PANEL</div>
-            <CustomSelect label="Familia" value={currentFamilia} options={familyOptions} onChange={setFamilia} />
-            <div style={{ marginTop: 12 }}>
-              <CustomSelect label="Espesor" value={currentEspesor} options={espesorOptions.map(e => ({ ...e, value: e.value }))} onChange={v => { if (scenarioDef?.hasTecho && !scenarioDef?.hasPared) uT("espesor", v); else uP("espesor", v); }} showBadge />
+          {/* Panel selector — TECHO (solo_techo or techo_fachada) */}
+          {STEP_SECTIONS[activeStep].includes("panel") && scenarioDef?.hasTecho && <div style={sectionS}>
+            <div style={{ ...labelS, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🏠</span> PANEL TECHO
             </div>
-            {activePanelData && <div style={{ marginTop: 12 }}>
+            <CustomSelect label="Familia" value={techo.familia} options={techoFamilyOptions} onChange={setTechoFamilia} />
+            <div style={{ marginTop: 12 }}>
+              <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge />
+            </div>
+            {techoPanelData && <div style={{ marginTop: 12 }}>
               <div style={labelS}>Color</div>
-              <ColorChips colors={activePanelData.col} value={currentColor} onChange={c => { if (scenarioDef?.hasTecho && !scenarioDef?.hasPared) uT("color", c); else uP("color", c); }} notes={activePanelData.colNotes || {}} />
+              <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} notes={techoPanelData.colNotes || {}} />
+            </div>}
+          </div>}
+
+          {/* Panel selector — PARED (solo_fachada, techo_fachada, or camara_frig) */}
+          {STEP_SECTIONS[activeStep].includes("panel") && scenarioDef?.hasPared && <div style={sectionS}>
+            <div style={{ ...labelS, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🏢</span> PANEL PARED
+            </div>
+            <CustomSelect label="Familia" value={pared.familia} options={paredFamilyOptions} onChange={setParedFamilia} />
+            <div style={{ marginTop: 12 }}>
+              <CustomSelect label="Espesor" value={pared.espesor} options={paredEspesorOptions} onChange={v => uP("espesor", v)} showBadge />
+            </div>
+            {paredPanelData && <div style={{ marginTop: 12 }}>
+              <div style={labelS}>Color</div>
+              <ColorChips colors={paredPanelData.col} value={pared.color} onChange={c => uP("color", c)} notes={paredPanelData.colNotes || {}} />
             </div>}
           </div>}
 
@@ -625,12 +691,23 @@ export default function PanelinCalculadoraV3() {
             {showTransp && <div style={{ padding: 20, fontSize: 12, color: C.ts, lineHeight: 1.8, fontFamily: "monospace" }}>
               <div>LISTA_ACTIVA: {listaPrecios}</div>
               <div>Escenario: {scenario}</div>
-              {results.paneles && <>
-                <div>Paneles: {results.paneles.cantPaneles} × AU={activePanelData?.au}m = {results.paneles.anchoTotal || "—"}m</div>
+              {scenarioDef?.hasTecho && results.paneles && <>
+                <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— TECHO —</div>
+                <div>Paneles: {results.paneles.cantPaneles} × AU={techoPanelData?.au}m = {results.paneles.anchoTotal || "—"}m</div>
                 <div>Área: {results.paneles.areaTotal || results.paneles.areaNeta} m²</div>
                 <div>Precio/m²: ${results.paneles.precioM2} (SIN IVA)</div>
               </>}
-              {results.autoportancia && results.autoportancia.maxSpan && <div>Autoportancia: {results.autoportancia.ok ? "OK" : "EXCEDE"} · max={results.autoportancia.maxSpan}m · apoyos={results.autoportancia.apoyos}</div>}
+              {results.paredResult?.paneles && <>
+                <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— PARED —</div>
+                <div>Paneles: {results.paredResult.paneles.cantPaneles} × AU={paredPanelData?.au}m</div>
+                <div>Área neta: {results.paredResult.paneles.areaNeta} m²</div>
+                <div>Precio/m²: ${results.paredResult.paneles.precioM2} (SIN IVA)</div>
+              </>}
+              {results.techoResult?.paneles && <>
+                <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— TECHO (cámara) —</div>
+                <div>Área: {results.techoResult.paneles.areaTotal} m²</div>
+              </>}
+              {(results.autoportancia?.maxSpan || results.techoResult?.autoportancia?.maxSpan) && <div>Autoportancia: {(results.autoportancia || results.techoResult?.autoportancia).ok ? "OK" : "EXCEDE"} · max={(results.autoportancia || results.techoResult?.autoportancia).maxSpan}m</div>}
               <div style={{ marginTop: 8, fontWeight: 700 }}>Todos los precios en USD SIN IVA. IVA 22% aplicado al total.</div>
             </div>}
           </div>}

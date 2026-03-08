@@ -216,6 +216,36 @@ function App() {
 
 ---
 
+### Backend MercadoLibre (OAuth + Connector)
+
+El repositorio ahora incluye un backend en `server/` para integrar OAuth de MercadoLibre y exponer endpoints base.
+
+1) Copiar variables de entorno:
+
+```bash
+cp .env.example .env
+```
+
+2) Completar en `.env`:
+- `ML_CLIENT_SECRET` (manual, privado)
+- `ML_REDIRECT_URI_PROD` (si aplica)
+- `TOKEN_ENCRYPTION_KEY` recomendado para cifrar tokens
+
+3) Instalar y ejecutar:
+
+```bash
+npm install
+npm run dev:api
+```
+
+4) Iniciar OAuth inicial (login manual):
+- Abrir `http://localhost:3001/auth/ml/start`
+- Al volver al callback quedará guardado el token para llamadas API
+
+5) Probar conectores:
+- `GET http://localhost:3001/ml/users/me`
+- `GET http://localhost:3001/ml/items/{ITEM_ID}`
+
 ## 💰 Sistema de Precios
 
 Todos los precios en el motor son **SIN IVA**. El IVA 22% se aplica **una sola vez** al total final mediante `calcTotalesSinIVA()`.
