@@ -7,7 +7,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
-  RotateCcw, Edit3
+  RotateCcw, Edit3, Save, Clock, Percent, Zap, Clipboard
 } from "lucide-react";
 
 import {
@@ -15,6 +15,7 @@ import {
   setListaPrecios,
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS, STEP_SECTIONS,
+  SMART_DEFAULTS,
 } from "../data/constants.js";
 import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
@@ -23,6 +24,8 @@ import {
   applyOverrides, bomToGroups,
   fmtPrice, generatePrintHTML, openPrintWindow, buildWhatsAppText,
 } from "../utils/helpers.js";
+import QuotationHistory from "./QuotationHistory.jsx";
+import PriceBreakdownChart from "./PriceBreakdownChart.jsx";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -141,7 +144,7 @@ function Toast({ message, visible }) {
   return <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 50, background: C.success, color: "#fff", borderRadius: 12, padding: "12px 20px", fontSize: 14, fontWeight: 500, fontFamily: FONT, boxShadow: "0 4px 24px rgba(52,199,89,0.35)", animation: "bmc-slideUp 220ms", display: "flex", alignItems: "center", gap: 8 }}><CheckCircle size={16} color="#fff" />{message}</div>;
 }
 
-function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, onOverride, onRevert }) {
+function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, onOverride, onRevert, onCopyLine }) {
   const [editingCell, setEditingCell] = useState(null); // { lineId, field }
   const [editValue, setEditValue] = useState("");
   const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr 56px";
@@ -191,6 +194,7 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
             </div>
             <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
             <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+              {onCopyLine && <button title="Copiar línea" aria-label="Copiar línea" onClick={() => onCopyLine(item)} style={{ background: "none", border: "none", cursor: "pointer", color: C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Clipboard size={12} /></button>}
               {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
               {onRevert && item.isOverridden && <button title="Revertir" aria-label="Revertir cambios" onClick={() => onRevert(item.lineId)} style={{ background: "none", border: "none", cursor: "pointer", color: C.warning, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><RotateCcw size={13} /></button>}
             </div>
@@ -243,6 +247,13 @@ export default function PanelinCalculadoraV3() {
   const [toast, setToast] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
   const [showTransp, setShowTransp] = useState(false);
+  const [discountPct, setDiscountPct] = useState(0);
+  const [savedQuotes, setSavedQuotes] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("bmc_quotes") || "[]"); }
+    catch { return []; }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+  const [showSmartDefault, setShowSmartDefault] = useState(false);
 
   // Sync LISTA_ACTIVA
   useEffect(() => { setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -335,6 +346,7 @@ export default function PanelinCalculadoraV3() {
       panel: { label: activePanelData?.label || "", espesor: currentEspesor, color: currentColor },
       totals: grandTotal,
       listaLabel: listaPrecios === "venta" ? "BMC directo" : "Web",
+      discount: grandTotal.descuento > 0 ? { pct: grandTotal.discountPct, amount: grandTotal.descuento } : null,
     });
     navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles"));
   };
@@ -356,6 +368,7 @@ export default function PanelinCalculadoraV3() {
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
+    setDiscountPct(0);
     setActiveStep(0);
   };
 
@@ -371,6 +384,84 @@ export default function PanelinCalculadoraV3() {
   const handleRevert = useCallback((lineId) => {
     setOverrides(prev => { const next = { ...prev }; delete next[lineId]; return next; });
   }, []);
+
+  const handleSaveQuote = () => {
+    if (!results || results.error) return;
+    const quote = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      proyecto: { ...proyecto },
+      scenario,
+      listaPrecios,
+      techo: { ...techo },
+      pared: { ...pared },
+      camara: { ...camara },
+      flete,
+      discountPct,
+      overrides: { ...overrides },
+      grandTotal: { ...grandTotal },
+      panelLabel: activePanelData?.label || "",
+      espesor: currentEspesor,
+      color: currentColor,
+    };
+    const updated = [quote, ...savedQuotes].slice(0, 30);
+    setSavedQuotes(updated);
+    try { localStorage.setItem("bmc_quotes", JSON.stringify(updated)); } catch { /* quota exceeded */ }
+    showToast("Cotización guardada");
+  };
+
+  const handleLoadQuote = (quote) => {
+    setScenario(quote.scenario);
+    setLP(quote.listaPrecios);
+    setProyecto(quote.proyecto);
+    setTecho(quote.techo);
+    setPared(quote.pared);
+    setCamara(quote.camara);
+    setFlete(quote.flete);
+    setDiscountPct(quote.discountPct || 0);
+    setOverrides(quote.overrides || {});
+    setShowHistory(false);
+    showToast("Cotización cargada");
+  };
+
+  const handleDeleteQuote = (id) => {
+    const updated = savedQuotes.filter(q => q.id !== id);
+    setSavedQuotes(updated);
+    try { localStorage.setItem("bmc_quotes", JSON.stringify(updated)); } catch { /* ignore */ }
+  };
+
+  const handleCopyLine = useCallback((item) => {
+    const cantStr = typeof item.cant === "number" ? (item.cant % 1 === 0 ? String(item.cant) : item.cant.toFixed(2)) : item.cant;
+    const text = `${item.label}: ${cantStr} ${item.unidad} × $${fmtPrice(item.pu)} = $${fmtPrice(item.total)}`;
+    navigator.clipboard.writeText(text).then(
+      () => showToast("Línea copiada"),
+      () => { /* clipboard not available */ }
+    );
+  }, []);
+
+  const handleApplySmartDefaults = () => {
+    const defaults = SMART_DEFAULTS[scenario];
+    if (!defaults) return;
+    if (defaults.techo) {
+      setTecho(t => ({ ...t, ...defaults.techo }));
+    }
+    if (defaults.pared) {
+      setPared(pd => ({ ...pd, ...defaults.pared }));
+    }
+    if (defaults.camara) {
+      setCamara(defaults.camara);
+    }
+    setShowSmartDefault(false);
+    showToast("Configuración típica aplicada");
+  };
+
+  const prevScenarioRef = useRef(scenario);
+  useEffect(() => {
+    if (prevScenarioRef.current !== scenario && SMART_DEFAULTS[scenario]) {
+      setShowSmartDefault(true);
+    }
+    prevScenarioRef.current = scenario;
+  }, [scenario]);
 
   const setFamilia = (fam) => {
     const all = { ...PANELS_TECHO, ...PANELS_PARED };
@@ -403,6 +494,8 @@ export default function PanelinCalculadoraV3() {
           <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.0</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowHistory(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Clock size={14} />Historial{savedQuotes.length > 0 && <span style={{ background: C.primary, borderRadius: 10, padding: "0 5px", fontSize: 10, fontWeight: 700, marginLeft: 2 }}>{savedQuotes.length}</span>}</button>
+          <button onClick={handleSaveQuote} disabled={!results || !!results?.error} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: results && !results?.error ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 4, opacity: results && !results?.error ? 1 : 0.5 }}><Save size={14} />Guardar</button>
           <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
           <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
         </div>
@@ -438,6 +531,23 @@ export default function PanelinCalculadoraV3() {
               })}
             </div>
           </div>}
+
+          {/* Smart defaults suggestion */}
+          {showSmartDefault && SMART_DEFAULTS[scenario] && STEP_SECTIONS[activeStep].includes("escenario") && (
+            <div style={{ ...sectionS, background: C.primarySoft, border: `1.5px solid ${C.primary}`, padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                <Zap size={16} color={C.primary} style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: C.primary }}>Configuración rápida</div>
+                  <div style={{ fontSize: 11, color: C.ts, marginTop: 2 }}>{SMART_DEFAULTS[scenario].label}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={handleApplySmartDefaults} style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Aplicar</button>
+                <button onClick={() => setShowSmartDefault(false)} style={{ padding: "5px 8px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, fontSize: 12, cursor: "pointer" }}>×</button>
+              </div>
+            </div>
+          )}
 
           {/* Datos proyecto */}
           {STEP_SECTIONS[activeStep].includes("proyecto") && <div style={sectionS}>
@@ -535,6 +645,38 @@ export default function PanelinCalculadoraV3() {
             </div>
           </div>}
 
+          {/* Discount system */}
+          {STEP_SECTIONS[activeStep].includes("opciones") && <div style={sectionS}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <Percent size={14} color={C.primary} />
+              <div style={labelS}>DESCUENTO COMERCIAL</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <input
+                type="range"
+                min={0} max={30} step={1}
+                value={discountPct}
+                onChange={e => setDiscountPct(Number(e.target.value))}
+                style={{ flex: 1, accentColor: C.primary, cursor: "pointer" }}
+              />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <input
+                  type="number"
+                  value={discountPct}
+                  onChange={e => { const v = Math.min(30, Math.max(0, parseInt(e.target.value) || 0)); setDiscountPct(v); }}
+                  style={{ width: 48, textAlign: "center", borderRadius: 8, border: `1.5px solid ${discountPct > 0 ? C.primary : C.border}`, padding: "5px 4px", fontSize: 14, fontWeight: 600, color: discountPct > 0 ? C.primary : C.tp, outline: "none", fontFamily: FONT, ...TN }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: C.ts }}>%</span>
+              </div>
+            </div>
+            {discountPct > 0 && grandTotal.descuento > 0 && (
+              <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 8, background: C.successSoft, fontSize: 12, fontWeight: 600, color: "#1B7A2E", display: "flex", justifyContent: "space-between" }}>
+                <span>Ahorro para el cliente:</span>
+                <span style={TN}>−USD {fmtPrice(grandTotal.descuento)}</span>
+              </div>
+            )}
+          </div>}
+
           {/* Aberturas */}
           {vis.aberturas && STEP_SECTIONS[activeStep].includes("aberturas") && <div style={sectionS}>
             <div style={labelS}>ABERTURAS</div>
@@ -583,8 +725,11 @@ export default function PanelinCalculadoraV3() {
 
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
-            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} />)}
+            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onCopyLine={handleCopyLine} />)}
           </div>}
+
+          {/* Price Breakdown Chart */}
+          {groups.length > 0 && <div style={{ marginBottom: 16 }}><PriceBreakdownChart groups={groups} /></div>}
 
           {/* Totals */}
           {groups.length > 0 && <div style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
@@ -592,8 +737,14 @@ export default function PanelinCalculadoraV3() {
               <span style={{ fontSize: 14, opacity: 0.7 }}>Subtotal s/IVA</span>
               <span style={{ fontSize: 16, fontWeight: 600, ...TN }}>USD {fmtPrice(grandTotal.subtotalSinIVA)}</span>
             </div>
+            {grandTotal.descuento > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, padding: "6px 0", borderBottom: "1px dashed rgba(255,255,255,0.15)" }}>
+                <span style={{ fontSize: 14, color: "#34C759", fontWeight: 600 }}>Descuento {grandTotal.discountPct}%</span>
+                <span style={{ fontSize: 16, fontWeight: 600, color: "#34C759", ...TN }}>−USD {fmtPrice(grandTotal.descuento)}</span>
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 14, opacity: 0.7 }}>IVA 22%</span>
+              <span style={{ fontSize: 14, opacity: 0.7 }}>IVA 22%{grandTotal.descuento > 0 ? ` (sobre $${fmtPrice(grandTotal.subtotalConDescuento)})` : ""}</span>
               <span style={{ fontSize: 16, fontWeight: 600, ...TN }}>USD {fmtPrice(grandTotal.iva)}</span>
             </div>
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.2)", paddingTop: 12, marginTop: 8, display: "flex", justifyContent: "space-between" }}>
@@ -638,6 +789,9 @@ export default function PanelinCalculadoraV3() {
       </div>
 
       <Toast message={toast} visible={!!toast} />
+
+      {/* Quotation History Panel */}
+      {showHistory && <QuotationHistory savedQuotes={savedQuotes} onLoad={handleLoadQuote} onDelete={handleDeleteQuote} onClose={() => setShowHistory(false)} />}
     </div>
   );
 }

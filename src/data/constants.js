@@ -327,3 +327,24 @@ export const STEP_SECTIONS = {
   2: ["bordes", "estructura"],
   3: ["opciones", "aberturas", "flete"],
 };
+
+export const SMART_DEFAULTS = {
+  solo_techo: {
+    label: "Techo típico — Vivienda 6×5m, ISODEC EPS 100mm",
+    techo: { familia: "ISODEC_EPS", espesor: 100, color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal" },
+  },
+  solo_fachada: {
+    label: "Fachada típica — Galpón 40m perim, ISOPANEL 100mm",
+    pared: { familia: "ISOPANEL_EPS", espesor: 100, color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0 },
+  },
+  techo_fachada: {
+    label: "Depósito completo — Techo 10×8m + Fachada 36m",
+    techo: { familia: "ISODEC_EPS", espesor: 100, color: "Blanco", largo: 10.0, ancho: 8.0, tipoEst: "metal" },
+    pared: { familia: "ISOPANEL_EPS", espesor: 100, color: "Blanco", alto: 4.0, perimetro: 36, numEsqExt: 4, numEsqInt: 0 },
+  },
+  camara_frig: {
+    label: "Cámara 6×4×3m — ISOPANEL EPS 100mm",
+    pared: { familia: "ISOPANEL_EPS", espesor: 100, color: "Blanco" },
+    camara: { largo_int: 6, ancho_int: 4, alto_int: 3 },
+  },
+};
