@@ -62,6 +62,23 @@ Solo React 18+ y lucide-react:
 npm install react react-dom lucide-react
 ```
 
+## 🌐 Deploy Online (nuevo)
+
+El repo ya incluye contexto web completo para deploy (`index.html`, `src/main.jsx`, `vite.config.js`, `Dockerfile`, `vercel.json`).
+
+```bash
+npm install
+npm run build
+npx vercel --prod
+```
+
+Para Docker:
+
+```bash
+docker build -t calculadora-bmc:latest .
+docker run --rm -p 8080:80 calculadora-bmc:latest
+```
+
 ## 💰 Sistema de Precios
 
 Todos los precios son **SIN IVA**. El IVA 22% se aplica **una sola vez** al total final.

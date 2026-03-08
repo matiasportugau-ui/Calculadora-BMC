@@ -1,99 +1,57 @@
 # 🚀 Guía de Deployment
 
-## Opción 1: Claude.ai Artifact (Recomendado)
+## Contexto online listo para deploy
 
-1. Abrir [claude.ai](https://claude.ai)
-2. Adjuntar `PanelinCalculadoraV3.jsx` como archivo
-3. Pedir "Renderizá este componente React como artifact"
-4. Se renderiza directamente en el panel de artifacts
+Este repositorio ahora incluye un contexto estándar de aplicación web para desplegar en línea sin pasos extra:
 
-**Ventajas:** Sin setup, sin build, actualización inmediata.
+- `index.html` + `src/main.jsx` + `src/App.jsx` para bootstrapping React.
+- `vite.config.js` configurado para ejecutar en `0.0.0.0`.
+- `Dockerfile` multi-stage (Node build + Nginx runtime).
+- `.dockerignore` para builds más livianos.
+- `vercel.json` para deploy directo en Vercel.
 
-## Opción 2: Vite + React
+Con esto, podés desplegar en Vercel, Render, Railway, Fly.io, Cloud Run o cualquier host con Docker/Nginx.
+
+## Opción 1: Deploy rápido en Vercel
 
 ```bash
-# Crear proyecto
-npm create vite@latest calculadora-bmc -- --template react
-cd calculadora-bmc
-
-# Instalar dependencia
-npm install lucide-react
-
-# Copiar componente
-cp PanelinCalculadoraV3.jsx src/
-
-# Editar src/App.jsx
-cat > src/App.jsx << 'EOF'
-import PanelinCalculadora from './PanelinCalculadoraV3'
-export default function App() {
-  return <PanelinCalculadora />
-}
-EOF
-
-# Dev server
-npm run dev
-
-# Build producción
+npm install
 npm run build
+npx vercel --prod
 ```
 
-## Opción 3: Next.js
+## Opción 2: Deploy con Docker (genérico)
 
 ```bash
-npx create-next-app@latest calculadora-bmc
-cd calculadora-bmc
-npm install lucide-react
+# Build de imagen
+docker build -t calculadora-bmc:latest .
 
-# Copiar a app/page.jsx (o pages/index.jsx)
-# Importar como componente client:
+# Ejecutar local para validar
+
+docker run --rm -p 8080:80 calculadora-bmc:latest
 ```
 
-```jsx
-// app/page.jsx
-'use client';
-import PanelinCalculadora from '../components/PanelinCalculadoraV3';
-export default function Home() {
-  return <PanelinCalculadora />;
-}
-```
+Luego abrí `http://localhost:8080`.
 
-## Opción 4: Embed en Shopify (bmcuruguay.com.uy)
-
-1. Build con Vite: `npm run build`
-2. Subir `dist/` a hosting (Vercel, Cloudflare Pages, etc.)
-3. Embed via iframe en página de Shopify:
-
-```html
-<iframe src="https://calculadora.bmcuruguay.com.uy"
-  width="100%" height="900" frameborder="0"
-  style="border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.1);">
-</iframe>
-```
-
-## Opción 5: Deploy a Vercel
+## Opción 3: Deploy en cualquier servidor Linux con Node
 
 ```bash
-# Desde el directorio del proyecto Vite
-npm i -g vercel
-vercel --prod
+npm install
+npm run build
+npm run preview -- --host 0.0.0.0 --port 4173
 ```
 
-## Actualización de Precios
+Esto sirve para validar pre-release o exponer una instancia temporal.
 
-1. Editar sección §2 del `.jsx` (constantes `PANELS_TECHO`, `PANELS_PARED`, etc.)
-2. Los precios se toman de la **Matriz de Costos y Ventas 2026** de BROMYROS
-3. Cambiar valores `venta` y `web` en el espesor correspondiente
-4. Rebuild y redeploy
+## Variables de entorno
 
-**No es necesario** cambiar ninguna función de cálculo — todo usa `p(item)`.
+No se requieren variables de entorno. Todo el motor de cálculo es client-side y está hardcodeado.
 
-## Variables de Entorno
+## Actualización de precios
 
-No se requieren variables de entorno. Todo es hardcodeado y client-side.
+1. Editar sección §2 del `src/PanelinCalculadoraV3.jsx`.
+2. Cambiar valores `venta` y `web` según la matriz vigente.
+3. Ejecutar `npm run build`.
+4. Redeploy.
 
-## Requisitos del Sistema
-
-- Node.js 18+ (solo para build)
-- React 18+
-- lucide-react 0.263+
-- Navegador moderno (Chrome, Firefox, Safari, Edge)
+No es necesario modificar funciones de cálculo.
