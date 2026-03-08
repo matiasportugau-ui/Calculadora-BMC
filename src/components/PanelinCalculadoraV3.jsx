@@ -258,7 +258,7 @@ export default function PanelinCalculadoraV3() {
       const pd = allPanels[fk];
       return pd ? { value: fk, label: pd.label, sublabel: pd.sub } : null;
     }).filter(Boolean);
-  }, [scenario]);
+  }, [scenarioDef]);
 
   // ── Get espesor options ──
   const currentFamilia = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.familia : pared.familia;
@@ -306,7 +306,7 @@ export default function PanelinCalculadoraV3() {
       }
     } catch (e) { return { error: e.message }; }
     return null;
-  }, [listaPrecios, scenario, techo, pared, camara]);
+  }, [scenario, techo, pared, camara]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -317,7 +317,7 @@ export default function PanelinCalculadoraV3() {
       g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
     }
     return applyOverrides(g, overrides);
-  }, [results, overrides, flete, listaPrecios]);
+  }, [results, overrides, flete]);
 
   // ── Grand totals (with overrides applied) ──
   const grandTotal = useMemo(() => {
