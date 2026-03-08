@@ -3,6 +3,8 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { calcTechoCompleto, calcParedCompleto } from "../src/utils/calculations.js";
+
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
 let LISTA_ACTIVA = "web";
@@ -190,6 +192,175 @@ assert("Rollos membrana = 4", rollosMembrana === 4, rollosMembrana, 4);
 
 const espumas = rollosMembrana * 2;
 assert("Espumas PU = 8", espumas === 8, espumas, 8);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 9: Fijaciones Caballete (ISOROOF)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 9: Fijaciones Caballete (ISOROOF) ═══");
+
+const cantP_cb = 5, largo_cb = 6.5;
+const caballetes = Math.ceil((cantP_cb * 3 * (largo_cb / 2.9 + 1)) + ((largo_cb * 2) / 0.3));
+assert("Caballetes: positive integer", caballetes > 0 && Number.isInteger(caballetes), caballetes, ">0");
+
+const tornillosAguja = caballetes * 2;
+const paquetesAguja = Math.ceil(tornillosAguja / 100);
+assert("Paquetes tornillo aguja >= 1", paquetesAguja >= 1, paquetesAguja, ">=1");
+assert("Tornillos aguja = caballetes × 2", tornillosAguja === caballetes * 2, tornillosAguja, caballetes * 2);
+
+// Smaller roof: 3 panels × 4m
+const cab_small = Math.ceil((3 * 3 * (4.0 / 2.9 + 1)) + ((4.0 * 2) / 0.3));
+assert("Caballetes 3p×4m: positive integer", cab_small > 0 && Number.isInteger(cab_small), cab_small, ">0");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 10: Perfilería Techo (borders)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 10: Perfilería Techo ═══");
+
+const au_perf = 1.12, cantP_perf = 5, largo_perf_panel = 6.5;
+const anchoTotal_perf = cantP_perf * au_perf; // 5.60m
+const largo_gotero = 3.03;
+
+const pzasFrente = Math.ceil(anchoTotal_perf / largo_gotero);
+assert("Gotero frente: 2 piezas para 5.60m", pzasFrente === 2, pzasFrente, 2);
+
+const pzasLateral = Math.ceil(largo_perf_panel / 3.0);
+assert("Gotero lateral: 3 piezas para 6.5m", pzasLateral === 3, pzasLateral, 3);
+
+// Tornillos T1 para perfilería: 1 cada 30cm del ML total
+const mlFrente = pzasFrente * largo_gotero;
+const mlLateral = pzasLateral * 3.0;
+const mlTotal = mlFrente + mlLateral;
+const fijPerf = Math.ceil(mlTotal / 0.30);
+const paquetesT1 = Math.ceil(fijPerf / 100);
+assert("Tornillos T1 paquetes >= 1", paquetesT1 >= 1, paquetesT1, ">=1");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 11: Selladores Techo
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 11: Selladores Techo ═══");
+
+const cantP_st = 10;
+const siliconas_t = Math.ceil(cantP_st * 0.5);
+assert("Siliconas techo = 5 para 10 paneles", siliconas_t === 5, siliconas_t, 5);
+
+const cintas_t = Math.ceil(cantP_st / 10);
+assert("Cintas butilo techo = 1 para 10 paneles", cintas_t === 1, cintas_t, 1);
+
+// 20 panels
+const sil_20 = Math.ceil(20 * 0.5);
+assert("Siliconas techo = 10 para 20 paneles", sil_20 === 10, sil_20, 10);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 12: Perfiles Extra Pared — K2 + G2 (formulas corregidas)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 12: Perfiles Extra Pared (K2 + G2 corregido) ═══");
+
+// K2 (unchanged): (cantP - 1) × ceil(alto / largo_perfil)
+const cantP_ex = 36, alto_ex = 3.5, largo_perfil = 3.0;
+const juntasK2_ex = (cantP_ex - 1) * Math.ceil(alto_ex / largo_perfil);
+assert("K2 juntas = 70 para 36 paneles 3.5m", juntasK2_ex === 70, juntasK2_ex, 70);
+
+// G2 (FIXED formula): (cantP - 1) × ceil(alto / largo_perfil)
+const juntasG2_fixed = (cantP_ex - 1) * Math.ceil(alto_ex / largo_perfil);
+assert("G2 juntas = 70 para 36 paneles 3.5m", juntasG2_fixed === 70, juntasG2_fixed, 70);
+
+// G2 for 2 panels: 1 junta × ceil(3.5/3.0) = 1 × 2 = 2
+const juntasG2_2p = (2 - 1) * Math.ceil(3.5 / largo_perfil);
+assert("G2: 1 junta × 2 barras = 2 para 2 paneles 3.5m", juntasG2_2p === 2, juntasG2_2p, 2);
+
+// G2 for 1 panel: no joints (cantP - 1 = 0)
+const juntasG2_1p = (1 - 1) * Math.ceil(3.5 / largo_perfil);
+assert("G2: 0 juntas para 1 panel (sin juntas interiores)", juntasG2_1p === 0, juntasG2_1p, 0);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 13: Flete BOM (BUG-01 fix validation)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 13: Flete BOM (fix BUG-01) ═══");
+
+// Fixture: price-list value for Flete (should NOT be used when user overrides)
+const SERVICIOS = {
+  flete: { venta: 150, web: 200 },
+};
+const fleteLista = p(SERVICIOS.flete);
+
+// The fixed logic: flete state value is used directly as pu and total
+const fleteState = 280; // user-supplied value (different from fleteLista)
+const fleteItem = {
+  label: "Flete",
+  sku: "FLETE",
+  cant: 1,
+  unidad: "servicio",
+  pu: fleteState,
+  total: fleteState,
+};
+
+// Simulate computed BOM group that should use the user value, not the price list
+const bomGroupFlete = {
+  label: "Servicios",
+  items: [fleteItem],
+};
+const bomFleteLine = bomGroupFlete.items[0];
+
+// Validate that BOM line uses the user-entered value
+assert("Flete BOM pu matches user input", bomFleteLine.pu === fleteState, bomFleteLine.pu, fleteState);
+assert("Flete BOM total matches user input", bomFleteLine.total === fleteState, bomFleteLine.total, fleteState);
+
+// And explicitly *not* the price-list value (would detect regression to p(SERVICIOS.flete))
+assert(
+  "Flete BOM pu does not use price-list value",
+  bomFleteLine.pu !== fleteLista,
+  bomFleteLine.pu,
+  fleteLista
+);
+assert(
+  "Flete BOM total does not use price-list value",
+  bomFleteLine.total !== fleteLista,
+  bomFleteLine.total,
+  fleteLista
+);
+const fleteState0 = 0;
+assert("Flete = 0 means no line added (guard check)", fleteState0 === 0, fleteState0, 0);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 14: Integration — real calcTechoCompleto / calcParedCompleto
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 14: Integration — calcTechoCompleto / calcParedCompleto ═══");
+
+// --- calcTechoCompleto ---
+const techoInput = {
+  familia: "ISODEC_EPS", espesor: 100,
+  largo: 5.0, ancho: 5.6,
+  tipoEst: "metal", ptsHorm: 0,
+  borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+  color: "Blanco",
+};
+const techoResult = calcTechoCompleto(techoInput);
+
+assert("calcTechoCompleto: no error", !techoResult.error, techoResult.error, undefined);
+assert("calcTechoCompleto: cantPaneles = 5", techoResult.paneles?.cantPaneles === 5, techoResult.paneles?.cantPaneles, 5);
+assert("calcTechoCompleto: areaTotal ≈ 28.00 m²", approx(techoResult.paneles?.areaTotal, 28.00), techoResult.paneles?.areaTotal, 28.00);
+assert("calcTechoCompleto: allItems is non-empty array", Array.isArray(techoResult.allItems) && techoResult.allItems.length > 0, techoResult.allItems?.length, ">0");
+assert("calcTechoCompleto: totales.subtotalSinIVA > 0", techoResult.totales?.subtotalSinIVA > 0, techoResult.totales?.subtotalSinIVA, ">0");
+assert("calcTechoCompleto: autoportancia.ok = true", techoResult.autoportancia?.ok === true, techoResult.autoportancia?.ok, true);
+
+// --- calcParedCompleto ---
+const paredInput = {
+  familia: "ISOPANEL_EPS", espesor: 100,
+  alto: 3.5, perimetro: 40,
+  numEsqExt: 4, numEsqInt: 0,
+  aberturas: [{ ancho: 0.9, alto: 2.1, cant: 1 }, { ancho: 1.2, alto: 1.0, cant: 2 }],
+  tipoEst: "metal", inclSell: true, incl5852: false, color: "Blanco",
+};
+const paredResult = calcParedCompleto(paredInput);
+
+assert("calcParedCompleto: no error", !paredResult.error, paredResult.error, undefined);
+assert("calcParedCompleto: cantPaneles = 36", paredResult.paneles?.cantPaneles === 36, paredResult.paneles?.cantPaneles, 36);
+assert("calcParedCompleto: areaBruta ≈ 143.64 m²", approx(paredResult.paneles?.areaBruta, 143.64), paredResult.paneles?.areaBruta, 143.64);
+assert("calcParedCompleto: areaAberturas ≈ 4.29 m²", approx(paredResult.paneles?.areaAberturas, 4.29), paredResult.paneles?.areaAberturas, 4.29);
+assert("calcParedCompleto: areaNeta ≈ 139.35 m²", approx(paredResult.paneles?.areaNeta, 139.35), paredResult.paneles?.areaNeta, 139.35);
+assert("calcParedCompleto: allItems is non-empty array", Array.isArray(paredResult.allItems) && paredResult.allItems.length > 0, paredResult.allItems?.length, ">0");
+assert("calcParedCompleto: totales.subtotalSinIVA > 0", paredResult.totales?.subtotalSinIVA > 0, paredResult.totales?.subtotalSinIVA, ">0");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

@@ -22,29 +22,32 @@ Calculadora de cotización en tiempo real para paneles de construcción (ISODEC,
 ## 🏗 Arquitectura
 
 ```
-PanelinCalculadoraV3.jsx (~1400 líneas)
-├── §1  DESIGN TOKENS + CSS
-├── §2  DATOS (PANELIN_PRECIOS_V3_UNIFICADO — fuente de verdad)
-├── §3  ENGINE TECHO (calcTechoCompleto)
-├── §4  ENGINE PARED (calcParedCompleto — fijaciones reescritas)
-├── §5  ESCENARIOS + OVERRIDES + GEOMETRÍA
-├── §6  UI COMPONENTS (13 sub-componentes)
-├── §7  PDF GENERATOR + WhatsApp
-└── §8  MAIN COMPONENT + RENDER
+src/
+├── PanelinCalculadoraV3.jsx         # Re-export compatible del componente principal
+├── App.jsx                          # Shell principal React
+├── main.jsx                         # Entrada Vite
+├── components/
+│   └── PanelinCalculadoraV3.jsx     # UI principal
+├── data/
+│   └── constants.js                 # Catálogos, tokens y configuración estática
+└── utils/
+    ├── calculations.js              # Motores puros de cálculo
+    └── helpers.js                   # BOM overrides + print/WhatsApp
 ```
 
 ## 🚀 Uso Rápido
 
 ### Como Artifact en Claude.ai
 
-1. Subir `PanelinCalculadoraV3.jsx` como artifact React
-2. Se renderiza directamente — no requiere build
+1. Subir el árbol modular de `src/` completo
+2. Usar `src/PanelinCalculadoraV3.jsx` como punto de entrada compatible
+3. Para ejecución local del repo, usar `npm install` y `npm run dev`
 
 ### En proyecto React existente
 
 ```bash
-# Copiar el archivo
-cp PanelinCalculadoraV3.jsx src/components/
+# Copiar los módulos necesarios
+cp -R src/components src/data src/utils src/PanelinCalculadoraV3.jsx tu-proyecto/src/
 
 # Importar y usar
 import PanelinCalculadora from './components/PanelinCalculadoraV3';
@@ -113,7 +116,16 @@ calculadora-bmc/
 ├── package.json
 ├── .gitignore
 ├── src/
-│   └── PanelinCalculadoraV3.jsx # Componente principal (único archivo)
+│   ├── PanelinCalculadoraV3.jsx # Re-export compatible
+│   ├── App.jsx
+│   ├── main.jsx
+│   ├── components/
+│   │   └── PanelinCalculadoraV3.jsx
+│   ├── data/
+│   │   └── constants.js
+│   └── utils/
+│       ├── calculations.js
+│       └── helpers.js
 ├── docs/
 │   ├── ARCHITECTURE.md          # Arquitectura técnica detallada
 │   ├── PRICING-ENGINE.md        # Motor de precios y listas
