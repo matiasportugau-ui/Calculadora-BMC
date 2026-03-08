@@ -7,13 +7,19 @@
   "main": "src/PanelinCalculadoraV3.jsx",
   "scripts": {
     "dev": "vite",
+    "dev:api": "node --watch server/index.js",
+    "start:api": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/validation.js",
     "lint": "eslint src/"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "lucide-react": "^0.263.1",
+    "pino": "^10.1.0",
+    "pino-http": "^11.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
