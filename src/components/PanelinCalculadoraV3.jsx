@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
-  History, Download, Save, ExternalLink, Archive
+  Download, Save, Archive
 } from "lucide-react";
 
 import {
@@ -29,7 +29,7 @@ import {
 } from "../utils/helpers.js";
 import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
-  exportLogsAsJSON, exportSingleBudget, getLogStats, peekNextCode,
+  exportLogsAsJSON, exportSingleBudget,
 } from "../utils/budgetLog.js";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
@@ -621,7 +621,7 @@ export default function PanelinCalculadoraV3() {
   }, [groups]);
 
   // ── Helpers ──
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
+  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
 
   // Build panel info for output (supports combined scenarios)
   const panelInfo = useMemo(() => {
@@ -810,7 +810,7 @@ export default function PanelinCalculadoraV3() {
   const autoSaveTimer = useRef(null);
   const lastSavedHash = useRef("");
 
-  const scenarioLabels = { solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo+Fachada", camara_frig: "Cámara Frig." };
+  const scenarioLabels = useRef({ solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo+Fachada", camara_frig: "Cámara Frig." });
 
   // ── Section style ──
   const sectionS = { background: C.surface, borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: SHC };
@@ -867,7 +867,7 @@ export default function PanelinCalculadoraV3() {
       const entry = saveBudget({
         cliente: proyecto.nombre,
         producto: productoStr,
-        escenario: scenarioLabels[scenario] || scenario,
+        escenario: scenarioLabels.current[scenario] || scenario,
         listaPrecios,
         total: grandTotal.totalFinal,
         groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
@@ -889,7 +889,7 @@ export default function PanelinCalculadoraV3() {
     const entry = saveBudget({
       cliente: proyecto.nombre,
       producto: productoStr,
-      escenario: scenarioLabels[scenario] || scenario,
+      escenario: scenarioLabels.current[scenario] || scenario,
       listaPrecios,
       total: grandTotal.totalFinal,
       groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
@@ -899,7 +899,7 @@ export default function PanelinCalculadoraV3() {
     setLogEntries(getAllLogs());
     lastSavedHash.current = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
     showToast(`Guardado ${entry.id}`);
-  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas]);
+  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, showToast]);
 
   // ── Restore a saved budget ──
   const handleRestoreBudget = useCallback((entry) => {
@@ -907,10 +907,10 @@ export default function PanelinCalculadoraV3() {
     const s = entry.snapshot;
     setScenario(s.scenario || "solo_techo");
     setLP(s.listaPrecios || "web");
-    setProyecto(s.proyecto || proyecto);
-    setTecho(s.techo || techo);
-    setPared(s.pared || pared);
-    setCamara(s.camara || camara);
+    if (s.proyecto) setProyecto(s.proyecto);
+    if (s.techo) setTecho(s.techo);
+    if (s.pared) setPared(s.pared);
+    if (s.camara) setCamara(s.camara);
     setFlete(s.flete ?? 280);
     setOverrides(s.overrides || {});
     setExcludedItems(s.excludedItems || {});
@@ -918,7 +918,7 @@ export default function PanelinCalculadoraV3() {
     setCurrentBudgetCode(entry.id);
     setShowLogPanel(false);
     showToast(`Restaurado ${entry.id}`);
-  }, []);
+  }, [showToast]);
 
   // ── Delete log entry ──
   const handleDeleteLog = useCallback((id) => {
