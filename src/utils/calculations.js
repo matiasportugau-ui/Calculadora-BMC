@@ -254,13 +254,14 @@ export function mergeZonaResults(zonaResults) {
     if (r.paneles) {
       combined.paneles.cantPaneles += r.paneles.cantPaneles;
       combined.paneles.areaTotal = +(combined.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
+      combined.paneles.anchoTotal = +((combined.paneles.anchoTotal || 0) + (r.paneles.anchoTotal || 0)).toFixed(2);
       combined.paneles.costoPaneles = +(combined.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
       if (combined.paneles.descarte && r.paneles.descarte) {
         combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
         combined.paneles.descarte.anchoM = +(combined.paneles.descarte.anchoM + r.paneles.descarte.anchoM).toFixed(2);
-        const totalArea = combined.paneles.areaTotal;
-        combined.paneles.descarte.porcentaje = totalArea > 0
-          ? +((combined.paneles.descarte.areaM2 / totalArea) * 100).toFixed(1)
+        const anchoSolicitadoTotal = +(combined.paneles.anchoTotal - combined.paneles.descarte.anchoM).toFixed(2);
+        combined.paneles.descarte.porcentaje = anchoSolicitadoTotal > 0
+          ? +((combined.paneles.descarte.anchoM / anchoSolicitadoTotal) * 100).toFixed(1)
           : 0;
       }
     }
