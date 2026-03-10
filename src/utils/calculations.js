@@ -24,7 +24,7 @@ export function calcLargoReal(largoProyectado, pendienteGrados) {
 
 export function normalizarMedida(modo, valor, panel) {
   if (modo === "paneles") {
-    const cantPaneles = Math.max(1, Math.round(valor));
+    const cantPaneles = Math.max(1, Math.ceil(valor));
     const ancho = +(cantPaneles * panel.au).toFixed(2);
     return { cantPaneles, ancho };
   }
