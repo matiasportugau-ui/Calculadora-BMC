@@ -282,7 +282,7 @@ export default function PanelinCalculadoraV3() {
   const [listaPrecios, setLP] = useState("web");
   const [scenario, setScenario] = useState("solo_techo");
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
@@ -299,6 +299,21 @@ export default function PanelinCalculadoraV3() {
   });
   const [modoMedidaTecho, setModoMedidaTecho] = useState("metros"); // "metros" | "paneles"
   const [cantPanelesTecho, setCantPanelesTecho] = useState(5);
+
+  // Section refs for auto-scroll
+  const sectionRefs = {
+    panel: useRef(null),
+    dimensiones: useRef(null),
+    bordes: useRef(null),
+    opciones: useRef(null),
+  };
+
+  const scrollToSection = useCallback((sectionKey) => {
+    const ref = sectionRefs[sectionKey];
+    if (ref?.current) {
+      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   // Sync LISTA_ACTIVA
   useEffect(() => { setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -435,14 +450,19 @@ export default function PanelinCalculadoraV3() {
   };
 
   const handlePrint = () => {
-    const dimensions = {
-      largo: techo.largo,
-      ancho: anchoNormalizado,
-      alto: pared.alto,
-      perimetro: pared.perimetro,
-      area: results?.paneles?.areaTotal || results?.paneles?.areaNeta,
-      cantPaneles: results?.paneles?.cantPaneles,
-    };
+    const dimensions = {};
+    if (scenarioDef?.hasTecho) {
+      dimensions.largo = techo.largo;
+      dimensions.ancho = anchoNormalizado;
+      if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
+      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+    }
+    if (scenarioDef?.hasPared) {
+      dimensions.alto = pared.alto;
+      dimensions.perimetro = pared.perimetro;
+      if (results?.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
+      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+    }
     const html = generatePrintHTML({
       client: proyecto, project: proyecto, scenario,
       panel: panelInfo,
@@ -458,14 +478,19 @@ export default function PanelinCalculadoraV3() {
   };
 
   const handleInternalReport = () => {
-    const dimensions = {
-      largo: techo.largo,
-      ancho: anchoNormalizado,
-      alto: pared.alto,
-      perimetro: pared.perimetro,
-      area: results?.paneles?.areaTotal || results?.paneles?.areaNeta,
-      cantPaneles: results?.paneles?.cantPaneles,
-    };
+    const dimensions = {};
+    if (scenarioDef?.hasTecho) {
+      dimensions.largo = techo.largo;
+      dimensions.ancho = anchoNormalizado;
+      if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
+      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+    }
+    if (scenarioDef?.hasPared) {
+      dimensions.alto = pared.alto;
+      dimensions.perimetro = pared.perimetro;
+      if (results?.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
+      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+    }
     const formulas = [];
     if (results?.paneles) {
       formulas.push(`cantPaneles = ceil(${anchoNormalizado} / ${techoPanelData?.au || "AU"}) = ${results.paneles.cantPaneles}`);
@@ -499,7 +524,7 @@ export default function PanelinCalculadoraV3() {
     setScenario("solo_techo");
     setLP("web");
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+    setTecho({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
@@ -543,7 +568,24 @@ export default function PanelinCalculadoraV3() {
     const pd = PANELS_TECHO[fam];
     if (!pd) return;
     const firstEsp = Number(Object.keys(pd.esp)[0]);
-    setTecho(t => ({ ...t, familia: fam, espesor: firstEsp }));
+    const newFam = pd.fam;
+
+    // Clear incompatible borders when switching families
+    setTecho(t => {
+      const newBorders = { ...t.borders };
+      Object.entries(BORDER_OPTIONS).forEach(([side, opts]) => {
+        const currentVal = newBorders[side];
+        const opt = opts.find(o => o.id === currentVal);
+        // If current border has familias restriction and new family is not included, reset to first valid option
+        if (opt?.familias && !opt.familias.includes(newFam)) {
+          const firstValid = opts.find(o => !o.familias || o.familias.includes(newFam));
+          newBorders[side] = firstValid?.id || "none";
+        }
+      });
+      return { ...t, familia: fam, espesor: firstEsp, borders: newBorders };
+    });
+    // Auto-scroll to dimensiones after selecting family
+    setTimeout(() => scrollToSection("dimensiones"), 100);
   };
 
   const setParedFamilia = (fam) => {
@@ -607,12 +649,6 @@ export default function PanelinCalculadoraV3() {
         </div>
       </div>
 
-      {/* PROGRESS */}
-      <div style={{ display: "flex", gap: 0, padding: "0 24px", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
-        {["Proyecto", "Panel", "Bordes", "Opciones"].map((s, i) => (
-          <button key={s} onClick={() => setActiveStep(i)} style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: activeStep === i ? 600 : 400, color: activeStep === i ? C.primary : C.ts, borderBottom: `2px solid ${activeStep === i ? C.primary : "transparent"}`, background: "none", border: "none", borderBottomStyle: "solid", cursor: "pointer", transition: TR }}>{s}</button>
-        ))}
-      </div>
 
       <div className="bmc-main-grid" style={{
         display: "grid",
