@@ -16,11 +16,11 @@ import {
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
-  PENDIENTES_PRESET,
+  PENDIENTES_PRESET, TIPO_AGUAS,
 } from "../data/constants.js";
 import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
-  calcFactorPendiente,
+  calcFactorPendiente, mergeZonaResults,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -244,35 +244,190 @@ function MobileBottomBar({ total, onPrint, onWhatsApp }) {
   );
 }
 
-function BorderConfigurator({ borders = {}, onChange, panelFamilia = "" }) {
-  const sides = ["frente", "fondo", "latIzq", "latDer"];
-  const sideLabels = { frente: "FRENTE ▼", fondo: "FONDO ▲", latIzq: "◄ IZQ", latDer: "DER ►" };
-  const cellS = (active) => ({ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 600, background: active ? C.primarySoft : C.surface, border: `1.5px solid ${active ? C.primary : C.border}`, color: active ? C.primary : C.ts, textAlign: "center" });
+function AguaSvg1({ color = "#0071E3" }) {
+  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
+    <path d="M8 36 L8 18 L72 10 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+    <line x1="72" y1="10" x2="72" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
+    <circle cx="8" cy="18" r="2" fill={color} />
+    <circle cx="72" cy="10" r="2" fill={color} />
+  </svg>;
+}
 
+function AguaSvg2({ color = "#0071E3" }) {
+  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
+    <path d="M8 36 L8 22 L40 8 L72 22 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+    <line x1="40" y1="8" x2="40" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
+    <circle cx="40" cy="8" r="2.5" fill={color} />
+    <circle cx="8" cy="22" r="2" fill={color} />
+    <circle cx="72" cy="22" r="2" fill={color} />
+  </svg>;
+}
+
+function AguaSvg4({ color = "#AEAEB2" }) {
+  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
+    <path d="M8 36 L8 22 L28 10 L52 10 L72 22 L72 36" fill={color} fillOpacity="0.08" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="4 2" />
+    <line x1="28" y1="10" x2="28" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
+    <line x1="52" y1="10" x2="52" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
+  </svg>;
+}
+
+const AGUA_SVGS = { una_agua: AguaSvg1, dos_aguas: AguaSvg2, cuatro_aguas: AguaSvg4 };
+
+function TipoAguasSelector({ value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 10, fontFamily: FONT }}>
+      {TIPO_AGUAS.filter(t => t.enabled).map(tipo => {
+        const isS = value === tipo.id;
+        const SvgComp = AGUA_SVGS[tipo.id];
+        return (
+          <button
+            key={tipo.id}
+            onClick={() => onChange(tipo.id)}
+            style={{
+              flex: 1, padding: "12px 8px", borderRadius: 14, textAlign: "center",
+              border: `2px solid ${isS ? C.primary : C.border}`,
+              background: isS ? C.primarySoft : C.surface,
+              cursor: "pointer",
+              transition: TR,
+              boxShadow: isS ? `0 0 0 3px ${C.primarySoft}` : "none",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            }}
+          >
+            <SvgComp color={isS ? C.primary : C.ts} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: isS ? C.primary : C.tp }}>{tipo.label}</div>
+            <div style={{ fontSize: 10, color: C.ts, lineHeight: 1.3 }}>{tipo.description}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const SIDE_LABELS = { frente: "FRENTE INF", fondo: "FRENTE SUP", latIzq: "LAT IZQ", latDer: "LAT DER" };
+
+function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [] }) {
+  const [openSide, setOpenSide] = useState(null);
+  const containerRef = useRef(null);
   const panelFam = PANELS_TECHO[panelFamilia]?.fam || "";
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpenSide(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const getOpts = (side) => (BORDER_OPTIONS[side] || []).filter(o => !o.familias || o.familias.includes(panelFam));
+  const getLabel = (side) => {
+    const val = borders[side];
+    if (!val || val === "none") return "—";
+    const opt = (BORDER_OPTIONS[side] || []).find(o => o.id === val);
+    return opt ? opt.label : val;
+  };
+
+  const handleEdgeClick = (side) => {
+    if (disabledSides.includes(side)) return;
+    setOpenSide(prev => prev === side ? null : side);
+  };
+
+  const margin = 18;
+  const svgW = 280, svgH = 180;
+  const vbW = svgW + margin * 2, vbH = svgH + margin * 2;
+  const ox = margin, oy = margin;
+  const edge = 10, pad = 30;
+  const innerX = ox + pad, innerW = svgW - pad * 2, innerH = svgH - edge * 2;
+
+  const edgeDefs = {
+    fondo:  { x: innerX, y: oy, w: innerW, h: edge },
+    frente: { x: innerX, y: oy + svgH - edge, w: innerW, h: edge },
+    latIzq: { x: innerX - edge, y: oy + edge, w: edge, h: innerH },
+    latDer: { x: innerX + innerW, y: oy + edge, w: edge, h: innerH },
+  };
+
+  const popoverPos = {
+    fondo:  { top: 0, left: "50%", transform: "translateX(-50%) translateY(-100%)" },
+    frente: { bottom: 0, left: "50%", transform: "translateX(-50%) translateY(100%)" },
+    latIzq: { top: "50%", left: 0, transform: "translateX(-100%) translateY(-50%)" },
+    latDer: { top: "50%", right: 0, transform: "translateX(100%) translateY(-50%)" },
+  };
+
+  const labelPos = {
+    fondo:  { x: ox + svgW / 2, y: oy + edge / 2 + 1, anchor: "middle" },
+    frente: { x: ox + svgW / 2, y: oy + svgH - edge / 2 + 1, anchor: "middle" },
+    latIzq: { x: innerX - edge / 2, y: oy + svgH / 2, anchor: "middle", rotate: -90 },
+    latDer: { x: innerX + innerW + edge / 2, y: oy + svgH / 2, anchor: "middle", rotate: 90 },
+  };
+
   return (
-    <div style={{ fontFamily: FONT }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gridTemplateRows: "auto auto auto", gap: 4, marginBottom: 16 }}>
-        <div /><div style={cellS(borders.fondo && borders.fondo !== "none")}>{sideLabels.fondo}</div><div />
-        <div style={cellS(borders.latIzq && borders.latIzq !== "none")}>{sideLabels.latIzq}</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.brandLight, borderRadius: 8, padding: "10px 0", fontSize: 11, fontWeight: 700, color: C.brand, border: `1px solid ${C.border}` }}>PANELES</div>
-        <div style={cellS(borders.latDer && borders.latDer !== "none")}>{sideLabels.latDer}</div>
-        <div /><div style={cellS(borders.frente && borders.frente !== "none")}>{sideLabels.frente}</div><div />
-      </div>
-      {sides.map(side => {
-        const rawOpts = BORDER_OPTIONS[side] || [];
-        const opts = rawOpts.filter(opt => {
-          if (!opt.familias) return true;
-          return opt.familias.includes(panelFam);
-        });
-        return <div key={side} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sideLabels[side]}</div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {opts.map(opt => <button key={opt.id} onClick={() => onChange(side, opt.id)} style={{ padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${borders[side] === opt.id ? C.primary : C.border}`, background: borders[side] === opt.id ? C.primarySoft : C.surface, fontSize: 11, fontWeight: borders[side] === opt.id ? 600 : 400, color: borders[side] === opt.id ? C.primary : C.ts, cursor: "pointer", transition: TR }}>{opt.label}</button>)}
+    <div ref={containerRef} style={{ position: "relative", fontFamily: FONT }}>
+      <svg viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 380, margin: "0 auto" }}>
+        {/* Center panel area */}
+        <rect x={innerX} y={oy + edge} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
+        <text x={ox + svgW / 2} y={oy + svgH / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>TECHO</text>
+
+        {/* Edge rects */}
+        {["fondo", "frente", "latIzq", "latDer"].map(side => {
+          const d = edgeDefs[side];
+          const val = borders[side];
+          const active = val && val !== "none";
+          const isOpen = openSide === side;
+          const isDisabled = disabledSides.includes(side);
+          const lp = labelPos[side];
+          const abbr = getLabel(side);
+          const isVert = side === "latIzq" || side === "latDer";
+          const rx = isVert ? 4 : 6;
+          return (
+            <g key={side} onClick={() => handleEdgeClick(side)} style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
+              <rect
+                x={d.x} y={d.y} width={d.w} height={d.h} rx={rx}
+                fill={isDisabled ? C.surfaceAlt : active ? C.primarySoft : C.surface}
+                stroke={isOpen ? C.primary : active ? C.primary : C.border}
+                strokeWidth={isOpen ? 2 : 1.5}
+                strokeDasharray={active || isOpen ? "none" : "4 3"}
+                opacity={isDisabled ? 0.4 : 1}
+              />
+              {isOpen && <rect x={d.x - 2} y={d.y - 2} width={d.w + 4} height={d.h + 4} rx={rx + 2} fill="none" stroke={C.primary} strokeWidth={1} opacity={0.3} />}
+              <text
+                x={lp.x} y={lp.y} textAnchor={lp.anchor} dominantBaseline="central"
+                fill={isDisabled ? C.tt : active ? C.primary : C.ts}
+                fontSize={8} fontWeight={600} fontFamily={FONT}
+                transform={lp.rotate ? `rotate(${lp.rotate}, ${lp.x}, ${lp.y})` : undefined}
+              >{abbr.length > 12 ? abbr.slice(0, 10) + "…" : abbr}</text>
+            </g>
+          );
+        })}
+
+        {/* Side name labels outside the diagram */}
+        <text x={ox + svgW / 2} y={oy + svgH + 14} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▼ FRENTE INF</text>
+        <text x={ox + svgW / 2} y={oy - 6} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▲ FRENTE SUP</text>
+        <text x={innerX - edge - 6} y={oy + svgH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90, ${innerX - edge - 6}, ${oy + svgH / 2})`}>◄ IZQ</text>
+        <text x={innerX + innerW + edge + 6} y={oy + svgH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90, ${innerX + innerW + edge + 6}, ${oy + svgH / 2})`}>DER ►</text>
+      </svg>
+
+      {/* Popover for the open side */}
+      {openSide && (() => {
+        const opts = getOpts(openSide);
+        const pos = popoverPos[openSide];
+        return (
+          <div style={{ position: "absolute", ...pos, zIndex: 30, background: C.surface, borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", overflow: "hidden", minWidth: 160, animation: "bmc-fade 100ms ease-in-out" }}>
+            <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt }}>{SIDE_LABELS[openSide]}</div>
+            {opts.map(opt => {
+              const isSel = borders[openSide] === opt.id;
+              return (
+                <div key={opt.id} onClick={(e) => { e.stopPropagation(); onChange(openSide, opt.id); setOpenSide(null); }}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", cursor: "pointer", fontSize: 13, background: isSel ? C.primarySoft : "transparent", fontWeight: isSel ? 500 : 400, color: C.tp, transition: TR }}>
+                  <span>{opt.label}</span>
+                  {isSel && <Check size={14} color={C.primary} />}
+                </div>
+              );
+            })}
           </div>
-        </div>;
-      })}
+        );
+      })()}
     </div>
   );
 }
@@ -284,7 +439,7 @@ export default function PanelinCalculadoraV3() {
   const [listaPrecios, setLP] = useState("web");
   const [scenario, setScenario] = useState("solo_techo");
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
@@ -366,46 +521,26 @@ export default function PanelinCalculadoraV3() {
     try {
       if (sc === "solo_techo") {
         if (!techo.familia || !techo.espesor) return null;
-        // Calculate for each zona and combine
-        const zonaResults = techo.zonas.map(zona => 
-          calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })
-        );
-        // Combine results from all zones
-        const combined = zonaResults[0];
-        if (zonaResults.length > 1) {
-          for (let i = 1; i < zonaResults.length; i++) {
-            const r = zonaResults[i];
-            if (r.paneles) {
-              combined.paneles.cantPaneles += r.paneles.cantPaneles;
-              combined.paneles.areaTotal = +(combined.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
-              combined.paneles.costoPaneles = +(combined.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
-              combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
-            }
-            if (r.fijaciones) {
-              r.fijaciones.items.forEach((item, idx) => {
-                if (combined.fijaciones.items[idx]) {
-                  combined.fijaciones.items[idx].cant += item.cant;
-                  combined.fijaciones.items[idx].total = +(combined.fijaciones.items[idx].total + item.total).toFixed(2);
-                }
-              });
-            }
-            if (r.selladores) {
-              r.selladores.items.forEach((item, idx) => {
-                if (combined.selladores.items[idx]) {
-                  combined.selladores.items[idx].cant += item.cant;
-                  combined.selladores.items[idx].total = +(combined.selladores.items[idx].total + item.total).toFixed(2);
-                }
-              });
-            }
-            combined.warnings = [...(combined.warnings || []), ...(r.warnings || [])];
+        // For 2 aguas: each zona generates 2 faldones (half ancho each)
+        // Agua 1 keeps frente+latIzq+latDer borders, fondo=cumbrera
+        // Agua 2 keeps fondo(original)+latIzq+latDer borders, frente=cumbrera (shared, not double-counted)
+        const is2Aguas = techo.tipoAguas === "dos_aguas";
+        const zonaResults = techo.zonas.flatMap(zona => {
+          if (is2Aguas) {
+            const halfAncho = +(zona.ancho / 2).toFixed(2);
+            const agua1 = calcTechoCompleto({
+              ...techo, largo: zona.largo, ancho: halfAncho,
+              borders: { ...techo.borders, fondo: "cumbrera" },
+            });
+            const agua2 = calcTechoCompleto({
+              ...techo, largo: zona.largo, ancho: halfAncho,
+              borders: { frente: techo.borders.fondo === "cumbrera" ? "cumbrera" : techo.borders.fondo, fondo: "none", latIzq: techo.borders.latIzq, latDer: techo.borders.latDer },
+            });
+            return [agua1, agua2];
           }
-          // Recalculate allItems and totales
-          const panelItem = combined.allItems[0];
-          panelItem.cant = combined.paneles.areaTotal;
-          panelItem.total = combined.paneles.costoPaneles;
-          combined.totales = calcTotalesSinIVA(combined.allItems);
-        }
-        return combined;
+          return [calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })];
+        });
+        return mergeZonaResults(zonaResults);
       }
       if (sc === "solo_fachada") {
         if (!pared.familia || !pared.espesor) return null;
@@ -414,26 +549,17 @@ export default function PanelinCalculadoraV3() {
       if (sc === "techo_fachada") {
         let rT = null;
         if (techo.familia && techo.espesor) {
-          // Calculate for each zona and combine (same logic as solo_techo)
-          const zonaResults = techo.zonas.map(zona => 
-            calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })
-          );
-          rT = zonaResults[0];
-          if (zonaResults.length > 1) {
-            for (let i = 1; i < zonaResults.length; i++) {
-              const r = zonaResults[i];
-              if (r.paneles) {
-                rT.paneles.cantPaneles += r.paneles.cantPaneles;
-                rT.paneles.areaTotal = +(rT.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
-                rT.paneles.costoPaneles = +(rT.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
-              }
-              rT.warnings = [...(rT.warnings || []), ...(r.warnings || [])];
+          const is2A = techo.tipoAguas === "dos_aguas";
+          const zonaResults = techo.zonas.flatMap(zona => {
+            if (is2A) {
+              const ha = +(zona.ancho / 2).toFixed(2);
+              const a1 = calcTechoCompleto({ ...techo, largo: zona.largo, ancho: ha, borders: { ...techo.borders, fondo: "cumbrera" } });
+              const a2 = calcTechoCompleto({ ...techo, largo: zona.largo, ancho: ha, borders: { frente: techo.borders.fondo === "cumbrera" ? "cumbrera" : techo.borders.fondo, fondo: "none", latIzq: techo.borders.latIzq, latDer: techo.borders.latDer } });
+              return [a1, a2];
             }
-            const panelItem = rT.allItems[0];
-            panelItem.cant = rT.paneles.areaTotal;
-            panelItem.total = rT.paneles.costoPaneles;
-            rT.totales = calcTotalesSinIVA(rT.allItems);
-          }
+            return [calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })];
+          });
+          rT = mergeZonaResults(zonaResults);
         }
         const rP = pared.familia && pared.espesor ? calcParedCompleto(pared) : null;
         if (!rT && !rP) return null;
@@ -602,7 +728,7 @@ export default function PanelinCalculadoraV3() {
     setScenario("solo_techo");
     setLP("web");
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+    setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
@@ -754,6 +880,16 @@ export default function PanelinCalculadoraV3() {
                 })}
               </div>
             </div>
+            {scenarioDef?.hasTecho && <div style={{ marginTop: 16 }}>
+              <div style={labelS}>CAÍDAS DEL TECHO</div>
+              <TipoAguasSelector value={techo.tipoAguas} onChange={v => {
+                if (v === "dos_aguas") {
+                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
+                } else {
+                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
+                }
+              }} />
+            </div>}
           </div>
 
           {/* Datos proyecto (colapsable) */}
@@ -816,14 +952,16 @@ export default function PanelinCalculadoraV3() {
           {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && (() => {
             const fp = calcFactorPendiente(techo.pendiente);
-            const areaReal = techo.pendiente > 0 ? +(zonasTotales.area * fp).toFixed(1) : null;
+            const is2A = techo.tipoAguas === "dos_aguas";
+            const baseArea = is2A ? zonasTotales.area : zonasTotales.area;
+            const areaReal = techo.pendiente > 0 ? +(baseArea * fp).toFixed(1) : null;
             return <div ref={dimensionesRef} style={sectionS}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={labelS}>DIMENSIONES TECHO</div>
+              <div style={labelS}>DIMENSIONES TECHO {is2A && <span style={{ fontWeight: 400, textTransform: "none" }}>· 2 faldones</span>}</div>
               <div style={{ fontSize: 12, color: C.ts, fontWeight: 500, ...TN }}>
                 {areaReal
-                  ? <>{zonasTotales.area}m² proy. <span style={{ color: C.primary, fontWeight: 600 }}>→ {areaReal}m² real</span></>
-                  : <>{zonasTotales.area}m² total</>
+                  ? <>{baseArea}m² proy. <span style={{ color: C.primary, fontWeight: 600 }}>→ {areaReal}m² real</span></>
+                  : <>{baseArea}m² total</>
                 }
               </div>
             </div>
@@ -924,7 +1062,17 @@ export default function PanelinCalculadoraV3() {
           {/* Bordes techo */}
           {vis.borders && <div ref={bordesRef} style={sectionS}>
             <div style={labelS}>BORDES Y PERFILERÍA</div>
-            <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} panelFamilia={techo.familia} />
+            {techo.tipoAguas === "dos_aguas" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: C.primarySoft, borderRadius: 10, marginBottom: 12, fontSize: 12, color: C.primary, fontWeight: 500 }}>
+                <span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón.
+              </div>
+            )}
+            <RoofBorderSelector
+              borders={techo.borders}
+              onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))}
+              panelFamilia={techo.familia}
+              disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
+            />
           </div>}
 
           {/* Estructura */}
@@ -1004,7 +1152,7 @@ export default function PanelinCalculadoraV3() {
             <div style={{ marginBottom: 16 }}>
               <AlertBanner
                 type="warning"
-                message={`Descarte: ${results.paneles.descarte.anchoM}m de ancho × ${techo.largo}m = ${results.paneles.descarte.areaM2}m² (${results.paneles.descarte.porcentaje}% del ancho solicitado)`}
+                message={`Descarte: ${results.paneles.descarte.anchoM}m de ancho × ${zonasTotales.largo}m = ${results.paneles.descarte.areaM2}m² (${results.paneles.descarte.porcentaje}% del ancho solicitado)`}
               />
             </div>
           )}

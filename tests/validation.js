@@ -3,7 +3,8 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto } from "../src/utils/calculations.js";
+import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults } from "../src/utils/calculations.js";
+import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -361,6 +362,117 @@ assert("calcParedCompleto: areaAberturas ≈ 4.29 m²", approx(paredResult.panel
 assert("calcParedCompleto: areaNeta ≈ 139.35 m²", approx(paredResult.paneles?.areaNeta, 139.35), paredResult.paneles?.areaNeta, 139.35);
 assert("calcParedCompleto: allItems is non-empty array", Array.isArray(paredResult.allItems) && paredResult.allItems.length > 0, paredResult.allItems?.length, ">0");
 assert("calcParedCompleto: totales.subtotalSinIVA > 0", paredResult.totales?.subtotalSinIVA > 0, paredResult.totales?.subtotalSinIVA, ">0");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 15: Pendiente Engine
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 15: Pendiente Engine ═══");
+
+assert("calcFactorPendiente(0) = 1", calcFactorPendiente(0) === 1, calcFactorPendiente(0), 1);
+assert("calcFactorPendiente(null) = 1", calcFactorPendiente(null) === 1, calcFactorPendiente(null), 1);
+
+const fp15 = calcFactorPendiente(15);
+assert("calcFactorPendiente(15°) ≈ 1.0353", approx(fp15, 1.0353, 0.001), fp15, 1.0353);
+
+const fp25 = calcFactorPendiente(25);
+assert("calcFactorPendiente(25°) ≈ 1.1034", approx(fp25, 1.1034, 0.001), fp25, 1.1034);
+
+const lr = calcLargoReal(10, 15);
+assert("calcLargoReal(10m, 15°) ≈ 10.353", approx(lr, 10.353, 0.01), lr, 10.353);
+
+assert("calcLargoReal(10m, 0) = 10", calcLargoReal(10, 0) === 10, calcLargoReal(10, 0), 10);
+
+const techoP15 = calcTechoCompleto({ ...techoInput, pendiente: 15 });
+assert("calcTechoCompleto(15°): pendienteInfo exists", techoP15.pendienteInfo !== null, !!techoP15.pendienteInfo, true);
+assert("calcTechoCompleto(15°): largoReal > largo", techoP15.pendienteInfo.largoReal > techoInput.largo, techoP15.pendienteInfo?.largoReal, ">" + techoInput.largo);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 16: bomToGroups
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 16: bomToGroups ═══");
+
+assert("bomToGroups(null) = []", bomToGroups(null).length === 0, bomToGroups(null).length, 0);
+assert("bomToGroups({error}) = []", bomToGroups({ error: "bad" }).length === 0, bomToGroups({ error: "bad" }).length, 0);
+
+const btgTecho = bomToGroups(techoResult);
+assert("bomToGroups(techo): returns groups", btgTecho.length > 0, btgTecho.length, ">0");
+assert("bomToGroups(techo): first group is PANELES", btgTecho[0]?.title === "PANELES", btgTecho[0]?.title, "PANELES");
+assert("bomToGroups(techo): has FIJACIONES group", btgTecho.some(g => g.title === "FIJACIONES"), true, true);
+
+const btgPared = bomToGroups(paredResult);
+assert("bomToGroups(pared): returns groups", btgPared.length > 0, btgPared.length, ">0");
+assert("bomToGroups(pared): has PERFILES U group", btgPared.some(g => g.title === "PERFILES U"), true, true);
+
+const combinedResult = {
+  allItems: techoResult.allItems,
+  fijaciones: techoResult.fijaciones,
+  perfileria: techoResult.perfileria,
+  selladores: techoResult.selladores,
+  paredResult: paredResult,
+};
+const btgCombined = bomToGroups(combinedResult);
+assert("bomToGroups(combined): merges techo+pared groups", btgCombined.length >= btgTecho.length, btgCombined.length, ">=" + btgTecho.length);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 17: applyOverrides
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 17: applyOverrides ═══");
+
+const testGroups = [
+  { title: "PANELES", items: [{ label: "Test Panel", cant: 10, pu: 5.00, total: 50.00 }] },
+  { title: "FIJACIONES", items: [{ label: "Tornillo", cant: 20, pu: 2.00, total: 40.00 }] },
+];
+
+const noOverrides = applyOverrides(testGroups, {});
+assert("applyOverrides(no overrides): items unchanged", noOverrides[0].items[0].cant === 10, noOverrides[0].items[0].cant, 10);
+assert("applyOverrides(no overrides): isOverridden = false", noOverrides[0].items[0].isOverridden === false, noOverrides[0].items[0].isOverridden, false);
+
+const cantOverride = { [createLineId("PANELES", 0)]: { field: "cant", value: 15 } };
+const withCantOvr = applyOverrides(testGroups, cantOverride);
+assert("applyOverrides(cant=15): cant updated", withCantOvr[0].items[0].cant === 15, withCantOvr[0].items[0].cant, 15);
+assert("applyOverrides(cant=15): total recalculated", approx(withCantOvr[0].items[0].total, 75.00), withCantOvr[0].items[0].total, 75.00);
+assert("applyOverrides(cant=15): isOverridden = true", withCantOvr[0].items[0].isOverridden === true, withCantOvr[0].items[0].isOverridden, true);
+
+const puOverride = { [createLineId("FIJACIONES", 0)]: { field: "pu", value: 3.50 } };
+const withPuOvr = applyOverrides(testGroups, puOverride);
+assert("applyOverrides(pu=3.50): pu updated", withPuOvr[1].items[0].pu === 3.50, withPuOvr[1].items[0].pu, 3.50);
+assert("applyOverrides(pu=3.50): total = 20 × 3.50 = 70", approx(withPuOvr[1].items[0].total, 70.00), withPuOvr[1].items[0].total, 70.00);
+
+assert("applyOverrides: does not mutate original", testGroups[0].items[0].cant === 10, testGroups[0].items[0].cant, 10);
+
+assert("createLineId format", createLineId("PANELES", 0) === "PANELES-0", createLineId("PANELES", 0), "PANELES-0");
+assert("createLineId with spaces", createLineId("PERFILES U", 2) === "PERFILES_U-2", createLineId("PERFILES U", 2), "PERFILES_U-2");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 18: mergeZonaResults
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 18: mergeZonaResults ═══");
+
+assert("mergeZonaResults([]) = null", mergeZonaResults([]) === null, mergeZonaResults([]), null);
+
+const singleZona = calcTechoCompleto(techoInput);
+const mergedSingle = mergeZonaResults([singleZona]);
+assert("mergeZonaResults([1 zone]): returns same result", mergedSingle.paneles.cantPaneles === singleZona.paneles.cantPaneles, mergedSingle.paneles.cantPaneles, singleZona.paneles.cantPaneles);
+
+const zona1 = calcTechoCompleto({ ...techoInput, largo: 5.0, ancho: 5.6 });
+const zona2 = calcTechoCompleto({ ...techoInput, largo: 4.0, ancho: 3.4 });
+const merged2 = mergeZonaResults([zona1, zona2]);
+assert("mergeZonaResults(2 zones): cantPaneles summed", merged2.paneles.cantPaneles === zona1.paneles.cantPaneles + zona2.paneles.cantPaneles, merged2.paneles.cantPaneles, zona1.paneles.cantPaneles + zona2.paneles.cantPaneles);
+assert("mergeZonaResults(2 zones): areaTotal summed", approx(merged2.paneles.areaTotal, zona1.paneles.areaTotal + zona2.paneles.areaTotal), merged2.paneles.areaTotal, zona1.paneles.areaTotal + zona2.paneles.areaTotal);
+assert("mergeZonaResults(2 zones): totales recalculated", merged2.totales.subtotalSinIVA > 0, merged2.totales.subtotalSinIVA, ">0");
+assert("mergeZonaResults(2 zones): allItems rebuilt", merged2.allItems.length > 0, merged2.allItems.length, ">0");
+
+// Verify original zone objects were NOT mutated (deep copy)
+const zona1Copy = calcTechoCompleto({ ...techoInput, largo: 5.0, ancho: 5.6 });
+const zona2Copy = calcTechoCompleto({ ...techoInput, largo: 4.0, ancho: 3.4 });
+mergeZonaResults([zona1Copy, zona2Copy]);
+const zona1Fresh = calcTechoCompleto({ ...techoInput, largo: 5.0, ancho: 5.6 });
+assert("mergeZonaResults: does not mutate zona1 paneles", zona1Copy.paneles.cantPaneles === zona1Fresh.paneles.cantPaneles, zona1Copy.paneles.cantPaneles, zona1Fresh.paneles.cantPaneles);
+
+// 3 zones
+const zona3 = calcTechoCompleto({ ...techoInput, largo: 3.0, ancho: 2.24 });
+const merged3 = mergeZonaResults([zona1, zona2, zona3]);
+assert("mergeZonaResults(3 zones): cantPaneles correct", merged3.paneles.cantPaneles === zona1.paneles.cantPaneles + zona2.paneles.cantPaneles + zona3.paneles.cantPaneles, merged3.paneles.cantPaneles, zona1.paneles.cantPaneles + zona2.paneles.cantPaneles + zona3.paneles.cantPaneles);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

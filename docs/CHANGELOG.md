@@ -1,5 +1,64 @@
 # 📝 Changelog — Panelin Calculadora BMC
 
+## [3.1.0] — 2026-03-10
+
+### 🟢 Nuevas Funcionalidades
+
+#### A) Motor de Pendiente de Techo
+- NUEVO: `calcFactorPendiente()` — factor por grados (cos⁻¹)
+- NUEVO: `calcLargoReal()` — largo proyectado × factor
+- NUEVO: Presets de pendiente: 3°, 10°, 15°, 25°
+- `calcTechoCompleto()` acepta parámetro `pendiente` (default 0)
+- Largo real ajustado en paneles, fijaciones y perfilería
+
+#### B) Zonas Múltiples de Techo
+- NUEVO: Soporte para múltiples zonas (`zonas[]`) en vez de largo/ancho único
+- Cada zona calcula independiente, resultados combinados
+- Botón "Agregar zona" / "Eliminar zona" en UI
+
+#### C) Tipo de Aguas
+- NUEVO: Selector 1 Agua / 2 Aguas / 4 Aguas (en proceso)
+- 2 Aguas: divide ancho en 2 faldones, cumbrera automática
+- Ilustraciones SVG para cada tipo
+
+#### D) Cálculo de Descarte
+- NUEVO: `calcPanelesTecho()` devuelve `descarte.anchoM`, `descarte.areaM2`, `descarte.porcentaje`
+- Alerta visual de descarte en panel derecho y PDF
+
+#### E) Categorías BOM Configurables
+- NUEVO: Toggles por categoría: Paneles, Fijaciones, Perfilería, Selladores, Servicios
+- NUEVO: Exclusión individual de items con botón ✕ y panel de restauración
+
+#### F) Informe Interno
+- NUEVO: `generateInternalHTML()` — PDF interno con inputs, fórmulas, items excluidos
+- Botón "Interno" en acciones
+
+#### G) Canalón como Opción de Borde
+- Canalón movido de toggle a opción de borde "Frente Inf"
+- Soporte canalón se calcula automáticamente al seleccionar
+
+#### H) Selector Visual de Bordes
+- NUEVO: `RoofBorderSelector` — SVG interactivo reemplaza lista de botones
+- Click en borde abre popover con opciones
+- Bordes filtrados por familia de panel
+
+### ♻️ Refactorizaciones
+- Navegación por pasos (`STEP_SECTIONS`) eliminada — todas las secciones en panel scrollable
+- Labels de bordes: "Frente" → "Frente Inf", "Fondo" → "Frente Sup"
+- `normalizarMedida()` para conversión paneles↔metros
+- `mergeZonaResults()` centraliza combinación de resultados por zona
+
+### 🎨 UI
+- Layout responsive con `MobileBottomBar` sticky para móvil
+- Auto-scroll a secciones via refs
+- PDF incluye sección de dimensiones, descarte y lista de precios
+- Filtro de opciones de borde por familia de panel (ej: gotero greca solo ISOROOF)
+
+### 🔧 Correcciones
+- FIX: Acceso null-safe a autoportancia con operador `??`
+
+---
+
 ## [3.0.0] — 2026-03-04
 
 ### 🔴 Cambios Críticos

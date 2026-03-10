@@ -215,7 +215,7 @@ ${categoriasHTML}
 ${warnHTML ? `<h3 style="margin:10px 0 5px;color:#FF9500">⚠ ADVERTENCIAS</h3><ul style="font-size:9pt;margin:0;padding-left:20px">${warnHTML}</ul>` : ""}
 <div style="margin-top:12px;padding:8px;background:#F0F0F0;border-radius:4px;font-size:8pt;color:#666">
 <b>Origen datos:</b> src/data/constants.js · Lista: ${listaPrecios === "venta" ? "BMC Directo (venta)" : "Web"}<br>
-<b>Generado:</b> ${timestamp} · Calculadora BMC v3.0
+<b>Generado:</b> ${timestamp} · Calculadora BMC v3.1.0
 </div>
 </body></html>`;
 }

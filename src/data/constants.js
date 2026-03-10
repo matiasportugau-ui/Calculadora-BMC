@@ -352,3 +352,10 @@ export const PENDIENTES_PRESET = [
   { valor: 15, label: "15°", descripcion: "Estándar vivienda" },
   { valor: 25, label: "25°", descripcion: "Pronunciado" },
 ];
+
+// ── §7 TIPO DE AGUAS ─────────────────────────────────────────────────────────
+export const TIPO_AGUAS = [
+  { id: "una_agua", label: "1 Agua", description: "Pendiente única", enabled: true },
+  { id: "dos_aguas", label: "2 Aguas", description: "Cumbrera central", enabled: true },
+  { id: "cuatro_aguas", label: "4 Aguas", description: "En proceso", enabled: false },
+];

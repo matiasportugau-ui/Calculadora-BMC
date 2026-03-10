@@ -132,7 +132,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       const precioCan = p(canData);
       const pzasCan = Math.ceil(anchoTotal / canData.largo);
       totalML += pzasCan * canData.largo;
-      items.push({ label: "Frente: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
+      items.push({ label: "Frente Inf: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
     }
     // Soporte canalón: (cantPaneles + 1) * 0.30 / largo_barra
     const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
@@ -143,10 +143,10 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
     }
   } else if (borders.frente && borders.frente !== "none") {
-    addPerfil("Frente: " + borders.frente, borders.frente, anchoTotal);
+    addPerfil("Frente Inf: " + borders.frente, borders.frente, anchoTotal);
   }
 
-  if (borders.fondo && borders.fondo !== "none") addPerfil("Fondo: " + borders.fondo, borders.fondo, anchoTotal);
+  if (borders.fondo && borders.fondo !== "none") addPerfil("Frente Sup: " + borders.fondo, borders.fondo, anchoTotal);
   if (borders.latIzq && borders.latIzq !== "none") addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, largo);
   if (borders.latDer && borders.latDer !== "none") addPerfil("Lat.Der: " + borders.latDer, borders.latDer, largo);
 
@@ -237,6 +237,79 @@ export function calcTechoCompleto(inputs) {
   } : null;
 
   return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems, pendienteInfo };
+}
+
+// ── §1b MULTI-ZONE MERGE ──────────────────────────────────────────────────────
+
+export function mergeZonaResults(zonaResults) {
+  if (!zonaResults.length) return null;
+  if (zonaResults.length === 1) return zonaResults[0];
+
+  const combined = JSON.parse(JSON.stringify(zonaResults[0]));
+
+  for (let i = 1; i < zonaResults.length; i++) {
+    const r = zonaResults[i];
+
+    if (r.paneles) {
+      combined.paneles.cantPaneles += r.paneles.cantPaneles;
+      combined.paneles.areaTotal = +(combined.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
+      combined.paneles.costoPaneles = +(combined.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
+      combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
+    }
+
+    if (r.fijaciones) {
+      r.fijaciones.items.forEach((item, idx) => {
+        if (combined.fijaciones.items[idx]) {
+          combined.fijaciones.items[idx].cant += item.cant;
+          combined.fijaciones.items[idx].total = +(combined.fijaciones.items[idx].total + item.total).toFixed(2);
+        } else {
+          combined.fijaciones.items.push({ ...item });
+        }
+      });
+      combined.fijaciones.total = +(combined.fijaciones.total + r.fijaciones.total).toFixed(2);
+      if (r.fijaciones.puntosFijacion) {
+        combined.fijaciones.puntosFijacion = (combined.fijaciones.puntosFijacion || 0) + r.fijaciones.puntosFijacion;
+      }
+    }
+
+    if (r.perfileria) {
+      r.perfileria.items.forEach(item => {
+        const existing = combined.perfileria.items.find(ci => ci.sku === item.sku);
+        if (existing) {
+          existing.cant += item.cant;
+          existing.total = +(existing.total + item.total).toFixed(2);
+        } else {
+          combined.perfileria.items.push({ ...item });
+        }
+      });
+      combined.perfileria.total = +(combined.perfileria.total + r.perfileria.total).toFixed(2);
+      combined.perfileria.totalML = +((combined.perfileria.totalML || 0) + (r.perfileria.totalML || 0)).toFixed(2);
+    }
+
+    if (r.selladores) {
+      r.selladores.items.forEach((item, idx) => {
+        if (combined.selladores.items[idx]) {
+          combined.selladores.items[idx].cant += item.cant;
+          combined.selladores.items[idx].total = +(combined.selladores.items[idx].total + item.total).toFixed(2);
+        } else {
+          combined.selladores.items.push({ ...item });
+        }
+      });
+      combined.selladores.total = +(combined.selladores.total + r.selladores.total).toFixed(2);
+    }
+
+    combined.warnings = [...(combined.warnings || []), ...(r.warnings || [])];
+  }
+
+  const panelItem = {
+    ...combined.allItems[0],
+    cant: combined.paneles.areaTotal,
+    total: combined.paneles.costoPaneles,
+  };
+  combined.allItems = [panelItem, ...combined.fijaciones.items, ...combined.perfileria.items, ...combined.selladores.items];
+  combined.totales = calcTotalesSinIVA(combined.allItems);
+
+  return combined;
 }
 
 // ── §2 ENGINE PARED ──────────────────────────────────────────────────────────

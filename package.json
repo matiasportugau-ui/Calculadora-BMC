@@ -1,6 +1,6 @@
 {
   "name": "calculadora-bmc",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
   "private": true,
   "type": "module",
