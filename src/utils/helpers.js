@@ -21,10 +21,12 @@ export function applyOverrides(groups, overrides) {
 export function bomToGroups(result) {
   if (!result || result.error) return [];
   const groups = [];
-  if (result.paneles) {
-    const panelItems = result.allItems ? result.allItems.filter(i => i.unidad === "m²") : [];
+
+  if (result.allItems) {
+    const panelItems = result.allItems.filter(i => i.unidad === "m²");
     if (panelItems.length > 0) groups.push({ title: "PANELES", items: panelItems });
   }
+
   const sections = [
     { key: "fijaciones", title: "FIJACIONES" },
     { key: "perfileria", title: "PERFILERÍA TECHO" },
@@ -34,9 +36,24 @@ export function bomToGroups(result) {
     { key: "selladores", title: "SELLADORES" },
     { key: "sellador", title: "SELLADORES" },
   ];
-  sections.forEach(({ key, title }) => {
-    if (result[key] && result[key].items && result[key].items.length > 0) groups.push({ title, items: result[key].items });
-  });
+
+  const extractSections = (src, suffix = "") => {
+    sections.forEach(({ key, title }) => {
+      if (src[key] && src[key].items && src[key].items.length > 0) {
+        const existingGroup = groups.find(g => g.title === title + suffix);
+        if (existingGroup) {
+          existingGroup.items.push(...src[key].items);
+        } else {
+          groups.push({ title: title + suffix, items: [...src[key].items] });
+        }
+      }
+    });
+  };
+
+  extractSections(result);
+  if (result.paredResult) extractSections(result.paredResult);
+  if (result.techoResult) extractSections(result.techoResult);
+
   return groups;
 }
 
