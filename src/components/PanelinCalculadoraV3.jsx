@@ -14,7 +14,7 @@ import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
   setListaPrecios,
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
-  SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS, STEP_SECTIONS,
+  SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
 } from "../data/constants.js";
 import {
@@ -289,7 +289,6 @@ export default function PanelinCalculadoraV3() {
   const [overrides, setOverrides] = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [toast, setToast] = useState(null);
-  const [activeStep, setActiveStep] = useState(0);
   const [showTransp, setShowTransp] = useState(false);
   const [excludedItems, setExcludedItems] = useState({}); // { lineId: label }
   const [categoriasActivas, setCategoriasActivas] = useState(() => {
@@ -301,15 +300,14 @@ export default function PanelinCalculadoraV3() {
   const [cantPanelesTecho, setCantPanelesTecho] = useState(5);
 
   // Section refs for auto-scroll
-  const sectionRefs = {
-    panel: useRef(null),
-    dimensiones: useRef(null),
-    bordes: useRef(null),
-    opciones: useRef(null),
-  };
+  const panelRef = useRef(null);
+  const dimensionesRef = useRef(null);
+  const bordesRef = useRef(null);
+  const opcionesRef = useRef(null);
 
   const scrollToSection = useCallback((sectionKey) => {
-    const ref = sectionRefs[sectionKey];
+    const refs = { panel: panelRef, dimensiones: dimensionesRef, bordes: bordesRef, opciones: opcionesRef };
+    const ref = refs[sectionKey];
     if (ref?.current) {
       ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -536,7 +534,6 @@ export default function PanelinCalculadoraV3() {
     });
     setModoMedidaTecho("metros");
     setCantPanelesTecho(5);
-    setActiveStep(0);
   };
 
   // ── Input updaters ──
@@ -660,54 +657,56 @@ export default function PanelinCalculadoraV3() {
         height: "calc(100vh - 100px)",
         overflow: "hidden",
       }}>
-        {/* LEFT PANEL */}
+        {/* LEFT PANEL — All sections in scrollable view */}
         <div className="bmc-left-panel" style={{ overflowY: "auto", paddingRight: 8 }}>
-          {/* Lista precios */}
-          {STEP_SECTIONS[activeStep].includes("lista") && <div style={sectionS}>
+          {/* Lista precios + Escenario */}
+          <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
             <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
-          </div>}
-
-          {/* Escenario */}
-          {STEP_SECTIONS[activeStep].includes("escenario") && <div style={sectionS}>
-            <div style={labelS}>ESCENARIO DE OBRA</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {SCENARIOS_DEF.map(sc => {
-                const isS = scenario === sc.id;
-                return <div key={sc.id} onClick={() => setScenario(sc.id)} style={{ borderRadius: 16, padding: 20, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
-                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{sc.icon}</span>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 4 }}>{sc.label}</div>
-                  <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
-                </div>;
-              })}
-            </div>
-          </div>}
-
-          {/* Datos proyecto */}
-          {STEP_SECTIONS[activeStep].includes("proyecto") && <div style={sectionS}>
-            <div style={labelS}>DATOS DEL PROYECTO</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
-              {proyecto.tipoCliente === "empresa" && <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>}
-              <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-              <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
-              <div style={{ gridColumn: "1/-1" }}>
-                <div style={labelS}>Descripción obra</div>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                  {OBRA_PRESETS.slice(0, 6).map(pr => <button key={pr} onClick={() => uPr("descripcion", pr)} style={{ padding: "3px 10px", borderRadius: 20, border: `1px solid ${proyecto.descripcion === pr ? C.primary : C.border}`, background: proyecto.descripcion === pr ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr}</button>)}
-                </div>
-                <input style={inputS} value={proyecto.descripcion} onChange={e => uPr("descripcion", e.target.value)} placeholder="Descripción libre..." />
+            <div style={{ marginTop: 16 }}>
+              <div style={labelS}>ESCENARIO DE OBRA</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {SCENARIOS_DEF.map(sc => {
+                  const isS = scenario === sc.id;
+                  return <div key={sc.id} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
+                    <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 2 }}>{sc.label}</div>
+                    <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
+                  </div>;
+                })}
               </div>
-              <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
-              <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
             </div>
-          </div>}
+          </div>
 
-          {/* Panel selector — TECHO (solo_techo or techo_fachada) */}
-          {STEP_SECTIONS[activeStep].includes("panel") && scenarioDef?.hasTecho && <div style={sectionS}>
+          {/* Datos proyecto (colapsable) */}
+          <details style={{ ...sectionS, padding: 0 }}>
+            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              DATOS DEL PROYECTO {proyecto.nombre && <span style={{ fontSize: 11, fontWeight: 400, color: C.tp }}>· {proyecto.nombre}</span>}
+            </summary>
+            <div style={{ padding: "0 20px 20px" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
+                {proyecto.tipoCliente === "empresa" && <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>}
+                <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <div style={labelS}>Descripción obra</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+                    {OBRA_PRESETS.slice(0, 6).map(pr => <button key={pr} onClick={() => uPr("descripcion", pr)} style={{ padding: "3px 10px", borderRadius: 20, border: `1px solid ${proyecto.descripcion === pr ? C.primary : C.border}`, background: proyecto.descripcion === pr ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr}</button>)}
+                  </div>
+                  <input style={inputS} value={proyecto.descripcion} onChange={e => uPr("descripcion", e.target.value)} placeholder="Descripción libre..." />
+                </div>
+                <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
+                <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
+              </div>
+            </div>
+          </details>
+
+          {/* Panel selector — TECHO */}
+          {scenarioDef?.hasTecho && <div ref={panelRef} style={sectionS}>
             <div style={{ ...labelS, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>🏠</span> PANEL TECHO
             </div>
@@ -721,8 +720,8 @@ export default function PanelinCalculadoraV3() {
             </div>}
           </div>}
 
-          {/* Panel selector — PARED (solo_fachada, techo_fachada, or camara_frig) */}
-          {STEP_SECTIONS[activeStep].includes("panel") && scenarioDef?.hasPared && <div style={sectionS}>
+          {/* Panel selector — PARED */}
+          {scenarioDef?.hasPared && <div ref={!scenarioDef?.hasTecho ? panelRef : null} style={sectionS}>
             <div style={{ ...labelS, display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 16 }}>🏢</span> PANEL PARED
             </div>
@@ -736,34 +735,8 @@ export default function PanelinCalculadoraV3() {
             </div>}
           </div>}
 
-          {/* Categorías BOM */}
-          {STEP_SECTIONS[activeStep].includes("categorias") && <div style={sectionS}>
-            <div style={labelS}>CATEGORÍAS A INCLUIR</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {Object.entries(CATEGORIAS_BOM).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  onClick={() => setCategoriasActivas(prev => ({ ...prev, [key]: !prev[key] }))}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 20,
-                    border: `1.5px solid ${categoriasActivas[key] ? C.primary : C.border}`,
-                    background: categoriasActivas[key] ? C.primarySoft : C.surface,
-                    fontSize: 12,
-                    fontWeight: categoriasActivas[key] ? 600 : 400,
-                    color: categoriasActivas[key] ? C.primary : C.ts,
-                    cursor: "pointer",
-                    transition: TR,
-                  }}
-                >
-                  {categoriasActivas[key] ? "✓ " : ""}{cfg.label}
-                </button>
-              ))}
-            </div>
-          </div>}
-
           {/* Dimensiones Techo */}
-          {vis.largoAncho && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
+          {vis.largoAncho && <div ref={dimensionesRef} style={sectionS}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={labelS}>DIMENSIONES TECHO</div>
               <SegmentedControl
@@ -798,7 +771,7 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Dimensiones Pared */}
-          {vis.altoPerim && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
+          {vis.altoPerim && <div ref={!vis.largoAncho ? dimensionesRef : null} style={sectionS}>
             <div style={labelS}>DIMENSIONES PARED</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <StepperInput label="Alto (m)" value={pared.alto} onChange={v => uP("alto", v)} min={1} max={14} step={0.5} unit="m" />
@@ -811,7 +784,7 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Cámara frigorífica */}
-          {vis.camara && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
+          {vis.camara && <div style={sectionS}>
             <div style={labelS}>DIMENSIONES CÁMARA (internas)</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <StepperInput label="Largo (m)" value={camara.largo_int} onChange={v => setCamara(c => ({ ...c, largo_int: v }))} min={1} max={30} step={0.5} unit="m" />
@@ -821,19 +794,19 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Bordes techo */}
-          {vis.borders && STEP_SECTIONS[activeStep].includes("bordes") && <div style={sectionS}>
+          {vis.borders && <div ref={bordesRef} style={sectionS}>
             <div style={labelS}>BORDES Y PERFILERÍA</div>
             <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} panelFamilia={techo.familia} />
           </div>}
 
           {/* Estructura */}
-          {STEP_SECTIONS[activeStep].includes("estructura") && <div style={sectionS}>
+          <div style={sectionS}>
             <div style={labelS}>ESTRUCTURA</div>
             <SegmentedControl value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.tipoEst : pared.tipoEst} onChange={v => { uT("tipoEst", v); uP("tipoEst", v); }} options={[{ id: "metal", label: "Metal" }, { id: "hormigon", label: "Hormigón" }, { id: "mixto", label: "Mixto" }, { id: "madera", label: "Madera" }]} />
-          </div>}
+          </div>
 
           {/* Opciones */}
-          {STEP_SECTIONS[activeStep].includes("opciones") && <div style={sectionS}>
+          <div ref={opcionesRef} style={sectionS}>
             <div style={labelS}>OPCIONES</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {vis.canalGot && <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />}
@@ -843,10 +816,36 @@ export default function PanelinCalculadoraV3() {
                 <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               </div>
             </div>
-          </div>}
+          </div>
+
+          {/* Categorías BOM */}
+          <div style={sectionS}>
+            <div style={labelS}>CATEGORÍAS A INCLUIR</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {Object.entries(CATEGORIAS_BOM).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => setCategoriasActivas(prev => ({ ...prev, [key]: !prev[key] }))}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 20,
+                    border: `1.5px solid ${categoriasActivas[key] ? C.primary : C.border}`,
+                    background: categoriasActivas[key] ? C.primarySoft : C.surface,
+                    fontSize: 12,
+                    fontWeight: categoriasActivas[key] ? 600 : 400,
+                    color: categoriasActivas[key] ? C.primary : C.ts,
+                    cursor: "pointer",
+                    transition: TR,
+                  }}
+                >
+                  {categoriasActivas[key] ? "✓ " : ""}{cfg.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Aberturas */}
-          {vis.aberturas && STEP_SECTIONS[activeStep].includes("aberturas") && <div style={sectionS}>
+          {vis.aberturas && <div style={sectionS}>
             <div style={labelS}>ABERTURAS</div>
             {pared.aberturas.map((ab, i) => (
               <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: 8, borderRadius: 8, background: C.surfaceAlt }}>
