@@ -205,7 +205,7 @@ export function generateInternalHTML(data) {
 </div>
 ${inputsHTML}
 ${formulasHTML}
-${descarte && descarte.anchoM > 0 ? `<div style="background:#FFF3CD;padding:6px 10px;border-radius:4px;margin:8px 0;font-size:9pt;color:#856404"><b>DESCARTE:</b> ${descarte.anchoM}m × ${dimensions?.largo || "—"}m = ${descarte.areaM2}m² (${descarte.porcentaje}%)</div>` : ""}
+${descarte && descarte.anchoM > 0 ? `<div style="background:#FFF3CD;padding:6px 10px;border-radius:4px;margin:8px 0;font-size:9pt;color:#856404"><b>DESCARTE:</b> ${descarte.anchoM}m × ${dimensions?.zonas?.[0]?.largo || "—"}m = ${descarte.areaM2}m² (${descarte.porcentaje}%)</div>` : ""}
 ${autoportancia ? `<div style="background:${autoportancia.ok ? "#D4EDDA" : "#F8D7DA"};padding:6px 10px;border-radius:4px;margin:8px 0;font-size:9pt"><b>AUTOPORTANCIA:</b> ${autoportancia.ok ? "OK" : "EXCEDE"} · Vano máx: ${autoportancia.maxSpan}m · Apoyos: ${autoportancia.apoyos}</div>` : ""}
 ${excludedHTML}
 ${categoriasHTML}
