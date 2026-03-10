@@ -72,8 +72,14 @@ export function generatePrintHTML(data) {
   let dimSection = "";
   if (dimensions) {
     const dimItems = [];
-    if (dimensions.largo) dimItems.push(`Largo: ${dimensions.largo}m`);
-    if (dimensions.ancho) dimItems.push(`Ancho: ${dimensions.ancho}m`);
+    if (dimensions.zonas?.length) {
+      if (dimensions.zonas.length === 1) {
+        dimItems.push(`${dimensions.zonas[0].largo}m × ${dimensions.zonas[0].ancho}m`);
+      } else {
+        const zonasStr = dimensions.zonas.map((z, i) => `Zona ${i + 1}: ${z.largo}×${z.ancho}m`).join(", ");
+        dimItems.push(zonasStr);
+      }
+    }
     if (dimensions.alto) dimItems.push(`Alto: ${dimensions.alto}m`);
     if (dimensions.perimetro) dimItems.push(`Perímetro: ${dimensions.perimetro}m`);
     if (dimensions.area) dimItems.push(`Área: ${dimensions.area}m²`);
@@ -86,7 +92,8 @@ export function generatePrintHTML(data) {
   // Descarte section
   let descarteSection = "";
   if (descarte && descarte.anchoM > 0) {
-    descarteSection = `<div style="background:#FFF3CD;padding:6px 10px;border-radius:4px;margin-bottom:6px;font-size:9pt;color:#856404"><b>DESCARTE:</b> ${descarte.anchoM}m × ${dimensions?.largo || "—"}m = ${descarte.areaM2}m² (${descarte.porcentaje}%)</div>`;
+    const largoRef = dimensions?.zonas?.[0]?.largo || "—";
+    descarteSection = `<div style="background:#FFF3CD;padding:6px 10px;border-radius:4px;margin-bottom:6px;font-size:9pt;color:#856404"><b>DESCARTE:</b> ${descarte.anchoM}m × ${largoRef}m = ${descarte.areaM2}m² (${descarte.porcentaje}%)</div>`;
   }
 
   let tableBody = "";
@@ -145,8 +152,11 @@ export function generateInternalHTML(data) {
   inputsHTML += `<li>Lista precios: ${listaPrecios === "venta" ? "BMC Directo" : "Web"}</li>`;
   inputsHTML += `<li>Panel: ${esc(panel.label)} ${panel.espesor || ""}mm · Color: ${esc(panel.color || "—")}</li>`;
   if (dimensions) {
-    if (dimensions.largo) inputsHTML += `<li>Largo: ${dimensions.largo}m</li>`;
-    if (dimensions.ancho) inputsHTML += `<li>Ancho: ${dimensions.ancho}m</li>`;
+    if (dimensions.zonas?.length) {
+      dimensions.zonas.forEach((z, i) => {
+        inputsHTML += `<li>Zona ${i + 1}: ${z.largo}m × ${z.ancho}m = ${(z.largo * z.ancho).toFixed(2)}m²</li>`;
+      });
+    }
     if (dimensions.alto) inputsHTML += `<li>Alto: ${dimensions.alto}m</li>`;
     if (dimensions.perimetro) inputsHTML += `<li>Perímetro: ${dimensions.perimetro}m</li>`;
   }

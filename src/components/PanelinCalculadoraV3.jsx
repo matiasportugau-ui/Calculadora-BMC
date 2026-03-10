@@ -282,7 +282,7 @@ export default function PanelinCalculadoraV3() {
   const [listaPrecios, setLP] = useState("web");
   const [scenario, setScenario] = useState("solo_techo");
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
@@ -296,9 +296,6 @@ export default function PanelinCalculadoraV3() {
     Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
     return initial;
   });
-  const [modoMedidaTecho, setModoMedidaTecho] = useState("metros"); // "metros" | "paneles"
-  const [cantPanelesTecho, setCantPanelesTecho] = useState(5);
-
   // Section refs for auto-scroll
   const panelRef = useRef(null);
   const dimensionesRef = useRef(null);
@@ -347,14 +344,19 @@ export default function PanelinCalculadoraV3() {
   // ── Combined scenario flag ──
   const isCombined = scenarioDef?.hasTecho && scenarioDef?.hasPared;
 
-  // ── Normalized ancho based on mode ──
-  const anchoNormalizado = useMemo(() => {
-    if (!techoPanelData) return techo.ancho;
-    if (modoMedidaTecho === "paneles") {
-      return +(cantPanelesTecho * techoPanelData.au).toFixed(2);
-    }
-    return techo.ancho;
-  }, [modoMedidaTecho, cantPanelesTecho, techo.ancho, techoPanelData]);
+  // ── Zonas helpers ──
+  const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, { largo: 6.0, ancho: 5.0 }] }));
+  const removeZona = (idx) => setTecho(t => ({ ...t, zonas: t.zonas.length > 1 ? t.zonas.filter((_, i) => i !== idx) : t.zonas }));
+  const updateZona = (idx, key, val) => setTecho(t => ({ ...t, zonas: t.zonas.map((z, i) => i === idx ? { ...z, [key]: val } : z) }));
+
+  // ── Totals from all zones (for display and calculations) ──
+  const zonasTotales = useMemo(() => {
+    if (!techo.zonas?.length) return { largo: 6, ancho: 5, area: 30 };
+    const totalArea = techo.zonas.reduce((sum, z) => sum + (z.largo * z.ancho), 0);
+    const maxLargo = Math.max(...techo.zonas.map(z => z.largo));
+    const totalAncho = techo.zonas.reduce((sum, z) => sum + z.ancho, 0);
+    return { largo: maxLargo, ancho: totalAncho, area: +totalArea.toFixed(2) };
+  }, [techo.zonas]);
 
   // ── Calculate results ──
   const results = useMemo(() => {
@@ -362,14 +364,75 @@ export default function PanelinCalculadoraV3() {
     try {
       if (sc === "solo_techo") {
         if (!techo.familia || !techo.espesor) return null;
-        return calcTechoCompleto({ ...techo, ancho: anchoNormalizado });
+        // Calculate for each zona and combine
+        const zonaResults = techo.zonas.map(zona => 
+          calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })
+        );
+        // Combine results from all zones
+        const combined = zonaResults[0];
+        if (zonaResults.length > 1) {
+          for (let i = 1; i < zonaResults.length; i++) {
+            const r = zonaResults[i];
+            if (r.paneles) {
+              combined.paneles.cantPaneles += r.paneles.cantPaneles;
+              combined.paneles.areaTotal = +(combined.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
+              combined.paneles.costoPaneles = +(combined.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
+              combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
+            }
+            if (r.fijaciones) {
+              r.fijaciones.items.forEach((item, idx) => {
+                if (combined.fijaciones.items[idx]) {
+                  combined.fijaciones.items[idx].cant += item.cant;
+                  combined.fijaciones.items[idx].total = +(combined.fijaciones.items[idx].total + item.total).toFixed(2);
+                }
+              });
+            }
+            if (r.selladores) {
+              r.selladores.items.forEach((item, idx) => {
+                if (combined.selladores.items[idx]) {
+                  combined.selladores.items[idx].cant += item.cant;
+                  combined.selladores.items[idx].total = +(combined.selladores.items[idx].total + item.total).toFixed(2);
+                }
+              });
+            }
+            combined.warnings = [...(combined.warnings || []), ...(r.warnings || [])];
+          }
+          // Recalculate allItems and totales
+          const panelItem = combined.allItems[0];
+          panelItem.cant = combined.paneles.areaTotal;
+          panelItem.total = combined.paneles.costoPaneles;
+          combined.totales = calcTotalesSinIVA(combined.allItems);
+        }
+        return combined;
       }
       if (sc === "solo_fachada") {
         if (!pared.familia || !pared.espesor) return null;
         return calcParedCompleto(pared);
       }
       if (sc === "techo_fachada") {
-        const rT = techo.familia && techo.espesor ? calcTechoCompleto({ ...techo, ancho: anchoNormalizado }) : null;
+        let rT = null;
+        if (techo.familia && techo.espesor) {
+          // Calculate for each zona and combine (same logic as solo_techo)
+          const zonaResults = techo.zonas.map(zona => 
+            calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })
+          );
+          rT = zonaResults[0];
+          if (zonaResults.length > 1) {
+            for (let i = 1; i < zonaResults.length; i++) {
+              const r = zonaResults[i];
+              if (r.paneles) {
+                rT.paneles.cantPaneles += r.paneles.cantPaneles;
+                rT.paneles.areaTotal = +(rT.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
+                rT.paneles.costoPaneles = +(rT.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
+              }
+              rT.warnings = [...(rT.warnings || []), ...(r.warnings || [])];
+            }
+            const panelItem = rT.allItems[0];
+            panelItem.cant = rT.paneles.areaTotal;
+            panelItem.total = rT.paneles.costoPaneles;
+            rT.totales = calcTotalesSinIVA(rT.allItems);
+          }
+        }
         const rP = pared.familia && pared.espesor ? calcParedCompleto(pared) : null;
         if (!rT && !rP) return null;
         const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
@@ -387,7 +450,7 @@ export default function PanelinCalculadoraV3() {
       }
     } catch (e) { return { error: e.message }; }
     return null;
-  }, [scenario, techo, pared, camara, anchoNormalizado]);
+  }, [scenario, techo, pared, camara]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -450,8 +513,8 @@ export default function PanelinCalculadoraV3() {
   const handlePrint = () => {
     const dimensions = {};
     if (scenarioDef?.hasTecho) {
-      dimensions.largo = techo.largo;
-      dimensions.ancho = anchoNormalizado;
+      dimensions.zonas = techo.zonas;
+      dimensions.area = zonasTotales.area;
       if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
       if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
     }
@@ -478,8 +541,8 @@ export default function PanelinCalculadoraV3() {
   const handleInternalReport = () => {
     const dimensions = {};
     if (scenarioDef?.hasTecho) {
-      dimensions.largo = techo.largo;
-      dimensions.ancho = anchoNormalizado;
+      dimensions.zonas = techo.zonas;
+      dimensions.area = zonasTotales.area;
       if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
       if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
     }
@@ -490,13 +553,28 @@ export default function PanelinCalculadoraV3() {
       if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
     }
     const formulas = [];
-    if (results?.paneles) {
-      formulas.push(`cantPaneles = ceil(${anchoNormalizado} / ${techoPanelData?.au || "AU"}) = ${results.paneles.cantPaneles}`);
-      formulas.push(`areaTotal = ${results.paneles.cantPaneles} × ${techo.largo} × ${techoPanelData?.au || "AU"} = ${results.paneles.areaTotal}m²`);
+    if (scenarioDef?.hasTecho && results?.paneles && techoPanelData) {
+      techo.zonas.forEach((z, i) => {
+        formulas.push(`Zona ${i + 1}: ${z.largo}m × ${z.ancho}m = ${(z.largo * z.ancho).toFixed(2)}m²`);
+      });
+      formulas.push(`cantPaneles total = ${results.paneles.cantPaneles}`);
+      formulas.push(`areaTotal = ${results.paneles.areaTotal}m²`);
       formulas.push(`costoPaneles = ${results.paneles.areaTotal} × $${results.paneles.precioM2} = $${results.paneles.costoPaneles}`);
+      if (results?.autoportancia?.apoyos) {
+        formulas.push(`apoyos = ${results.autoportancia.apoyos} (basado en largo mayor: ${zonasTotales.largo}m)`);
+      }
     }
-    if (results?.autoportancia?.apoyos) {
-      formulas.push(`apoyos = ceil(${techo.largo} / ${results.autoportancia.maxSpan}) + 1 = ${results.autoportancia.apoyos}`);
+    if (scenarioDef?.hasPared && !scenarioDef?.hasTecho && results?.paneles) {
+      const paredPanelData = PANELS_PARED[pared.familia];
+      if (paredPanelData) {
+        formulas.push(`cantPaneles = ceil(${pared.perimetro} / ${paredPanelData.au}) = ${results.paneles.cantPaneles}`);
+        formulas.push(`areaBruta = ${results.paneles.cantPaneles} × ${pared.alto} × ${paredPanelData.au} = ${results.paneles.areaBruta}m²`);
+        if (results.paneles.areaAberturas > 0) {
+          formulas.push(`areaAberturas = ${results.paneles.areaAberturas}m²`);
+        }
+        formulas.push(`areaNeta = ${results.paneles.areaBruta} - ${results.paneles.areaAberturas} = ${results.paneles.areaNeta}m²`);
+        formulas.push(`costoPaneles = ${results.paneles.areaNeta} × $${results.paneles.precioM2} = $${results.paneles.costoPaneles}`);
+      }
     }
     const categoriasDesactivadas = Object.entries(categoriasActivas)
       .filter(([, activa]) => !activa)
@@ -522,7 +600,7 @@ export default function PanelinCalculadoraV3() {
     setScenario("solo_techo");
     setLP("web");
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+    setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
@@ -532,8 +610,6 @@ export default function PanelinCalculadoraV3() {
       Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
       return initial;
     });
-    setModoMedidaTecho("metros");
-    setCantPanelesTecho(5);
   };
 
   // ── Input updaters ──
@@ -735,36 +811,40 @@ export default function PanelinCalculadoraV3() {
             </div>}
           </div>}
 
-          {/* Dimensiones Techo */}
+          {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && <div ref={dimensionesRef} style={sectionS}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={labelS}>DIMENSIONES TECHO</div>
-              <SegmentedControl
-                value={modoMedidaTecho}
-                onChange={setModoMedidaTecho}
-                options={[{ id: "metros", label: "Metros" }, { id: "paneles", label: "Paneles" }]}
-              />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <StepperInput label="Largo (m)" value={techo.largo} onChange={v => uT("largo", v)} min={1} max={20} step={0.5} unit="m" />
-              {modoMedidaTecho === "metros" ? (
-                <StepperInput label="Ancho (m)" value={techo.ancho} onChange={v => uT("ancho", v)} min={1} max={20} step={0.5} unit="m" />
-              ) : (
-                <StepperInput label="Cant. paneles" value={cantPanelesTecho} onChange={setCantPanelesTecho} min={1} max={50} step={1} decimals={0} unit="pzas" />
-              )}
-            </div>
-            {modoMedidaTecho === "paneles" && techoPanelData && (
-              <div style={{ marginTop: 8, fontSize: 12, color: C.ts }}>
-                = {anchoNormalizado}m de ancho ({cantPanelesTecho} × {techoPanelData.au}m)
+              <div style={{ fontSize: 12, color: C.ts, fontWeight: 500 }}>
+                {zonasTotales.area}m² total
               </div>
-            )}
-            {techoPanelData && (techo.largo < techoPanelData.lmin || techo.largo > techoPanelData.lmax) && (
+            </div>
+            {techo.zonas.map((zona, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
+                <div style={{ flex: 1 }}>
+                  <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.5} unit="m" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <StepperInput label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.ancho} onChange={v => updateZona(idx, "ancho", v)} min={1} max={20} step={0.5} unit="m" />
+                </div>
+                <div style={{ fontSize: 11, color: C.ts, minWidth: 50, textAlign: "right", paddingBottom: 8 }}>
+                  {(zona.largo * zona.ancho).toFixed(1)}m²
+                </div>
+                {techo.zonas.length > 1 && (
+                  <button onClick={() => removeZona(idx)} style={{ padding: 6, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: C.danger, marginBottom: 4 }}>
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Plus size={14} /> Agregar zona
+            </button>
+            {techoPanelData && techo.zonas.some(z => z.largo < techoPanelData.lmin || z.largo > techoPanelData.lmax) && (
               <div style={{ marginTop: 8 }}>
                 <AlertBanner
                   type="warning"
-                  message={techo.largo < techoPanelData.lmin
-                    ? `Largo ${techo.largo}m menor al mínimo fabricable (${techoPanelData.lmin}m)`
-                    : `Largo ${techo.largo}m excede el máximo fabricable (${techoPanelData.lmax}m)`}
+                  message={`Algún largo está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`}
                 />
               </div>
             )}
