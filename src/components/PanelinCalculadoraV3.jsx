@@ -7,7 +7,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
-  RotateCcw, Edit3
+  RotateCcw, Edit3, X, RefreshCw, ClipboardList
 } from "lucide-react";
 
 import {
@@ -15,13 +15,14 @@ import {
   setListaPrecios,
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS, STEP_SECTIONS,
+  CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
 } from "../data/constants.js";
 import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
-  fmtPrice, generatePrintHTML, openPrintWindow, buildWhatsAppText,
+  fmtPrice, generatePrintHTML, generateInternalHTML, openPrintWindow, buildWhatsAppText,
 } from "../utils/helpers.js";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
@@ -33,6 +34,16 @@ if (typeof document !== "undefined" && !document.getElementById("bmc-kf")) {
     @keyframes bmc-fade{from{opacity:0}to{opacity:1}}
     @keyframes bmc-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
     @keyframes bmc-slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes bmc-slideInUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @media (max-width: 900px) {
+      .bmc-main-grid { grid-template-columns: 1fr !important; height: auto !important; overflow: visible !important; }
+      .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 !important; }
+      .bmc-mobile-bar { display: flex !important; }
+      .bmc-desktop-actions { display: none !important; }
+    }
+    @media (min-width: 901px) {
+      .bmc-mobile-bar { display: none !important; }
+    }
   `;
   document.head.appendChild(s);
 }
@@ -141,10 +152,10 @@ function Toast({ message, visible }) {
   return <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 50, background: C.success, color: "#fff", borderRadius: 12, padding: "12px 20px", fontSize: 14, fontWeight: 500, fontFamily: FONT, boxShadow: "0 4px 24px rgba(52,199,89,0.35)", animation: "bmc-slideUp 220ms", display: "flex", alignItems: "center", gap: 8 }}><CheckCircle size={16} color="#fff" />{message}</div>;
 }
 
-function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, onOverride, onRevert }) {
+function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, onOverride, onRevert, onExclude }) {
   const [editingCell, setEditingCell] = useState(null); // { lineId, field }
   const [editValue, setEditValue] = useState("");
-  const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr 56px";
+  const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr 72px";
 
   const startEdit = (lineId, field, currentVal) => {
     setEditingCell({ lineId, field });
@@ -193,6 +204,7 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
             <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
               {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
               {onRevert && item.isOverridden && <button title="Revertir" aria-label="Revertir cambios" onClick={() => onRevert(item.lineId)} style={{ background: "none", border: "none", cursor: "pointer", color: C.warning, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><RotateCcw size={13} /></button>}
+              {onExclude && <button title="Quitar del presupuesto" aria-label="Quitar item" onClick={() => onExclude(item.lineId, item.label)} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><X size={13} /></button>}
             </div>
           </div>;
         })}
@@ -201,10 +213,42 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
   );
 }
 
-function BorderConfigurator({ borders = {}, onChange }) {
+function MobileBottomBar({ total, onPrint, onWhatsApp }) {
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: C.dark,
+      color: "#fff",
+      padding: "12px 16px",
+      display: "none",
+      zIndex: 100,
+      boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
+      fontFamily: FONT,
+    }} className="bmc-mobile-bar">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>TOTAL USD</div>
+          <div style={{ fontSize: 24, fontWeight: 800, ...TN }}>${fmtPrice(total)}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
+          <button onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BorderConfigurator({ borders = {}, onChange, panelFamilia = "" }) {
   const sides = ["frente", "fondo", "latIzq", "latDer"];
   const sideLabels = { frente: "FRENTE ▼", fondo: "FONDO ▲", latIzq: "◄ IZQ", latDer: "DER ►" };
   const cellS = (active) => ({ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 600, background: active ? C.primarySoft : C.surface, border: `1.5px solid ${active ? C.primary : C.border}`, color: active ? C.primary : C.ts, textAlign: "center" });
+
+  const panelFam = PANELS_TECHO[panelFamilia]?.fam || "";
+
   return (
     <div style={{ fontFamily: FONT }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gridTemplateRows: "auto auto auto", gap: 4, marginBottom: 16 }}>
@@ -215,7 +259,11 @@ function BorderConfigurator({ borders = {}, onChange }) {
         <div /><div style={cellS(borders.frente && borders.frente !== "none")}>{sideLabels.frente}</div><div />
       </div>
       {sides.map(side => {
-        const opts = BORDER_OPTIONS[side] || [];
+        const rawOpts = BORDER_OPTIONS[side] || [];
+        const opts = rawOpts.filter(opt => {
+          if (!opt.familias) return true;
+          return opt.familias.includes(panelFam);
+        });
         return <div key={side} style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sideLabels[side]}</div>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -243,6 +291,14 @@ export default function PanelinCalculadoraV3() {
   const [toast, setToast] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
   const [showTransp, setShowTransp] = useState(false);
+  const [excludedItems, setExcludedItems] = useState({}); // { lineId: label }
+  const [categoriasActivas, setCategoriasActivas] = useState(() => {
+    const initial = {};
+    Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
+    return initial;
+  });
+  const [modoMedidaTecho, setModoMedidaTecho] = useState("metros"); // "metros" | "paneles"
+  const [cantPanelesTecho, setCantPanelesTecho] = useState(5);
 
   // Sync LISTA_ACTIVA
   useEffect(() => { setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -278,20 +334,29 @@ export default function PanelinCalculadoraV3() {
   // ── Combined scenario flag ──
   const isCombined = scenarioDef?.hasTecho && scenarioDef?.hasPared;
 
+  // ── Normalized ancho based on mode ──
+  const anchoNormalizado = useMemo(() => {
+    if (!techoPanelData) return techo.ancho;
+    if (modoMedidaTecho === "paneles") {
+      return +(cantPanelesTecho * techoPanelData.au).toFixed(2);
+    }
+    return techo.ancho;
+  }, [modoMedidaTecho, cantPanelesTecho, techo.ancho, techoPanelData]);
+
   // ── Calculate results ──
   const results = useMemo(() => {
     const sc = scenario;
     try {
       if (sc === "solo_techo") {
         if (!techo.familia || !techo.espesor) return null;
-        return calcTechoCompleto(techo);
+        return calcTechoCompleto({ ...techo, ancho: anchoNormalizado });
       }
       if (sc === "solo_fachada") {
         if (!pared.familia || !pared.espesor) return null;
         return calcParedCompleto(pared);
       }
       if (sc === "techo_fachada") {
-        const rT = techo.familia && techo.espesor ? calcTechoCompleto(techo) : null;
+        const rT = techo.familia && techo.espesor ? calcTechoCompleto({ ...techo, ancho: anchoNormalizado }) : null;
         const rP = pared.familia && pared.espesor ? calcParedCompleto(pared) : null;
         if (!rT && !rP) return null;
         const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
@@ -309,7 +374,7 @@ export default function PanelinCalculadoraV3() {
       }
     } catch (e) { return { error: e.message }; }
     return null;
-  }, [scenario, techo, pared, camara]);
+  }, [scenario, techo, pared, camara, anchoNormalizado]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -319,8 +384,23 @@ export default function PanelinCalculadoraV3() {
     if (flete > 0) {
       g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
     }
-    return applyOverrides(g, overrides);
-  }, [results, overrides, flete]);
+    const withOverrides = applyOverrides(g, overrides);
+
+    // Filter by active categories
+    const allowedGroups = new Set();
+    Object.entries(categoriasActivas).forEach(([cat, active]) => {
+      if (active && CATEGORIA_TO_GROUPS[cat]) {
+        CATEGORIA_TO_GROUPS[cat].forEach(grp => allowedGroups.add(grp));
+      }
+    });
+    const filteredByCategory = withOverrides.filter(group => allowedGroups.has(group.title));
+
+    // Filter out excluded items
+    return filteredByCategory.map(group => ({
+      ...group,
+      items: group.items.filter(item => !excludedItems[item.lineId])
+    })).filter(group => group.items.length > 0);
+  }, [results, overrides, flete, excludedItems, categoriasActivas]);
 
   // ── Grand totals (with overrides applied) ──
   const grandTotal = useMemo(() => {
@@ -355,6 +435,14 @@ export default function PanelinCalculadoraV3() {
   };
 
   const handlePrint = () => {
+    const dimensions = {
+      largo: techo.largo,
+      ancho: anchoNormalizado,
+      alto: pared.alto,
+      perimetro: pared.perimetro,
+      area: results?.paneles?.areaTotal || results?.paneles?.areaNeta,
+      cantPaneles: results?.paneles?.cantPaneles,
+    };
     const html = generatePrintHTML({
       client: proyecto, project: proyecto, scenario,
       panel: panelInfo,
@@ -362,6 +450,47 @@ export default function PanelinCalculadoraV3() {
       groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
       totals: grandTotal,
       warnings: results?.warnings || [],
+      dimensions,
+      descarte: results?.paneles?.descarte,
+      listaPrecios,
+    });
+    openPrintWindow(html);
+  };
+
+  const handleInternalReport = () => {
+    const dimensions = {
+      largo: techo.largo,
+      ancho: anchoNormalizado,
+      alto: pared.alto,
+      perimetro: pared.perimetro,
+      area: results?.paneles?.areaTotal || results?.paneles?.areaNeta,
+      cantPaneles: results?.paneles?.cantPaneles,
+    };
+    const formulas = [];
+    if (results?.paneles) {
+      formulas.push(`cantPaneles = ceil(${anchoNormalizado} / ${techoPanelData?.au || "AU"}) = ${results.paneles.cantPaneles}`);
+      formulas.push(`areaTotal = ${results.paneles.cantPaneles} × ${techo.largo} × ${techoPanelData?.au || "AU"} = ${results.paneles.areaTotal}m²`);
+      formulas.push(`costoPaneles = ${results.paneles.areaTotal} × $${results.paneles.precioM2} = $${results.paneles.costoPaneles}`);
+    }
+    if (results?.autoportancia?.apoyos) {
+      formulas.push(`apoyos = ceil(${techo.largo} / ${results.autoportancia.maxSpan}) + 1 = ${results.autoportancia.apoyos}`);
+    }
+    const categoriasDesactivadas = Object.entries(categoriasActivas)
+      .filter(([, activa]) => !activa)
+      .map(([cat]) => CATEGORIAS_BOM[cat]?.label || cat);
+    const html = generateInternalHTML({
+      client: proyecto, project: proyecto, scenario,
+      panel: panelInfo,
+      autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
+      groups: groups.map(g => ({ title: g.title, items: g.items })),
+      totals: grandTotal,
+      warnings: results?.warnings || [],
+      dimensions,
+      descarte: results?.paneles?.descarte,
+      listaPrecios,
+      excludedItems,
+      categoriasDesactivadas,
+      formulas,
     });
     openPrintWindow(html);
   };
@@ -374,6 +503,14 @@ export default function PanelinCalculadoraV3() {
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
+    setExcludedItems({});
+    setCategoriasActivas(() => {
+      const initial = {};
+      Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
+      return initial;
+    });
+    setModoMedidaTecho("metros");
+    setCantPanelesTecho(5);
     setActiveStep(0);
   };
 
@@ -388,6 +525,18 @@ export default function PanelinCalculadoraV3() {
 
   const handleRevert = useCallback((lineId) => {
     setOverrides(prev => { const next = { ...prev }; delete next[lineId]; return next; });
+  }, []);
+
+  const handleExclude = useCallback((lineId, label) => {
+    setExcludedItems(prev => ({ ...prev, [lineId]: label }));
+  }, []);
+
+  const handleRestore = useCallback((lineId) => {
+    setExcludedItems(prev => { const next = { ...prev }; delete next[lineId]; return next; });
+  }, []);
+
+  const handleRestoreAll = useCallback(() => {
+    setExcludedItems({});
   }, []);
 
   const setTechoFamilia = (fam) => {
@@ -465,9 +614,18 @@ export default function PanelinCalculadoraV3() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 24, padding: 24, maxWidth: 1400, margin: "0 auto", flexWrap: "wrap" }}>
+      <div className="bmc-main-grid" style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(360px, 520px) 1fr",
+        gap: 24,
+        padding: 24,
+        maxWidth: 1400,
+        margin: "0 auto",
+        height: "calc(100vh - 100px)",
+        overflow: "hidden",
+      }}>
         {/* LEFT PANEL */}
-        <div style={{ flex: "1 1 420px", minWidth: 360, maxWidth: 520 }}>
+        <div className="bmc-left-panel" style={{ overflowY: "auto", paddingRight: 8 }}>
           {/* Lista precios */}
           {STEP_SECTIONS[activeStep].includes("lista") && <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
@@ -542,13 +700,65 @@ export default function PanelinCalculadoraV3() {
             </div>}
           </div>}
 
+          {/* Categorías BOM */}
+          {STEP_SECTIONS[activeStep].includes("categorias") && <div style={sectionS}>
+            <div style={labelS}>CATEGORÍAS A INCLUIR</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {Object.entries(CATEGORIAS_BOM).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => setCategoriasActivas(prev => ({ ...prev, [key]: !prev[key] }))}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 20,
+                    border: `1.5px solid ${categoriasActivas[key] ? C.primary : C.border}`,
+                    background: categoriasActivas[key] ? C.primarySoft : C.surface,
+                    fontSize: 12,
+                    fontWeight: categoriasActivas[key] ? 600 : 400,
+                    color: categoriasActivas[key] ? C.primary : C.ts,
+                    cursor: "pointer",
+                    transition: TR,
+                  }}
+                >
+                  {categoriasActivas[key] ? "✓ " : ""}{cfg.label}
+                </button>
+              ))}
+            </div>
+          </div>}
+
           {/* Dimensiones Techo */}
           {vis.largoAncho && STEP_SECTIONS[activeStep].includes("dimensiones") && <div style={sectionS}>
-            <div style={labelS}>DIMENSIONES TECHO</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={labelS}>DIMENSIONES TECHO</div>
+              <SegmentedControl
+                value={modoMedidaTecho}
+                onChange={setModoMedidaTecho}
+                options={[{ id: "metros", label: "Metros" }, { id: "paneles", label: "Paneles" }]}
+              />
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <StepperInput label="Largo (m)" value={techo.largo} onChange={v => uT("largo", v)} min={1} max={20} step={0.5} unit="m" />
-              <StepperInput label="Ancho (m)" value={techo.ancho} onChange={v => uT("ancho", v)} min={1} max={20} step={0.5} unit="m" />
+              {modoMedidaTecho === "metros" ? (
+                <StepperInput label="Ancho (m)" value={techo.ancho} onChange={v => uT("ancho", v)} min={1} max={20} step={0.5} unit="m" />
+              ) : (
+                <StepperInput label="Cant. paneles" value={cantPanelesTecho} onChange={setCantPanelesTecho} min={1} max={50} step={1} decimals={0} unit="pzas" />
+              )}
             </div>
+            {modoMedidaTecho === "paneles" && techoPanelData && (
+              <div style={{ marginTop: 8, fontSize: 12, color: C.ts }}>
+                = {anchoNormalizado}m de ancho ({cantPanelesTecho} × {techoPanelData.au}m)
+              </div>
+            )}
+            {techoPanelData && (techo.largo < techoPanelData.lmin || techo.largo > techoPanelData.lmax) && (
+              <div style={{ marginTop: 8 }}>
+                <AlertBanner
+                  type="warning"
+                  message={techo.largo < techoPanelData.lmin
+                    ? `Largo ${techo.largo}m menor al mínimo fabricable (${techoPanelData.lmin}m)`
+                    : `Largo ${techo.largo}m excede el máximo fabricable (${techoPanelData.lmax}m)`}
+                />
+              </div>
+            )}
           </div>}
 
           {/* Dimensiones Pared */}
@@ -577,7 +787,7 @@ export default function PanelinCalculadoraV3() {
           {/* Bordes techo */}
           {vis.borders && STEP_SECTIONS[activeStep].includes("bordes") && <div style={sectionS}>
             <div style={labelS}>BORDES Y PERFILERÍA</div>
-            <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} />
+            <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} panelFamilia={techo.familia} />
           </div>}
 
           {/* Estructura */}
@@ -590,10 +800,7 @@ export default function PanelinCalculadoraV3() {
           {STEP_SECTIONS[activeStep].includes("opciones") && <div style={sectionS}>
             <div style={labelS}>OPCIONES</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {vis.canalGot && <>
-                <Toggle label="Canalón" value={techo.opciones.inclCanalon} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclCanalon: v } }))} />
-                <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />
-              </>}
+              {vis.canalGot && <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />}
               <Toggle label="Selladores" value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.opciones.inclSell : pared.inclSell} onChange={v => { setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } })); uP("inclSell", v); }} />
               {vis.p5852 && <Toggle label="Perfil 5852 aluminio" value={pared.incl5852} onChange={v => uP("incl5852", v)} />}
               <div style={{ marginTop: 8 }}>
@@ -620,7 +827,7 @@ export default function PanelinCalculadoraV3() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div style={{ flex: "1 1 480px", minWidth: 400 }}>
+        <div className="bmc-right-panel" style={{ overflowY: "auto", paddingLeft: 8 }}>
           {/* KPI Row */}
           {results && !results.error && <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
@@ -628,6 +835,16 @@ export default function PanelinCalculadoraV3() {
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
             <KPICard label="Pts fijación" value={kpiFij || "—"} borderColor={C.brand} />
           </div>}
+
+          {/* Descarte informativo */}
+          {results?.paneles?.descarte && results.paneles.descarte.anchoM > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <AlertBanner
+                type="warning"
+                message={`Descarte: ${results.paneles.descarte.anchoM}m de ancho × ${techo.largo}m = ${results.paneles.descarte.areaM2}m² (${results.paneles.descarte.porcentaje}% del ancho solicitado)`}
+              />
+            </div>
+          )}
 
           {/* Warnings */}
           {results?.warnings?.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
@@ -650,8 +867,30 @@ export default function PanelinCalculadoraV3() {
 
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
-            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} />)}
+            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
           </div>}
+
+          {/* Excluded items panel */}
+          {Object.keys(excludedItems).length > 0 && (
+            <div style={{ ...sectionS, background: C.dangerSoft, marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Items excluidos ({Object.keys(excludedItems).length})
+                </div>
+                <button onClick={handleRestoreAll} style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${C.danger}`, background: C.surface, fontSize: 11, fontWeight: 500, color: C.danger, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                  <RefreshCw size={12} />Restaurar todos
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {Object.entries(excludedItems).map(([lineId, label]) => (
+                  <div key={lineId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", background: C.surface, borderRadius: 8, fontSize: 12 }}>
+                    <span style={{ color: C.ts }}>{label}</span>
+                    <button onClick={() => handleRestore(lineId)} style={{ padding: "2px 8px", borderRadius: 6, border: "none", background: C.primary, color: "#fff", fontSize: 10, fontWeight: 500, cursor: "pointer" }}>Restaurar</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Totals */}
           {groups.length > 0 && <div style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
@@ -677,10 +916,11 @@ export default function PanelinCalculadoraV3() {
             <div>Metalog SAS · RUT: 120403630012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}
 
-          {/* Action buttons */}
-          {groups.length > 0 && <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          {/* Action buttons — desktop only */}
+          {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16 }}>
             <button onClick={handleCopyWA} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
             <button onClick={handlePrint} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
+            <button onClick={handleInternalReport} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
           </div>}
 
           {/* Transparency Panel */}
@@ -708,7 +948,7 @@ export default function PanelinCalculadoraV3() {
                 <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— TECHO (cámara) —</div>
                 <div>Área: {results.techoResult.paneles.areaTotal} m²</div>
               </>}
-              {(results.autoportancia?.maxSpan || results.techoResult?.autoportancia?.maxSpan) && <div>Autoportancia: {(results.autoportancia || results.techoResult?.autoportancia).ok ? "OK" : "EXCEDE"} · max={(results.autoportancia || results.techoResult?.autoportancia).maxSpan}m</div>}
+              {(results.autoportancia?.maxSpan || results.techoResult?.autoportancia?.maxSpan) && <div>Autoportancia: {(results.autoportancia ?? results.techoResult?.autoportancia)?.ok ? "OK" : "EXCEDE"} · max={(results.autoportancia ?? results.techoResult?.autoportancia)?.maxSpan}m</div>}
               <div style={{ marginTop: 8, fontWeight: 700 }}>Todos los precios en USD SIN IVA. IVA 22% aplicado al total.</div>
             </div>}
           </div>}
@@ -716,6 +956,15 @@ export default function PanelinCalculadoraV3() {
       </div>
 
       <Toast message={toast} visible={!!toast} />
+
+      {/* Mobile bottom bar with sticky total */}
+      {groups.length > 0 && (
+        <MobileBottomBar
+          total={grandTotal.totalFinal}
+          onPrint={handlePrint}
+          onWhatsApp={handleCopyWA}
+        />
+      )}
     </div>
   );
 }

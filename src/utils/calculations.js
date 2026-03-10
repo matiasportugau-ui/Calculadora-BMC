@@ -10,6 +10,16 @@ import {
 
 // ── §1 ENGINE TECHO ──────────────────────────────────────────────────────────
 
+export function normalizarMedida(modo, valor, panel) {
+  if (modo === "paneles") {
+    const cantPaneles = Math.max(1, Math.round(valor));
+    const ancho = +(cantPaneles * panel.au).toFixed(2);
+    return { cantPaneles, ancho };
+  }
+  const cantPaneles = Math.ceil(valor / panel.au);
+  return { cantPaneles, ancho: valor };
+}
+
 export function resolveSKU_techo(tipo, familiaP, espesor) {
   const byTipo = PERFIL_TECHO[tipo];
   if (!byTipo) return null;
@@ -28,7 +38,13 @@ export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const areaTotal = +(cantPaneles * largo * panel.au).toFixed(2);
   const precioM2 = p(espData);
   const costoPaneles = +(precioM2 * areaTotal).toFixed(2);
-  return { cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2 };
+  const descarteAncho = +(anchoTotal - ancho).toFixed(2);
+  const descarteArea = +(descarteAncho * largo).toFixed(2);
+  const descartePct = ancho > 0 ? +((descarteAncho / ancho) * 100).toFixed(1) : 0;
+  return {
+    cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2,
+    descarte: { anchoM: descarteAncho, areaM2: descarteArea, porcentaje: descartePct }
+  };
 }
 
 export function calcAutoportancia(panel, espesor, largo) {
@@ -96,10 +112,32 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     totalML += ml;
     items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2) });
   };
-  if (borders.frente && borders.frente !== "none") addPerfil("Frente: " + borders.frente, borders.frente, anchoTotal);
+
+  // Canalón en frente: agregar canalón + soporte automáticamente
+  if (borders.frente === "canalon") {
+    const canData = resolveSKU_techo("canalon", familiaP, espesor);
+    if (canData) {
+      const precioCan = p(canData);
+      const pzasCan = Math.ceil(anchoTotal / canData.largo);
+      totalML += pzasCan * canData.largo;
+      items.push({ label: "Frente: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
+    }
+    // Soporte canalón: (cantPaneles + 1) * 0.30 / largo_barra
+    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
+    if (sopData) {
+      const mlSoportes = (cantP + 1) * 0.30;
+      const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
+      const precioSop = p(sopData);
+      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
+    }
+  } else if (borders.frente && borders.frente !== "none") {
+    addPerfil("Frente: " + borders.frente, borders.frente, anchoTotal);
+  }
+
   if (borders.fondo && borders.fondo !== "none") addPerfil("Fondo: " + borders.fondo, borders.fondo, anchoTotal);
   if (borders.latIzq && borders.latIzq !== "none") addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, largo);
   if (borders.latDer && borders.latDer !== "none") addPerfil("Lat.Der: " + borders.latDer, borders.latDer, largo);
+
   if (opciones && opciones.inclGotSup) {
     const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
     if (gs) {
@@ -109,24 +147,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
     }
   }
-  // §E CORREGIDO: Canalón usa precios del PERFIL_TECHO + soporte corregido
-  if (opciones && opciones.inclCanalon) {
-    const canData = resolveSKU_techo("canalon", familiaP, espesor);
-    if (canData) {
-      const precioCan = p(canData);
-      const pzasCan = Math.ceil(anchoTotal / canData.largo);
-      totalML += pzasCan * canData.largo;
-      items.push({ label: "Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
-    }
-    // §E SOPORTE CANALÓN CORREGIDO: barras de 3m, 1 soporte por enganche
-    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
-    if (sopData) {
-      const mlSoportes = (cantP + 1) * 0.30;
-      const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
-      const precioSop = p(sopData);
-      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
-    }
-  }
+
   if (totalML > 0) {
     const fijPerf = Math.ceil(totalML / 0.30);
     const paquetesT1 = Math.ceil(fijPerf / 100);
