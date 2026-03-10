@@ -21,7 +21,7 @@ import {
 } from "../data/constants.js";
 import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
-  calcFactorPendiente, mergeZonaResults,
+  calcFactorPendiente, mergeZonaResults, normalizarMedida,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -448,6 +448,7 @@ export default function PanelinCalculadoraV3() {
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
+  const [techoAnchoModo, setTechoAnchoModo] = useState("metros"); // "metros" | "paneles"
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
   const [overrides, setOverrides] = useState({});
@@ -508,10 +509,58 @@ export default function PanelinCalculadoraV3() {
   // ── Combined scenario flag ──
   const isCombined = scenarioDef?.hasTecho && scenarioDef?.hasPared;
 
+  // ── Helpers: Ancho techo en metros ↔ paneles ──
+  const normalizeTechoAnchoToPaneles = useCallback((anchoM, panelData, tipoAguas) => {
+    if (!panelData) return anchoM;
+    const is2A = tipoAguas === "dos_aguas";
+    const perSlope = is2A ? (anchoM / 2) : anchoM;
+    const { cantPaneles } = normalizarMedida("metros", perSlope, panelData);
+    const anchoPerSlope = cantPaneles * panelData.au;
+    const anchoTotal = is2A ? (anchoPerSlope * 2) : anchoPerSlope;
+    return +anchoTotal.toFixed(2);
+  }, []);
+
+  const techoPanelesDesdeAnchoM = useCallback((anchoM, panelData, tipoAguas) => {
+    if (!panelData) return 0;
+    const is2A = tipoAguas === "dos_aguas";
+    const perSlope = is2A ? (anchoM / 2) : anchoM;
+    return normalizarMedida("metros", perSlope, panelData).cantPaneles;
+  }, []);
+
+  const techoAnchoMDesdePaneles = useCallback((cantPaneles, panelData, tipoAguas) => {
+    if (!panelData) return 0;
+    const is2A = tipoAguas === "dos_aguas";
+    const { ancho } = normalizarMedida("paneles", cantPaneles, panelData);
+    const anchoTotal = is2A ? (ancho * 2) : ancho;
+    return +anchoTotal.toFixed(2);
+  }, []);
+
   // ── Zonas helpers ──
-  const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, { largo: 6.0, ancho: 5.0 }] }));
+  const addZona = () => setTecho(t => {
+    const defaultLargo = 6.0;
+    const defaultAnchoM = 5.0;
+    const wantPaneles = techoAnchoModo === "paneles" && techoPanelData;
+    const ancho = wantPaneles
+      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, t.tipoAguas)
+      : defaultAnchoM;
+    return { ...t, zonas: [...t.zonas, { largo: defaultLargo, ancho }] };
+  });
   const removeZona = (idx) => setTecho(t => ({ ...t, zonas: t.zonas.length > 1 ? t.zonas.filter((_, i) => i !== idx) : t.zonas }));
   const updateZona = (idx, key, val) => setTecho(t => ({ ...t, zonas: t.zonas.map((z, i) => i === idx ? { ...z, [key]: val } : z) }));
+
+  // Mantener el ancho “alineado” a paneles cuando el modo está activo
+  useEffect(() => {
+    if (techoAnchoModo !== "paneles") return;
+    if (!techoPanelData) return;
+    setTecho(prev => {
+      const nextZonas = prev.zonas.map(z => {
+        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas);
+        return nextAncho === z.ancho ? z : { ...z, ancho: nextAncho };
+      });
+      const changed = nextZonas.some((z, i) => z !== prev.zonas[i]);
+      return changed ? { ...prev, zonas: nextZonas } : prev;
+    });
+  }, [techoAnchoModo, techoPanelData, techo.tipoAguas, normalizeTechoAnchoToPaneles]);
 
   // ── Totals from all zones (for display and calculations) ──
   const zonasTotales = useMemo(() => {
@@ -737,6 +786,7 @@ export default function PanelinCalculadoraV3() {
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
     setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
+    setTechoAnchoModo("metros");
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
     setExcludedItems({});
@@ -1074,13 +1124,63 @@ export default function PanelinCalculadoraV3() {
                 }
               </div>
             </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: C.ts, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                COTIZAR ANCHO EN{" "}
+                {techoPanelData?.au && (
+                  <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0 }}>
+                    · AU {techoPanelData.au}m{is2A ? " · paneles por faldón" : ""}
+                  </span>
+                )}
+              </div>
+              <SegmentedControl
+                value={techoAnchoModo}
+                onChange={(modo) => {
+                  if (modo === "paneles" && !techoPanelData) return;
+                  setTechoAnchoModo(modo);
+                  if (modo === "paneles" && techoPanelData) {
+                    setTecho(prev => ({
+                      ...prev,
+                      zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas) })),
+                    }));
+                  }
+                }}
+                options={[
+                  { id: "metros", label: "Metros" },
+                  { id: "paneles", label: "Paneles" },
+                ]}
+                disabledIds={!techoPanelData ? ["paneles"] : []}
+              />
+            </div>
             {techo.zonas.map((zona, idx) => (
               <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
                 <div style={{ flex: 1 }}>
                   <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.5} unit="m" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <StepperInput label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.ancho} onChange={v => updateZona(idx, "ancho", v)} min={1} max={20} step={0.5} unit="m" />
+                  {techoAnchoModo === "paneles" && techoPanelData ? (
+                    <StepperInput
+                      label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (${is2A ? "paneles/faldón" : "paneles"})`}
+                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, techo.tipoAguas)}
+                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))}
+                      min={1}
+                      max={500}
+                      step={1}
+                      unit={is2A ? "pzas/faldón" : "pzas"}
+                      decimals={0}
+                    />
+                  ) : (
+                    <StepperInput
+                      label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`}
+                      value={zona.ancho}
+                      onChange={v => updateZona(idx, "ancho", v)}
+                      min={1}
+                      max={20}
+                      step={0.5}
+                      unit="m"
+                    />
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: C.ts, minWidth: 50, textAlign: "right", paddingBottom: 8 }}>
                   {(zona.largo * zona.ancho).toFixed(1)}m²
