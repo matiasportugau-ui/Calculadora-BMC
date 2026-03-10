@@ -707,7 +707,7 @@ export default function PanelinCalculadoraV3() {
                 <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— TECHO (cámara) —</div>
                 <div>Área: {results.techoResult.paneles.areaTotal} m²</div>
               </>}
-              {(results.autoportancia?.maxSpan || results.techoResult?.autoportancia?.maxSpan) && <div>Autoportancia: {(results.autoportancia || results.techoResult?.autoportancia).ok ? "OK" : "EXCEDE"} · max={(results.autoportancia || results.techoResult?.autoportancia).maxSpan}m</div>}
+              {(() => { const ap = results.autoportancia || (results.techoResult && results.techoResult.autoportancia ? results.techoResult.autoportancia : undefined); return ap && ap.maxSpan ? <div>Autoportancia: {ap.ok ? "OK" : "EXCEDE"} · max={ap.maxSpan}m</div> : null; })()}
               <div style={{ marginTop: 8, fontWeight: 700 }}>Todos los precios en USD SIN IVA. IVA 22% aplicado al total.</div>
             </div>}
           </div>}
