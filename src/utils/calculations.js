@@ -12,7 +12,8 @@ import {
 
 export function calcFactorPendiente(pendienteGrados) {
   if (!pendienteGrados || pendienteGrados === 0) return 1;
-  const rad = pendienteGrados * Math.PI / 180;
+  const clamped = Math.min(Math.abs(pendienteGrados), 89);
+  const rad = clamped * Math.PI / 180;
   return +(1 / Math.cos(rad)).toFixed(4);
 }
 
@@ -24,7 +25,7 @@ export function calcLargoReal(largoProyectado, pendienteGrados) {
 
 export function normalizarMedida(modo, valor, panel) {
   if (modo === "paneles") {
-    const cantPaneles = Math.max(1, Math.round(valor));
+    const cantPaneles = Math.max(1, Math.ceil(valor));
     const ancho = +(cantPaneles * panel.au).toFixed(2);
     return { cantPaneles, ancho };
   }
@@ -253,19 +254,32 @@ export function mergeZonaResults(zonaResults) {
     if (r.paneles) {
       combined.paneles.cantPaneles += r.paneles.cantPaneles;
       combined.paneles.areaTotal = +(combined.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
+      combined.paneles.anchoTotal = +((combined.paneles.anchoTotal || 0) + (r.paneles.anchoTotal || 0)).toFixed(2);
       combined.paneles.costoPaneles = +(combined.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
-      combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
+      if (combined.paneles.descarte && r.paneles.descarte) {
+        combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
+        combined.paneles.descarte.anchoM = +(combined.paneles.descarte.anchoM + r.paneles.descarte.anchoM).toFixed(2);
+        const anchoSolicitadoTotal = +(combined.paneles.anchoTotal - combined.paneles.descarte.anchoM).toFixed(2);
+        combined.paneles.descarte.porcentaje = anchoSolicitadoTotal > 0
+          ? +((combined.paneles.descarte.anchoM / anchoSolicitadoTotal) * 100).toFixed(1)
+          : 0;
+      }
     }
 
-    if (r.fijaciones) {
-      r.fijaciones.items.forEach((item, idx) => {
-        if (combined.fijaciones.items[idx]) {
-          combined.fijaciones.items[idx].cant += item.cant;
-          combined.fijaciones.items[idx].total = +(combined.fijaciones.items[idx].total + item.total).toFixed(2);
+    const mergeItemsBySku = (target, source) => {
+      source.forEach(item => {
+        const existing = target.find(ci => ci.sku === item.sku);
+        if (existing) {
+          existing.cant += item.cant;
+          existing.total = +(existing.total + item.total).toFixed(2);
         } else {
-          combined.fijaciones.items.push({ ...item });
+          target.push({ ...item });
         }
       });
+    };
+
+    if (r.fijaciones) {
+      mergeItemsBySku(combined.fijaciones.items, r.fijaciones.items);
       combined.fijaciones.total = +(combined.fijaciones.total + r.fijaciones.total).toFixed(2);
       if (r.fijaciones.puntosFijacion) {
         combined.fijaciones.puntosFijacion = (combined.fijaciones.puntosFijacion || 0) + r.fijaciones.puntosFijacion;
@@ -273,28 +287,13 @@ export function mergeZonaResults(zonaResults) {
     }
 
     if (r.perfileria) {
-      r.perfileria.items.forEach(item => {
-        const existing = combined.perfileria.items.find(ci => ci.sku === item.sku);
-        if (existing) {
-          existing.cant += item.cant;
-          existing.total = +(existing.total + item.total).toFixed(2);
-        } else {
-          combined.perfileria.items.push({ ...item });
-        }
-      });
+      mergeItemsBySku(combined.perfileria.items, r.perfileria.items);
       combined.perfileria.total = +(combined.perfileria.total + r.perfileria.total).toFixed(2);
       combined.perfileria.totalML = +((combined.perfileria.totalML || 0) + (r.perfileria.totalML || 0)).toFixed(2);
     }
 
     if (r.selladores) {
-      r.selladores.items.forEach((item, idx) => {
-        if (combined.selladores.items[idx]) {
-          combined.selladores.items[idx].cant += item.cant;
-          combined.selladores.items[idx].total = +(combined.selladores.items[idx].total + item.total).toFixed(2);
-        } else {
-          combined.selladores.items.push({ ...item });
-        }
-      });
+      mergeItemsBySku(combined.selladores.items, r.selladores.items);
       combined.selladores.total = +(combined.selladores.total + r.selladores.total).toFixed(2);
     }
 
@@ -333,7 +332,11 @@ export function calcPanelesPared(panel, espesor, alto, perimetro, aberturas) {
   const areaBruta = +(cantPaneles * alto * panel.au).toFixed(2);
   let areaAberturas = 0;
   if (aberturas && aberturas.length > 0) {
-    for (const ab of aberturas) areaAberturas += ab.ancho * ab.alto * (ab.cant || 1);
+    for (const ab of aberturas) {
+      const w = Number(ab.ancho) || 0;
+      const h = Number(ab.alto) || 0;
+      areaAberturas += w * h * (ab.cant || 1);
+    }
   }
   areaAberturas = +areaAberturas.toFixed(2);
   const areaNeta = +Math.max(areaBruta - areaAberturas, 0).toFixed(2);

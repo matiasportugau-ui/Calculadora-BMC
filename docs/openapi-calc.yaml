@@ -1,0 +1,566 @@
+openapi: 3.1.0
+info:
+  title: Panelin Calculadora BMC API
+  version: 1.0.0
+  description: >-
+    API de cálculo de cotizaciones de paneles aislantes BMC Uruguay.
+    Expone la lógica completa de la Calculadora BMC (techo, fachada, techo+fachada, cámara frigorífica)
+    como endpoints REST para uso desde GPT Actions.
+servers:
+  - url: http://localhost:3001
+    description: Desarrollo local
+paths:
+  /calc/cotizar:
+    post:
+      operationId: calcular_cotizacion
+      summary: >-
+        Calcula una cotización completa de paneles aislantes con BOM,
+        precios, fijaciones, perfilería y selladores.
+      description: >-
+        Endpoint principal. Recibe escenario + parámetros del proyecto y devuelve
+        el presupuesto estructurado con resumen, BOM agrupado, advertencias,
+        texto para WhatsApp y texto resumen para conversación.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CotizarRequest'
+      responses:
+        '200':
+          description: Cotización generada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotizarResponse'
+        '400':
+          description: Parámetros inválidos o faltantes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /calc/catalogo:
+    get:
+      operationId: obtener_catalogo
+      summary: >-
+        Devuelve el catálogo completo de paneles, espesores, colores,
+        precios y opciones disponibles.
+      description: >-
+        Usar antes de cotizar para conocer familias de paneles válidas,
+        espesores disponibles, colores, precios por m², opciones de bordes
+        y escenarios. Ideal para guiar la conversación con el usuario.
+      parameters:
+        - in: query
+          name: lista
+          schema:
+            type: string
+            enum: [venta, web]
+            default: web
+          description: >-
+            Lista de precios a usar. "venta" = BMC Directo, "web" = precios Web/Shopify.
+      responses:
+        '200':
+          description: Catálogo completo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogoResponse'
+
+  /calc/escenarios:
+    get:
+      operationId: obtener_escenarios
+      summary: >-
+        Devuelve los escenarios disponibles con sus campos requeridos
+        y opcionales para guiar la conversación.
+      responses:
+        '200':
+          description: Lista de escenarios con metadatos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EscenariosResponse'
+
+components:
+  schemas:
+    # ── Request schemas ─────────────────────────────────────────────────
+
+    CotizarRequest:
+      type: object
+      required: [escenario]
+      properties:
+        escenario:
+          type: string
+          enum: [solo_techo, solo_fachada, techo_fachada, camara_frig]
+          description: >-
+            Tipo de proyecto. Determina qué campos son obligatorios.
+        lista:
+          type: string
+          enum: [venta, web]
+          default: web
+          description: Lista de precios (venta = BMC Directo, web = Shopify).
+        techo:
+          $ref: '#/components/schemas/TechoInput'
+        pared:
+          $ref: '#/components/schemas/ParedInput'
+        camara:
+          $ref: '#/components/schemas/CamaraInput'
+        flete:
+          type: number
+          minimum: 0
+          maximum: 5000
+          default: 0
+          description: Costo del flete en USD (sin IVA).
+
+    TechoInput:
+      type: object
+      required: [familia, espesor]
+      properties:
+        familia:
+          type: string
+          enum: [ISODEC_EPS, ISODEC_PIR, ISOROOF_3G, ISOROOF_FOIL, ISOROOF_PLUS]
+          description: Familia de panel para techo.
+        espesor:
+          type: integer
+          description: >-
+            Espesor en mm. Valores válidos dependen de la familia.
+            Ej: ISODEC_EPS acepta 100, 150, 200, 250.
+        color:
+          type: string
+          enum: [Blanco, Gris, Rojo]
+          default: Blanco
+        zonas:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Zona'
+          default: [{ largo: 6, ancho: 5 }]
+          description: >-
+            Zonas de techo. Cada zona tiene largo y ancho en metros.
+            Para techos simples, una sola zona.
+        pendiente:
+          type: number
+          minimum: 0
+          maximum: 45
+          default: 0
+          description: Pendiente del techo en grados.
+        tipoAguas:
+          type: string
+          enum: [una_agua, dos_aguas]
+          default: una_agua
+          description: >-
+            Tipo de aguas. "dos_aguas" divide el ancho por la mitad
+            y agrega cumbrera.
+        tipoEst:
+          type: string
+          enum: [metal, hormigon, mixto, madera]
+          default: metal
+          description: Tipo de estructura de soporte.
+        ptsHorm:
+          type: integer
+          minimum: 0
+          default: 0
+          description: >-
+            Puntos de hormigón (solo para estructura "mixto").
+        borders:
+          $ref: '#/components/schemas/Borders'
+        opciones:
+          $ref: '#/components/schemas/OpcionesTecho'
+
+    Zona:
+      type: object
+      required: [largo, ancho]
+      properties:
+        largo:
+          type: number
+          minimum: 1
+          maximum: 30
+          description: Largo de la zona en metros.
+        ancho:
+          type: number
+          minimum: 1
+          maximum: 50
+          description: Ancho de la zona en metros.
+
+    Borders:
+      type: object
+      description: >-
+        Perfilería de bordes del techo.
+        Cada borde puede ser un tipo de perfil o "none".
+      properties:
+        frente:
+          type: string
+          enum: [gotero_frontal, gotero_frontal_greca, canalon, none]
+          default: gotero_frontal
+          description: Borde inferior del techo (frente).
+        fondo:
+          type: string
+          enum: [gotero_lateral, gotero_frontal, babeta_adosar, babeta_empotrar, cumbrera, none]
+          default: gotero_lateral
+          description: Borde superior del techo (fondo / muro).
+        latIzq:
+          type: string
+          enum: [gotero_lateral, gotero_lateral_camara, babeta_adosar, none]
+          default: gotero_lateral
+          description: Borde lateral izquierdo.
+        latDer:
+          type: string
+          enum: [gotero_lateral, gotero_lateral_camara, babeta_adosar, none]
+          default: gotero_lateral
+          description: Borde lateral derecho.
+
+    OpcionesTecho:
+      type: object
+      properties:
+        inclGotSup:
+          type: boolean
+          default: false
+          description: Incluir gotero superior.
+        inclSell:
+          type: boolean
+          default: true
+          description: Incluir selladores (silicona + cinta butilo).
+
+    ParedInput:
+      type: object
+      required: [familia, espesor]
+      properties:
+        familia:
+          type: string
+          enum: [ISOPANEL_EPS, ISOWALL_PIR]
+          description: Familia de panel para pared.
+        espesor:
+          type: integer
+          description: >-
+            Espesor en mm. ISOPANEL_EPS: 50, 100, 150, 200, 250.
+            ISOWALL_PIR: 50, 80, 100.
+        color:
+          type: string
+          enum: [Blanco, Gris, Rojo]
+          default: Blanco
+        alto:
+          type: number
+          minimum: 1
+          maximum: 14
+          default: 3.5
+          description: Altura de la pared en metros.
+        perimetro:
+          type: number
+          minimum: 4
+          maximum: 500
+          default: 40
+          description: Perímetro total de la pared en metros.
+        numEsqExt:
+          type: integer
+          minimum: 0
+          maximum: 20
+          default: 4
+          description: Número de esquinas exteriores.
+        numEsqInt:
+          type: integer
+          minimum: 0
+          maximum: 20
+          default: 0
+          description: Número de esquinas interiores.
+        aberturas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Abertura'
+          default: []
+          description: Puertas y ventanas a descontar.
+        tipoEst:
+          type: string
+          enum: [metal, hormigon, mixto, madera]
+          default: metal
+        inclSell:
+          type: boolean
+          default: true
+          description: Incluir selladores.
+        incl5852:
+          type: boolean
+          default: false
+          description: Incluir perfil 5852 aluminio.
+
+    Abertura:
+      type: object
+      required: [ancho, alto]
+      properties:
+        tipo:
+          type: string
+          enum: [puerta, ventana]
+          default: puerta
+        ancho:
+          type: number
+          minimum: 0.3
+          maximum: 6
+          description: Ancho de la abertura en metros.
+        alto:
+          type: number
+          minimum: 0.3
+          maximum: 5
+          description: Alto de la abertura en metros.
+        cant:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Cantidad de aberturas iguales.
+
+    CamaraInput:
+      type: object
+      required: [largo_int, ancho_int, alto_int]
+      description: >-
+        Dimensiones internas de la cámara frigorífica.
+        El perímetro y techo se calculan automáticamente.
+      properties:
+        largo_int:
+          type: number
+          minimum: 1
+          maximum: 30
+          description: Largo interno en metros.
+        ancho_int:
+          type: number
+          minimum: 1
+          maximum: 30
+          description: Ancho interno en metros.
+        alto_int:
+          type: number
+          minimum: 1
+          maximum: 14
+          description: Alto interno en metros.
+
+    # ── Response schemas ────────────────────────────────────────────────
+
+    CotizarResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        meta:
+          type: object
+          properties:
+            escenario:
+              type: string
+            escenario_label:
+              type: string
+            lista:
+              type: string
+            lista_label:
+              type: string
+            version:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+        resumen:
+          type: object
+          description: KPIs principales de la cotización.
+          properties:
+            area_m2:
+              type: number
+              description: Área total de paneles en m².
+            cant_paneles:
+              type: integer
+              description: Cantidad de paneles.
+            puntos_fijacion:
+              type: integer
+              description: Puntos de fijación calculados.
+            subtotal_usd:
+              type: number
+              description: Subtotal sin IVA en USD.
+            iva_usd:
+              type: number
+              description: IVA 22% en USD.
+            total_usd:
+              type: number
+              description: Total final con IVA en USD.
+        bom:
+          type: array
+          description: Bill of Materials agrupado por categoría.
+          items:
+            type: object
+            properties:
+              grupo:
+                type: string
+                description: Nombre del grupo (PANELES, FIJACIONES, etc.).
+              subtotal_usd:
+                type: number
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    descripcion:
+                      type: string
+                    sku:
+                      type: string
+                    cant:
+                      type: number
+                    unidad:
+                      type: string
+                    pu_usd:
+                      type: number
+                      description: Precio unitario USD.
+                    total_usd:
+                      type: number
+        descarte:
+          type: object
+          nullable: true
+          description: Información de descarte (sobrante de paneles).
+          properties:
+            ancho_m:
+              type: number
+            area_m2:
+              type: number
+            porcentaje:
+              type: number
+        autoportancia:
+          type: object
+          nullable: true
+          description: Estado de autoportancia del panel de techo.
+          properties:
+            ok:
+              type: boolean
+              description: true si el largo no excede el vano máximo.
+            apoyos:
+              type: integer
+              description: Cantidad de apoyos requeridos.
+            vano_max_m:
+              type: number
+              description: Vano máximo autoportante en metros.
+        advertencias:
+          type: array
+          items:
+            type: string
+          description: Advertencias y notas del cálculo.
+        texto_whatsapp:
+          type: string
+          description: Texto listo para enviar por WhatsApp.
+        texto_resumen:
+          type: string
+          description: >-
+            Párrafo resumen de la cotización, optimizado para que el GPT
+            lo use directamente en la conversación.
+
+    CatalogoResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        lista:
+          type: string
+        lista_label:
+          type: string
+        paneles_techo:
+          type: object
+          description: >-
+            Mapa de familias de paneles de techo con sus espesores,
+            colores y precios por m².
+          additionalProperties:
+            type: object
+            properties:
+              label:
+                type: string
+              subtipo:
+                type: string
+              ancho_util_m:
+                type: number
+              largo_min_m:
+                type: number
+              largo_max_m:
+                type: number
+              sistema_fijacion:
+                type: string
+              colores:
+                type: array
+                items:
+                  type: string
+              espesores:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    precio_m2_usd:
+                      type: number
+                    autoportancia_m:
+                      type: number
+                      nullable: true
+        paneles_pared:
+          type: object
+          description: Mapa de familias de paneles de pared.
+          additionalProperties:
+            type: object
+        bordes_techo:
+          type: object
+          description: Opciones de perfilería de borde por posición.
+        tipos_estructura:
+          type: array
+          items:
+            type: string
+        escenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              descripcion:
+                type: string
+              tiene_techo:
+                type: boolean
+              tiene_pared:
+                type: boolean
+              es_camara:
+                type: boolean
+              familias_validas:
+                type: array
+                items:
+                  type: string
+
+    EscenariosResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        escenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              descripcion:
+                type: string
+              tiene_techo:
+                type: boolean
+              tiene_pared:
+                type: boolean
+              es_camara:
+                type: boolean
+              familias_validas:
+                type: array
+                items:
+                  type: string
+              campos_requeridos:
+                type: array
+                items:
+                  type: string
+                description: Campos obligatorios para este escenario.
+              campos_opcionales:
+                type: array
+                items:
+                  type: string
+                description: Campos opcionales para este escenario.
+
+    ErrorResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          description: Descripción del error.

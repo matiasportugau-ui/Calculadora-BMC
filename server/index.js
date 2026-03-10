@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
+import calcRouter from "./routes/calc.js";
 
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
@@ -215,6 +216,8 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
   res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
 }));
+
+app.use("/calc", calcRouter);
 
 app.use((error, req, res, _next) => {
   const status = Number(error.status || 500);

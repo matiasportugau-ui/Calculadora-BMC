@@ -345,6 +345,20 @@ assert("calcTechoCompleto: allItems is non-empty array", Array.isArray(techoResu
 assert("calcTechoCompleto: totales.subtotalSinIVA > 0", techoResult.totales?.subtotalSinIVA > 0, techoResult.totales?.subtotalSinIVA, ">0");
 assert("calcTechoCompleto: autoportancia.ok = true", techoResult.autoportancia?.ok === true, techoResult.autoportancia?.ok, true);
 
+// --- descarte: zero discard (ancho=5.6 fits exactly 5 × 1.12m panels) ---
+assert("calcTechoCompleto: descarte exists", !!techoResult.paneles?.descarte, !!techoResult.paneles?.descarte, true);
+assert("calcTechoCompleto: descarte.anchoM = 0 when panels fit exactly", techoResult.paneles?.descarte?.anchoM === 0, techoResult.paneles?.descarte?.anchoM, 0);
+assert("calcTechoCompleto: descarte.areaM2 = 0 when panels fit exactly", techoResult.paneles?.descarte?.areaM2 === 0, techoResult.paneles?.descarte?.areaM2, 0);
+assert("calcTechoCompleto: descarte.porcentaje = 0 when panels fit exactly", techoResult.paneles?.descarte?.porcentaje === 0, techoResult.paneles?.descarte?.porcentaje, 0);
+
+// --- descarte: positive discard (ancho=5.0 → 5 panels × 1.12 = 5.60m, descarte = 0.60m) ---
+const techoInputDescarte = { ...techoInput, ancho: 5.0 };
+const techoResultDescarte = calcTechoCompleto(techoInputDescarte);
+assert("calcTechoCompleto(descarte>0): cantPaneles = 5", techoResultDescarte.paneles?.cantPaneles === 5, techoResultDescarte.paneles?.cantPaneles, 5);
+assert("calcTechoCompleto(descarte>0): descarte.anchoM ≈ 0.60", approx(techoResultDescarte.paneles?.descarte?.anchoM, 0.60), techoResultDescarte.paneles?.descarte?.anchoM, 0.60);
+assert("calcTechoCompleto(descarte>0): descarte.areaM2 ≈ 3.00", approx(techoResultDescarte.paneles?.descarte?.areaM2, 3.00), techoResultDescarte.paneles?.descarte?.areaM2, 3.00);
+assert("calcTechoCompleto(descarte>0): descarte.porcentaje ≈ 12.0", approx(techoResultDescarte.paneles?.descarte?.porcentaje, 12.0), techoResultDescarte.paneles?.descarte?.porcentaje, 12.0);
+
 // --- calcParedCompleto ---
 const paredInput = {
   familia: "ISOPANEL_EPS", espesor: 100,

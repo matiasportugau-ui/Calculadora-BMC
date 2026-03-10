@@ -7,7 +7,8 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
-  RotateCcw, Edit3, X, RefreshCw, ClipboardList
+  RotateCcw, Edit3, X, RefreshCw, ClipboardList,
+  Download, Save, Archive
 } from "lucide-react";
 
 import {
@@ -20,12 +21,16 @@ import {
 } from "../data/constants.js";
 import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
-  calcFactorPendiente, mergeZonaResults,
+  calcFactorPendiente, mergeZonaResults, normalizarMedida,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
   fmtPrice, generatePrintHTML, generateInternalHTML, openPrintWindow, buildWhatsAppText,
 } from "../utils/helpers.js";
+import {
+  saveBudget, getAllLogs, deleteBudget, clearAllLogs,
+  exportLogsAsJSON, exportSingleBudget,
+} from "../utils/budgetLog.js";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -367,7 +372,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
       <svg viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 380, margin: "0 auto" }}>
         {/* Center panel area */}
         <rect x={innerX} y={oy + edge} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
-        <text x={ox + svgW / 2} y={oy + svgH / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>TECHO</text>
+        <text x={ox + svgW / 2} y={oy + svgH / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
 
         {/* Edge rects */}
         {["fondo", "frente", "latIzq", "latDer"].map(side => {
@@ -377,7 +382,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
           const isOpen = openSide === side;
           const isDisabled = disabledSides.includes(side);
           const lp = labelPos[side];
-          const abbr = getLabel(side);
+          const abbr = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side);
           const isVert = side === "latIzq" || side === "latDer";
           const rx = isVert ? 4 : 6;
           return (
@@ -413,8 +418,9 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
         const opts = getOpts(openSide);
         const pos = popoverPos[openSide];
         return (
-          <div style={{ position: "absolute", ...pos, zIndex: 30, background: C.surface, borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.15)", overflow: "hidden", minWidth: 160, animation: "bmc-fade 100ms ease-in-out" }}>
-            <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt }}>{SIDE_LABELS[openSide]}</div>
+          <div style={{ position: "absolute", ...pos, zIndex: 30, background: C.surface, borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", minWidth: 160, maxHeight: 200, display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out" }}>
+            <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt, borderRadius: "10px 10px 0 0", flexShrink: 0 }}>{SIDE_LABELS[openSide]}</div>
+            <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
             {opts.map(opt => {
               const isSel = borders[openSide] === opt.id;
               return (
@@ -425,6 +431,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
                 </div>
               );
             })}
+            </div>
           </div>
         );
       })()}
@@ -441,6 +448,7 @@ export default function PanelinCalculadoraV3() {
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
+  const [techoAnchoModo, setTechoAnchoModo] = useState("metros"); // "metros" | "paneles"
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
   const [overrides, setOverrides] = useState({});
@@ -501,10 +509,58 @@ export default function PanelinCalculadoraV3() {
   // ── Combined scenario flag ──
   const isCombined = scenarioDef?.hasTecho && scenarioDef?.hasPared;
 
+  // ── Helpers: Ancho techo en metros ↔ paneles ──
+  const normalizeTechoAnchoToPaneles = useCallback((anchoM, panelData, tipoAguas) => {
+    if (!panelData) return anchoM;
+    const is2A = tipoAguas === "dos_aguas";
+    const perSlope = is2A ? (anchoM / 2) : anchoM;
+    const { cantPaneles } = normalizarMedida("metros", perSlope, panelData);
+    const anchoPerSlope = cantPaneles * panelData.au;
+    const anchoTotal = is2A ? (anchoPerSlope * 2) : anchoPerSlope;
+    return +anchoTotal.toFixed(2);
+  }, []);
+
+  const techoPanelesDesdeAnchoM = useCallback((anchoM, panelData, tipoAguas) => {
+    if (!panelData) return 0;
+    const is2A = tipoAguas === "dos_aguas";
+    const perSlope = is2A ? (anchoM / 2) : anchoM;
+    return normalizarMedida("metros", perSlope, panelData).cantPaneles;
+  }, []);
+
+  const techoAnchoMDesdePaneles = useCallback((cantPaneles, panelData, tipoAguas) => {
+    if (!panelData) return 0;
+    const is2A = tipoAguas === "dos_aguas";
+    const { ancho } = normalizarMedida("paneles", cantPaneles, panelData);
+    const anchoTotal = is2A ? (ancho * 2) : ancho;
+    return +anchoTotal.toFixed(2);
+  }, []);
+
   // ── Zonas helpers ──
-  const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, { largo: 6.0, ancho: 5.0 }] }));
+  const addZona = () => setTecho(t => {
+    const defaultLargo = 6.0;
+    const defaultAnchoM = 5.0;
+    const wantPaneles = techoAnchoModo === "paneles" && techoPanelData;
+    const ancho = wantPaneles
+      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, t.tipoAguas)
+      : defaultAnchoM;
+    return { ...t, zonas: [...t.zonas, { largo: defaultLargo, ancho }] };
+  });
   const removeZona = (idx) => setTecho(t => ({ ...t, zonas: t.zonas.length > 1 ? t.zonas.filter((_, i) => i !== idx) : t.zonas }));
   const updateZona = (idx, key, val) => setTecho(t => ({ ...t, zonas: t.zonas.map((z, i) => i === idx ? { ...z, [key]: val } : z) }));
+
+  // Mantener el ancho “alineado” a paneles cuando el modo está activo
+  useEffect(() => {
+    if (techoAnchoModo !== "paneles") return;
+    if (!techoPanelData) return;
+    setTecho(prev => {
+      const nextZonas = prev.zonas.map(z => {
+        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas);
+        return nextAncho === z.ancho ? z : { ...z, ancho: nextAncho };
+      });
+      const changed = nextZonas.some((z, i) => z !== prev.zonas[i]);
+      return changed ? { ...prev, zonas: nextZonas } : prev;
+    });
+  }, [techoAnchoModo, techoPanelData, techo.tipoAguas, normalizeTechoAnchoToPaneles]);
 
   // ── Totals from all zones (for display and calculations) ──
   const zonasTotales = useMemo(() => {
@@ -614,7 +670,7 @@ export default function PanelinCalculadoraV3() {
   }, [groups]);
 
   // ── Helpers ──
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
+  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
 
   // Build panel info for output (supports combined scenarios)
   const panelInfo = useMemo(() => {
@@ -730,6 +786,7 @@ export default function PanelinCalculadoraV3() {
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
     setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
+    setTechoAnchoModo("metros");
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
     setExcludedItems({});
@@ -796,6 +853,15 @@ export default function PanelinCalculadoraV3() {
     setPared(pd2 => ({ ...pd2, familia: fam, espesor: firstEsp }));
   };
 
+  // ── Budget log state ──
+  const [showLogPanel, setShowLogPanel] = useState(false);
+  const [logEntries, setLogEntries] = useState(() => getAllLogs());
+  const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+  const autoSaveTimer = useRef(null);
+  const lastSavedHash = useRef("");
+
+  const scenarioLabels = useRef({ solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo+Fachada", camara_frig: "Cámara Frig." });
+
   // ── Section style ──
   const sectionS = { background: C.surface, borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: SHC };
   const labelS = { fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" };
@@ -836,6 +902,87 @@ export default function PanelinCalculadoraV3() {
     return total;
   }, [results]);
 
+  // ── Auto-save: debounced, only when there are valid groups ──
+  useEffect(() => {
+    if (!groups.length || !grandTotal.totalFinal) return;
+    const productoStr = panelInfo.espesor
+      ? `${panelInfo.label} ${panelInfo.espesor}mm`
+      : panelInfo.label;
+    const hash = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
+    if (hash === lastSavedHash.current) return;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      const snapshot = { scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas };
+      const entry = saveBudget({
+        cliente: proyecto.nombre,
+        producto: productoStr,
+        escenario: scenarioLabels.current[scenario] || scenario,
+        listaPrecios,
+        total: grandTotal.totalFinal,
+        groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
+        snapshot,
+      });
+      setCurrentBudgetCode(entry.id);
+      setLogEntries(getAllLogs());
+      lastSavedHash.current = hash;
+    }, 2000);
+
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas]);
+
+  // ── Manual save ──
+  const handleManualSave = useCallback(() => {
+    if (!groups.length) return;
+    const productoStr = panelInfo.espesor ? `${panelInfo.label} ${panelInfo.espesor}mm` : panelInfo.label;
+    const snapshot = { scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas };
+    const entry = saveBudget({
+      cliente: proyecto.nombre,
+      producto: productoStr,
+      escenario: scenarioLabels.current[scenario] || scenario,
+      listaPrecios,
+      total: grandTotal.totalFinal,
+      groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
+      snapshot,
+    });
+    setCurrentBudgetCode(entry.id);
+    setLogEntries(getAllLogs());
+    lastSavedHash.current = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
+    showToast(`Guardado ${entry.id}`);
+  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, showToast]);
+
+  // ── Restore a saved budget ──
+  const handleRestoreBudget = useCallback((entry) => {
+    if (!entry.snapshot) return;
+    const s = entry.snapshot;
+    setScenario(s.scenario || "solo_techo");
+    setLP(s.listaPrecios || "web");
+    if (s.proyecto) setProyecto(s.proyecto);
+    if (s.techo) setTecho(s.techo);
+    if (s.pared) setPared(s.pared);
+    if (s.camara) setCamara(s.camara);
+    setFlete(s.flete ?? 280);
+    setOverrides(s.overrides || {});
+    setExcludedItems(s.excludedItems || {});
+    if (s.categoriasActivas) setCategoriasActivas(s.categoriasActivas);
+    setCurrentBudgetCode(entry.id);
+    setShowLogPanel(false);
+    showToast(`Restaurado ${entry.id}`);
+  }, [showToast]);
+
+  // ── Delete log entry ──
+  const handleDeleteLog = useCallback((id) => {
+    deleteBudget(id);
+    setLogEntries(getAllLogs());
+  }, []);
+
+  // ── Clear all logs ──
+  const handleClearLogs = useCallback(() => {
+    clearAllLogs();
+    setLogEntries([]);
+    setCurrentBudgetCode(null);
+  }, []);
+
   return (
     <div style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
       {/* HEADER */}
@@ -843,8 +990,20 @@ export default function PanelinCalculadoraV3() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.0</div>
+          {currentBudgetCode && (
+            <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
+          )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => setShowLogPanel(true)} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+            <Archive size={14} />Presupuestos
+            {logEntries.length > 0 && (
+              <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length}</span>
+            )}
+          </button>
+          {groups.length > 0 && (
+            <button onClick={handleManualSave} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Save size={14} />Guardar</button>
+          )}
           <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
           <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
         </div>
@@ -965,13 +1124,63 @@ export default function PanelinCalculadoraV3() {
                 }
               </div>
             </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: C.ts, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                COTIZAR ANCHO EN{" "}
+                {techoPanelData?.au && (
+                  <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0 }}>
+                    · AU {techoPanelData.au}m{is2A ? " · paneles por faldón" : ""}
+                  </span>
+                )}
+              </div>
+              <SegmentedControl
+                value={techoAnchoModo}
+                onChange={(modo) => {
+                  if (modo === "paneles" && !techoPanelData) return;
+                  setTechoAnchoModo(modo);
+                  if (modo === "paneles" && techoPanelData) {
+                    setTecho(prev => ({
+                      ...prev,
+                      zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas) })),
+                    }));
+                  }
+                }}
+                options={[
+                  { id: "metros", label: "Metros" },
+                  { id: "paneles", label: "Paneles" },
+                ]}
+                disabledIds={!techoPanelData ? ["paneles"] : []}
+              />
+            </div>
             {techo.zonas.map((zona, idx) => (
               <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
                 <div style={{ flex: 1 }}>
                   <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.5} unit="m" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <StepperInput label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.ancho} onChange={v => updateZona(idx, "ancho", v)} min={1} max={20} step={0.5} unit="m" />
+                  {techoAnchoModo === "paneles" && techoPanelData ? (
+                    <StepperInput
+                      label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (${is2A ? "paneles/faldón" : "paneles"})`}
+                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, techo.tipoAguas)}
+                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))}
+                      min={1}
+                      max={500}
+                      step={1}
+                      unit={is2A ? "pzas/faldón" : "pzas"}
+                      decimals={0}
+                    />
+                  ) : (
+                    <StepperInput
+                      label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`}
+                      value={zona.ancho}
+                      onChange={v => updateZona(idx, "ancho", v)}
+                      min={1}
+                      max={20}
+                      step={0.5}
+                      unit="m"
+                    />
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: C.ts, minWidth: 50, textAlign: "right", paddingBottom: 8 }}>
                   {(zona.largo * zona.ancho).toFixed(1)}m²
@@ -1180,6 +1389,9 @@ export default function PanelinCalculadoraV3() {
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
             {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
           </div>}
+          {results && !results.error && groups.length === 0 && (
+            <AlertBanner type="warning" message="Todas las categorías están desactivadas. Activá al menos una para ver el presupuesto." />
+          )}
 
           {/* Excluded items panel */}
           {Object.keys(excludedItems).length > 0 && (
@@ -1275,6 +1487,69 @@ export default function PanelinCalculadoraV3() {
           onPrint={handlePrint}
           onWhatsApp={handleCopyWA}
         />
+      )}
+
+      {/* ── Budget Log Panel (slide-over drawer) ── */}
+      {showLogPanel && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", justifyContent: "flex-end" }}>
+          <div onClick={() => setShowLogPanel(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div style={{ position: "relative", width: "100%", maxWidth: 480, background: C.bg, boxShadow: "-4px 0 30px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", animation: "bmc-fade 150ms ease-in-out", overflowY: "auto" }}>
+            {/* Drawer header */}
+            <div style={{ padding: "20px 24px", background: C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>Presupuestos guardados</div>
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{logEntries.length} registros</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {logEntries.length > 0 && (
+                  <button onClick={() => exportLogsAsJSON()} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Download size={12} />JSON</button>
+                )}
+                {logEntries.length > 0 && (
+                  <button onClick={handleClearLogs} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,100,100,0.5)", background: "transparent", color: "#ffaaaa", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={12} />Borrar todo</button>
+                )}
+                <button onClick={() => setShowLogPanel(false)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 4 }}><X size={20} /></button>
+              </div>
+            </div>
+
+            {/* Log entries list */}
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              {logEntries.length === 0 && (
+                <div style={{ textAlign: "center", padding: 40, color: C.ts }}>
+                  <Archive size={40} color={C.border} style={{ marginBottom: 12 }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginBottom: 4 }}>Sin presupuestos guardados</div>
+                  <div style={{ fontSize: 12 }}>Se guardan automáticamente al calcular</div>
+                </div>
+              )}
+              {logEntries.map((entry) => (
+                <div key={entry.id} style={{ background: C.surface, borderRadius: 12, padding: 16, marginBottom: 10, boxShadow: SHC, borderLeft: `4px solid ${entry.id === currentBudgetCode ? C.primary : C.border}` }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: C.brand, ...TN, marginBottom: 2 }}>{entry.id}</div>
+                      <div style={{ fontSize: 11, color: C.ts }}>{entry.fecha}</div>
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: C.tp, ...TN }}>
+                      ${fmtPrice(entry.total)}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                    {entry.cliente && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.primarySoft, color: C.primary, fontWeight: 500 }}>{entry.cliente}</span>}
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.brandLight, color: C.brand, fontWeight: 500 }}>{entry.escenario}</span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.surfaceAlt, color: C.ts }}>{entry.producto}</span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.surfaceAlt, color: C.tt }}>{entry.listaPrecios === "venta" ? "BMC" : "Web"}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: C.tt, marginBottom: 10, fontFamily: "monospace", wordBreak: "break-all" }}>{entry.nombre}</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {entry.snapshot && (
+                      <button onClick={() => handleRestoreBudget(entry)} style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><RotateCcw size={12} />Restaurar</button>
+                    )}
+                    <button onClick={() => exportSingleBudget(entry)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Download size={12} /></button>
+                    <button onClick={() => handleDeleteLog(entry.id)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.dangerSoft}`, background: C.surface, color: C.danger, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
