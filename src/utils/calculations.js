@@ -8,7 +8,29 @@ import {
   PERFIL_PARED,
 } from "../data/constants.js";
 
+// ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
+
+export function calcFactorPendiente(pendienteGrados) {
+  if (!pendienteGrados || pendienteGrados === 0) return 1;
+  const rad = pendienteGrados * Math.PI / 180;
+  return +(1 / Math.cos(rad)).toFixed(4);
+}
+
+export function calcLargoReal(largoProyectado, pendienteGrados) {
+  return +(largoProyectado * calcFactorPendiente(pendienteGrados)).toFixed(3);
+}
+
 // ── §1 ENGINE TECHO ──────────────────────────────────────────────────────────
+
+export function normalizarMedida(modo, valor, panel) {
+  if (modo === "paneles") {
+    const cantPaneles = Math.max(1, Math.round(valor));
+    const ancho = +(cantPaneles * panel.au).toFixed(2);
+    return { cantPaneles, ancho };
+  }
+  const cantPaneles = Math.ceil(valor / panel.au);
+  return { cantPaneles, ancho: valor };
+}
 
 export function resolveSKU_techo(tipo, familiaP, espesor) {
   const byTipo = PERFIL_TECHO[tipo];
@@ -28,7 +50,13 @@ export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const areaTotal = +(cantPaneles * largo * panel.au).toFixed(2);
   const precioM2 = p(espData);
   const costoPaneles = +(precioM2 * areaTotal).toFixed(2);
-  return { cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2 };
+  const descarteAncho = +(anchoTotal - ancho).toFixed(2);
+  const descarteArea = +(descarteAncho * largo).toFixed(2);
+  const descartePct = ancho > 0 ? +((descarteAncho / ancho) * 100).toFixed(1) : 0;
+  return {
+    cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2,
+    descarte: { anchoM: descarteAncho, areaM2: descarteArea, porcentaje: descartePct }
+  };
 }
 
 export function calcAutoportancia(panel, espesor, largo) {
@@ -96,10 +124,32 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     totalML += ml;
     items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2) });
   };
-  if (borders.frente && borders.frente !== "none") addPerfil("Frente: " + borders.frente, borders.frente, anchoTotal);
-  if (borders.fondo && borders.fondo !== "none") addPerfil("Fondo: " + borders.fondo, borders.fondo, anchoTotal);
+
+  // Canalón en frente: agregar canalón + soporte automáticamente
+  if (borders.frente === "canalon") {
+    const canData = resolveSKU_techo("canalon", familiaP, espesor);
+    if (canData) {
+      const precioCan = p(canData);
+      const pzasCan = Math.ceil(anchoTotal / canData.largo);
+      totalML += pzasCan * canData.largo;
+      items.push({ label: "Frente Inf: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
+    }
+    // Soporte canalón: (cantPaneles + 1) * 0.30 / largo_barra
+    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
+    if (sopData) {
+      const mlSoportes = (cantP + 1) * 0.30;
+      const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
+      const precioSop = p(sopData);
+      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
+    }
+  } else if (borders.frente && borders.frente !== "none") {
+    addPerfil("Frente Inf: " + borders.frente, borders.frente, anchoTotal);
+  }
+
+  if (borders.fondo && borders.fondo !== "none") addPerfil("Frente Sup: " + borders.fondo, borders.fondo, anchoTotal);
   if (borders.latIzq && borders.latIzq !== "none") addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, largo);
   if (borders.latDer && borders.latDer !== "none") addPerfil("Lat.Der: " + borders.latDer, borders.latDer, largo);
+
   if (opciones && opciones.inclGotSup) {
     const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
     if (gs) {
@@ -109,24 +159,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
     }
   }
-  // §E CORREGIDO: Canalón usa precios del PERFIL_TECHO + soporte corregido
-  if (opciones && opciones.inclCanalon) {
-    const canData = resolveSKU_techo("canalon", familiaP, espesor);
-    if (canData) {
-      const precioCan = p(canData);
-      const pzasCan = Math.ceil(anchoTotal / canData.largo);
-      totalML += pzasCan * canData.largo;
-      items.push({ label: "Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
-    }
-    // §E SOPORTE CANALÓN CORREGIDO: barras de 3m, 1 soporte por enganche
-    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
-    if (sopData) {
-      const mlSoportes = (cantP + 1) * 0.30;
-      const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
-      const precioSop = p(sopData);
-      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
-    }
-  }
+
   if (totalML > 0) {
     const fijPerf = Math.ceil(totalML / 0.30);
     const paquetesT1 = Math.ceil(fijPerf / 100);
@@ -158,38 +191,125 @@ export function calcTotalesSinIVA(allItems) {
 }
 
 export function calcTechoCompleto(inputs) {
-  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, borders, opciones, color } = inputs;
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, borders, opciones, color, pendiente = 0 } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
   if (!espData) return { error: `Espesor ${espesor}mm no disponible` };
   const warnings = [];
+
+  const factorPend = calcFactorPendiente(pendiente);
+  const largoReal = +(largo * factorPend).toFixed(3);
+
   if (color) {
     if (!panel.col.includes(color)) warnings.push(`Color "${color}" no disponible para ${familia}`);
     if (panel.colMax && panel.colMax[color] && espesor > panel.colMax[color]) warnings.push(`Color ${color} solo hasta ${panel.colMax[color]}mm`);
   }
-  const paneles = calcPanelesTecho(panel, espesor, largo, ancho);
+  if (largoReal > panel.lmax) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) excede máximo fabricable ${panel.lmax}m`);
+  if (largoReal < panel.lmin) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) < mínimo ${panel.lmin}m`);
+
+  const paneles = calcPanelesTecho(panel, espesor, largoReal, ancho);
   if (!paneles) return { error: "Error calculando paneles" };
   if (color && panel.colMinArea && panel.colMinArea[color] && paneles.areaTotal < panel.colMinArea[color]) {
     warnings.push(`Color ${color} requiere mín. ${panel.colMinArea[color]} m² (cotizado: ${paneles.areaTotal.toFixed(1)} m²)`);
   }
   const autoportancia = calcAutoportancia(panel, espesor, largo);
   if (!autoportancia.ok) warnings.push(`Largo ${largo}m excede autoportancia máx ${autoportancia.maxSpan}m. Requiere ${autoportancia.apoyos} apoyos.`);
-  if (!autoportancia.largoMinOK) warnings.push(`Largo ${largo}m < mínimo ${panel.lmin}m`);
-  if (!autoportancia.largoMaxOK) warnings.push(`Largo ${largo}m > máximo fabricable ${panel.lmax}m`);
   let fijaciones;
   if (panel.sist === "varilla_tuerca") {
-    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largo, tipoEst || "metal", ptsHorm || 0);
+    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largoReal, tipoEst || "metal", ptsHorm || 0);
   } else {
-    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largo);
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
   }
-  const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largo, paneles.anchoTotal, panel.fam, espesor, opciones || {});
+  const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largoReal, paneles.anchoTotal, panel.fam, espesor, opciones || {});
   let selladores = { items: [], total: 0 };
   if (!opciones || opciones.inclSell !== false) selladores = calcSelladoresTecho(paneles.cantPaneles);
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
   const allItems = [panelItem, ...fijaciones.items, ...perfileria.items, ...selladores.items];
   const totales = calcTotalesSinIVA(allItems);
-  return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems };
+
+  const pendienteInfo = pendiente > 0 ? {
+    pendienteGrados: pendiente,
+    factorPendiente: factorPend,
+    largoProyectado: largo,
+    largoReal,
+    incrementoPct: +((factorPend - 1) * 100).toFixed(1),
+  } : null;
+
+  return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems, pendienteInfo };
+}
+
+// ── §1b MULTI-ZONE MERGE ──────────────────────────────────────────────────────
+
+export function mergeZonaResults(zonaResults) {
+  if (!zonaResults.length) return null;
+  if (zonaResults.length === 1) return zonaResults[0];
+
+  const combined = JSON.parse(JSON.stringify(zonaResults[0]));
+
+  for (let i = 1; i < zonaResults.length; i++) {
+    const r = zonaResults[i];
+
+    if (r.paneles) {
+      combined.paneles.cantPaneles += r.paneles.cantPaneles;
+      combined.paneles.areaTotal = +(combined.paneles.areaTotal + r.paneles.areaTotal).toFixed(2);
+      combined.paneles.costoPaneles = +(combined.paneles.costoPaneles + r.paneles.costoPaneles).toFixed(2);
+      combined.paneles.descarte.areaM2 = +(combined.paneles.descarte.areaM2 + r.paneles.descarte.areaM2).toFixed(2);
+    }
+
+    if (r.fijaciones) {
+      r.fijaciones.items.forEach((item, idx) => {
+        if (combined.fijaciones.items[idx]) {
+          combined.fijaciones.items[idx].cant += item.cant;
+          combined.fijaciones.items[idx].total = +(combined.fijaciones.items[idx].total + item.total).toFixed(2);
+        } else {
+          combined.fijaciones.items.push({ ...item });
+        }
+      });
+      combined.fijaciones.total = +(combined.fijaciones.total + r.fijaciones.total).toFixed(2);
+      if (r.fijaciones.puntosFijacion) {
+        combined.fijaciones.puntosFijacion = (combined.fijaciones.puntosFijacion || 0) + r.fijaciones.puntosFijacion;
+      }
+    }
+
+    if (r.perfileria) {
+      r.perfileria.items.forEach(item => {
+        const existing = combined.perfileria.items.find(ci => ci.sku === item.sku);
+        if (existing) {
+          existing.cant += item.cant;
+          existing.total = +(existing.total + item.total).toFixed(2);
+        } else {
+          combined.perfileria.items.push({ ...item });
+        }
+      });
+      combined.perfileria.total = +(combined.perfileria.total + r.perfileria.total).toFixed(2);
+      combined.perfileria.totalML = +((combined.perfileria.totalML || 0) + (r.perfileria.totalML || 0)).toFixed(2);
+    }
+
+    if (r.selladores) {
+      r.selladores.items.forEach((item, idx) => {
+        if (combined.selladores.items[idx]) {
+          combined.selladores.items[idx].cant += item.cant;
+          combined.selladores.items[idx].total = +(combined.selladores.items[idx].total + item.total).toFixed(2);
+        } else {
+          combined.selladores.items.push({ ...item });
+        }
+      });
+      combined.selladores.total = +(combined.selladores.total + r.selladores.total).toFixed(2);
+    }
+
+    combined.warnings = [...(combined.warnings || []), ...(r.warnings || [])];
+  }
+
+  const panelItem = {
+    ...combined.allItems[0],
+    cant: combined.paneles.areaTotal,
+    total: combined.paneles.costoPaneles,
+  };
+  combined.allItems = [panelItem, ...combined.fijaciones.items, ...combined.perfileria.items, ...combined.selladores.items];
+  combined.totales = calcTotalesSinIVA(combined.allItems);
+
+  return combined;
 }
 
 // ── §2 ENGINE PARED ──────────────────────────────────────────────────────────

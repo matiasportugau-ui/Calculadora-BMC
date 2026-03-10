@@ -313,8 +313,8 @@ export const VIS = {
 export const OBRA_PRESETS = ["Vivienda","Barbacoa","Depósito comercial","Galpón industrial","Local comercial","Oficinas","Ampliación / Reforma","Nave logística","Taller","Cerramiento / Anexo","Tinglado / Cobertizo","Cámara frigorífica"];
 
 export const BORDER_OPTIONS = {
-  frente: [{ id: "gotero_frontal", label: "Gotero simple" },{ id: "gotero_frontal_greca", label: "Gotero greca" },{ id: "none", label: "Sin perfil" }],
-  fondo: [{ id: "gotero_frontal", label: "Gotero frontal" },{ id: "babeta_adosar", label: "Muro (adosar)" },{ id: "babeta_empotrar", label: "Muro (empotrar)" },{ id: "cumbrera", label: "Cumbrera" },{ id: "none", label: "Sin perfil" }],
+  frente: [{ id: "gotero_frontal", label: "Gotero simple" },{ id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF"] },{ id: "canalon", label: "Canalón" },{ id: "none", label: "Sin perfil" }],
+  fondo: [{ id: "gotero_lateral", label: "Gotero lateral" },{ id: "gotero_frontal", label: "Gotero frontal" },{ id: "babeta_adosar", label: "Muro (adosar)" },{ id: "babeta_empotrar", label: "Muro (empotrar)" },{ id: "cumbrera", label: "Cumbrera" },{ id: "none", label: "Sin perfil" }],
   latIzq: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
   latDer: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
 };
@@ -323,7 +323,39 @@ export const BORDER_OPTIONS = {
 // Tab 0=Proyecto, 1=Panel, 2=Bordes, 3=Opciones
 export const STEP_SECTIONS = {
   0: ["lista", "escenario", "proyecto"],
-  1: ["panel", "dimensiones"],
+  1: ["panel", "categorias", "dimensiones"],
   2: ["bordes", "estructura"],
   3: ["opciones", "aberturas", "flete"],
 };
+
+// ── §5 CATEGORIAS BOM ─────────────────────────────────────────────────────────
+export const CATEGORIAS_BOM = {
+  PANELES: { label: "Paneles", default: true },
+  FIJACIONES: { label: "Fijaciones", default: true },
+  PERFILERIA: { label: "Perfilería", default: true },
+  SELLADORES: { label: "Selladores", default: true },
+  SERVICIOS: { label: "Servicios", default: true },
+};
+
+export const CATEGORIA_TO_GROUPS = {
+  PANELES: ["PANELES"],
+  FIJACIONES: ["FIJACIONES"],
+  PERFILERIA: ["PERFILERÍA TECHO", "PERFILES U", "ESQUINEROS", "PERFILERÍA PARED"],
+  SELLADORES: ["SELLADORES"],
+  SERVICIOS: ["SERVICIOS"],
+};
+
+// ── §6 PENDIENTE DE TECHO ─────────────────────────────────────────────────────
+export const PENDIENTES_PRESET = [
+  { valor: 3, label: "3°", descripcion: "Mínimo escurrimiento" },
+  { valor: 10, label: "10°", descripcion: "Tinglados" },
+  { valor: 15, label: "15°", descripcion: "Estándar vivienda" },
+  { valor: 25, label: "25°", descripcion: "Pronunciado" },
+];
+
+// ── §7 TIPO DE AGUAS ─────────────────────────────────────────────────────────
+export const TIPO_AGUAS = [
+  { id: "una_agua", label: "1 Agua", description: "Pendiente única", enabled: true },
+  { id: "dos_aguas", label: "2 Aguas", description: "Cumbrera central", enabled: true },
+  { id: "cuatro_aguas", label: "4 Aguas", description: "En proceso", enabled: false },
+];
