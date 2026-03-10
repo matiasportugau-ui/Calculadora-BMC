@@ -16,9 +16,11 @@ import {
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
+  PENDIENTES_PRESET,
 } from "../data/constants.js";
 import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
+  calcFactorPendiente,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -282,7 +284,7 @@ export default function PanelinCalculadoraV3() {
   const [listaPrecios, setLP] = useState("web");
   const [scenario, setScenario] = useState("solo_techo");
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
@@ -600,7 +602,7 @@ export default function PanelinCalculadoraV3() {
     setScenario("solo_techo");
     setLP("web");
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+    setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
@@ -812,11 +814,17 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Dimensiones Techo — Zonas múltiples */}
-          {vis.largoAncho && <div ref={dimensionesRef} style={sectionS}>
+          {vis.largoAncho && (() => {
+            const fp = calcFactorPendiente(techo.pendiente);
+            const areaReal = techo.pendiente > 0 ? +(zonasTotales.area * fp).toFixed(1) : null;
+            return <div ref={dimensionesRef} style={sectionS}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={labelS}>DIMENSIONES TECHO</div>
-              <div style={{ fontSize: 12, color: C.ts, fontWeight: 500 }}>
-                {zonasTotales.area}m² total
+              <div style={{ fontSize: 12, color: C.ts, fontWeight: 500, ...TN }}>
+                {areaReal
+                  ? <>{zonasTotales.area}m² proy. <span style={{ color: C.primary, fontWeight: 600 }}>→ {areaReal}m² real</span></>
+                  : <>{zonasTotales.area}m² total</>
+                }
               </div>
             </div>
             {techo.zonas.map((zona, idx) => (
@@ -840,15 +848,55 @@ export default function PanelinCalculadoraV3() {
             <button onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Plus size={14} /> Agregar zona
             </button>
-            {techoPanelData && techo.zonas.some(z => z.largo < techoPanelData.lmin || z.largo > techoPanelData.lmax) && (
+
+            {/* Pendiente de techo */}
+            <div style={{ marginTop: 16, padding: 12, background: C.surfaceAlt, borderRadius: 10 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 16 }}>
+                <StepperInput label="Pendiente" value={techo.pendiente} onChange={v => uT("pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
+                <div style={{ flex: 1, paddingBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>PRESETS</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {PENDIENTES_PRESET.map(pr => (
+                      <button key={pr.valor} onClick={() => uT("pendiente", pr.valor)} title={pr.descripcion} style={{
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1.5px solid ${techo.pendiente === pr.valor ? C.primary : C.border}`,
+                        background: techo.pendiente === pr.valor ? C.primarySoft : C.surface,
+                        fontSize: 11, fontWeight: techo.pendiente === pr.valor ? 600 : 400,
+                        cursor: "pointer", color: techo.pendiente === pr.valor ? C.primary : C.ts,
+                        transition: TR,
+                      }}>
+                        {pr.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {techo.pendiente > 0 && (
+                <div style={{ marginTop: 8, fontSize: 11, color: C.ts, display: "flex", gap: 16, flexWrap: "wrap", ...TN }}>
+                  <span>Factor: <b style={{ color: C.tp }}>×{fp.toFixed(4)}</b></span>
+                  <span>Incremento: <b style={{ color: C.primary }}>+{((fp - 1) * 100).toFixed(1)}%</b></span>
+                  {techo.zonas[0] && (
+                    <span>Largo real: <b style={{ color: C.tp }}>{(techo.zonas[0].largo * fp).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {techoPanelData && techo.zonas.some(z => {
+              const lr = +(z.largo * fp).toFixed(3);
+              return lr < techoPanelData.lmin || lr > techoPanelData.lmax;
+            }) && (
               <div style={{ marginTop: 8 }}>
                 <AlertBanner
                   type="warning"
-                  message={`Algún largo está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`}
+                  message={techo.pendiente > 0
+                    ? `Algún largo real (con pendiente ${techo.pendiente}°) está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`
+                    : `Algún largo está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`}
                 />
               </div>
             )}
-          </div>}
+          </div>;
+          })()}
 
           {/* Dimensiones Pared */}
           {vis.altoPerim && <div ref={!vis.largoAncho ? dimensionesRef : null} style={sectionS}>

@@ -8,6 +8,18 @@ import {
   PERFIL_PARED,
 } from "../data/constants.js";
 
+// ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
+
+export function calcFactorPendiente(pendienteGrados) {
+  if (!pendienteGrados || pendienteGrados === 0) return 1;
+  const rad = pendienteGrados * Math.PI / 180;
+  return +(1 / Math.cos(rad)).toFixed(4);
+}
+
+export function calcLargoReal(largoProyectado, pendienteGrados) {
+  return +(largoProyectado * calcFactorPendiente(pendienteGrados)).toFixed(3);
+}
+
 // ── §1 ENGINE TECHO ──────────────────────────────────────────────────────────
 
 export function normalizarMedida(modo, valor, panel) {
@@ -179,38 +191,52 @@ export function calcTotalesSinIVA(allItems) {
 }
 
 export function calcTechoCompleto(inputs) {
-  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, borders, opciones, color } = inputs;
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, borders, opciones, color, pendiente = 0 } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
   if (!espData) return { error: `Espesor ${espesor}mm no disponible` };
   const warnings = [];
+
+  const factorPend = calcFactorPendiente(pendiente);
+  const largoReal = +(largo * factorPend).toFixed(3);
+
   if (color) {
     if (!panel.col.includes(color)) warnings.push(`Color "${color}" no disponible para ${familia}`);
     if (panel.colMax && panel.colMax[color] && espesor > panel.colMax[color]) warnings.push(`Color ${color} solo hasta ${panel.colMax[color]}mm`);
   }
-  const paneles = calcPanelesTecho(panel, espesor, largo, ancho);
+  if (largoReal > panel.lmax) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) excede máximo fabricable ${panel.lmax}m`);
+  if (largoReal < panel.lmin) warnings.push(`Largo real ${largoReal}m (con pendiente ${pendiente}°) < mínimo ${panel.lmin}m`);
+
+  const paneles = calcPanelesTecho(panel, espesor, largoReal, ancho);
   if (!paneles) return { error: "Error calculando paneles" };
   if (color && panel.colMinArea && panel.colMinArea[color] && paneles.areaTotal < panel.colMinArea[color]) {
     warnings.push(`Color ${color} requiere mín. ${panel.colMinArea[color]} m² (cotizado: ${paneles.areaTotal.toFixed(1)} m²)`);
   }
   const autoportancia = calcAutoportancia(panel, espesor, largo);
   if (!autoportancia.ok) warnings.push(`Largo ${largo}m excede autoportancia máx ${autoportancia.maxSpan}m. Requiere ${autoportancia.apoyos} apoyos.`);
-  if (!autoportancia.largoMinOK) warnings.push(`Largo ${largo}m < mínimo ${panel.lmin}m`);
-  if (!autoportancia.largoMaxOK) warnings.push(`Largo ${largo}m > máximo fabricable ${panel.lmax}m`);
   let fijaciones;
   if (panel.sist === "varilla_tuerca") {
-    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largo, tipoEst || "metal", ptsHorm || 0);
+    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largoReal, tipoEst || "metal", ptsHorm || 0);
   } else {
-    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largo);
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
   }
-  const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largo, paneles.anchoTotal, panel.fam, espesor, opciones || {});
+  const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largoReal, paneles.anchoTotal, panel.fam, espesor, opciones || {});
   let selladores = { items: [], total: 0 };
   if (!opciones || opciones.inclSell !== false) selladores = calcSelladoresTecho(paneles.cantPaneles);
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
   const allItems = [panelItem, ...fijaciones.items, ...perfileria.items, ...selladores.items];
   const totales = calcTotalesSinIVA(allItems);
-  return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems };
+
+  const pendienteInfo = pendiente > 0 ? {
+    pendienteGrados: pendiente,
+    factorPendiente: factorPend,
+    largoProyectado: largo,
+    largoReal,
+    incrementoPct: +((factorPend - 1) * 100).toFixed(1),
+  } : null;
+
+  return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems, pendienteInfo };
 }
 
 // ── §2 ENGINE PARED ──────────────────────────────────────────────────────────

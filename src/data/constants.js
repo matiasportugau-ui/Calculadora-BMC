@@ -344,3 +344,11 @@ export const CATEGORIA_TO_GROUPS = {
   SELLADORES: ["SELLADORES"],
   SERVICIOS: ["SERVICIOS"],
 };
+
+// ── §6 PENDIENTE DE TECHO ─────────────────────────────────────────────────────
+export const PENDIENTES_PRESET = [
+  { valor: 3, label: "3°", descripcion: "Mínimo escurrimiento" },
+  { valor: 10, label: "10°", descripcion: "Tinglados" },
+  { valor: 15, label: "15°", descripcion: "Estándar vivienda" },
+  { valor: 25, label: "25°", descripcion: "Pronunciado" },
+];
