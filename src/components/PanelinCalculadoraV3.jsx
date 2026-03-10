@@ -3,7 +3,8 @@
 // BMC Uruguay · Calculadora de Cotización v3.0
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
@@ -316,11 +317,18 @@ const SIDE_LABELS = { frente: "FRENTE INF", fondo: "FRENTE SUP", latIzq: "LAT IZ
 function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [] }) {
   const [openSide, setOpenSide] = useState(null);
   const containerRef = useRef(null);
+  const svgRef = useRef(null);
+  const popoverRef = useRef(null);
+  const [popoverStyle, setPopoverStyle] = useState(null);
   const panelFam = PANELS_TECHO[panelFamilia]?.fam || "";
 
   useEffect(() => {
     const handler = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) setOpenSide(null);
+      const t = e.target;
+      if (containerRef.current && containerRef.current.contains(t)) return;
+      if (popoverRef.current && popoverRef.current.contains(t)) return;
+      setOpenSide(null);
+      setPopoverStyle(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -336,6 +344,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
 
   const handleEdgeClick = (side) => {
     if (disabledSides.includes(side)) return;
+    setPopoverStyle(null);
     setOpenSide(prev => prev === side ? null : side);
   };
 
@@ -353,12 +362,75 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
     latDer: { x: innerX + innerW, y: oy + edge, w: edge, h: innerH },
   };
 
-  const popoverPos = {
-    fondo:  { top: 0, left: "50%", transform: "translateX(-50%) translateY(-100%)" },
-    frente: { bottom: 0, left: "50%", transform: "translateX(-50%) translateY(100%)" },
-    latIzq: { top: "50%", left: 0, transform: "translateX(-100%) translateY(-50%)" },
-    latDer: { top: "50%", right: 0, transform: "translateX(100%) translateY(-50%)" },
-  };
+  const positionPopover = useCallback((side) => {
+    const svgEl = svgRef.current;
+    const popEl = popoverRef.current;
+    if (!side || !svgEl || !popEl) return;
+
+    const svgRect = svgEl.getBoundingClientRect();
+    const popRect = popEl.getBoundingClientRect();
+    if (popRect.width === 0 || popRect.height === 0) return;
+
+    const vpPad = 10;
+    const gap = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const anchor = (() => {
+      switch (side) {
+        case "fondo":  return { x: svgRect.left + svgRect.width / 2, y: svgRect.top };
+        case "frente": return { x: svgRect.left + svgRect.width / 2, y: svgRect.bottom };
+        case "latIzq": return { x: svgRect.left, y: svgRect.top + svgRect.height / 2 };
+        case "latDer": return { x: svgRect.right, y: svgRect.top + svgRect.height / 2 };
+        default: return null;
+      }
+    })();
+    if (!anchor) return;
+
+    const canTop = anchor.y - gap - popRect.height - vpPad >= 0;
+    const canBottom = anchor.y + gap + popRect.height + vpPad <= vh;
+    const canLeft = anchor.x - gap - popRect.width - vpPad >= 0;
+    const canRight = anchor.x + gap + popRect.width + vpPad <= vw;
+
+    let top = 0;
+    let left = 0;
+
+    if (side === "fondo") {
+      if (canTop || !canBottom) { top = anchor.y - gap - popRect.height; left = anchor.x - popRect.width / 2; }
+      else { top = anchor.y + gap; left = anchor.x - popRect.width / 2; }
+    } else if (side === "frente") {
+      if (canBottom || !canTop) { top = anchor.y + gap; left = anchor.x - popRect.width / 2; }
+      else { top = anchor.y - gap - popRect.height; left = anchor.x - popRect.width / 2; }
+    } else if (side === "latIzq") {
+      if (canLeft || !canRight) { top = anchor.y - popRect.height / 2; left = anchor.x - gap - popRect.width; }
+      else { top = anchor.y - popRect.height / 2; left = anchor.x + gap; }
+    } else if (side === "latDer") {
+      if (canRight || !canLeft) { top = anchor.y - popRect.height / 2; left = anchor.x + gap; }
+      else { top = anchor.y - popRect.height / 2; left = anchor.x - gap - popRect.width; }
+    }
+
+    left = Math.min(Math.max(vpPad, left), vw - popRect.width - vpPad);
+    top = Math.min(Math.max(vpPad, top), vh - popRect.height - vpPad);
+
+    setPopoverStyle({ top, left, opacity: 1 });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!openSide) return;
+    positionPopover(openSide);
+  }, [openSide, positionPopover]);
+
+  useEffect(() => {
+    if (!openSide) return;
+    const recalc = () => positionPopover(openSide);
+    window.addEventListener("resize", recalc);
+    // Capture scroll events from any scroll container (scroll doesn't bubble).
+    window.addEventListener("scroll", recalc, true);
+    return () => {
+      window.removeEventListener("resize", recalc);
+      window.removeEventListener("scroll", recalc, true);
+    };
+  }, [openSide, positionPopover]);
 
   const labelPos = {
     fondo:  { x: ox + svgW / 2, y: oy + edge / 2 + 1, anchor: "middle" },
@@ -369,7 +441,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
 
   return (
     <div ref={containerRef} style={{ position: "relative", fontFamily: FONT }}>
-      <svg viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 380, margin: "0 auto" }}>
+      <svg ref={svgRef} viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 380, margin: "0 auto" }}>
         {/* Center panel area */}
         <rect x={innerX} y={oy + edge} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
         <text x={ox + svgW / 2} y={oy + svgH / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
@@ -385,8 +457,14 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
           const abbr = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side);
           const isVert = side === "latIzq" || side === "latDer";
           const rx = isVert ? 4 : 6;
+          const hitPad = 8;
+          const hx = isVert ? d.x - hitPad : d.x;
+          const hy = isVert ? d.y : d.y - hitPad;
+          const hw = isVert ? d.w + hitPad * 2 : d.w;
+          const hh = isVert ? d.h : d.h + hitPad * 2;
           return (
-            <g key={side} onClick={() => handleEdgeClick(side)} style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
+            <g key={side} role="button" tabIndex={isDisabled ? -1 : 0} aria-label={`${SIDE_LABELS[side] || side}: ${abbr}`} onClick={() => handleEdgeClick(side)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleEdgeClick(side); } }} style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
+              <rect x={hx} y={hy} width={hw} height={hh} fill="transparent" />
               <rect
                 x={d.x} y={d.y} width={d.w} height={d.h} rx={rx}
                 fill={isDisabled ? C.surfaceAlt : active ? C.primarySoft : C.surface}
@@ -414,27 +492,41 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
       </svg>
 
       {/* Popover for the open side */}
-      {openSide && (() => {
+      {openSide && typeof document !== "undefined" && createPortal((() => {
         const opts = getOpts(openSide);
-        const pos = popoverPos[openSide];
+        const baseS = { fontFamily: FONT, background: C.surface, borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", minWidth: 160, maxHeight: 220, display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out" };
         return (
-          <div style={{ position: "absolute", ...pos, zIndex: 30, background: C.surface, borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", minWidth: 160, maxHeight: 200, display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out" }}>
+          <div
+            ref={popoverRef}
+            style={{
+              position: "fixed",
+              zIndex: 9999,
+              top: popoverStyle?.top ?? -9999,
+              left: popoverStyle?.left ?? -9999,
+              opacity: popoverStyle?.opacity ?? 0,
+              transition: "opacity 80ms ease",
+              ...baseS,
+            }}
+          >
             <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt, borderRadius: "10px 10px 0 0", flexShrink: 0 }}>{SIDE_LABELS[openSide]}</div>
             <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
-            {opts.map(opt => {
-              const isSel = borders[openSide] === opt.id;
-              return (
-                <div key={opt.id} onClick={(e) => { e.stopPropagation(); onChange(openSide, opt.id); setOpenSide(null); }}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", cursor: "pointer", fontSize: 13, background: isSel ? C.primarySoft : "transparent", fontWeight: isSel ? 500 : 400, color: C.tp, transition: TR }}>
-                  <span>{opt.label}</span>
-                  {isSel && <Check size={14} color={C.primary} />}
-                </div>
-              );
-            })}
+              {opts.map(opt => {
+                const isSel = borders[openSide] === opt.id;
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={(e) => { e.stopPropagation(); onChange(openSide, opt.id); setPopoverStyle(null); setOpenSide(null); }}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", cursor: "pointer", fontSize: 13, background: isSel ? C.primarySoft : "transparent", fontWeight: isSel ? 500 : 400, color: C.tp, transition: TR }}
+                  >
+                    <span>{opt.label}</span>
+                    {isSel && <Check size={14} color={C.primary} />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
     </div>
   );
 }
