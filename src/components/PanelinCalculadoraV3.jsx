@@ -1180,6 +1180,9 @@ export default function PanelinCalculadoraV3() {
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
             {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
           </div>}
+          {results && !results.error && groups.length === 0 && (
+            <AlertBanner type="warning" message="Todas las categorías están desactivadas. Activá al menos una para ver el presupuesto." />
+          )}
 
           {/* Excluded items panel */}
           {Object.keys(excludedItems).length > 0 && (

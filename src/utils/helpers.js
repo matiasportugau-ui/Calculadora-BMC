@@ -12,8 +12,8 @@ export function applyOverrides(groups, overrides) {
     const ovr = overrides && overrides[lid];
     if (!ovr) return { ...item, isOverridden: false, lineId: lid };
     const patched = { ...item, isOverridden: true, lineId: lid };
-    if (ovr.field === "cant") { patched.cant = ovr.value; patched.total = +(ovr.value * patched.pu).toFixed(2); }
-    else if (ovr.field === "pu") { patched.pu = ovr.value; patched.total = +(patched.cant * ovr.value).toFixed(2); }
+    if (ovr.field === "cant") { patched.cant = ovr.value; patched.total = +((ovr.value || 0) * (patched.pu || 0)).toFixed(2); }
+    else if (ovr.field === "pu") { patched.pu = ovr.value; patched.total = +((patched.cant || 0) * (ovr.value || 0)).toFixed(2); }
     return patched;
   }) }));
 }
@@ -40,11 +40,20 @@ export function bomToGroups(result) {
   const extractSections = (src, suffix = "") => {
     sections.forEach(({ key, title }) => {
       if (src[key] && src[key].items && src[key].items.length > 0) {
-        const existingGroup = groups.find(g => g.title === title + suffix);
+        const groupTitle = title + suffix;
+        const existingGroup = groups.find(g => g.title === groupTitle);
         if (existingGroup) {
-          existingGroup.items.push(...src[key].items);
+          src[key].items.forEach(item => {
+            const match = existingGroup.items.find(ei => ei.sku === item.sku);
+            if (match) {
+              match.cant += item.cant;
+              match.total = +(match.total + item.total).toFixed(2);
+            } else {
+              existingGroup.items.push({ ...item });
+            }
+          });
         } else {
-          groups.push({ title: title + suffix, items: [...src[key].items] });
+          groups.push({ title: groupTitle, items: src[key].items.map(i => ({ ...i })) });
         }
       }
     });
