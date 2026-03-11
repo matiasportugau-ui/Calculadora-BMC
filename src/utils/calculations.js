@@ -123,7 +123,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     const pzas = Math.ceil(dim / resolved.largo);
     const ml = pzas * resolved.largo;
     totalML += ml;
-    items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2) });
+    items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2), largoBarra: resolved.largo });
   };
 
   // Canalón en frente: agregar canalón + soporte automáticamente
@@ -133,7 +133,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       const precioCan = p(canData);
       const pzasCan = Math.ceil(anchoTotal / canData.largo);
       totalML += pzasCan * canData.largo;
-      items.push({ label: "Frente Inf: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
+      items.push({ label: "Frente Inf: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2), largoBarra: canData.largo });
     }
     // Soporte canalón: (cantPaneles + 1) * 0.30 / largo_barra
     const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
@@ -141,7 +141,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       const mlSoportes = (cantP + 1) * 0.30;
       const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
       const precioSop = p(sopData);
-      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
+      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2), largoBarra: sopData.largo });
     }
   } else if (borders.frente && borders.frente !== "none") {
     addPerfil("Frente Inf: " + borders.frente, borders.frente, anchoTotal);
@@ -157,7 +157,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       const precio = p(gs);
       const pzas = Math.ceil(anchoTotal / gs.largo);
       totalML += pzas * gs.largo;
-      items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+      items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), largoBarra: gs.largo });
     }
   }
 
@@ -225,7 +225,7 @@ export function calcTechoCompleto(inputs) {
   const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largoReal, paneles.anchoTotal, panel.fam, espesor, opciones || {});
   let selladores = { items: [], total: 0 };
   if (!opciones || opciones.inclSell !== false) selladores = calcSelladoresTecho(paneles.cantPaneles);
-  const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
+  const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: largoReal };
   const allItems = [panelItem, ...fijaciones.items, ...perfileria.items, ...selladores.items];
   const totales = calcTotalesSinIVA(allItems);
 
@@ -304,6 +304,8 @@ export function mergeZonaResults(zonaResults) {
     ...combined.allItems[0],
     cant: combined.paneles.areaTotal,
     total: combined.paneles.costoPaneles,
+    cantPaneles: combined.paneles.cantPaneles,
+    largoPanel: zonaResults.length === 1 ? zonaResults[0].allItems[0]?.largoPanel : undefined,
   };
   combined.allItems = [panelItem, ...combined.fijaciones.items, ...combined.perfileria.items, ...combined.selladores.items];
   combined.totales = calcTotalesSinIVA(combined.allItems);
@@ -351,8 +353,8 @@ export function calcPerfilesU(panel, espesor, perimetro) {
   const precio = p(perfData);
   const pzas = Math.ceil(perimetro / perfData.largo);
   const items = [];
-  items.push({ label: "Perfil U base " + espesor + "mm", sku: perfData.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
-  items.push({ label: "Perfil U coronación " + espesor + "mm", sku: perfData.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+  items.push({ label: "Perfil U base " + espesor + "mm", sku: perfData.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), largoBarra: perfData.largo });
+  items.push({ label: "Perfil U coronación " + espesor + "mm", sku: perfData.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), largoBarra: perfData.largo });
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
 }
@@ -364,12 +366,12 @@ export function calcEsquineros(alto, numExt, numInt) {
   if (pExt && numExt > 0) {
     const pzas = Math.ceil(alto / pExt.largo) * numExt;
     const precio = p(pExt);
-    items.push({ label: pExt.label, sku: pExt.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+    items.push({ label: pExt.label, sku: pExt.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), largoBarra: pExt.largo });
   }
   if (pInt && numInt > 0) {
     const pzas = Math.ceil(alto / pInt.largo) * numInt;
     const precio = p(pInt);
-    items.push({ label: pInt.label, sku: pInt.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+    items.push({ label: pInt.label, sku: pInt.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), largoBarra: pInt.largo });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
@@ -410,14 +412,14 @@ export function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
   if (cantP > 1) {
     const juntasK2 = (cantP - 1) * Math.ceil(alto / k2Data.largo);
     const puK2 = p(k2Data);
-    items.push({ label: k2Data.label, sku: k2Data.sku, cant: juntasK2, unidad: "unid", pu: puK2, total: +(juntasK2 * puK2).toFixed(2) });
+    items.push({ label: k2Data.label, sku: k2Data.sku, cant: juntasK2, unidad: "unid", pu: puK2, total: +(juntasK2 * puK2).toFixed(2), largoBarra: k2Data.largo });
   }
   // Perfil G2 — tapajunta exterior: 1 por cada junta vertical entre paneles
   const g2Data = resolvePerfilPared("perfil_g2", panel.fam, espesor);
   if (g2Data && cantP > 1) {
     const juntasG2 = (cantP - 1) * Math.ceil(alto / g2Data.largo);
     const puG2 = p(g2Data);
-    items.push({ label: "Perfil G2 tapajunta", sku: g2Data.sku, cant: juntasG2, unidad: "unid", pu: puG2, total: +(juntasG2 * puG2).toFixed(2) });
+    items.push({ label: "Perfil G2 tapajunta", sku: g2Data.sku, cant: juntasG2, unidad: "unid", pu: puG2, total: +(juntasG2 * puG2).toFixed(2), largoBarra: g2Data.largo });
   }
   // Perfil 5852 aluminio — OPCIONAL
   if (opts && opts.incl5852) {
@@ -425,7 +427,7 @@ export function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
     const anchoTotal = cantP * panel.au;
     const cant5852 = Math.ceil(anchoTotal / d5852.largo) * (opts.apoyo5852doble ? 2 : 1);
     const pu5852 = p(d5852);
-    items.push({ label: d5852.label, sku: d5852.sku, cant: cant5852, unidad: "unid", pu: pu5852, total: +(cant5852 * pu5852).toFixed(2) });
+    items.push({ label: d5852.label, sku: d5852.sku, cant: cant5852, unidad: "unid", pu: pu5852, total: +(cant5852 * pu5852).toFixed(2), largoBarra: d5852.largo });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
@@ -475,7 +477,7 @@ export function calcParedCompleto(inputs) {
   const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, { incl5852 });
   let sellador = { items: [], total: 0 };
   if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto);
-  const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
+  const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: alto };
   const allItems = [panelItem, ...perfilesU.items, ...esquineros.items, ...perfilesExtra.items, ...fijaciones.items, ...sellador.items];
   const totales = calcTotalesSinIVA(allItems);
   return { paneles, perfilesU, esquineros, perfilesExtra, fijaciones, sellador, totales, warnings, allItems };

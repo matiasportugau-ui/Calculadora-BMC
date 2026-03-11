@@ -291,7 +291,7 @@ export const PERFIL_PARED = {
 };
 
 export const SERVICIOS = {
-  flete: { label: "Flete Bromyros (zonas aledañas)", venta: 240.00, web: 252.00, costo: 186.03, unidad: "servicio" },
+  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 186.03, unidad: "servicio" },
 };
 
 // ── §4 UI CONFIGURATION ──────────────────────────────────────────────────────
@@ -340,7 +340,7 @@ export const CATEGORIAS_BOM = {
 export const CATEGORIA_TO_GROUPS = {
   PANELES: ["PANELES"],
   FIJACIONES: ["FIJACIONES"],
-  PERFILERIA: ["PERFILERÍA TECHO", "PERFILES U", "ESQUINEROS", "PERFILERÍA PARED"],
+  PERFILERIA: ["PERFILERÍA"],
   SELLADORES: ["SELLADORES"],
   SERVICIOS: ["SERVICIOS"],
 };
