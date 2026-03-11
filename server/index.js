@@ -221,6 +221,10 @@ app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
 
 app.use("/calc", calcRouter);
 
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: "Not found", path: req.path });
+});
+
 app.use((error, req, res, _next) => {
   const status = Number(error.status || 500);
   req.log.error(

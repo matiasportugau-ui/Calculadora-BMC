@@ -27,6 +27,15 @@ const router = Router();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+function resolveTechoForCamara(paredFamilia, paredEspesor) {
+  const familia = paredFamilia in PANELS_TECHO ? paredFamilia : "ISODEC_EPS";
+  const panel = PANELS_TECHO[familia];
+  if (panel.esp[paredEspesor]) return { familia, espesor: paredEspesor, mapped: false };
+  const available = Object.keys(panel.esp).map(Number).sort((a, b) => a - b);
+  const espesor = available.find(e => e >= paredEspesor) || available[available.length - 1];
+  return { familia, espesor, mapped: true, original: paredEspesor };
+}
+
 const SCENARIO_LABELS = {
   solo_techo: "Solo Techo",
   solo_fachada: "Solo Fachada",
@@ -197,18 +206,24 @@ router.post("/cotizar", (req, res) => {
       }
       const perim = 2 * (camara.largo_int + camara.ancho_int);
       const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-      const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
+      const techoMap = resolveTechoForCamara(pared.familia, pared.espesor);
+      const extraWarnings = [];
+      if (techoMap.mapped) {
+        extraWarnings.push(`Techo cámara: espesor ${techoMap.original}mm no disponible en ${techoMap.familia}, se usó ${techoMap.espesor}mm.`);
+      }
       const rT = calcTechoCompleto({
-        familia: techoFam, espesor: pared.espesor,
+        familia: techoMap.familia, espesor: techoMap.espesor,
         largo: camara.largo_int, ancho: camara.ancho_int,
         tipoEst: "metal",
         borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
         color: pared.color,
       });
-      const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
+      if (rT?.error) extraWarnings.push(`Techo cámara: ${rT.error}`);
+      const techoItems = rT?.error ? [] : (rT?.allItems || []);
+      const allItems = [...(rP?.allItems || []), ...techoItems];
       const totales = calcTotalesSinIVA(allItems);
-      results = { ...rP, techoResult: rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || [])] };
+      results = { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraWarnings] };
     }
 
     return res.json(buildGptResponse(escenario, lista, results, flete));
@@ -243,63 +258,73 @@ function panelSummary(panels, listaPrecio) {
 }
 
 router.get("/catalogo", (req, res) => {
-  const lista = req.query.lista || "web";
-  setListaPrecios(lista === "venta" ? "venta" : "web");
+  try {
+    const lista = req.query.lista || "web";
+    setListaPrecios(lista === "venta" ? "venta" : "web");
 
-  res.json({
-    ok: true,
-    lista,
-    lista_label: LISTA_LABELS[lista] || lista,
-    paneles_techo: panelSummary(PANELS_TECHO, lista),
-    paneles_pared: panelSummary(PANELS_PARED, lista),
-    bordes_techo: BORDER_OPTIONS,
-    tipos_estructura: ["metal", "hormigon", "mixto", "madera"],
-    escenarios: SCENARIOS_DEF.map(s => ({
-      id: s.id,
-      label: s.label,
-      descripcion: s.description,
-      tiene_techo: s.hasTecho,
-      tiene_pared: s.hasPared,
-      es_camara: !!s.isCamara,
-      familias_validas: s.familias,
-    })),
-  });
+    res.json({
+      ok: true,
+      lista,
+      lista_label: LISTA_LABELS[lista] || lista,
+      paneles_techo: panelSummary(PANELS_TECHO, lista),
+      paneles_pared: panelSummary(PANELS_PARED, lista),
+      bordes_techo: BORDER_OPTIONS,
+      tipos_estructura: ["metal", "hormigon", "mixto", "madera"],
+      escenarios: SCENARIOS_DEF.map(s => ({
+        id: s.id,
+        label: s.label,
+        descripcion: s.description,
+        tiene_techo: s.hasTecho,
+        tiene_pared: s.hasPared,
+        es_camara: !!s.isCamara,
+        familias_validas: s.familias,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "calc/catalogo failed");
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ── GET /escenarios ──────────────────────────────────────────────────────────
 
-router.get("/escenarios", (_req, res) => {
-  const escenarios = SCENARIOS_DEF.map(s => {
-    const vis = VIS[s.id];
-    const camposRequeridos = [];
-    if (s.hasTecho) camposRequeridos.push("techo.familia", "techo.espesor", "techo.zonas[].largo", "techo.zonas[].ancho");
-    if (s.hasPared && !s.isCamara) camposRequeridos.push("pared.familia", "pared.espesor", "pared.alto", "pared.perimetro");
-    if (s.isCamara) camposRequeridos.push("pared.familia", "pared.espesor", "camara.largo_int", "camara.ancho_int", "camara.alto_int");
+router.get("/escenarios", (req, res) => {
+  try {
+    const escenarios = SCENARIOS_DEF.map(s => {
+      const vis = VIS[s.id];
+      const camposRequeridos = [];
+      if (s.hasTecho) camposRequeridos.push("techo.familia", "techo.espesor", "techo.zonas[].largo", "techo.zonas[].ancho");
+      if (s.hasPared && !s.isCamara) camposRequeridos.push("pared.familia", "pared.espesor", "pared.alto", "pared.perimetro");
+      if (s.isCamara) camposRequeridos.push("pared.familia", "pared.espesor", "camara.largo_int", "camara.ancho_int", "camara.alto_int");
 
-    const camposOpcionales = [];
-    if (s.hasTecho) {
-      camposOpcionales.push("techo.color", "techo.pendiente", "techo.tipoAguas", "techo.tipoEst", "techo.borders", "techo.opciones");
-    }
-    if (s.hasPared) {
-      camposOpcionales.push("pared.color", "pared.tipoEst", "pared.numEsqExt", "pared.numEsqInt", "pared.aberturas", "pared.inclSell", "pared.incl5852");
-    }
-    camposOpcionales.push("lista", "flete");
+      const camposOpcionales = [];
+      if (s.hasTecho) {
+        camposOpcionales.push("techo.color", "techo.pendiente", "techo.tipoAguas", "techo.tipoEst", "techo.borders", "techo.opciones");
+      }
+      if (s.hasPared) {
+        camposOpcionales.push("pared.color", "pared.tipoEst", "pared.numEsqExt", "pared.numEsqInt", "pared.aberturas", "pared.inclSell", "pared.incl5852");
+      }
+      camposOpcionales.push("lista", "flete");
 
-    return {
-      id: s.id,
-      label: s.label,
-      descripcion: s.description,
-      tiene_techo: s.hasTecho,
-      tiene_pared: s.hasPared,
-      es_camara: !!s.isCamara,
-      familias_validas: s.familias,
-      campos_requeridos: camposRequeridos,
-      campos_opcionales: camposOpcionales,
-      secciones_ui: vis,
-    };
-  });
+      return {
+        id: s.id,
+        label: s.label,
+        descripcion: s.description,
+        tiene_techo: s.hasTecho,
+        tiene_pared: s.hasPared,
+        es_camara: !!s.isCamara,
+        familias_validas: s.familias,
+        campos_requeridos: camposRequeridos,
+        campos_opcionales: camposOpcionales,
+        secciones_ui: vis,
+      };
+    });
 
-  res.json({ ok: true, escenarios });
+    res.json({ ok: true, escenarios });
+  } catch (err) {
+    req.log.error({ err }, "calc/escenarios failed");
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 export default router;
