@@ -2,4 +2,14 @@ node_modules
 dist
 .git
 .gitignore
+.github
+.env
+.env.*
+.ml-tokens*
 npm-debug.log
+public
+tests
+docs
+*.md
+!package.json
+!package-lock.json

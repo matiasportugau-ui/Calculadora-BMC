@@ -7,6 +7,8 @@ info:
     Expone la lógica completa de la Calculadora BMC (techo, fachada, techo+fachada, cámara frigorífica)
     como endpoints REST para uso desde GPT Actions.
 servers:
+  - url: https://panelin-calc-642127786762.us-central1.run.app
+    description: Cloud Run Production
   - url: http://localhost:3001
     description: Desarrollo local
 paths:
