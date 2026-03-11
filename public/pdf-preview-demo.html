@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>PDF Preview Demo - BMC Uruguay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #e5e5ea; font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px 0 60px; }
+  h1 { color: #003366; margin: 10px 0 4px; font-size: 18px; }
+  p.sub { color: #6E6E73; font-size: 13px; margin: 0 0 20px; }
+  .page {
+    width: 210mm; min-height: 297mm; background: #fff;
+    box-shadow: 0 4px 30px rgba(0,0,0,.15);
+    padding: 14mm 12mm 22mm; box-sizing: border-box;
+    position: relative; font-size: 10pt; color: #1D1D1F;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .page table { border-collapse: collapse; width: 100%; }
+  .page th, .page td { border: .4pt solid #D0D0D0; }
+  .section { page-break-inside: avoid; }
+  .pdf-footer {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    text-align: center; font-size: 7pt; color: #AEAEB2;
+    padding: 3mm 12mm 2mm; border-top: .5pt solid #E5E5EA;
+  }
+</style>
+</head>
+<body>
+<h1>New PDF Quotation Design</h1>
+<p class="sub">Logo + Quotation ID + No SKU + No Descarte + Proper T&amp;C + Professional spacing + Page footer</p>
+
+<div class="page">
+  <!-- Page Footer (repeats on every page in print) -->
+  <div class="pdf-footer">BMC Uruguay &middot; bmcuruguay.com.uy &middot; 092 663 245</div>
+
+  <!-- HEADER with Logo + COTIZACIÓN -->
+  <div class="section" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+      <div>
+        <svg width="140" height="32" viewBox="0 0 140 32" xmlns="http://www.w3.org/2000/svg" style="display:block">
+          <rect width="32" height="32" rx="5" fill="#003366"/>
+          <text x="16" y="23" text-anchor="middle" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="900">B</text>
+          <text x="40" y="21" fill="#003366" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800" letter-spacing="-0.5">BMC</text>
+          <text x="40" y="30" fill="#8C8C8C" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="600" letter-spacing="2.5">URUGUAY</text>
+        </svg>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:20pt;font-weight:800;color:#003366;letter-spacing:-0.5px">COTIZACIÓN</div>
+        <div style="font-size:9pt;font-weight:600;color:#6E6E73;margin-top:2px;font-variant-numeric:tabular-nums">BMC-2026-0042</div>
+      </div>
+    </div>
+    <div style="border-bottom:2.5pt solid #003366;margin-bottom:6px"></div>
+    <div style="display:flex;justify-content:space-between;font-size:8.5pt;color:#6E6E73">
+      <span>bmcuruguay.com.uy &middot; 092 663 245 &middot; Maldonado, Uruguay</span>
+      <span>Lista: BMC Directo</span>
+    </div>
+  </div>
+
+  <!-- CLIENT INFO GRID -->
+  <div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:10pt;margin-bottom:14px;padding:10px 14px;background:#F8F9FA;border-radius:6px;border:.5pt solid #E5E5EA">
+    <div><b>Cliente:</b> Construcciones Rivera SRL</div>
+    <div><b>Fecha:</b> 10/03/2026</div>
+    <div><b>RUT:</b> 214567890018</div>
+    <div><b>Ref:</b> CR-2026-015</div>
+    <div><b>Obra:</b> Depósito comercial</div>
+    <div><b>Validez:</b> 10 días</div>
+    <div><b>Tel:</b> 099 123 456</div>
+    <div><b>Dir:</b> Ruta 39 Km 142, Maldonado</div>
+  </div>
+
+  <!-- PRODUCT BADGE -->
+  <div class="section" style="background:#EEF3F8;padding:10px 14px;border-radius:6px;margin-bottom:10px;border-left:4px solid #003366">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <b style="color:#003366">PRODUCTO:</b>
+      <span>ISODEC EPS &middot; 100mm &middot; Color: Blanco</span>
+      <span style="background:#003366;color:#fff;font-size:7.5pt;font-weight:700;padding:2px 8px;border-radius:3px">Techo</span>
+    </div>
+    <div style="font-size:8.5pt;color:#6E6E73;margin-top:4px">AU: 1.12m · Autoportancia: 5.5m · Apoyos: 3 · ⚠ Requiere estructura adicional</div>
+  </div>
+
+  <!-- DIMENSIONS — 10m×8m, ISODEC_EPS AU=1.12m → cantP=ceil(8/1.12)=8, anchoTotal=8.96m, area=8×1.12×10=89.60m² -->
+  <div class="section" style="background:#E8F4FD;padding:8px 14px;border-radius:6px;margin-bottom:10px;font-size:9pt">
+    <b>DIMENSIONES:</b> 10m × 8m &middot; Área: 89.60m² &middot; Paneles: 8 pzas
+  </div>
+
+  <!-- BOM TABLE — all values derived from src/data/constants.js (ISODEC EPS 100mm, venta list, metal structure) -->
+  <table style="font-size:9pt;margin-bottom:12px">
+    <thead>
+      <tr style="background:#EDEDED;font-weight:700">
+        <th style="text-align:left;width:45%;padding:5px 8px">Descripción</th>
+        <th style="text-align:right;width:10%;padding:5px 8px">Cant.</th>
+        <th style="text-align:center;width:8%;padding:5px 8px">Unid.</th>
+        <th style="text-align:right;width:15%;padding:5px 8px">P.U. USD</th>
+        <th style="text-align:right;width:17%;padding:5px 8px">Total USD</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- 1. PANELES — 89.60m² × $37.76 = $3,383.30 -->
+      <tr style="background:#EEF3F8">
+        <td colspan="4" style="font-weight:600;padding:6px 8px;color:#003366">&#9656; PANELES</td>
+        <td style="text-align:right;font-weight:600;padding:6px 8px">$3,383.30</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:5px 8px">ISODEC EPS 100mm Blanco<div style="color:#6E6E73;font-size:8pt;margin-top:1px">8 paneles × 10.00m largo</div></td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">89.60</td>
+        <td style="text-align:center;padding:5px 8px">m²</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">37.76</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$3,383.30</td>
+      </tr>
+      <!-- 2. PERFILERÍA — borders: gotero_frontal / gotero_lateral / gotero_lateral / gotero_lateral -->
+      <!-- Largos from constants: gotero_frontal ISODEC 100=3.03m, gotero_lateral ISODEC 100=3.0m -->
+      <tr style="background:#EEF3F8">
+        <td colspan="4" style="font-weight:600;padding:6px 8px;color:#003366">&#9656; PERFILERÍA</td>
+        <td style="text-align:right;font-weight:600;padding:6px 8px">$285.48</td>
+      </tr>
+      <tr style="background:#fff">
+        <!-- Frente Inf: anchoTotal=8.96m / 3.03m = ceil(2.96) = 3 pzas -->
+        <td style="padding:5px 8px">Frente Inf: gotero_frontal <span style="color:#6E6E73;font-size:8pt">(3.03m c/u)</span></td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">3</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">15.67</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$47.01</td>
+      </tr>
+      <tr style="background:#FAFAFA">
+        <!-- Frente Sup: anchoTotal=8.96m / 3.0m = ceil(2.99) = 3 pzas -->
+        <td style="padding:5px 8px">Frente Sup: gotero_lateral <span style="color:#6E6E73;font-size:8pt">(3.0m c/u)</span></td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">3</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">20.77</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$62.31</td>
+      </tr>
+      <tr style="background:#fff">
+        <!-- Lat.Izq: largo=10m / 3.0m = ceil(3.33) = 4 pzas -->
+        <td style="padding:5px 8px">Lat.Izq: gotero_lateral <span style="color:#6E6E73;font-size:8pt">(3.0m c/u)</span></td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">4</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">20.77</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$83.08</td>
+      </tr>
+      <tr style="background:#FAFAFA">
+        <!-- Lat.Der: largo=10m / 3.0m = ceil(3.33) = 4 pzas -->
+        <td style="padding:5px 8px">Lat.Der: gotero_lateral <span style="color:#6E6E73;font-size:8pt">(3.0m c/u)</span></td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">4</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">20.77</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$83.08</td>
+      </tr>
+      <tr style="background:#fff">
+        <!-- Tornillo T1: totalML=42.09m → ceil(42.09/0.30)=141 → ceil(141/100)=2 paquetes -->
+        <td style="padding:5px 8px">Tornillo T1 (perfilería)</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">2</td>
+        <td style="text-align:center;padding:5px 8px">x100</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">5.00</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$10.00</td>
+      </tr>
+      <!-- 3. FIJACIONES — varilla_tuerca system, cantP=8, apoyos=3, largo=10, metal -->
+      <!-- puntosFijacion = ceil((8×3)×2 + (10×2/2.5)) = ceil(48+8) = 56 -->
+      <tr style="background:#EEF3F8">
+        <td colspan="4" style="font-weight:600;padding:6px 8px;color:#003366">&#9656; FIJACIONES</td>
+        <td style="text-align:right;font-weight:600;padding:6px 8px">$222.32</td>
+      </tr>
+      <tr style="background:#fff">
+        <!-- varillas = ceil(56/4) = 14 -->
+        <td style="padding:5px 8px">Varilla roscada 3/8" (1m)</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">14</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">3.12</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$43.68</td>
+      </tr>
+      <tr style="background:#FAFAFA">
+        <!-- tuercas = 56×2 = 112 (metal, no taco) -->
+        <td style="padding:5px 8px">Tuerca 3/8" galv.</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">112</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">0.12</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$13.44</td>
+      </tr>
+      <tr style="background:#fff">
+        <!-- arandelas = 56 -->
+        <td style="padding:5px 8px">Arandela carrocero 3/8"</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">56</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">1.68</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$94.08</td>
+      </tr>
+      <tr style="background:#FAFAFA">
+        <!-- tortugas = 56 -->
+        <td style="padding:5px 8px">Tortuga PVC (arand. PP)</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">56</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">1.27</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$71.12</td>
+      </tr>
+      <!-- 4. SELLADORES — calcSelladoresTecho(cantP=8) -->
+      <tr style="background:#EEF3F8">
+        <td colspan="4" style="font-weight:600;padding:6px 8px;color:#003366">&#9656; SELLADORES</td>
+        <td style="text-align:right;font-weight:600;padding:6px 8px">$52.85</td>
+      </tr>
+      <tr style="background:#fff">
+        <!-- siliconas = ceil(8×0.5) = 4 -->
+        <td style="padding:5px 8px">Silicona Bromplast 8 x600</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">4</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">9.49</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$37.96</td>
+      </tr>
+      <tr style="background:#FAFAFA">
+        <!-- cintas = ceil(8/10) = 1 -->
+        <td style="padding:5px 8px">Cinta Butilo 2mm×15mm×22.5m</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">1</td>
+        <td style="text-align:center;padding:5px 8px">unid</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">14.89</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$14.89</td>
+      </tr>
+      <!-- 5. SERVICIOS -->
+      <tr style="background:#EEF3F8">
+        <td colspan="4" style="font-weight:600;padding:6px 8px;color:#003366">&#9656; SERVICIOS</td>
+        <td style="text-align:right;font-weight:600;padding:6px 8px">$240.00</td>
+      </tr>
+      <tr style="background:#fff">
+        <td style="padding:5px 8px">Flete con entrega en obra &mdash; Ruta 39 Km 142, Maldonado</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">1</td>
+        <td style="text-align:center;padding:5px 8px">servicio</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">240.00</td>
+        <td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$240.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTALS — 3383.30 + 285.48 + 222.32 + 52.85 + 240.00 = 4,183.95 -->
+  <div class="totals-block" style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <table style="min-width:280px;font-size:10pt;border:none">
+      <tr>
+        <td style="padding:4px 10px;border:none">Subtotal s/IVA</td>
+        <td style="text-align:right;padding:4px 10px;border:none;font-variant-numeric:tabular-nums">$4,183.95</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 10px;border:none">IVA 22%</td>
+        <td style="text-align:right;padding:4px 10px;border:none;font-variant-numeric:tabular-nums">$920.47</td>
+      </tr>
+      <tr style="border-top:1.5pt solid #1D1D1F">
+        <td style="padding:6px 10px;font-size:14pt;font-weight:800;border:none">TOTAL USD</td>
+        <td style="text-align:right;padding:6px 10px;font-size:14pt;font-weight:800;color:#003366;border:none;font-variant-numeric:tabular-nums">$5,104.42</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- TERMS & CONDITIONS -->
+  <div class="terms-block" style="font-size:8.5pt;line-height:1.5;margin-bottom:12px;padding:10px 14px;background:#F8F9FA;border-radius:6px">
+    <b style="color:#003366;font-size:9pt">TÉRMINOS Y CONDICIONES</b>
+    <ul style="margin:6px 0 0;padding-left:16px">
+      <li style="margin-bottom:2px;font-weight:600">Entrega de 10 a 15 días, dependemos de producción.</li>
+      <li style="margin-bottom:2px;font-weight:600;color:#FF3B30">Oferta válida por 10 días a partir de la fecha.</li>
+      <li style="margin-bottom:2px;font-weight:600;color:#FF3B30">Seña del 60% (al confirmar). Saldo del 40% (previo a retiro de fábrica).</li>
+      <li style="margin-bottom:2px">Con tarjeta de crédito y en cuotas, sería en $ y a través de Mercado Pago con un recargo de 8% (comisión MP).</li>
+      <li style="margin-bottom:2px">Retiro sin cargo en Planta Industrial de Bromyros S.A. (Colonia Nicolich, Can.).</li>
+      <li style="margin-bottom:2px;font-weight:600;color:#FF3B30">NO INCLUYE MONTAJE.</li>
+      <li style="margin-bottom:2px">El traslado no incluye descarga, se requieren 2 peones mínimo.</li>
+      <li style="margin-bottom:2px">BMC no asume responsabilidad por fallas producidas por no respetar la autoportancia sugerida.</li>
+      <li style="margin-bottom:2px">Al aceptar esta cotización confirma haber revisado el contenido de la misma en cuanto a medidas, cantidades, colores, valores y tipo de producto.</li>
+      <li style="margin-bottom:2px">Nuestro asesoramiento es una guía, en ningún caso sustituye el trabajo profesional de Arq. o Ing.</li>
+      <li style="margin-bottom:2px;font-weight:600">Al momento de recibir el material corroborar el estado del mismo. Una vez recibido, no aceptamos devolución.</li>
+      <li style="margin-bottom:2px">Sujeto a cambios según fábrica.</li>
+    </ul>
+  </div>
+
+  <!-- BANK DETAILS -->
+  <div class="bank-block" style="margin-bottom:10px">
+    <table style="font-size:8.5pt">
+      <thead>
+        <tr><th colspan="2" style="background:#EDEDED;font-weight:700;text-align:left;padding:5px 10px;color:#003366">Datos para Depósito Bancario</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:5px 10px">Titular: <b>Metalog SAS</b></td>
+          <td style="padding:5px 10px">RUT: 120403430012</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 10px">BROU &middot; Cta. Dólares: <b>110520638-00002</b></td>
+          <td style="padding:5px 10px">Consultas: <b>092 663 245</b></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

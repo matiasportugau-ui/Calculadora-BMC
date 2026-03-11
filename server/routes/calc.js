@@ -2,6 +2,7 @@
 // server/routes/calc.js — Calculator API for GPT Panelin Actions
 // ═══════════════════════════════════════════════════════════════════════════
 
+import crypto from "node:crypto";
 import { Router } from "express";
 import {
   calcTechoCompleto,
@@ -9,7 +10,7 @@ import {
   calcTotalesSinIVA,
   mergeZonaResults,
 } from "../../src/utils/calculations.js";
-import { bomToGroups, buildWhatsAppText, fmtPrice } from "../../src/utils/helpers.js";
+import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import {
   setListaPrecios,
   PANELS_TECHO,
@@ -22,8 +23,37 @@ import {
   SELLADORES,
   p,
 } from "../../src/data/constants.js";
+import { config } from "../config.js";
 
 const router = Router();
+
+// ── PDF store (in-memory, TTL-based) ─────────────────────────────────────────
+
+const PDF_TTL_MS = 24 * 60 * 60 * 1000;
+const pdfStore = new Map();
+
+function storePdf(html) {
+  const id = crypto.randomUUID();
+  pdfStore.set(id, { html, createdAt: Date.now() });
+  return id;
+}
+
+function getPdf(id) {
+  const entry = pdfStore.get(id);
+  if (!entry) return null;
+  if (Date.now() - entry.createdAt > PDF_TTL_MS) {
+    pdfStore.delete(id);
+    return null;
+  }
+  return entry.html;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, entry] of pdfStore) {
+    if (now - entry.createdAt > PDF_TTL_MS) pdfStore.delete(id);
+  }
+}, 60 * 60 * 1000);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,14 +97,20 @@ function buildGptResponse(escenario, lista, results, flete) {
     return {
       grupo: g.title,
       subtotal_usd: +subtotal.toFixed(2),
-      items: g.items.map(i => ({
-        descripcion: i.label,
-        sku: i.sku || null,
-        cant: i.cant,
-        unidad: i.unidad,
-        pu_usd: i.pu,
-        total_usd: i.total,
-      })),
+      items: g.items.map(i => {
+        const item = {
+          descripcion: i.label,
+          sku: i.sku || null,
+          cant: i.cant,
+          unidad: i.unidad,
+          pu_usd: i.pu,
+          total_usd: i.total,
+        };
+        if (i.largoBarra) item.largo_barra_m = i.largoBarra;
+        if (i.cantPaneles) item.cant_paneles = i.cantPaneles;
+        if (i.largoPanel) item.largo_panel_m = i.largoPanel;
+        return item;
+      }),
     };
   });
 
@@ -157,80 +193,192 @@ function runCalcTecho(techo) {
   return mergeZonaResults(zonaResults);
 }
 
+// ── Shared calculation runner ────────────────────────────────────────────────
+
+function runCalculation({ escenario, lista, techo, pared, camara }) {
+  if (!escenario) return { error: "Campo 'escenario' es requerido." };
+  if (!["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"].includes(escenario)) {
+    return { error: `Escenario '${escenario}' no válido. Opciones: solo_techo, solo_fachada, techo_fachada, camara_frig.` };
+  }
+
+  setListaPrecios(lista === "venta" ? "venta" : "web");
+
+  if (escenario === "solo_techo") {
+    if (!techo?.familia || !techo?.espesor) return { error: "Para 'solo_techo' se requiere techo.familia y techo.espesor." };
+    return runCalcTecho(techo);
+  }
+
+  if (escenario === "solo_fachada") {
+    if (!pared?.familia || !pared?.espesor) return { error: "Para 'solo_fachada' se requiere pared.familia y pared.espesor." };
+    return calcParedCompleto(pared);
+  }
+
+  if (escenario === "techo_fachada") {
+    let rT = null;
+    if (techo?.familia && techo?.espesor) rT = runCalcTecho(techo);
+    const rP = pared?.familia && pared?.espesor ? calcParedCompleto(pared) : null;
+    if (!rT && !rP) return { error: "Para 'techo_fachada' se requiere al menos techo o pared con familia y espesor." };
+    const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
+    const totales = calcTotalesSinIVA(allItems);
+    return { ...rT, paredResult: rP, allItems, totales, warnings: [...(rT?.warnings || []), ...(rP?.warnings || [])] };
+  }
+
+  if (escenario === "camara_frig") {
+    if (!pared?.familia || !pared?.espesor) return { error: "Para 'camara_frig' se requiere pared.familia y pared.espesor." };
+    if (!camara?.largo_int || !camara?.ancho_int || !camara?.alto_int) return { error: "Para 'camara_frig' se requiere camara.largo_int, camara.ancho_int y camara.alto_int." };
+    const perim = 2 * (camara.largo_int + camara.ancho_int);
+    const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
+    const techoMap = resolveTechoForCamara(pared.familia, pared.espesor);
+    const extraWarnings = [];
+    if (techoMap.mapped) extraWarnings.push(`Techo cámara: espesor ${techoMap.original}mm no disponible en ${techoMap.familia}, se usó ${techoMap.espesor}mm.`);
+    const rT = calcTechoCompleto({
+      familia: techoMap.familia, espesor: techoMap.espesor,
+      largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
+      borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+      opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+      color: pared.color,
+    });
+    if (rT?.error) extraWarnings.push(`Techo cámara: ${rT.error}`);
+    const techoItems = rT?.error ? [] : (rT?.allItems || []);
+    const allItems = [...(rP?.allItems || []), ...techoItems];
+    const totales = calcTotalesSinIVA(allItems);
+    return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraWarnings] };
+  }
+
+  return { error: "Escenario no reconocido." };
+}
+
 // ── POST /cotizar ────────────────────────────────────────────────────────────
 
 router.post("/cotizar", (req, res) => {
   try {
     const { lista = "web", escenario, techo, pared, camara, flete = 0 } = req.body;
-    if (!escenario) return res.status(400).json({ ok: false, error: "Campo 'escenario' es requerido." });
-    if (!["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"].includes(escenario)) {
-      return res.status(400).json({ ok: false, error: `Escenario '${escenario}' no válido. Opciones: solo_techo, solo_fachada, techo_fachada, camara_frig.` });
+    const results = runCalculation({ escenario, lista, techo, pared, camara });
+    if (results.error && !results.allItems) {
+      return res.status(400).json({ ok: false, error: results.error });
     }
-
-    setListaPrecios(lista === "venta" ? "venta" : "web");
-
-    let results = null;
-
-    if (escenario === "solo_techo") {
-      if (!techo?.familia || !techo?.espesor) {
-        return res.status(400).json({ ok: false, error: "Para 'solo_techo' se requiere techo.familia y techo.espesor." });
-      }
-      results = runCalcTecho(techo);
-    }
-
-    if (escenario === "solo_fachada") {
-      if (!pared?.familia || !pared?.espesor) {
-        return res.status(400).json({ ok: false, error: "Para 'solo_fachada' se requiere pared.familia y pared.espesor." });
-      }
-      results = calcParedCompleto(pared);
-    }
-
-    if (escenario === "techo_fachada") {
-      let rT = null;
-      if (techo?.familia && techo?.espesor) rT = runCalcTecho(techo);
-      const rP = pared?.familia && pared?.espesor ? calcParedCompleto(pared) : null;
-      if (!rT && !rP) {
-        return res.status(400).json({ ok: false, error: "Para 'techo_fachada' se requiere al menos techo o pared con familia y espesor." });
-      }
-      const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
-      const totales = calcTotalesSinIVA(allItems);
-      results = { ...rT, paredResult: rP, allItems, totales, warnings: [...(rT?.warnings || []), ...(rP?.warnings || [])] };
-    }
-
-    if (escenario === "camara_frig") {
-      if (!pared?.familia || !pared?.espesor) {
-        return res.status(400).json({ ok: false, error: "Para 'camara_frig' se requiere pared.familia y pared.espesor." });
-      }
-      if (!camara?.largo_int || !camara?.ancho_int || !camara?.alto_int) {
-        return res.status(400).json({ ok: false, error: "Para 'camara_frig' se requiere camara.largo_int, camara.ancho_int y camara.alto_int." });
-      }
-      const perim = 2 * (camara.largo_int + camara.ancho_int);
-      const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-      const techoMap = resolveTechoForCamara(pared.familia, pared.espesor);
-      const extraWarnings = [];
-      if (techoMap.mapped) {
-        extraWarnings.push(`Techo cámara: espesor ${techoMap.original}mm no disponible en ${techoMap.familia}, se usó ${techoMap.espesor}mm.`);
-      }
-      const rT = calcTechoCompleto({
-        familia: techoMap.familia, espesor: techoMap.espesor,
-        largo: camara.largo_int, ancho: camara.ancho_int,
-        tipoEst: "metal",
-        borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
-        opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
-        color: pared.color,
-      });
-      if (rT?.error) extraWarnings.push(`Techo cámara: ${rT.error}`);
-      const techoItems = rT?.error ? [] : (rT?.allItems || []);
-      const allItems = [...(rP?.allItems || []), ...techoItems];
-      const totales = calcTotalesSinIVA(allItems);
-      results = { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraWarnings] };
-    }
-
     return res.json(buildGptResponse(escenario, lista, results, flete));
   } catch (err) {
     req.log.error({ err }, "calc/cotizar failed");
     return res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ── POST /cotizar/pdf ───────────────────────────────────────────────────────
+
+router.post("/cotizar/pdf", (req, res) => {
+  try {
+    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente } = req.body;
+    const results = runCalculation({ escenario, lista, techo, pared, camara });
+    if (results.error && !results.allItems) {
+      return res.status(400).json({ ok: false, error: results.error });
+    }
+
+    const gptResp = buildGptResponse(escenario, lista, results, flete);
+    if (!gptResp.ok) return res.status(400).json(gptResp);
+
+    const panelLabel = gptResp.bom.find(g => g.grupo === "PANELES")?.items?.[0]?.descripcion || "";
+    const panelData = results.allItems?.find(i => i.unidad === "m²");
+    const panel = {
+      label: panelLabel,
+      espesor: techo?.espesor || pared?.espesor || "",
+      color: techo?.color || pared?.color || "Blanco",
+      au: panelData?.cantPaneles ? undefined : null,
+    };
+    if (escenario === "solo_techo" || escenario === "techo_fachada") {
+      const fam = PANELS_TECHO[techo?.familia];
+      if (fam) panel.au = fam.au;
+    } else if (escenario === "solo_fachada") {
+      const fam = PANELS_PARED[pared?.familia];
+      if (fam) panel.au = fam.au;
+    }
+
+    const clientInfo = cliente || {};
+    const project = {
+      fecha: clientInfo.fecha || new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      refInterna: clientInfo.ref || "",
+      descripcion: clientInfo.obra || "",
+    };
+    const client = {
+      nombre: clientInfo.nombre || "—",
+      rut: clientInfo.rut || "",
+      telefono: clientInfo.telefono || "",
+      direccion: clientInfo.direccion || "",
+    };
+
+    const dimensions = {};
+    if (techo?.zonas) {
+      dimensions.zonas = techo.zonas;
+      if (results.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
+      if (results.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+    }
+    if (pared) {
+      if (pared.alto) dimensions.alto = pared.alto;
+      if (pared.perimetro) dimensions.perimetro = pared.perimetro;
+      if (results.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
+      if (results.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+    }
+    if (escenario === "camara_frig" && camara) {
+      dimensions.zonas = [{ largo: camara.largo_int, ancho: camara.ancho_int }];
+      dimensions.alto = camara.alto_int;
+    }
+
+    const groups = gptResp.bom.map(g => ({
+      title: g.grupo,
+      items: g.items.map(i => ({
+        label: i.descripcion, sku: i.sku, cant: i.cant, unidad: i.unidad,
+        pu: i.pu_usd, total: i.total_usd,
+        largoBarra: i.largo_barra_m, cantPaneles: i.cant_paneles, largoPanel: i.largo_panel_m,
+      })),
+    }));
+
+    const html = generatePrintHTML({
+      client, project, scenario: escenario, panel,
+      autoportancia: gptResp.autoportancia ? {
+        ok: gptResp.autoportancia.ok,
+        apoyos: gptResp.autoportancia.apoyos,
+        maxSpan: gptResp.autoportancia.vano_max_m,
+      } : null,
+      groups,
+      totals: {
+        subtotalSinIVA: gptResp.resumen.subtotal_usd,
+        iva: gptResp.resumen.iva_usd,
+        totalFinal: gptResp.resumen.total_usd,
+      },
+      warnings: gptResp.advertencias,
+      dimensions,
+      listaPrecios: lista,
+      quotationId: clientInfo.quote_code || undefined,
+      showSKU: false,
+      showUnitPrices: true,
+    });
+
+    const pdfId = storePdf(html);
+    const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
+
+    return res.json({
+      ok: true,
+      pdf_id: pdfId,
+      pdf_url: `${baseUrl}/calc/pdf/${pdfId}`,
+      expires_in_hours: 24,
+      instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF.",
+      resumen: gptResp.resumen,
+    });
+  } catch (err) {
+    req.log.error({ err }, "calc/cotizar/pdf failed");
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /pdf/:id ─────────────────────────────────────────────────────────────
+
+router.get("/pdf/:id", (req, res) => {
+  const html = getPdf(req.params.id);
+  if (!html) {
+    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cotización expirada</title></head><body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f7"><div style="text-align:center"><h1 style="color:#003366">Cotización no encontrada</h1><p style="color:#6E6E73">Este link expiró o no es válido. Solicitá una nueva cotización al asistente.</p></div></body></html>`);
+  }
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(html);
 });
 
 // ── GET /catalogo ────────────────────────────────────────────────────────────
@@ -323,6 +471,161 @@ router.get("/escenarios", (req, res) => {
     res.json({ ok: true, escenarios });
   } catch (err) {
     req.log.error({ err }, "calc/escenarios failed");
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /informe — Full knowledge dump for GPT advisory ─────────────────────
+
+function buildPriceMatrix(panels, lista) {
+  setListaPrecios(lista === "venta" ? "venta" : "web");
+  const rows = [];
+  for (const [id, panel] of Object.entries(panels)) {
+    for (const [esp, data] of Object.entries(panel.esp)) {
+      rows.push({
+        familia: id,
+        label: panel.label,
+        tipo: panel.tipo || panel.sub,
+        espesor_mm: Number(esp),
+        precio_m2_usd: p(data),
+        autoportancia_m: data.ap ?? null,
+        ancho_util_m: panel.au,
+        largo_min_m: panel.lmin,
+        largo_max_m: panel.lmax,
+        sistema: panel.sist,
+      });
+    }
+  }
+  rows.sort((a, b) => a.precio_m2_usd - b.precio_m2_usd);
+  return rows;
+}
+
+router.get("/informe", (req, res) => {
+  try {
+    const lista = req.query.lista || "web";
+    setListaPrecios(lista === "venta" ? "venta" : "web");
+
+    const panelesTecho = {};
+    for (const [id, panel] of Object.entries(PANELS_TECHO)) {
+      const espesores = {};
+      for (const [esp, data] of Object.entries(panel.esp)) {
+        espesores[esp] = {
+          precio_m2_usd: p(data),
+          autoportancia_m: data.ap ?? null,
+          notas: panel.notas?.[esp] || null,
+        };
+      }
+      panelesTecho[id] = {
+        label: panel.label, subtipo: panel.sub,
+        ancho_util_m: panel.au, largo_min_m: panel.lmin, largo_max_m: panel.lmax,
+        sistema_fijacion: panel.sist,
+        colores: panel.col,
+        restricciones_color: panel.colNotes || {},
+        espesor_max_color: panel.colMax || {},
+        area_min_color: panel.colMinArea || {},
+        espesores,
+      };
+    }
+
+    const panelesPared = {};
+    for (const [id, panel] of Object.entries(PANELS_PARED)) {
+      const espesores = {};
+      for (const [esp, data] of Object.entries(panel.esp)) {
+        espesores[esp] = { precio_m2_usd: p(data) };
+      }
+      panelesPared[id] = {
+        label: panel.label, subtipo: panel.sub,
+        ancho_util_m: panel.au, largo_min_m: panel.lmin, largo_max_m: panel.lmax,
+        sistema_fijacion: panel.sist,
+        colores: panel.col,
+        restricciones_color: panel.colNotes || {},
+        notas: panel.nota50 ? { 50: panel.nota50 } : {},
+        espesores,
+      };
+    }
+
+    const fijaciones = {};
+    for (const [id, item] of Object.entries(FIJACIONES)) {
+      fijaciones[id] = { label: item.label, precio_usd: p(item), unidad: item.unidad };
+    }
+
+    const selladores = {};
+    for (const [id, item] of Object.entries(SELLADORES)) {
+      selladores[id] = { label: item.label, precio_usd: p(item), unidad: item.unidad };
+    }
+
+    const servicios = {
+      flete: { label: SERVICIOS.flete.label, precio_usd: p(SERVICIOS.flete), unidad: SERVICIOS.flete.unidad },
+    };
+
+    const matrizPrecios = {
+      techo: buildPriceMatrix(PANELS_TECHO, lista),
+      pared: buildPriceMatrix(PANELS_PARED, lista),
+    };
+
+    const reglasAsesoria = {
+      techo: {
+        economico: "ISOROOF FOIL 3G 30mm es el más económico para techos. Ideal para tinglados simples donde la aislación no es prioridad.",
+        estandar: "ISODEC EPS 100mm es la opción estándar con buena relación precio/autoportancia. Ideal para galpones y depósitos.",
+        autoportante: "ISODEC EPS 150-250mm ofrece la mayor autoportancia (hasta 10.4m sin apoyos intermedios). Ideal para naves industriales de grandes luces.",
+        premium: "ISOROOF PLUS 3G ofrece la máxima aislación para techos livianos. Mínimo 800m².",
+        pir: "ISODEC PIR ofrece máxima resistencia al fuego (PIR). Evitar espesor 50mm.",
+      },
+      pared: {
+        economico: "ISOPANEL EPS 50mm es el más económico pero SOLO para subdivisiones interiores. Fachada exterior mínimo 100mm.",
+        estandar: "ISOPANEL EPS 100mm es la opción estándar para fachadas. Buena relación precio/aislación.",
+        alto_aislamiento: "ISOPANEL EPS 150-250mm para cámaras frigoríficas o exigencias térmicas altas.",
+        pir: "ISOWALL PIR para máxima resistencia al fuego en fachadas. Más costoso que EPS.",
+      },
+      camara: "Para cámaras frigoríficas usar ISOPANEL EPS 150-250mm en paredes. El techo se calcula automáticamente con ISODEC EPS del mismo espesor o el más cercano disponible.",
+      colores: "Blanco es estándar y siempre disponible. Gris y Rojo en ISODEC EPS solo hasta 150mm con +20 días de entrega. Blanco en ISOROOF 3G requiere mínimo 500m².",
+      flete: `El flete estándar cuesta USD ${p(SERVICIOS.flete).toFixed(2)} para zonas aledañas. El retiro en planta (Colonia Nicolich) es sin cargo.`,
+    };
+
+    const formulasCalculo = {
+      paneles_techo: "cantPaneles = ceil(ancho / ancho_util). area = cantPaneles × largo × ancho_util. costo = area × precio_m2.",
+      autoportancia: "apoyos = ceil(largo / autoportancia_m) + 1. Si largo > autoportancia_m → requiere estructura adicional.",
+      fijaciones_varilla: "puntosFijacion = ceil((cantP × apoyos) × 2 + (largo × 2 / 2.5)). varillas = ceil(puntos / 4).",
+      fijaciones_caballete: "Para ISOROOF. caballetes = ceil((cantP × 3 × (largo / 2.9 + 1)) + ((largo × 2) / 0.3)).",
+      perfileria: "barras = ceil(dimension / largo_barra). Tornillo T1: 1 por cada 0.30m lineal de perfilería.",
+      selladores_techo: "siliconas = ceil(cantP × 0.5). cintas_butilo = ceil(cantP / 10).",
+      paneles_pared: "cantPaneles = ceil(perimetro / ancho_util). areaBruta = cantP × alto × au. areaNeta = areaBruta − aberturas.",
+      descarte: "descarteAncho = (cantP × au) − ancho_solicitado. descarteArea = descarteAncho × largo.",
+      iva: "subtotal = sum(items.total). IVA = subtotal × 0.22. total = subtotal + IVA.",
+      dos_aguas: "Divide el ancho por la mitad, calcula cada agua independiente, agrega cumbrera.",
+      pendiente: "largoReal = largo × (1 / cos(pendiente°)). Aplica a todos los cálculos de largo.",
+    };
+
+    const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
+
+    res.json({
+      ok: true,
+      meta: {
+        lista, lista_label: LISTA_LABELS[lista] || lista,
+        version: "3.1.0",
+        timestamp: new Date().toISOString(),
+        nota: "Todos los precios son SIN IVA. IVA 22% se aplica una vez al total final.",
+      },
+      paneles_techo: panelesTecho,
+      paneles_pared: panelesPared,
+      fijaciones, selladores, servicios,
+      matriz_precios: matrizPrecios,
+      bordes_techo: BORDER_OPTIONS,
+      escenarios: SCENARIOS_DEF.map(s => ({
+        id: s.id, label: s.label, descripcion: s.description,
+        tiene_techo: s.hasTecho, tiene_pared: s.hasPared,
+        es_camara: !!s.isCamara, familias_validas: s.familias,
+      })),
+      reglas_asesoria: reglasAsesoria,
+      formulas_calculo: formulasCalculo,
+      endpoints: {
+        cotizar: `POST ${baseUrl}/calc/cotizar`,
+        cotizar_pdf: `POST ${baseUrl}/calc/cotizar/pdf`,
+        pdf_viewer: `GET ${baseUrl}/calc/pdf/{id}`,
+      },
+    });
+  } catch (err) {
+    req.log.error({ err }, "calc/informe failed");
     return res.status(500).json({ ok: false, error: err.message });
   }
 });

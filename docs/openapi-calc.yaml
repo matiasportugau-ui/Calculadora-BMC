@@ -83,6 +83,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/EscenariosResponse'
 
+  /calc/informe:
+    get:
+      operationId: obtener_informe_completo
+      summary: >-
+        Informe completo con todos los precios, reglas de negocio,
+        fórmulas de cálculo y recomendaciones para asesoría.
+      description: >-
+        Endpoint de conocimiento. Devuelve TODA la información que el GPT
+        necesita para actuar como asesor: catálogo con restricciones de color,
+        matriz de precios ordenada, precios de fijaciones/selladores/servicios,
+        fórmulas de cálculo, y reglas de asesoría por tipo de proyecto.
+        Llamar al inicio de sesión para cargar contexto completo.
+      parameters:
+        - in: query
+          name: lista
+          schema:
+            type: string
+            enum: [venta, web]
+            default: web
+          description: Lista de precios a usar.
+      responses:
+        '200':
+          description: Informe completo con toda la data del calculador.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformeResponse'
+
+  /calc/cotizar/pdf:
+    post:
+      operationId: generar_cotizacion_pdf
+      summary: >-
+        Genera una cotización en formato PDF profesional y devuelve un link
+        para que el cliente la abra en el navegador e imprima.
+      description: >-
+        Acepta los mismos campos que calcular_cotizacion, más un objeto
+        `cliente` con datos del comprador. Retorna un link temporal (24h)
+        a la cotización HTML lista para imprimir como PDF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CotizarPdfRequest'
+      responses:
+        '200':
+          description: PDF generado y almacenado temporalmente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotizarPdfResponse'
+        '400':
+          description: Parámetros inválidos o faltantes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     # ── Request schemas ─────────────────────────────────────────────────
@@ -383,7 +441,9 @@ components:
             properties:
               grupo:
                 type: string
-                description: Nombre del grupo (PANELES, FIJACIONES, etc.).
+                description: >-
+                  Nombre del grupo: PANELES, PERFILERÍA, FIJACIONES,
+                  SELLADORES o SERVICIOS.
               subtotal_usd:
                 type: number
               items:
@@ -404,6 +464,22 @@ components:
                       description: Precio unitario USD.
                     total_usd:
                       type: number
+                    largo_barra_m:
+                      type: number
+                      nullable: true
+                      description: >-
+                        Largo de la barra/perfil en metros (solo perfilería).
+                        Útil para entender cuántas barras se cortan.
+                    cant_paneles:
+                      type: integer
+                      nullable: true
+                      description: >-
+                        Cantidad de paneles (solo en el item de paneles).
+                    largo_panel_m:
+                      type: number
+                      nullable: true
+                      description: >-
+                        Largo de cada panel en metros (solo en el item de paneles).
         descarte:
           type: object
           nullable: true
@@ -556,6 +632,145 @@ components:
                 items:
                   type: string
                 description: Campos opcionales para este escenario.
+
+    InformeResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        meta:
+          type: object
+          properties:
+            lista:
+              type: string
+            version:
+              type: string
+            nota:
+              type: string
+        paneles_techo:
+          type: object
+          description: >-
+            Catálogo completo de paneles de techo con precios, autoportancia,
+            restricciones de color, notas por espesor.
+        paneles_pared:
+          type: object
+          description: >-
+            Catálogo completo de paneles de pared con precios y notas.
+        fijaciones:
+          type: object
+          description: Precios de todas las fijaciones disponibles.
+        selladores:
+          type: object
+          description: Precios de selladores.
+        servicios:
+          type: object
+          description: Precios de servicios (flete).
+        matriz_precios:
+          type: object
+          description: >-
+            Matrices de precios ordenadas de menor a mayor por tipo
+            (techo y pared). Útil para comparar opciones rápidamente.
+          properties:
+            techo:
+              type: array
+              items:
+                type: object
+            pared:
+              type: array
+              items:
+                type: object
+        reglas_asesoria:
+          type: object
+          description: >-
+            Reglas de asesoría por tipo de proyecto. Usar para recomendar
+            la mejor opción según las necesidades del cliente.
+        formulas_calculo:
+          type: object
+          description: >-
+            Fórmulas de cálculo del motor. Útil para explicar al cliente
+            cómo se calculan cantidades y precios.
+        endpoints:
+          type: object
+          description: URLs de los endpoints disponibles.
+
+    ClienteInput:
+      type: object
+      description: >-
+        Datos del cliente para incluir en la cotización PDF.
+        Todos los campos son opcionales.
+      properties:
+        nombre:
+          type: string
+          description: Nombre del cliente o empresa.
+        rut:
+          type: string
+          description: RUT del cliente.
+        telefono:
+          type: string
+        direccion:
+          type: string
+          description: Dirección de la obra o del cliente.
+        obra:
+          type: string
+          description: Descripción de la obra.
+        ref:
+          type: string
+          description: Referencia interna de la cotización.
+        fecha:
+          type: string
+          description: Fecha de la cotización (dd/mm/yyyy). Si no se envía, usa la fecha actual.
+        quote_code:
+          type: string
+          description: Código de cotización (ej. BMC-2026-0042).
+
+    CotizarPdfRequest:
+      type: object
+      required: [escenario]
+      description: >-
+        Mismos campos que CotizarRequest, más un objeto `cliente`
+        con datos del comprador para el PDF.
+      allOf:
+        - $ref: '#/components/schemas/CotizarRequest'
+        - type: object
+          properties:
+            cliente:
+              $ref: '#/components/schemas/ClienteInput'
+
+    CotizarPdfResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        pdf_id:
+          type: string
+          description: UUID del PDF generado.
+        pdf_url:
+          type: string
+          format: uri
+          description: >-
+            URL temporal para abrir la cotización en el navegador.
+            El cliente puede imprimir o guardar como PDF.
+            Expira en 24 horas.
+        expires_in_hours:
+          type: integer
+          description: Horas hasta que el link expire.
+        instrucciones:
+          type: string
+          description: Texto para que el GPT comparta con el usuario.
+        resumen:
+          type: object
+          description: Resumen numérico de la cotización.
+          properties:
+            area_m2:
+              type: number
+            cant_paneles:
+              type: integer
+            subtotal_usd:
+              type: number
+            iva_usd:
+              type: number
+            total_usd:
+              type: number
 
     ErrorResponse:
       type: object
