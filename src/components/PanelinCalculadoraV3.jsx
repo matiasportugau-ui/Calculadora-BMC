@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
-  Download, Save, Archive
+  Download, Save, Archive, Cloud
 } from "lucide-react";
 
 import {
@@ -26,12 +26,21 @@ import {
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
-  fmtPrice, generatePrintHTML, generateInternalHTML, openPrintWindow, buildWhatsAppText,
+  fmtPrice, generatePrintHTML, generateInternalHTML, buildWhatsAppText,
+  createPreviewUrl, revokePreviewUrl,
 } from "../utils/helpers.js";
 import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
   exportLogsAsJSON, exportSingleBudget,
 } from "../utils/budgetLog.js";
+import { serializeProject, deserializeProject } from "../utils/projectFile.js";
+import { htmlToPdfBlob } from "../utils/pdfGenerator.js";
+import {
+  initGoogleAuth, signIn as gdriveSignIn, signOut as gdriveSignOut,
+  isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
+  saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
+} from "../utils/googleDrive.js";
+import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -245,6 +254,64 @@ function MobileBottomBar({ total, onPrint, onWhatsApp }) {
           <button onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
           <button onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PDFPreviewModal({ html, title, onClose }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!html) return;
+    const u = createPreviewUrl(html);
+    setUrl(u);
+    return () => revokePreviewUrl(u);
+  }, [html]);
+
+  useEffect(() => {
+    if (!html) return;
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [html, onClose]);
+
+  if (!html || !url) return null;
+
+  const handlePrint = () => {
+    const iframe = document.getElementById("bmc-pdf-preview-frame");
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.print();
+    }
+  };
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.6)", animation: "bmc-fade 150ms ease-in-out" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", background: C.dark, color: "#fff", flexShrink: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{title || "Vista previa de cotización"}</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={handlePrint} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <Printer size={14} />Imprimir / PDF
+          </button>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+            <X size={14} />Cerrar
+          </button>
+        </div>
+      </div>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: 20, overflow: "auto" }}>
+        <iframe
+          id="bmc-pdf-preview-frame"
+          src={url}
+          style={{
+            width: "210mm",
+            maxWidth: "100%",
+            height: "100%",
+            border: "none",
+            borderRadius: 8,
+            boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+            background: "#fff",
+          }}
+          title="Vista previa PDF"
+        />
       </div>
     </div>
   );
@@ -547,6 +614,8 @@ export default function PanelinCalculadoraV3() {
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [toast, setToast] = useState(null);
   const [showTransp, setShowTransp] = useState(false);
+  const [previewHTML, setPreviewHTML] = useState(null);
+  const [previewTitle, setPreviewTitle] = useState("Vista previa de cotización");
   const [excludedItems, setExcludedItems] = useState({}); // { lineId: label }
   const [categoriasActivas, setCategoriasActivas] = useState(() => {
     const initial = {};
@@ -719,10 +788,21 @@ export default function PanelinCalculadoraV3() {
         if (!pared.familia || !pared.espesor) return null;
         const perim = 2 * (camara.largo_int + camara.ancho_int);
         const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-        const rT = calcTechoCompleto({ familia: pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS", espesor: pared.espesor, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color });
-        const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
+        const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
+        const techoPanel = PANELS_TECHO[techoFam];
+        const extraW = [];
+        let techoEsp = pared.espesor;
+        if (!techoPanel.esp[techoEsp]) {
+          const available = Object.keys(techoPanel.esp).map(Number).sort((a, b) => a - b);
+          techoEsp = available.find(e => e >= techoEsp) || available[available.length - 1];
+          extraW.push(`Techo cámara: espesor ${pared.espesor}mm no disponible en ${techoFam}, se usó ${techoEsp}mm.`);
+        }
+        const rT = calcTechoCompleto({ familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color });
+        if (rT?.error) extraW.push(`Techo cámara: ${rT.error}`);
+        const techoItems = rT?.error ? [] : (rT?.allItems || []);
+        const allItems = [...(rP?.allItems || []), ...techoItems];
         const totales = calcTotalesSinIVA(allItems);
-        return { ...rP, techoResult: rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || [])] };
+        return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraW] };
       }
     } catch (e) { return { error: e.message }; }
     return null;
@@ -734,7 +814,10 @@ export default function PanelinCalculadoraV3() {
     let g = bomToGroups(results);
     // Add flete — uses the user-supplied value from the stepper (pre-VAT)
     if (flete > 0) {
-      g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
+      const fleteLabel = proyecto.direccion
+        ? `${SERVICIOS.flete.label} — ${proyecto.direccion}`
+        : SERVICIOS.flete.label;
+      g.push({ title: "SERVICIOS", items: [{ label: fleteLabel, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
     }
     const withOverrides = applyOverrides(g, overrides);
 
@@ -752,7 +835,7 @@ export default function PanelinCalculadoraV3() {
       ...group,
       items: group.items.filter(item => !excludedItems[item.lineId])
     })).filter(group => group.items.length > 0);
-  }, [results, overrides, flete, excludedItems, categoriasActivas]);
+  }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion]);
 
   // ── Grand totals (with overrides applied) ──
   const grandTotal = useMemo(() => {
@@ -770,10 +853,10 @@ export default function PanelinCalculadoraV3() {
       const parts = [];
       if (techoPanelData && techo.espesor) parts.push(`Techo: ${techoPanelData.label} ${techo.espesor}mm ${techo.color}`);
       if (paredPanelData && pared.espesor) parts.push(`Pared: ${paredPanelData.label} ${pared.espesor}mm ${pared.color}`);
-      return { label: parts.join(" + "), espesor: "", color: "" };
+      return { label: parts.join(" + "), espesor: "", color: "", au: techoPanelData?.au || null };
     }
-    if (scenarioDef?.hasTecho) return { label: techoPanelData?.label || "", espesor: techo.espesor, color: techo.color };
-    return { label: paredPanelData?.label || "", espesor: pared.espesor, color: pared.color };
+    if (scenarioDef?.hasTecho) return { label: techoPanelData?.label || "", espesor: techo.espesor, color: techo.color, au: techoPanelData?.au || null };
+    return { label: paredPanelData?.label || "", espesor: pared.espesor, color: pared.color, au: paredPanelData?.au || null };
   }, [isCombined, scenarioDef, techoPanelData, paredPanelData, techo, pared]);
 
   const handleCopyWA = () => {
@@ -786,7 +869,7 @@ export default function PanelinCalculadoraV3() {
     navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles"));
   };
 
-  const handlePrint = () => {
+  const buildPrintDimensions = () => {
     const dimensions = {};
     if (scenarioDef?.hasTecho) {
       dimensions.zonas = techo.zonas;
@@ -800,6 +883,11 @@ export default function PanelinCalculadoraV3() {
       if (results?.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
       if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
     }
+    return dimensions;
+  };
+
+  const handlePrint = () => {
+    const dimensions = buildPrintDimensions();
     const html = generatePrintHTML({
       client: proyecto, project: proyecto, scenario,
       panel: panelInfo,
@@ -810,24 +898,16 @@ export default function PanelinCalculadoraV3() {
       dimensions,
       descarte: results?.paneles?.descarte,
       listaPrecios,
+      quotationId: currentBudgetCode || undefined,
+      showSKU: false,
+      showUnitPrices: true,
     });
-    openPrintWindow(html);
+    setPreviewTitle("Vista previa de cotización");
+    setPreviewHTML(html);
   };
 
   const handleInternalReport = () => {
-    const dimensions = {};
-    if (scenarioDef?.hasTecho) {
-      dimensions.zonas = techo.zonas;
-      dimensions.area = zonasTotales.area;
-      if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
-      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
-    }
-    if (scenarioDef?.hasPared) {
-      dimensions.alto = pared.alto;
-      dimensions.perimetro = pared.perimetro;
-      if (results?.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
-      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
-    }
+    const dimensions = buildPrintDimensions();
     const formulas = [];
     if (scenarioDef?.hasTecho && results?.paneles && techoPanelData) {
       techo.zonas.forEach((z, i) => {
@@ -869,7 +949,8 @@ export default function PanelinCalculadoraV3() {
       categoriasDesactivadas,
       formulas,
     });
-    openPrintWindow(html);
+    setPreviewTitle("Informe interno BMC");
+    setPreviewHTML(html);
   };
 
   const handleReset = () => {
@@ -953,6 +1034,132 @@ export default function PanelinCalculadoraV3() {
   const lastSavedHash = useRef("");
 
   const scenarioLabels = useRef({ solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo+Fachada", camara_frig: "Cámara Frig." });
+
+  // ── Google Drive state ──
+  const [showDrivePanel, setShowDrivePanel] = useState(false);
+  const [driveAuth, setDriveAuth] = useState(false);
+  const [driveQuotations, setDriveQuotations] = useState([]);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveSaving, setDriveSaving] = useState(false);
+  const [driveError, setDriveError] = useState(null);
+  const [driveLastSave, setDriveLastSave] = useState(null);
+
+  useEffect(() => {
+    setAuthChangeCallback(setDriveAuth);
+    const timer = setTimeout(() => { initGoogleAuth(); setDriveAuth(gdriveIsAuth()); }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleDriveRefresh = useCallback(async () => {
+    setDriveLoading(true);
+    setDriveError(null);
+    try {
+      const folders = await listQuotations();
+      setDriveQuotations(folders);
+    } catch (err) {
+      setDriveError(err.message || "Error al cargar cotizaciones");
+    } finally {
+      setDriveLoading(false);
+    }
+  }, []);
+
+  const handleDriveSignIn = useCallback(async () => {
+    try {
+      await gdriveSignIn();
+      setDriveAuth(true);
+      handleDriveRefresh();
+    } catch (err) {
+      setDriveError(err.message || "Error al iniciar sesión");
+    }
+  }, [handleDriveRefresh]);
+
+  const handleDriveSignOut = useCallback(() => {
+    gdriveSignOut();
+    setDriveAuth(false);
+    setDriveQuotations([]);
+  }, []);
+
+  const handleDriveSave = useCallback(async () => {
+    if (!groups.length) return;
+    setDriveSaving(true);
+    setDriveError(null);
+    setDriveLastSave(null);
+    try {
+      const dimensions = buildPrintDimensions();
+      const html = generatePrintHTML({
+        client: proyecto, project: proyecto, scenario,
+        panel: panelInfo,
+        autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
+        groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
+        totals: grandTotal,
+        warnings: results?.warnings || [],
+        dimensions,
+        descarte: results?.paneles?.descarte,
+        listaPrecios,
+        quotationId: currentBudgetCode || undefined,
+        showSKU: false,
+        showUnitPrices: true,
+      });
+      const pdfBlob = await htmlToPdfBlob(html);
+      const projectData = serializeProject({
+        scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+        overrides, excludedItems, categoriasActivas, techoAnchoModo,
+        quotationCode: currentBudgetCode,
+      });
+      const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
+      const result = await saveQuotation({
+        quotationCode: code,
+        clientName: proyecto.nombre,
+        pdfBlob,
+        projectData,
+      });
+      setDriveLastSave(result);
+      showToast("Guardado en Google Drive");
+      handleDriveRefresh();
+    } catch (err) {
+      setDriveError(err.message || "Error al guardar en Drive");
+    } finally {
+      setDriveSaving(false);
+    }
+  }, [groups, proyecto, scenario, panelInfo, results, grandTotal, listaPrecios, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, showToast, handleDriveRefresh]);
+
+  const handleDriveLoad = useCallback(async (folderId) => {
+    setDriveLoading(true);
+    setDriveError(null);
+    try {
+      const data = await loadProjectFromFolder(folderId);
+      if (!data) { setDriveError("No se encontró archivo de proyecto (.bmc.json)"); return; }
+      const state = deserializeProject(data);
+      setScenario(state.scenario);
+      setLP(state.listaPrecios);
+      setProyecto(state.proyecto);
+      setTecho(state.techo);
+      setPared(state.pared);
+      setCamara(state.camara);
+      setFlete(state.flete);
+      setOverrides(state.overrides);
+      setExcludedItems(state.excludedItems);
+      if (state.categoriasActivas && Object.keys(state.categoriasActivas).length) setCategoriasActivas(state.categoriasActivas);
+      if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
+      if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
+      setShowDrivePanel(false);
+      showToast("Cotización cargada desde Drive");
+    } catch (err) {
+      setDriveError(err.message || "Error al cargar cotización");
+    } finally {
+      setDriveLoading(false);
+    }
+  }, [showToast]);
+
+  const handleDriveDelete = useCallback(async (folderId) => {
+    if (!confirm("¿Eliminar esta cotización de Google Drive?")) return;
+    try {
+      await deleteQuotation(folderId);
+      handleDriveRefresh();
+    } catch (err) {
+      setDriveError(err.message || "Error al eliminar");
+    }
+  }, [handleDriveRefresh]);
 
   // ── Section style ──
   const sectionS = { background: C.surface, borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: SHC };
@@ -1087,6 +1294,9 @@ export default function PanelinCalculadoraV3() {
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: driveAuth ? "rgba(66,133,244,0.25)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
+            <Cloud size={14} />Drive
+          </button>
           <button onClick={() => setShowLogPanel(true)} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Archive size={14} />Presupuestos
             {logEntries.length > 0 && (
@@ -1528,7 +1738,7 @@ export default function PanelinCalculadoraV3() {
             <div style={{ fontWeight: 700, marginBottom: 4, color: C.tp }}>Condiciones comerciales:</div>
             <div>Entrega: 10 a 15 días hábiles. Seña: 60%, saldo contra entrega. Validez: 10 días. Precios en USD.</div>
             <div style={{ marginTop: 12, fontWeight: 700, color: C.tp }}>Datos bancarios:</div>
-            <div>Metalog SAS · RUT: 120403630012 · BROU Cta. Dólares: 110520638-00002</div>
+            <div>Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}
 
           {/* Action buttons — desktop only */}
@@ -1536,6 +1746,7 @@ export default function PanelinCalculadoraV3() {
             <button onClick={handleCopyWA} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
             <button onClick={handlePrint} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
             <button onClick={handleInternalReport} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
+            <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#4285F4", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Cloud size={16} />Drive</button>
           </div>}
 
           {/* Transparency Panel */}
@@ -1580,6 +1791,34 @@ export default function PanelinCalculadoraV3() {
           onWhatsApp={handleCopyWA}
         />
       )}
+
+      {/* ── PDF Preview Modal ── */}
+      {previewHTML && (
+        <PDFPreviewModal
+          html={previewHTML}
+          title={previewTitle}
+          onClose={() => setPreviewHTML(null)}
+        />
+      )}
+
+      {/* ── Google Drive Panel ── */}
+      <GoogleDrivePanel
+        visible={showDrivePanel}
+        onClose={() => setShowDrivePanel(false)}
+        onSave={handleDriveSave}
+        onLoad={handleDriveLoad}
+        onDelete={handleDriveDelete}
+        isAuthenticated={driveAuth}
+        onSignIn={handleDriveSignIn}
+        onSignOut={handleDriveSignOut}
+        quotations={driveQuotations}
+        loading={driveLoading}
+        saving={driveSaving}
+        error={driveError}
+        onRefresh={handleDriveRefresh}
+        currentQuotationCode={currentBudgetCode}
+        lastSaveResult={driveLastSave}
+      />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}
       {showLogPanel && (
