@@ -1,0 +1,17 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_GOOGLE_CLIENT_ID=$_VITE_GOOGLE_CLIENT_ID'
+      - '--build-arg'
+      - 'VITE_API_URL=$_VITE_API_URL'
+      - '-t'
+      - '$_IMAGE:latest'
+      - '.'
+images:
+  - '$_IMAGE:latest'
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/chatbot-bmc-live/cloud-run-repo/panelin-calc-web
+  _VITE_GOOGLE_CLIENT_ID: ''
+  _VITE_API_URL: ''

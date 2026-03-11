@@ -53,7 +53,28 @@ setInterval(() => {
   for (const [id, entry] of pdfStore) {
     if (now - entry.createdAt > PDF_TTL_MS) pdfStore.delete(id);
   }
+  for (const [id, entry] of quotationRegistry) {
+    if (now - entry.createdAt > PDF_TTL_MS) quotationRegistry.delete(id);
+  }
 }, 60 * 60 * 1000);
+
+// ── Quotation registry (tracks GPT-generated quotations) ────────────────────
+
+const quotationRegistry = new Map();
+
+function registerQuotation({ pdfId, pdfUrl, code, client, scenario, total, lista }) {
+  quotationRegistry.set(pdfId, {
+    id: pdfId,
+    code: code || null,
+    client: client || "—",
+    scenario: scenario || "",
+    total: total || 0,
+    lista: lista || "web",
+    pdfUrl,
+    createdAt: Date.now(),
+    timestamp: new Date().toISOString(),
+  });
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -355,11 +376,22 @@ router.post("/cotizar/pdf", (req, res) => {
 
     const pdfId = storePdf(html);
     const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
+    const pdfUrl = `${baseUrl}/calc/pdf/${pdfId}`;
+
+    registerQuotation({
+      pdfId,
+      pdfUrl,
+      code: clientInfo.quote_code || null,
+      client: clientInfo.nombre || "—",
+      scenario: escenario,
+      total: gptResp.resumen.total_usd,
+      lista,
+    });
 
     return res.json({
       ok: true,
       pdf_id: pdfId,
-      pdf_url: `${baseUrl}/calc/pdf/${pdfId}`,
+      pdf_url: pdfUrl,
       expires_in_hours: 24,
       instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF.",
       resumen: gptResp.resumen,
@@ -379,6 +411,14 @@ router.get("/pdf/:id", (req, res) => {
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(html);
+});
+
+// ── GET /cotizaciones ────────────────────────────────────────────────────────
+
+router.get("/cotizaciones", (req, res) => {
+  const entries = Array.from(quotationRegistry.values())
+    .sort((a, b) => b.createdAt - a.createdAt);
+  res.json({ ok: true, count: entries.length, cotizaciones: entries });
 });
 
 // ── GET /catalogo ────────────────────────────────────────────────────────────

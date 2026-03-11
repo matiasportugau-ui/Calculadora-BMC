@@ -9,8 +9,6 @@ info:
 servers:
   - url: https://panelin-calc-642127786762.us-central1.run.app
     description: Cloud Run Production
-  - url: http://localhost:3001
-    description: Desarrollo local
 paths:
   /calc/cotizar:
     post:
@@ -90,11 +88,9 @@ paths:
         Informe completo con todos los precios, reglas de negocio,
         fórmulas de cálculo y recomendaciones para asesoría.
       description: >-
-        Endpoint de conocimiento. Devuelve TODA la información que el GPT
-        necesita para actuar como asesor: catálogo con restricciones de color,
-        matriz de precios ordenada, precios de fijaciones/selladores/servicios,
-        fórmulas de cálculo, y reglas de asesoría por tipo de proyecto.
-        Llamar al inicio de sesión para cargar contexto completo.
+        Devuelve catálogo completo, matriz de precios, fijaciones, selladores,
+        fórmulas de cálculo y reglas de asesoría. Llamar al inicio de sesión
+        para cargar contexto completo.
       parameters:
         - in: query
           name: lista
@@ -110,6 +106,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InformeResponse'
+
+  /calc/cotizaciones:
+    get:
+      operationId: listar_cotizaciones_generadas
+      summary: Lista todas las cotizaciones generadas por el GPT en la sesión actual.
+      description: >-
+        Devuelve un listado de todas las cotizaciones PDF generadas mediante
+        generar_cotizacion_pdf, con código, cliente, total, escenario y link
+        al PDF. Útil para consultar el historial de cotizaciones.
+      responses:
+        '200':
+          description: Lista de cotizaciones.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  count:
+                    type: integer
+                  cotizaciones:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: ID interno del PDF.
+                        code:
+                          type: string
+                          nullable: true
+                          description: Código de cotización (ej. BMC-2026-0042).
+                        client:
+                          type: string
+                          description: Nombre del cliente.
+                        scenario:
+                          type: string
+                          description: Escenario de obra.
+                        total:
+                          type: number
+                          description: Total en USD con IVA.
+                        lista:
+                          type: string
+                          description: Lista de precios usada.
+                        pdfUrl:
+                          type: string
+                          description: URL del PDF generado.
+                        timestamp:
+                          type: string
+                          format: date-time
+                          description: Fecha/hora de generación.
 
   /calc/cotizar/pdf:
     post:
@@ -729,12 +777,30 @@ components:
       description: >-
         Mismos campos que CotizarRequest, más un objeto `cliente`
         con datos del comprador para el PDF.
-      allOf:
-        - $ref: '#/components/schemas/CotizarRequest'
-        - type: object
-          properties:
-            cliente:
-              $ref: '#/components/schemas/ClienteInput'
+      properties:
+        escenario:
+          type: string
+          enum: [solo_techo, solo_fachada, techo_fachada, camara_frig]
+          description: Tipo de proyecto.
+        lista:
+          type: string
+          enum: [venta, web]
+          default: web
+          description: Lista de precios.
+        techo:
+          $ref: '#/components/schemas/TechoInput'
+        pared:
+          $ref: '#/components/schemas/ParedInput'
+        camara:
+          $ref: '#/components/schemas/CamaraInput'
+        flete:
+          type: number
+          minimum: 0
+          maximum: 5000
+          default: 0
+          description: Costo del flete en USD (sin IVA).
+        cliente:
+          $ref: '#/components/schemas/ClienteInput'
 
     CotizarPdfResponse:
       type: object

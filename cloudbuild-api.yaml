@@ -1,0 +1,13 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'server/Dockerfile'
+      - '-t'
+      - '$_IMAGE:latest'
+      - '.'
+images:
+  - '$_IMAGE:latest'
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/chatbot-bmc-live/cloud-run-repo/panelin-calc

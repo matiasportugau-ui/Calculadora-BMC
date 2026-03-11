@@ -1033,6 +1033,23 @@ export default function PanelinCalculadoraV3() {
   const autoSaveTimer = useRef(null);
   const lastSavedHash = useRef("");
 
+  // ── GPT quotation registry state ──
+  const [gptQuotations, setGptQuotations] = useState([]);
+  const [gptLoading, setGptLoading] = useState(false);
+
+  const fetchGptQuotations = useCallback(async () => {
+    const apiUrl = import.meta.env?.VITE_API_URL;
+    if (!apiUrl) return;
+    setGptLoading(true);
+    try {
+      const resp = await fetch(`${apiUrl.replace(/\/$/, "")}/calc/cotizaciones`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      if (data.ok) setGptQuotations(data.cotizaciones || []);
+    } catch { /* silent — API may be unavailable */ }
+    finally { setGptLoading(false); }
+  }, []);
+
   const scenarioLabels = useRef({ solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo+Fachada", camara_frig: "Cámara Frig." });
 
   // ── Google Drive state ──
@@ -1297,10 +1314,10 @@ export default function PanelinCalculadoraV3() {
           <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: driveAuth ? "rgba(66,133,244,0.25)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
             <Cloud size={14} />Drive
           </button>
-          <button onClick={() => setShowLogPanel(true)} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+          <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Archive size={14} />Presupuestos
-            {logEntries.length > 0 && (
-              <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length}</span>
+            {(logEntries.length + gptQuotations.length) > 0 && (
+              <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
             )}
           </button>
           {groups.length > 0 && (
@@ -1842,9 +1859,47 @@ export default function PanelinCalculadoraV3() {
               </div>
             </div>
 
+            {/* GPT-generated quotations */}
+            {(gptQuotations.length > 0 || gptLoading) && (
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.primary, display: "flex", alignItems: "center", gap: 6 }}>
+                    <FileText size={14} />Cotizaciones GPT
+                    <span style={{ fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 8, background: C.primarySoft, color: C.primary }}>{gptQuotations.length}</span>
+                  </div>
+                  <button onClick={fetchGptQuotations} disabled={gptLoading} style={{ padding: "3px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, fontSize: 10, cursor: gptLoading ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 3 }}>
+                    <RefreshCw size={10} style={gptLoading ? { animation: "spin 1s linear infinite" } : {}} />Actualizar
+                  </button>
+                </div>
+                {gptQuotations.map((q) => (
+                  <div key={q.id} style={{ background: C.surface, borderRadius: 10, padding: 12, marginBottom: 8, borderLeft: `4px solid ${C.primary}`, boxShadow: SHC }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.brand, ...TN }}>{q.code || q.id.slice(0, 8)}</div>
+                        <div style={{ fontSize: 11, color: C.ts }}>{q.client}</div>
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: C.tp, ...TN }}>${fmtPrice(q.total)}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: C.primarySoft, color: C.primary, fontWeight: 500 }}>{q.scenario}</span>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: C.surfaceAlt, color: C.ts }}>{q.lista === "venta" ? "BMC" : "Web"}</span>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: C.surfaceAlt, color: C.tt }}>{new Date(q.timestamp).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                    <a href={q.pdfUrl} target="_blank" rel="noopener noreferrer" style={{
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                      width: "100%", padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      border: "none", background: C.primary, color: "#fff", cursor: "pointer", textDecoration: "none",
+                    }}>
+                      <FileText size={13} />Ver PDF
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Log entries list */}
             <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              {logEntries.length === 0 && (
+              {logEntries.length === 0 && gptQuotations.length === 0 && (
                 <div style={{ textAlign: "center", padding: 40, color: C.ts }}>
                   <Archive size={40} color={C.border} style={{ marginBottom: 12 }} />
                   <div style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginBottom: 4 }}>Sin presupuestos guardados</div>
