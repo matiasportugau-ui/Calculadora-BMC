@@ -241,7 +241,7 @@ Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución
 |-------|-------|
 | Razón social | METALOG SAS |
 | Marca | BMC Uruguay |
-| RUT | 120403630012 |
+| RUT | 120403430012 |
 | Ubicación | Maldonado, Uruguay |
 | Web | [bmcuruguay.com.uy](https://bmcuruguay.com.uy) |
 | Contacto | 092 663 245 |
