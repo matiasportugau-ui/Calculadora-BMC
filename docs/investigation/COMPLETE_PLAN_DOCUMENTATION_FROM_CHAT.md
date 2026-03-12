@@ -349,12 +349,82 @@ Resume rules:
 - Contract drift between OpenAPI, routing, and runtime behavior.
 - Unverified rollback path for target release.
 
+## Execution Status (Live)
+
+### Pre-Phase: PASS
+
+- `docs/workflow-ownership-map.md` -- created and committed (`7982e86`)
+- `docs/deploy-event-contract.md` -- created and committed (`7982e86`)
+- `docs/secret-contract.md` -- created and committed (`7982e86`)
+
+### Phase 1: PASS
+
+- `gpt/config/environments.json` -- created with real Cloud Run URL + Wolf/ML placeholders (`7982e86`)
+- `gpt/config/service-contracts.json` -- created with health/smoke/auth contracts per service (`7982e86`)
+- `gpt/config/manifest.json` -- bumped to 1.1.0 with new dependencies (`7982e86`)
+
+### Phase 2: PASS
+
+- `scripts/validate_openapi_servers.py` -- created, drift detection working (`429c66e`)
+- `scripts/check_api_health.py` -- created, calculator health confirmed live (`429c66e`)
+- `scripts/smoke_api_contracts.py` -- created, semantic assertions verified (`429c66e`)
+- `scripts/run_validations.py` -- profile support added (`static_only`, `runtime_staging`, `post_deploy_prod`)
+- Live results: calculator API healthy, smoke passed, all 4 semantic checks green (subtotal + IVA = total)
+- Wolf and MercadoLibre: marked placeholder/skipped (not yet deployed)
+
+### Phase 3: PASS
+
+- `validate-static.yml` -- PR/push lane, no secrets (`429c66e`)
+- `validate-runtime-staging.yml` -- trusted branch + dispatch lane with staging environment (`429c66e`)
+- `release-package.yml` -- semantic tag/manual lane with artifact bundle (`429c66e`)
+- `validate-knowledge.yml` -- deprecated (manual-only fallback)
+- `evolucionador-daily.yml` -- updated to use `--profile static_only`
+
+### Phase 4: PENDING
+
+- Next: tag `v0.1.0-rc1`, run release pipeline, execute read-only prod smoke
+
+### Phase 5: PENDING
+
+- Next: add rollback workflow, simulate failure, verify recovery
+
+## OPUS Snapshot (Current)
+
+```text
+CurrentState:
+  phase: Phase 3 complete
+  gate_status: pass
+  version_target: main (pre-RC1)
+
+CompletedArtifacts:
+  - Panelin1103: docs/workflow-ownership-map.md
+  - Panelin1103: docs/deploy-event-contract.md
+  - Panelin1103: docs/secret-contract.md
+  - Panelin1103: gpt/config/environments.json
+  - Panelin1103: gpt/config/service-contracts.json
+  - Panelin1103: scripts/validate_openapi_servers.py
+  - Panelin1103: scripts/check_api_health.py
+  - Panelin1103: scripts/smoke_api_contracts.py
+  - Panelin1103: .github/workflows/validate-static.yml
+  - Panelin1103: .github/workflows/validate-runtime-staging.yml
+  - Panelin1103: .github/workflows/release-package.yml
+
+OpenRisks:
+  - wolf-api: placeholder URL, runtime checks skipped
+  - mercadolibre: /ml/* routes not deployed, runtime checks skipped
+
+NextCommandSet:
+  - Tag v0.1.0-rc1 and run release-package workflow
+  - Add post-deploy-smoke.yml and rollback-and-incident.yml
+  - Execute rollback proof test
+```
+
 ## Immediate OPUS 4.6 Next Steps
 
-1. Execute Pre-Phase contracts and publish ownership/deploy/secret docs.
-2. Implement Phase 1 environment and service contract files.
-3. Implement Phase 2 runtime validators and semantic assertions.
-4. Activate Phase 3 CI lanes with fork-safe runtime policy.
+1. ~~Execute Pre-Phase contracts and publish ownership/deploy/secret docs.~~ DONE
+2. ~~Implement Phase 1 environment and service contract files.~~ DONE
+3. ~~Implement Phase 2 runtime validators and semantic assertions.~~ DONE
+4. ~~Activate Phase 3 CI lanes with fork-safe runtime policy.~~ DONE
 5. Run Phase 4 RC1 cycle and collect release evidence.
 6. Execute Phase 5 rollback proof and close with incident-ready artifacts.
 
