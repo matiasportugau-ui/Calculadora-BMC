@@ -12,6 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/validation.js",
+    "test:api": "node tests/calc-routes.validation.js",
     "lint": "eslint src/"
   },
   "dependencies": {
