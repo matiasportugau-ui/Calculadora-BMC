@@ -1,0 +1,256 @@
+{
+  "generated": "2026-03-11",
+  "phase": "PHASE_4_DUPLICATION_AND_CROSS_EVOLUTION",
+  "archive_branches_created": [
+    "Calculadora-BMC: archive/pre-consolidation-2026-03-11",
+    "Calculadora-BMC-GPT: archive/pre-consolidation-2026-03-11"
+  ],
+  "personalization_note": {
+    "feature": "Non-blocking user personalization",
+    "users": ["Matias", "Ramiro", "Sandra", "Martin"],
+    "behavior": "Personalize greeting and tone if name matches, but NEVER block the conversation flow. If name doesn't match, proceed normally."
+  },
+  "duplications": [
+    {
+      "id": "DUP-001",
+      "type": "BUSINESS_RULE",
+      "severity": "CRITICAL",
+      "description": "BMC_Base_Conocimiento_GPT-2.json exists in 12 copies across 2 repos",
+      "locations": {
+        "GPT-PANELIN-V3.2": "8 copies (root + 4 nested version dirs + GPT_Upload_Package)",
+        "Chatbot-Truth-base--Creation": "4 copies (root + nested + 2 backups)"
+      },
+      "size_discrepancy": "GPT-PANELIN copies: 16,363 bytes | Truth-base copies: 9,696 bytes — DIFFERENT VERSIONS",
+      "recommendation": "Keep ONE canonical copy in Calculadora-BMC-GPT. Delete all others."
+    },
+    {
+      "id": "DUP-002",
+      "type": "BUSINESS_RULE",
+      "severity": "HIGH",
+      "description": "panelin_truth_bmcuruguay_web_only_v2.json exists in 18+ copies",
+      "locations": {
+        "GPT-PANELIN-V3.2": "8 copies",
+        "Chatbot-Truth-base--Creation": "10+ copies (root, Files/, nested, backups, cache)"
+      },
+      "recommendation": "Deprecate — calculator API is now the source of truth for pricing"
+    },
+    {
+      "id": "DUP-003",
+      "type": "DOC",
+      "severity": "HIGH",
+      "description": "PANELIN docs duplicated across repos with different versions",
+      "files": [
+        {"name": "PANELIN_KNOWLEDGE_BASE_GUIDE.md", "copies": "10 (3 different sizes: 8KB, 12KB, 14KB)"},
+        {"name": "PANELIN_QUOTATION_PROCESS.md", "copies": "10 (2 versions: 6907 vs 6911 bytes)"},
+        {"name": "PANELIN_TRAINING_GUIDE.md", "copies": "10 (3 different sizes: 6310, 6888, 7190 bytes)"},
+        {"name": "panelin_context_consolidacion_sin_backend.md", "copies": "6 (2 versions: 1090 vs 9448 bytes)"}
+      ],
+      "recommendation": "Consolidate latest versions into Calculadora-BMC-GPT/docs/"
+    },
+    {
+      "id": "DUP-004",
+      "type": "API_SCHEMA",
+      "severity": "MEDIUM",
+      "description": "OpenAPI specs diverged between repos",
+      "locations": {
+        "Calculadora-BMC/docs/openapi-calc.yaml": "849 lines, v1.0.0, detailed descriptions",
+        "Calculadora-BMC-GPT/gpt/actions/openapi.yaml": "359 lines, v1.1.0, concise GPT-optimized"
+      },
+      "differences": "GPT version is newer (v1.1.0), has error handling schema, concise descriptions. Calc version has more detail but is older.",
+      "recommendation": "Calculadora-BMC-GPT version should be canonical. Sync Calculadora-BMC version from it."
+    },
+    {
+      "id": "DUP-005",
+      "type": "AUTOMATION",
+      "severity": "MEDIUM",
+      "description": "n8n workflows duplicated across 3 repos",
+      "locations": {
+        "chatbot-2311": "10 workflow files (n8n-workflows/ + n8n_workflows/)",
+        "bmc-cotizacion-inteligente": "10 workflow files (same folders, shared origin)",
+        "ChatBOT": "5 workflow files (WF_* format, different naming, more evolved)"
+      },
+      "recommendation": "ChatBOT WF_* workflows are the most evolved. Archive others."
+    },
+    {
+      "id": "DUP-006",
+      "type": "INTERNAL_DUPLICATION",
+      "severity": "HIGH",
+      "description": "GPT-PANELIN-V3.2 has 4 nested copies of itself",
+      "nested_dirs": ["GPT-PANELIN-V3.2/", "GPT-PANELIN-V3.2-1/", "GPT-PANELIN-V3.2-new/", "GPT-PANELIN-V3.3/"],
+      "copies_per_key_file": {
+        "BMC_Base_Conocimiento_GPT-2.json": 8,
+        "bromyros_pricing_master.json": 4,
+        "bom_rules.json": 8,
+        "accessories_catalog.json": 8,
+        "Panelin_GPT_config.json": 8
+      },
+      "total_wasted_space": "~2800 files are duplicates of ~200 unique files",
+      "recommendation": "Clean up nested dirs. Keep only root-level files."
+    },
+    {
+      "id": "DUP-007",
+      "type": "INTERNAL_DUPLICATION",
+      "severity": "MEDIUM",
+      "description": "Chatbot-Truth-base--Creation has nested copy of itself",
+      "nested_dir": "Chatbot-Truth-base--Creation/Chatbot-Truth-base--Creation/",
+      "includes": "Full duplicate of root content + .kb_backups/ with 2 backup snapshots",
+      "recommendation": "Clean up nested dir. Keep only root-level files."
+    }
+  ],
+  "cross_evolution_analysis": {
+    "description": "Features from repos being archived that could benefit active repos",
+    "extractable_from_chatbot_2311": [
+      {
+        "feature": "AI_AGENTS architecture",
+        "source": "chatbot-2311/AI_AGENTS/",
+        "files": ["EXECUTOR", "watcher_agent.py"],
+        "value": "MEDIUM — Agent executor/watcher pattern could enhance autopilot system",
+        "target": "Calculadora-BMC-GPT/autopilot/"
+      },
+      {
+        "feature": "Backup system",
+        "source": "chatbot-2311/backup_system/ (11 files)",
+        "value": "LOW — Automated backup pattern. Current repos use git for this.",
+        "target": "N/A"
+      },
+      {
+        "feature": "Knowledge consolidation tools",
+        "source": "chatbot-2311/consolidation/ (123 files)",
+        "value": "MEDIUM — Has tools for consolidating knowledge across sources",
+        "target": "Could inform future KB sync tooling"
+      },
+      {
+        "feature": "Kubernetes configs",
+        "source": "chatbot-2311/k8s/ (17 files)",
+        "value": "LOW — Only useful if deploying to k8s (current deploy is Vercel/Cloud Run)",
+        "target": "N/A"
+      },
+      {
+        "feature": "Validate-knowledge workflow",
+        "source": "chatbot-2311/.github/workflows/validate-knowledge.yml",
+        "value": "HIGH — Automated KB validation pattern should be adopted",
+        "target": "Calculadora-BMC-GPT/.github/workflows/"
+      },
+      {
+        "feature": "Auto-update-products workflow",
+        "source": "chatbot-2311/.github/workflows/auto-update-products.yml",
+        "value": "MEDIUM — Product catalog auto-update from Shopify",
+        "target": "Future pricing sync automation"
+      }
+    ],
+    "extractable_from_bmc_cotizacion": [
+      {
+        "feature": "Test scenarios",
+        "source": "bmc-cotizacion-inteligente/test_scenarios/ (4 files)",
+        "files": ["edge_cases.json", "multi_turn.json", "product_info.json", "quote_request.json"],
+        "value": "HIGH — Structured test scenarios for GPT validation",
+        "target": "Calculadora-BMC-GPT/tests/"
+      },
+      {
+        "feature": "Next.js app structure",
+        "source": "bmc-cotizacion-inteligente/nextjs-app/",
+        "value": "LOW — Current calculator uses React+Vite, not Next.js",
+        "target": "N/A"
+      }
+    ],
+    "extractable_from_chatbot": [
+      {
+        "feature": "Agent YAML definitions",
+        "source": "ChatBOT/agents/*.yml",
+        "files": ["documentation-maintainer.yml", "quality-auditor.yml", "service-health-monitor.yml"],
+        "value": "HIGH — Pattern for defining agent capabilities as structured YAML",
+        "target": "Calculadora-BMC-GPT/agents/"
+      },
+      {
+        "feature": "Data engineer agent",
+        "source": "ChatBOT/agents/data_engineer_agent/agent.py",
+        "value": "MEDIUM — Validation/repair pattern for data quality",
+        "target": "Could adapt for pricing consistency validation"
+      },
+      {
+        "feature": "Rasa domain intents",
+        "source": "ChatBOT/domain.yml",
+        "value": "LOW — Current system uses GPT, not Rasa",
+        "target": "N/A"
+      },
+      {
+        "feature": "Docker Compose full stack",
+        "source": "ChatBOT/docker-compose.yml (Traefik, Chatwoot, Postgres, Redis, n8n, Qdrant)",
+        "value": "MEDIUM — Infrastructure pattern if scaling to self-hosted",
+        "target": "Future infrastructure expansion"
+      }
+    ],
+    "extractable_from_2026_mono_rep": [
+      {
+        "feature": "ADR practice",
+        "source": "2026_Mono_rep/docs/ADR/",
+        "files": ["ADR-001-consolidation-strategy.md", "ADR-002-improvements-from-prs.md"],
+        "value": "HIGH — Architecture Decision Records for documenting key decisions",
+        "target": "Calculadora-BMC/docs/ADR/"
+      },
+      {
+        "feature": "Agent registry",
+        "source": "2026_Mono_rep/docs/architecture/agent-registry.md",
+        "value": "HIGH — Catalog of AI agents with locations and capabilities",
+        "target": "Calculadora-BMC-GPT/docs/"
+      },
+      {
+        "feature": "Shared types package",
+        "source": "2026_Mono_rep/packages/shared-types/ (13 files)",
+        "value": "MEDIUM — TypeScript shared types pattern for multi-package projects",
+        "target": "Future if splitting into packages"
+      },
+      {
+        "feature": "BMC AI training app",
+        "source": "2026_Mono_rep/apps/bmc-ai-training/ (13 files)",
+        "value": "MEDIUM — Training pipeline for AI using conversation data",
+        "target": "Future training automation"
+      },
+      {
+        "feature": "Observability docs",
+        "source": "2026_Mono_rep/docs/architecture/observability.md",
+        "value": "MEDIUM — Monitoring and observability patterns",
+        "target": "Calculadora-BMC/docs/"
+      }
+    ],
+    "extractable_from_gpt_panelin_v32": [
+      {
+        "feature": "EVOLUCIONADOR daily workflow",
+        "source": "GPT-PANELIN-V3.2/.github/workflows/evolucionador-daily.yml",
+        "value": "HIGH — Automated daily analysis and reporting",
+        "target": "Calculadora-BMC-GPT/.github/workflows/"
+      },
+      {
+        "feature": "GPT file validation scripts",
+        "source": "GPT-PANELIN-V3.2/validate_gpt_files.py, package_gpt_files.py",
+        "value": "HIGH — Validates GPT upload files are correct",
+        "target": "Calculadora-BMC-GPT/scripts/"
+      },
+      {
+        "feature": "Quotation calculator Python",
+        "source": "GPT-PANELIN-V3.2/quotation_calculator_v3.py",
+        "value": "LOW — Superseded by Calculadora-BMC's JS engine",
+        "target": "N/A (already evolved into JS)"
+      }
+    ]
+  },
+  "priority_extractions": {
+    "immediate": [
+      "Test scenarios from bmc-cotizacion → Calculadora-BMC-GPT/tests/",
+      "Validate-knowledge workflow pattern → Calculadora-BMC-GPT/.github/workflows/",
+      "ADR practice → Calculadora-BMC/docs/ADR/",
+      "GPT file validation scripts → Calculadora-BMC-GPT/scripts/",
+      "EVOLUCIONADOR workflow → Calculadora-BMC-GPT/.github/workflows/"
+    ],
+    "soon": [
+      "Agent YAML definition pattern → Calculadora-BMC-GPT/agents/",
+      "Agent registry documentation → Calculadora-BMC-GPT/docs/",
+      "Auto-update-products pattern for future pricing sync"
+    ],
+    "later": [
+      "Docker Compose full stack pattern (if scaling to self-hosted)",
+      "Shared types package pattern (if splitting into packages)",
+      "BMC AI training app (for training automation)"
+    ]
+  }
+}
