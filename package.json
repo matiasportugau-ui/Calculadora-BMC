@@ -11,7 +11,7 @@
     "start:api": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/validation.js",
+    "test": "node tests/validation.js && node tests/api-validation.js",
     "lint": "eslint src/"
   },
   "dependencies": {
