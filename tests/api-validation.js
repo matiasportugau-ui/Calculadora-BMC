@@ -89,7 +89,7 @@ async function run() {
     const camaraMapped = await postJson(baseUrl, "/calc/cotizar", {
       escenario: "camara_frig",
       lista: "web",
-      pared: { familia: "ISOPANEL_EPS", espesor: 80, color: "Blanco" },
+      pared: { familia: "ISOWALL_PIR", espesor: 80, color: "Blanco" },
       camara: { largo_int: 6, ancho_int: 4, alto_int: 3 },
     });
     assert("camara_frig valid payload returns 200", camaraMapped.status === 200, camaraMapped.status, 200);
