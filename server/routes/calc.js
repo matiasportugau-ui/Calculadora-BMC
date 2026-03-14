@@ -25,6 +25,61 @@ import {
 } from "../../src/data/constants.js";
 import { config } from "../config.js";
 
+// ── Input validation helper ──────────────────────────────────────────────────
+
+const VALID_SCENARIOS = ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"];
+
+function validateInput(body) {
+  const { escenario, techo, pared, camara, flete } = body;
+
+  if (escenario !== undefined && !VALID_SCENARIOS.includes(escenario)) {
+    return `Invalid scenario '${escenario}'. Must be one of: ${VALID_SCENARIOS.join(", ")}`;
+  }
+
+  const checkPositive = (obj, prefix) => {
+    if (!obj || typeof obj !== "object") return null;
+    const numericFields = ["largo", "ancho", "alto", "perimetro", "largo_int", "ancho_int", "alto_int"];
+    for (const field of numericFields) {
+      if (field in obj) {
+        const val = Number(obj[field]);
+        if (Number.isNaN(val)) return `${prefix}.${field} must be a valid number`;
+        if (val < 0) return `${prefix}.${field} must not be negative`;
+      }
+    }
+    // Check zones if present
+    if (Array.isArray(obj.zonas)) {
+      for (let i = 0; i < obj.zonas.length; i++) {
+        const zona = obj.zonas[i];
+        for (const f of ["largo", "ancho"]) {
+          if (f in zona) {
+            const v = Number(zona[f]);
+            if (Number.isNaN(v)) return `${prefix}.zonas[${i}].${f} must be a valid number`;
+            if (v < 0) return `${prefix}.zonas[${i}].${f} must not be negative`;
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  const techoErr = checkPositive(techo, "techo");
+  if (techoErr) return techoErr;
+
+  const paredErr = checkPositive(pared, "pared");
+  if (paredErr) return paredErr;
+
+  const camaraErr = checkPositive(camara, "camara");
+  if (camaraErr) return camaraErr;
+
+  if (flete !== undefined) {
+    const fleteVal = Number(flete);
+    if (Number.isNaN(fleteVal)) return "flete must be a valid number";
+    if (fleteVal < 0) return "flete must not be negative";
+  }
+
+  return null;
+}
+
 const router = Router();
 
 // ── PDF store (in-memory, TTL-based) ─────────────────────────────────────────
@@ -273,6 +328,9 @@ function runCalculation({ escenario, lista, techo, pared, camara }) {
 
 router.post("/cotizar", (req, res) => {
   try {
+    const validationError = validateInput(req.body);
+    if (validationError) return res.status(400).json({ ok: false, error: validationError });
+
     const { lista = "web", escenario, techo, pared, camara, flete = 0 } = req.body;
     const results = runCalculation({ escenario, lista, techo, pared, camara });
     if (results.error && !results.allItems) {
@@ -289,6 +347,9 @@ router.post("/cotizar", (req, res) => {
 
 router.post("/cotizar/pdf", (req, res) => {
   try {
+    const validationError = validateInput(req.body);
+    if (validationError) return res.status(400).json({ ok: false, error: validationError });
+
     const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente } = req.body;
     const results = runCalculation({ escenario, lista, techo, pared, camara });
     if (results.error && !results.allItems) {

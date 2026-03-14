@@ -129,13 +129,13 @@ export const PANELS_PARED = {
 
 export const FIJACIONES = {
   varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.69, unidad: "unid" },
-  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12, web: 0.07, costo: 0.05, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.64, costo: 0.48, unidad: "unid" },
+  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.07, web: 0.12, costo: 0.05, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.64, web: 1.68, costo: 0.48, unidad: "unid" },
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',    venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
   arandela_pp_gris:   { label: 'Tortuga PVC gris',          venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.83, unidad: "unid" },
-  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
-  anclaje_h:          { label: 'Kit anclaje H° (torn.N°10+arand+taco)', venta: 0.09, web: 0.03, costo: 0.07, unidad: "unid" },
+  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.46, web: 0.50, costo: 0.34, unidad: "unid" },
+  anclaje_h:          { label: 'Kit anclaje H° (torn.N°10+arand+taco)', venta: 0.03, web: 0.09, costo: 0.07, unidad: "unid" },
   tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
   tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
   tornillo_aguja:     { label: 'Tornillo aguja 5"',         venta: 17.00, web: 17.00, costo: 12.00, unidad: "x100" },
@@ -163,8 +163,8 @@ export const PERFIL_TECHO = {
       250: { sku: "6841", venta: 23.80, web: 29.03, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GF80DC",  venta: 19.97, web: 23.30, largo: 3.03 },
-      80:  { sku: "GF120DC", venta: 20.87, web: 24.34, largo: 3.03 },
+      50:  { sku: "GF50DC",  venta: 19.97, web: 23.30, largo: 3.03 },
+      80:  { sku: "GF80DC",  venta: 20.87, web: 24.34, largo: 3.03 },
       120: { sku: "GF120DC", venta: 24.69, web: 28.81, largo: 3.03 },
     },
   },
@@ -188,7 +188,7 @@ export const PERFIL_TECHO = {
       250: { sku: "6845", venta: 31.75, web: 38.74, largo: 3.0 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
+      50:  { sku: "GL50DC",  venta: 26.51, web: 30.92, largo: 3.0 },
       80:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
       120: { sku: "GL120DC", venta: 31.08, web: 36.26, largo: 3.0 },
     },
@@ -239,8 +239,8 @@ export const PERFIL_TECHO = {
       250: { sku: "6804", venta: 104.30, web: 121.69, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
-      80:  { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
+      50:  { sku: "CAN.ISDCP50", venta: 69.54, web: 81.13, largo: 3.03 },
+      80:  { sku: "CAN.ISDCP80", venta: 69.54, web: 81.13, largo: 3.03 },
       120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, largo: 3.03 },
     },
   },
@@ -261,9 +261,9 @@ export const PERFIL_PARED = {
       250: { sku: "PU200MM", venta: 17.43, web: 21.26, largo: 3.0 },
     },
     ISOWALL: {
-      50:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
-      80:  { sku: "PU50MM", venta: 13.12, web: 16.01, largo: 3.0 },
-      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      50:  { sku: "PU-IW50MM", venta: 10.00, web: 11.66, largo: 3.0 },
+      80:  { sku: "PU-IW80MM", venta: 13.12, web: 16.01, largo: 3.0 },
+      100: { sku: "PU-IW100MM", venta: 12.42, web: 15.15, largo: 3.0 },
     },
   },
   perfil_g2: {

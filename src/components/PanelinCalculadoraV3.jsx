@@ -874,14 +874,29 @@ export default function PanelinCalculadoraV3() {
     if (scenarioDef?.hasTecho) {
       dimensions.zonas = techo.zonas;
       dimensions.area = zonasTotales.area;
-      if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
-      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+      const techoData = isCombined ? results?.paneles : results?.paneles;
+      if (techoData?.areaTotal) dimensions.area = techoData.areaTotal;
+      if (techoData?.cantPaneles) dimensions.cantPaneles = techoData.cantPaneles;
     }
     if (scenarioDef?.hasPared) {
       dimensions.alto = pared.alto;
       dimensions.perimetro = pared.perimetro;
-      if (results?.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
-      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
+      const paredData = isCombined ? results?.paredResult?.paneles : results?.paneles;
+      if (paredData?.areaNeta) {
+        // For combined scenarios, add pared area to existing techo area
+        if (isCombined && dimensions.area) {
+          dimensions.area = +(dimensions.area + paredData.areaNeta).toFixed(2);
+        } else {
+          dimensions.area = paredData.areaNeta;
+        }
+      }
+      if (paredData?.cantPaneles) {
+        if (isCombined && dimensions.cantPaneles) {
+          dimensions.cantPaneles += paredData.cantPaneles;
+        } else {
+          dimensions.cantPaneles = paredData.cantPaneles;
+        }
+      }
     }
     return dimensions;
   };

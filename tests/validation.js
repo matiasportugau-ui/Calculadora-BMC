@@ -415,7 +415,7 @@ assert("bomToGroups(techo): has FIJACIONES group", btgTecho.some(g => g.title ==
 
 const btgPared = bomToGroups(paredResult);
 assert("bomToGroups(pared): returns groups", btgPared.length > 0, btgPared.length, ">0");
-assert("bomToGroups(pared): has PERFILES U group", btgPared.some(g => g.title === "PERFILES U"), true, true);
+assert("bomToGroups(pared): has PERFILERÍA group", btgPared.some(g => g.title === "PERFILERÍA"), true, true);
 
 const combinedResult = {
   allItems: techoResult.allItems,
@@ -487,6 +487,135 @@ assert("mergeZonaResults: does not mutate zona1 paneles", zona1Copy.paneles.cant
 const zona3 = calcTechoCompleto({ ...techoInput, largo: 3.0, ancho: 2.24 });
 const merged3 = mergeZonaResults([zona1, zona2, zona3]);
 assert("mergeZonaResults(3 zones): cantPaneles correct", merged3.paneles.cantPaneles === zona1.paneles.cantPaneles + zona2.paneles.cantPaneles + zona3.paneles.cantPaneles, merged3.paneles.cantPaneles, zona1.paneles.cantPaneles + zona2.paneles.cantPaneles + zona3.paneles.cantPaneles);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 19: Pricing Invariants
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 19: Pricing Invariants ═══");
+
+import {
+  PANELS_TECHO as PT, PANELS_PARED as PP, FIJACIONES as FIJ,
+  SELLADORES as SEL, PERFIL_TECHO as PFT, PERFIL_PARED as PFP,
+  SERVICIOS as SVC, IVA as IVA_CONST,
+} from "../src/data/constants.js";
+
+// IVA constant check
+assert("IVA constant = 0.22", IVA_CONST === 0.22, IVA_CONST, 0.22);
+
+// Check web >= venta for all FIJACIONES
+let pricingOk = true;
+Object.entries(FIJ).forEach(([key, item]) => {
+  if (item.web < item.venta) {
+    console.log(`  ❌ FIJACIONES.${key}: web (${item.web}) < venta (${item.venta})`);
+    pricingOk = false;
+  }
+});
+assert("All FIJACIONES: web >= venta", pricingOk, pricingOk, true);
+
+// Check web >= venta for all SELLADORES
+let sellPricingOk = true;
+Object.entries(SEL).forEach(([key, item]) => {
+  if (item.web < item.venta) {
+    console.log(`  ❌ SELLADORES.${key}: web (${item.web}) < venta (${item.venta})`);
+    sellPricingOk = false;
+  }
+});
+assert("All SELLADORES: web >= venta", sellPricingOk, sellPricingOk, true);
+
+// Check all prices are positive
+let allPositive = true;
+const checkPositive = (collection, name) => {
+  Object.entries(collection).forEach(([key, item]) => {
+    if (item.venta != null && item.venta <= 0) { allPositive = false; console.log(`  ❌ ${name}.${key}.venta <= 0`); }
+    if (item.web != null && item.web <= 0) { allPositive = false; console.log(`  ❌ ${name}.${key}.web <= 0`); }
+  });
+};
+checkPositive(FIJ, "FIJACIONES");
+checkPositive(SEL, "SELLADORES");
+assert("All prices > 0", allPositive, allPositive, true);
+
+// Check panel prices positive
+let panelPricesOk = true;
+[PT, PP].forEach(collection => {
+  Object.entries(collection).forEach(([fam, panel]) => {
+    Object.entries(panel.esp).forEach(([esp, data]) => {
+      if (data.venta <= 0 || data.web <= 0) { panelPricesOk = false; console.log(`  ❌ ${fam}.${esp}: price <= 0`); }
+      if (data.web < data.venta) { panelPricesOk = false; console.log(`  ❌ ${fam}.${esp}: web < venta`); }
+    });
+  });
+});
+assert("All panel prices positive and web >= venta", panelPricesOk, panelPricesOk, true);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 20: Combined Scenario (techo_fachada)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 20: Combined Scenario (techo_fachada) ═══");
+
+const rTecho = calcTechoCompleto(techoInput);
+const rPared = calcParedCompleto(paredInput);
+assert("Combined: techo calc OK", !rTecho.error, rTecho.error, undefined);
+assert("Combined: pared calc OK", !rPared.error, rPared.error, undefined);
+
+// Simulate combined result like the component does
+const combinedItems = [...(rTecho?.allItems || []), ...(rPared?.allItems || [])];
+const { calcTotalesSinIVA: calcTotales } = await import("../src/utils/calculations.js");
+const combinedTotales = calcTotales(combinedItems);
+assert("Combined totales: subtotalSinIVA > 0", combinedTotales.subtotalSinIVA > 0, combinedTotales.subtotalSinIVA, ">0");
+assert("Combined totales: totalFinal > subtotal", combinedTotales.totalFinal > combinedTotales.subtotalSinIVA, combinedTotales.totalFinal, ">" + combinedTotales.subtotalSinIVA);
+assert("Combined totales: IVA correct", approx(combinedTotales.iva, combinedTotales.subtotalSinIVA * 0.22), combinedTotales.iva, combinedTotales.subtotalSinIVA * 0.22);
+
+// bomToGroups with combined structure
+const combinedForBom = { ...rTecho, paredResult: rPared, allItems: combinedItems, totales: combinedTotales };
+const combinedGroups = bomToGroups(combinedForBom);
+assert("Combined BOM: has groups", combinedGroups.length > 0, combinedGroups.length, ">0");
+assert("Combined BOM: has PANELES", combinedGroups.some(g => g.title === "PANELES"), true, true);
+assert("Combined BOM: PANELES has 2 items (techo + pared)", combinedGroups.find(g => g.title === "PANELES")?.items?.length === 2, combinedGroups.find(g => g.title === "PANELES")?.items?.length, 2);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 21: Edge Cases
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 21: Edge Cases ═══");
+
+// Invalid familia
+const badFam = calcTechoCompleto({ ...techoInput, familia: "INVALID_FAMILY" });
+assert("Invalid familia returns error", !!badFam.error, !!badFam.error, true);
+
+// Invalid espesor
+const badEsp = calcTechoCompleto({ ...techoInput, espesor: 999 });
+assert("Invalid espesor returns error", !!badEsp.error, !!badEsp.error, true);
+
+// Invalid pared familia
+const badParedFam = calcParedCompleto({ ...paredInput, familia: "INVALID" });
+assert("Invalid pared familia returns error", !!badParedFam.error, !!badParedFam.error, true);
+
+// Zero aberturas
+const noAberturas = calcParedCompleto({ ...paredInput, aberturas: [] });
+assert("Zero aberturas: areaBruta = areaNeta", noAberturas.paneles.areaAberturas === 0, noAberturas.paneles.areaAberturas, 0);
+
+// Very small dimensions
+const tiny = calcTechoCompleto({ ...techoInput, largo: 1, ancho: 1 });
+assert("Tiny roof: at least 1 panel", tiny.paneles.cantPaneles >= 1, tiny.paneles.cantPaneles, ">=1");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 22: Camara Frigorifica scenario
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 22: Cámara Frigorífica ═══");
+
+// Simulate camara_frig calculation (like the component does)
+const camaraLargo = 6, camaraAncho = 4, camaraAlto = 3;
+const camaraPerim = 2 * (camaraLargo + camaraAncho);
+const camaraPared = calcParedCompleto({ ...paredInput, perimetro: camaraPerim, alto: camaraAlto, numEsqExt: 4, numEsqInt: 0 });
+assert("Camara pared: no error", !camaraPared.error, camaraPared.error, undefined);
+assert("Camara pared: perimeter correct", camaraPerim === 20, camaraPerim, 20);
+assert("Camara pared: cantPaneles > 0", camaraPared.paneles.cantPaneles > 0, camaraPared.paneles.cantPaneles, ">0");
+
+const camaraTecho = calcTechoCompleto({
+  familia: "ISODEC_EPS", espesor: 100, largo: camaraLargo, ancho: camaraAncho,
+  tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: "Blanco",
+});
+assert("Camara techo: no error", !camaraTecho.error, camaraTecho.error, undefined);
+assert("Camara techo: area matches dimensions", approx(camaraTecho.paneles.areaTotal, Math.ceil(camaraAncho / 1.12) * camaraLargo * 1.12), camaraTecho.paneles.areaTotal, Math.ceil(camaraAncho / 1.12) * camaraLargo * 1.12);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

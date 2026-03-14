@@ -1,5 +1,10 @@
 import PanelinCalculadora from './components/PanelinCalculadoraV3';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
-  return <PanelinCalculadora />;
+  return (
+    <ErrorBoundary>
+      <PanelinCalculadora />
+    </ErrorBoundary>
+  );
 }
