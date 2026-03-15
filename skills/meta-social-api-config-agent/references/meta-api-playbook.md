@@ -54,8 +54,8 @@ For GET verification:
 
 For POST webhook events:
 
-- Validate `X-Hub-Signature-256`
-- Verify against raw request body using HMAC SHA-256
+- Validate `X-Hub-Signature-256` using the **app secret** (`META_APP_SECRET`) as the HMAC key — Meta does not support a separate webhook signing secret
+- Compute HMAC SHA-256 of the raw request body with the app secret and compare to the header value
 - Reject invalid signatures with HTTP 401/403
 - Return HTTP 200 quickly, process asynchronously when possible
 
@@ -94,7 +94,7 @@ Always map each permission to a feature requirement in documentation.
   - page/system user token renewal process
   - expiry monitoring
 - Webhook security:
-  - signature validation
+  - signature validation using app secret (HMAC SHA-256)
   - IP/rate controls where feasible
   - replay protection by event ID
 - Observability:
