@@ -17,7 +17,7 @@ Use names like:
 - `META_APP_SECRET`
 - `META_GRAPH_API_VERSION` (example: `v21.0`)
 - `META_VERIFY_TOKEN`
-- `META_WEBHOOK_SECRET` (or app secret if using X-Hub-Signature-256 with app secret)
+- `META_WEBHOOK_SECRET` (optional env var alias for `META_APP_SECRET` used to validate `X-Hub-Signature-256`; Meta webhook signatures are always derived from the app secret)
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_WABA_ID`
 - `WHATSAPP_ACCESS_TOKEN`
