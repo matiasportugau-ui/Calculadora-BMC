@@ -34,7 +34,7 @@ Use this skill to implement full-stack Meta integrations safely and predictably:
    - Add products (WhatsApp, Instagram Graph, Facebook Login/Pages).
    - Request minimal permissions first; expand later.
 4. Implement backend.
-   - Add webhook verification and signature validation.
+   - Add webhook verification and signature validation (always use the app secret as the HMAC key).
    - Add outbound clients with retry, timeout, and error mapping.
    - Add token management (short-lived vs long-lived/system user).
 5. Validate in sandbox/test mode.
