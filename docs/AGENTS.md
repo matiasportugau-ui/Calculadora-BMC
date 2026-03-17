@@ -4,6 +4,19 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## CEO AI Agent
+
+**Skill:** `.cursor/skills/ceo-ai-agent/`
+**Agent:** `.cursor/agents/ceo-ai-agent.md`
+
+**Rol:** Liderar el proyecto con objetivo "working by end of week". Invoca **Invoque full team** repetidamente hasta que el proyecto funcione.
+
+**Cuándo usar:** CEO agent, lead the project, make it work, invoque full team until done.
+
+**Cursor Rule:** `.cursor/rules/ceo-ai-agent.mdc`
+
+---
+
 ## BMC Project Team Sync
 
 **Skill:** `.cursor/skills/bmc-project-team-sync/`

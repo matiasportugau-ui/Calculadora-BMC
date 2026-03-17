@@ -14,6 +14,7 @@
 | Run full BMC team | Full team run |
 | Run the BMC Dashboard team | Full team run |
 | Orchestrate the dashboard agent team | Full team run |
+| **CEO AI Agent** / **Lead the project** / **Make it work** | CEO invoca full team repetidamente hasta que el proyecto funcione (deadline: end of week) |
 
 ---
 
@@ -64,8 +65,10 @@ Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE
 
 ## Referencias
 
+- **CEO AI Agent:** `.cursor/agents/ceo-ai-agent.md` — Lidera el proyecto; invoca full team repetidamente hasta working (end of week).
 - **Orquestador:** `.cursor/agents/bmc-dashboard-team-orchestrator.md`
 - **Skill sync:** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 - **Rule:** `.cursor/rules/bmc-project-team-sync.mdc` (triggers incl. "Invoque full team")
+- **Rule CEO:** `.cursor/rules/ceo-ai-agent.mdc` (triggers incl. "CEO agent", "lead the project")
 - **Mejoras del equipo:** `docs/team/FULL-TEAM-IMPROVEMENT-ANALYSIS.md` — knowledge base por miembro, skills por flujo.
 - **Input por run / ciclo de mejoras:** `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md` (prompts a ejecutar en este run), `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` (estado por agente hasta desarrollado). Cada "Equipo completo" continúa la secuencia hasta que todos los agentes estén completamente desarrollados.
