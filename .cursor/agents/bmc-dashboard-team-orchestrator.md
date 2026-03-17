@@ -98,7 +98,7 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 
 **Invocation examples:**
 
-- "Run the BMC Dashboard team" / "Orchestrate the dashboard agent team" / "Full team run" → full run (all 17 members).
+- "Run the BMC Dashboard team" / "Orchestrate the dashboard agent team" / "Full team run" → full run (all 19 members).
 - "Run the team but only mapping and dependencies" → steps 1, 2, 3.
 - "I need the implementation plan for Solution and Coding" → step 5 (with FULL-IMPROVEMENT-PLAN and context briefs as input).
 

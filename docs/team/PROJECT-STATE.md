@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-18 (Full team run — Invoque full team run 5)
+**Última actualización:** 2026-03-18 (Full team run — run 9, integrada propuesta Control Plane)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**Full team run 2026-03-17 run 1 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-17-run1.md. Pasos 1–8: estado vigente con npm audit sin cambios. Judge: JUDGE-REPORT-RUN-2026-03-17-run1.md; promedio 4.93/5. Repo Sync: opcional, sin cambios requeridos. Paso 9: agenda continua inactiva esperando Matias; pendientes (1, 3, 6, 7). PROJECT-STATE y PROMPT actualizados.
+
+**Full team run 2026-03-18 run 9 (Full team run):** Paso 0: state, prompt, backlog + documento "Evaluación logs v1–v34 y propuesta implementable de evolución multi‑agente" leído. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run9.md. Pasos 1–8: estado vigente. Paso 9: Reporter creó docs/team/EVOLUTION-PROPOSAL-CONTROL-PLANE.md (traducción v1–v34 a capacidades reales, Policy Engine, gates, P0–P3, OWASP/NIST/PQC). Pendientes 1, 3, 6, 7 (Matias) sin cambio; añadido pendiente opcional: evaluar e integrar Control Plane / Policy Engine (backlog P0–P3). PROJECT-STATE y PROMPT actualizados.
+
+**Full team run 2026-03-18 run 8 (Full team run):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run8.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
+
+**Full team run 2026-03-18 run 7 (Full team run):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run7.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
+
+**Full team run 2026-03-18 run 6 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run6.md. Pasos 1–8: estado vigente. Contract: 3/4 PASS (kpi-report 404 = restart server). Dependencies: service-map.md fecha 2026-03-18. Judge: JUDGE-REPORT-RUN-2026-03-18-run6.md; promedio 4.93/5. Repo Sync: opcional; repos configurados. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
 
 **Full team run 2026-03-18 run 5 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run5.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
 
@@ -94,6 +104,7 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 - [x] **Guía vendedores:** docs/GUIA-RAPIDA-VENDEDORES.md creada 2026-03-18 (Reporter, paso 9).
 - [ ] **Deploy producción:** Cloud Run o VPS Netuy. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §Fase B.
 - [ ] **E2E validation:** Ejecutar checklist docs/team/E2E-VALIDATION-CHECKLIST.md (D1) antes de go-live público. Creado 2026-03-18.
+- [ ] **Evolución Control Plane (opcional):** Evaluar e integrar propuesta docs/team/EVOLUTION-PROPOSAL-CONTROL-PLANE.md (Policy Engine, gates, OWASP/NIST, PQC, P0–P3). Run 9.
 
 ---
 

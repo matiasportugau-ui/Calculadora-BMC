@@ -61,5 +61,5 @@
 
 ---
 
-**Última actualización:** 2026-03-16 (run7: date corrected; /api/ventas POST, /api/pagos, /api/cotizaciones PUSH documented)
+**Última actualización:** 2026-03-18 (run6: vigente)
 **Handoff:** Usar con dependencies.md para validar integración end-to-end.

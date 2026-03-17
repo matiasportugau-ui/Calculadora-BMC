@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-16 (run7)
+**Última actualización:** 2026-03-17 (run1)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -33,37 +33,38 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 
 **Promedio global Run 6:** 4.78/5
 **Promedio global Run 7:** 4.93/5 (18 agentes; Sheets Structure N/A este run)
+**Promedio global Run 6 (2026-03-18):** 4.93/5 (18 agentes; Sheets Structure N/A)
 
 ---
 
 ## Detalle de scores por run
 
-| Rol | Run 1 (2026-03-16) | Run 6 (2026-03-16) | Run 7 (2026-03-16) | Promedio |
-|-----|--------------------|--------------------|--------------------|---------|
-| Mapping | 5.0 | 5.0 | 5.0 | 5.0 |
-| Design | 5.0 | 5.0 | 5.0 | 5.0 |
-| Sheets Structure | N/A | 4.0 | N/A | 4.0 |
-| Networks | N/A | 4.7 | 4.9 | 4.8 |
-| Dependencies | 5.0 | 4.7 | 5.0 | 4.90 |
-| Integrations | N/A | 4.7 | 4.8 | 4.75 |
-| GPT/Cloud | N/A | 4.3 | 4.5 | 4.4 |
-| Fiscal | N/A | 5.0 | 5.0 | 5.0 |
-| Billing | N/A | 4.3 | 4.5 | 4.4 |
-| Audit/Debug | 5.0 | 5.0 | 5.0 | 5.0 |
-| Reporter | 5.0 | 5.0 | 5.0 | 5.0 |
-| Orchestrator | N/A | 5.0 | 5.0 | 5.0 |
-| Contract | 5.0 | 4.7 | 5.0 | 4.90 |
-| Calc | N/A | 4.7 | 4.9 | 4.8 |
-| Security | 5.0 | 5.0 | 5.0 | 5.0 |
-| Judge | N/A | 5.0 | 5.0 | 5.0 |
-| Parallel/Serial | N/A | 5.0 | 5.0 | 5.0 |
-| Repo Sync | N/A | 5.0 | 4.8 | 4.9 |
+| Rol | Run 1 (2026-03-16) | Run 6 (2026-03-16) | Run 7 (2026-03-16) | Run 6 (2026-03-18) | Run 1 (2026-03-17) | Promedio |
+|-----|--------------------|--------------------|--------------------|---------|---------|---------|
+| Mapping | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Design | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Sheets Structure | N/A | 4.0 | N/A | N/A | N/A | 4.0 |
+| Networks | N/A | 4.7 | 4.9 | 4.9 | 4.9 | 4.8 |
+| Dependencies | 5.0 | 4.7 | 5.0 | 5.0 | 5.0 | 4.90 |
+| Integrations | N/A | 4.7 | 4.8 | 4.8 | 4.8 | 4.75 |
+| GPT/Cloud | N/A | 4.3 | 4.5 | 4.5 | 4.5 | 4.4 |
+| Fiscal | N/A | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Billing | N/A | 4.3 | 4.5 | 4.5 | 4.5 | 4.4 |
+| Audit/Debug | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Reporter | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Orchestrator | N/A | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Contract | 5.0 | 4.7 | 5.0 | 4.9 | 4.9 | 4.90 |
+| Calc | N/A | 4.7 | 4.9 | 4.9 | 4.9 | 4.8 |
+| Security | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Judge | N/A | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Parallel/Serial | N/A | 5.0 | 5.0 | 5.0 | 5.0 | 5.0 |
+| Repo Sync | N/A | 5.0 | 4.8 | 4.8 | 4.8 | 4.9 |
 
 ---
 
 ## Tendencias
 
-- **Evolución general:** 7 runs completados; Run 7 promedio 4.93/5 (mejora vs run 6: 4.78/5).
+- **Evolución general:** 8 runs completados; Run 6 (2026-03-18) y Run 7 promedio 4.93/5; estado estable.
 - **Agentes más fuertes:** Mapping, Design, Fiscal, Audit/Debug, Reporter, Security, Judge, Parallel/Serial, Orchestrator — todos 5/5 sostenidos.
 - **Mejoras evidentes run 7:**
   - Contract: 4.7 → 5.0 (kpi-report root cause confirmado).
@@ -91,6 +92,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-17 | Full team + sync + Repo Sync setup + git push | 19/19 (N/A) | N/A | [JUDGE-REPORT-RUN-2026-03-16.md](./JUDGE-REPORT-RUN-2026-03-16.md) §Run 5 |
 | 2026-03-16 | Full team Go-live & Hardening | 19/19 (formal) | 4.78 | [JUDGE-REPORT-RUN-2026-03-16-run6.md](./JUDGE-REPORT-RUN-2026-03-16-run6.md) |
 | 2026-03-16 | Full team run 7 — post-go-live agenda | 18/19 (Sheets N/A) | 4.93 | [JUDGE-REPORT-RUN-2026-03-16-run7.md](./JUDGE-REPORT-RUN-2026-03-16-run7.md) |
+| 2026-03-18 | Invoque full team run 6 | 18/19 (Sheets N/A) | 4.93 | [JUDGE-REPORT-RUN-2026-03-18-run6.md](./JUDGE-REPORT-RUN-2026-03-18-run6.md) |
+| 2026-03-17 | Invoque full team run 1 | 18/19 (Sheets N/A) | 4.93 | [JUDGE-REPORT-RUN-2026-03-17-run1.md](./JUDGE-REPORT-RUN-2026-03-17-run1.md) |
 
 ---
 

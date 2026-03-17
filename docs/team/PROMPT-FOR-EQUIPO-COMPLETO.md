@@ -15,6 +15,16 @@
 
 ## Próximos prompts (ejecutar en este run)
 
+**Run 2026-03-17 run 1:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+
+**Run 2026-03-18 run 9:** Input: Evaluación logs v1–v34 y propuesta de evolución (Control Plane, Policy Engine, PQC, OWASP/NIST). Reporter creó EVOLUTION-PROPOSAL-CONTROL-PLANE.md. Pendientes: 1, 3, 6, 7 (Matias); opcional: integrar backlog P0–P3 del Control Plane. PROJECT-STATE y PROMPT actualizados.
+
+**Run 2026-03-18 run 8:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+
+**Run 2026-03-18 run 7:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+
+**Run 2026-03-18 run 6:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+
 **Run 2026-03-18 run 5:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
 
 **Run 2026-03-16 run7:** Ejecutados todos los ítems automatizables de la agenda:
@@ -31,6 +41,10 @@
 ---
 
 ## Próximos prompts para el siguiente run (actualizar al final)
+
+**Run 2026-03-17 run 1:** Sin prompts automatizables. Agenda pendiente requiere Matias manual o decisión.
+
+**Run 2026-03-18 run 6:** Sin prompts automatizables. Agenda pendiente (1, 3, 6, 7) requiere Matias manual o decisión.
 
 **Run 2026-03-16 (go):** Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync, Sheets Structure — ✓ completados.
 **Todos los 19 agentes están completamente desarrollados.**
