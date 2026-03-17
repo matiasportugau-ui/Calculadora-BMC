@@ -62,9 +62,19 @@ Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE
 
 ---
 
+## CEO AI Agent (iteración hasta goal)
+
+Para **iterar hasta que el proyecto funcione** (project working by end of week), usar el **CEO AI Agent**:
+- Triggers: "CEO run", "CEO agent", "project working by end of week", "make it work"
+- El CEO evalúa estado vs GO-LIVE-DASHBOARD-CHECKLIST, invoca full team, actualiza CEO-RUN-LOG, y repite hasta Tier 1 (MVP) o fin de semana.
+- Ver `.cursor/skills/ceo-ai-agent/SKILL.md` y `docs/team/CEO-RUN-LOG.md`.
+
+---
+
 ## Referencias
 
 - **Orquestador:** `.cursor/agents/bmc-dashboard-team-orchestrator.md`
+- **CEO AI Agent:** `.cursor/agents/ceo-ai-agent.md` — lidera e invoca full team hasta goal
 - **Skill sync:** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 - **Rule:** `.cursor/rules/bmc-project-team-sync.mdc` (triggers incl. "Invoque full team")
 - **Mejoras del equipo:** `docs/team/FULL-TEAM-IMPROVEMENT-ANALYSIS.md` — knowledge base por miembro, skills por flujo.
