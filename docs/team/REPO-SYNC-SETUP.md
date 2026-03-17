@@ -1,11 +1,12 @@
-# Repo Sync — Configuración de nuevos repos
+# Repo Sync — Setup Instructions
 
-**Fecha:** 2026-03-17  
-**Propósito:** Instrucciones para configurar y usar los repos bmc-dashboard-2.0 y bmc-development-team.
+**Propósito:** Configurar los repositorios externos para que el agente `bmc-repo-sync-agent` pueda sincronizar artefactos tras cada full team run.
+
+**Estado actual:** `BMC_DASHBOARD_2_REPO` y `BMC_DEVELOPMENT_TEAM_REPO` no están configurados en `.env` ni en PROJECT-STATE.
 
 ---
 
-## Repos bajo mantenimiento
+## 1. Repos a mantener
 
 | Repo | Contenido | Qué se actualiza |
 |------|-----------|------------------|
@@ -14,44 +15,30 @@
 
 ---
 
-## Configuración
+## 2. Configuración
 
-### 1. Crear los repos en GitHub (o tu proveedor)
+### Opción A: Paths locales (recomendado para desarrollo)
 
-Crea dos repositorios nuevos:
-
-- `bmc-dashboard-2.0` — para el código del dashboard
-- `bmc-development-team` — para artefactos del equipo
-
-### 2. Clonar localmente (o usar paths existentes)
+Si los repos están clonados localmente, añadir a `.env`:
 
 ```bash
-# Ejemplo: clonar en un directorio hermano
-cd ~
-git clone https://github.com/TU_ORG/bmc-dashboard-2.0.git
-git clone https://github.com/TU_ORG/bmc-development-team.git
-```
-
-### 3. Añadir a .env
-
-En el proyecto Calculadora-BMC, edita `.env`:
-
-```env
 # Repo Sync (bmc-repo-sync-agent)
-BMC_DASHBOARD_2_REPO=/ruta/absoluta/a/bmc-dashboard-2.0
-BMC_DEVELOPMENT_TEAM_REPO=/ruta/absoluta/a/bmc-development-team
+BMC_DASHBOARD_2_REPO=/path/to/bmc-dashboard-2.0
+BMC_DEVELOPMENT_TEAM_REPO=/path/to/bmc-development-team
 ```
 
-O con URLs remotas (el agente puede clonar si no existen):
+### Opción B: URLs remotas (Git)
 
-```env
-BMC_DASHBOARD_2_REPO=https://github.com/TU_ORG/bmc-dashboard-2.0.git
-BMC_DEVELOPMENT_TEAM_REPO=https://github.com/TU_ORG/bmc-development-team.git
+Si prefieres URLs para `git clone` o `git push`:
+
+```bash
+BMC_DASHBOARD_2_REPO=https://github.com/USER/bmc-dashboard-2.0.git
+BMC_DEVELOPMENT_TEAM_REPO=https://github.com/USER/bmc-development-team.git
 ```
 
-### 4. Actualizar PROJECT-STATE
+### Opción C: Documentar en PROJECT-STATE
 
-En `docs/team/PROJECT-STATE.md`, sección **Estado por área**, añade:
+Añadir en `docs/team/PROJECT-STATE.md` sección "Estado por área":
 
 ```markdown
 ### Repos (Repo Sync)
@@ -61,23 +48,31 @@ En `docs/team/PROJECT-STATE.md`, sección **Estado por área**, añade:
 
 ---
 
-## Uso tras configurar
+## 3. Crear los repos (si no existen)
 
-Tras cada "Full team run" o "Invoque full team", el paso 7 (Repo Sync) sincronizará automáticamente:
+1. **bmc-dashboard-2.0:** Crear repo en GitHub/GitLab (o local).
+   - Inicializar con: `docs/bmc-dashboard-modernization/dashboard/`, `server/routes/bmcDashboard.js`, `docs/google-sheets-module/`, `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md`, `docs/google-sheets-module/planilla-inventory.md`.
 
-1. **bmc-dashboard-2.0:** Copia dashboard, server/routes/bmcDashboard.js, docs relevantes
-2. **bmc-development-team:** Copia docs/team/, .cursor/agents/, .cursor/skills/, reportes
-
-Commit y push en cada repo tras la sincronización.
+2. **bmc-development-team:** Crear repo para equipo.
+   - Inicializar con: `docs/team/`, `.cursor/agents/`, `.cursor/skills/` (o subconjunto), reportes Judge, IMPLEMENTATION-PLAN, REPORT-SOLUTION-CODING.
 
 ---
 
-## Comando manual
+## 4. Verificación
 
-Para sincronizar manualmente (sin full run):
+Tras configurar, ejecutar:
 
+```bash
+# Full team run incluye paso 7 (Repo Sync)
+# O manualmente: el agente bmc-repo-sync-agent evaluará y sincronizará
 ```
-"Sync repos" / "Actualizar bmc-dashboard-2.0" / "Mantener repos al día"
-```
 
-El skill `bmc-repo-sync-agent` ejecutará el protocolo.
+El agente leerá `BMC_DASHBOARD_2_REPO` y `BMC_DEVELOPMENT_TEAM_REPO` de `.env` o PROJECT-STATE.
+
+---
+
+## 5. Referencias
+
+- Skill: `.cursor/skills/bmc-repo-sync-agent/SKILL.md`
+- PROJECT-TEAM-FULL-COVERAGE §2: Repo Sync es miembro del equipo
+- .env.example: líneas 33–36 (BMC_DASHBOARD_2_REPO, BMC_DEVELOPMENT_TEAM_REPO)

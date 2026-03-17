@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-16
+**Última actualización:** 2026-03-17
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -34,6 +34,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | Fecha | Run | Reporte |
 |-------|-----|---------|
 | 2026-03-16 | Full team + Audit + Setup | [JUDGE-REPORT-RUN-2026-03-16.md](./JUDGE-REPORT-RUN-2026-03-16.md) |
+| 2026-03-17 | Full team run + sync + Repo Sync setup + git push | [JUDGE-REPORT-RUN-2026-03-16.md](./JUDGE-REPORT-RUN-2026-03-16.md) § Run 5 |
 
 ---
 

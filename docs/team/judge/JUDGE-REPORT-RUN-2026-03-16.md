@@ -131,3 +131,22 @@
 **Contexto:** Ventas workbook ID cambiado; /api/ventas retorna datos reales; mapper COSTO fix. Contract validation 3/3 passed. Audit run_audit.sh ejecutado.
 
 *Generado por bmc-team-judge.*
+
+---
+
+## Run 5 (Full team run 2026-03-17 — sync + Repo Sync setup + git push)
+
+| Paso | Rol | Entregable | Estado |
+|------|-----|------------|--------|
+| 0 | Orchestrator | PROJECT-STATE, PROMPT, BACKLOG | ✓ |
+| 0b | Parallel/Serial | PARALLEL-SERIAL-PLAN-2026-03-17.md | ✓ |
+| 1–2 | Mapping | Plan & proposal; planilla-inventory, DASHBOARD-INTERFACE-MAP | ✓ vigentes |
+| 3–3c | Dependencies, Contract, Networks | dependencies.md, service-map (kpi-report añadido); contract 3/3 (kpi-report 404 en runtime); infra | ✓ |
+| 4–5g | Design, Integrations, Reporter, Security, GPT, Fiscal, Billing, Audit, Calc | Vigentes; audit run_audit.sh | ✓ |
+| 6 | Judge | Este reporte | ✓ |
+| 7 | Repo Sync | REPO-SYNC-SETUP.md (repos no configurados) | ✓ |
+| 8–9 | Orchestrator | PROJECT-STATE actualizado; full project sync; propagación | ✓ |
+
+**Contexto:** Full team run con full project sync. Repo Sync: repos no configurados → REPO-SYNC-SETUP.md creado con instrucciones. Git: stage, commit, push a origin main. Contract: kpi-financiero, proximas-entregas, audit 3/3 passed; kpi-report 404 (verificar mount/routing).
+
+*Generado por bmc-team-judge.*

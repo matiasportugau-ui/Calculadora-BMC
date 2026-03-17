@@ -10,7 +10,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**Full team run + sync + git push 2026-03-17:** Orquestador ejecutando run completo 0–9. Sync de proyecto: PROJECT-STATE actualizado. Repo Sync: BMC_DASHBOARD_2_REPO y BMC_DEVELOPMENT_TEAM_REPO no configurados en .env — ver REPO-SYNC-SETUP.md para instrucciones. Push a origin (Calculadora-BMC) pendiente de commit.
+**Full team run 2026-03-17:** Orquestador ejecutó run completo 0→9 con full project sync y Repo Sync. Paso 0: PROJECT-STATE, PROMPT, BACKLOG leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-17.md creado. Pasos 1–2: Plan & proposal confirmado; Mapping vigente. Pasos 3–3c: Dependencies, Contract (3/3 passed; kpi-report 404 en runtime — verificar mount), Networks. Pasos 4–5g: Design, Integrations, Reporter, Security, GPT, Fiscal, Billing, Audit, Calc ejecutados. Paso 5f: run_audit.sh; reporte .cursor/bmc-audit/latest-report-2026-03-17.md. Paso 6: Judge report actualizado. Paso 7: Repo Sync — repos no configurados; creado REPO-SYNC-SETUP.md. Paso 8–9: PROJECT-STATE actualizado; propagación §4. service-map: /api/kpi-report añadido. Git: stage, commit, push a origin main.
 
 **KPI Report (inicio) 2026-03-16:** Full team run para implementación. Nuevo endpoint GET /api/kpi-report que agrega kpi-financiero, stock-kpi, proximas-entregas, metas-ventas, ventas en un payload único: totalPendiente, estaSemana, proximaSemana, entregasEstaSemana, bajoStock, objetivoMensual, realAcumulado, equilibrio. Bloque UI "KPI Report — Inicio" en dashboard (#inicio): 4 cards + card equilibrio (meta vs real). Artefactos: MAPPING-KPI-REPORT-VALIDATION.md, DESIGN-PROPOSAL-KPI-REPORT-INICIO.md, REPORT-SOLUTION-CODING.md, IMPLEMENTATION-PLAN-SOLUTION-CODING.md. planilla-inventory y DASHBOARD-INTERFACE-MAP actualizados.
 
@@ -105,6 +105,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 - **ngrok:** puerto 4040 para OAuth
 - **Artefactos:** `HOSTING-EN-MI-SERVIDOR.md`, `.env`
 
+### Repos (Repo Sync)
+
+- **bmc-dashboard-2.0:** No configurado. Ver `docs/team/REPO-SYNC-SETUP.md`.
+- **bmc-development-team:** No configurado. Ver `docs/team/REPO-SYNC-SETUP.md`.
+- **Config:** Añadir `BMC_DASHBOARD_2_REPO` y `BMC_DEVELOPMENT_TEAM_REPO` en `.env` o documentar en esta sección.
+
 ### Integraciones
 
 - **Activas:** Google Sheets, Google Drive, MercadoLibre (OAuth), Shopify
@@ -136,8 +142,9 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 - [ ] **Go-live:** Completar GO-LIVE-DASHBOARD-CHECKLIST — credenciales y stack local ✓; pendiente: 1.4 (compartir workbook), 2.x (tabs), 3.x (Apps Script), 5.x (deploy), 6.x (verificación E2E)
 - [x] **Guía usuarios:** docs/GUIA-RAPIDA-DASHBOARD-BMC.md existe
 - [x] **Phase 1 (GET):** Iteración 23 tabs Ventas (getAllVentasData, Promise.allSettled); GET /api/ventas?proveedor=; GET /api/ventas?tab=; GET /api/ventas/tabs; GET /api/calendario-vencimientos?month=2026-03 → tab "MARZO 2026". Pendiente: GET /api/stock/history (EXISTENCIAS_Y_PEDIDOS, Egresos)
-- [ ] **Phase 2 (PUSH):** POST /api/cotizaciones, POST /api/pagos, POST /api/ventas, PATCH /api/stock/:codigo; append AUDIT_LOG (STRATEGIC-REVIEW)
+- [x] **Phase 2 (PUSH):** Implementado 2026-03-16. POST /api/cotizaciones, PATCH /api/cotizaciones/:id, POST /api/pagos, PATCH /api/pagos/:id, POST /api/ventas, PATCH /api/stock/:codigo; append AUDIT_LOG. Pendiente manual: crear tabs CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO; configurar triggers.
 - [x] **Planilla-inventory:** Tab Pagos corregida (Pendientes_); nuevos endpoints documentados. Pendiente: documentar columna MONTO autoritativa (D/E) en Pagos
+- [ ] **Repo Sync:** Configurar BMC_DASHBOARD_2_REPO y BMC_DEVELOPMENT_TEAM_REPO en .env o PROJECT-STATE. Ver docs/team/REPO-SYNC-SETUP.md.
 
 ---
 

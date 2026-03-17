@@ -33,6 +33,7 @@
 | /api/metas-ventas | GET | Metas_Ventas | Array metas |
 | /api/audit | GET | AUDIT_LOG | Array audit |
 | /api/marcar-entregado | POST | Master_Cotizaciones → Ventas realizadas | { ok, cotizacionId } |
+| /api/kpi-report | GET | kpi-financiero, proximas-entregas, stock-kpi, metas-ventas, ventas | totalPendiente, estaSemana, entregasEstaSemana, bajoStock, equilibrio |
 
 ---
 
