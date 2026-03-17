@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 
+**CEO AI Agent creado 2026-03-17:** Skill, agent, rule y CEO-RUN-LOG añadidos. Objetivo: project working by end of week. Invoca full team run repetidamente hasta Tier 1 (MVP). Triggers: "CEO run", "CEO agent", "project working by end of week", "make it work". Ver `docs/team/CEO-RUN-LOG.md` y `.cursor/skills/ceo-ai-agent/SKILL.md`.
+
 **Full team run 2026-03-18 run 5 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run5.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
 
 **Full team run 2026-03-18 run 4 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run4.md. Pasos 1–8: estado vigente. Paso 9: sin prompts automatizables; agenda 1, 3, 6, 7 pendiente (Matias). PROJECT-STATE y PROMPT actualizados.
