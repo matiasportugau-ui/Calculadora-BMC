@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMC Dashboard — Mapa Visual</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0f0f12; --surface: #1a1a1f; --border: #2a2a32; --text: #e4e4e7; --muted: #71717a; --accent: #3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; line-height: 1.6; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+    section { margin-bottom: 48px; }
+    h2 { font-size: 18px; font-weight: 600; color: var(--accent); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .mermaid { background: var(--surface); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--surface); padding: 2px 6px; border-radius: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+    .card h3 { font-size: 14px; margin: 0 0 12px; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <h1>BMC Dashboard — Mapa Visual</h1>
+  <p class="subtitle">Configuración total del sistema · Calculadora-BMC</p>
+
+  <section>
+    <h2>1. Arquitectura general</h2>
+    <div class="mermaid">
+flowchart TB
+    subgraph client [Cliente]
+        Vite["Vite React :5173"]
+        Finanzas["Dashboard /finanzas"]
+        API["API :3001"]
+    end
+    subgraph backend [Backend]
+        Express["Express Server"]
+        bmcAPI["bmcDashboard"]
+        calc["calcRouter"]
+    end
+    subgraph data [Datos]
+        Sheets["Google Sheets"]
+        GDrive["Google Drive"]
+    end
+    Vite --> API
+    Finanzas --> bmcAPI
+    API --> Express
+    Express --> bmcAPI
+    Express --> calc
+    bmcAPI --> Sheets
+    Vite --> GDrive
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Puertos</h2>
+    <table>
+      <tr><th>Puerto</th><th>Servicio</th><th>URL</th></tr>
+      <tr><td>5173</td><td>Vite React</td><td><code>http://localhost:5173</code></td></tr>
+      <tr><td>3001</td><td>Express API</td><td><code>http://localhost:3001</code></td></tr>
+      <tr><td>3001/finanzas</td><td>Sección Finanzas + Operaciones</td><td><code>http://localhost:3001/finanzas</code></td></tr>
+      <tr><td>3849</td><td>Servidor standalone (alternativo)</td><td><code>npm run bmc-dashboard</code></td></tr>
+      <tr><td>4040</td><td>ngrok inspector</td><td><code>http://127.0.0.1:4040</code></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>3. Flujo de datos — Sheets → API → UI</h2>
+    <div class="mermaid">
+flowchart LR
+    subgraph sheet [Google Sheet]
+        CRM[CRM_Operativo]
+        Master[Master_Cotizaciones]
+    end
+    subgraph api [API]
+        cotiz[/api/cotizaciones]
+        prox[/api/proximas-entregas]
+        kpi[/api/kpi-financiero]
+    end
+    subgraph ui [Dashboard]
+        entregas[Próximas entregas]
+        kpiCards[KPIs]
+    end
+    CRM --> cotiz
+    Master --> cotiz
+    cotiz --> entregas
+    prox --> entregas
+    kpi --> kpiCards
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Schemas de Sheet</h2>
+    <div class="mermaid">
+flowchart TB
+    subgraph bmc [BMC]
+        MC[Master_Cotizaciones]
+        PP[Pagos_Pendientes]
+        AL[AUDIT_LOG]
+    end
+    subgraph crm [Bnesser CRM]
+        CO[CRM_Operativo]
+    end
+    config[BMC_SHEET_SCHEMA] -->|Master_Cotizaciones| bmc
+    config -->|CRM_Operativo| crm
+    </div>
+  </section>
+
+  <section>
+    <h2>5. Componentes React</h2>
+    <div class="mermaid">
+flowchart TB
+    App[App.jsx]
+    Calc[PanelinCalculadoraV3]
+    Drive[GoogleDrivePanel]
+    Log[Budget Log]
+    App --> Calc
+    Calc --> Drive
+    Calc --> Log
+    </div>
+  </section>
+
+  <section>
+    <h2>6. Config .env</h2>
+    <div class="grid">
+      <div class="card"><h3>Dashboard</h3><code>BMC_SHEET_ID</code><br><code>GOOGLE_APPLICATION_CREDENTIALS</code><br><code>BMC_SHEET_SCHEMA</code></div>
+      <div class="card"><h3>MercadoLibre</h3><code>ML_CLIENT_ID</code><br><code>ML_CLIENT_SECRET</code><br><code>ML_REDIRECT_URI_DEV</code></div>
+      <div class="card"><h3>Vite</h3><code>VITE_GOOGLE_CLIENT_ID</code><br><code>VITE_API_URL</code></div>
+    </div>
+  </section>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+  </script>
+</body>
+</html>

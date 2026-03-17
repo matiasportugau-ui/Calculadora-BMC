@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>La Biblia Matemática de los Paneles Sándwich</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/theme/night.min.css" id="theme">
+
+    <style>
+        .reveal h1, .reveal h2, .reveal h3 { 
+            color: #f39c12; 
+            text-transform: uppercase; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-weight: bold;
+        }
+        .reveal p, .reveal li { 
+            font-size: 0.85em; 
+            line-height: 1.5; 
+            color: #ecf0f1;
+        }
+        .formula-box { 
+            background: rgba(0, 0, 0, 0.6); 
+            padding: 15px 30px; 
+            border-radius: 10px; 
+            border-left: 5px solid #3498db; 
+            margin: 20px auto; 
+            width: fit-content;
+            font-size: 1.2em;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .highlight { color: #2ecc71; font-weight: bold; }
+        .danger { color: #e74c3c; font-weight: bold; }
+        .info { color: #3498db; font-weight: bold; }
+        
+        /* Gráficos Vectoriales y Contenedores */
+        svg { 
+            background: rgba(255, 255, 255, 0.03); 
+            border-radius: 10px; 
+            padding: 15px; 
+            margin: 10px auto !important; 
+            display: block; 
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .reveal table {
+            font-size: 0.7em;
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .reveal th { border-bottom: 2px solid #f39c12; color: #f39c12; text-align: center; padding: 10px;}
+        .reveal td { padding: 10px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .col-container { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-top: 30px;}
+        .col { flex: 1; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <section data-transition="zoom">
+                <h1>La Biblia Matemática</h1>
+                <h3>De los Paneles Sándwich</h3>
+                <p>Proyecciones espaciales, Cuantificación y Termodinámica Financiera</p>
+                <hr style="border-color:#3498db; width: 30%; margin: 30px auto;">
+                <p><small style="color: #7f8c8d;">Motor Central: Panelin Actions v3.1.0 | Framework: EPS / PIR / 3G</small></p>
+                <p style="color: gray; font-size: 0.6em; margin-top: 50px;" class="fragment fade-in">(Usa las flechas del teclado ➔ para avanzar)</p>
+            </section>
+
+            <section data-transition="slide">
+                <h2>I. La Ley de la Pendiente</h2>
+                <p>El vacío arquitectónico se resuelve en planos calculables. La hipotenusa manda sobre la huella horizontal.</p>
+                
+                <div class="col-container">
+                    <div class="col">
+                        <div class="formula-box" style="margin: 0;">
+                            \[ L_{real} = \frac{L_{plano}}{\cos(\theta^\circ)} \]
+                        </div>
+                        <p style="margin-top: 20px;"><small>Axioma: Todos los cálculos posteriores (área, vanos, descartes) deben utilizar estrictamente la <span class="info">Longitud Real</span>.</small></p>
+                    </div>
+                    <div class="col">
+                        <svg viewBox="0 0 400 250" width="100%">
+                            <line x1="50" y1="200" x2="350" y2="200" stroke="#7f8c8d" stroke-width="3" stroke-dasharray="5,5" />
+                            <text x="200" y="230" fill="#ecf0f1" text-anchor="middle" font-size="16">Huella (L plano)</text>
+                            <line x1="350" y1="200" x2="350" y2="50" stroke="#7f8c8d" stroke-width="2" stroke-dasharray="3,3" />
+                            <line x1="50" y1="200" x2="350" y2="50" stroke="#f39c12" stroke-width="8" stroke-linecap="round"/>
+                            <text x="180" y="100" fill="#f39c12" text-anchor="middle" font-weight="bold" font-size="18" transform="rotate(-26.5 180 100)">Longitud Real (Panel)</text>
+                            <path d="M 130 200 A 80 80 0 0 0 115 165" fill="none" stroke="#3498db" stroke-width="3"/>
+                            <text x="145" y="190" fill="#3498db" font-weight="bold" font-size="18">θ°</text>
+                        </svg>
+                    </div>
+                </div>
+            </section>
+
+            <section data-transition="convex">
+                <h2>El Teorema de Dos Aguas</h2>
+                <p>Un techo simétrico no es una entidad monolítica. Se divide transversalmente para calcular faldones independientes.</p>
+                <div class="formula-box">
+                    \[ Ancho_{agua} = \frac{Ancho_{total}}{2} \]
+                </div>
+                <svg viewBox="0 0 500 200" width="80%">
+                    <line x1="50" y1="150" x2="250" y2="50" stroke="#3498db" stroke-width="8" stroke-linecap="round"/>
+                    <line x1="250" y1="50" x2="450" y2="150" stroke="#3498db" stroke-width="8" stroke-linecap="round"/>
+                    <circle cx="250" cy="50" r="12" fill="#e74c3c" />
+                    <text x="250" y="30" fill="#e74c3c" text-anchor="middle" font-weight="bold" font-size="16">Cumbrera (Unión Forzada)</text>
+                    <text x="120" y="100" fill="#fff" font-size="14">Agua 1</text>
+                    <text x="380" y="100" fill="#fff" font-size="14">Agua 2</text>
+                    <line x1="50" y1="180" x2="450" y2="180" stroke="#7f8c8d" stroke-width="2" />
+                    <line x1="50" y1="170" x2="50" y2="190" stroke="#7f8c8d" stroke-width="2" />
+                    <line x1="450" y1="170" x2="450" y2="190" stroke="#7f8c8d" stroke-width="2" />
+                    <text x="250" y="195" fill="#7f8c8d" text-anchor="middle" font-size="14">Ancho Total</text>
+                </svg>
+            </section>
+
+            <section data-transition="slide">
+                <h2>II. La Doctrina del Descarte</h2>
+                <p>La materia está sometida al <span class="highlight">Ancho Útil (AU)</span>. Todo solapamiento genera merma matemática inevitable.</p>
+                <div class="formula-box">
+                    \[ N_{paneles} = \left\lceil \frac{Ancho}{AU} \right\rceil \]
+                </div>
+                <svg viewBox="0 0 600 160" width="90%">
+                    <rect x="50" y="30" width="430" height="90" fill="none" stroke="#7f8c8d" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="265" y="20" fill="#7f8c8d" text-anchor="middle" font-size="14">Ancho Físico Solicitado por el Cliente</text>
+                    
+                    <rect x="50" y="40" width="120" height="70" fill="#2c3e50" stroke="#3498db" stroke-width="3"/>
+                    <rect x="170" y="40" width="120" height="70" fill="#2c3e50" stroke="#3498db" stroke-width="3"/>
+                    <rect x="290" y="40" width="120" height="70" fill="#2c3e50" stroke="#3498db" stroke-width="3"/>
+                    <rect x="410" y="40" width="120" height="70" fill="#2c3e50" stroke="#e74c3c" stroke-width="3"/>
+                    
+                    <rect x="480" y="40" width="50" height="70" fill="#e74c3c" opacity="0.7"/>
+                    
+                    <text x="110" y="85" fill="white" text-anchor="middle" font-size="18">1 AU</text>
+                    <text x="230" y="85" fill="white" text-anchor="middle" font-size="18">2 AU</text>
+                    <text x="350" y="85" fill="white" text-anchor="middle" font-size="18">3 AU</text>
+                    
+                    <path d="M 505 30 L 505 15 L 560 15" stroke="white" stroke-width="2" fill="none"/>
+                    <text x="560" y="20" fill="#e74c3c" font-size="16" font-weight="bold">Descarte</text>
+                </svg>
+            </section>
+
+            <section data-transition="zoom">
+                <h2>III. Pilares de la Estática</h2>
+                <p>Cada panel posee un Límite de Vano Libre ($S_{max}$). Excederlo invoca la ira de la gravedad, forzando estructuras secundarias.</p>
+                <div class="formula-box">
+                    \[ Apoyos = \left\lceil \frac{L_{real}}{S_{max}} \right\rceil + 1 \]
+                </div>
+                <svg viewBox="0 0 600 150" width="90%">
+                    <text x="300" y="30" fill="#e74c3c" text-anchor="middle" font-weight="bold" font-size="24">↓↓ GRAVEDAD ↓↓</text>
+                    <rect x="50" y="50" width="500" height="15" fill="#95a5a6" rx="5"/>
+                    <polygon points="50,65 35,100 65,100" fill="#f39c12"/>
+                    <polygon points="300,65 285,100 315,100" fill="#f39c12"/>
+                    <polygon points="550,65 535,100 565,100" fill="#f39c12"/>
+                    <line x1="50" y1="120" x2="300" y2="120" stroke="#3498db" stroke-width="2" />
+                    <line x1="50" y1="110" x2="50" y2="130" stroke="#3498db" stroke-width="2" />
+                    <line x1="300" y1="110" x2="300" y2="130" stroke="#3498db" stroke-width="2" />
+                    <text x="175" y="140" fill="#3498db" text-anchor="middle" font-size="14" font-weight="bold">Vano Máximo ($S_{max}$)</text>
+                </svg>
+                <p class="fragment fade-up"><small><span class="danger">El Mandamiento Dorado:</span> Si $L_{real} > S_{max}$, el panel carece de autoportancia absoluta.</small></p>
+            </section>
+
+            <section data-transition="slide">
+                <h2>IV. Alquimia de Accesorios</h2>
+                <p>Las tasas de consumo se rigen estrictamente por la geometría y las intersecciones.</p>
+                <table>
+                    <tr>
+                        <th>Elemento</th>
+                        <th>Ecuación de Discretización</th>
+                        <th>Naturaleza Física</th>
+                    </tr>
+                    <tr>
+                        <td>🔩 <strong>Varillas Roscadas</strong></td>
+                        <td style="font-family: monospace;">$Varillas = \lceil Puntos / 4 \rceil$</td>
+                        <td>Se extraen 4 cortes de anclaje de 1 metro de varilla.</td>
+                    </tr>
+                    <tr>
+                        <td>🪛 <strong>Tornillos T1</strong></td>
+                        <td style="font-family: monospace;">$T1 = Perímetro / 0.30$</td>
+                        <td>Mandato estructural: 1 tornillo cada 30 cm lineales.</td>
+                    </tr>
+                    <tr>
+                        <td>💧 <strong>Silicona</strong></td>
+                        <td style="font-family: monospace;">$Tubos = \lceil N_p \times 0.5 \rceil$</td>
+                        <td>1 tubo sella la unión longitudinal de 2 paneles.</td>
+                    </tr>
+                    <tr>
+                        <td>🩹 <strong>Cinta Butílica</strong></td>
+                        <td style="font-family: monospace;">$Rollos = \lceil N_p / 10 \rceil$</td>
+                        <td>1 rollo hermetiza transversalmente 10 paneles.</td>
+                    </tr>
+                </table>
+            </section>
+
+            <section data-transition="convex">
+                <h2>V. Dogmas de Asesoramiento (IA)</h2>
+                <p>La matriz lógica estricta que guía la selección de materiales.</p>
+                <div class="col-container" style="align-items: flex-start;">
+                    <div class="col" style="background: rgba(52, 152, 219, 0.1); border-color: #3498db;">
+                        <h4 style="color:#3498db; text-align: center;">TECHOS</h4>
+                        <ul style="font-size: 0.9em;">
+                            <li><span class="highlight">Camino Económico:</span> ISOROOF 3G 30mm. (Tinglados sin aislación).</li>
+                            <li><span class="highlight">Estándar Dorado:</span> ISODEC 100mm. (Equilibrio galpones).</li>
+                            <li><span class="highlight">El Titán:</span> ISODEC 150-250mm. (Para grandes luces sin apoyos).</li>
+                        </ul>
+                    </div>
+                    <div class="col" style="background: rgba(231, 76, 60, 0.1); border-color: #e74c3c;">
+                        <h4 style="color:#e74c3c; text-align: center;">FACHADAS</h4>
+                        <ul style="font-size: 0.9em;">
+                            <li><span class="danger">La Frontera Interior:</span> EPS 50mm. ESTRICTAMENTE prohibido para exteriores.</li>
+                            <li><span class="highlight">Fachada Estándar:</span> EPS 100mm.</li>
+                            <li><span class="highlight">Congelamiento Profundo:</span> EPS 150-250mm. Para cámaras frigoríficas.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section data-transition="slide">
+                <h2>VI. Termodinámica Financiera</h2>
+                <p>El valor financiero excluye los impuestos línea por línea para prevenir la <em>deriva de coma flotante</em> (Floating-Point Drift) en los decimales.</p>
+                
+                <div style="background: rgba(255,255,255,0.05); border: 2px solid #555; padding: 30px; border-radius: 15px; width: 80%; margin: 20px auto; text-align: left;">
+                    <p style="font-size: 1.1em; color: #f39c12; font-weight: bold;">1. El Subtotal (Valor Neto)</p>
+                    <p style="font-family: monospace; border-bottom: 1px dashed #555; padding-bottom: 10px;">$Subtotal = \sum (Cantidad \times Precio\_USD) + Flete$</p>
+                    
+                    <p style="font-size: 1.1em; color: #f39c12; font-weight: bold; margin-top: 20px;">2. El Tributo al Estado</p>
+                    <p style="font-family: monospace; border-bottom: 1px dashed #555; padding-bottom: 10px;">$IVA = Subtotal \times 0.22$</p>
+                    
+                    <h3 style="color: #2ecc71; text-align: center; margin-top: 30px; font-size: 1.8em;">$TOTAL = Subtotal + IVA$</h3>
+                </div>
+                <p class="fragment fade-up"><small><span class="highlight">Axioma Logístico:</span> El peregrinaje hacia la fábrica (Retiro en Planta) tiene un costo matemático igual a cero.</small></p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/plugin/math/math.js"></script>
+    
+    <script>
+        // Inicialización de la presentación con animaciones y renderizado matemático
+        Reveal.initialize({
+            controls: true,
+            progress: true,
+            center: true,
+            hash: true,
+            transition: 'convex', // Transición 3D fluida ('slide', 'convex', 'concave', 'zoom')
+            plugins: [ RevealMath.MathJax3 ] // Habilita la tipografía LaTeX en las fórmulas
+        });
+    </script>
+</body>
+</html>

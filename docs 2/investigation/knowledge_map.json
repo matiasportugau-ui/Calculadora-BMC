@@ -1,0 +1,275 @@
+{
+  "generated": "2026-03-11",
+  "phase": "PHASE_2_KNOWLEDGE_ANALYSIS",
+  "total_files_classified": 127,
+  "sources_of_truth": {
+    "pricing_and_products": [
+      {
+        "file": "Calculadora-BMC/src/data/constants.js",
+        "category": "BUSINESS_RULE",
+        "description": "Design tokens, pricing engine (p, pIVA), panel data, fijaciones, perfileria, scenarios — THE active source of truth for calculator pricing",
+        "authority": "PRIMARY"
+      },
+      {
+        "file": "GPT-PANELIN-V3.2/bromyros_pricing_master.json",
+        "category": "BUSINESS_RULE",
+        "description": "Master BROMYROS pricing dataset (96 products, 11 families) — used by GPT",
+        "authority": "GPT_PRIMARY"
+      },
+      {
+        "file": "GPT-PANELIN-V3.2/accessories_catalog.json",
+        "category": "BUSINESS_RULE",
+        "description": "Normalized catalog of accessories with real prices (IVA included)",
+        "authority": "GPT_PRIMARY"
+      },
+      {
+        "file": "GPT-PANELIN-V3.2/bom_rules.json",
+        "category": "BUSINESS_RULE",
+        "description": "Parametric BOM rules per construction system with formulas",
+        "authority": "GPT_PRIMARY"
+      }
+    ],
+    "knowledge_bases": [
+      {
+        "file": "Chatbot-Truth-base--Creation/BMC_Base_Conocimiento_CONSOLIDADA_v5.0.json",
+        "category": "BUSINESS_RULE",
+        "description": "Consolidated KB v5.0 with quotation formulas, product specs, business rules",
+        "authority": "LATEST_CONSOLIDATED"
+      },
+      {
+        "file": "Chatbot-Truth-base--Creation/BMC_Base_Conocimiento_Unified_v6.json",
+        "category": "BUSINESS_RULE",
+        "description": "Unified KB v6 validated against 31 real quotes",
+        "authority": "LATEST_UNIFIED"
+      },
+      {
+        "file": "GPT-PANELIN-V3.2/BMC_Base_Conocimiento_GPT-2.json",
+        "category": "BUSINESS_RULE",
+        "description": "Primary GPT KB with product catalog, institutional info, pricing, specs",
+        "authority": "GPT_PRIMARY",
+        "note": "DUPLICATED in Chatbot-Truth-base--Creation"
+      }
+    ],
+    "gpt_instructions": [
+      {
+        "file": "Calculadora-BMC-GPT/gpt/instructions/system.md",
+        "category": "SYSTEM_PROMPT",
+        "description": "Base system instructions for Panelin BMC Cotizador GPT",
+        "authority": "PRIMARY"
+      },
+      {
+        "file": "Calculadora-BMC-GPT/gpt/config/qualification-rules.json",
+        "category": "BUSINESS_RULE",
+        "description": "Qualification rules for lead processing",
+        "authority": "PRIMARY"
+      },
+      {
+        "file": "Calculadora-BMC-GPT/gpt/config/status-machine.json",
+        "category": "BUSINESS_RULE",
+        "description": "Lead/quote lifecycle state machine",
+        "authority": "PRIMARY"
+      }
+    ],
+    "api_schemas": [
+      {
+        "file": "Calculadora-BMC-GPT/gpt/actions/openapi.yaml",
+        "category": "API_SCHEMA",
+        "description": "OpenAPI 3.1 spec for calculator API (cotizar, catalogo, escenarios)",
+        "authority": "PRIMARY"
+      },
+      {
+        "file": "Calculadora-BMC-GPT/gpt/actions/openapi-consolidated.yaml",
+        "category": "API_SCHEMA",
+        "description": "Unified OpenAPI spec: calc + Wolf + MercadoLibre",
+        "authority": "CONSOLIDATED"
+      },
+      {
+        "file": "Calculadora-BMC/docs/openapi-calc.yaml",
+        "category": "API_SCHEMA",
+        "description": "OpenAPI spec for calculator API (may be older copy)",
+        "authority": "SECONDARY"
+      }
+    ],
+    "automation": [
+      {
+        "file": "ChatBOT/WF_MAIN_orchestrator_v4.json",
+        "category": "AUTOMATION",
+        "description": "n8n main orchestrator workflow (Chatwoot webhook, routing)",
+        "authority": "PRIMARY"
+      },
+      {
+        "file": "ChatBOT/WF_KB_ingest_v2.json",
+        "category": "AUTOMATION",
+        "description": "n8n KB ingestion workflow (chunking, Qdrant upsert)",
+        "authority": "PRIMARY"
+      }
+    ]
+  },
+  "by_category": {
+    "SYSTEM_PROMPT": {
+      "count": 22,
+      "files": [
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/instructions/system.md", "description": "Base GPT system instructions"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/instructions/combined-instructions.md", "description": "Full combined instructions with qualification + gates"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/instructions/combined-instructions-calc-only.md", "description": "Calculator-only instructions variant"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/instructions/manual-gates.md", "description": "Manual gates protocol"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/instructions/session-qualification.md", "description": "Session qualification loop"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "Panelin_GPT_config.json", "description": "Full GPT configuration with system instructions"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "GPT_INSTRUCTIONS_PRICING.md", "description": "GPT pricing query instructions"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "GPT_PDF_INSTRUCTIONS.md", "description": "PDF generation workflow instructions"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "AI_Agent_Prompt_BMC_Configuration.md", "description": "AI Configuration Architect prompt"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "PANELIN_INSTRUCTIONS_OPTIMIZED.md", "description": "Optimized GPT Builder instructions"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "PANELIN_ULTIMATE_INSTRUCTIONS.md", "description": "Full system instructions with guardrails"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "CONFIGURACION_OPTIMIZADA_GPT.md", "description": "Optimized GPT configuration"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "PROMPT_AGENTE_INTEGRADOR_CONOCIMIENTO.md", "description": "Knowledge Integrator Agent prompt"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "PROMPT_ANALISIS_CONOCIMIENTO_GPT.md", "description": "GPT knowledge analysis prompt"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "gpt_configs/INSTRUCCIONES_PANELIN.txt", "description": "Plain-text Panelin GPT Builder instructions"},
+        {"repo": "Calculadora-BMC", "file": "AUDIT-PROMPT.md", "description": "Variable/data-flow audit instructions"},
+        {"repo": "Calculadora-BMC", "file": "docs/GOOGLE_DRIVE_SETUP_PROMPT.md", "description": "Google Drive API setup prompt"},
+        {"repo": "ChatBOT", "file": "agents/documentation-maintainer.yml", "description": "Docs sync agent prompt"},
+        {"repo": "ChatBOT", "file": "agents/quality-auditor.yml", "description": "Quality audit agent prompt"},
+        {"repo": "ChatBOT", "file": "agents/service-health-monitor.yml", "description": "Service health monitor prompt"},
+        {"repo": "2026_Mono_rep", "file": "ARCHITECT_PROMPT.md", "description": "Principal Architect Agent system prompt"}
+      ]
+    },
+    "BUSINESS_RULE": {
+      "count": 18,
+      "files": [
+        {"repo": "Calculadora-BMC", "file": "src/data/constants.js", "description": "Pricing engine, panel data, fijaciones, scenarios (SOURCE OF TRUTH)"},
+        {"repo": "Calculadora-BMC", "file": "docs/CALC-PARED.md", "description": "Wall calculation engine formulas"},
+        {"repo": "Calculadora-BMC", "file": "docs/CALC-TECHO.md", "description": "Roof calculation engine formulas"},
+        {"repo": "Calculadora-BMC", "file": "docs/PRICING-ENGINE.md", "description": "Pricing engine rules and data structures"},
+        {"repo": "Calculadora-BMC", "file": "docs/SCENARIOS.md", "description": "Scenario definitions and visibility rules"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/config/qualification-rules.json", "description": "Lead qualification rules"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/config/quote-code-policy.json", "description": "Quote code format policy"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/config/required-fields-by-scenario.json", "description": "Required fields per scenario"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/config/status-machine.json", "description": "Lead/quote lifecycle state machine"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "BMC_Base_Conocimiento_GPT-2.json", "description": "GPT knowledge base with products and pricing"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "bromyros_pricing_master.json", "description": "Master BROMYROS pricing (96 products)"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "accessories_catalog.json", "description": "Accessories catalog with real prices"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "bom_rules.json", "description": "BOM rules per construction system"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "BMC_Base_Unificada_v4.json", "description": "Unified budget base validated against 31 quotes"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "BMC_Base_Conocimiento_CONSOLIDADA_v5.0.json", "description": "Consolidated KB v5.0"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "BMC_Base_Conocimiento_Unified_v6.json", "description": "Unified KB v6"},
+        {"repo": "ChatBOT", "file": "domain.yml", "description": "Rasa domain: intents, slots, forms for cotización"},
+        {"repo": "2026_Mono_rep", "file": "IMPLEMENTATION_PLAN.md", "description": "BMC technical support knowledge injection plan"}
+      ]
+    },
+    "API_SCHEMA": {
+      "count": 12,
+      "files": [
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/actions/openapi.yaml", "description": "Calculator API spec"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/actions/openapi-consolidated.yaml", "description": "Unified API spec"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/actions/openapi-mercadolibre.yaml", "description": "MercadoLibre lead adapter spec"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/actions/openapi-wolf.yaml", "description": "Wolf workflow API spec"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/config/event-log-schema.json", "description": "Audit event log schema"},
+        {"repo": "Calculadora-BMC-GPT", "file": "gpt/config/lead-schema.json", "description": "Normalized lead schema"},
+        {"repo": "Calculadora-BMC", "file": "docs/openapi-calc.yaml", "description": "Calculator API spec (may be older copy)"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "bromyros_pricing_gpt_optimized.json", "description": "Optimized pricing indices for fast lookup"},
+        {"repo": "GPT-PANELIN-V3.2", "file": "shopify_catalog_v1.json", "description": "Shopify product catalog export"},
+        {"repo": "Chatbot-Truth-base--Creation", "file": "gpt_configs/Panelin Knowledge Base Assistant_config.json", "description": "GPT config with KB hierarchy"},
+        {"repo": "ChatBOT", "file": "template_cotizacion_inicial.json", "description": "WhatsApp cotizacion template schema"},
+        {"repo": "2026_Mono_rep", "file": "conocimiento_consolidado.json", "description": "Consolidated knowledge schema"}
+      ]
+    },
+    "AUTOMATION": {
+      "count": 24,
+      "files_summary": "33 GitHub workflows + 5 n8n workflows across 6 repos. Key: evolucionador-daily.yml (GPT-PANELIN), ci.yml (multiple), autonomous-agents.yml (ChatBOT), deploy-agents.yml (2026_Mono_rep), bmc-ai-training.yml (2026_Mono_rep)"
+    },
+    "CONFIG": {
+      "count": 14,
+      "files_summary": "GPT config templates, action routing, manual gates, sheets writeback columns, Turborepo config, Docker Compose, Rasa pipeline, Vercel/Cloud Build configs"
+    },
+    "DOC": {
+      "count": 42,
+      "files_summary": "Architecture docs, deployment guides, changelogs, API references, ADRs, training guides, KB guides, quotation process docs"
+    },
+    "SCRIPT": {
+      "count": 15,
+      "files_summary": "quotation_calculator_v3.py, validate_gpt_files.py, package_gpt_files.py, autopilot engine, GPT simulation agent, KB config agent, data engineer agent"
+    }
+  },
+  "critical_findings": {
+    "knowledge_base_fragmentation": {
+      "severity": "HIGH",
+      "description": "BMC knowledge base exists in at least 5 versions across 3 repos",
+      "versions_found": [
+        {"version": "GPT-2", "repos": ["GPT-PANELIN-V3.2", "Chatbot-Truth-base--Creation"], "note": "DUPLICATED across repos"},
+        {"version": "v4 (Unificada)", "repos": ["GPT-PANELIN-V3.2"]},
+        {"version": "v5.0 (Consolidada)", "repos": ["Chatbot-Truth-base--Creation"]},
+        {"version": "v6 (Unified)", "repos": ["Chatbot-Truth-base--Creation"]},
+        {"version": "constants.js (live)", "repos": ["Calculadora-BMC"], "note": "Active pricing — may diverge from KB JSONs"}
+      ],
+      "risk": "Prices and business rules may be inconsistent between calculator and GPT"
+    },
+    "gpt_instructions_fragmentation": {
+      "severity": "HIGH",
+      "description": "GPT system prompts exist in at least 8 variants across 3 repos",
+      "locations": [
+        "Calculadora-BMC-GPT/gpt/instructions/ (6 files — CURRENT)",
+        "GPT-PANELIN-V3.2/ (3 instruction files — OLDER)",
+        "Chatbot-Truth-base--Creation/ (7+ prompt files — HISTORICAL)"
+      ],
+      "risk": "Unclear which instructions are actually deployed to the GPT"
+    },
+    "openapi_schema_duplication": {
+      "severity": "MEDIUM",
+      "description": "OpenAPI specs exist in both Calculadora-BMC and Calculadora-BMC-GPT",
+      "files": [
+        "Calculadora-BMC/docs/openapi-calc.yaml",
+        "Calculadora-BMC-GPT/gpt/actions/openapi.yaml"
+      ],
+      "risk": "Could go out of sync"
+    },
+    "n8n_workflow_duplication": {
+      "severity": "MEDIUM",
+      "description": "n8n workflows exist in ChatBOT and were seen in bmc-cotizacion-inteligente and chatbot-2311",
+      "risk": "Same workflows may exist in 3 repos with different versions"
+    },
+    "extractable_improvements_from_2026_mono_rep": {
+      "severity": "OPPORTUNITY",
+      "items": [
+        "ADR (Architecture Decision Records) practice — docs/ADR/",
+        "Agent registry documentation — docs/architecture/agent-registry.md",
+        "Monorepo benchmarks — docs/benchmarks/top-monorepos-comparison.md",
+        "Turborepo configuration — turbo.json",
+        "BMC AI training workflow — .github/workflows/bmc-ai-training.yml",
+        "Agent deployment workflow — .github/workflows/deploy-agents.yml",
+        "Consolidated knowledge schema — conocimiento_consolidado.json"
+      ]
+    },
+    "extractable_improvements_from_chatbot": {
+      "severity": "OPPORTUNITY",
+      "items": [
+        "Agent architecture (documentation-maintainer, quality-auditor, service-health-monitor)",
+        "n8n workflow orchestration patterns (WF_MAIN, WF_KB_ingest)",
+        "Data Engineer Agent with repair/validation capabilities",
+        "Autonomous agents GitHub Actions workflow"
+      ]
+    }
+  },
+  "source_of_truth_hierarchy": {
+    "pricing": {
+      "primary": "Calculadora-BMC/src/data/constants.js",
+      "gpt_primary": "GPT-PANELIN-V3.2/bromyros_pricing_master.json",
+      "risk": "These two sources may not be synchronized"
+    },
+    "gpt_instructions": {
+      "primary": "Calculadora-BMC-GPT/gpt/instructions/system.md",
+      "secondary": "GPT-PANELIN-V3.2/Panelin_GPT_config.json",
+      "historical": "Chatbot-Truth-base--Creation/PANELIN_ULTIMATE_INSTRUCTIONS.md"
+    },
+    "api_schemas": {
+      "primary": "Calculadora-BMC-GPT/gpt/actions/openapi.yaml",
+      "secondary": "Calculadora-BMC/docs/openapi-calc.yaml"
+    },
+    "business_rules": {
+      "primary": "Calculadora-BMC-GPT/gpt/config/ (qualification, status machine, scenarios)",
+      "domain_logic": "Calculadora-BMC/src/utils/calculations.js"
+    },
+    "chatbot_workflows": {
+      "primary": "ChatBOT/WF_*.json",
+      "legacy": "chatbot-2311/n8n-workflows/"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "runAt": "2026-03-16T17:11:29-0300",
+  "reportPath": ".cursor/bmc-audit/latest-report.md",
+  "status": "AUDIT_RUNNER_COMPLETE",
+  "nextStep": "Invoke bmc-dashboard-debug-reviewer",
+  "summary": {
+    "health": "API responding",
+    "hasSheets": true,
+    "bmcSheetId": "1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg",
+    "sensitiveFilesInRepo": "None (OK)",
+    "npmAudit": "7 vulnerabilities (5 low, 2 moderate)",
+    "contractValidation": "3 passed (kpi 503 skipped - Sheets unavailable)",
+    "endpointsProbed": ["/health", "/api/cotizaciones", "/api/proximas-entregas", "/api/audit"]
+  }
+}

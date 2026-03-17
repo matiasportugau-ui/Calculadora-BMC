@@ -1,0 +1,131 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - heading "BMC Finanzas & Operaciones" [level=1] [ref=e4]:
+        - text: BMC
+        - generic [ref=e5]: Finanzas & Operaciones
+      - generic [ref=e6]:
+        - generic [ref=e7]: "-"
+        - button "Actualizar" [disabled] [ref=e8]
+  - status [ref=e9]:
+    - generic [ref=e10]: Cargando
+    - generic [ref=e11]: Cargando datos del dashboard...
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - paragraph [ref=e16]: Overview
+          - heading "Resumen financiero" [level=2] [ref=e17]
+          - paragraph [ref=e18]: KPIs principales por moneda, con foco en pagos pendientes y vencimientos proximos.
+        - generic [ref=e19]:
+          - generic [ref=e20]: Moneda
+          - combobox "Moneda" [disabled] [ref=e21]:
+            - option "Sin datos" [selected]
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]: Total pendiente
+          - generic [ref=e25]: "-"
+        - generic [ref=e26]:
+          - generic [ref=e27]: Esta semana
+          - generic [ref=e28]: "-"
+        - generic [ref=e29]:
+          - generic [ref=e30]: Proxima semana
+          - generic [ref=e31]: "-"
+        - generic [ref=e32]:
+          - generic [ref=e33]: Este mes
+          - generic [ref=e34]: "-"
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - paragraph [ref=e37]: Trend
+        - heading "Vencimientos proximos" [level=2] [ref=e38]
+        - paragraph [ref=e39]: Serie de pagos por fecha para la moneda seleccionada. Muestra hasta 8 fechas en orden cronologico.
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e42]: Sin moneda
+          - generic [ref=e43]: Cargando tendencia...
+        - generic [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e46]: Cargando tendencia...
+    - generic [ref=e47]:
+      - generic [ref=e48]:
+        - paragraph [ref=e49]: Breakdown
+        - heading "Pagos pendientes" [level=2] [ref=e50]
+        - paragraph [ref=e51]: Detalle filtrado por la moneda seleccionada, ordenado por fecha de vencimiento.
+      - table [ref=e53]:
+        - rowgroup [ref=e54]:
+          - row "Cliente Pedido Monto Vencimiento Estado" [ref=e55]:
+            - columnheader "Cliente" [ref=e56]
+            - columnheader "Pedido" [ref=e57]
+            - columnheader "Monto" [ref=e58]
+            - columnheader "Vencimiento" [ref=e59]
+            - columnheader "Estado" [ref=e60]
+        - rowgroup [ref=e61]:
+          - row "Cargando pagos pendientes..." [ref=e62]:
+            - cell "Cargando pagos pendientes..." [ref=e63]
+    - generic [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - paragraph [ref=e67]: Support
+          - heading "Entregas y logistica" [level=2] [ref=e68]
+          - paragraph [ref=e69]: Seguimiento de entregas de la semana y mensaje listo para coordinacion por WhatsApp.
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]:
+              - heading "Proximas entregas" [level=3] [ref=e73]
+              - button "Copiar WhatsApp" [disabled] [ref=e74]
+            - table [ref=e76]:
+              - rowgroup [ref=e77]:
+                - row "Pedido Cliente Telefono Ubicacion Fecha entrega Acciones" [ref=e78]:
+                  - columnheader "Pedido" [ref=e79]
+                  - columnheader "Cliente" [ref=e80]
+                  - columnheader "Telefono" [ref=e81]
+                  - columnheader "Ubicacion" [ref=e82]
+                  - columnheader "Fecha entrega" [ref=e83]
+                  - columnheader "Acciones" [ref=e84]
+              - rowgroup [ref=e85]:
+                - row "Cargando entregas..." [ref=e86]:
+                  - cell "Cargando entregas..." [ref=e87]
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - heading "Vista previa del mensaje" [level=3] [ref=e90]
+              - button "Copiar texto" [disabled] [ref=e91]
+            - generic [ref=e92]: Cargando vista previa...
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - paragraph [ref=e95]: Support
+          - heading "Metas de ventas" [level=2] [ref=e96]
+          - paragraph [ref=e97]: Objetivos cargados en la hoja como referencia rapida para el seguimiento del mes.
+        - table [ref=e99]:
+          - rowgroup [ref=e100]:
+            - row "Periodo Tipo Meta Notas" [ref=e101]:
+              - columnheader "Periodo" [ref=e102]
+              - columnheader "Tipo" [ref=e103]
+              - columnheader "Meta" [ref=e104]
+              - columnheader "Notas" [ref=e105]
+          - rowgroup [ref=e106]:
+            - row "Cargando metas..." [ref=e107]:
+              - cell "Cargando metas..." [ref=e108]
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - paragraph [ref=e111]: Support
+        - heading "Audit log" [level=2] [ref=e112]
+        - paragraph [ref=e113]: Registro de cambios (TIMESTAMP, ACTION, ROW, OLD_VALUE, NEW_VALUE, REASON, USER, SHEET). Exportar a CSV.
+      - generic [ref=e114]:
+        - textbox "Filtrar por accion, usuario, razon..." [ref=e115]
+        - button "Exportar CSV" [ref=e116] [cursor=pointer]
+      - table [ref=e118]:
+        - rowgroup [ref=e119]:
+          - row "Fecha Accion Fila Valor anterior Valor nuevo Razon Usuario Hoja" [ref=e120]:
+            - columnheader "Fecha" [ref=e121]
+            - columnheader "Accion" [ref=e122]
+            - columnheader "Fila" [ref=e123]
+            - columnheader "Valor anterior" [ref=e124]
+            - columnheader "Valor nuevo" [ref=e125]
+            - columnheader "Razon" [ref=e126]
+            - columnheader "Usuario" [ref=e127]
+            - columnheader "Hoja" [ref=e128]
+        - rowgroup [ref=e129]:
+          - row "Cargando audit log..." [ref=e130]:
+            - cell "Cargando audit log..." [ref=e131]
+  - contentinfo [ref=e132]:
+    - paragraph [ref=e133]: Datos desde Google Sheets · Pagos_Pendientes · Metas_Ventas · Master_Cotizaciones · AUDIT_LOG

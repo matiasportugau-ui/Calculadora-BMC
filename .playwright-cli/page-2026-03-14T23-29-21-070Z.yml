@@ -1,0 +1,212 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - heading "BMC Finanzas & Operaciones" [level=1] [ref=e4]:
+        - text: BMC
+        - generic [ref=e5]: Finanzas & Operaciones
+      - generic [ref=e6]:
+        - generic [ref=e7]: Actualizado 8:29:19 p. m.
+        - button "Actualizar" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - paragraph [ref=e13]: Overview
+          - heading "Resumen financiero" [level=2] [ref=e14]
+          - paragraph [ref=e15]: KPIs principales por moneda, con foco en pagos pendientes y vencimientos proximos.
+        - generic [ref=e16]:
+          - generic [ref=e17]: Moneda
+          - combobox "Moneda" [ref=e18]:
+            - option "$" [selected]
+            - option "UES"
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Total pendiente
+          - generic [ref=e22]: $ 9.150
+        - generic [ref=e23]:
+          - generic [ref=e24]: Esta semana
+          - generic [ref=e25]: $ 5.250
+        - generic [ref=e26]:
+          - generic [ref=e27]: Proxima semana
+          - generic [ref=e28]: $ 1.800
+        - generic [ref=e29]:
+          - generic [ref=e30]: Este mes
+          - generic [ref=e31]: $ 9.150
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - paragraph [ref=e34]: Trend
+        - heading "Vencimientos proximos" [level=2] [ref=e35]
+        - paragraph [ref=e36]: Serie de pagos por fecha para la moneda seleccionada. Muestra hasta 8 fechas en orden cronologico.
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - generic [ref=e39]: $
+          - generic [ref=e40]: 3 fechas visibles para $.
+        - generic [ref=e41]:
+          - img [ref=e42]:
+            - generic [ref=e43]: "0"
+            - generic [ref=e44]: 1,1 K
+            - generic [ref=e45]: 2,3 K
+            - generic [ref=e46]: 3,4 K
+            - generic [ref=e47]: 4,5 K
+            - generic [ref=e50]: 4,5 K
+            - generic [ref=e51]: 14/3
+            - generic [ref=e54]: 1,8 K
+            - generic [ref=e55]: 18/3
+            - generic [ref=e58]: 2,1 K
+            - generic [ref=e59]: 23/3
+          - generic [ref=e60]: Cargando tendencia...
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - paragraph [ref=e63]: Breakdown
+        - heading "Pagos pendientes" [level=2] [ref=e64]
+        - paragraph [ref=e65]: 4 pagos pendientes en $, ordenados por vencimiento.
+      - table [ref=e67]:
+        - rowgroup [ref=e68]:
+          - row "Cliente Pedido Monto ($) Vencimiento Estado" [ref=e69]:
+            - columnheader "Cliente" [ref=e70]
+            - columnheader "Pedido" [ref=e71]
+            - columnheader "Monto ($)" [ref=e72]
+            - columnheader "Vencimiento" [ref=e73]
+            - columnheader "Estado" [ref=e74]
+        - rowgroup [ref=e75]:
+          - row "Deposito Este COT-103 $ 750 10/03/2026 Vencido" [ref=e76]:
+            - cell "Deposito Este" [ref=e77]
+            - cell "COT-103" [ref=e78]:
+              - code [ref=e79]: COT-103
+            - cell "$ 750" [ref=e80]
+            - cell "10/03/2026" [ref=e81]
+            - cell "Vencido" [ref=e82]:
+              - generic [ref=e83]: Vencido
+          - row "ACME Obras COT-101 $ 4.500 14/03/2026 Esta semana" [ref=e84]:
+            - cell "ACME Obras" [ref=e85]
+            - cell "COT-101" [ref=e86]:
+              - code [ref=e87]: COT-101
+            - cell "$ 4.500" [ref=e88]
+            - cell "14/03/2026" [ref=e89]
+            - cell "Esta semana" [ref=e90]:
+              - generic [ref=e91]: Esta semana
+          - row "Frio Norte COT-102 $ 1.800 18/03/2026 Proxima semana" [ref=e92]:
+            - cell "Frio Norte" [ref=e93]
+            - cell "COT-102" [ref=e94]:
+              - code [ref=e95]: COT-102
+            - cell "$ 1.800" [ref=e96]
+            - cell "18/03/2026" [ref=e97]
+            - cell "Proxima semana" [ref=e98]:
+              - generic [ref=e99]: Proxima semana
+          - row "Montajes Delta COT-104 $ 2.100 23/03/2026 Proxima semana" [ref=e100]:
+            - cell "Montajes Delta" [ref=e101]
+            - cell "COT-104" [ref=e102]:
+              - code [ref=e103]: COT-104
+            - cell "$ 2.100" [ref=e104]
+            - cell "23/03/2026" [ref=e105]
+            - cell "Proxima semana" [ref=e106]:
+              - generic [ref=e107]: Proxima semana
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: Support
+          - heading "Entregas y logistica" [level=2] [ref=e112]
+          - paragraph [ref=e113]: Seguimiento de entregas de la semana y mensaje listo para coordinacion por WhatsApp.
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - heading "Proximas entregas" [level=3] [ref=e117]
+              - button "Copiar WhatsApp" [ref=e118] [cursor=pointer]
+            - table [ref=e120]:
+              - rowgroup [ref=e121]:
+                - row "Pedido Cliente Telefono Ubicacion Fecha entrega Acciones" [ref=e122]:
+                  - columnheader "Pedido" [ref=e123]
+                  - columnheader "Cliente" [ref=e124]
+                  - columnheader "Telefono" [ref=e125]
+                  - columnheader "Ubicacion" [ref=e126]
+                  - columnheader "Fecha entrega" [ref=e127]
+                  - columnheader "Acciones" [ref=e128]
+              - rowgroup [ref=e129]:
+                - row "COT-301 Depositos Rivera 099111222 Rivera 15/03/2026 WhatsApp Marcar entregado" [ref=e130]:
+                  - cell "COT-301" [ref=e131]:
+                    - code [ref=e132]: COT-301
+                  - cell "Depositos Rivera" [ref=e133]
+                  - cell "099111222" [ref=e134]
+                  - cell "Rivera" [ref=e135]
+                  - cell "15/03/2026" [ref=e136]
+                  - cell "WhatsApp Marcar entregado" [ref=e137]:
+                    - button "WhatsApp" [ref=e138] [cursor=pointer]
+                    - button "Marcar entregado" [ref=e139] [cursor=pointer]
+                - row "COT-302 Obra Salto 098555444 Salto 17/03/2026 WhatsApp Marcar entregado" [ref=e140]:
+                  - cell "COT-302" [ref=e141]:
+                    - code [ref=e142]: COT-302
+                  - cell "Obra Salto" [ref=e143]
+                  - cell "098555444" [ref=e144]
+                  - cell "Salto" [ref=e145]
+                  - cell "17/03/2026" [ref=e146]
+                  - cell "WhatsApp Marcar entregado" [ref=e147]:
+                    - button "WhatsApp" [ref=e148] [cursor=pointer]
+                    - button "Marcar entregado" [ref=e149] [cursor=pointer]
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - heading "Vista previa del mensaje" [level=3] [ref=e152]
+              - button "Copiar texto" [ref=e153] [cursor=pointer]
+            - generic [ref=e154]: 🚚 *Coordinacion logistica - entregas de la semana* 📦 *Pedido:* COT-301 👤 *Cliente:* Depositos Rivera 📞 *Telefono:* 099111222 📍 *Ubicacion:* Rivera 📄 *Cotizacion / items:* 4 paneles PIR 80mm — 📦 *Pedido:* COT-302 👤 *Cliente:* Obra Salto 📞 *Telefono:* 098555444 📍 *Ubicacion:* Salto 📄 *Cotizacion / items:* Cumbreras y goteros —
+      - generic [ref=e155]:
+        - generic [ref=e156]:
+          - paragraph [ref=e157]: Support
+          - heading "Metas de ventas" [level=2] [ref=e158]
+          - paragraph [ref=e159]: Objetivos cargados en la hoja como referencia rapida para el seguimiento del mes.
+        - table [ref=e161]:
+          - rowgroup [ref=e162]:
+            - row "Periodo Tipo Meta Notas" [ref=e163]:
+              - columnheader "Periodo" [ref=e164]
+              - columnheader "Tipo" [ref=e165]
+              - columnheader "Meta" [ref=e166]
+              - columnheader "Notas" [ref=e167]
+          - rowgroup [ref=e168]:
+            - row "Marzo 2026 Facturacion $ 25.000 Objetivo mensual" [ref=e169]:
+              - cell "Marzo 2026" [ref=e170]
+              - cell "Facturacion" [ref=e171]
+              - cell "$ 25.000" [ref=e172]
+              - cell "Objetivo mensual" [ref=e173]
+            - row "Marzo 2026 Cobranza UES 8.000 Seguimiento semanal" [ref=e174]:
+              - cell "Marzo 2026" [ref=e175]
+              - cell "Cobranza" [ref=e176]
+              - cell "UES 8.000" [ref=e177]
+              - cell "Seguimiento semanal" [ref=e178]
+    - generic [ref=e179]:
+      - generic [ref=e180]:
+        - paragraph [ref=e181]: Support
+        - heading "Audit log" [level=2] [ref=e182]
+        - paragraph [ref=e183]: Registro de cambios (TIMESTAMP, ACTION, ROW, OLD_VALUE, NEW_VALUE, REASON, USER, SHEET). Exportar a CSV.
+      - generic [ref=e184]:
+        - textbox "Filtrar por accion, usuario, razon..." [ref=e185]
+        - button "Exportar CSV" [ref=e186] [cursor=pointer]
+      - table [ref=e188]:
+        - rowgroup [ref=e189]:
+          - row "Fecha Accion Fila Valor anterior Valor nuevo Razon Usuario Hoja" [ref=e190]:
+            - columnheader "Fecha" [ref=e191]
+            - columnheader "Accion" [ref=e192]
+            - columnheader "Fila" [ref=e193]
+            - columnheader "Valor anterior" [ref=e194]
+            - columnheader "Valor nuevo" [ref=e195]
+            - columnheader "Razon" [ref=e196]
+            - columnheader "Usuario" [ref=e197]
+            - columnheader "Hoja" [ref=e198]
+        - rowgroup [ref=e199]:
+          - row "14/03/2026, 06:15 a. m. UPDATE 42 Pendiente Confirmado Cliente confirmo entrega matias Master_Cotizaciones" [ref=e200]:
+            - cell "14/03/2026, 06:15 a. m." [ref=e201]
+            - cell "UPDATE" [ref=e202]
+            - cell "42" [ref=e203]
+            - cell "Pendiente" [ref=e204]
+            - cell "Confirmado" [ref=e205]
+            - cell "Cliente confirmo entrega" [ref=e206]
+            - cell "matias" [ref=e207]
+            - cell "Master_Cotizaciones" [ref=e208]
+          - row "14/03/2026, 08:40 a. m. INSERT 77 COT-302 Nueva coordinacion sandra Master_Cotizaciones" [ref=e209]:
+            - cell "14/03/2026, 08:40 a. m." [ref=e210]
+            - cell "INSERT" [ref=e211]
+            - cell "77" [ref=e212]
+            - cell [ref=e213]
+            - cell "COT-302" [ref=e214]
+            - cell "Nueva coordinacion" [ref=e215]
+            - cell "sandra" [ref=e216]
+            - cell "Master_Cotizaciones" [ref=e217]
+  - contentinfo [ref=e218]:
+    - paragraph [ref=e219]: Datos desde Google Sheets · Pagos_Pendientes · Metas_Ventas · Master_Cotizaciones · AUDIT_LOG

@@ -1,0 +1,6231 @@
+{
+  "generatedAt": "2026-03-16T23:41:39.397Z",
+  "workbooksConfigured": 5,
+  "workbooks": [
+    {
+      "workbookId": "1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg",
+      "workbookName": "BMC crm_automatizado",
+      "envVar": "BMC_SHEET_ID",
+      "tabCount": 5,
+      "tabs": [
+        {
+          "title": "CRM_Operativo",
+          "sheetId": 1427195280,
+          "rowCount": 1000,
+          "colCount": 31,
+          "dataRowCount": 28,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CRM Operativo BMC Uruguay",
+              "sampleValues": [
+                "ID",
+                "1",
+                "2",
+                "3",
+                "4"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CRM Operativo BMC Uruguay": "ID"
+            },
+            {
+              "CRM Operativo BMC Uruguay": "1"
+            },
+            {
+              "CRM Operativo BMC Uruguay": "2"
+            },
+            {
+              "CRM Operativo BMC Uruguay": "3"
+            },
+            {
+              "CRM Operativo BMC Uruguay": "4"
+            }
+          ]
+        },
+        {
+          "title": "Manual",
+          "sheetId": 156977765,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 10,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Bnesser Uruguay | Plantilla CRM automatizada",
+              "sampleValues": [
+                "Objetivo",
+                "- Carga operativa con listas desplegables.",
+                "- Scoring automático y alertas.",
+                "- Dashboard gerencial.",
+                "- Mapa de automatismos posibles."
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 10
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Bnesser Uruguay | Plantilla CRM automatizada": "Objetivo"
+            },
+            {
+              "Bnesser Uruguay | Plantilla CRM automatizada": "- Carga operativa con listas desplegables."
+            },
+            {
+              "Bnesser Uruguay | Plantilla CRM automatizada": "- Scoring automático y alertas."
+            },
+            {
+              "Bnesser Uruguay | Plantilla CRM automatizada": "- Dashboard gerencial."
+            },
+            {
+              "Bnesser Uruguay | Plantilla CRM automatizada": "- Mapa de automatismos posibles."
+            }
+          ]
+        },
+        {
+          "title": "Parametros",
+          "sheetId": 279354316,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 10,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Listas y pesos",
+              "sampleValues": [
+                "Estado",
+                "Pendiente",
+                "En análisis",
+                "Falta información",
+                "Cotizando"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 10
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Listas y pesos": "Estado"
+            },
+            {
+              "Listas y pesos": "Pendiente"
+            },
+            {
+              "Listas y pesos": "En análisis"
+            },
+            {
+              "Listas y pesos": "Falta información"
+            },
+            {
+              "Listas y pesos": "Cotizando"
+            }
+          ]
+        },
+        {
+          "title": "Dashboard",
+          "sheetId": 2091711721,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 10,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Dashboard gerencial",
+              "sampleValues": [
+                "KPI",
+                "Consultas activas",
+                "Seguimientos vencidos",
+                "Cotizaciones pendientes",
+                "Leads alta prioridad"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 6
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Dashboard gerencial": "KPI"
+            },
+            {
+              "Dashboard gerencial": "Consultas activas"
+            },
+            {
+              "Dashboard gerencial": "Seguimientos vencidos"
+            },
+            {
+              "Dashboard gerencial": "Cotizaciones pendientes"
+            },
+            {
+              "Dashboard gerencial": "Leads alta prioridad"
+            }
+          ]
+        },
+        {
+          "title": "Automatismos",
+          "sheetId": 1868498434,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 13,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Mapa de automatismos posibles",
+              "sampleValues": [
+                "Automatismo",
+                "ID automático",
+                "Prioridad automática",
+                "Alerta de vencimiento",
+                "Dashboard gerencial"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Mapa de automatismos posibles": "Automatismo"
+            },
+            {
+              "Mapa de automatismos posibles": "ID automático"
+            },
+            {
+              "Mapa de automatismos posibles": "Prioridad automática"
+            },
+            {
+              "Mapa de automatismos posibles": "Alerta de vencimiento"
+            },
+            {
+              "Mapa de automatismos posibles": "Dashboard gerencial"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "workbookId": "1AzHhalsZKGis_oJ6J06zQeOb6uMQCsliR82VrSKUUsI",
+      "workbookName": "Pagos Pendientes 2026",
+      "envVar": "BMC_PAGOS_SHEET_ID",
+      "tabCount": 2,
+      "tabs": [
+        {
+          "title": "Pendientes_",
+          "sheetId": 1830462105,
+          "rowCount": 980,
+          "colCount": 39,
+          "dataRowCount": 29,
+          "columnCount": 15,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "º",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "FECHA",
+              "sampleValues": [
+                "ACOPIO - STOCK",
+                "12/11/2022",
+                "14/7/2025",
+                "4/10/2024",
+                "5/10/2024"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "PROVEEDOR",
+              "sampleValues": [
+                "Importación",
+                "MONTFRIO",
+                "HM Rubber",
+                "PARTICULAR"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Venta U$S IVA inc.",
+              "sampleValues": [
+                "3,654.00",
+                "126.00"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "Venta U$S IVA inc.",
+              "sampleValues": [
+                "108.99"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ÓRDEN",
+              "sampleValues": [
+                "3102022",
+                "Crédito U$S 26",
+                "A-844",
+                "Consignacion de Panel"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "CLIENTE",
+              "sampleValues": [
+                "Alfredo Nario",
+                "A FAVOR BMC ",
+                "Javier Plada",
+                "Pablo Pison"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "ESTADO",
+              "sampleValues": [
+                "ENCARGADO",
+                "PENDIENTE",
+                "ENTREGADO",
+                "ENTREGADO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "Pago cliente USD",
+              "sampleValues": [
+                "3,000.00",
+                "0.00",
+                "126.00"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "Pago a Proveedor USD",
+              "sampleValues": [
+                "100 %",
+                "0.00",
+                "0.00"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "Saldo a Proveedor USD",
+              "sampleValues": [
+                "0.00",
+                "109",
+                "126"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "PLAZO",
+              "sampleValues": [
+                "indef.",
+                "04-11",
+                "07-10"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "SALDO DEL CLIENTE",
+              "sampleValues": [
+                "654",
+                "0",
+                "0"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "COMENTARIOS",
+              "sampleValues": [
+                "FORESTIER TIENE U$S 38 a FAVOR",
+                "Revisar ",
+                "Vendimos panel - Pagar a Pablo Pison"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 7
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "(col 15)",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "USD 64 a favor en BECAM",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "º": "",
+              "FECHA": "ACOPIO - STOCK",
+              "PROVEEDOR": "",
+              "Venta U$S IVA inc.": "",
+              "ÓRDEN": "",
+              "CLIENTE": "",
+              "ESTADO": "",
+              "Pago cliente USD": "",
+              "Pago a Proveedor USD": "",
+              "Saldo a Proveedor USD": "",
+              "PLAZO": "",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "FORESTIER TIENE U$S 38 a FAVOR",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "º": "",
+              "FECHA": "12/11/2022",
+              "PROVEEDOR": "Importación",
+              "Venta U$S IVA inc.": "",
+              "ÓRDEN": "3102022",
+              "CLIENTE": "Alfredo Nario",
+              "ESTADO": "ENCARGADO",
+              "Pago cliente USD": "3,000.00",
+              "Pago a Proveedor USD": "100 %",
+              "Saldo a Proveedor USD": "0.00",
+              "PLAZO": "indef.",
+              "SALDO DEL CLIENTE": "654",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "º": "",
+              "FECHA": "14/7/2025",
+              "PROVEEDOR": "MONTFRIO",
+              "Venta U$S IVA inc.": "",
+              "ÓRDEN": "Crédito U$S 26",
+              "CLIENTE": "A FAVOR BMC ",
+              "ESTADO": "PENDIENTE",
+              "Pago cliente USD": "",
+              "Pago a Proveedor USD": "",
+              "Saldo a Proveedor USD": "",
+              "PLAZO": "",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "º": "",
+              "FECHA": "4/10/2024",
+              "PROVEEDOR": "HM Rubber",
+              "Venta U$S IVA inc.": "108.99",
+              "ÓRDEN": "A-844",
+              "CLIENTE": "Javier Plada",
+              "ESTADO": "ENTREGADO",
+              "Pago cliente USD": "0.00",
+              "Pago a Proveedor USD": "0.00",
+              "Saldo a Proveedor USD": "109",
+              "PLAZO": "04-11",
+              "SALDO DEL CLIENTE": "0",
+              "COMENTARIOS": "Revisar ",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "º": "",
+              "FECHA": "5/10/2024",
+              "PROVEEDOR": "PARTICULAR",
+              "Venta U$S IVA inc.": "",
+              "ÓRDEN": "Consignacion de Panel",
+              "CLIENTE": "Pablo Pison",
+              "ESTADO": "ENTREGADO",
+              "Pago cliente USD": "126.00",
+              "Pago a Proveedor USD": "0.00",
+              "Saldo a Proveedor USD": "126",
+              "PLAZO": "07-10",
+              "SALDO DEL CLIENTE": "0",
+              "COMENTARIOS": "Vendimos panel - Pagar a Pablo Pison",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            }
+          ]
+        },
+        {
+          "title": "Listos_",
+          "sheetId": 610606273,
+          "rowCount": 2830,
+          "colCount": 39,
+          "dataRowCount": 29,
+          "columnCount": 14,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "(col 1)",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "FECHA",
+              "sampleValues": [
+                "03-feb,",
+                "17/1/2020",
+                "6/2/2020",
+                "6/2/2020",
+                "10/2/2020"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "PROVEEDOR",
+              "sampleValues": [
+                "Rafael Lucas",
+                "Montfrío",
+                "Armco",
+                "Montfrío",
+                "Becam"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Venta U$S IVA inc.",
+              "sampleValues": [
+                "324",
+                "1,347.50",
+                "43.17",
+                "1348.8",
+                "2411.3"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "Costo U$S IVA inc.",
+              "sampleValues": [
+                "259",
+                "1115",
+                "39",
+                "1260",
+                "2202.78"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ÓRDEN",
+              "sampleValues": [
+                "Cotización 45/01-2019",
+                "10/01/2020",
+                "A - 26689"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "CLIENTE",
+              "sampleValues": [
+                "Rafael Lucas",
+                "Gerardo Piriz",
+                "Veronica Lantas",
+                "Ruben Sabiotti",
+                "Gabriel Fontes"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "ESTADO",
+              "sampleValues": [
+                "Entregado",
+                "Entregado",
+                "Entregado",
+                "Entregado",
+                "Entregado"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "Pago cliente USD",
+              "sampleValues": [
+                "100%",
+                "100%",
+                "100%",
+                "100%",
+                "100%"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "Pago a Proveedor USD",
+              "sampleValues": [
+                "100%",
+                "100%",
+                "100%",
+                "100%",
+                "100%"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "Saldo a Proveedor USD",
+              "sampleValues": [
+                "0",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "PLAZO",
+              "sampleValues": [
+                "03-feb",
+                "03-feb",
+                "04-feb",
+                "22-ene",
+                "10-feb"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "SALDO DEL CLIENTE",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "COMENTARIOS",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "(col 15)",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "USD 64 a favor en BECAM",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "col0": "",
+              "FECHA": "03-feb,",
+              "PROVEEDOR": "Rafael Lucas",
+              "Venta U$S IVA inc.": "324",
+              "Costo U$S IVA inc.": "259",
+              "ÓRDEN": "",
+              "CLIENTE": "Rafael Lucas",
+              "ESTADO": "Entregado",
+              "Pago cliente USD": "100%",
+              "Pago a Proveedor USD": "100%",
+              "Saldo a Proveedor USD": "0",
+              "PLAZO": "03-feb",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "col0": "",
+              "FECHA": "17/1/2020",
+              "PROVEEDOR": "Montfrío",
+              "Venta U$S IVA inc.": "1,347.50",
+              "Costo U$S IVA inc.": "1115",
+              "ÓRDEN": "Cotización 45/01-2019",
+              "CLIENTE": "Gerardo Piriz",
+              "ESTADO": "Entregado",
+              "Pago cliente USD": "100%",
+              "Pago a Proveedor USD": "100%",
+              "Saldo a Proveedor USD": "0",
+              "PLAZO": "03-feb",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "col0": "",
+              "FECHA": "6/2/2020",
+              "PROVEEDOR": "Armco",
+              "Venta U$S IVA inc.": "43.17",
+              "Costo U$S IVA inc.": "39",
+              "ÓRDEN": "",
+              "CLIENTE": "Veronica Lantas",
+              "ESTADO": "Entregado",
+              "Pago cliente USD": "100%",
+              "Pago a Proveedor USD": "100%",
+              "Saldo a Proveedor USD": "0",
+              "PLAZO": "04-feb",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "col0": "",
+              "FECHA": "6/2/2020",
+              "PROVEEDOR": "Montfrío",
+              "Venta U$S IVA inc.": "1348.8",
+              "Costo U$S IVA inc.": "1260",
+              "ÓRDEN": "10/01/2020",
+              "CLIENTE": "Ruben Sabiotti",
+              "ESTADO": "Entregado",
+              "Pago cliente USD": "100%",
+              "Pago a Proveedor USD": "100%",
+              "Saldo a Proveedor USD": "0",
+              "PLAZO": "22-ene",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            },
+            {
+              "col0": "",
+              "FECHA": "10/2/2020",
+              "PROVEEDOR": "Becam",
+              "Venta U$S IVA inc.": "2411.3",
+              "Costo U$S IVA inc.": "2202.78",
+              "ÓRDEN": "A - 26689",
+              "CLIENTE": "Gabriel Fontes",
+              "ESTADO": "Entregado",
+              "Pago cliente USD": "100%",
+              "Pago a Proveedor USD": "100%",
+              "Saldo a Proveedor USD": "0",
+              "PLAZO": "10-feb",
+              "SALDO DEL CLIENTE": "",
+              "COMENTARIOS": "",
+              "col14": "",
+              "USD 64 a favor en BECAM": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "workbookId": "1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA",
+      "workbookName": "2.0 - Ventas",
+      "envVar": "BMC_VENTAS_SHEET_ID",
+      "tabCount": 23,
+      "tabs": [
+        {
+          "title": "Ventas y Coordinaciones",
+          "sheetId": 926747636,
+          "rowCount": 959,
+          "colCount": 38,
+          "dataRowCount": 22,
+          "columnCount": 23,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "º",
+              "sampleValues": [
+                "origen",
+                "CL",
+                "origen",
+                "origen",
+                "t"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "VENDEDOR",
+              "sampleValues": [
+                "vendedor",
+                "Matias",
+                "vendedor",
+                "vendedor"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "ID. Pedido",
+              "sampleValues": [
+                "ID. Pedido",
+                "3102022",
+                "ID. Pedido",
+                "ID. Pedido"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 12
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "INGRESO PEDIDO ",
+              "sampleValues": [
+                "INGRESO PEDIDO ",
+                "12-11",
+                "INGRESO PEDIDO ",
+                "INGRESO PEDIDO "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "(col 5)",
+              "sampleValues": [
+                "FACT.",
+                "Cons."
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR",
+              "sampleValues": [
+                "PU 20 y PU 30 ENTREGAS PENDIENTES BMC y EXPRESO ESTE",
+                "Pago 3000 usd // trasferencia/ Consultar / Entrega 03-10 parcial, FALTAN 4 de 6,40 y 1 de 7 m / PAGAMOS 100 % de paneles FALLIDOOS (USD 855,42) / Falta (USD xxxx) de Nazareno a BMC.",
+                "BECAM 100% de Seña // LEVANTES ENTRE 08:00 Y 16:30 // CC USD - 001547640-00002",
+                "BROMYROS 40 % de Seña // LEVANTES 08:30 Y 16:30 viernes hasta las 16 hs // BROU CC USD - 001547101-00001 - 2 paneles de 2,5 m Cubierta 100 mm BROMYROS + 2 paneles de techo de 12 m en Demian + 5 de 2,5 m fachada de Daniel Machado",
+                "  "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA ENTREGA ",
+              "sampleValues": [
+                "FECHA ENTREGA ",
+                "Mayo / Junio",
+                "FECHA ENTREGA ",
+                "FECHA ENTREGA ",
+                "Semana del 09-03-2026"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "NOMBRE",
+              "sampleValues": [
+                "NOMBRE",
+                "Alfredo Nario",
+                "NOMBRE",
+                "NOMBRE"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "DIRECCIÓN",
+              "sampleValues": [
+                "DIRECCIÓN",
+                "Barra verde, La barra",
+                "DIRECCIÓN",
+                "DIRECCIÓN"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "ENCARGO ",
+              "sampleValues": [
+                "PEDIDO",
+                "https://www.dropbox.com/s/t3kwn3aukq4m4xk/Cotizaci%C3%B3n%2003102022%20%20PU-20mm%20Alfredo%20Nario.pdf?dl=0",
+                "PEDIDO",
+                "PEDIDO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "CARPETA",
+              "sampleValues": [
+                "CARPETA",
+                "CARPETA",
+                "CARPETA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "MONTO (USD SIN IVA)",
+              "sampleValues": [
+                "MONTO (USD SIN IVA)",
+                "2995,2",
+                "MONTO (USD SIN IVA)",
+                "MONTO (USD SIN IVA)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "COSTO SIN IVA",
+              "sampleValues": [
+                "COSTO SIN IVA",
+                "importación",
+                "COSTO SIN IVA",
+                "COSTO SIN IVA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "GANANCIAS SIN IVA",
+              "sampleValues": [
+                "GANANCIAS SIN IVA",
+                "#VALUE!",
+                "GANANCIAS SIN IVA",
+                "GANANCIAS SIN IVA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "CONTACTO",
+              "sampleValues": [
+                "CONTACTO",
+                "Alfredo Nario - 099 168 583",
+                "CONTACTO",
+                "CONTACTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "FLETE + IVA",
+              "sampleValues": [
+                "FLETE + IVA",
+                "x",
+                "FLETE + IVA",
+                "FLETE + IVA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 9
+            },
+            {
+              "index": 17,
+              "letter": "Q",
+              "header": "FLETE EXPRESO ESTE",
+              "sampleValues": [
+                "FLETE EXPRESO ESTE",
+                "x",
+                "FLETE EXPRESO ESTE",
+                "FLETE EXPRESO ESTE"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 18,
+              "letter": "R",
+              "header": "DATOS FACTURACIÓN ",
+              "sampleValues": [
+                "Datos Facturacion",
+                "Datos Facturacion",
+                "Datos Facturacion"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 12
+            },
+            {
+              "index": 19,
+              "letter": "S",
+              "header": "CONFIRMACIÓN DE PAGO ",
+              "sampleValues": [
+                "Confirmación de Pago",
+                "3000",
+                "Confirmación de Pago",
+                "Confirmación de Pago"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 20,
+              "letter": "T",
+              "header": "SALDOS",
+              "sampleValues": [
+                "SALDOS",
+                "654",
+                "SALDOS",
+                "SALDOS"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 21,
+              "letter": "U",
+              "header": "PAGO A PROVEEDOR ",
+              "sampleValues": [
+                "Pago a Proveedor",
+                "82,10%",
+                "Pago a Proveedor",
+                "Pago a Proveedor"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 22,
+              "letter": "V",
+              "header": "FACTURADO",
+              "sampleValues": [
+                "FACTURADO",
+                "FACTURADO",
+                "FACTURADO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 23,
+              "letter": "W",
+              "header": "Nº FACTURA ",
+              "sampleValues": [
+                "Nº FACTURA ",
+                "Nº FACTURA ",
+                "Nº FACTURA "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 24,
+              "letter": "X",
+              "header": "ACT EN STOCK ",
+              "sampleValues": [
+                "Actualizado en Stock",
+                "Actualizado en Stock",
+                "Actualizado en Stock"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 7
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "º": "origen",
+              "VENDEDOR": "vendedor",
+              "ID. Pedido": "ID. Pedido",
+              "INGRESO PEDIDO ": "INGRESO PEDIDO ",
+              "col4": "FACT.",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "PU 20 y PU 30 ENTREGAS PENDIENTES BMC y EXPRESO ESTE",
+              "FECHA ENTREGA ": "FECHA ENTREGA ",
+              "NOMBRE": "NOMBRE",
+              "DIRECCIÓN": "DIRECCIÓN",
+              "ENCARGO ": "PEDIDO",
+              "CARPETA": "CARPETA",
+              "MONTO (USD SIN IVA)": "MONTO (USD SIN IVA)",
+              "COSTO SIN IVA": "COSTO SIN IVA",
+              "GANANCIAS SIN IVA": "GANANCIAS SIN IVA",
+              "CONTACTO": "CONTACTO",
+              "FLETE + IVA": "FLETE + IVA",
+              "FLETE EXPRESO ESTE": "FLETE EXPRESO ESTE",
+              "DATOS FACTURACIÓN ": "Datos Facturacion",
+              "CONFIRMACIÓN DE PAGO ": "Confirmación de Pago",
+              "SALDOS": "SALDOS",
+              "PAGO A PROVEEDOR ": "Pago a Proveedor",
+              "FACTURADO": "FACTURADO",
+              "Nº FACTURA ": "Nº FACTURA ",
+              "ACT EN STOCK ": "Actualizado en Stock"
+            },
+            {
+              "º": "CL",
+              "VENDEDOR": "Matias",
+              "ID. Pedido": "3102022",
+              "INGRESO PEDIDO ": "12-11",
+              "col4": "Cons.",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "Pago 3000 usd // trasferencia/ Consultar / Entrega 03-10 parcial, FALTAN 4 de 6,40 y 1 de 7 m / PAGAMOS 100 % de paneles FALLIDOOS (USD 855,42) / Falta (USD xxxx) de Nazareno a BMC.",
+              "FECHA ENTREGA ": "Mayo / Junio",
+              "NOMBRE": "Alfredo Nario",
+              "DIRECCIÓN": "Barra verde, La barra",
+              "ENCARGO ": "https://www.dropbox.com/s/t3kwn3aukq4m4xk/Cotizaci%C3%B3n%2003102022%20%20PU-20mm%20Alfredo%20Nario.pdf?dl=0",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "2995,2",
+              "COSTO SIN IVA": "importación",
+              "GANANCIAS SIN IVA": "#VALUE!",
+              "CONTACTO": "Alfredo Nario - 099 168 583",
+              "FLETE + IVA": "x",
+              "FLETE EXPRESO ESTE": "x",
+              "DATOS FACTURACIÓN ": "",
+              "CONFIRMACIÓN DE PAGO ": "3000",
+              "SALDOS": "654",
+              "PAGO A PROVEEDOR ": "82,10%",
+              "FACTURADO": "",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            },
+            {
+              "º": "origen",
+              "VENDEDOR": "vendedor",
+              "ID. Pedido": "ID. Pedido",
+              "INGRESO PEDIDO ": "INGRESO PEDIDO ",
+              "col4": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "BECAM 100% de Seña // LEVANTES ENTRE 08:00 Y 16:30 // CC USD - 001547640-00002",
+              "FECHA ENTREGA ": "FECHA ENTREGA ",
+              "NOMBRE": "NOMBRE",
+              "DIRECCIÓN": "DIRECCIÓN",
+              "ENCARGO ": "PEDIDO",
+              "CARPETA": "CARPETA",
+              "MONTO (USD SIN IVA)": "MONTO (USD SIN IVA)",
+              "COSTO SIN IVA": "COSTO SIN IVA",
+              "GANANCIAS SIN IVA": "GANANCIAS SIN IVA",
+              "CONTACTO": "CONTACTO",
+              "FLETE + IVA": "FLETE + IVA",
+              "FLETE EXPRESO ESTE": "FLETE EXPRESO ESTE",
+              "DATOS FACTURACIÓN ": "Datos Facturacion",
+              "CONFIRMACIÓN DE PAGO ": "Confirmación de Pago",
+              "SALDOS": "SALDOS",
+              "PAGO A PROVEEDOR ": "Pago a Proveedor",
+              "FACTURADO": "FACTURADO",
+              "Nº FACTURA ": "Nº FACTURA ",
+              "ACT EN STOCK ": "Actualizado en Stock"
+            },
+            {
+              "º": "origen",
+              "VENDEDOR": "vendedor",
+              "ID. Pedido": "ID. Pedido",
+              "INGRESO PEDIDO ": "INGRESO PEDIDO ",
+              "col4": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "BROMYROS 40 % de Seña // LEVANTES 08:30 Y 16:30 viernes hasta las 16 hs // BROU CC USD - 001547101-00001 - 2 paneles de 2,5 m Cubierta 100 mm BROMYROS + 2 paneles de techo de 12 m en Demian + 5 de 2,5 m fachada de Daniel Machado",
+              "FECHA ENTREGA ": "FECHA ENTREGA ",
+              "NOMBRE": "NOMBRE",
+              "DIRECCIÓN": "DIRECCIÓN",
+              "ENCARGO ": "PEDIDO",
+              "CARPETA": "CARPETA",
+              "MONTO (USD SIN IVA)": "MONTO (USD SIN IVA)",
+              "COSTO SIN IVA": "COSTO SIN IVA",
+              "GANANCIAS SIN IVA": "GANANCIAS SIN IVA",
+              "CONTACTO": "CONTACTO",
+              "FLETE + IVA": "FLETE + IVA",
+              "FLETE EXPRESO ESTE": "FLETE EXPRESO ESTE",
+              "DATOS FACTURACIÓN ": "Datos Facturacion",
+              "CONFIRMACIÓN DE PAGO ": "Confirmación de Pago",
+              "SALDOS": "SALDOS",
+              "PAGO A PROVEEDOR ": "Pago a Proveedor",
+              "FACTURADO": "FACTURADO",
+              "Nº FACTURA ": "Nº FACTURA ",
+              "ACT EN STOCK ": "Actualizado en Stock"
+            },
+            {
+              "º": "t",
+              "VENDEDOR": "",
+              "ID. Pedido": "",
+              "INGRESO PEDIDO ": "",
+              "col4": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "  ",
+              "FECHA ENTREGA ": "Semana del 09-03-2026",
+              "NOMBRE": "",
+              "DIRECCIÓN": "",
+              "ENCARGO ": "",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "",
+              "COSTO SIN IVA": "",
+              "GANANCIAS SIN IVA": "",
+              "CONTACTO": "",
+              "FLETE + IVA": "",
+              "FLETE EXPRESO ESTE": "",
+              "DATOS FACTURACIÓN ": "",
+              "CONFIRMACIÓN DE PAGO ": "",
+              "SALDOS": "",
+              "PAGO A PROVEEDOR ": "",
+              "FACTURADO": "",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            }
+          ]
+        },
+        {
+          "title": "Ventas Realizadas y Entegadas",
+          "sheetId": 1309400432,
+          "rowCount": 3903,
+          "colCount": 80,
+          "dataRowCount": 28,
+          "columnCount": 24,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "º",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "VENDEDOR",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "ID. Pedido",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "INGRESO PEDIDO ",
+              "sampleValues": [
+                "16/10/2015",
+                "21/10/2015",
+                "05/11/2015",
+                "05/11/2015",
+                "09/11/2015"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "FACTURA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR",
+              "sampleValues": [
+                "Entregado",
+                "Entregado",
+                "Entregado",
+                "Entregado",
+                "Entregado"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA ENTREGA ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "NOMBRE",
+              "sampleValues": [
+                "Gonzalo Machado",
+                "Gabriela Gentillini",
+                "Marianella Zeca",
+                "Ruben Melo",
+                "Virginia Miranda"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "DIRECCIÓN",
+              "sampleValues": [
+                "Solymar km 23 calle 66 manzana 4 solas 10 entre calle 76 y 77",
+                "Carreras Nacionales 3894 entre Galvany y Emilio Sola",
+                "Factura enviar a Salto- 18 Julio 84. Galpón se envía a Agencia se retira allí.",
+                "Herrería Melo calle 4 y 11 / Maldonado a dos cuadras de comisería sexta",
+                "Calle 5 solar 7 manzana 504"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "PEDIDO ENCARGADO",
+              "sampleValues": [
+                "7 EPS x 5,30mts + 4 babetas laterales + 5 frontalines",
+                "3 EPSx 5,30mts + 7 EPSx 4,60mts+ 4 babetas laterales + 6 frontalines + 87 dolares de flete",
+                "Galpón de Jardín CEIBO",
+                "14 paneles fachada 2,60 mts + 2 paneles PU 5,30 mts + 5 piezas soleras",
+                "5 PU x 5,30mts + 3 Pux 4,60mts + 6 FRONTALINES + 4 BABETAS"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "CARPETA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "MONTO (USD SIN IVA)",
+              "sampleValues": [
+                "864",
+                "990",
+                "1800",
+                "1657"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "COSTO SIN IVA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "GANANCIAS SIN IVA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "CONTACTO",
+              "sampleValues": [
+                "99704768",
+                "96217162",
+                "47334072"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "FLETE + IVA",
+              "sampleValues": [
+                "TIEMPOST"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 17,
+              "letter": "Q",
+              "header": "FLETE EXPRESO ESTE",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 18,
+              "letter": "R",
+              "header": "DATOS FACTURACIÓN ",
+              "sampleValues": [
+                "RUT: 160156790017 A nombre de Marianella Zeco"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 5
+            },
+            {
+              "index": 19,
+              "letter": "S",
+              "header": "CONFIRMACIÓN DE PAGO ",
+              "sampleValues": [
+                "SI",
+                "SI",
+                "SI",
+                "SI",
+                "SI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 20,
+              "letter": "T",
+              "header": "SALDOS",
+              "sampleValues": [
+                "SI",
+                "SI",
+                "SI",
+                "SI",
+                "SI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 21,
+              "letter": "U",
+              "header": "PAGO A PROVEEDOR ",
+              "sampleValues": [
+                "SI",
+                "SI",
+                "SI",
+                "SI",
+                "SI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 22,
+              "letter": "V",
+              "header": "FACTURADO",
+              "sampleValues": [
+                "SI",
+                "SI",
+                "SI",
+                "SI",
+                "SI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 23,
+              "letter": "W",
+              "header": "Nº FACTURA ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 24,
+              "letter": "X",
+              "header": "ACT EN STOCK ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "º": "",
+              "VENDEDOR": "",
+              "ID. Pedido": "",
+              "INGRESO PEDIDO ": "16/10/2015",
+              "FACTURA": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "Entregado",
+              "FECHA ENTREGA ": "",
+              "NOMBRE": "Gonzalo Machado",
+              "DIRECCIÓN": "Solymar km 23 calle 66 manzana 4 solas 10 entre calle 76 y 77",
+              "PEDIDO ENCARGADO": "7 EPS x 5,30mts + 4 babetas laterales + 5 frontalines",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "",
+              "COSTO SIN IVA": "",
+              "GANANCIAS SIN IVA": "",
+              "CONTACTO": "99704768",
+              "FLETE + IVA": "",
+              "FLETE EXPRESO ESTE": "",
+              "DATOS FACTURACIÓN ": "",
+              "CONFIRMACIÓN DE PAGO ": "SI",
+              "SALDOS": "SI",
+              "PAGO A PROVEEDOR ": "SI",
+              "FACTURADO": "SI",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            },
+            {
+              "º": "",
+              "VENDEDOR": "",
+              "ID. Pedido": "",
+              "INGRESO PEDIDO ": "21/10/2015",
+              "FACTURA": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "Entregado",
+              "FECHA ENTREGA ": "",
+              "NOMBRE": "Gabriela Gentillini",
+              "DIRECCIÓN": "Carreras Nacionales 3894 entre Galvany y Emilio Sola",
+              "PEDIDO ENCARGADO": "3 EPSx 5,30mts + 7 EPSx 4,60mts+ 4 babetas laterales + 6 frontalines + 87 dolares de flete",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "864",
+              "COSTO SIN IVA": "",
+              "GANANCIAS SIN IVA": "",
+              "CONTACTO": "96217162",
+              "FLETE + IVA": "",
+              "FLETE EXPRESO ESTE": "",
+              "DATOS FACTURACIÓN ": "",
+              "CONFIRMACIÓN DE PAGO ": "SI",
+              "SALDOS": "SI",
+              "PAGO A PROVEEDOR ": "SI",
+              "FACTURADO": "SI",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            },
+            {
+              "º": "",
+              "VENDEDOR": "",
+              "ID. Pedido": "",
+              "INGRESO PEDIDO ": "05/11/2015",
+              "FACTURA": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "Entregado",
+              "FECHA ENTREGA ": "",
+              "NOMBRE": "Marianella Zeca",
+              "DIRECCIÓN": "Factura enviar a Salto- 18 Julio 84. Galpón se envía a Agencia se retira allí.",
+              "PEDIDO ENCARGADO": "Galpón de Jardín CEIBO",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "990",
+              "COSTO SIN IVA": "",
+              "GANANCIAS SIN IVA": "",
+              "CONTACTO": "47334072",
+              "FLETE + IVA": "TIEMPOST",
+              "FLETE EXPRESO ESTE": "",
+              "DATOS FACTURACIÓN ": "RUT: 160156790017 A nombre de Marianella Zeco",
+              "CONFIRMACIÓN DE PAGO ": "SI",
+              "SALDOS": "SI",
+              "PAGO A PROVEEDOR ": "SI",
+              "FACTURADO": "SI",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            },
+            {
+              "º": "",
+              "VENDEDOR": "",
+              "ID. Pedido": "",
+              "INGRESO PEDIDO ": "05/11/2015",
+              "FACTURA": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "Entregado",
+              "FECHA ENTREGA ": "",
+              "NOMBRE": "Ruben Melo",
+              "DIRECCIÓN": "Herrería Melo calle 4 y 11 / Maldonado a dos cuadras de comisería sexta",
+              "PEDIDO ENCARGADO": "14 paneles fachada 2,60 mts + 2 paneles PU 5,30 mts + 5 piezas soleras",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "1800",
+              "COSTO SIN IVA": "",
+              "GANANCIAS SIN IVA": "",
+              "CONTACTO": "",
+              "FLETE + IVA": "",
+              "FLETE EXPRESO ESTE": "",
+              "DATOS FACTURACIÓN ": "",
+              "CONFIRMACIÓN DE PAGO ": "SI",
+              "SALDOS": "SI",
+              "PAGO A PROVEEDOR ": "SI",
+              "FACTURADO": "SI",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            },
+            {
+              "º": "",
+              "VENDEDOR": "",
+              "ID. Pedido": "",
+              "INGRESO PEDIDO ": "09/11/2015",
+              "FACTURA": "",
+              "ESTADO GRAL DE VENTA / 1192551329 - pinza de engrafar por DAC - ELMAR": "Entregado",
+              "FECHA ENTREGA ": "",
+              "NOMBRE": "Virginia Miranda",
+              "DIRECCIÓN": "Calle 5 solar 7 manzana 504",
+              "PEDIDO ENCARGADO": "5 PU x 5,30mts + 3 Pux 4,60mts + 6 FRONTALINES + 4 BABETAS",
+              "CARPETA": "",
+              "MONTO (USD SIN IVA)": "1657",
+              "COSTO SIN IVA": "",
+              "GANANCIAS SIN IVA": "",
+              "CONTACTO": "",
+              "FLETE + IVA": "",
+              "FLETE EXPRESO ESTE": "",
+              "DATOS FACTURACIÓN ": "",
+              "CONFIRMACIÓN DE PAGO ": "SI",
+              "SALDOS": "SI",
+              "PAGO A PROVEEDOR ": "SI",
+              "FACTURADO": "SI",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK ": ""
+            }
+          ]
+        },
+        {
+          "title": "TRANSPORTISTAS (actualizando)",
+          "sheetId": 1860362150,
+          "rowCount": 996,
+          "colCount": 28,
+          "dataRowCount": 28,
+          "columnCount": 7,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Nombre de Contacto",
+              "sampleValues": [
+                "BECAM",
+                "Armco sin costo",
+                "75 x metro + iva desde maldo a rocha",
+                "llamar un dia antes / 8-12 y 14 a 18hs"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "Estado",
+              "sampleValues": [
+                "Activo"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "Empresa",
+              "sampleValues": [
+                "Becam",
+                "Sebastian",
+                "Carlos - Expreso Rocha",
+                "Rapido Peninsula"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Destinos",
+              "sampleValues": [
+                "Maldonado y camino - Martes y Jueves //// Retiros Becam Lun a vie. de 8 a 17hs  // miercoles entrega en Canelones",
+                "Colonia Nicolich Miercoles y Viernes, Montevideo todos los dias, Agencias todos los dias menos jueves // Maldonado Martes y Jueves // Zona 15 mirentex y parque del plata Miercoles y Viernes //  Zona 11 norte Jueves // San Jose Jueves",
+                "Todo el país",
+                "MALDONADO: Retiran los Lunes // Mtvdo: Retira Lunes, martes y jueves. ",
+                "Maldonado - Montevideo (no van al cerro o casavalle)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "Largos de paneles admitidos",
+              "sampleValues": [
+                "Hasta 6.5m inclusive",
+                "precio hasta 6,5m",
+                "todo - NO HACE FLETES"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "CONTACTO",
+              "sampleValues": [
+                "96118052",
+                "44722311 / 099867860 whatsapp",
+                "42 23 87 72 "
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "MEDIDAS CAMIÓN Y TARIFAS",
+              "sampleValues": [
+                "Costo 0 hasta Maldonado - Rocha y alrededores 4,5% del producto ",
+                "Nuevas tarifas para cotizar Fletes:\n- Fuera de MVD / $50 x km\n- Peajes (se cobran ida y vuelta) $155 cu\n- Peon - $150 x hra\n- Dentro de mvd y demoras- $600 hra camion",
+                "maldo: 400 x panel - a partir de los 10 paneles 300 x panel"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 12
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Nombre de Contacto": "BECAM",
+              "Estado": "Activo",
+              "Empresa": "Becam",
+              "Destinos": "Maldonado y camino - Martes y Jueves //// Retiros Becam Lun a vie. de 8 a 17hs  // miercoles entrega en Canelones",
+              "Largos de paneles admitidos": "",
+              "CONTACTO": "",
+              "MEDIDAS CAMIÓN Y TARIFAS": "Costo 0 hasta Maldonado - Rocha y alrededores 4,5% del producto "
+            },
+            {
+              "Nombre de Contacto": "Armco sin costo",
+              "Estado": "",
+              "Empresa": "",
+              "Destinos": "Colonia Nicolich Miercoles y Viernes, Montevideo todos los dias, Agencias todos los dias menos jueves // Maldonado Martes y Jueves // Zona 15 mirentex y parque del plata Miercoles y Viernes //  Zona 11 norte Jueves // San Jose Jueves",
+              "Largos de paneles admitidos": "",
+              "CONTACTO": "",
+              "MEDIDAS CAMIÓN Y TARIFAS": ""
+            },
+            {
+              "Nombre de Contacto": "",
+              "Estado": "",
+              "Empresa": "Sebastian",
+              "Destinos": "Todo el país",
+              "Largos de paneles admitidos": "Hasta 6.5m inclusive",
+              "CONTACTO": "96118052",
+              "MEDIDAS CAMIÓN Y TARIFAS": "Nuevas tarifas para cotizar Fletes:\n- Fuera de MVD / $50 x km\n- Peajes (se cobran ida y vuelta) $155 cu\n- Peon - $150 x hra\n- Dentro de mvd y demoras- $600 hra camion"
+            },
+            {
+              "Nombre de Contacto": "75 x metro + iva desde maldo a rocha",
+              "Estado": "",
+              "Empresa": "Carlos - Expreso Rocha",
+              "Destinos": "MALDONADO: Retiran los Lunes // Mtvdo: Retira Lunes, martes y jueves. ",
+              "Largos de paneles admitidos": "precio hasta 6,5m",
+              "CONTACTO": "44722311 / 099867860 whatsapp",
+              "MEDIDAS CAMIÓN Y TARIFAS": ""
+            },
+            {
+              "Nombre de Contacto": "llamar un dia antes / 8-12 y 14 a 18hs",
+              "Estado": "",
+              "Empresa": "Rapido Peninsula",
+              "Destinos": "Maldonado - Montevideo (no van al cerro o casavalle)",
+              "Largos de paneles admitidos": "todo - NO HACE FLETES",
+              "CONTACTO": "42 23 87 72 ",
+              "MEDIDAS CAMIÓN Y TARIFAS": "maldo: 400 x panel - a partir de los 10 paneles 300 x panel"
+            }
+          ]
+        },
+        {
+          "title": "BASE DATOS CLIENTES",
+          "sheetId": 1985052393,
+          "rowCount": 905,
+          "colCount": 14,
+          "dataRowCount": 29,
+          "columnCount": 13,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "ID ",
+              "sampleValues": [
+                "0001",
+                "0002",
+                "0003",
+                "0004",
+                "0005"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "NOMBRE COMPLETO",
+              "sampleValues": [
+                "Arq. Silvia Bogiatto"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "EMPRESA",
+              "sampleValues": [
+                "xxx"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "TELÉFONO",
+              "sampleValues": [
+                "099 381 749"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "E-MAIL",
+              "sampleValues": [
+                "xxxx"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "DATOS DE FACTURACIÓN ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "DATOS BANCARIOS",
+              "sampleValues": [
+                "SANTANDER - Cuenta corriente\r\nCta. Pyme Premium\r\n005100963010\r\n05 - Ombu"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "DIRECCIÓN",
+              "sampleValues": [
+                "Maldonado"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "FECHA ALTA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "GRUPO DE CLIENTES",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "ESTADO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "FECHA ÚLTIMA COMPRA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "NOTAS ADICIONALES",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "ID ": "0001",
+              "NOMBRE COMPLETO": "Arq. Silvia Bogiatto",
+              "EMPRESA": "xxx",
+              "TELÉFONO": "099 381 749",
+              "E-MAIL": "xxxx",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS": "SANTANDER - Cuenta corriente\r\nCta. Pyme Premium\r\n005100963010\r\n05 - Ombu",
+              "DIRECCIÓN": "Maldonado",
+              "FECHA ALTA": "",
+              "GRUPO DE CLIENTES": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": ""
+            },
+            {
+              "ID ": "0002",
+              "NOMBRE COMPLETO": "",
+              "EMPRESA": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS": "",
+              "DIRECCIÓN": "",
+              "FECHA ALTA": "",
+              "GRUPO DE CLIENTES": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": ""
+            },
+            {
+              "ID ": "0003",
+              "NOMBRE COMPLETO": "",
+              "EMPRESA": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS": "",
+              "DIRECCIÓN": "",
+              "FECHA ALTA": "",
+              "GRUPO DE CLIENTES": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": ""
+            },
+            {
+              "ID ": "0004",
+              "NOMBRE COMPLETO": "",
+              "EMPRESA": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS": "",
+              "DIRECCIÓN": "",
+              "FECHA ALTA": "",
+              "GRUPO DE CLIENTES": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": ""
+            },
+            {
+              "ID ": "0005",
+              "NOMBRE COMPLETO": "",
+              "EMPRESA": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS": "",
+              "DIRECCIÓN": "",
+              "FECHA ALTA": "",
+              "GRUPO DE CLIENTES": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": ""
+            }
+          ]
+        },
+        {
+          "title": "BASE DATOS PROVEEDORES",
+          "sheetId": 543114817,
+          "rowCount": 602,
+          "colCount": 16,
+          "dataRowCount": 29,
+          "columnCount": 16,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "ID ",
+              "sampleValues": [
+                "0001",
+                "0002",
+                "0003",
+                "0004",
+                "0005"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "EMPRESA",
+              "sampleValues": [
+                "BECAM"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "NOMBRE COMPLETO DE CONTACTO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "CARGO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "TELÉFONO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "E-MAIL",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "DIRECCIÓN",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "DATOS DE FACTURACIÓN ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "DATOS BANCARIOS EMPRESA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "FORMAS Y CONDICIONES DE PAGO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "FECHA ALTA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "ESTADO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "FECHA ÚLTIMA COMPRA",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "NOTAS ADICIONALES",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "GRUPO DE PROVEEDORES",
+              "sampleValues": [
+                "MATERIALES DE OBRA",
+                "PANELES Y ACCESORIOS",
+                "TORNILLERÍA",
+                "OTROS",
+                "TRANSPORTISTA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 5
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "Column 16",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "ID ": "0001",
+              "EMPRESA": "BECAM",
+              "NOMBRE COMPLETO DE CONTACTO": "",
+              "CARGO": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DIRECCIÓN": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS EMPRESA": "",
+              "FORMAS Y CONDICIONES DE PAGO": "",
+              "FECHA ALTA": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": "",
+              "GRUPO DE PROVEEDORES": "MATERIALES DE OBRA",
+              "Column 16": ""
+            },
+            {
+              "ID ": "0002",
+              "EMPRESA": "",
+              "NOMBRE COMPLETO DE CONTACTO": "",
+              "CARGO": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DIRECCIÓN": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS EMPRESA": "",
+              "FORMAS Y CONDICIONES DE PAGO": "",
+              "FECHA ALTA": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": "",
+              "GRUPO DE PROVEEDORES": "PANELES Y ACCESORIOS",
+              "Column 16": ""
+            },
+            {
+              "ID ": "0003",
+              "EMPRESA": "",
+              "NOMBRE COMPLETO DE CONTACTO": "",
+              "CARGO": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DIRECCIÓN": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS EMPRESA": "",
+              "FORMAS Y CONDICIONES DE PAGO": "",
+              "FECHA ALTA": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": "",
+              "GRUPO DE PROVEEDORES": "TORNILLERÍA",
+              "Column 16": ""
+            },
+            {
+              "ID ": "0004",
+              "EMPRESA": "",
+              "NOMBRE COMPLETO DE CONTACTO": "",
+              "CARGO": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DIRECCIÓN": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS EMPRESA": "",
+              "FORMAS Y CONDICIONES DE PAGO": "",
+              "FECHA ALTA": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": "",
+              "GRUPO DE PROVEEDORES": "OTROS",
+              "Column 16": ""
+            },
+            {
+              "ID ": "0005",
+              "EMPRESA": "",
+              "NOMBRE COMPLETO DE CONTACTO": "",
+              "CARGO": "",
+              "TELÉFONO": "",
+              "E-MAIL": "",
+              "DIRECCIÓN": "",
+              "DATOS DE FACTURACIÓN ": "",
+              "DATOS BANCARIOS EMPRESA": "",
+              "FORMAS Y CONDICIONES DE PAGO": "",
+              "FECHA ALTA": "",
+              "ESTADO": "",
+              "FECHA ÚLTIMA COMPRA": "",
+              "NOTAS ADICIONALES": "",
+              "GRUPO DE PROVEEDORES": "TRANSPORTISTA",
+              "Column 16": ""
+            }
+          ]
+        },
+        {
+          "title": "Preventas",
+          "sheetId": 2057815009,
+          "rowCount": 820,
+          "colCount": 30,
+          "dataRowCount": 19,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "2",
+              "sampleValues": [
+                "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30",
+                "PU20 Gris / Cielorraso PVC - 16 Septiembre ",
+                "PU20",
+                "DAMIAN MUZANTE "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "2": ""
+            },
+            {
+              "2": "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30"
+            },
+            {
+              "2": "PU20 Gris / Cielorraso PVC - 16 Septiembre "
+            },
+            {
+              "2": "PU20"
+            },
+            {
+              "2": "DAMIAN MUZANTE "
+            }
+          ]
+        },
+        {
+          "title": "Ventas Realizadas E.E",
+          "sheetId": 1159700825,
+          "rowCount": 1000,
+          "colCount": 39,
+          "dataRowCount": 24,
+          "columnCount": 16,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "U2",
+              "sampleValues": [
+                "Tati",
+                "Tati",
+                "Tati",
+                "Mat",
+                "Tati"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "ESTADO",
+              "sampleValues": [
+                "Traslado de Muebles de Farmacia Santa Teresa 2 (Sarandí y Dr Edye) a Farmacia 25 de Mayopegado al Clon.",
+                "Mudanza San Carlos a 6km -",
+                " Mudanza Parada 12 a Península, retiro en calle Río de Janeiro, esquina Santiago de Chile , Chalet Ra-alem, 3er piso. Destino: Calle 30 esq Calle 24 ",
+                "Retorno de MVD",
+                "Sofia PdE - Pueblo Edén / confirmado "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA REALIZADO",
+              "sampleValues": [
+                "viernes 19/10/2018 07:00 am ",
+                "miércoles 24/10/2018 07:00 am",
+                "Sabado 27/10/2018 09:00 am",
+                "09/11/2018"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "NOMBRE",
+              "sampleValues": [
+                "Eduardo",
+                "Sandra Sánchez ",
+                "Mariangeles Acuña",
+                "Gonzalo",
+                "Sofia "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "DIRECCIÓN",
+              "sampleValues": [
+                "Sarandí y Dr Edye ",
+                "San Carlos Juan de Dios Curbelo 865 entre 25 de Agosto y Fernandez Chavez.  ",
+                "Pda 1 punta del Este",
+                "MVD - Maldo / durazno 1137 - Gonzalo santos 099127700 / Cerca del Mautone",
+                "PdE Parada 20 - Pueblo Edén Ruta 12 "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ENCARGO",
+              "sampleValues": [
+                "Camion + 2 peones -. 2 Vitrinas Mostrador, maderas.. Fletero con peon para carga y descarga con cuidado, muebles delicados ",
+                "Mudanza camion + 1 peón . Miércoles 24 hora 07:00 am",
+                "2 sommier 1 plaza + 1 colchon 2 plazas + 1 sillon 3 cuerpos + cajas. ",
+                "Muebles de Cocina 2 x 2 x 2m ",
+                "Camion con dos peones para ayudar a embalar, empezar a la mañana temprano. Le pase $700 la hora de camion y  $400 la hora de peón. Capás que son dos viajes, lo vemos en esa semana (noviembre) "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "MONTO (USD IVA inc)",
+              "sampleValues": [
+                "1500 / hr",
+                "1100 /hr",
+                "$700 hora camión + 4 peones $400 la hora ($2300/hr)",
+                "$4500"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "MAIL",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "CONTACTO",
+              "sampleValues": [
+                "094 443 816",
+                "098 236973 / 42665038",
+                "094 606 426 / 095 70 42 49 ",
+                "99127700",
+                "5491165285850"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "FLETE",
+              "sampleValues": [
+                "$4500 - Podemos subirle hasta $1000 si es mucho."
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "Datos Facturacion",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "Confirmación de Pago",
+              "sampleValues": [
+                "No "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "FACTURADO",
+              "sampleValues": [
+                "no",
+                "No"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "AVISO A DEPÓSITO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "ACTUALIZADO EN STOCK",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "VENDEDOR",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "U2": "Tati",
+              "ESTADO": "Traslado de Muebles de Farmacia Santa Teresa 2 (Sarandí y Dr Edye) a Farmacia 25 de Mayopegado al Clon.",
+              "FECHA REALIZADO": "viernes 19/10/2018 07:00 am ",
+              "NOMBRE": "Eduardo",
+              "DIRECCIÓN": "Sarandí y Dr Edye ",
+              "ENCARGO": "Camion + 2 peones -. 2 Vitrinas Mostrador, maderas.. Fletero con peon para carga y descarga con cuidado, muebles delicados ",
+              "MONTO (USD IVA inc)": "1500 / hr",
+              "MAIL": "",
+              "CONTACTO": "094 443 816",
+              "FLETE": "",
+              "Datos Facturacion": "",
+              "Confirmación de Pago": "",
+              "FACTURADO": "no",
+              "AVISO A DEPÓSITO": "",
+              "ACTUALIZADO EN STOCK": "",
+              "VENDEDOR": ""
+            },
+            {
+              "U2": "Tati",
+              "ESTADO": "Mudanza San Carlos a 6km -",
+              "FECHA REALIZADO": "miércoles 24/10/2018 07:00 am",
+              "NOMBRE": "Sandra Sánchez ",
+              "DIRECCIÓN": "San Carlos Juan de Dios Curbelo 865 entre 25 de Agosto y Fernandez Chavez.  ",
+              "ENCARGO": "Mudanza camion + 1 peón . Miércoles 24 hora 07:00 am",
+              "MONTO (USD IVA inc)": "1100 /hr",
+              "MAIL": "",
+              "CONTACTO": "098 236973 / 42665038",
+              "FLETE": "",
+              "Datos Facturacion": "",
+              "Confirmación de Pago": "",
+              "FACTURADO": "",
+              "AVISO A DEPÓSITO": "",
+              "ACTUALIZADO EN STOCK": "",
+              "VENDEDOR": ""
+            },
+            {
+              "U2": "Tati",
+              "ESTADO": " Mudanza Parada 12 a Península, retiro en calle Río de Janeiro, esquina Santiago de Chile , Chalet Ra-alem, 3er piso. Destino: Calle 30 esq Calle 24 ",
+              "FECHA REALIZADO": "Sabado 27/10/2018 09:00 am",
+              "NOMBRE": "Mariangeles Acuña",
+              "DIRECCIÓN": "Pda 1 punta del Este",
+              "ENCARGO": "2 sommier 1 plaza + 1 colchon 2 plazas + 1 sillon 3 cuerpos + cajas. ",
+              "MONTO (USD IVA inc)": "$700 hora camión + 4 peones $400 la hora ($2300/hr)",
+              "MAIL": "",
+              "CONTACTO": "094 606 426 / 095 70 42 49 ",
+              "FLETE": "",
+              "Datos Facturacion": "",
+              "Confirmación de Pago": "",
+              "FACTURADO": "",
+              "AVISO A DEPÓSITO": "",
+              "ACTUALIZADO EN STOCK": "",
+              "VENDEDOR": ""
+            },
+            {
+              "U2": "Mat",
+              "ESTADO": "Retorno de MVD",
+              "FECHA REALIZADO": "",
+              "NOMBRE": "Gonzalo",
+              "DIRECCIÓN": "MVD - Maldo / durazno 1137 - Gonzalo santos 099127700 / Cerca del Mautone",
+              "ENCARGO": "Muebles de Cocina 2 x 2 x 2m ",
+              "MONTO (USD IVA inc)": "$4500",
+              "MAIL": "",
+              "CONTACTO": "99127700",
+              "FLETE": "$4500 - Podemos subirle hasta $1000 si es mucho.",
+              "Datos Facturacion": "",
+              "Confirmación de Pago": "",
+              "FACTURADO": "",
+              "AVISO A DEPÓSITO": "",
+              "ACTUALIZADO EN STOCK": "",
+              "VENDEDOR": ""
+            },
+            {
+              "U2": "Tati",
+              "ESTADO": "Sofia PdE - Pueblo Edén / confirmado ",
+              "FECHA REALIZADO": "09/11/2018",
+              "NOMBRE": "Sofia ",
+              "DIRECCIÓN": "PdE Parada 20 - Pueblo Edén Ruta 12 ",
+              "ENCARGO": "Camion con dos peones para ayudar a embalar, empezar a la mañana temprano. Le pase $700 la hora de camion y  $400 la hora de peón. Capás que son dos viajes, lo vemos en esa semana (noviembre) ",
+              "MONTO (USD IVA inc)": "",
+              "MAIL": "",
+              "CONTACTO": "5491165285850",
+              "FLETE": "",
+              "Datos Facturacion": "",
+              "Confirmación de Pago": "No ",
+              "FACTURADO": "No",
+              "AVISO A DEPÓSITO": "",
+              "ACTUALIZADO EN STOCK": "",
+              "VENDEDOR": ""
+            }
+          ]
+        },
+        {
+          "title": "PREVENTA 2022",
+          "sheetId": 1868928048,
+          "rowCount": 801,
+          "colCount": 23,
+          "dataRowCount": 25,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Preventas Anteriores",
+          "sheetId": 841116627,
+          "rowCount": 1062,
+          "colCount": 30,
+          "dataRowCount": 21,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30",
+              "sampleValues": [
+                "PU20 Gris / Cielorraso PVC - 25 Mayo / Aprox ",
+                "PU20",
+                "Lucas y Melina ",
+                "Belén Bergara "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30": "PU20 Gris / Cielorraso PVC - 25 Mayo / Aprox "
+            },
+            {
+              "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30": ""
+            },
+            {
+              "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30": "PU20"
+            },
+            {
+              "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30": "Lucas y Melina "
+            },
+            {
+              "Pagando el 100% reciven USD 29,5 IVA inc de descuento en PU30": "Belén Bergara "
+            }
+          ]
+        },
+        {
+          "title": "Entregas",
+          "sheetId": 1539295868,
+          "rowCount": 1000,
+          "colCount": 40,
+          "dataRowCount": 18,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "(col 1)",
+              "sampleValues": [
+                "Primero en recibir 11: 30 / 12 Aprox",
+                "Segundo Avisar 30 mins a Carlos",
+                "Entregas Realizadas"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 10
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "ENTREGAS JUEVES LAUSANA",
+              "sampleValues": [
+                "Jesus Victorea",
+                "Carlos Diaz / Guillermo",
+                "MDEO COSTA: carga el viernes, entrega el sábado"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "col0": "Primero en recibir 11: 30 / 12 Aprox",
+              "ENTREGAS JUEVES LAUSANA": "Jesus Victorea"
+            },
+            {
+              "col0": "Segundo Avisar 30 mins a Carlos",
+              "ENTREGAS JUEVES LAUSANA": "Carlos Diaz / Guillermo"
+            },
+            {
+              "col0": "Entregas Realizadas",
+              "ENTREGAS JUEVES LAUSANA": ""
+            },
+            {
+              "col0": "",
+              "ENTREGAS JUEVES LAUSANA": "MDEO COSTA: carga el viernes, entrega el sábado"
+            },
+            {
+              "col0": "",
+              "ENTREGAS JUEVES LAUSANA": ""
+            }
+          ]
+        },
+        {
+          "title": "Ventas Rami",
+          "sheetId": 841060792,
+          "rowCount": 1000,
+          "colCount": 47,
+          "dataRowCount": 3,
+          "columnCount": 24,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "VENDEDOR ",
+              "sampleValues": [
+                "Rami",
+                "Rami"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "ID PEDIDO ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "INGRESO PEDIDO",
+              "sampleValues": [
+                "A221572"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "ESTADO",
+              "sampleValues": [
+                "Pago"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "FECHA ENTREGA ",
+              "sampleValues": [
+                "Semana del 28",
+                "Semana 21/09"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "NOMBRE",
+              "sampleValues": [
+                "Franco",
+                "Juan"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "DIRECCIÓN",
+              "sampleValues": [
+                "La Barra Maldo",
+                "La Pedre"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "ENCARGO",
+              "sampleValues": [
+                "ARMCO",
+                "Becam"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "MONTO (Iva Inc)",
+              "sampleValues": [
+                "39134",
+                "260"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "MONTO (+ IVA) - Flete",
+              "sampleValues": [
+                "37844",
+                "260"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "COMPRA + IVA",
+              "sampleValues": [
+                "34056",
+                "206",
+                "Compra + Iva"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "MARGEN - 25%",
+              "sampleValues": [
+                "2841",
+                "40,5",
+                "225,845"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 3
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "70%",
+              "sampleValues": [
+                "1988,7",
+                "28,35"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "30%",
+              "sampleValues": [
+                "1392,09",
+                "19,845"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "CONTACTO",
+              "sampleValues": [
+                "99 304 252",
+                "91 886 728"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "FLETE USD + IVa",
+              "sampleValues": [
+                "1290"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 17,
+              "letter": "Q",
+              "header": "FLETE INGRESADO A EXPRESO ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 18,
+              "letter": "R",
+              "header": "DATOS FACTURACIÓN",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 19,
+              "letter": "S",
+              "header": "CONFIRMACIÓN DE PAGO ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 20,
+              "letter": "T",
+              "header": "SALDOS",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 21,
+              "letter": "U",
+              "header": "PAGO A PROVEEDOR ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 22,
+              "letter": "V",
+              "header": "FACTURADO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 23,
+              "letter": "W",
+              "header": "Nº FACTURA ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 24,
+              "letter": "X",
+              "header": "ACT EN STOCK. ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            }
+          ],
+          "sampleRows": 3,
+          "sampleData": [
+            {
+              "VENDEDOR ": "Rami",
+              "ID PEDIDO ": "",
+              "INGRESO PEDIDO": "A221572",
+              "ESTADO": "Pago",
+              "FECHA ENTREGA ": "Semana del 28",
+              "NOMBRE": "Franco",
+              "DIRECCIÓN": "La Barra Maldo",
+              "ENCARGO": "ARMCO",
+              "MONTO (Iva Inc)": "39134",
+              "MONTO (+ IVA) - Flete": "37844",
+              "COMPRA + IVA": "34056",
+              "MARGEN - 25%": "2841",
+              "70%": "1988,7",
+              "30%": "1392,09",
+              "CONTACTO": "99 304 252",
+              "FLETE USD + IVa": "1290",
+              "FLETE INGRESADO A EXPRESO ": "",
+              "DATOS FACTURACIÓN": "",
+              "CONFIRMACIÓN DE PAGO ": "",
+              "SALDOS": "",
+              "PAGO A PROVEEDOR ": "",
+              "FACTURADO": "",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK. ": ""
+            },
+            {
+              "VENDEDOR ": "Rami",
+              "ID PEDIDO ": "",
+              "INGRESO PEDIDO": "",
+              "ESTADO": "",
+              "FECHA ENTREGA ": "Semana 21/09",
+              "NOMBRE": "Juan",
+              "DIRECCIÓN": "La Pedre",
+              "ENCARGO": "Becam",
+              "MONTO (Iva Inc)": "260",
+              "MONTO (+ IVA) - Flete": "260",
+              "COMPRA + IVA": "206",
+              "MARGEN - 25%": "40,5",
+              "70%": "28,35",
+              "30%": "19,845",
+              "CONTACTO": "91 886 728",
+              "FLETE USD + IVa": "",
+              "FLETE INGRESADO A EXPRESO ": "",
+              "DATOS FACTURACIÓN": "",
+              "CONFIRMACIÓN DE PAGO ": "",
+              "SALDOS": "",
+              "PAGO A PROVEEDOR ": "",
+              "FACTURADO": "",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK. ": ""
+            },
+            {
+              "VENDEDOR ": "",
+              "ID PEDIDO ": "",
+              "INGRESO PEDIDO": "",
+              "ESTADO": "",
+              "FECHA ENTREGA ": "",
+              "NOMBRE": "",
+              "DIRECCIÓN": "",
+              "ENCARGO": "",
+              "MONTO (Iva Inc)": "",
+              "MONTO (+ IVA) - Flete": "",
+              "COMPRA + IVA": "Compra + Iva",
+              "MARGEN - 25%": "225,845",
+              "70%": "",
+              "30%": "",
+              "CONTACTO": "",
+              "FLETE USD + IVa": "",
+              "FLETE INGRESADO A EXPRESO ": "",
+              "DATOS FACTURACIÓN": "",
+              "CONFIRMACIÓN DE PAGO ": "",
+              "SALDOS": "",
+              "PAGO A PROVEEDOR ": "",
+              "FACTURADO": "",
+              "Nº FACTURA ": "",
+              "ACT EN STOCK. ": ""
+            }
+          ]
+        },
+        {
+          "title": "Feedback",
+          "sheetId": 1559555531,
+          "rowCount": 1005,
+          "colCount": 32,
+          "dataRowCount": 25,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Transportistas 2019 ",
+          "sheetId": 1070877104,
+          "rowCount": 1004,
+          "colCount": 26,
+          "dataRowCount": 16,
+          "columnCount": 6,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Agencia ",
+              "sampleValues": [
+                "Ag Central Boulevard ",
+                "De Punta "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 12
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "Telefono ",
+              "sampleValues": [
+                "22098912  22000967",
+                "4222 9237",
+                "2401 5474"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "Ubicación ",
+              "sampleValues": [
+                "Montevideo - Bvar Artigas 4555",
+                "Maldonado ",
+                "Democracia 1807, Montevideo"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Destinos ",
+              "sampleValues": [
+                "Nueva Helvecia - Chofer Juan Montelongo 099710811 Lunes - Miércoles - Viernes ",
+                "Paysandu / Young / Guichon / Colonia Suiza / Colonia Valdenze / Mercedes / Fray Bentos / Cardona / Florencio Sanchez /  José Enrique Rodo / Santa Catalina / Pueblo Riso / Palmitas / Maldonado / Punta del Ese / Piriapolis / Pan de Azucar / San Carlos / Trinidad / San José / Villa Rodriguez / Libertad / Rocha / La Paloma /  Chuy / Punta del Diablo / Castillos / Florida / Rosario. ",
+                "Mercedes, Soriano: 45 32 44 44 ",
+                "Montevideo / Costa de Oro /  Piriápolis / Punta del Este / Maldonado /  San Carlos / Pan de Azúcar / Barra de Maldonado."
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "Comentarios ",
+              "sampleValues": [
+                "Armco trabaja con esta Agencia, llevan a Agencia sin costo.                                                                              *No tienen nada que ver con DAC"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 7
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "Cotizaciones ",
+              "sampleValues": [
+                "2 Rollos de tejido x $550. ",
+                "4 PU 40mm x 6,5m + 6 PU 40mm x 5m + Pack 15 perfiles 3m  $7500 + Iva //                                                                                                                                                                                                                                                                                                                    "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Agencia ": "Ag Central Boulevard ",
+              "Telefono ": "22098912  22000967",
+              "Ubicación ": "Montevideo - Bvar Artigas 4555",
+              "Destinos ": "Nueva Helvecia - Chofer Juan Montelongo 099710811 Lunes - Miércoles - Viernes ",
+              "Comentarios ": "",
+              "Cotizaciones ": "2 Rollos de tejido x $550. "
+            },
+            {
+              "Agencia ": "",
+              "Telefono ": "",
+              "Ubicación ": "",
+              "Destinos ": "Paysandu / Young / Guichon / Colonia Suiza / Colonia Valdenze / Mercedes / Fray Bentos / Cardona / Florencio Sanchez /  José Enrique Rodo / Santa Catalina / Pueblo Riso / Palmitas / Maldonado / Punta del Ese / Piriapolis / Pan de Azucar / San Carlos / Trinidad / San José / Villa Rodriguez / Libertad / Rocha / La Paloma /  Chuy / Punta del Diablo / Castillos / Florida / Rosario. ",
+              "Comentarios ": "Armco trabaja con esta Agencia, llevan a Agencia sin costo.                                                                              *No tienen nada que ver con DAC",
+              "Cotizaciones ": "4 PU 40mm x 6,5m + 6 PU 40mm x 5m + Pack 15 perfiles 3m  $7500 + Iva //                                                                                                                                                                                                                                                                                                                    "
+            },
+            {
+              "Agencia ": "",
+              "Telefono ": "",
+              "Ubicación ": "",
+              "Destinos ": "Mercedes, Soriano: 45 32 44 44 ",
+              "Comentarios ": "",
+              "Cotizaciones ": ""
+            },
+            {
+              "Agencia ": "De Punta ",
+              "Telefono ": "4222 9237",
+              "Ubicación ": "Maldonado ",
+              "Destinos ": "Montevideo / Costa de Oro /  Piriápolis / Punta del Este / Maldonado /  San Carlos / Pan de Azúcar / Barra de Maldonado.",
+              "Comentarios ": "",
+              "Cotizaciones ": ""
+            },
+            {
+              "Agencia ": "",
+              "Telefono ": "2401 5474",
+              "Ubicación ": "Democracia 1807, Montevideo",
+              "Destinos ": "",
+              "Comentarios ": "",
+              "Cotizaciones ": ""
+            }
+          ]
+        },
+        {
+          "title": "Policarbonatos",
+          "sheetId": 806940407,
+          "rowCount": 1006,
+          "colCount": 26,
+          "dataRowCount": 17,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "(col 1)",
+              "sampleValues": [
+                "Proveedor",
+                "Luissi",
+                "SOLUHOME"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 7
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "(col 2)",
+              "sampleValues": [
+                "Tipo",
+                "Termica (bronce)",
+                "Ahumado",
+                "Transparente Bronce",
+                "Perfil H 5,8"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "(col 3)",
+              "sampleValues": [
+                "Medida",
+                "5,8 x 2,10 6mm",
+                "5,8 x 2,10 6mm",
+                "2,5 x 0,9 1mm"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 9
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "(col 4)",
+              "sampleValues": [
+                "Precio",
+                "250 usd",
+                "6300",
+                "1490",
+                "1800"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "(col 5)",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "(col 6)",
+              "sampleValues": [
+                "m2",
+                "20,52545156",
+                "14,77832512",
+                "18,71271586"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 5
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "tc",
+              "sampleValues": [
+                "35"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 1
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "col0": "Proveedor",
+              "col1": "Tipo",
+              "col2": "Medida",
+              "col3": "Precio",
+              "col4": "",
+              "col5": "m2",
+              "tc": "35"
+            },
+            {
+              "col0": "Luissi",
+              "col1": "Termica (bronce)",
+              "col2": "5,8 x 2,10 6mm",
+              "col3": "250 usd",
+              "col4": "",
+              "col5": "20,52545156",
+              "tc": ""
+            },
+            {
+              "col0": "SOLUHOME",
+              "col1": "Ahumado",
+              "col2": "5,8 x 2,10 6mm",
+              "col3": "6300",
+              "col4": "",
+              "col5": "14,77832512",
+              "tc": ""
+            },
+            {
+              "col0": "",
+              "col1": "Transparente Bronce",
+              "col2": "2,5 x 0,9 1mm",
+              "col3": "1490",
+              "col4": "",
+              "col5": "18,71271586",
+              "tc": ""
+            },
+            {
+              "col0": "",
+              "col1": "Perfil H 5,8",
+              "col2": "",
+              "col3": "1800",
+              "col4": "",
+              "col5": "",
+              "tc": ""
+            }
+          ]
+        },
+        {
+          "title": "Precios Productos BMC ",
+          "sheetId": 103893501,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 18,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Peon Carga",
+          "sheetId": 25488700,
+          "rowCount": 1000,
+          "colCount": 30,
+          "dataRowCount": 3,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 3,
+          "sampleData": [
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Contactos",
+          "sheetId": 1431659669,
+          "rowCount": 1000,
+          "colCount": 37,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Plegadora",
+          "sheetId": 103525442,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 4,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 4,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Tareas y Fletes realizados",
+          "sheetId": 1569230137,
+          "rowCount": 1000,
+          "colCount": 34,
+          "dataRowCount": 10,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Distribuidores",
+          "sheetId": 2140728257,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 3,
+          "columnCount": 4,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Distribuidores",
+              "sampleValues": [
+                "El sitio",
+                "Wilmar Ocaña",
+                "Ana Montfrio "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "Paneles PU",
+              "sampleValues": [
+                "26,23+IVA",
+                "99009431"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "Paneles EPS techo",
+              "sampleValues": [
+                "21+IVA"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Panel EPS Fachada",
+              "sampleValues": [
+                "-",
+                "22 + IVA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            }
+          ],
+          "sampleRows": 3,
+          "sampleData": [
+            {
+              "Distribuidores": "El sitio",
+              "Paneles PU": "26,23+IVA",
+              "Paneles EPS techo": "21+IVA",
+              "Panel EPS Fachada": "-"
+            },
+            {
+              "Distribuidores": "Wilmar Ocaña",
+              "Paneles PU": "",
+              "Paneles EPS techo": "",
+              "Panel EPS Fachada": "22 + IVA"
+            },
+            {
+              "Distribuidores": "Ana Montfrio ",
+              "Paneles PU": "99009431",
+              "Paneles EPS techo": "",
+              "Panel EPS Fachada": ""
+            }
+          ]
+        },
+        {
+          "title": "Muestras ",
+          "sheetId": 1105500939,
+          "rowCount": 1000,
+          "colCount": 29,
+          "dataRowCount": 12,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Llamadas",
+          "sheetId": 1735822318,
+          "rowCount": 1000,
+          "colCount": 36,
+          "dataRowCount": 19,
+          "columnCount": 3,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "Día",
+              "sampleValues": [
+                "28/dic",
+                "01/feb",
+                "02/feb"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "Cantidad de llamadas",
+              "sampleValues": [
+                "8",
+                "0",
+                "18"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "Nro y horario",
+              "sampleValues": [
+                "99105167",
+                "10:40",
+                "26986274",
+                "9,14"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "Día": "28/dic",
+              "Cantidad de llamadas": "8",
+              "Nro y horario": "99105167"
+            },
+            {
+              "Día": "",
+              "Cantidad de llamadas": "",
+              "Nro y horario": "10:40"
+            },
+            {
+              "Día": "01/feb",
+              "Cantidad de llamadas": "0",
+              "Nro y horario": ""
+            },
+            {
+              "Día": "02/feb",
+              "Cantidad de llamadas": "18",
+              "Nro y horario": "26986274"
+            },
+            {
+              "Día": "",
+              "Cantidad de llamadas": "",
+              "Nro y horario": "9,14"
+            }
+          ]
+        },
+        {
+          "title": "Aluminios",
+          "sheetId": 586408455,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 20,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        }
+      ]
+    },
+    {
+      "workbookId": "1egtKJAGaATLmmsJkaa2LlCv3Ah4lmNoGMNm4l0rXJQw",
+      "workbookName": "Stock E-Commerce",
+      "envVar": "BMC_STOCK_SHEET_ID",
+      "tabCount": 7,
+      "tabs": [
+        {
+          "title": "EXISTENCIAS_Y_PEDIDOS",
+          "sheetId": 0,
+          "rowCount": 1097,
+          "colCount": 63,
+          "dataRowCount": 29,
+          "columnCount": 4,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": " ",
+              "sampleValues": [
+                "Cargado en Shopify",
+                "Subido con Éxito",
+                "Subido con Éxito",
+                "Subido con Éxito"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "(col 2)",
+              "sampleValues": [
+                "inv"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "(col 3)",
+              "sampleValues": [
+                "Etiquetas"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 6
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "(col 4)",
+              "sampleValues": [
+                "x",
+                "x"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "(col 5)",
+              "sampleValues": [
+                "Codigo ",
+                "C.But.",
+                "Cab. Grs"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "(col 6)",
+              "sampleValues": [
+                "Hay que considerar tambien las variantes de colores",
+                "Producto",
+                "Cinta Butilo 2mm x 15mm x 22.5m lineales",
+                "Caballete Gris  (Arandela Trapezoidal)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "(col 7)",
+              "sampleValues": [
+                "Costo m2 U$S + IVA",
+                "13.16",
+                "0.32"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "(col 8)",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 9,
+              "letter": "I",
+              "header": "(col 9)",
+              "sampleValues": [
+                "Margen %",
+                "15%",
+                "97%"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 10,
+              "letter": "J",
+              "header": "(col 10)",
+              "sampleValues": [
+                "Ganancia",
+                "1.9740",
+                "0.3100"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 11,
+              "letter": "K",
+              "header": "5",
+              "sampleValues": [
+                "Venta + IVA",
+                "15.13",
+                "0.63"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 12,
+              "letter": "L",
+              "header": "(col 12)",
+              "sampleValues": [
+                "Consumidor Final",
+                "18.46",
+                "0.77"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 13,
+              "letter": "M",
+              "header": "4.00",
+              "sampleValues": [
+                "Venta Inm +IVA",
+                "18.42",
+                "0.76"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 14,
+              "letter": "N",
+              "header": "(col 14)",
+              "sampleValues": [
+                "Venta Inm IVA inc",
+                "22.48",
+                "0.92"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 15,
+              "letter": "O",
+              "header": "(col 15)",
+              "sampleValues": [
+                "DEPO OFI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 5
+            },
+            {
+              "index": 16,
+              "letter": "P",
+              "header": "(col 16)",
+              "sampleValues": [
+                "Exterior "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 17,
+              "letter": "Q",
+              "header": "(col 17)",
+              "sampleValues": [
+                "DEPO GRANDE "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 18,
+              "letter": "R",
+              "header": "(col 18)",
+              "sampleValues": [
+                "Pedido 3107",
+                "5",
+                "250"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 4
+            },
+            {
+              "index": 19,
+              "letter": "S",
+              "header": "(col 19)",
+              "sampleValues": [
+                "Stock ",
+                "0",
+                "0",
+                "0"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 20,
+              "letter": "T",
+              "header": "(col 20)",
+              "sampleValues": [
+                "STOCK  "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 21,
+              "letter": "U",
+              "header": "(col 21)",
+              "sampleValues": [
+                "STock Averia "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 22,
+              "letter": "V",
+              "header": "(col 22)",
+              "sampleValues": [
+                "Costo Stoc"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 23,
+              "letter": "W",
+              "header": "(col 23)",
+              "sampleValues": [
+                "Venta P. Mercado"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 24,
+              "letter": "X",
+              "header": "(col 24)",
+              "sampleValues": [
+                "V. P Stock"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 7
+            },
+            {
+              "index": 25,
+              "letter": "Y",
+              "header": "(col 25)",
+              "sampleValues": [
+                "Ganancia"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 26,
+              "letter": "Z",
+              "header": "(col 26)",
+              "sampleValues": [
+                "%"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 27,
+              "letter": "col27",
+              "header": "(col 27)",
+              "sampleValues": [
+                "Pedido 30/6",
+                "100"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 7
+            },
+            {
+              "index": 28,
+              "letter": "col28",
+              "header": "(col 28)",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 6
+            },
+            {
+              "index": 29,
+              "letter": "col29",
+              "header": "(col 29)",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 30,
+              "letter": "col30",
+              "header": "(col 30)",
+              "sampleValues": [
+                "Posicion"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 6
+            },
+            {
+              "index": 31,
+              "letter": "col31",
+              "header": "(col 31)",
+              "sampleValues": [
+                "Unidades "
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 6
+            },
+            {
+              "index": 32,
+              "letter": "col32",
+              "header": "(col 32)",
+              "sampleValues": [
+                "Comentarios ",
+                "Eliminar foto de mala calidad, nueva imagen de cinta butilo real con fondo blanco ",
+                "FOtos nuevas con caballetas sanos "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 6
+            },
+            {
+              "index": 33,
+              "letter": "col33",
+              "header": "(col 33)",
+              "sampleValues": [
+                "Pedido 11/08"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 5
+            },
+            {
+              "index": 34,
+              "letter": "col34",
+              "header": "#REF!",
+              "sampleValues": [
+                "Costo estimado",
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "5": "",
+              " ": "",
+              "col1": "inv",
+              "col2": "",
+              "col3": "",
+              "col4": "",
+              "col5": "Hay que considerar tambien las variantes de colores",
+              "col6": "",
+              "col7": "",
+              "col8": "",
+              "col9": "",
+              "col11": "",
+              "4.00": "",
+              "col13": "",
+              "col14": "",
+              "col15": "",
+              "col16": "",
+              "col17": "",
+              "col18": "",
+              "col19": "",
+              "col20": "STock Averia ",
+              "col21": "Costo Stoc",
+              "col22": "Venta P. Mercado",
+              "col23": "V. P Stock",
+              "col24": "Ganancia",
+              "col25": "%",
+              "col26": "Pedido 30/6",
+              "col27": "",
+              "col28": "",
+              "col29": "Posicion",
+              "col30": "Unidades ",
+              "col31": "Comentarios ",
+              "col32": "Pedido 11/08",
+              "#REF!": "Costo estimado"
+            },
+            {
+              "5": "Venta + IVA",
+              " ": "Cargado en Shopify",
+              "col1": "",
+              "col2": "Etiquetas",
+              "col3": "",
+              "col4": "Codigo ",
+              "col5": "Producto",
+              "col6": "Costo m2 U$S + IVA",
+              "col7": "",
+              "col8": "Margen %",
+              "col9": "Ganancia",
+              "col11": "Consumidor Final",
+              "4.00": "Venta Inm +IVA",
+              "col13": "Venta Inm IVA inc",
+              "col14": "DEPO OFI",
+              "col15": "Exterior ",
+              "col16": "DEPO GRANDE ",
+              "col17": "Pedido 3107",
+              "col18": "Stock ",
+              "col19": "STOCK  ",
+              "col20": "",
+              "col21": "",
+              "col22": "",
+              "col23": "",
+              "col24": "",
+              "col25": "",
+              "col26": "",
+              "col27": "",
+              "col28": "",
+              "col29": "",
+              "col30": "",
+              "col31": "",
+              "col32": "",
+              "#REF!": "0"
+            },
+            {
+              "5": "",
+              " ": "Subido con Éxito",
+              "col1": "",
+              "col2": "",
+              "col3": "",
+              "col4": "",
+              "col5": "",
+              "col6": "",
+              "col7": "",
+              "col8": "",
+              "col9": "",
+              "col11": "",
+              "4.00": "",
+              "col13": "",
+              "col14": "",
+              "col15": "",
+              "col16": "",
+              "col17": "5",
+              "col18": "0",
+              "col19": "",
+              "col20": "",
+              "col21": "",
+              "col22": "",
+              "col23": "",
+              "col24": "",
+              "col25": "",
+              "col26": "",
+              "col27": "",
+              "col28": "",
+              "col29": "",
+              "col30": "",
+              "col31": "Eliminar foto de mala calidad, nueva imagen de cinta butilo real con fondo blanco ",
+              "col32": "",
+              "#REF!": "0"
+            },
+            {
+              "5": "15.13",
+              " ": "Subido con Éxito",
+              "col1": "",
+              "col2": "",
+              "col3": "x",
+              "col4": "C.But.",
+              "col5": "Cinta Butilo 2mm x 15mm x 22.5m lineales",
+              "col6": "13.16",
+              "col7": "",
+              "col8": "15%",
+              "col9": "1.9740",
+              "col11": "18.46",
+              "4.00": "18.42",
+              "col13": "22.48",
+              "col14": "",
+              "col15": "",
+              "col16": "",
+              "col17": "250",
+              "col18": "0",
+              "col19": "",
+              "col20": "",
+              "col21": "",
+              "col22": "",
+              "col23": "",
+              "col24": "",
+              "col25": "",
+              "col26": "100",
+              "col27": "",
+              "col28": "",
+              "col29": "",
+              "col30": "",
+              "col31": "FOtos nuevas con caballetas sanos ",
+              "col32": "",
+              "#REF!": "0"
+            },
+            {
+              "5": "0.63",
+              " ": "Subido con Éxito",
+              "col1": "",
+              "col2": "",
+              "col3": "x",
+              "col4": "Cab. Grs",
+              "col5": "Caballete Gris  (Arandela Trapezoidal)",
+              "col6": "0.32",
+              "col7": "",
+              "col8": "97%",
+              "col9": "0.3100",
+              "col11": "0.77",
+              "4.00": "0.76",
+              "col13": "0.92",
+              "col14": "",
+              "col15": "",
+              "col16": "",
+              "col17": "",
+              "col18": "0",
+              "col19": "",
+              "col20": "",
+              "col21": "",
+              "col22": "",
+              "col23": "",
+              "col24": "",
+              "col25": "",
+              "col26": "",
+              "col27": "",
+              "col28": "",
+              "col29": "",
+              "col30": "",
+              "col31": "",
+              "col32": "",
+              "#REF!": "0"
+            }
+          ]
+        },
+        {
+          "title": "Orden y Inventario 06-09-2025",
+          "sheetId": 882222929,
+          "rowCount": 1154,
+          "colCount": 60,
+          "dataRowCount": 27,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "(col 1)",
+              "sampleValues": [
+                "Stockear",
+                "Cargado en Shopify",
+                "Subido con Éxito"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 15
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "(col 2)",
+              "sampleValues": [
+                "Etiquetas",
+                "SI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "(col 3)",
+              "sampleValues": [
+                "Fact Estres",
+                "SI"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "(col 4)",
+              "sampleValues": [
+                "Codigo ",
+                "GFS30T"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "(col 5)",
+              "sampleValues": [
+                "Posición",
+                "1"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 16
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "Hay que considerar tambien las variantes de colores",
+              "sampleValues": [
+                "Producto",
+                "RAC 1  - ISOROOF TERRACOTA",
+                "Gotero Frontal Simple 30mm Prep. - Terracota "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 18
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "col0": "Stockear",
+              "col1": "",
+              "col2": "",
+              "col3": "",
+              "col4": "",
+              "Hay que considerar tambien las variantes de colores": ""
+            },
+            {
+              "col0": "",
+              "col1": "",
+              "col2": "",
+              "col3": "",
+              "col4": "",
+              "Hay que considerar tambien las variantes de colores": ""
+            },
+            {
+              "col0": "Cargado en Shopify",
+              "col1": "Etiquetas",
+              "col2": "Fact Estres",
+              "col3": "Codigo ",
+              "col4": "Posición",
+              "Hay que considerar tambien las variantes de colores": "Producto"
+            },
+            {
+              "col0": "",
+              "col1": "",
+              "col2": "",
+              "col3": "",
+              "col4": "",
+              "Hay que considerar tambien las variantes de colores": "RAC 1  - ISOROOF TERRACOTA"
+            },
+            {
+              "col0": "Subido con Éxito",
+              "col1": "SI",
+              "col2": "SI",
+              "col3": "GFS30T",
+              "col4": "1",
+              "Hay que considerar tambien las variantes de colores": "Gotero Frontal Simple 30mm Prep. - Terracota "
+            }
+          ]
+        },
+        {
+          "title": "POSICION FISICA ",
+          "sheetId": 1752067897,
+          "rowCount": 913,
+          "colCount": 44,
+          "dataRowCount": 29,
+          "columnCount": 5,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "NO total",
+              "sampleValues": [
+                "1",
+                "2",
+                "3",
+                "4"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "Select",
+              "sampleValues": [
+                "o",
+                "o",
+                "o",
+                "o",
+                "o"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 12
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "Racks",
+              "sampleValues": [
+                "A",
+                "A",
+                "A",
+                "A"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Posicion",
+              "sampleValues": [
+                "1",
+                "1",
+                "2",
+                "3"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 8
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "Grupos",
+              "sampleValues": [
+                "ISOROOF",
+                "GOTERO FRONRTAL 3M "
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "NO total": "",
+              "Select": "o",
+              "Racks": "",
+              "Posicion": "",
+              "Grupos": "ISOROOF"
+            },
+            {
+              "NO total": "1",
+              "Select": "o",
+              "Racks": "A",
+              "Posicion": "1",
+              "Grupos": "GOTERO FRONRTAL 3M "
+            },
+            {
+              "NO total": "2",
+              "Select": "o",
+              "Racks": "A",
+              "Posicion": "1",
+              "Grupos": ""
+            },
+            {
+              "NO total": "3",
+              "Select": "o",
+              "Racks": "A",
+              "Posicion": "2",
+              "Grupos": ""
+            },
+            {
+              "NO total": "4",
+              "Select": "o",
+              "Racks": "A",
+              "Posicion": "3",
+              "Grupos": ""
+            }
+          ]
+        },
+        {
+          "title": "Conteo 11082025",
+          "sheetId": 1946369389,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Egresos",
+          "sheetId": 781806515,
+          "rowCount": 1000,
+          "colCount": 27,
+          "dataRowCount": 7,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "POSICION FISICA - ORDEN ORIGINAL ",
+          "sheetId": 1687624838,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 27,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Copy of Sheet1",
+          "sheetId": 1636739577,
+          "rowCount": 1024,
+          "colCount": 39,
+          "dataRowCount": 26,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "(col 1)",
+              "sampleValues": [
+                "Cargado en Shopify"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "(col 2)",
+              "sampleValues": [
+                "Stockear"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 1
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "(col 3)",
+              "sampleValues": [
+                "C.But.",
+                "Cab. Grs",
+                "Cab. Roj"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "Hay que considerar tambien las variantes de colores",
+              "sampleValues": [
+                "Producto",
+                "Cinta Butilo 2mm x 15mm x 22.5m lineales",
+                "Caballete Gris  (Arandela Trapezoidal)",
+                "Caballete Rojo Teja(Arandela Trapezoidal)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "col0": "",
+              "col1": "Stockear",
+              "col2": "",
+              "Hay que considerar tambien las variantes de colores": "Producto"
+            },
+            {
+              "col0": "Cargado en Shopify",
+              "col1": "",
+              "col2": "",
+              "Hay que considerar tambien las variantes de colores": ""
+            },
+            {
+              "col0": "",
+              "col1": "",
+              "col2": "C.But.",
+              "Hay que considerar tambien las variantes de colores": "Cinta Butilo 2mm x 15mm x 22.5m lineales"
+            },
+            {
+              "col0": "",
+              "col1": "",
+              "col2": "Cab. Grs",
+              "Hay que considerar tambien las variantes de colores": "Caballete Gris  (Arandela Trapezoidal)"
+            },
+            {
+              "col0": "",
+              "col1": "",
+              "col2": "Cab. Roj",
+              "Hay que considerar tambien las variantes de colores": "Caballete Rojo Teja(Arandela Trapezoidal)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "workbookId": "1bvnbYq7MTJRpa6xEHE5m-5JcGNI9oCFke3lsJj99tdk",
+      "workbookName": "Calendario de vencimientos",
+      "envVar": "BMC_CALENDARIO_SHEET_ID",
+      "tabCount": 46,
+      "tabs": [
+        {
+          "title": "GASTOS",
+          "sheetId": 665575844,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 1,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "June 2025",
+              "sampleValues": [
+                "CONCEPTO ",
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA (16021037000136)",
+                "ANTEL CEL OFICINA (6186179)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "June 2025": "CONCEPTO "
+            },
+            {
+              "June 2025": "UTE"
+            },
+            {
+              "June 2025": "OSE"
+            },
+            {
+              "June 2025": "ANTEL OFICINA (16021037000136)"
+            },
+            {
+              "June 2025": "ANTEL CEL OFICINA (6186179)"
+            }
+          ]
+        },
+        {
+          "title": "MARZO 2026",
+          "sheetId": 1222449275,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "FEBRERO 2026",
+          "sheetId": 375908019,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "CONVENIOS Y PATENTES 2025",
+          "sheetId": 526391894,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "ENERO 2026",
+          "sheetId": 2140018946,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "DICIEMBRE 2025",
+          "sheetId": 1551180318,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "NOVIEMBRE 2025",
+          "sheetId": 1055302434,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "OCTUBRE 2025",
+          "sheetId": 1116521012,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "SETIEMBRE 2025",
+          "sheetId": 1659591805,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "AGOSTO 2025",
+          "sheetId": 1123291578,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "JULIO 2025",
+          "sheetId": 1800664525,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "JUNIO 2025",
+          "sheetId": 383178406,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "MAYO 2025",
+          "sheetId": 1046450309,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "ABRIL 2025",
+          "sheetId": 1846008369,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "MARZO 2025",
+          "sheetId": 1711646178,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "FEBRERO 2025",
+          "sheetId": 551837539,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "ENERO 2025",
+          "sheetId": 2125253716,
+          "rowCount": 1000,
+          "colCount": 26,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "DICIEMBRE 2024",
+          "sheetId": 683497717,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "NOVIEMBRE 2024",
+          "sheetId": 1747223418,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "OCTUBRE 2024",
+          "sheetId": 1610651030,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "Sura DFSK",
+          "sheetId": 1074253731,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 11,
+          "columnCount": 2,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "SURA",
+              "sampleValues": [
+                "POLIZA",
+                "Fecha",
+                "12/01",
+                "22/02",
+                "05/04"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "DFSK",
+              "sampleValues": [
+                "2017327",
+                "Cuota",
+                "1/10",
+                "2/10",
+                "3/10"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 11
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "SURA": "POLIZA",
+              "DFSK": "2017327"
+            },
+            {
+              "SURA": "Fecha",
+              "DFSK": "Cuota"
+            },
+            {
+              "SURA": "12/01",
+              "DFSK": "1/10"
+            },
+            {
+              "SURA": "22/02",
+              "DFSK": "2/10"
+            },
+            {
+              "SURA": "05/04",
+              "DFSK": "3/10"
+            }
+          ]
+        },
+        {
+          "title": "SETIEMBRE 2024",
+          "sheetId": 847625846,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "AGOSTO 2024",
+          "sheetId": 1560351269,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "JULIO 2024",
+          "sheetId": 1921425748,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "JUNIO 2024",
+          "sheetId": 1631855438,
+          "rowCount": 1000,
+          "colCount": 26,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "ABRIL 2024",
+          "sheetId": 227008452,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "MAYO 2024",
+          "sheetId": 647650631,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 29,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "MARZO 2024",
+          "sheetId": 762232583,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "FEBRERO 2024",
+          "sheetId": 674029426,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "ENERO 2024",
+          "sheetId": 382890032,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "DICIEMBRE 2023",
+          "sheetId": 2020864638,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "NOVIEMBRE 2023",
+          "sheetId": 1910688977,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 28,
+          "columnCount": 0,
+          "columns": [],
+          "sampleRows": 5,
+          "sampleData": [
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        {
+          "title": "OCTUBRE 2023",
+          "sheetId": 553065322,
+          "rowCount": 1000,
+          "colCount": 28,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "SETIEMBRE 2023",
+          "sheetId": 1554260382,
+          "rowCount": 1000,
+          "colCount": 26,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "AGOSTO 2023",
+          "sheetId": 74974327,
+          "rowCount": 1000,
+          "colCount": 26,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "JUNIO",
+          "sheetId": 593444662,
+          "rowCount": 1000,
+          "colCount": 28,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "JULIO 2023",
+          "sheetId": 1398474070,
+          "rowCount": 1000,
+          "colCount": 26,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "Alquiler",
+          "sheetId": 413052546,
+          "rowCount": 1000,
+          "colCount": 26,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "MAYO",
+          "sheetId": 272807853,
+          "rowCount": 1000,
+          "colCount": 28,
+          "error": "Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:642127786762'.",
+          "columns": [],
+          "sampleRows": 0
+        },
+        {
+          "title": "ABRIL",
+          "sheetId": 210075338,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 28,
+          "columnCount": 8,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA",
+                "ANTEL CEL REPARTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031 (16021037000136)",
+                "92663245 (6186179)",
+                "92757773 (6152276)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 13
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "2/5",
+                "28/4",
+                "25/4",
+                "25/04",
+                "25/4"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "6638",
+                "7961",
+                "3178",
+                "571",
+                "505"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 0
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "alertas",
+              "sampleValues": [
+                "VENCIÓ",
+                "VENCIÓ",
+                "VENCIÓ"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 9
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "2/5",
+              "IMPORTE $": "6638",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": "",
+              "alertas": ""
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "28/4",
+              "IMPORTE $": "7961",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": "",
+              "alertas": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031 (16021037000136)",
+              "FECHA DE VENCIMIENTO": "25/4",
+              "IMPORTE $": "3178",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": "",
+              "alertas": "VENCIÓ"
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245 (6186179)",
+              "FECHA DE VENCIMIENTO": "25/04",
+              "IMPORTE $": "571",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": "",
+              "alertas": "VENCIÓ"
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL REPARTO",
+              "REFERENCIA": "92757773 (6152276)",
+              "FECHA DE VENCIMIENTO": "25/4",
+              "IMPORTE $": "505",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": "",
+              "alertas": "VENCIÓ"
+            }
+          ]
+        },
+        {
+          "title": "MARZO",
+          "sheetId": 1283497965,
+          "rowCount": 1000,
+          "colCount": 28,
+          "dataRowCount": 27,
+          "columnCount": 8,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031",
+                "92663245"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 14
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "14/3",
+                "27/2",
+                "27/3",
+                "28/3",
+                "24/3"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "5908",
+                "5820",
+                "6109",
+                "3207",
+                "372"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "PAGO",
+                "PAGO",
+                "PAGO",
+                "PAGO",
+                "PAGO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            },
+            {
+              "index": 8,
+              "letter": "H",
+              "header": "Comentarios ",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 4
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "14/3",
+              "IMPORTE $": "5908",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": "",
+              "Comentarios ": ""
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "27/2",
+              "IMPORTE $": "5820",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": "",
+              "Comentarios ": ""
+            },
+            {
+              "CONCEPTO ": "",
+              "REFERENCIA": "",
+              "FECHA DE VENCIMIENTO": "27/3",
+              "IMPORTE $": "6109",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": "",
+              "Comentarios ": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031",
+              "FECHA DE VENCIMIENTO": "28/3",
+              "IMPORTE $": "3207",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": "",
+              "Comentarios ": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245",
+              "FECHA DE VENCIMIENTO": "24/3",
+              "IMPORTE $": "372",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": "",
+              "Comentarios ": ""
+            }
+          ]
+        },
+        {
+          "title": "OCTUBRE ",
+          "sheetId": 962186007,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 25,
+          "columnCount": 7,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA",
+                "ANTEL CEL REPARTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031",
+                "92663245",
+                "92757773"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 12
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "12/10",
+                "25/10",
+                "26/10",
+                "25/10",
+                "25/10"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "8008",
+                "3419",
+                "3519",
+                "555",
+                "495"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "SE PAGÓ",
+                "SE PAGÓ",
+                "SE PAGÓ",
+                "SE PAGÓ",
+                "SE PAGÓ"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [
+                "4/10",
+                "20/10"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 10
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "12/10",
+              "IMPORTE $": "8008",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE PAGÓ",
+              "FECHA DE PAGO": "4/10"
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "25/10",
+              "IMPORTE $": "3419",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE PAGÓ",
+              "FECHA DE PAGO": "20/10"
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031",
+              "FECHA DE VENCIMIENTO": "26/10",
+              "IMPORTE $": "3519",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE PAGÓ",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245",
+              "FECHA DE VENCIMIENTO": "25/10",
+              "IMPORTE $": "555",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE PAGÓ",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL REPARTO",
+              "REFERENCIA": "92757773",
+              "FECHA DE VENCIMIENTO": "25/10",
+              "IMPORTE $": "495",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE PAGÓ",
+              "FECHA DE PAGO": ""
+            }
+          ]
+        },
+        {
+          "title": "NOVIEMBRE",
+          "sheetId": 399741962,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 28,
+          "columnCount": 7,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA",
+                "ANTEL CEL REPARTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031",
+                "92663245",
+                "92757773"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "11/11",
+                "28/11",
+                "25/11",
+                "25/11",
+                "25/11"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "6386",
+                "3144",
+                "3313",
+                "495",
+                "495"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 5
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "PAGO",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "SE DEBITA (PAGO)",
+                "SE DEBITA (PAGO)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 1
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "11/11",
+              "IMPORTE $": "6386",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "28/11",
+              "IMPORTE $": "3144",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031",
+              "FECHA DE VENCIMIENTO": "25/11",
+              "IMPORTE $": "3313",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245",
+              "FECHA DE VENCIMIENTO": "25/11",
+              "IMPORTE $": "495",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE DEBITA (PAGO)",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL REPARTO",
+              "REFERENCIA": "92757773",
+              "FECHA DE VENCIMIENTO": "25/11",
+              "IMPORTE $": "495",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE DEBITA (PAGO)",
+              "FECHA DE PAGO": ""
+            }
+          ]
+        },
+        {
+          "title": "DICIEMBRE",
+          "sheetId": 1080339810,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 27,
+          "columnCount": 7,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA",
+                "ANTEL CEL REPARTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031",
+                "92663245",
+                "92757773"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 11
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "13/12",
+                "26/12",
+                "27/12",
+                "23/12",
+                "23/12"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "6262",
+                "5523",
+                "3300",
+                "555",
+                "495"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "SE DEBITA (Pendiente)",
+                "SE DEBITA (Pendiente)",
+                "SE DEBITA (Pendiente)"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "13/12",
+              "IMPORTE $": "6262",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "26/12",
+              "IMPORTE $": "5523",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031",
+              "FECHA DE VENCIMIENTO": "27/12",
+              "IMPORTE $": "3300",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE DEBITA (Pendiente)",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245",
+              "FECHA DE VENCIMIENTO": "23/12",
+              "IMPORTE $": "555",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE DEBITA (Pendiente)",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL REPARTO",
+              "REFERENCIA": "92757773",
+              "FECHA DE VENCIMIENTO": "23/12",
+              "IMPORTE $": "495",
+              "IMPORTE U$S": "",
+              "ESTADO": "SE DEBITA (Pendiente)",
+              "FECHA DE PAGO": ""
+            }
+          ]
+        },
+        {
+          "title": "ENERO",
+          "sheetId": 1435315093,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 27,
+          "columnCount": 7,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA",
+                "ANTEL CEL REPARTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031",
+                "92663245",
+                "92757773"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 10
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "13/12",
+                "26/12",
+                "27/12",
+                "23/12",
+                "23/12"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 19
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "6262",
+                "5523",
+                "3300",
+                "555",
+                "495"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 17
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 1
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "13/12",
+              "IMPORTE $": "6262",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "26/12",
+              "IMPORTE $": "5523",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031",
+              "FECHA DE VENCIMIENTO": "27/12",
+              "IMPORTE $": "3300",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245",
+              "FECHA DE VENCIMIENTO": "23/12",
+              "IMPORTE $": "555",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL REPARTO",
+              "REFERENCIA": "92757773",
+              "FECHA DE VENCIMIENTO": "23/12",
+              "IMPORTE $": "495",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            }
+          ]
+        },
+        {
+          "title": "FEBRERO",
+          "sheetId": 7011855,
+          "rowCount": 1000,
+          "colCount": 26,
+          "dataRowCount": 28,
+          "columnCount": 7,
+          "columns": [
+            {
+              "index": 1,
+              "letter": "A",
+              "header": "CONCEPTO ",
+              "sampleValues": [
+                "UTE",
+                "OSE",
+                "ANTEL OFICINA",
+                "ANTEL CEL OFICINA",
+                "ANTEL CEL REPARTO"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 2,
+              "letter": "B",
+              "header": "REFERENCIA",
+              "sampleValues": [
+                "8549721000",
+                "37265709",
+                "42224031",
+                "92663245",
+                "92757773"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 12
+            },
+            {
+              "index": 3,
+              "letter": "C",
+              "header": "FECHA DE VENCIMIENTO",
+              "sampleValues": [
+                "20/1",
+                "27/1",
+                "24/2",
+                "23/2",
+                "23/2"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 4,
+              "letter": "D",
+              "header": "IMPORTE $",
+              "sampleValues": [
+                "7427",
+                "7304",
+                "3324",
+                "1176",
+                "361"
+              ],
+              "inferredType": "number",
+              "nonEmptyCount": 18
+            },
+            {
+              "index": 5,
+              "letter": "E",
+              "header": "IMPORTE U$S",
+              "sampleValues": [],
+              "inferredType": "number",
+              "nonEmptyCount": 2
+            },
+            {
+              "index": 6,
+              "letter": "F",
+              "header": "ESTADO",
+              "sampleValues": [
+                "PAGO",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES",
+                "EN BORRADORES"
+              ],
+              "inferredType": "string",
+              "nonEmptyCount": 20
+            },
+            {
+              "index": 7,
+              "letter": "G",
+              "header": "FECHA DE PAGO",
+              "sampleValues": [],
+              "inferredType": "string",
+              "nonEmptyCount": 3
+            }
+          ],
+          "sampleRows": 5,
+          "sampleData": [
+            {
+              "CONCEPTO ": "UTE",
+              "REFERENCIA": "8549721000",
+              "FECHA DE VENCIMIENTO": "20/1",
+              "IMPORTE $": "7427",
+              "IMPORTE U$S": "",
+              "ESTADO": "PAGO",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "OSE",
+              "REFERENCIA": "37265709",
+              "FECHA DE VENCIMIENTO": "27/1",
+              "IMPORTE $": "7304",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL OFICINA",
+              "REFERENCIA": "42224031",
+              "FECHA DE VENCIMIENTO": "24/2",
+              "IMPORTE $": "3324",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL OFICINA",
+              "REFERENCIA": "92663245",
+              "FECHA DE VENCIMIENTO": "23/2",
+              "IMPORTE $": "1176",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            },
+            {
+              "CONCEPTO ": "ANTEL CEL REPARTO",
+              "REFERENCIA": "92757773",
+              "FECHA DE VENCIMIENTO": "23/2",
+              "IMPORTE $": "361",
+              "IMPORTE U$S": "",
+              "ESTADO": "EN BORRADORES",
+              "FECHA DE PAGO": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

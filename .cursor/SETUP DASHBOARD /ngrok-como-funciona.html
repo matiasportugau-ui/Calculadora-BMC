@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cómo funciona ngrok</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #0f0f14 0%, #1a1a24 100%);
+      min-height: 100vh;
+      color: #e4e4e7;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 1.5rem;
+      color: #fafafa;
+    }
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .box {
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      text-align: center;
+      min-width: 140px;
+    }
+    .internet { background: #3b82f6; color: white; }
+    .ngrok { background: #8b5cf6; color: white; }
+    .local { background: #22c55e; color: white; }
+    .arrow {
+      color: #71717a;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .step {
+      margin: 1.5rem 0;
+      padding: 1rem 1.25rem;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+      border-left: 4px solid #8b5cf6;
+    }
+    .step h3 { font-size: 0.95rem; margin-bottom: 0.5rem; color: #a78bfa; }
+    .step p { font-size: 0.9rem; line-height: 1.5; color: #a1a1aa; }
+    .url { color: #22c55e; word-break: break-all; }
+    .note {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔗 Cómo funciona ngrok</h1>
+
+  <div class="flow">
+    <div class="box internet">🌐 Internet<br>Cliente / Webhook</div>
+    <span class="arrow">→</span>
+    <div class="box ngrok">☁️ ngrok<br>freewill-...ngrok-free.dev</div>
+    <span class="arrow">→</span>
+    <div class="box local">💻 Tu Mac<br>localhost:80</div>
+  </div>
+
+  <div class="step">
+    <h3>1. Alguien hace una petición</h3>
+    <p>Un navegador, una API externa (DGI, Google OAuth, Mercado Libre) o un webhook llama a:<br>
+    <span class="url">https://freewill-kaleidoscopically-jacalyn.ngrok-free.dev</span></p>
+  </div>
+
+  <div class="step">
+    <h3>2. ngrok recibe la petición</h3>
+    <p>Los servidores de ngrok (región South America) reciben el tráfico y lo enrutan por un túnel seguro hasta tu computadora.</p>
+  </div>
+
+  <div class="step">
+    <h3>3. Llega a tu app local</h3>
+    <p>El proceso <code>ngrok</code> en tu Mac reenvía la petición a <code>http://localhost:80</code>. Tu servidor (Express, etc.) la procesa y responde.</p>
+  </div>
+
+  <div class="step">
+    <h3>4. La respuesta vuelve</h3>
+    <p>Tu app → ngrok local → ngrok cloud → Internet. El cliente recibe la respuesta como si tu app estuviera en un servidor público.</p>
+  </div>
+
+  <div class="note">
+    ⚠️ Tu app debe estar escuchando en el puerto 80. Si usas otro puerto (ej. 3001), ejecuta: <code>ngrok http 3001</code>
+  </div>
+</body>
+</html>

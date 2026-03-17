@@ -1,0 +1,1365 @@
+/**
+ * BMC Finanzas dashboard API — Express router.
+ * Mount at /api so routes are /api/cotizaciones, /api/proximas-entregas, etc.
+ * Used when Finanzas tab is served at /finanzas from the main server.
+ * Error semantics: 503 = Sheets backend unavailable; 200 + empty = no data.
+ */
+import fs from "node:fs";
+import path from "node:path";
+import { Router } from "express";
+import { google } from "googleapis";
+
+const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
+const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
+
+function getStartOfWeek(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function getEndOfWeek(d) {
+  const start = getStartOfWeek(d);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isInCurrentWeek(dateVal) {
+  const d = parseDate(dateVal);
+  if (!d) return false;
+  const start = getStartOfWeek(new Date());
+  const end = getEndOfWeek(new Date());
+  const t = d.getTime();
+  return t >= start.getTime() && t <= end.getTime();
+}
+
+function normalizeCurrency(val) {
+  const currency = String(val || "$").trim();
+  return currency || "$";
+}
+
+function getResumenPagosPorPeriodo(rows) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startWeek = getStartOfWeek(today);
+  const endWeek = new Date(startWeek);
+  endWeek.setDate(endWeek.getDate() + 6);
+  endWeek.setHours(23, 59, 59, 999);
+  const nextWeekStart = new Date(endWeek);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 1);
+  const nextWeekEnd = new Date(nextWeekStart);
+  nextWeekEnd.setDate(nextWeekEnd.getDate() + 6);
+  nextWeekEnd.setHours(23, 59, 59, 999);
+  const endMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+  const byDate = {};
+  const byCurrency = {};
+  let estaSemana = 0;
+  let proximaSemana = 0;
+  let esteMes = 0;
+  let total = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const monto = parseFloat(rows[i].MONTO) || 0;
+    const key = normalizeCurrency(rows[i].MONEDA);
+    let vencio = null;
+    if (!byCurrency[key]) {
+      byCurrency[key] = { total: 0, estaSemana: 0, proximaSemana: 0, esteMes: 0 };
+    }
+    if (rows[i].FECHA_VENCIMIENTO) {
+      vencio = parseDate(rows[i].FECHA_VENCIMIENTO);
+      if (vencio) {
+        const dateStr = vencio.toISOString().slice(0, 10);
+        if (!byDate[dateStr]) byDate[dateStr] = { total: 0, byCurrency: {} };
+        byDate[dateStr].total += monto;
+        byDate[dateStr].byCurrency[key] = (byDate[dateStr].byCurrency[key] || 0) + monto;
+      }
+    }
+    total += monto;
+    byCurrency[key].total += monto;
+    if (vencio) {
+      const t = vencio.getTime();
+      if (t >= startWeek.getTime() && t <= endWeek.getTime()) {
+        estaSemana += monto;
+        byCurrency[key].estaSemana += monto;
+      } else if (t >= nextWeekStart.getTime() && t <= nextWeekEnd.getTime()) {
+        proximaSemana += monto;
+        byCurrency[key].proximaSemana += monto;
+      }
+      if (t <= endMonth.getTime()) {
+        esteMes += monto;
+        byCurrency[key].esteMes += monto;
+      }
+    } else {
+      esteMes += monto;
+      byCurrency[key].esteMes += monto;
+    }
+  }
+  return { byDate, byCurrency, estaSemana, proximaSemana, esteMes, total };
+}
+
+function buildWhatsAppBlock(row) {
+  const cliente = row.CLIENTE_NOMBRE || "—";
+  const telefono = row.TELEFONO || "—";
+  const ubicacion =
+    row.LINK_UBICACION ||
+    (row.DIRECCION || row.ZONA ? [row.DIRECCION, row.ZONA].filter(Boolean).join(", ") : "—");
+  const pedido = row.COTIZACION_ID || "—";
+  const fotoCotizacion =
+    row.LINK_COTIZACION || (row.NOTAS ? `Items: ${row.NOTAS}` : "Ver cotización en sistema");
+  return [
+    `📦 *Pedido:* ${pedido}`,
+    `👤 *Cliente:* ${cliente}`,
+    `📞 *Teléfono:* ${telefono}`,
+    `📍 *Ubicación:* ${ubicacion}`,
+    `📄 *Cotización / items:* ${fotoCotizacion}`,
+    "—",
+  ].join("\n");
+}
+
+function buildCoordinacionLogisticaText(rows) {
+  const header = "🚚 *Coordinación logística — entregas de la semana*\n\n";
+  const blocks = rows.map(buildWhatsAppBlock);
+  return header + blocks.join("\n");
+}
+
+const CRM_TO_BMC = {
+  ID: "COTIZACION_ID",
+  Fecha: "FECHA_CREACION",
+  Cliente: "CLIENTE_NOMBRE",
+  Teléfono: "TELEFONO",
+  "Ubicación / Dirección": "DIRECCION",
+  Origen: "ORIGEN",
+  "Consulta / Pedido": "NOTAS",
+  Estado: "ESTADO",
+  Responsable: "ASIGNADO_A",
+  "Fecha próxima acción": "FECHA_ENTREGA",
+  "Monto estimado USD": "MONTO_ESTIMADO",
+  Observaciones: "COMENTARIOS_ENTREGA",
+};
+
+function mapCrmRowToBmc(row) {
+  const out = {};
+  for (const [crm, bmc] of Object.entries(CRM_TO_BMC)) {
+    out[bmc] = row[crm] ?? row[bmc] ?? "";
+  }
+  return { ...row, ...out };
+}
+
+async function getFirstSheetName(sheetId) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const first = meta.data.sheets?.[0]?.properties?.title;
+  return first || "Hoja 1";
+}
+
+async function getSheetNames(sheetId) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  return (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+}
+
+function findKey(obj, ...candidates) {
+  const keys = Object.keys(obj || {});
+  const norm = (s) => String(s || "").trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  for (const c of candidates) {
+    const nc = norm(c);
+    const found = keys.find((k) => norm(k) === nc || norm(k).includes(nc));
+    if (found) return obj[found];
+  }
+  return "";
+}
+
+function parseNum(val) {
+  if (val == null || val === "") return 0;
+  const s = String(val).trim();
+  const eu = s.replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(eu);
+  return isNaN(n) ? parseFloat(s.replace(/[^\d.-]/g, "")) || 0 : n;
+}
+
+function mapPagos2026ToCanonical(row) {
+  const fecha = findKey(row, "FECHA", "Fecha") || findKey(row, "PLAZO");
+  const cliente = findKey(row, "CLIENTE", "Cliente");
+  const orden = findKey(row, "ÓRDEN", "ORDEN", "Pedido", "N° Pedido", "Ped. Nro");
+  const saldoUsd = findKey(row, "Saldo a Proveedor USD", "Pago a Proveedor USD");
+  const ventaUsd = findKey(row, "Venta U$S IVA inc.");
+  const saldoPesos = findKey(row, "Saldo a Proveedor", "Pago a Proveedor");
+  const montoUsd = parseNum(saldoUsd || ventaUsd);
+  const montoPesos = parseNum(saldoPesos);
+  const monto = montoUsd || montoPesos;
+  const moneda = montoUsd ? "UES" : "$";
+  const estado = findKey(row, "ESTADO", "Estado") || "Pendiente";
+  return {
+    CLIENTE_NOMBRE: cliente,
+    COTIZACION_ID: orden,
+    MONTO: monto,
+    MONEDA: moneda,
+    FECHA_VENCIMIENTO: fecha,
+    ESTADO_PAGO: estado,
+    PROVEEDOR: findKey(row, "PROVEEDOR", "Proveedor"),
+  };
+}
+
+function mapVentas2026ToCanonical(row, proveedor = "") {
+  const idPedido = findKey(row, "ID. Pedido", "ID Pedido", "Id. Pedido");
+  const nombre = findKey(row, "NOMBRE", "Nombre");
+  const fechaEntrega = findKey(row, "FECHA ENTREGA", "FECHA ENTREGA", "Fecha entrega");
+  const costo = parseNum(findKey(row, "COSTO SIN IVA", "MONTO SIN IVA", "Costo", "Costo SIN IVA"));
+  const ganancia = parseNum(findKey(row, "GANANCIAS SIN IVA", "Ganancia", "GANANCIAS SIN IVA"));
+  const saldos = findKey(row, "SALDOS", "Saldos");
+  const pagoProveedor = findKey(row, "Pago a Proveedor", "Pago a Proveedor");
+  const facturado = findKey(row, "FACTURADO", "Facturado");
+  const numFactura = findKey(row, "Nº FACTURA", "Nº Factura", "NUM FACTURA");
+  return {
+    COTIZACION_ID: idPedido,
+    CLIENTE_NOMBRE: nombre,
+    FECHA_ENTREGA: fechaEntrega,
+    COSTO: costo,
+    GANANCIA: ganancia,
+    SALDO_CLIENTE: saldos,
+    PAGO_PROVEEDOR: pagoProveedor,
+    FACTURADO: facturado,
+    NUM_FACTURA: numFactura,
+    PROVEEDOR: proveedor || findKey(row, "PROVEEDOR", "Proveedor"),
+  };
+}
+
+function mapStockEcommerceToCanonical(row) {
+  const codigo = findKey(row, "Codigo", "Código", "Codigo");
+  const producto = findKey(row, "Producto");
+  const costo = parseNum(findKey(row, "Costo m2 U$S + IVA", "Costo m2 U$S + IVA", "Costo"));
+  const margen = parseNum(findKey(row, "Margen %", "Margen %"));
+  const ganancia = parseNum(findKey(row, "Ganancia"));
+  const venta = parseNum(findKey(row, "Venta + IVA", "Venta Inm +IVA", "Venta Inm IVA inc"));
+  const stock = parseNum(findKey(row, "Stock", "STOCK"));
+  const pedido = parseNum(findKey(row, "Pedido RYC", "Pedido 11/08", "Pedido 30/6"));
+  return {
+    CODIGO: codigo,
+    PRODUCTO: producto,
+    COSTO_USD: costo,
+    MARGEN_PCT: margen,
+    GANANCIA: ganancia,
+    VENTA_USD: venta,
+    STOCK: stock,
+    PEDIDO_PENDIENTE: pedido,
+  };
+}
+
+async function getSheetData(sheetId, sheetName, useWrite = false, options = {}) {
+  const { schema, headerRowOffset = 0 } = options;
+  const auth = new google.auth.GoogleAuth({
+    scopes: [useWrite ? SCOPE_WRITE : SCOPE_READ],
+  });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const range =
+    headerRowOffset > 0
+      ? `'${sheetName}'!A${headerRowOffset + 1}:ZZ`
+      : `'${sheetName}'`;
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range,
+  });
+  const rows = res.data.values || [];
+  if (rows.length === 0) return { headers: [], rows: [] };
+  const headers = rows[0];
+  let data = rows.slice(1).map((row) => {
+    const obj = {};
+    headers.forEach((h, i) => (obj[h] = row[i] ?? ""));
+    return obj;
+  });
+  if (schema === "CRM_Operativo") {
+    data = data.filter((r) => r.ID || r.Cliente || r.COTIZACION_ID);
+    data = data.map(mapCrmRowToBmc);
+  }
+  if (schema === "Pagos_2026") {
+    data = data.filter((r) => findKey(r, "FECHA", "CLIENTE", "PROVEEDOR") || findKey(r, "Saldo a Proveedor USD", "Pago a Proveedor USD"));
+    data = data.map(mapPagos2026ToCanonical);
+  }
+  if (schema === "Ventas_2026") {
+    data = data.filter((r) => findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA"));
+    data = data.map((r) => mapVentas2026ToCanonical(r, ""));
+  }
+  if (schema === "Stock_Ecommerce") {
+    data = data.filter((r) => findKey(r, "Codigo", "Producto") || findKey(r, "Código"));
+    data = data.map(mapStockEcommerceToCanonical);
+  }
+  return { headers, rows: data };
+}
+
+async function getProximasEntregas(sheetId, schema) {
+  const sheetName = schema === "CRM_Operativo" ? "CRM_Operativo" : "Master_Cotizaciones";
+  const opts = schema === "CRM_Operativo" ? { schema, headerRowOffset: 2 } : {};
+  const { rows } = await getSheetData(sheetId, sheetName, false, opts);
+  if (schema === "CRM_Operativo") {
+    return rows.filter(
+      (r) =>
+        ["Pendiente", "Abierto"].includes(String(r.ESTADO || "")) &&
+        r.FECHA_ENTREGA &&
+        isInCurrentWeek(r.FECHA_ENTREGA)
+    );
+  }
+  return rows.filter(
+    (r) =>
+      r.ESTADO === "Confirmado" &&
+      r.FECHA_ENTREGA &&
+      isInCurrentWeek(r.FECHA_ENTREGA)
+  );
+}
+
+async function handleMarcarEntregado(sheetId, body) {
+  const { cotizacionId, comentarios = "" } = body || {};
+  if (!cotizacionId) throw new Error("cotizacionId required");
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const { rows: masterRows } = await getSheetData(sheetId, "Master_Cotizaciones");
+  const rowIndex = masterRows.findIndex((r) => String(r.COTIZACION_ID) === String(cotizacionId));
+  if (rowIndex === -1) throw new Error("Cotización no encontrada");
+
+  const row = masterRows[rowIndex];
+  const destHeaders = [
+    "COTIZACION_ID", "FECHA_CREACION", "FECHA_ACTUALIZACION", "CLIENTE_ID", "CLIENTE_NOMBRE",
+    "TELEFONO", "DIRECCION", "ZONA", "ASIGNADO_A", "ESTADO", "FECHA_ENVIO", "FECHA_CONFIRMACION",
+    "FECHA_ENTREGA", "COMENTARIOS_ENTREGA", "FECHA_ENTREGA_REAL", "ORIGEN", "MONTO_ESTIMADO", "MONEDA", "NOTAS", "ETIQUETAS",
+    "USUARIO_CREACION", "USUARIO_ACTUALIZACION", "VERSION", "LINK_UBICACION", "LINK_COTIZACION",
+  ];
+  const destRow = destHeaders.map((h) => {
+    if (h === "FECHA_ENTREGA_REAL") return new Date().toISOString().slice(0, 10);
+    if (h === "COMENTARIOS_ENTREGA") return comentarios;
+    return row[h] ?? "";
+  });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: sheetId,
+    range: "'Ventas realizadas y entregadas'!A:Y",
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [destRow] },
+  });
+
+  const sheetMeta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const masterSheetId = sheetMeta.data.sheets?.find(
+    (s) => s.properties?.title === "Master_Cotizaciones"
+  )?.properties?.sheetId;
+  if (masterSheetId !== undefined) {
+    const sheetRowIndex = rowIndex + 1;
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: masterSheetId,
+                dimension: "ROWS",
+                startIndex: sheetRowIndex,
+                endIndex: sheetRowIndex + 1,
+              },
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  return { ok: true, cotizacionId };
+}
+
+function checkSheetsAvailable(config) {
+  const sheetId = config.bmcSheetId || "";
+  const credsPath =
+    config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (!sheetId || !credsPath) return false;
+  const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+  return fs.existsSync(resolved);
+}
+
+function checkPagosAvailable(config) {
+  const credsPath =
+    config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (!credsPath) return false;
+  const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+  if (!fs.existsSync(resolved)) return false;
+  return !!(config.bmcPagosSheetId || config.bmcSheetId);
+}
+
+function checkCalendarioAvailable(config) {
+  const credsPath =
+    config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (!credsPath) return false;
+  const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+  if (!fs.existsSync(resolved)) return false;
+  return !!(config.bmcCalendarioSheetId || config.bmcSheetId);
+}
+
+function checkVentasAvailable(config) {
+  const credsPath =
+    config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (!credsPath) return false;
+  const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+  if (!fs.existsSync(resolved)) return false;
+  return !!config.bmcVentasSheetId;
+}
+
+function checkStockAvailable(config) {
+  const credsPath =
+    config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  if (!credsPath) return false;
+  const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+  if (!fs.existsSync(resolved)) return false;
+  return !!config.bmcStockSheetId;
+}
+
+function noConfig(res) {
+  res.status(503).json({
+    ok: false,
+    error: "Sheets not configured",
+  });
+}
+
+function sheetsUnavailable(res, message = "Sheets backend unavailable") {
+  res.status(503).json({ ok: false, error: message });
+}
+
+function isMissingSheetError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    message.includes("unable to parse range") ||
+    message.includes("requested entity was not found") ||
+    message.includes("does not match grid limits")
+  );
+}
+
+const MESES_ES = {
+  "01": "ENERO", "02": "FEBRERO", "03": "MARZO", "04": "ABRIL",
+  "05": "MAYO", "06": "JUNIO", "07": "JULIO", "08": "AGOSTO",
+  "09": "SEPTIEMBRE", "10": "OCTUBRE", "11": "NOVIEMBRE", "12": "DICIEMBRE",
+};
+
+function monthParamToTabName(month) {
+  // "2026-03" → "MARZO 2026"
+  const parts = String(month || "").split("-");
+  if (parts.length < 2) return null;
+  const [year, mm] = parts;
+  const mes = MESES_ES[mm.padStart(2, "0")];
+  return mes && year ? `${mes} ${year}` : null;
+}
+
+async function getAllVentasData(sheetId, proveedorFilter) {
+  const tabNames = await getSheetNames(sheetId);
+  const results = await Promise.allSettled(
+    tabNames.map(async (tabName) => {
+      try {
+        const { rows: rawRows } = await getSheetData(sheetId, tabName, false, { headerRowOffset: 1 });
+        const filtered = rawRows.filter((r) =>
+          findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA")
+        );
+        return filtered.map((r) => mapVentas2026ToCanonical(r, tabName));
+      } catch (_e) {
+        return [];
+      }
+    })
+  );
+  const allRows = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  if (proveedorFilter) {
+    const pf = String(proveedorFilter).toLowerCase();
+    return allRows.filter((r) => String(r.PROVEEDOR || "").toLowerCase().includes(pf));
+  }
+  return allRows;
+}
+
+async function getOptionalSheetRows(sheetId, sheetName) {
+  try {
+    const { rows } = await getSheetData(sheetId, sheetName);
+    return rows || [];
+  } catch (error) {
+    if (isMissingSheetError(error)) return [];
+    throw error;
+  }
+}
+
+function getCotizacionesSheetOpts(schema) {
+  if (schema === "CRM_Operativo") {
+    return { sheetName: "CRM_Operativo", opts: { schema, headerRowOffset: 2 } };
+  }
+  return { sheetName: "Master_Cotizaciones", opts: {} };
+}
+
+// ─── Write helpers ────────────────────────────────────────────────────────
+
+function colIndexToLetter(index) {
+  let letter = "";
+  let n = index + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    n = Math.floor((n - 1) / 26);
+  }
+  return letter;
+}
+
+async function appendAuditLog(sheets, sheetId, action, rowId, oldVal, newVal, sheetName) {
+  const now = new Date().toISOString();
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: "'AUDIT_LOG'!A:H",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[now, action, String(rowId), String(oldVal), String(newVal), "api", "api", sheetName]],
+      },
+    });
+  } catch (_e) {
+    // audit failure must not fail the main operation
+  }
+}
+
+async function handleCreateCotizacion(sheetId, body) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const newId = "COT-" + Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Get headers from CRM_Operativo — row 3 (headerRowOffset: 2)
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: "'CRM_Operativo'!A3:ZZ3",
+  });
+  const headers = (headerRes.data.values || [[]])[0] || [];
+
+  const canonical = {
+    COTIZACION_ID: newId,
+    FECHA_CREACION: today,
+    ESTADO: body.ESTADO || "Pendiente",
+    CLIENTE_NOMBRE: body.CLIENTE_NOMBRE || "",
+    TELEFONO: body.TELEFONO || "",
+    DIRECCION: body.DIRECCION || "",
+    ORIGEN: body.ORIGEN || "",
+    NOTAS: body.NOTAS || "",
+    ASIGNADO_A: body.ASIGNADO_A || "",
+    FECHA_ENTREGA: body.FECHA_ENTREGA || "",
+    MONTO_ESTIMADO: body.MONTO_ESTIMADO || "",
+    COMENTARIOS_ENTREGA: body.COMENTARIOS_ENTREGA || "",
+  };
+
+  const row = headers.length > 0
+    ? headers.map((h) => {
+        const bmcKey = CRM_TO_BMC[h];
+        return bmcKey ? (canonical[bmcKey] ?? "") : (canonical[h] ?? body[h] ?? "");
+      })
+    : Object.values(canonical);
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: sheetId,
+    range: "'CRM_Operativo'!A:ZZ",
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [row] },
+  });
+
+  await appendAuditLog(sheets, sheetId, "API_CREATE", newId, "", newId, "CRM_Operativo");
+  return { ok: true, id: newId, row: canonical };
+}
+
+async function handleUpdateCotizacion(sheetId, id, body) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  // Headers start at row 3 (headerRowOffset: 2)
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: "'CRM_Operativo'!A3:ZZ",
+  });
+  const allRows = dataRes.data.values || [];
+  if (allRows.length === 0) throw new Error("CRM_Operativo vacío");
+
+  const headers = allRows[0];
+  const idColIndex = headers.findIndex((h) => h === "ID" || CRM_TO_BMC[h] === "COTIZACION_ID");
+  if (idColIndex === -1) throw new Error("Columna ID no encontrada en CRM_Operativo");
+
+  const dataRows = allRows.slice(1);
+  const rowIndex = dataRows.findIndex((r) => String(r[idColIndex] || "") === String(id));
+  if (rowIndex === -1) throw new Error(`Cotización ${id} no encontrada`);
+
+  // spreadsheet row: 2 offset rows + 1 header row (row 3) + 1-based data index
+  const spreadsheetRowNum = rowIndex + 4;
+
+  const updatable = {
+    ESTADO: "Estado",
+    ASIGNADO_A: "Responsable",
+    FECHA_ENTREGA: "Fecha próxima acción",
+  };
+  const updates = [];
+  const oldValues = {};
+
+  for (const [bmcKey, crmKey] of Object.entries(updatable)) {
+    if (body[bmcKey] === undefined) continue;
+    const colIndex = headers.findIndex((h) => h === crmKey);
+    if (colIndex === -1) continue;
+    oldValues[bmcKey] = dataRows[rowIndex][colIndex] || "";
+    updates.push({
+      range: `'CRM_Operativo'!${colIndexToLetter(colIndex)}${spreadsheetRowNum}`,
+      values: [[body[bmcKey]]],
+    });
+  }
+
+  if (updates.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+    });
+  }
+
+  const changedFields = Object.keys(body).filter((k) => updatable[k] !== undefined).join(",");
+  await appendAuditLog(sheets, sheetId, "API_UPDATE", id, JSON.stringify(oldValues), changedFields, "CRM_Operativo");
+  return { ok: true, id };
+}
+
+async function handleCreatePago(pagoSheetId, mainSheetId, body) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const tabName = await getFirstSheetName(pagoSheetId);
+
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: pagoSheetId,
+    range: `'${tabName}'!A1:ZZ1`,
+  });
+  const headers = (headerRes.data.values || [[]])[0] || [];
+
+  // Canonical → sheet column fuzzy map
+  const canonicalMap = {
+    FECHA: body.FECHA_VENCIMIENTO || "",
+    Fecha: body.FECHA_VENCIMIENTO || "",
+    PLAZO: body.FECHA_VENCIMIENTO || "",
+    PROVEEDOR: body.PROVEEDOR || "",
+    Proveedor: body.PROVEEDOR || "",
+    CLIENTE: body.CLIENTE_NOMBRE || "",
+    Cliente: body.CLIENTE_NOMBRE || "",
+    MONTO: body.MONTO || "",
+    MONEDA: body.MONEDA || "$",
+    ESTADO: body.ESTADO_PAGO || "Pendiente",
+    Estado: body.ESTADO_PAGO || "Pendiente",
+    "Saldo a Proveedor USD": body.MONTO || "",
+    "Pago a Proveedor USD": body.MONTO || "",
+    COTIZACION_ID: body.COTIZACION_ID || "",
+    ORDEN: body.COTIZACION_ID || "",
+  };
+
+  let row;
+  if (headers.length > 0) {
+    row = headers.map((h) => canonicalMap[h] ?? body[h] ?? "");
+    if (!headers.some((h) => /ORDEN|COTIZACION|Pedido/i.test(h))) {
+      row.push(body.COTIZACION_ID || "");
+    }
+  } else {
+    row = [
+      body.FECHA_VENCIMIENTO || "", body.PROVEEDOR || "", body.CLIENTE_NOMBRE || "",
+      body.MONTO || "", body.MONEDA || "$", body.ESTADO_PAGO || "Pendiente", body.COTIZACION_ID || "",
+    ];
+  }
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: pagoSheetId,
+    range: `'${tabName}'!A:ZZ`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [row] },
+  });
+
+  await appendAuditLog(sheets, mainSheetId, "API_CREATE_PAGO", body.COTIZACION_ID || "NEW", "", JSON.stringify(body), tabName);
+  return { ok: true, row: body };
+}
+
+async function handleUpdatePago(pagoSheetId, mainSheetId, id, body) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const tabName = await getFirstSheetName(pagoSheetId);
+
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: pagoSheetId,
+    range: `'${tabName}'!A:ZZ`,
+  });
+  const allRows = dataRes.data.values || [];
+  if (allRows.length === 0) throw new Error("Hoja de pagos vacía");
+
+  const headers = allRows[0];
+  const cotizColIndex = headers.findIndex((h) => /ORDEN|COTIZACION|Pedido/i.test(h));
+  const dataRows = allRows.slice(1);
+  const rowIndex = cotizColIndex !== -1
+    ? dataRows.findIndex((r) => String(r[cotizColIndex] || "") === String(id))
+    : -1;
+  if (rowIndex === -1) throw new Error(`Pago para cotización ${id} no encontrado`);
+
+  const spreadsheetRowNum = rowIndex + 2;
+  const updates = [];
+
+  const estadoColIndex = headers.findIndex((h) => /ESTADO/i.test(h));
+  if (estadoColIndex !== -1 && body.ESTADO_PAGO !== undefined) {
+    updates.push({
+      range: `'${tabName}'!${colIndexToLetter(estadoColIndex)}${spreadsheetRowNum}`,
+      values: [[body.ESTADO_PAGO]],
+    });
+    if (body.ESTADO_PAGO === "Cobrado") {
+      const fechaCobColIndex = headers.findIndex((h) => /FECHA_COBRO|FECHA COBRO/i.test(h));
+      if (fechaCobColIndex !== -1) {
+        updates.push({
+          range: `'${tabName}'!${colIndexToLetter(fechaCobColIndex)}${spreadsheetRowNum}`,
+          values: [[body.FECHA_COBRO || new Date().toISOString().slice(0, 10)]],
+        });
+      }
+    }
+  }
+
+  if (updates.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: pagoSheetId,
+      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+    });
+  }
+
+  await appendAuditLog(sheets, mainSheetId, "API_UPDATE_PAGO", id, "", JSON.stringify(body), tabName);
+  return { ok: true, id };
+}
+
+async function handleCreateVenta(ventasSheetId, body) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const tabNames = await getSheetNames(ventasSheetId);
+  const proveedor = body.PROVEEDOR || "";
+  const targetTab = tabNames.find((t) => t.toLowerCase() === proveedor.toLowerCase()) || tabNames[0];
+
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: ventasSheetId,
+    range: `'${targetTab}'!A2:ZZ2`,
+  });
+  const headers = (headerRes.data.values || [[]])[0] || [];
+
+  const ventasMap = {
+    "ID. Pedido": body.COTIZACION_ID || "",
+    "Id. Pedido": body.COTIZACION_ID || "",
+    "ID Pedido": body.COTIZACION_ID || "",
+    NOMBRE: body.CLIENTE_NOMBRE || "",
+    Nombre: body.CLIENTE_NOMBRE || "",
+    "FECHA ENTREGA": body.FECHA_ENTREGA || "",
+    "Fecha entrega": body.FECHA_ENTREGA || "",
+    "COSTO SIN IVA": body.COSTO || "",
+    "MONTO SIN IVA": body.COSTO || "",
+    "GANANCIAS SIN IVA": body.GANANCIA || "",
+    Ganancia: body.GANANCIA || "",
+    SALDOS: body.SALDO_CLIENTE || "",
+    Saldos: body.SALDO_CLIENTE || "",
+    "Pago a Proveedor": body.PAGO_PROVEEDOR || "",
+    FACTURADO: body.FACTURADO || "",
+    Facturado: body.FACTURADO || "",
+    "Nº FACTURA": body.NUM_FACTURA || "",
+    "Nº Factura": body.NUM_FACTURA || "",
+  };
+
+  const row = headers.length > 0
+    ? headers.map((h) => ventasMap[h] ?? body[h] ?? "")
+    : [
+        body.COTIZACION_ID || "", body.CLIENTE_NOMBRE || "", body.FECHA_ENTREGA || "",
+        body.COSTO || "", body.GANANCIA || "", body.SALDO_CLIENTE || "",
+        body.PAGO_PROVEEDOR || "", body.FACTURADO || "", body.NUM_FACTURA || "",
+      ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: ventasSheetId,
+    range: `'${targetTab}'!A:ZZ`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [row] },
+  });
+
+  return { ok: true, row: body, tab: targetTab };
+}
+
+async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const sheetName = await getFirstSheetName(stockSheetId);
+
+  // headerRowOffset: 2 → headers at row 3
+  const dataRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: stockSheetId,
+    range: `'${sheetName}'!A3:ZZ`,
+  });
+  const allRows = dataRes.data.values || [];
+  if (allRows.length === 0) throw new Error("Stock vacío");
+
+  const headers = allRows[0];
+  const codigoColIndex = headers.findIndex((h) => /Codigo|Código/i.test(h));
+  const actualCodigoCol = codigoColIndex !== -1 ? codigoColIndex : 2;
+
+  const dataRows = allRows.slice(1);
+  const rowIndex = dataRows.findIndex((r) => String(r[actualCodigoCol] || "").trim() === String(codigo).trim());
+  if (rowIndex === -1) throw new Error(`Producto ${codigo} no encontrado`);
+
+  // 2 offset rows + 1 header row + 1-based index = rowIndex + 4
+  const spreadsheetRowNum = rowIndex + 4;
+  const updates = [];
+
+  const stockColIndex = headers.findIndex((h) => /^Stock$/i.test(h.trim()));
+  const pedidoColIndex = headers.findIndex((h) => /Pedido/i.test(h));
+  const syncAtColIndex = headers.findIndex((h) => /SHOPIFY_SYNC_AT/i.test(h));
+
+  if (body.STOCK !== undefined && stockColIndex !== -1) {
+    updates.push({
+      range: `'${sheetName}'!${colIndexToLetter(stockColIndex)}${spreadsheetRowNum}`,
+      values: [[body.STOCK]],
+    });
+  }
+  if (body.PEDIDO_PENDIENTE !== undefined && pedidoColIndex !== -1) {
+    updates.push({
+      range: `'${sheetName}'!${colIndexToLetter(pedidoColIndex)}${spreadsheetRowNum}`,
+      values: [[body.PEDIDO_PENDIENTE]],
+    });
+  }
+  if (syncAtColIndex !== -1) {
+    updates.push({
+      range: `'${sheetName}'!${colIndexToLetter(syncAtColIndex)}${spreadsheetRowNum}`,
+      values: [[new Date().toISOString()]],
+    });
+  }
+
+  if (updates.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: stockSheetId,
+      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+    });
+  }
+
+  await appendAuditLog(sheets, mainSheetId, "API_UPDATE_STOCK", codigo, "", JSON.stringify(body), sheetName);
+  return { ok: true, codigo };
+}
+
+// ─── Router ───────────────────────────────────────────────────────────────
+
+export default function createBmcDashboardRouter(config) {
+  const router = Router();
+  const sheetId = config.bmcSheetId || "";
+  const schema = config.bmcSheetSchema || "Master_Cotizaciones";
+  const { sheetName: cotizSheet, opts: cotizOpts } = getCotizacionesSheetOpts(schema);
+
+  router.use((_req, res, next) => {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    next();
+  });
+
+  router.get("/cotizaciones", async (_req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const { headers, rows } = await getSheetData(sheetId, cotizSheet, false, cotizOpts);
+      res.json({ ok: true, headers, data: rows });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/proximas-entregas", async (_req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const data = await getProximasEntregas(sheetId, schema);
+      res.json({ ok: true, data });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/coordinacion-logistica", async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const ids = req.query.ids;
+      let rows;
+      if (ids) {
+        const idList = ids.split(",").map((s) => s.trim()).filter(Boolean);
+        const { rows: all } = await getSheetData(sheetId, cotizSheet, false, cotizOpts);
+        rows = all.filter((r) => idList.includes(String(r.COTIZACION_ID || r.ID)));
+      } else {
+        rows = await getProximasEntregas(sheetId, schema);
+      }
+      const text = buildCoordinacionLogisticaText(rows);
+      res.json({ ok: true, text, count: rows.length });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/audit", async (_req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const { headers, rows } = await getSheetData(sheetId, "AUDIT_LOG");
+      res.json({ ok: true, headers, data: rows });
+    } catch (e) {
+      if (schema === "CRM_Operativo") res.json({ ok: true, headers: [], data: [] });
+      else sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/pagos-pendientes", async (_req, res) => {
+    if (!checkPagosAvailable(config)) return noConfig(res);
+    try {
+      let rows = [];
+      if (config.bmcPagosSheetId) {
+        const sheetName = await getFirstSheetName(config.bmcPagosSheetId);
+        const { rows: r } = await getSheetData(config.bmcPagosSheetId, sheetName, false, { schema: "Pagos_2026" });
+        rows = r || [];
+      } else {
+        const { rows: r } = await getSheetData(sheetId, "Pagos_Pendientes");
+        rows = r || [];
+      }
+      const pending = rows.filter(
+        (r) => !r.ESTADO_PAGO || String(r.ESTADO_PAGO).toLowerCase() === "pendiente"
+      );
+      res.json({ ok: true, data: pending });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/metas-ventas", async (_req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const rows = await getOptionalSheetRows(sheetId, "Metas_Ventas");
+      res.json({ ok: true, data: rows });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/calendario-vencimientos", async (req, res) => {
+    if (!checkCalendarioAvailable(config)) return noConfig(res);
+    try {
+      let headers = [];
+      let rows = [];
+      let resolvedTab = null;
+      if (config.bmcCalendarioSheetId) {
+        const monthParam = req.query.month;
+        if (monthParam) {
+          const tabName = monthParamToTabName(monthParam);
+          resolvedTab = tabName || await getFirstSheetName(config.bmcCalendarioSheetId);
+        } else {
+          resolvedTab = await getFirstSheetName(config.bmcCalendarioSheetId);
+        }
+        const out = await getSheetData(config.bmcCalendarioSheetId, resolvedTab, false, { headerRowOffset: 1 });
+        headers = out.headers || [];
+        rows = out.rows || [];
+      } else {
+        const out = await getSheetData(sheetId, "Calendario de Vencimientos");
+        headers = out.headers || [];
+        rows = out.rows || [];
+      }
+      res.json({ ok: true, headers, data: rows, tab: resolvedTab });
+    } catch (e) {
+      if (isMissingSheetError(e)) {
+        return res.json({ ok: true, headers: [], data: [] });
+      }
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/ventas", async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const ventasSheetId = config.bmcVentasSheetId;
+      const headers = ["COTIZACION_ID", "CLIENTE_NOMBRE", "FECHA_ENTREGA", "COSTO", "GANANCIA", "SALDO_CLIENTE", "PAGO_PROVEEDOR", "FACTURADO", "NUM_FACTURA", "PROVEEDOR"];
+      const tabFilter = req.query.tab;
+      const proveedorFilter = req.query.proveedor;
+
+      if (tabFilter) {
+        // Read a specific tab by name
+        const { rows: rawRows } = await getSheetData(ventasSheetId, tabFilter, false, { headerRowOffset: 1 });
+        const filtered = rawRows.filter((r) =>
+          findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA")
+        );
+        const data = filtered.map((r) => mapVentas2026ToCanonical(r, tabFilter));
+        return res.json({ ok: true, headers, data, tab: tabFilter });
+      }
+
+      // Iterate all 23 tabs and merge results
+      const data = await getAllVentasData(ventasSheetId, proveedorFilter);
+      res.json({ ok: true, headers, data, tabs: "all" });
+    } catch (e) {
+      if (isMissingSheetError(e)) {
+        return res.json({ ok: true, headers: [], data: [] });
+      }
+      if (String(e?.message || "").includes("not supported for this document")) {
+        return res.json({ ok: true, headers: [], data: [], _fallback: "Workbook format not supported by Sheets API" });
+      }
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/ventas/tabs", async (_req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const tabs = await getSheetNames(config.bmcVentasSheetId);
+      res.json({ ok: true, tabs });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/stock-ecommerce", async (_req, res) => {
+    if (!checkStockAvailable(config)) return noConfig(res);
+    try {
+      const stockSheetId = config.bmcStockSheetId;
+      const sheetName = await getFirstSheetName(stockSheetId);
+      const out = await getSheetData(stockSheetId, sheetName, false, { schema: "Stock_Ecommerce", headerRowOffset: 2 });
+      const headers = ["CODIGO", "PRODUCTO", "COSTO_USD", "MARGEN_PCT", "GANANCIA", "VENTA_USD", "STOCK", "PEDIDO_PENDIENTE"];
+      res.json({ ok: true, headers, data: out.rows || [] });
+    } catch (e) {
+      if (isMissingSheetError(e)) {
+        return res.json({ ok: true, headers: [], data: [] });
+      }
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/stock-kpi", async (_req, res) => {
+    if (!checkStockAvailable(config)) return noConfig(res);
+    try {
+      const stockSheetId = config.bmcStockSheetId;
+      const sheetName = await getFirstSheetName(stockSheetId);
+      const { rows } = await getSheetData(stockSheetId, sheetName, false, { schema: "Stock_Ecommerce", headerRowOffset: 2 });
+      const items = rows || [];
+      const bajoStock = items.filter((r) => (parseFloat(r.STOCK) || 0) < 5 && (parseFloat(r.STOCK) || 0) >= 0).length;
+      const totalProductos = items.filter((r) => r.CODIGO || r.PRODUCTO).length;
+      const valorInventario = items.reduce((sum, r) => sum + (parseFloat(r.COSTO_USD) || 0) * (parseFloat(r.STOCK) || 0), 0);
+      res.json({
+        ok: true,
+        bajoStock,
+        totalProductos,
+        valorInventario: Math.round(valorInventario * 100) / 100,
+      });
+    } catch (e) {
+      if (isMissingSheetError(e)) {
+        return res.json({ ok: true, bajoStock: 0, totalProductos: 0, valorInventario: 0 });
+      }
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/kpi-financiero", async (_req, res) => {
+    if (!checkPagosAvailable(config)) return noConfig(res);
+    try {
+      let pagosRows = [];
+      if (config.bmcPagosSheetId) {
+        const sheetName = await getFirstSheetName(config.bmcPagosSheetId);
+        const { rows: r } = await getSheetData(config.bmcPagosSheetId, sheetName, false, { schema: "Pagos_2026" });
+        pagosRows = r || [];
+      } else {
+        const { rows: r } = await getSheetData(sheetId, "Pagos_Pendientes");
+        pagosRows = r || [];
+      }
+      const metasRows = await getOptionalSheetRows(sheetId, "Metas_Ventas");
+      const pending = (pagosRows || []).filter(
+        (r) => !r.ESTADO_PAGO || String(r.ESTADO_PAGO).toLowerCase() === "pendiente"
+      );
+      const resumen = getResumenPagosPorPeriodo(pending);
+      const calendar = Object.keys(resumen.byDate)
+        .sort()
+        .map((date) => {
+          const point = resumen.byDate[date] || { total: 0, byCurrency: {} };
+          const byCurrency = point.byCurrency || {};
+          return {
+            date,
+            total: point.total || 0,
+            $: byCurrency.$ || 0,
+            UES: byCurrency.UES || 0,
+            byCurrency,
+          };
+        });
+      res.json({
+        ok: true,
+        pendingPayments: pending,
+        calendar,
+        byPeriod: {
+          estaSemana: resumen.estaSemana,
+          proximaSemana: resumen.proximaSemana,
+          esteMes: resumen.esteMes,
+          total: resumen.total,
+        },
+        byCurrency: resumen.byCurrency,
+        currencies: Object.keys(resumen.byCurrency),
+        metas: metasRows || [],
+      });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/stock/history", async (_req, res) => {
+    if (!checkStockAvailable(config)) return noConfig(res);
+    try {
+      const stockSheetId = config.bmcStockSheetId;
+      const [existencias, egresos] = await Promise.all([
+        getOptionalSheetRows(stockSheetId, "EXISTENCIAS_Y_PEDIDOS"),
+        getOptionalSheetRows(stockSheetId, "Egresos"),
+      ]);
+      res.json({ ok: true, existencias, egresos });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.get("/kpi-report", async (_req, res) => {
+    const credsPath =
+      config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    const hasCreds = credsPath && fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath));
+    if (!hasCreds) return noConfig(res);
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const monthKey = `${yyyy}-${mm}`;
+    const mesName = MESES_ES[mm] || "";
+    const monthLabel = `${mesName} ${yyyy}`.trim();
+
+    async function fetchPagosResumen() {
+      if (!checkPagosAvailable(config)) return null;
+      try {
+        let pagosRows = [];
+        if (config.bmcPagosSheetId) {
+          const sheetName = await getFirstSheetName(config.bmcPagosSheetId);
+          const { rows: r } = await getSheetData(config.bmcPagosSheetId, sheetName, false, { schema: "Pagos_2026" });
+          pagosRows = r || [];
+        } else if (sheetId) {
+          const { rows: r } = await getSheetData(sheetId, "Pagos_Pendientes");
+          pagosRows = r || [];
+        }
+        const pending = (pagosRows || []).filter(
+          (r) => !r.ESTADO_PAGO || String(r.ESTADO_PAGO).toLowerCase() === "pendiente"
+        );
+        return getResumenPagosPorPeriodo(pending);
+      } catch {
+        return null;
+      }
+    }
+
+    async function fetchProximas() {
+      if (!checkSheetsAvailable(config)) return [];
+      try {
+        return await getProximasEntregas(sheetId, schema);
+      } catch {
+        return [];
+      }
+    }
+
+    async function fetchStockKpi() {
+      if (!checkStockAvailable(config)) return { bajoStock: 0, totalProductos: 0, valorInventario: 0 };
+      try {
+        const stockSheetId = config.bmcStockSheetId;
+        const sheetName = await getFirstSheetName(stockSheetId);
+        const { rows } = await getSheetData(stockSheetId, sheetName, false, { schema: "Stock_Ecommerce", headerRowOffset: 2 });
+        const items = rows || [];
+        const bajoStock = items.filter((r) => (parseFloat(r.STOCK) || 0) < 5 && (parseFloat(r.STOCK) || 0) >= 0).length;
+        const totalProductos = items.filter((r) => r.CODIGO || r.PRODUCTO).length;
+        const valorInventario = items.reduce((sum, r) => sum + (parseFloat(r.COSTO_USD) || 0) * (parseFloat(r.STOCK) || 0), 0);
+        return { bajoStock, totalProductos, valorInventario: Math.round(valorInventario * 100) / 100 };
+      } catch {
+        return { bajoStock: 0, totalProductos: 0, valorInventario: 0 };
+      }
+    }
+
+    async function fetchMetas() {
+      if (!checkSheetsAvailable(config)) return [];
+      try {
+        return await getOptionalSheetRows(sheetId, "Metas_Ventas");
+      } catch {
+        return [];
+      }
+    }
+
+    async function fetchVentas() {
+      if (!checkVentasAvailable(config)) return [];
+      try {
+        return await getAllVentasData(config.bmcVentasSheetId);
+      } catch {
+        return [];
+      }
+    }
+
+    try {
+      const [pagosRes, proximasRes, stockRes, metasRes, ventasRes] = await Promise.allSettled([
+        fetchPagosResumen(),
+        fetchProximas(),
+        fetchStockKpi(),
+        fetchMetas(),
+        fetchVentas(),
+      ]);
+
+      const resumen = pagosRes.status === "fulfilled" ? pagosRes.value : null;
+      const proximas = proximasRes.status === "fulfilled" ? proximasRes.value : [];
+      const stockKpi = stockRes.status === "fulfilled" ? stockRes.value : { bajoStock: 0, totalProductos: 0, valorInventario: 0 };
+      const metasRows = metasRes.status === "fulfilled" ? metasRes.value : [];
+      const ventasRows = ventasRes.status === "fulfilled" ? ventasRes.value : [];
+
+      const currencies = resumen ? Object.keys(resumen.byCurrency || {}).filter(Boolean) : [];
+      const moneda = currencies.indexOf("$") !== -1 ? "$" : (currencies[0] || "$");
+      const byCur = resumen?.byCurrency?.[moneda] || { total: 0, estaSemana: 0, proximaSemana: 0, esteMes: 0 };
+
+      const totalPendiente = byCur.total || 0;
+      const estaSemana = byCur.estaSemana || 0;
+      const proximaSemana = byCur.proximaSemana || 0;
+      const pagosEsteMes = byCur.esteMes || 0;
+      const entregasEstaSemana = Array.isArray(proximas) ? proximas.length : 0;
+      const bajoStock = stockKpi?.bajoStock ?? 0;
+
+      let objetivoMensual = null;
+      const metaRow = (metasRows || []).find((r) => {
+        const p = String(r.PERIODO || "").toUpperCase();
+        return (
+          p.includes(monthKey) ||
+          p.includes(monthLabel.toUpperCase()) ||
+          (mesName && p.includes(mesName)) ||
+          p.includes(String(yyyy))
+        );
+      });
+      if (metaRow) {
+        objetivoMensual = parseNum(findKey(metaRow, "META_MONTO", "Meta", "META")) || null;
+      }
+
+      let realAcumulado = 0;
+      for (const row of ventasRows || []) {
+        const fecha = parseDate(findKey(row, "FECHA_ENTREGA", "FECHA ENTREGA", "Fecha entrega"));
+        if (fecha && fecha.getFullYear() === yyyy && String(fecha.getMonth() + 1).padStart(2, "0") === mm) {
+          realAcumulado += parseNum(findKey(row, "GANANCIA", "GANANCIAS SIN IVA", "Ganancia")) || 0;
+        }
+      }
+
+      let equilibrio = "Sin meta";
+      if (objetivoMensual != null && objetivoMensual > 0) {
+        if (realAcumulado >= objetivoMensual) equilibrio = "En meta";
+        else if (realAcumulado >= objetivoMensual * 0.8) equilibrio = "Cerca";
+        else equilibrio = "Por debajo";
+      }
+
+      res.json({
+        ok: true,
+        totalPendiente,
+        estaSemana,
+        proximaSemana,
+        entregasEstaSemana,
+        bajoStock,
+        objetivoMensual: objetivoMensual ?? null,
+        realAcumulado,
+        pagosEsteMes,
+        equilibrio,
+        moneda,
+      });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
+  });
+
+  router.post("/cotizaciones", async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    if (schema !== "CRM_Operativo") {
+      return res.status(501).json({ ok: false, error: "POST cotizaciones solo disponible para schema CRM_Operativo" });
+    }
+    try {
+      const result = await handleCreateCotizacion(sheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.patch("/cotizaciones/:id", async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    if (schema !== "CRM_Operativo") {
+      return res.status(501).json({ ok: false, error: "PATCH cotizaciones solo disponible para schema CRM_Operativo" });
+    }
+    try {
+      const result = await handleUpdateCotizacion(sheetId, req.params.id, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/pagos", async (req, res) => {
+    if (!checkPagosAvailable(config)) return noConfig(res);
+    const pagoSheetId = config.bmcPagosSheetId || sheetId;
+    try {
+      const result = await handleCreatePago(pagoSheetId, sheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.patch("/pagos/:id", async (req, res) => {
+    if (!checkPagosAvailable(config)) return noConfig(res);
+    const pagoSheetId = config.bmcPagosSheetId || sheetId;
+    try {
+      const result = await handleUpdatePago(pagoSheetId, sheetId, req.params.id, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/ventas", async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleCreateVenta(config.bmcVentasSheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.patch("/stock/:codigo", async (req, res) => {
+    if (!checkStockAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleUpdateStock(config.bmcStockSheetId, sheetId, req.params.codigo, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/marcar-entregado", async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    if (schema === "CRM_Operativo") {
+      return res.status(501).json({
+        ok: false,
+        error: "marcar-entregado no soportado para schema CRM_Operativo",
+      });
+    }
+    try {
+      const result = await handleMarcarEntregado(sheetId, req.body);
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  return router;
+}

@@ -1,0 +1,34 @@
+---
+description: "Networks & Development Agent — hosting, storage, email inbound, migration, service discovery. Apply when user asks about infrastructure, hosting evaluation, storage, email integration, migration planning, or service expansion for BMC/Panelin."
+alwaysApply: false
+---
+
+# Networks & Development Agent
+
+When the user asks about **hosting**, **storage**, **email as inbound channel**, **migration procedures**, or **service discovery** for BMC/Panelin, use the Networks & Development Agent skill.
+
+## Load skill
+
+Read and follow: `.cursor/skills/networks-development-agent/SKILL.md`
+
+## Quick reference
+
+- **reference.md** — Stack, endpoints, integrations, checklist
+- **examples.md** — Prompts y escenarios de uso
+- **agents/atlas-agent.md** — Instrucciones para modo agente Atlas
+
+## Output format
+
+1. Resumen ejecutivo (3–5 líneas)
+2. Hallazgos (tabla o lista con evidencia)
+3. Recomendaciones (priorizadas: alto/medio/bajo impacto)
+4. Próximos pasos
+5. Riesgos y mitigaciones (si aplica)
+
+## Triggers
+
+- hosting analysis, evaluación de hosteo, Netuy, Cloud Run
+- storage evaluation, almacenamiento, logs, cache, backups
+- email inbound, Gmail API, canal de consultas/leads
+- migration planning, migración, procedimientos, riesgos
+- service discovery, APIs no usadas, capacidades del proveedor

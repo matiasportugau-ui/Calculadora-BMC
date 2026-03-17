@@ -1,0 +1,31 @@
+---
+description: "BMC Project Team Sync — sync project state, full team run, Invoque full team, keep everyone updated. Apply when user says Invoque full team, sync state, equipo completo, or propagate changes."
+alwaysApply: false
+---
+
+# BMC Project Team Sync
+
+When the user says **"Invoque full team"**, **sync project state**, **actualizar estado del proyecto**, **full team run**, **equipo completo**, or **keep everyone updated** after a change, use the Project Team Sync skill and run the full team.
+
+## Load skill
+
+Read and follow: `.cursor/skills/bmc-project-team-sync/SKILL.md`
+
+## Invoque full team
+
+**Invocación unificada:** "Invoque full team" activa el full team run. Ver `docs/team/INVOQUE-FULL-TEAM.md` para el flujo completo. El Orquestador ejecuta pasos 0–8 e invoca a todos los 19 miembros de `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2.
+
+## Quick reference
+
+- **PROJECT-STATE.md** — `docs/team/PROJECT-STATE.md` (read before work, update after changes)
+- **PROJECT-TEAM-FULL-COVERAGE.md** — `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` (protocol, propagation table)
+- **INVOQUE-FULL-TEAM.md** — `docs/team/INVOQUE-FULL-TEAM.md` (invocación unificada)
+
+## Triggers
+
+- **Invoque full team** (invocación principal)
+- sync project state, actualizar estado, sincronizar
+- full team run, equipo completo, run full BMC team
+- keep everyone updated, que todos estén al día
+- project state, estado del proyecto
+- propagate changes, propagar cambios

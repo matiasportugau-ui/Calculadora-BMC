@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMC - Finanzas y Operaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%2359a8ff' width='32' height='32' rx='6'/><text x='16' y='22' font-size='18' fill='%23fff' text-anchor='middle' font-family='system-ui'>B</text></svg>">
+</head>
+<body>
+  <header class="header">
+    <nav class="shell-nav" aria-label="BMC Dashboard">
+      <a href="#inicio" class="shell-nav-link">Inicio</a>
+      <a href="http://localhost:5173" target="_blank" rel="noopener" class="shell-nav-link">Cotizaciones</a>
+      <a href="#operaciones" class="shell-nav-link">Operaciones</a>
+      <a href="#finanzas" class="shell-nav-link">Finanzas</a>
+      <a href="#ventas" class="shell-nav-link">Ventas</a>
+      <a href="#stock" class="shell-nav-link">Stock</a>
+      <a href="#invoque" class="shell-nav-link">Invoque Panelin</a>
+    </nav>
+    <div class="header-inner">
+      <h1 class="logo">BMC <span class="logo-sub">Finanzas &amp; Operaciones</span></h1>
+      <div class="header-meta">
+        <span class="refresh-hint" id="lastRefresh">-</span>
+        <button type="button" class="notif-bell" id="btnNotifications" title="Notificaciones">
+          🔔<span class="notif-badge" id="notifBadge" hidden>0</span>
+        </button>
+        <button type="button" class="btn btn-ghost" id="btnRefresh" title="Actualizar datos">Actualizar</button>
+      </div>
+    </div>
+    <aside class="notif-drawer" id="notifDrawer" hidden>
+      <div class="notif-drawer-header">
+        <span>Notificaciones</span>
+        <button type="button" class="notif-close" id="btnCloseNotif" title="Cerrar">✕</button>
+      </div>
+      <ul class="notif-list" id="notifList">
+        <li class="notif-item notif-item--empty">Sin alertas activas</li>
+      </ul>
+    </aside>
+  </header>
+
+  <div id="stateBanner" class="state-banner" data-state="idle" role="status" hidden>
+    <span class="state-banner-label" id="stateBannerLabel"></span>
+    <span class="state-banner-text" id="stateBannerText"></span>
+    <button type="button" class="btn btn-ghost btn-sm error-banner-retry" id="btnRetry">Reintentar</button>
+  </div>
+
+  <main class="main">
+    <a id="inicio" class="anchor-fix" aria-hidden="true"></a>
+    <section class="section card" id="kpiReport">
+      <div class="section-head">
+        <p class="section-kicker">Inicio</p>
+        <h2>KPI Report</h2>
+        <p class="section-desc">Resumen ejecutivo: pagos, entregas, stock y objetivo mensual.</p>
+      </div>
+      <div class="kpi-cards" id="kpiReportCards">
+        <div class="kpi-card"><span class="kpi-label">Total pendiente</span><span class="kpi-value" id="kpiReportTotal">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Esta semana (vencim.)</span><span class="kpi-value" id="kpiReportEstaSemana">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Entregas esta semana</span><span class="kpi-value" id="kpiReportEntregas">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Bajo stock (&lt;5)</span><span class="kpi-value" id="kpiReportBajoStock">-</span></div>
+      </div>
+      <div class="kpi-equilibrio" id="kpiEquilibrio">
+        <div class="kpi-equilibrio-row">
+          <span class="kpi-equilibrio-item"><strong>Meta:</strong> <span id="kpiReportMeta">-</span></span>
+          <span class="kpi-equilibrio-item"><strong>Real:</strong> <span id="kpiReportReal">-</span></span>
+          <span class="kpi-equilibrio-item"><strong>Pagos mes:</strong> <span id="kpiReportPagosMes">-</span></span>
+          <span class="status-pill" id="kpiReportEquilibrio">-</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section card" id="finanzas">
+      <div class="section-head section-head-split">
+        <div>
+          <p class="section-kicker">Overview</p>
+          <h2>Resumen financiero</h2>
+          <p class="section-desc">KPIs principales por moneda, con foco en pagos pendientes y vencimientos proximos.</p>
+        </div>
+        <div class="filter-group">
+          <label class="label compact" for="currencySelect">Moneda</label>
+          <select id="currencySelect" class="select-control" disabled>
+            <option value="">Sin datos</option>
+          </select>
+        </div>
+      </div>
+      <div class="kpi-cards" id="kpiCards">
+        <div class="kpi-card"><span class="kpi-label">Total pendiente</span><span class="kpi-value" id="kpiTotal">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Esta semana</span><span class="kpi-value" id="kpiEstaSemana">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Proxima semana</span><span class="kpi-value" id="kpiProximaSemana">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Este mes</span><span class="kpi-value" id="kpiEsteMes">-</span></div>
+      </div>
+    </section>
+
+    <section class="section card" id="sectionTrend">
+      <div class="section-head">
+        <p class="section-kicker">Trend</p>
+        <h2>Vencimientos proximos</h2>
+        <p class="section-desc" id="trendDescription">Serie de pagos por fecha para la moneda seleccionada. Muestra hasta 8 fechas en orden cronologico.</p>
+      </div>
+      <div class="trend-panel">
+        <div class="trend-meta">
+          <span class="trend-chip" id="trendCurrencyChip">Sin moneda</span>
+          <span class="trend-caption" id="trendCaption">Esperando datos financieros...</span>
+        </div>
+        <div class="trend-chart-shell">
+          <svg id="trendChart" class="trend-chart" viewBox="0 0 880 280" preserveAspectRatio="none" hidden></svg>
+          <div id="trendEmpty" class="trend-empty">Cargando tendencia...</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section card" id="sectionBreakdown">
+      <div class="section-head">
+        <p class="section-kicker">Breakdown</p>
+        <h2>Pagos pendientes</h2>
+        <p class="section-desc" id="breakdownDescription">Detalle filtrado por la moneda seleccionada, ordenado por fecha de vencimiento.</p>
+        <div class="breakdown-filters" id="breakdownFilters">
+          <button type="button" class="filter-chip active" data-filter="esta_semana">Esta semana</button>
+          <button type="button" class="filter-chip" data-filter="vencidos">Vencidos</button>
+          <button type="button" class="filter-chip" data-filter="todos">Todos</button>
+        </div>
+      </div>
+      <div class="table-wrap table-wrap-sticky">
+        <table class="data-table" id="tableBreakdown">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Pedido</th>
+              <th id="breakdownAmountLabel">Monto</th>
+              <th>Vencimiento</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyBreakdown">
+            <tr><td colspan="5" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section card" id="calendario-vencimientos">
+      <div class="section-head">
+        <p class="section-kicker">Finanzas</p>
+        <h2>Calendario de vencimientos</h2>
+        <p class="section-desc" id="calendarioDescription">Vencimientos cargados en la hoja compartida. Solo lectura.</p>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tableCalendario">
+          <thead>
+            <tr id="theadCalendario"></tr>
+          </thead>
+          <tbody id="tbodyCalendario">
+            <tr><td colspan="10" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="support-grid" id="operaciones">
+      <section class="section card" id="sectionEntregas">
+        <div class="section-head">
+          <p class="section-kicker">Operaciones</p>
+          <h2>Entregas y logistica</h2>
+          <p class="section-desc">Seguimiento de entregas de la semana y mensaje listo para coordinacion por WhatsApp.</p>
+        </div>
+        <div class="support-split">
+          <div class="support-pane">
+            <div class="pane-head">
+              <h3>Proximas entregas</h3>
+              <button type="button" class="btn btn-primary btn-sm" id="btnCopyAllWhatsApp" disabled>Copiar WhatsApp</button>
+            </div>
+            <div class="table-wrap table-wrap-sticky">
+              <table class="data-table" id="tableEntregas">
+                <thead>
+                  <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Telefono</th>
+                    <th>Ubicacion</th>
+                    <th>Fecha entrega</th>
+                    <th class="col-actions">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyEntregas">
+                  <tr><td colspan="6" class="empty">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="support-pane support-pane-preview">
+            <div class="pane-head">
+              <h3>Vista previa del mensaje</h3>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnCopyPreview" disabled>Copiar texto</button>
+            </div>
+            <pre class="preview-box" id="previewWhatsApp">Cargando...</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section card">
+        <div class="section-head">
+          <p class="section-kicker">Support</p>
+          <h2>Metas de ventas</h2>
+          <p class="section-desc">Objetivos cargados en la hoja como referencia rapida para el seguimiento del mes.</p>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="tableMetas">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th>Tipo</th>
+                <th>Meta</th>
+                <th>Notas</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyMetas">
+              <tr><td colspan="4" class="empty">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section class="section card" id="sectionAudit">
+      <div class="section-head">
+        <p class="section-kicker">Support</p>
+        <h2>Audit log</h2>
+        <p class="section-desc">Registro de cambios (TIMESTAMP, ACTION, ROW, OLD_VALUE, NEW_VALUE, REASON, USER, SHEET). Exportar a CSV.</p>
+      </div>
+      <div class="audit-toolbar">
+        <input type="text" id="auditFilter" class="audit-filter" placeholder="Filtrar por accion, usuario, razon...">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnExportAuditCSV">Exportar CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tableAudit">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Accion</th>
+              <th>Fila</th>
+              <th>Valor anterior</th>
+              <th>Valor nuevo</th>
+              <th>Razon</th>
+              <th>Usuario</th>
+              <th>Hoja</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAudit">
+            <tr><td colspan="8" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ventas" class="section card">
+      <div class="section-head section-head-split">
+        <div>
+          <p class="section-kicker">Ventas</p>
+          <h2>Ventas 2.0</h2>
+          <p class="section-desc">Ventas por proveedor desde 2.0 - Ventas.</p>
+        </div>
+        <div class="filter-group">
+          <label class="label compact" for="ventasProveedorSelect">Proveedor</label>
+          <select id="ventasProveedorSelect" class="select-control" disabled>
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap table-wrap-sticky">
+        <table class="data-table" id="tableVentas">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Fecha entrega</th>
+              <th>Costo</th>
+              <th>Ganancia</th>
+              <th>Saldo</th>
+              <th>Facturado</th>
+              <th>Proveedor</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyVentas">
+            <tr><td colspan="8" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="stock" class="section card">
+      <div class="section-head">
+        <p class="section-kicker">Inventario</p>
+        <h2>Stock E-Commerce</h2>
+        <p class="section-desc">Productos, stock y valor de inventario.</p>
+      </div>
+      <div class="kpi-cards" id="stockKpiCards">
+        <div class="kpi-card"><span class="kpi-label">Bajo stock (&lt;5)</span><span class="kpi-value" id="stockKpiBajo">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Total productos</span><span class="kpi-value" id="stockKpiTotal">-</span></div>
+        <div class="kpi-card"><span class="kpi-label">Valor inventario (USD)</span><span class="kpi-value" id="stockKpiValor">-</span></div>
+      </div>
+      <div class="audit-toolbar">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnExportStockCSV">Exportar CSV</button>
+      </div>
+      <div class="table-wrap table-wrap-sticky">
+        <table class="data-table" id="tableStock">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Producto</th>
+              <th>Costo USD</th>
+              <th>Margen %</th>
+              <th>Stock</th>
+              <th>Pedido pend.</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyStock">
+            <tr><td colspan="6" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="invoque" class="section card">
+      <div class="section-head">
+        <p class="section-kicker">Invoque Panelin</p>
+        <h2>Asistente GPT</h2>
+        <p class="section-desc">Asistente impulsado por OpenAI/GPT. Sección en preparación.</p>
+      </div>
+      <p class="empty">Próximamente. Asistente transversal en módulos + sección dedicada.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Datos desde Google Sheets · Pagos_Pendientes · Metas_Ventas · Master_Cotizaciones · AUDIT_LOG · 2.0 Ventas · Stock E-Commerce</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    (function() {
+      if (typeof window === 'undefined' || !window.location.search.includes('dev=1')) return;
+      var lastMtime = 0;
+      function check() {
+        fetch('/api/dev/dashboard-mtime').then(function(r) { return r.json(); }).then(function(d) {
+          if (lastMtime && d.mtime && d.mtime !== lastMtime) window.location.reload();
+          if (d.mtime) lastMtime = d.mtime;
+        }).catch(function() {});
+      }
+      setInterval(check, 2000);
+      setTimeout(check, 500);
+    })();
+  </script>
+</body>
+</html>

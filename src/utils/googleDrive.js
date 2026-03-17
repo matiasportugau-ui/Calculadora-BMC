@@ -2,6 +2,7 @@
 // src/utils/googleDrive.js — Client-side Google Drive API v3 wrapper
 // Uses Google Identity Services (GIS) for auth + fetch for Drive REST API
 // ═══════════════════════════════════════════════════════════════════════════
+/* global google */
 
 const SCOPES = "https://www.googleapis.com/auth/drive.file";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
@@ -86,7 +87,6 @@ export function signIn() {
       return;
     }
 
-    const origCb = _tokenClient.callback;
     _tokenClient.callback = (resp) => {
       if (resp.error) {
         _accessToken = null;

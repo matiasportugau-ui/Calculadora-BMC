@@ -2,7 +2,7 @@
 // src/components/GoogleDrivePanel.jsx — Google Drive save/load panel
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useRef } from "react";
 import {
   X, Upload, Download, Trash2, ExternalLink,
   CheckCircle, AlertTriangle, RefreshCw, LogIn, LogOut,
@@ -54,9 +54,9 @@ export default function GoogleDrivePanel({
   currentQuotationCode,
   lastSaveResult,
 }) {
-  if (!visible) return null;
-
   const listRef = useRef(null);
+
+  if (!visible) return null;
 
   return (
     <div

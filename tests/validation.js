@@ -415,7 +415,7 @@ assert("bomToGroups(techo): has FIJACIONES group", btgTecho.some(g => g.title ==
 
 const btgPared = bomToGroups(paredResult);
 assert("bomToGroups(pared): returns groups", btgPared.length > 0, btgPared.length, ">0");
-assert("bomToGroups(pared): has PERFILES U group", btgPared.some(g => g.title === "PERFILES U"), true, true);
+assert("bomToGroups(pared): has PERFILERÍA group", btgPared.some(g => g.title === "PERFILERÍA"), btgPared.some(g => g.title === "PERFILERÍA"), true);
 
 const combinedResult = {
   allItems: techoResult.allItems,

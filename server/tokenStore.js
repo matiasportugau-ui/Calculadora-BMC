@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { Storage } from "@google-cloud/storage";
 
 const ALGO = "aes-256-gcm";
 
@@ -36,15 +37,10 @@ const decrypt = (payload, keyBuffer) => {
   return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
 };
 
-export const createTokenStore = ({ filePath, encryptionKey, logger }) => {
-  const keyBuffer = getKeyBuffer(encryptionKey);
-
-  if (!keyBuffer) {
-    logger.warn(
-      "TOKEN_ENCRYPTION_KEY missing: token file will be plaintext in local dev only"
-    );
-  }
-
+/**
+ * File-based token store (local dev, ephemeral on Cloud Run).
+ */
+const createFileTokenStore = ({ filePath, keyBuffer, logger }) => {
   const read = async () => {
     try {
       const raw = await fs.readFile(filePath, "utf8");
@@ -63,4 +59,74 @@ export const createTokenStore = ({ filePath, encryptionKey, logger }) => {
   };
 
   return { read, write };
+};
+
+/**
+ * GCS-based token store (persistent on Cloud Run).
+ */
+export const createGcsTokenStore = ({ bucket, objectKey, encryptionKey, logger }) => {
+  const keyBuffer = getKeyBuffer(encryptionKey);
+  if (!keyBuffer) {
+    logger.warn(
+      "TOKEN_ENCRYPTION_KEY missing: GCS tokens will be plaintext (not recommended)"
+    );
+  }
+
+  const storage = new Storage();
+  const file = storage.bucket(bucket).file(objectKey);
+
+  const read = async () => {
+    try {
+      const [contents] = await file.download();
+      const raw = contents.toString("utf8");
+      const content = keyBuffer ? decrypt(raw, keyBuffer) : raw;
+      return JSON.parse(content);
+    } catch (error) {
+      if (error.code === 404) return null;
+      throw error;
+    }
+  };
+
+  const write = async (tokens) => {
+    const content = JSON.stringify(tokens, null, 2);
+    const raw = keyBuffer ? encrypt(content, keyBuffer) : content;
+    await file.save(raw, { contentType: "application/json" });
+  };
+
+  return { read, write };
+};
+
+/**
+ * Factory: returns file or GCS token store based on config.
+ */
+export const createTokenStore = ({
+  storageType = "file",
+  filePath,
+  gcsBucket,
+  gcsObject,
+  encryptionKey,
+  logger,
+}) => {
+  const keyBuffer = getKeyBuffer(encryptionKey);
+
+  if (!keyBuffer && storageType === "file") {
+    logger.warn(
+      "TOKEN_ENCRYPTION_KEY missing: token file will be plaintext in local dev only"
+    );
+  }
+
+  if (storageType === "gcs" && gcsBucket) {
+    return createGcsTokenStore({
+      bucket: gcsBucket,
+      objectKey: gcsObject || "ml-tokens.enc",
+      encryptionKey,
+      logger,
+    });
+  }
+
+  return createFileTokenStore({
+    filePath,
+    keyBuffer,
+    logger,
+  });
 };

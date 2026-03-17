@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 12px; }
+    h3 { margin-top: 0; color: #1a73e8; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f1f3f4; }
+    .check { width: 36px; }
+    .comentarios { width: 100%; min-height: 44px; box-sizing: border-box; }
+    .btn { margin-top: 12px; padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .btn:hover { background: #1557b0; }
+    .foot { font-size: 12px; color: #5f6368; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h3>Ventas con Fecha de entrega ayer</h3>
+  <p>Marcá las que ya fueron entregadas hoy y agregá un comentario si querés. Al confirmar se mueven a la pestaña <b>Ventas realizadas y entregadas</b>.</p>
+  <table>
+    <thead>
+      <tr>
+        <th class="check">Entregado</th>
+        <th>Cotización</th>
+        <th>Cliente</th>
+        <th>Comentarios</th>
+      </tr>
+    </thead>
+    <tbody>
+      <? for (var i = 0; i < entregas.length; i++) { ?>
+      <tr>
+        <td><input type="checkbox" id="chk_<?= i ?>" data-id="<?= entregas[i].cotizacionId ?>"></td>
+        <td><?= entregas[i].cotizacionId ?></td>
+        <td><?= entregas[i].cliente ?></td>
+        <td><input type="text" class="comentarios" id="com_<?= i ?>" placeholder="Comentarios (opcional)"></td>
+      </tr>
+      <? } ?>
+    </tbody>
+  </table>
+  <button class="btn" id="btnConfirmar">Mover a Ventas realizadas y entregadas</button>
+  <p class="foot">Solo se mueven las filas con la casilla marcada.</p>
+
+  <script>
+    (function() {
+      var entregas = <?!= JSON.stringify(entregas) ?>;
+      document.getElementById('btnConfirmar').addEventListener('click', function() {
+        var seleccion = [];
+        for (var i = 0; i < entregas.length; i++) {
+          if (document.getElementById('chk_' + i).checked) {
+            seleccion.push({
+              cotizacionId: entregas[i].cotizacionId,
+              comentarios: document.getElementById('com_' + i).value || ''
+            });
+          }
+        }
+        if (seleccion.length === 0) {
+          alert('Marcá al menos una venta como entregada.');
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(function() { google.script.host.close(); })
+          .processEntregasConfirmadas(seleccion);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,48 +1,38 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// src/components/PanelinCalculadoraV3.jsx — React UI component
-// BMC Uruguay · Calculadora de Cotización v3.0
+// PanelinCalculadoraV3.jsx — BMC Uruguay · Calculadora de Cotización v3.1
+// Un solo archivo React — Default export, sin props
+// Precios SIN IVA · IVA 22% al final · Doble lista (venta/web)
+// Repo: github.com/matiasportugau-ui/GPT-Panelin-Calc (frontend/)
+// Integración: Compatible con GPT Panelin v5 + Calculadora API v4.0
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
-  RotateCcw, Edit3, X, RefreshCw, ClipboardList,
-  Download, Save, Archive, Cloud
 } from "lucide-react";
 
-import {
-  C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
-  setListaPrecios,
-  PANELS_TECHO, PANELS_PARED, SERVICIOS,
-  SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS,
-  CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
-  PENDIENTES_PRESET, TIPO_AGUAS,
-} from "../data/constants.js";
-import {
-  calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
-  calcFactorPendiente, mergeZonaResults, normalizarMedida,
-} from "../utils/calculations.js";
-import {
-  applyOverrides, bomToGroups,
-  fmtPrice, generatePrintHTML, generateInternalHTML, buildWhatsAppText,
-  createPreviewUrl, revokePreviewUrl,
-} from "../utils/helpers.js";
-import {
-  saveBudget, getAllLogs, deleteBudget, clearAllLogs,
-  exportLogsAsJSON, exportSingleBudget,
-} from "../utils/budgetLog.js";
-import { serializeProject, deserializeProject } from "../utils/projectFile.js";
-import { htmlToPdfBlob } from "../utils/pdfGenerator.js";
-import {
-  initGoogleAuth, signIn as gdriveSignIn, signOut as gdriveSignOut,
-  isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
-  saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
-} from "../utils/googleDrive.js";
-import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
+// ═══════════════════════════════════════════════════════════════════════════
+// §1 DESIGN TOKENS + CSS
+// ═══════════════════════════════════════════════════════════════════════════
 
-// ── CSS injection ────────────────────────────────────────────────────────────
+const C = {
+  bg: "#F5F5F7", surface: "#FFFFFF", surfaceAlt: "#FAFAFA",
+  primary: "#0071E3", primarySoft: "#E8F1FB",
+  brand: "#1A3A5C", brandLight: "#EEF3F8",
+  dark: "#1D1D1F",
+  success: "#34C759", successSoft: "#E9F8EE",
+  warning: "#FF9F0A", warningSoft: "#FFF5E6",
+  danger: "#FF3B30", dangerSoft: "#FFECEB",
+  border: "#E5E5EA",
+  tp: "#1D1D1F", ts: "#6E6E73", tt: "#AEAEB2",
+};
+const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif";
+const SHC = "0 1px 3px rgba(0,0,0,0.04),0 4px 16px rgba(0,0,0,0.06)";
+const SHI = "inset 0 1px 2px rgba(0,0,0,0.04)";
+const TR = "all 150ms cubic-bezier(0.4,0,0.2,1)";
+const TN = { fontVariantNumeric: "tabular-nums" };
+const COLOR_HEX = { Blanco: "#FFFFFF", Gris: "#8C8C8C", Rojo: "#C0392B" };
 
 if (typeof document !== "undefined" && !document.getElementById("bmc-kf")) {
   const s = document.createElement("style");
@@ -51,21 +41,843 @@ if (typeof document !== "undefined" && !document.getElementById("bmc-kf")) {
     @keyframes bmc-fade{from{opacity:0}to{opacity:1}}
     @keyframes bmc-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
     @keyframes bmc-slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-    @keyframes bmc-slideInUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-    @media (max-width: 900px) {
-      .bmc-main-grid { grid-template-columns: 1fr !important; height: auto !important; overflow: visible !important; }
-      .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 !important; }
-      .bmc-mobile-bar { display: flex !important; }
-      .bmc-desktop-actions { display: none !important; }
-    }
-    @media (min-width: 901px) {
-      .bmc-mobile-bar { display: none !important; }
-    }
   `;
   document.head.appendChild(s);
 }
 
-// ── UI Components ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// §2 DATOS — PANELIN_PRECIOS_V3_UNIFICADO (FUENTE DE VERDAD)
+// Todos los precios SIN IVA. IVA se aplica UNA VEZ al final.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const IVA = 0.22;
+
+let LISTA_ACTIVA = "web";
+
+function p(item) {
+  if (!item) return 0;
+  if (LISTA_ACTIVA === "venta") return item.venta || item.web || 0;
+  return item.web || item.venta || 0;
+}
+function setListaPrecios(lista) { LISTA_ACTIVA = lista; }
+
+const PANELS_TECHO = {
+  ISODEC_EPS: {
+    label: "ISODEC EPS", sub: "Techos y Cubiertas", tipo: "techo",
+    au: 1.12, lmin: 2.3, lmax: 14, sist: "varilla_tuerca", fam: "ISODEC",
+    esp: {
+      100: { venta: 37.76, web: 45.97, costo: 33.93, ap: 5.5 },
+      150: { venta: 42.48, web: 51.71, costo: 38.17, ap: 7.5 },
+      200: { venta: 47.64, web: 57.99, costo: 42.81, ap: 9.1 },
+      250: { venta: 52.35, web: 63.74, costo: 47.05, ap: 10.4 },
+    },
+    col: ["Blanco", "Gris", "Rojo"],
+    colNotes: { Gris: "Solo 100-150mm · +20 días", Rojo: "Solo 100-150mm · +20 días" },
+    colMax: { Gris: 150, Rojo: 150 },
+  },
+  ISODEC_PIR: {
+    label: "ISODEC PIR", sub: "Techos y Cubiertas", tipo: "techo",
+    au: 1.12, lmin: 3.5, lmax: 14, sist: "varilla_tuerca", fam: "ISODEC_PIR",
+    esp: {
+      50:  { venta: 41.82, web: 50.91, costo: 37.58, ap: 3.5 },
+      80:  { venta: 42.75, web: 52.04, costo: 38.42, ap: 5.5 },
+      120: { venta: 51.38, web: 62.55, costo: 46.18, ap: 7.6 },
+    },
+    col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
+    notas: { 50: "EVITAR ESTE ESPESOR (fuente: Matriz)" },
+  },
+  ISOROOF_3G: {
+    label: "ISOROOF 3G", sub: "Techos Livianos", tipo: "techo",
+    au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
+    esp: {
+      30:  { venta: 39.95, web: 48.63, costo: 35.90, ap: 2.8 },
+      40:  { venta: 41.98, web: 51.10, costo: 37.72, ap: 3.0 },
+      50:  { venta: 44.00, web: 53.56, costo: 39.54, ap: 3.3 },
+      80:  { venta: 51.73, web: 62.98, costo: 46.49, ap: 4.0 },
+      100: { venta: 56.80, web: 69.15, costo: 51.04, ap: 4.5 },
+    },
+    col: ["Gris", "Rojo", "Blanco"],
+    colNotes: { Blanco: "Mínimo 500 m²" },
+    colMinArea: { Blanco: 500 }, colMax: {},
+  },
+  ISOROOF_FOIL: {
+    label: "ISOROOF FOIL 3G", sub: "Techos Livianos", tipo: "techo",
+    au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
+    esp: {
+      30: { venta: 32.36, web: 39.40, costo: 29.08, ap: 2.8 },
+      50: { venta: 36.69, web: 44.66, costo: 32.97, ap: 3.3 },
+    },
+    col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
+  },
+  ISOROOF_PLUS: {
+    label: "ISOROOF PLUS 3G", sub: "Techos Premium", tipo: "techo",
+    au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
+    esp: {
+      50: { venta: 50.06, web: 60.94, costo: 44.99, ap: 3.3 },
+      80: { venta: 58.82, web: 71.61, costo: 52.86, ap: 4.0 },
+    },
+    col: ["Blanco", "Gris", "Rojo"],
+    colNotes: { _all: "PLUS: Mínimo 800 m²" },
+    colMinArea: {}, colMax: {},
+  },
+};
+
+const PANELS_PARED = {
+  ISOPANEL_EPS: {
+    label: "ISOPANEL EPS", sub: "Paredes y Fachadas", tipo: "pared",
+    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOPANEL",
+    esp: {
+      50:  { venta: 34.32, web: 41.79, costo: 30.85, ap: null },
+      100: { venta: 37.76, web: 45.97, costo: 33.93, ap: null },
+      150: { venta: 42.48, web: 51.71, costo: 38.17, ap: null },
+      200: { venta: 47.64, web: 57.99, costo: 42.81, ap: null },
+      250: { venta: 52.35, web: 63.74, costo: 47.05, ap: null },
+    },
+    col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
+    nota50: "50mm SOLO subdivisiones interiores. Fachada exterior mínimo 100mm.",
+  },
+  ISOWALL_PIR: {
+    label: "ISOWALL PIR", sub: "Fachadas", tipo: "pared",
+    au: 1.1, lmin: 3.5, lmax: 14, sist: "anclaje_tornillo", fam: "ISOWALL",
+    esp: {
+      50:  { venta: 46.74, web: 54.54, costo: 40.26, ap: null },
+      80:  { venta: 55.74, web: 65.03, costo: 48.01, ap: null },
+      100: { venta: 58.90, web: 71.71, costo: 52.94, ap: null },
+    },
+    col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
+  },
+  ISOFRIG_PIR: {
+    label: "ISOFRIG PIR", sub: "Cámaras Frigoríficas", tipo: "pared",
+    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISOFRIG",
+    esp: {
+      40:  { venta: 43.53, web: 53.11, costo: 36.27, ap: null },
+      60:  { venta: 47.40, web: 57.83, costo: 41.22, ap: null },
+      80:  { venta: 52.29, web: 63.80, costo: 45.47, ap: null },
+      100: { venta: 58.01, web: 70.77, costo: 50.44, ap: null },
+      150: { venta: 70.37, web: 85.85, costo: 61.19, ap: null },
+    },
+    col: ["Blanco"], colNotes: { _all: "Solo Blanco sanitario" }, colMax: {},
+    notaFrig: "Panel para cámaras frigoríficas y salas limpias. Junta macho-hembra.",
+  },
+};
+
+const FIJACIONES = {
+  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.69, unidad: "unid" },
+  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12, web: 0.07, costo: 0.05, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.64, costo: 0.48, unidad: "unid" },
+  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',    venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
+  arandela_pp_gris:   { label: 'Tortuga PVC gris',          venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
+  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.83, unidad: "unid" },
+  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
+  anclaje_h:          { label: 'Kit anclaje H° (torn.N°10+arand+taco)', venta: 0.09, web: 0.03, costo: 0.07, unidad: "unid" },
+  tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
+  tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
+  tornillo_aguja:     { label: 'Tornillo aguja 5"',         venta: 17.00, web: 17.00, costo: 12.00, unidad: "x100" },
+  remache_pop:        { label: 'Remache POP blanco',        venta: 0.98, web: 0.98, costo: 0.70, unidad: "x1000" },
+};
+
+const SELLADORES = {
+  silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.49, web: 11.07, costo: 8.17, unidad: "unid", ml_por_unid: 10.27 },
+  cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 14.89, web: 18.13, costo: 13.38, unidad: "unid" },
+  membrana:       { label: "Membrana autoadhesiva 30cm×10m", venta: 16.62, web: 20.28, costo: 14.00, unidad: "rollo" },
+  espuma_pu:      { label: "Espuma poliuretano 750cm³",      venta: 25.46, web: 31.06, costo: 25.88, unidad: "unid" },
+};
+
+const PERFIL_TECHO = {
+  gotero_frontal: {
+    ISOROOF: {
+      30: { sku: "GFS30", venta: 15.83, web: 18.47, largo: 3.03 },
+      50: { sku: "GFS50", venta: 16.76, web: 19.56, largo: 3.03 },
+      80: { sku: "GFS80", venta: 17.63, web: 20.57, largo: 3.03 },
+    },
+    ISODEC: {
+      100: { sku: "6838", venta: 15.67, web: 19.12, largo: 3.03 },
+      150: { sku: "6839", venta: 22.65, web: 27.63, largo: 3.03 },
+      200: { sku: "6840", venta: 23.57, web: 28.75, largo: 3.03 },
+      250: { sku: "6841", venta: 23.80, web: 29.03, largo: 3.03 },
+    },
+    ISODEC_PIR: {
+      50:  { sku: "GF80DC",  venta: 19.97, web: 23.30, largo: 3.03 },
+      80:  { sku: "GF120DC", venta: 20.87, web: 24.34, largo: 3.03 },
+      120: { sku: "GF120DC", venta: 24.69, web: 28.81, largo: 3.03 },
+    },
+  },
+  gotero_frontal_greca: {
+    ISOROOF: {
+      30: { sku: "GFCGR30", venta: 17.99, web: 19.38, largo: 3.03 },
+      50: { sku: "GFCGR30", venta: 17.99, web: 19.38, largo: 3.03 },
+      80: { sku: "GFCGR30", venta: 17.99, web: 19.38, largo: 3.03 },
+    },
+  },
+  gotero_lateral: {
+    ISOROOF: {
+      30: { sku: "GL30", venta: 21.83, web: 26.63, largo: 3.0 },
+      50: { sku: "GL50", venta: 23.57, web: 28.75, largo: 3.0 },
+      80: { sku: "GL80", venta: 25.31, web: 30.88, largo: 3.0 },
+    },
+    ISODEC: {
+      100: { sku: "6842", venta: 20.77, web: 25.34, largo: 3.0 },
+      150: { sku: "6843", venta: 29.07, web: 35.46, largo: 3.0 },
+      200: { sku: "6844", venta: 31.75, web: 38.74, largo: 3.0 },
+      250: { sku: "6845", venta: 31.75, web: 38.74, largo: 3.0 },
+    },
+    ISODEC_PIR: {
+      50:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
+      80:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
+      120: { sku: "GL120DC", venta: 31.08, web: 36.26, largo: 3.0 },
+    },
+  },
+  gotero_lateral_camara: {
+    ISOROOF: {
+      50: { sku: "GLDCAM50", venta: 22.32, web: 27.23, largo: 3.0 },
+      80: { sku: "GLDCAM80", venta: 25.11, web: 30.63, largo: 3.0 },
+    },
+  },
+  gotero_superior: {
+    ISOROOF: {
+      30: { sku: "GFSUP30", venta: 28.21, web: 32.91, largo: 3.03 },
+      50: { sku: "GFSUP50", venta: 29.08, web: 33.92, largo: 3.03 },
+      80: { sku: "GFSUP80", venta: 30.84, web: 35.98, largo: 3.03 },
+    },
+    ISODEC_PIR: {
+      50: { sku: "GSDECAM50", venta: 27.32, web: 31.88, largo: 3.03 },
+      80: { sku: "GSDECAM80", venta: 29.94, web: 34.93, largo: 3.03 },
+    },
+  },
+  babeta_adosar: {
+    ISODEC:     { _all: { sku: "6828", venta: 12.19, web: 14.22, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "6828", venta: 12.19, web: 14.22, largo: 3.0 } },
+    ISOROOF:    { _all: { sku: "BBAS3G", venta: 23.74, web: 28.96, largo: 3.03 } },
+  },
+  babeta_empotrar: {
+    ISODEC:     { _all: { sku: "6865", venta: 12.19, web: 14.22, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "6865", venta: 12.19, web: 14.22, largo: 3.0 } },
+    ISOROOF:    { _all: { sku: "BBESUP", venta: 22.87, web: 27.90, largo: 3.03 } },
+  },
+  cumbrera: {
+    ISODEC:     { _all: { sku: "6847", venta: 23.57, web: 28.75, largo: 3.03 } },
+    ISODEC_PIR: { _all: { sku: "6847", venta: 23.57, web: 28.75, largo: 3.03 } },
+    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 97.86, web: 119.39, largo: 2.20 } },
+  },
+  canalon: {
+    ISOROOF: {
+      30: { sku: "CD30", venta: 71.83, web: 83.80, largo: 3.03 },
+      50: { sku: "CD50", venta: 73.19, web: 85.39, largo: 3.03 },
+      80: { sku: "CD80", venta: 74.22, web: 86.59, largo: 3.03 },
+    },
+    ISODEC: {
+      100: { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, largo: 3.03 },
+      150: { sku: "6802", venta: 80.05, web: 93.39, largo: 3.03 },
+      200: { sku: "6803", venta: 79.73, web: 93.02, largo: 3.03 },
+      250: { sku: "6804", venta: 104.30, web: 121.69, largo: 3.03 },
+    },
+    ISODEC_PIR: {
+      50:  { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
+      80:  { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, largo: 3.03 },
+    },
+  },
+  soporte_canalon: {
+    ISOROOF: { _all: { sku: "SOPCAN3M", venta: 13.12, web: 15.30, largo: 3.0 } },
+    ISODEC:  { _all: { sku: "6805",     venta: 15.94, web: 18.59, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "6805",  venta: 15.94, web: 18.59, largo: 3.0 } },
+  },
+};
+
+const PERFIL_PARED = {
+  perfil_u: {
+    ISOPANEL: {
+      50:  { sku: "PU50MM",  venta: 10.00, web: 11.66, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, largo: 3.0 },
+      200: { sku: "PU200MM", venta: 17.43, web: 21.26, largo: 3.0 },
+      250: { sku: "PU200MM", venta: 17.43, web: 21.26, largo: 3.0 },
+    },
+    ISOWALL: {
+      50:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
+      80:  { sku: "PU50MM", venta: 13.12, web: 16.01, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+    },
+    ISOFRIG: {
+      40:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
+      60:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
+      80:  { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, largo: 3.0 },
+    },
+  },
+  perfil_g2: {
+    ISOPANEL: {
+      100: { sku: "G2-100", venta: 15.34, web: 18.72, largo: 3.0 },
+      150: { sku: "G2-150", venta: 17.61, web: 21.49, largo: 3.0 },
+      200: { sku: "G2-200", venta: 21.13, web: 25.78, largo: 3.0 },
+      250: { sku: "G2-250", venta: 21.30, web: 25.99, largo: 3.0 },
+    },
+  },
+  perfil_k2: {
+    _all: { sku: "K2", venta: 8.59, web: 10.48, costo: 7.40, largo: 3.0,
+            label: "Perfil K2 (junta interior 35×35)" },
+  },
+  esquinero_ext: {
+    _all: { sku: "ESQ-EXT", venta: 8.59, web: 10.48, largo: 3.0, label: "Esquinero exterior" },
+  },
+  esquinero_int: {
+    _all: { sku: "ESQ-INT", venta: 8.59, web: 10.48, largo: 3.0, label: "Esquinero interior" },
+  },
+  perfil_5852: {
+    _all: { sku: "PLECHU98", venta: 51.84, web: 63.24, costo: 45.00, largo: 6.8,
+            label: "Ángulo aluminio 5852 anodizado (6.8m)" },
+  },
+};
+
+const SERVICIOS = {
+  flete: { label: "Flete Bromyros (zonas aledañas)", venta: 240.00, web: 252.00, costo: 186.03, unidad: "servicio" },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §3 ENGINE TECHO — Usa p() para todos los precios SIN IVA
+// ═══════════════════════════════════════════════════════════════════════════
+
+function resolveSKU_techo(tipo, familiaP, espesor) {
+  const byTipo = PERFIL_TECHO[tipo];
+  if (!byTipo) return null;
+  const byFam = byTipo[familiaP];
+  if (!byFam) return null;
+  if (byFam[espesor]) return { ...byFam[espesor] };
+  if (byFam._all) return { ...byFam._all };
+  return null;
+}
+
+function calcPanelesTecho(panel, espesor, largo, ancho) {
+  const espData = panel.esp[espesor];
+  if (!espData) return null;
+  const cantPaneles = Math.ceil(ancho / panel.au);
+  const anchoTotal = cantPaneles * panel.au;
+  const areaTotal = +(cantPaneles * largo * panel.au).toFixed(2);
+  const precioM2 = p(espData);
+  const costoPaneles = +(precioM2 * areaTotal).toFixed(2);
+  return { cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2 };
+}
+
+function calcAutoportancia(panel, espesor, largo) {
+  const espData = panel.esp[espesor];
+  if (!espData || espData.ap == null) {
+    return { ok: true, apoyos: null, maxSpan: null, largoMinOK: true, largoMaxOK: true };
+  }
+  const maxSpan = espData.ap;
+  const apoyos = Math.ceil((largo / maxSpan) + 1);
+  const ok = largo <= maxSpan;
+  const largoMinOK = largo >= (panel.lmin || 0);
+  const largoMaxOK = largo <= (panel.lmax || Infinity);
+  return { ok, apoyos, maxSpan, largoMinOK, largoMaxOK };
+}
+
+function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm) {
+  const puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / 2.5));
+  const varillas = Math.ceil(puntosFijacion / 4);
+  let pMetal, pH;
+  if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; }
+  else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; }
+  else { pH = Math.min(ptsHorm || 0, puntosFijacion); pMetal = puntosFijacion - pH; }
+  const tuercas = (pMetal * 2) + (pH * 1);
+  const tacos = pH;
+  const items = [];
+  const puVar = p(FIJACIONES.varilla_38);
+  items.push({ label: FIJACIONES.varilla_38.label, sku: "varilla_38", cant: varillas, unidad: "unid", pu: puVar, total: +(varillas * puVar).toFixed(2) });
+  const puTuer = p(FIJACIONES.tuerca_38);
+  items.push({ label: FIJACIONES.tuerca_38.label, sku: "tuerca_38", cant: tuercas, unidad: "unid", pu: puTuer, total: +(tuercas * puTuer).toFixed(2) });
+  if (tacos > 0) {
+    const puTaco = p(FIJACIONES.taco_expansivo);
+    items.push({ label: FIJACIONES.taco_expansivo.label, sku: "taco_expansivo", cant: tacos, unidad: "unid", pu: puTaco, total: +(tacos * puTaco).toFixed(2) });
+  }
+  const puArand = p(FIJACIONES.arandela_carrocero);
+  items.push({ label: FIJACIONES.arandela_carrocero.label, sku: "arandela_carrocero", cant: puntosFijacion, unidad: "unid", pu: puArand, total: +(puntosFijacion * puArand).toFixed(2) });
+  const puPP = p(FIJACIONES.arandela_pp);
+  items.push({ label: FIJACIONES.arandela_pp.label, sku: "arandela_pp", cant: puntosFijacion, unidad: "unid", pu: puPP, total: +(puntosFijacion * puPP).toFixed(2) });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2), puntosFijacion };
+}
+
+function calcFijacionesCaballete(cantP, largo) {
+  const caballetes = Math.ceil((cantP * 3 * (largo / 2.9 + 1)) + ((largo * 2) / 0.3));
+  const tornillosAguja = caballetes * 2;
+  const items = [];
+  const puCab = p(FIJACIONES.caballete);
+  items.push({ label: FIJACIONES.caballete.label, sku: "caballete", cant: caballetes, unidad: "unid", pu: puCab, total: +(caballetes * puCab).toFixed(2) });
+  const paquetesAguja = Math.ceil(tornillosAguja / 100);
+  const puAguja = p(FIJACIONES.tornillo_aguja);
+  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: paquetesAguja, unidad: "x100", pu: puAguja, total: +(paquetesAguja * puAguja).toFixed(2) });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2), puntosFijacion: caballetes };
+}
+
+function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espesor, opciones) {
+  const items = [];
+  let totalML = 0;
+  const addPerfil = (label, tipo, dim, famOverride) => {
+    const fam = famOverride || familiaP;
+    const resolved = resolveSKU_techo(tipo, fam, espesor);
+    if (!resolved) return;
+    const precio = p(resolved);
+    const pzas = Math.ceil(dim / resolved.largo);
+    const ml = pzas * resolved.largo;
+    totalML += ml;
+    items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2) });
+  };
+  if (borders.frente && borders.frente !== "none") addPerfil("Frente: " + borders.frente, borders.frente, anchoTotal);
+  if (borders.fondo && borders.fondo !== "none") addPerfil("Fondo: " + borders.fondo, borders.fondo, anchoTotal);
+  if (borders.latIzq && borders.latIzq !== "none") addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, largo);
+  if (borders.latDer && borders.latDer !== "none") addPerfil("Lat.Der: " + borders.latDer, borders.latDer, largo);
+  if (opciones && opciones.inclGotSup) {
+    const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
+    if (gs) {
+      const precio = p(gs);
+      const pzas = Math.ceil(anchoTotal / gs.largo);
+      totalML += pzas * gs.largo;
+      items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+    }
+  }
+  // §E CORREGIDO: Canalón usa precios del PERFIL_TECHO + soporte corregido
+  if (opciones && opciones.inclCanalon) {
+    const canData = resolveSKU_techo("canalon", familiaP, espesor);
+    if (canData) {
+      const precioCan = p(canData);
+      const pzasCan = Math.ceil(anchoTotal / canData.largo);
+      totalML += pzasCan * canData.largo;
+      items.push({ label: "Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, total: +(pzasCan * precioCan).toFixed(2) });
+    }
+    // §E SOPORTE CANALÓN CORREGIDO: barras de 3m, 1 soporte por enganche
+    const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
+    if (sopData) {
+      const mlSoportes = (cantP + 1) * 0.30;
+      const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
+      const precioSop = p(sopData);
+      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, total: +(barrasSoporte * precioSop).toFixed(2) });
+    }
+  }
+  if (totalML > 0) {
+    const fijPerf = Math.ceil(totalML / 0.30);
+    const paquetesT1 = Math.ceil(fijPerf / 100);
+    const puT1 = p(FIJACIONES.tornillo_t1);
+    items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: paquetesT1, unidad: "x100", pu: puT1, total: +(paquetesT1 * puT1).toFixed(2) });
+  }
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2), totalML: +totalML.toFixed(2) };
+}
+
+function calcSelladoresTecho(cantP) {
+  const items = [];
+  const siliconas = Math.ceil(cantP * 0.5);
+  const puSil = p(SELLADORES.silicona);
+  items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, total: +(siliconas * puSil).toFixed(2) });
+  const cintas = Math.ceil(cantP / 10);
+  const puCinta = p(SELLADORES.cinta_butilo);
+  items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, total: +(cintas * puCinta).toFixed(2) });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
+function calcTotalesSinIVA(allItems) {
+  const sumSinIVA = allItems.reduce((s, i) => s + (i.total || 0), 0);
+  const subtotalSinIVA = +sumSinIVA.toFixed(2);
+  const iva = +(subtotalSinIVA * IVA).toFixed(2);
+  const totalConIVA = +(subtotalSinIVA + iva).toFixed(2);
+  return { subtotalSinIVA, iva, totalFinal: totalConIVA };
+}
+
+function calcTechoCompleto(inputs) {
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, borders, opciones, color } = inputs;
+  const panel = PANELS_TECHO[familia];
+  if (!panel) return { error: `Familia "${familia}" no encontrada` };
+  const espData = panel.esp[espesor];
+  if (!espData) return { error: `Espesor ${espesor}mm no disponible` };
+  const warnings = [];
+  if (color) {
+    if (!panel.col.includes(color)) warnings.push(`Color "${color}" no disponible para ${familia}`);
+    if (panel.colMax && panel.colMax[color] && espesor > panel.colMax[color]) warnings.push(`Color ${color} solo hasta ${panel.colMax[color]}mm`);
+  }
+  const paneles = calcPanelesTecho(panel, espesor, largo, ancho);
+  if (!paneles) return { error: "Error calculando paneles" };
+  if (color && panel.colMinArea && panel.colMinArea[color] && paneles.areaTotal < panel.colMinArea[color]) {
+    warnings.push(`Color ${color} requiere mín. ${panel.colMinArea[color]} m² (cotizado: ${paneles.areaTotal.toFixed(1)} m²)`);
+  }
+  const autoportancia = calcAutoportancia(panel, espesor, largo);
+  if (!autoportancia.ok) warnings.push(`Largo ${largo}m excede autoportancia máx ${autoportancia.maxSpan}m. Requiere ${autoportancia.apoyos} apoyos.`);
+  if (!autoportancia.largoMinOK) warnings.push(`Largo ${largo}m < mínimo ${panel.lmin}m`);
+  if (!autoportancia.largoMaxOK) warnings.push(`Largo ${largo}m > máximo fabricable ${panel.lmax}m`);
+  let fijaciones;
+  if (panel.sist === "varilla_tuerca") {
+    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largo, tipoEst || "metal", ptsHorm || 0);
+  } else {
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largo);
+  }
+  const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largo, paneles.anchoTotal, panel.fam, espesor, opciones || {});
+  let selladores = { items: [], total: 0 };
+  if (!opciones || opciones.inclSell !== false) selladores = calcSelladoresTecho(paneles.cantPaneles);
+  const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
+  const allItems = [panelItem, ...fijaciones.items, ...perfileria.items, ...selladores.items];
+  const totales = calcTotalesSinIVA(allItems);
+  return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §4 ENGINE PARED — REESCRITO con fijaciones correctas
+// ═══════════════════════════════════════════════════════════════════════════
+
+function resolvePerfilPared(tipo, familia, espesor) {
+  const byTipo = PERFIL_PARED[tipo];
+  if (!byTipo) return null;
+  const byFam = byTipo[familia];
+  if (byFam) {
+    if (byFam[espesor]) return { ...byFam[espesor] };
+    if (byFam._all) return { ...byFam._all };
+  }
+  if (byTipo._all) return { ...byTipo._all };
+  return null;
+}
+
+function calcPanelesPared(panel, espesor, alto, perimetro, aberturas) {
+  const espData = panel.esp[espesor];
+  if (!espData) return null;
+  const cantPaneles = Math.ceil(perimetro / panel.au);
+  const areaBruta = +(cantPaneles * alto * panel.au).toFixed(2);
+  let areaAberturas = 0;
+  if (aberturas && aberturas.length > 0) {
+    for (const ab of aberturas) areaAberturas += ab.ancho * ab.alto * (ab.cant || 1);
+  }
+  areaAberturas = +areaAberturas.toFixed(2);
+  const areaNeta = +Math.max(areaBruta - areaAberturas, 0).toFixed(2);
+  const precioM2 = p(espData);
+  const costoPaneles = +(precioM2 * areaNeta).toFixed(2);
+  return { cantPaneles, areaBruta, areaAberturas, areaNeta, costoPaneles, precioM2 };
+}
+
+function calcPerfilesU(panel, espesor, perimetro) {
+  const perfData = resolvePerfilPared("perfil_u", panel.fam, espesor);
+  if (!perfData) return { items: [], total: 0 };
+  const precio = p(perfData);
+  const pzas = Math.ceil(perimetro / perfData.largo);
+  const items = [];
+  items.push({ label: "Perfil U base " + espesor + "mm", sku: perfData.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+  items.push({ label: "Perfil U coronación " + espesor + "mm", sku: perfData.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
+function calcEsquineros(alto, numExt, numInt) {
+  const items = [];
+  const pExt = resolvePerfilPared("esquinero_ext", null, null);
+  const pInt = resolvePerfilPared("esquinero_int", null, null);
+  if (pExt && numExt > 0) {
+    const pzas = Math.ceil(alto / pExt.largo) * numExt;
+    const precio = p(pExt);
+    items.push({ label: pExt.label, sku: pExt.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+  }
+  if (pInt && numInt > 0) {
+    const pzas = Math.ceil(alto / pInt.largo) * numInt;
+    const precio = p(pInt);
+    items.push({ label: pInt.label, sku: pInt.sku, cant: pzas, unidad: "unid", pu: precio, total: +(pzas * precio).toFixed(2) });
+  }
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
+// §B REESCRITO: Fijaciones de pared — NO usa varilla/tuerca/arandela/tortuga
+function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipoEst) {
+  const items = [];
+  const anchoTotal = cantP * panel.au;
+  // 1. ANCLAJES A HORMIGÓN — kit cada 0.30m en perímetro inferior
+  const anclajes = Math.ceil(anchoTotal / 0.30);
+  const puAnc = p(FIJACIONES.anclaje_h);
+  items.push({ label: FIJACIONES.anclaje_h.label, sku: "anclaje_h", cant: anclajes, unidad: "unid", pu: puAnc, total: +(anclajes * puAnc).toFixed(2) });
+  // 2. TORNILLOS T2 para fijar paneles a estructura (~5.5/m² para metal)
+  if (tipoEst === "metal" || tipoEst === "mixto") {
+    const areaNeta = cantP * alto * panel.au;
+    const tornillosT2 = Math.ceil(areaNeta * 5.5);
+    const paquetes = Math.ceil(tornillosT2 / 100);
+    const puT2 = p(FIJACIONES.tornillo_t2);
+    items.push({ label: FIJACIONES.tornillo_t2.label, sku: "tornillo_t2", cant: paquetes, unidad: "x100", pu: puT2, total: +(paquetes * puT2).toFixed(2) });
+  }
+  // 3. REMACHES POP para uniones entre perfiles — ~2 por panel
+  const remaches = Math.ceil(cantP * 2);
+  const paquetesRem = Math.ceil(remaches / 1000);
+  if (paquetesRem > 0) {
+    const puRem = p(FIJACIONES.remache_pop);
+    items.push({ label: FIJACIONES.remache_pop.label, sku: "remache_pop", cant: paquetesRem, unidad: "x1000", pu: puRem, total: +(paquetesRem * puRem).toFixed(2) });
+  }
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
+// §C NUEVOS PERFILES: K2, G2, 5852
+function calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) {
+  const items = [];
+  // Perfil K2 — junta interior entre paneles
+  const k2Data = PERFIL_PARED.perfil_k2._all;
+  if (cantP > 1) {
+    const juntasK2 = (cantP - 1) * Math.ceil(alto / k2Data.largo);
+    const puK2 = p(k2Data);
+    items.push({ label: k2Data.label, sku: k2Data.sku, cant: juntasK2, unidad: "unid", pu: puK2, total: +(juntasK2 * puK2).toFixed(2) });
+  }
+  // Perfil G2 — tapajunta exterior
+  const g2Data = resolvePerfilPared("perfil_g2", panel.fam, espesor);
+  if (g2Data) {
+    const numTramos = Math.ceil(perimetro / (cantP * panel.au)) || 1;
+    const cantG2 = Math.ceil(alto * 2 / 3.0) * Math.max(numTramos, 1);
+    const puG2 = p(g2Data);
+    items.push({ label: "Perfil G2 tapajunta", sku: g2Data.sku, cant: cantG2, unidad: "unid", pu: puG2, total: +(cantG2 * puG2).toFixed(2) });
+  }
+  // Perfil 5852 aluminio — OPCIONAL
+  if (opts && opts.incl5852) {
+    const d5852 = PERFIL_PARED.perfil_5852._all;
+    const anchoTotal = cantP * panel.au;
+    const cant5852 = Math.ceil(anchoTotal / d5852.largo) * (opts.apoyo5852doble ? 2 : 1);
+    const pu5852 = p(d5852);
+    items.push({ label: d5852.label, sku: d5852.sku, cant: cant5852, unidad: "unid", pu: pu5852, total: +(cant5852 * pu5852).toFixed(2) });
+  }
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
+// §D SELLADORES PARED: silicona + cinta butilo + membrana + espuma PU
+function calcSelladorPared(perimetro, cantPaneles, alto) {
+  const items = [];
+  const juntasV = cantPaneles - 1;
+  const mlJuntas = +(juntasV * alto + perimetro * 2).toFixed(2);
+  const siliconas = Math.ceil(mlJuntas / 8);
+  const puSil = p(SELLADORES.silicona);
+  items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, total: +(siliconas * puSil).toFixed(2) });
+  const cintas = Math.ceil(mlJuntas / 22.5);
+  const puCinta = p(SELLADORES.cinta_butilo);
+  items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, total: +(cintas * puCinta).toFixed(2) });
+  // Membrana autoadhesiva
+  const mlMembrana = perimetro; // encuentros con muro
+  const rollosMembrana = Math.ceil(mlMembrana / 10);
+  const puMem = p(SELLADORES.membrana);
+  items.push({ label: SELLADORES.membrana.label, sku: "membrana", cant: rollosMembrana, unidad: "rollo", pu: puMem, total: +(rollosMembrana * puMem).toFixed(2) });
+  // Espuma PU: 2 por cada rollo de membrana
+  const espumas = rollosMembrana * 2;
+  const puEsp = p(SELLADORES.espuma_pu);
+  items.push({ label: SELLADORES.espuma_pu.label, sku: "espuma_pu", cant: espumas, unidad: "unid", pu: puEsp, total: +(espumas * puEsp).toFixed(2) });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2), mlJuntas };
+}
+
+function calcParedCompleto(inputs) {
+  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color } = inputs;
+  const panel = PANELS_PARED[familia];
+  if (!panel) return { error: `Familia "${familia}" no encontrada` };
+  const espData = panel.esp[espesor];
+  if (!espData) return { error: `Espesor ${espesor}mm no disponible` };
+  const warnings = [];
+  if (familia === "ISOPANEL_EPS" && espesor === 50) warnings.push("50mm solo para subdivisiones interiores.");
+  if (alto > panel.lmax) warnings.push(`Alto ${alto}m > máximo ${panel.lmax}m`);
+  if (alto < panel.lmin) warnings.push(`Alto ${alto}m < mínimo ${panel.lmin}m`);
+  if ((numEsqExt || 0) === 0) warnings.push("Sin esquinas exteriores — verificar geometría");
+  if (color && !panel.col.includes(color)) warnings.push(`Color "${color}" no disponible`);
+  const paneles = calcPanelesPared(panel, espesor, alto, perimetro, aberturas || []);
+  if (!paneles) return { error: "Error calculando paneles" };
+  const perfilesU = calcPerfilesU(panel, espesor, perimetro);
+  const esquineros = calcEsquineros(alto, numEsqExt || 0, numEsqInt || 0);
+  const fijaciones = calcFijacionesPared(panel, espesor, paneles.cantPaneles, alto, perimetro, tipoEst || "metal");
+  const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, perimetro, { incl5852 });
+  let sellador = { items: [], total: 0 };
+  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto);
+  const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
+  const allItems = [panelItem, ...perfilesU.items, ...esquineros.items, ...perfilesExtra.items, ...fijaciones.items, ...sellador.items];
+  const totales = calcTotalesSinIVA(allItems);
+  return { paneles, perfilesU, esquineros, perfilesExtra, fijaciones, sellador, totales, warnings, allItems };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §5 ESCENARIOS + OVERRIDES + GEOMETRÍA
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SCENARIOS_DEF = [
+  { id: "solo_techo", label: "Solo Techo", icon: "🏠", description: "Cubierta con ISODEC o ISOROOF", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS"], hasTecho: true, hasPared: false },
+  { id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true },
+  { id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: true, hasPared: true },
+  { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
+];
+
+const VIS = {
+  solo_techo:    { borders: true, largoAncho: true, altoPerim: false, esquineros: false, aberturas: false, camara: false, autoportancia: true, canalGot: true, p5852: false },
+  solo_fachada:  { borders: false, largoAncho: false, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: false, canalGot: false, p5852: true },
+  techo_fachada: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
+  camara_frig:   { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
+};
+
+const OBRA_PRESETS = ["Vivienda","Barbacoa","Depósito comercial","Galpón industrial","Local comercial","Oficinas","Ampliación / Reforma","Nave logística","Taller","Cerramiento / Anexo","Tinglado / Cobertizo","Cámara frigorífica"];
+
+const BORDER_OPTIONS = {
+  frente: [{ id: "gotero_frontal", label: "Gotero simple" },{ id: "gotero_frontal_greca", label: "Gotero greca" },{ id: "none", label: "Sin perfil" }],
+  fondo: [{ id: "gotero_frontal", label: "Gotero frontal" },{ id: "babeta_adosar", label: "Muro (adosar)" },{ id: "babeta_empotrar", label: "Muro (empotrar)" },{ id: "cumbrera", label: "Cumbrera" },{ id: "none", label: "Sin perfil" }],
+  latIzq: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
+  latDer: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
+};
+
+// Override helpers
+function createLineId(groupTitle, idx) { return groupTitle.toUpperCase().replace(/\s/g, "_") + "-" + idx; }
+function applyOverrides(groups, overrides) {
+  if (!overrides || Object.keys(overrides).length === 0) return groups.map(g => ({ ...g, items: g.items.map(i => ({ ...i, isOverridden: false })) }));
+  return groups.map(g => ({ ...g, items: g.items.map((item, idx) => {
+    const lid = createLineId(g.title, idx);
+    const ovr = overrides[lid];
+    if (!ovr) return { ...item, isOverridden: false };
+    const patched = { ...item, isOverridden: true, lineId: lid };
+    if (ovr.field === "cant") { patched.cant = ovr.value; patched.total = +(ovr.value * patched.pu).toFixed(2); }
+    else if (ovr.field === "pu") { patched.pu = ovr.value; patched.total = +(patched.cant * ovr.value).toFixed(2); }
+    return patched;
+  }) }));
+}
+
+function bomToGroups(result) {
+  if (!result || result.error) return [];
+  const groups = [];
+  if (result.paneles) {
+    const panelItems = result.allItems ? result.allItems.filter(i => i.unidad === "m²") : [];
+    if (panelItems.length > 0) groups.push({ title: "PANELES", items: panelItems });
+  }
+  const sections = [
+    { key: "fijaciones", title: "FIJACIONES" },
+    { key: "perfileria", title: "PERFILERÍA TECHO" },
+    { key: "perfilesU", title: "PERFILES U" },
+    { key: "esquineros", title: "ESQUINEROS" },
+    { key: "perfilesExtra", title: "PERFILERÍA PARED" },
+    { key: "selladores", title: "SELLADORES" },
+    { key: "sellador", title: "SELLADORES" },
+  ];
+  sections.forEach(({ key, title }) => {
+    if (result[key] && result[key].items && result[key].items.length > 0) groups.push({ title, items: result[key].items });
+  });
+  return groups;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §6 UI COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function SearchOverlay({ panelsTecho, panelsPared, onSelect }) {
+  const [hovered, setHovered] = useState(false);
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+  const showMenu = hovered || focused;
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) { setFocused(false); setHovered(false); } };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const allItems = useMemo(() => {
+    const items = [];
+    Object.entries(panelsTecho).forEach(([k, v]) => items.push({ key: k, label: v.label, sub: v.sub, tipo: "techo", espesores: Object.keys(v.esp).join(", ") + " mm" }));
+    Object.entries(panelsPared).forEach(([k, v]) => items.push({ key: k, label: v.label, sub: v.sub, tipo: "pared", espesores: Object.keys(v.esp).join(", ") + " mm" }));
+    return items;
+  }, [panelsTecho, panelsPared]);
+
+  const filtered = useMemo(() => {
+    if (!query) return allItems;
+    const q = query.toLowerCase();
+    return allItems.filter(i => i.label.toLowerCase().includes(q) || i.sub.toLowerCase().includes(q) || i.tipo.includes(q) || i.espesores.includes(q));
+  }, [query, allItems]);
+
+  const categories = [
+    { id: "panels", label: "Paneles", icon: "◻" },
+    { id: "perfiles", label: "Perfiles", icon: "▬" },
+    { id: "fijaciones", label: "Fijaciones", icon: "⊕" },
+    { id: "precios", label: "Precios", icon: "◈" },
+  ];
+
+  return (
+    <div ref={ref} onMouseEnter={() => setHovered(true)} onMouseLeave={() => { if (!focused) setHovered(false); }}
+      style={{ position: "relative", flex: "0 1 380px" }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "7px 14px", borderRadius: 10,
+        border: `1.5px solid ${showMenu ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)"}`,
+        background: showMenu ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)",
+        transition: TR, cursor: "text",
+      }} onClick={() => { inputRef.current?.focus(); setFocused(true); }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)}
+          onFocus={() => setFocused(true)}
+          placeholder="Buscar paneles, espesores, perfiles..."
+          style={{ background: "none", border: "none", outline: "none", color: "#fff", fontSize: 13, fontFamily: FONT, flex: 1, opacity: showMenu ? 1 : 0.5 }} />
+        <kbd style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, padding: "1px 5px", fontFamily: "monospace" }}>/</kbd>
+      </div>
+
+      {showMenu && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, zIndex: 100,
+          background: "rgba(20, 30, 50, 0.92)", backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.45), 0 2px 12px rgba(0,0,0,0.25)",
+          overflow: "hidden", animation: "bmc-slideUp 180ms ease-out",
+        }}>
+          {!query && (
+            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+              {categories.map(cat => (
+                <button key={cat.id} onClick={() => setQuery(cat.label.toLowerCase())}
+                  style={{ flex: 1, padding: "12px 8px", background: "none", border: "none", cursor: "pointer",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                    color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: FONT, transition: TR,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
+                  <span style={{ fontSize: 18 }}>{cat.icon}</span>
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ maxHeight: 280, overflowY: "auto" }}>
+            {filtered.length === 0 && (
+              <div style={{ padding: "24px 16px", textAlign: "center", color: "rgba(255,255,255,0.35)", fontSize: 13 }}>
+                Sin resultados para &quot;{query}&quot;
+              </div>
+            )}
+            {filtered.map(item => (
+              <div key={item.key}
+                onClick={() => { onSelect(item.key); setQuery(""); setFocused(false); setHovered(false); }}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", cursor: "pointer", transition: TR, borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                <span style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  background: item.tipo === "techo" ? "rgba(0,113,227,0.2)" : "rgba(52,199,89,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 14, flexShrink: 0,
+                }}>{item.tipo === "techo" ? "△" : "▭"}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>{item.sub} · {item.espesores}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 10,
+                  background: item.tipo === "techo" ? "rgba(0,113,227,0.15)" : "rgba(52,199,89,0.15)",
+                  color: item.tipo === "techo" ? "#4DA3FF" : "#5AD87E",
+                }}>{item.tipo}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: "8px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 12, justifyContent: "center" }}>
+            {[{ k: "↑↓", l: "navegar" }, { k: "↵", l: "seleccionar" }, { k: "esc", l: "cerrar" }].map(h => (
+              <span key={h.k} style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 4 }}>
+                <kbd style={{ fontSize: 9, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 3, padding: "0px 4px", fontFamily: "monospace" }}>{h.k}</kbd>{h.l}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AnimNum({ value, style }) {
   const [key, setKey] = useState(0);
@@ -169,29 +981,8 @@ function Toast({ message, visible }) {
   return <div style={{ position: "fixed", bottom: 16, right: 16, zIndex: 50, background: C.success, color: "#fff", borderRadius: 12, padding: "12px 20px", fontSize: 14, fontWeight: 500, fontFamily: FONT, boxShadow: "0 4px 24px rgba(52,199,89,0.35)", animation: "bmc-slideUp 220ms", display: "flex", alignItems: "center", gap: 8 }}><CheckCircle size={16} color="#fff" />{message}</div>;
 }
 
-function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, onOverride, onRevert, onExclude }) {
-  const [editingCell, setEditingCell] = useState(null); // { lineId, field }
-  const [editValue, setEditValue] = useState("");
-  const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr 72px";
-
-  const startEdit = (lineId, field, currentVal) => {
-    setEditingCell({ lineId, field });
-    setEditValue(String(currentVal));
-  };
-
-  const commitEdit = (lineId, field) => {
-    const num = parseFloat(editValue);
-    if (!isNaN(num) && num >= 0 && onOverride) onOverride(lineId, field, num);
-    setEditingCell(null);
-  };
-
-  const handleKeyDown = (e, lineId, field) => {
-    if (e.key === "Enter") commitEdit(lineId, field);
-    if (e.key === "Escape") setEditingCell(null);
-  };
-
-  const editInputS = { width: "100%", padding: "2px 4px", borderRadius: 6, border: `1.5px solid ${C.primary}`, fontSize: 12, textAlign: "right", outline: "none", fontFamily: FONT, boxShadow: SHI, ...TN };
-
+function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle }) {
+  const cols = "2fr 0.6fr 0.6fr 0.8fr 0.8fr";
   return (
     <div style={{ borderRadius: 12, overflow: "hidden", boxShadow: SHC, fontFamily: FONT, marginBottom: 12 }}>
       <div onClick={onToggle} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", background: C.brandLight, cursor: "pointer" }}>
@@ -200,441 +991,119 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
       </div>
       {!collapsed && <div>
         <div style={{ display: "grid", gridTemplateColumns: cols, background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
-          {["Descripción", "Cant.", "Unid.", "P.Unit.", "Total", "Acciones"].map((h, i) => <div key={i} style={{ fontSize: 11, fontWeight: 600, color: C.ts, padding: "4px 12px", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i > 1 ? "right" : "left" }}>{h}</div>)}
+          {["Descripción", "Cant.", "Unid.", "P.Unit.", "Total"].map((h, i) => <div key={h} style={{ fontSize: 11, fontWeight: 600, color: C.ts, padding: "4px 12px", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i > 1 ? "right" : "left" }}>{h}</div>)}
         </div>
-        {items.map((item, idx) => {
-          const isEditing = editingCell && editingCell.lineId === item.lineId;
-          return <div key={idx} style={{ display: "grid", gridTemplateColumns: cols, background: item.isOverridden ? C.warningSoft : idx % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.border}`, alignItems: "center" }}>
-            <div style={{ padding: "8px 12px", fontSize: 13, color: item.isOverridden ? C.warning : C.tp, fontWeight: item.isOverridden ? 600 : 400 }}>{item.label}</div>
-            <div style={{ padding: "4px 8px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>
-              {isEditing && editingCell.field === "cant"
-                ? <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => commitEdit(item.lineId, "cant")} onKeyDown={e => handleKeyDown(e, item.lineId, "cant")} autoFocus style={editInputS} />
-                : <span onClick={() => onOverride && startEdit(item.lineId, "cant", item.cant)} style={{ cursor: onOverride ? "text" : "default" }}>{typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant}</span>}
-            </div>
-            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.tt }}>{item.unidad}</div>
-            <div style={{ padding: "4px 8px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>
-              {isEditing && editingCell.field === "pu"
-                ? <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={() => commitEdit(item.lineId, "pu")} onKeyDown={e => handleKeyDown(e, item.lineId, "pu")} autoFocus style={editInputS} />
-                : <span onClick={() => onOverride && startEdit(item.lineId, "pu", item.pu)} style={{ cursor: onOverride ? "text" : "default" }}>{typeof item.pu === "number" ? item.pu.toFixed(2) : item.pu}</span>}
-            </div>
-            <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
-            <div style={{ padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-              {onOverride && <button title="Editar" aria-label="Editar fila" onClick={() => isEditing ? setEditingCell(null) : startEdit(item.lineId, "cant", item.cant)} style={{ background: "none", border: "none", cursor: "pointer", color: isEditing ? C.primary : C.tt, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><Edit3 size={13} /></button>}
-              {onRevert && item.isOverridden && <button title="Revertir" aria-label="Revertir cambios" onClick={() => onRevert(item.lineId)} style={{ background: "none", border: "none", cursor: "pointer", color: C.warning, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><RotateCcw size={13} /></button>}
-              {onExclude && <button title="Quitar del presupuesto" aria-label="Quitar item" onClick={() => onExclude(item.lineId, item.label)} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, padding: 2, borderRadius: 4, display: "flex", alignItems: "center" }}><X size={13} /></button>}
-            </div>
-          </div>;
-        })}
+        {items.map((item, idx) => <div key={idx} style={{ display: "grid", gridTemplateColumns: cols, background: item.isOverridden ? C.warningSoft : idx % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ padding: "8px 12px", fontSize: 13, color: C.tp }}>{item.label}</div>
+          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant}</div>
+          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.tt }}>{item.unidad}</div>
+          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>{typeof item.pu === "number" ? item.pu.toFixed(2) : item.pu}</div>
+          <div style={{ padding: "8px 12px", fontSize: 13, textAlign: "right", fontWeight: 600, color: C.tp, ...TN }}>${typeof item.total === "number" ? item.total.toFixed(2) : item.total}</div>
+        </div>)}
       </div>}
     </div>
   );
 }
 
-function MobileBottomBar({ total, onPrint, onWhatsApp }) {
+function BorderConfigurator({ borders = {}, onChange }) {
+  const sides = ["frente", "fondo", "latIzq", "latDer"];
+  const sideLabels = { frente: "FRENTE ▼", fondo: "FONDO ▲", latIzq: "◄ IZQ", latDer: "DER ►" };
+  const cellS = (active) => ({ display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 600, background: active ? C.primarySoft : C.surface, border: `1.5px solid ${active ? C.primary : C.border}`, color: active ? C.primary : C.ts, textAlign: "center" });
   return (
-    <div style={{
-      position: "fixed",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      background: C.dark,
-      color: "#fff",
-      padding: "12px 16px",
-      display: "none",
-      zIndex: 100,
-      boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
-      fontFamily: FONT,
-    }} className="bmc-mobile-bar">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>TOTAL USD</div>
-          <div style={{ fontSize: 24, fontWeight: 800, ...TN }}>${fmtPrice(total)}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
-          <button onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
-        </div>
+    <div style={{ fontFamily: FONT }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gridTemplateRows: "auto auto auto", gap: 4, marginBottom: 16 }}>
+        <div /><div style={cellS(borders.fondo && borders.fondo !== "none")}>{sideLabels.fondo}</div><div />
+        <div style={cellS(borders.latIzq && borders.latIzq !== "none")}>{sideLabels.latIzq}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: C.brandLight, borderRadius: 8, padding: "10px 0", fontSize: 11, fontWeight: 700, color: C.brand, border: `1px solid ${C.border}` }}>PANELES</div>
+        <div style={cellS(borders.latDer && borders.latDer !== "none")}>{sideLabels.latDer}</div>
+        <div /><div style={cellS(borders.frente && borders.frente !== "none")}>{sideLabels.frente}</div><div />
       </div>
-    </div>
-  );
-}
-
-function PDFPreviewModal({ html, title, onClose }) {
-  const [url, setUrl] = useState(null);
-  useEffect(() => {
-    if (!html) return;
-    const u = createPreviewUrl(html);
-    setUrl(u);
-    return () => revokePreviewUrl(u);
-  }, [html]);
-
-  useEffect(() => {
-    if (!html) return;
-    const onKey = e => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [html, onClose]);
-
-  if (!html || !url) return null;
-
-  const handlePrint = () => {
-    const iframe = document.getElementById("bmc-pdf-preview-frame");
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.print();
-    }
-  };
-
-  return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.6)", animation: "bmc-fade 150ms ease-in-out" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", background: C.dark, color: "#fff", flexShrink: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{title || "Vista previa de cotización"}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={handlePrint} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            <Printer size={14} />Imprimir / PDF
-          </button>
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-            <X size={14} />Cerrar
-          </button>
-        </div>
-      </div>
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: 20, overflow: "auto" }}>
-        <iframe
-          id="bmc-pdf-preview-frame"
-          src={url}
-          style={{
-            width: "210mm",
-            maxWidth: "100%",
-            height: "100%",
-            border: "none",
-            borderRadius: 8,
-            boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
-            background: "#fff",
-          }}
-          title="Vista previa PDF"
-        />
-      </div>
-    </div>
-  );
-}
-
-function AguaSvg1({ color = "#0071E3" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 18 L72 10 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-    <line x1="72" y1="10" x2="72" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-    <circle cx="8" cy="18" r="2" fill={color} />
-    <circle cx="72" cy="10" r="2" fill={color} />
-  </svg>;
-}
-
-function AguaSvg2({ color = "#0071E3" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 22 L40 8 L72 22 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-    <line x1="40" y1="8" x2="40" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-    <circle cx="40" cy="8" r="2.5" fill={color} />
-    <circle cx="8" cy="22" r="2" fill={color} />
-    <circle cx="72" cy="22" r="2" fill={color} />
-  </svg>;
-}
-
-function AguaSvg4({ color = "#AEAEB2" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 22 L28 10 L52 10 L72 22 L72 36" fill={color} fillOpacity="0.08" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="4 2" />
-    <line x1="28" y1="10" x2="28" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
-    <line x1="52" y1="10" x2="52" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
-  </svg>;
-}
-
-const AGUA_SVGS = { una_agua: AguaSvg1, dos_aguas: AguaSvg2, cuatro_aguas: AguaSvg4 };
-
-function TipoAguasSelector({ value, onChange }) {
-  return (
-    <div style={{ display: "flex", gap: 10, fontFamily: FONT }}>
-      {TIPO_AGUAS.filter(t => t.enabled).map(tipo => {
-        const isS = value === tipo.id;
-        const SvgComp = AGUA_SVGS[tipo.id];
-        return (
-          <button
-            key={tipo.id}
-            onClick={() => onChange(tipo.id)}
-            style={{
-              flex: 1, padding: "12px 8px", borderRadius: 14, textAlign: "center",
-              border: `2px solid ${isS ? C.primary : C.border}`,
-              background: isS ? C.primarySoft : C.surface,
-              cursor: "pointer",
-              transition: TR,
-              boxShadow: isS ? `0 0 0 3px ${C.primarySoft}` : "none",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            }}
-          >
-            <SvgComp color={isS ? C.primary : C.ts} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: isS ? C.primary : C.tp }}>{tipo.label}</div>
-            <div style={{ fontSize: 10, color: C.ts, lineHeight: 1.3 }}>{tipo.description}</div>
-          </button>
-        );
+      {sides.map(side => {
+        const opts = BORDER_OPTIONS[side] || [];
+        return <div key={side} style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sideLabels[side]}</div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {opts.map(opt => <button key={opt.id} onClick={() => onChange(side, opt.id)} style={{ padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${borders[side] === opt.id ? C.primary : C.border}`, background: borders[side] === opt.id ? C.primarySoft : C.surface, fontSize: 11, fontWeight: borders[side] === opt.id ? 600 : 400, color: borders[side] === opt.id ? C.primary : C.ts, cursor: "pointer", transition: TR }}>{opt.label}</button>)}
+          </div>
+        </div>;
       })}
     </div>
   );
 }
 
-const SIDE_LABELS = { frente: "FRENTE INF", fondo: "FRENTE SUP", latIzq: "LAT IZQ", latDer: "LAT DER" };
+// ═══════════════════════════════════════════════════════════════════════════
+// §7 PDF GENERATOR + WHATSAPP
+// ═══════════════════════════════════════════════════════════════════════════
 
-function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [] }) {
-  const [openSide, setOpenSide] = useState(null);
-  const containerRef = useRef(null);
-  const svgRef = useRef(null);
-  const popoverRef = useRef(null);
-  const [popoverStyle, setPopoverStyle] = useState(null);
-  const panelFam = PANELS_TECHO[panelFamilia]?.fam || "";
+const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  useEffect(() => {
-    const handler = (e) => {
-      const t = e.target;
-      if (containerRef.current && containerRef.current.contains(t)) return;
-      if (popoverRef.current && popoverRef.current.contains(t)) return;
-      setOpenSide(null);
-      setPopoverStyle(null);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const getOpts = (side) => (BORDER_OPTIONS[side] || []).filter(o => !o.familias || o.familias.includes(panelFam));
-  const getLabel = (side) => {
-    const val = borders[side];
-    if (!val || val === "none") return "—";
-    const opt = (BORDER_OPTIONS[side] || []).find(o => o.id === val);
-    return opt ? opt.label : val;
-  };
-
-  const handleEdgeClick = (side) => {
-    if (disabledSides.includes(side)) return;
-    setPopoverStyle(null);
-    setOpenSide(prev => prev === side ? null : side);
-  };
-
-  const margin = 18;
-  const svgW = 280, svgH = 180;
-  const vbW = svgW + margin * 2, vbH = svgH + margin * 2;
-  const ox = margin, oy = margin;
-  const edge = 10, pad = 30;
-  const innerX = ox + pad, innerW = svgW - pad * 2, innerH = svgH - edge * 2;
-
-  const edgeDefs = {
-    fondo:  { x: innerX, y: oy, w: innerW, h: edge },
-    frente: { x: innerX, y: oy + svgH - edge, w: innerW, h: edge },
-    latIzq: { x: innerX - edge, y: oy + edge, w: edge, h: innerH },
-    latDer: { x: innerX + innerW, y: oy + edge, w: edge, h: innerH },
-  };
-
-  const positionPopover = useCallback((side) => {
-    const svgEl = svgRef.current;
-    const popEl = popoverRef.current;
-    if (!side || !svgEl || !popEl) return;
-
-    const svgRect = svgEl.getBoundingClientRect();
-    const popRect = popEl.getBoundingClientRect();
-    if (popRect.width === 0 || popRect.height === 0) return;
-
-    const vpPad = 10;
-    const gap = 10;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    const anchor = (() => {
-      switch (side) {
-        case "fondo":  return { x: svgRect.left + svgRect.width / 2, y: svgRect.top };
-        case "frente": return { x: svgRect.left + svgRect.width / 2, y: svgRect.bottom };
-        case "latIzq": return { x: svgRect.left, y: svgRect.top + svgRect.height / 2 };
-        case "latDer": return { x: svgRect.right, y: svgRect.top + svgRect.height / 2 };
-        default: return null;
-      }
-    })();
-    if (!anchor) return;
-
-    const canTop = anchor.y - gap - popRect.height - vpPad >= 0;
-    const canBottom = anchor.y + gap + popRect.height + vpPad <= vh;
-    const canLeft = anchor.x - gap - popRect.width - vpPad >= 0;
-    const canRight = anchor.x + gap + popRect.width + vpPad <= vw;
-
-    let top = 0;
-    let left = 0;
-
-    if (side === "fondo") {
-      if (canTop || !canBottom) { top = anchor.y - gap - popRect.height; left = anchor.x - popRect.width / 2; }
-      else { top = anchor.y + gap; left = anchor.x - popRect.width / 2; }
-    } else if (side === "frente") {
-      if (canBottom || !canTop) { top = anchor.y + gap; left = anchor.x - popRect.width / 2; }
-      else { top = anchor.y - gap - popRect.height; left = anchor.x - popRect.width / 2; }
-    } else if (side === "latIzq") {
-      if (canLeft || !canRight) { top = anchor.y - popRect.height / 2; left = anchor.x - gap - popRect.width; }
-      else { top = anchor.y - popRect.height / 2; left = anchor.x + gap; }
-    } else if (side === "latDer") {
-      if (canRight || !canLeft) { top = anchor.y - popRect.height / 2; left = anchor.x + gap; }
-      else { top = anchor.y - popRect.height / 2; left = anchor.x - gap - popRect.width; }
-    }
-
-    left = Math.min(Math.max(vpPad, left), vw - popRect.width - vpPad);
-    top = Math.min(Math.max(vpPad, top), vh - popRect.height - vpPad);
-
-    setPopoverStyle({ top, left, opacity: 1 });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!openSide) return;
-    positionPopover(openSide);
-  }, [openSide, positionPopover]);
-
-  useEffect(() => {
-    if (!openSide) return;
-    const recalc = () => positionPopover(openSide);
-    window.addEventListener("resize", recalc);
-    // Capture scroll events from any scroll container (scroll doesn't bubble).
-    window.addEventListener("scroll", recalc, true);
-    return () => {
-      window.removeEventListener("resize", recalc);
-      window.removeEventListener("scroll", recalc, true);
-    };
-  }, [openSide, positionPopover]);
-
-  const labelPos = {
-    fondo:  { x: ox + svgW / 2, y: oy + edge / 2 + 1, anchor: "middle" },
-    frente: { x: ox + svgW / 2, y: oy + svgH - edge / 2 + 1, anchor: "middle" },
-    latIzq: { x: innerX - edge / 2, y: oy + svgH / 2, anchor: "middle", rotate: -90 },
-    latDer: { x: innerX + innerW + edge / 2, y: oy + svgH / 2, anchor: "middle", rotate: 90 },
-  };
-
-  return (
-    <div ref={containerRef} style={{ position: "relative", fontFamily: FONT }}>
-      <svg ref={svgRef} viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 380, margin: "0 auto" }}>
-        {/* Center panel area */}
-        <rect x={innerX} y={oy + edge} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
-        <text x={ox + svgW / 2} y={oy + svgH / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
-
-        {/* Edge rects */}
-        {["fondo", "frente", "latIzq", "latDer"].map(side => {
-          const d = edgeDefs[side];
-          const val = borders[side];
-          const active = val && val !== "none";
-          const isOpen = openSide === side;
-          const isDisabled = disabledSides.includes(side);
-          const lp = labelPos[side];
-          const abbr = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side);
-          const isVert = side === "latIzq" || side === "latDer";
-          const rx = isVert ? 4 : 6;
-          const hitPad = 8;
-          const hx = isVert ? d.x - hitPad : d.x;
-          const hy = isVert ? d.y : d.y - hitPad;
-          const hw = isVert ? d.w + hitPad * 2 : d.w;
-          const hh = isVert ? d.h : d.h + hitPad * 2;
-          return (
-            <g key={side} role="button" tabIndex={isDisabled ? -1 : 0} aria-label={`${SIDE_LABELS[side] || side}: ${abbr}`} onClick={() => handleEdgeClick(side)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleEdgeClick(side); } }} style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
-              <rect x={hx} y={hy} width={hw} height={hh} fill="transparent" />
-              <rect
-                x={d.x} y={d.y} width={d.w} height={d.h} rx={rx}
-                fill={isDisabled ? C.surfaceAlt : active ? C.primarySoft : C.surface}
-                stroke={isOpen ? C.primary : active ? C.primary : C.border}
-                strokeWidth={isOpen ? 2 : 1.5}
-                strokeDasharray={active || isOpen ? "none" : "4 3"}
-                opacity={isDisabled ? 0.4 : 1}
-              />
-              {isOpen && <rect x={d.x - 2} y={d.y - 2} width={d.w + 4} height={d.h + 4} rx={rx + 2} fill="none" stroke={C.primary} strokeWidth={1} opacity={0.3} />}
-              <text
-                x={lp.x} y={lp.y} textAnchor={lp.anchor} dominantBaseline="central"
-                fill={isDisabled ? C.tt : active ? C.primary : C.ts}
-                fontSize={8} fontWeight={600} fontFamily={FONT}
-                transform={lp.rotate ? `rotate(${lp.rotate}, ${lp.x}, ${lp.y})` : undefined}
-              >{abbr.length > 12 ? abbr.slice(0, 10) + "…" : abbr}</text>
-            </g>
-          );
-        })}
-
-        {/* Side name labels outside the diagram */}
-        <text x={ox + svgW / 2} y={oy + svgH + 14} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▼ FRENTE INF</text>
-        <text x={ox + svgW / 2} y={oy - 6} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▲ FRENTE SUP</text>
-        <text x={innerX - edge - 6} y={oy + svgH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90, ${innerX - edge - 6}, ${oy + svgH / 2})`}>◄ IZQ</text>
-        <text x={innerX + innerW + edge + 6} y={oy + svgH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90, ${innerX + innerW + edge + 6}, ${oy + svgH / 2})`}>DER ►</text>
-      </svg>
-
-      {/* Popover for the open side */}
-      {openSide && typeof document !== "undefined" && createPortal((() => {
-        const opts = getOpts(openSide);
-        const baseS = { fontFamily: FONT, background: C.surface, borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", minWidth: 160, maxHeight: 220, display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out" };
-        return (
-          <div
-            ref={popoverRef}
-            style={{
-              position: "fixed",
-              zIndex: 9999,
-              top: popoverStyle?.top ?? -9999,
-              left: popoverStyle?.left ?? -9999,
-              opacity: popoverStyle?.opacity ?? 0,
-              transition: "opacity 80ms ease",
-              ...baseS,
-            }}
-          >
-            <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt, borderRadius: "10px 10px 0 0", flexShrink: 0 }}>{SIDE_LABELS[openSide]}</div>
-            <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
-              {opts.map(opt => {
-                const isSel = borders[openSide] === opt.id;
-                return (
-                  <div
-                    key={opt.id}
-                    onClick={(e) => { e.stopPropagation(); onChange(openSide, opt.id); setPopoverStyle(null); setOpenSide(null); }}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", cursor: "pointer", fontSize: 13, background: isSel ? C.primarySoft : "transparent", fontWeight: isSel ? 500 : 400, color: C.tp, transition: TR }}
-                  >
-                    <span>{opt.label}</span>
-                    {isSel && <Check size={14} color={C.primary} />}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })(), document.body)}
-    </div>
-  );
+function generatePrintHTML(data) {
+  const { client, project, scenario, panel, autoportancia, groups, totals, warnings } = data;
+  const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const scenarioLabel = { solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
+  const autoportStr = autoportancia?.ok === true ? `Autoportante ✓ · Apoyos: ${autoportancia.apoyos}` : autoportancia?.ok === false ? "⚠ Requiere estructura adicional" : "";
+  let tableBody = "";
+  groups.forEach(g => {
+    const sub = g.items.reduce((s, i) => s + (i.total || 0), 0);
+    tableBody += `<tr style="background:#F0F4F8"><td colspan="5" style="font-weight:600;padding:4px 6px">▸ ${esc(g.title)}</td><td style="text-align:right;font-weight:600;padding:4px 6px">$${fmtPrice(sub)}</td></tr>`;
+    g.items.forEach((item, idx) => {
+      tableBody += `<tr style="background:${idx % 2 ? "#FAFAFA" : "#fff"}"><td style="padding:3px 6px">${esc(item.label)}</td><td style="text-align:center;color:#555;padding:3px 6px">${esc(item.sku || "—")}</td><td style="text-align:right;padding:3px 6px">${typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant}</td><td style="text-align:center;padding:3px 6px">${esc(item.unidad)}</td><td style="text-align:right;padding:3px 6px">${fmtPrice(item.pu)}</td><td style="text-align:right;padding:3px 6px">$${fmtPrice(item.total)}</td></tr>`;
+    });
+  });
+  const warnHTML = (warnings || []).map(w => `<li style="color:#FF9500;font-weight:700">⚠ ${esc(w)}</li>`).join("");
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cotización BMC Uruguay</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:10pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact}table{border-collapse:collapse;width:100%}th,td{border:0.4pt solid #D0D0D0}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><div style="font-size:18pt;font-weight:800;color:#003366">BMC Uruguay</div><div style="font-size:18pt;font-weight:800">COTIZACIÓN</div></div>
+<div style="border-bottom:2pt solid #000;margin-bottom:4px"></div>
+<div style="font-size:9pt;color:#444;margin-bottom:8px">bmcuruguay.com.uy · 092 663 245 · Maldonado, Uruguay</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:10pt;margin-bottom:8px">
+<div><b>Cliente:</b> ${esc(client.nombre)}</div><div><b>Fecha:</b> ${esc(project.fecha)}</div>
+<div><b>RUT:</b> ${esc(client.rut)}</div><div><b>Ref:</b> ${esc(project.refInterna)}</div>
+<div><b>Obra:</b> ${esc(project.descripcion)}</div><div><b>Validez:</b> 10 días</div>
+<div><b>Tel:</b> ${esc(client.telefono)}</div><div><b>Dir:</b> ${esc(client.direccion)}</div>
+</div>
+<div style="background:#F0F4F8;padding:6px 10px;border-radius:4px;margin-bottom:6px"><b style="color:#003366">PRODUCTO:</b> ${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} <span style="background:#003366;color:#fff;font-size:7.5pt;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:8px">${esc(scenarioLabel)}</span>${autoportStr ? `<div style="font-size:8.5pt;color:#444;margin-top:2px">${autoportStr}</div>` : ""}</div>
+<table style="font-size:9pt;margin-bottom:6px"><thead><tr style="background:#EDEDED;font-weight:700"><th style="text-align:left;width:38%;padding:3px 6px">Descripción</th><th style="text-align:center;width:10%;padding:3px 6px">SKU</th><th style="text-align:right;width:8%;padding:3px 6px">Cant.</th><th style="text-align:center;width:7%;padding:3px 6px">Unid.</th><th style="text-align:right;width:13%;padding:3px 6px">P.U. USD</th><th style="text-align:right;width:14%;padding:3px 6px">Total USD</th></tr></thead><tbody>${tableBody}</tbody></table>
+<div style="display:flex;justify-content:flex-end;margin-bottom:6px"><table style="min-width:260px;font-size:10pt"><tr><td style="padding:2px 8px">Subtotal s/IVA</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.subtotalSinIVA)}</td></tr><tr><td style="padding:2px 8px">IVA 22%</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.iva)}</td></tr><tr style="border-top:1pt solid #000;font-size:14pt;font-weight:800"><td style="padding:2px 8px">TOTAL USD</td><td style="text-align:right;color:#003366;padding:2px 8px">$${fmtPrice(totals.totalFinal)}</td></tr></table></div>
+<div style="font-size:8pt;line-height:1.4;margin-bottom:6px"><b>COMENTARIOS:</b><ul style="margin:0;padding-left:14px"><li style="font-weight:700">Entrega 10 a 15 días.</li><li style="color:#FF3B30;font-weight:600">Oferta válida 10 días.</li><li style="font-weight:700;color:#FF3B30">Seña 60%, saldo contra entrega.</li><li>Precios en USD, IVA incluido en total.</li>${warnHTML}</ul></div>
+<table style="font-size:8.5pt;margin-top:6px"><thead><tr><th colspan="2" style="background:#EDEDED;font-weight:700;text-align:left;padding:3px 8px">Depósito Bancario</th></tr></thead><tbody><tr><td style="padding:3px 8px">Titular: <b>Metalog SAS</b></td><td style="padding:3px 8px">RUT: 120403630012</td></tr><tr><td style="padding:3px 8px">BROU · Cta. Dólares: <b>110520638-00002</b></td><td style="padding:3px 8px">Consultas: <b>092 663 245</b></td></tr></tbody></table>
+</body></html>`;
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+function openPrintWindow(html) {
+  const w = window.open("", "_blank", "width=800,height=1100");
+  if (!w) { alert("Habilitá popups para imprimir."); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+}
+
+function buildWhatsAppText(data) {
+  const { client, project, scenario, panel, totals, listaLabel } = data;
+  const scenarioLabel = { solo_techo: "Solo techo", solo_fachada: "Solo fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
+  let txt = `*Cotización BMC Uruguay*\n📅 ${project.fecha} · Ref: ${project.refInterna || "—"}\n🏗 Cliente: ${client.nombre}${client.rut ? " · " + client.rut : ""}\n📐 Obra: ${project.descripcion || "—"} · ${client.direccion || "—"}\n💲 Lista: ${listaLabel}\n\n*Escenario:* ${scenarioLabel}\n*Panel:* ${panel.label} ${panel.espesor}mm · Color: ${panel.color}\n`;
+  txt += `\n💰 *Subtotal s/IVA:* USD ${fmtPrice(totals.subtotalSinIVA)}\n💰 *IVA 22%:* USD ${fmtPrice(totals.iva)}\n✅ *TOTAL USD: ${fmtPrice(totals.totalFinal)}*\n\n_Entrega 10-15d · Seña 60%_\n_092 663 245 · bmcuruguay.com.uy_`;
+  return txt;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §8 MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
 export default function PanelinCalculadoraV3() {
   // ── State ──
   const [listaPrecios, setLP] = useState("web");
   const [scenario, setScenario] = useState("solo_techo");
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+  const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
   const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
-  const [techoAnchoModo, setTechoAnchoModo] = useState("metros"); // "metros" | "paneles"
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
   const [overrides, setOverrides] = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [toast, setToast] = useState(null);
+  const [activeStep, setActiveStep] = useState(0);
   const [showTransp, setShowTransp] = useState(false);
-  const [previewHTML, setPreviewHTML] = useState(null);
-  const [previewTitle, setPreviewTitle] = useState("Vista previa de cotización");
-  const [excludedItems, setExcludedItems] = useState({}); // { lineId: label }
-  const [categoriasActivas, setCategoriasActivas] = useState(() => {
-    const initial = {};
-    Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
-    return initial;
-  });
-  // Section refs for auto-scroll
-  const panelRef = useRef(null);
-  const dimensionesRef = useRef(null);
-  const bordesRef = useRef(null);
-  const opcionesRef = useRef(null);
-
-  const scrollToSection = useCallback((sectionKey) => {
-    const refs = { panel: panelRef, dimensiones: dimensionesRef, bordes: bordesRef, opciones: opcionesRef };
-    const ref = refs[sectionKey];
-    if (ref?.current) {
-      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, []);
+  const [mainTab, setMainTab] = useState("invocar"); // "invocar" | "finanzas"
 
   // Sync LISTA_ACTIVA
   useEffect(() => { setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -642,142 +1111,46 @@ export default function PanelinCalculadoraV3() {
   const vis = VIS[scenario] || VIS.solo_techo;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
 
-  // ── Available families for current scenario (separate techo/pared) ──
-  const techoFamilyOptions = useMemo(() => {
-    if (!scenarioDef?.hasTecho) return [];
-    return Object.entries(PANELS_TECHO).map(([fk, pd]) => ({ value: fk, label: pd.label, sublabel: pd.sub }));
+  // ── Available families for current scenario ──
+  const familyOptions = useMemo(() => {
+    if (!scenarioDef) return [];
+    const allPanels = { ...PANELS_TECHO, ...PANELS_PARED };
+    return scenarioDef.familias.map(fk => {
+      const pd = allPanels[fk];
+      return pd ? { value: fk, label: pd.label, sublabel: pd.sub } : null;
+    }).filter(Boolean);
   }, [scenarioDef]);
 
-  const paredFamilyOptions = useMemo(() => {
-    if (!scenarioDef?.hasPared) return [];
-    return Object.entries(PANELS_PARED).map(([fk, pd]) => ({ value: fk, label: pd.label, sublabel: pd.sub }));
-  }, [scenarioDef]);
+  // ── Get espesor options ──
+  const currentFamilia = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.familia : pared.familia;
+  const activePanelData = useMemo(() => {
+    const all = { ...PANELS_TECHO, ...PANELS_PARED };
+    return all[currentFamilia] || null;
+  }, [currentFamilia]);
 
-  // ── Panel data for techo ──
-  const techoPanelData = useMemo(() => PANELS_TECHO[techo.familia] || null, [techo.familia]);
-  const techoEspesorOptions = useMemo(() => {
-    if (!techoPanelData) return [];
-    return Object.keys(techoPanelData.esp).map(e => ({ value: Number(e), label: `${e} mm`, badge: techoPanelData.esp[e].ap ? `AP ${techoPanelData.esp[e].ap}m` : undefined }));
-  }, [techoPanelData]);
+  const espesorOptions = useMemo(() => {
+    if (!activePanelData) return [];
+    return Object.keys(activePanelData.esp).map(e => ({ value: Number(e), label: `${e} mm`, badge: activePanelData.esp[e].ap ? `AP ${activePanelData.esp[e].ap}m` : undefined }));
+  }, [activePanelData]);
 
-  // ── Panel data for pared ──
-  const paredPanelData = useMemo(() => PANELS_PARED[pared.familia] || null, [pared.familia]);
-  const paredEspesorOptions = useMemo(() => {
-    if (!paredPanelData) return [];
-    return Object.keys(paredPanelData.esp).map(e => ({ value: Number(e), label: `${e} mm` }));
-  }, [paredPanelData]);
-
-  // ── Combined scenario flag ──
-  const isCombined = scenarioDef?.hasTecho && scenarioDef?.hasPared;
-
-  // ── Helpers: Ancho techo en metros ↔ paneles ──
-  const normalizeTechoAnchoToPaneles = useCallback((anchoM, panelData, tipoAguas) => {
-    if (!panelData) return anchoM;
-    const is2A = tipoAguas === "dos_aguas";
-    const perSlope = is2A ? (anchoM / 2) : anchoM;
-    const { cantPaneles } = normalizarMedida("metros", perSlope, panelData);
-    const anchoPerSlope = cantPaneles * panelData.au;
-    const anchoTotal = is2A ? (anchoPerSlope * 2) : anchoPerSlope;
-    return +anchoTotal.toFixed(2);
-  }, []);
-
-  const techoPanelesDesdeAnchoM = useCallback((anchoM, panelData, tipoAguas) => {
-    if (!panelData) return 0;
-    const is2A = tipoAguas === "dos_aguas";
-    const perSlope = is2A ? (anchoM / 2) : anchoM;
-    return normalizarMedida("metros", perSlope, panelData).cantPaneles;
-  }, []);
-
-  const techoAnchoMDesdePaneles = useCallback((cantPaneles, panelData, tipoAguas) => {
-    if (!panelData) return 0;
-    const is2A = tipoAguas === "dos_aguas";
-    const { ancho } = normalizarMedida("paneles", cantPaneles, panelData);
-    const anchoTotal = is2A ? (ancho * 2) : ancho;
-    return +anchoTotal.toFixed(2);
-  }, []);
-
-  // ── Zonas helpers ──
-  const addZona = () => setTecho(t => {
-    const defaultLargo = 6.0;
-    const defaultAnchoM = 5.0;
-    const wantPaneles = techoAnchoModo === "paneles" && techoPanelData;
-    const ancho = wantPaneles
-      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, t.tipoAguas)
-      : defaultAnchoM;
-    return { ...t, zonas: [...t.zonas, { largo: defaultLargo, ancho }] };
-  });
-  const removeZona = (idx) => setTecho(t => ({ ...t, zonas: t.zonas.length > 1 ? t.zonas.filter((_, i) => i !== idx) : t.zonas }));
-  const updateZona = (idx, key, val) => setTecho(t => ({ ...t, zonas: t.zonas.map((z, i) => i === idx ? { ...z, [key]: val } : z) }));
-
-  // Mantener el ancho “alineado” a paneles cuando el modo está activo
-  useEffect(() => {
-    if (techoAnchoModo !== "paneles") return;
-    if (!techoPanelData) return;
-    setTecho(prev => {
-      const nextZonas = prev.zonas.map(z => {
-        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas);
-        return nextAncho === z.ancho ? z : { ...z, ancho: nextAncho };
-      });
-      const changed = nextZonas.some((z, i) => z !== prev.zonas[i]);
-      return changed ? { ...prev, zonas: nextZonas } : prev;
-    });
-  }, [techoAnchoModo, techoPanelData, techo.tipoAguas, normalizeTechoAnchoToPaneles]);
-
-  // ── Totals from all zones (for display and calculations) ──
-  const zonasTotales = useMemo(() => {
-    if (!techo.zonas?.length) return { largo: 6, ancho: 5, area: 30 };
-    const totalArea = techo.zonas.reduce((sum, z) => sum + (z.largo * z.ancho), 0);
-    const maxLargo = Math.max(...techo.zonas.map(z => z.largo));
-    const totalAncho = techo.zonas.reduce((sum, z) => sum + z.ancho, 0);
-    return { largo: maxLargo, ancho: totalAncho, area: +totalArea.toFixed(2) };
-  }, [techo.zonas]);
+  const currentEspesor = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.espesor : pared.espesor;
+  const currentColor = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.color : pared.color;
 
   // ── Calculate results ──
   const results = useMemo(() => {
+    setListaPrecios(listaPrecios);
     const sc = scenario;
     try {
       if (sc === "solo_techo") {
         if (!techo.familia || !techo.espesor) return null;
-        // For 2 aguas: each zona generates 2 faldones (half ancho each)
-        // Agua 1 keeps frente+latIzq+latDer borders, fondo=cumbrera
-        // Agua 2 keeps fondo(original)+latIzq+latDer borders, frente=cumbrera (shared, not double-counted)
-        const is2Aguas = techo.tipoAguas === "dos_aguas";
-        const zonaResults = techo.zonas.flatMap(zona => {
-          if (is2Aguas) {
-            const halfAncho = +(zona.ancho / 2).toFixed(2);
-            const agua1 = calcTechoCompleto({
-              ...techo, largo: zona.largo, ancho: halfAncho,
-              borders: { ...techo.borders, fondo: "cumbrera" },
-            });
-            const agua2 = calcTechoCompleto({
-              ...techo, largo: zona.largo, ancho: halfAncho,
-              borders: { frente: techo.borders.fondo === "cumbrera" ? "cumbrera" : techo.borders.fondo, fondo: "none", latIzq: techo.borders.latIzq, latDer: techo.borders.latDer },
-            });
-            return [agua1, agua2];
-          }
-          return [calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })];
-        });
-        return mergeZonaResults(zonaResults);
+        return calcTechoCompleto(techo);
       }
       if (sc === "solo_fachada") {
         if (!pared.familia || !pared.espesor) return null;
         return calcParedCompleto(pared);
       }
       if (sc === "techo_fachada") {
-        let rT = null;
-        if (techo.familia && techo.espesor) {
-          const is2A = techo.tipoAguas === "dos_aguas";
-          const zonaResults = techo.zonas.flatMap(zona => {
-            if (is2A) {
-              const ha = +(zona.ancho / 2).toFixed(2);
-              const a1 = calcTechoCompleto({ ...techo, largo: zona.largo, ancho: ha, borders: { ...techo.borders, fondo: "cumbrera" } });
-              const a2 = calcTechoCompleto({ ...techo, largo: zona.largo, ancho: ha, borders: { frente: techo.borders.fondo === "cumbrera" ? "cumbrera" : techo.borders.fondo, fondo: "none", latIzq: techo.borders.latIzq, latDer: techo.borders.latDer } });
-              return [a1, a2];
-            }
-            return [calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })];
-          });
-          rT = mergeZonaResults(zonaResults);
-        }
+        const rT = techo.familia && techo.espesor ? calcTechoCompleto(techo) : null;
         const rP = pared.familia && pared.espesor ? calcParedCompleto(pared) : null;
         if (!rT && !rP) return null;
         const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
@@ -788,54 +1161,29 @@ export default function PanelinCalculadoraV3() {
         if (!pared.familia || !pared.espesor) return null;
         const perim = 2 * (camara.largo_int + camara.ancho_int);
         const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
+        // Techo: use ISODEC_EPS 100mm as default roof for cámaras (wall panels don't go on roof)
         const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
-        const techoPanel = PANELS_TECHO[techoFam];
-        const extraW = [];
-        let techoEsp = pared.espesor;
-        if (!techoPanel.esp[techoEsp]) {
-          const available = Object.keys(techoPanel.esp).map(Number).sort((a, b) => a - b);
-          techoEsp = available.find(e => e >= techoEsp) || available[available.length - 1];
-          extraW.push(`Techo cámara: espesor ${pared.espesor}mm no disponible en ${techoFam}, se usó ${techoEsp}mm.`);
-        }
-        const rT = calcTechoCompleto({ familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color });
-        if (rT?.error) extraW.push(`Techo cámara: ${rT.error}`);
-        const techoItems = rT?.error ? [] : (rT?.allItems || []);
-        const allItems = [...(rP?.allItems || []), ...techoItems];
+        const techoEsp = pared.familia in PANELS_TECHO ? pared.espesor : 100;
+        const rT = calcTechoCompleto({ familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color || "Blanco" });
+        const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
         const totales = calcTotalesSinIVA(allItems);
-        return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraW] };
+        return { ...rP, techoResult: rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), "Techo calculado con " + techoFam + " " + techoEsp + "mm"] };
       }
     } catch (e) { return { error: e.message }; }
     return null;
-  }, [scenario, techo, pared, camara]);
+  }, [listaPrecios, scenario, techo, pared, camara]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
     if (!results || results.error) return [];
     let g = bomToGroups(results);
-    // Add flete — uses the user-supplied value from the stepper (pre-VAT)
+    // Add flete
     if (flete > 0) {
-      const fleteLabel = proyecto.direccion
-        ? `${SERVICIOS.flete.label} — ${proyecto.direccion}`
-        : SERVICIOS.flete.label;
-      g.push({ title: "SERVICIOS", items: [{ label: fleteLabel, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }] });
+      const puFlete = p(SERVICIOS.flete);
+      g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: puFlete, total: puFlete }] });
     }
-    const withOverrides = applyOverrides(g, overrides);
-
-    // Filter by active categories
-    const allowedGroups = new Set();
-    Object.entries(categoriasActivas).forEach(([cat, active]) => {
-      if (active && CATEGORIA_TO_GROUPS[cat]) {
-        CATEGORIA_TO_GROUPS[cat].forEach(grp => allowedGroups.add(grp));
-      }
-    });
-    const filteredByCategory = withOverrides.filter(group => allowedGroups.has(group.title));
-
-    // Filter out excluded items
-    return filteredByCategory.map(group => ({
-      ...group,
-      items: group.items.filter(item => !excludedItems[item.lineId])
-    })).filter(group => group.items.length > 0);
-  }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion]);
+    return applyOverrides(g, overrides);
+  }, [results, overrides, flete]);
 
   // ── Grand totals (with overrides applied) ──
   const grandTotal = useMemo(() => {
@@ -845,129 +1193,36 @@ export default function PanelinCalculadoraV3() {
   }, [groups]);
 
   // ── Helpers ──
-  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
-
-  // Build panel info for output (supports combined scenarios)
-  const panelInfo = useMemo(() => {
-    if (isCombined) {
-      const parts = [];
-      if (techoPanelData && techo.espesor) parts.push(`Techo: ${techoPanelData.label} ${techo.espesor}mm ${techo.color}`);
-      if (paredPanelData && pared.espesor) parts.push(`Pared: ${paredPanelData.label} ${pared.espesor}mm ${pared.color}`);
-      return { label: parts.join(" + "), espesor: "", color: "", au: techoPanelData?.au || null };
-    }
-    if (scenarioDef?.hasTecho) return { label: techoPanelData?.label || "", espesor: techo.espesor, color: techo.color, au: techoPanelData?.au || null };
-    return { label: paredPanelData?.label || "", espesor: pared.espesor, color: pared.color, au: paredPanelData?.au || null };
-  }, [isCombined, scenarioDef, techoPanelData, paredPanelData, techo, pared]);
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
       client: proyecto, project: proyecto, scenario,
-      panel: panelInfo,
+      panel: { label: activePanelData?.label || "", espesor: currentEspesor, color: currentColor },
       totals: grandTotal,
       listaLabel: listaPrecios === "venta" ? "BMC directo" : "Web",
     });
     navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles"));
   };
 
-  const buildPrintDimensions = () => {
-    const dimensions = {};
-    if (scenarioDef?.hasTecho) {
-      dimensions.zonas = techo.zonas;
-      dimensions.area = zonasTotales.area;
-      if (results?.paneles?.areaTotal) dimensions.area = results.paneles.areaTotal;
-      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
-    }
-    if (scenarioDef?.hasPared) {
-      dimensions.alto = pared.alto;
-      dimensions.perimetro = pared.perimetro;
-      if (results?.paneles?.areaNeta) dimensions.area = results.paneles.areaNeta;
-      if (results?.paneles?.cantPaneles) dimensions.cantPaneles = results.paneles.cantPaneles;
-    }
-    return dimensions;
-  };
-
   const handlePrint = () => {
-    const dimensions = buildPrintDimensions();
     const html = generatePrintHTML({
       client: proyecto, project: proyecto, scenario,
-      panel: panelInfo,
-      autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
+      panel: { label: activePanelData?.label || "", espesor: currentEspesor, color: currentColor },
+      autoportancia: results?.autoportancia,
       groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
       totals: grandTotal,
       warnings: results?.warnings || [],
-      dimensions,
-      descarte: results?.paneles?.descarte,
-      listaPrecios,
-      quotationId: currentBudgetCode || undefined,
-      showSKU: false,
-      showUnitPrices: true,
     });
-    setPreviewTitle("Vista previa de cotización");
-    setPreviewHTML(html);
-  };
-
-  const handleInternalReport = () => {
-    const dimensions = buildPrintDimensions();
-    const formulas = [];
-    if (scenarioDef?.hasTecho && results?.paneles && techoPanelData) {
-      techo.zonas.forEach((z, i) => {
-        formulas.push(`Zona ${i + 1}: ${z.largo}m × ${z.ancho}m = ${(z.largo * z.ancho).toFixed(2)}m²`);
-      });
-      formulas.push(`cantPaneles total = ${results.paneles.cantPaneles}`);
-      formulas.push(`areaTotal = ${results.paneles.areaTotal}m²`);
-      formulas.push(`costoPaneles = ${results.paneles.areaTotal} × $${results.paneles.precioM2} = $${results.paneles.costoPaneles}`);
-      if (results?.autoportancia?.apoyos) {
-        formulas.push(`apoyos = ${results.autoportancia.apoyos} (basado en largo mayor: ${zonasTotales.largo}m)`);
-      }
-    }
-    if (scenarioDef?.hasPared && !scenarioDef?.hasTecho && results?.paneles) {
-      const paredPanelData = PANELS_PARED[pared.familia];
-      if (paredPanelData) {
-        formulas.push(`cantPaneles = ceil(${pared.perimetro} / ${paredPanelData.au}) = ${results.paneles.cantPaneles}`);
-        formulas.push(`areaBruta = ${results.paneles.cantPaneles} × ${pared.alto} × ${paredPanelData.au} = ${results.paneles.areaBruta}m²`);
-        if (results.paneles.areaAberturas > 0) {
-          formulas.push(`areaAberturas = ${results.paneles.areaAberturas}m²`);
-        }
-        formulas.push(`areaNeta = ${results.paneles.areaBruta} - ${results.paneles.areaAberturas} = ${results.paneles.areaNeta}m²`);
-        formulas.push(`costoPaneles = ${results.paneles.areaNeta} × $${results.paneles.precioM2} = $${results.paneles.costoPaneles}`);
-      }
-    }
-    const categoriasDesactivadas = Object.entries(categoriasActivas)
-      .filter(([, activa]) => !activa)
-      .map(([cat]) => CATEGORIAS_BOM[cat]?.label || cat);
-    const html = generateInternalHTML({
-      client: proyecto, project: proyecto, scenario,
-      panel: panelInfo,
-      autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
-      groups: groups.map(g => ({ title: g.title, items: g.items })),
-      totals: grandTotal,
-      warnings: results?.warnings || [],
-      dimensions,
-      descarte: results?.paneles?.descarte,
-      listaPrecios,
-      excludedItems,
-      categoriasDesactivadas,
-      formulas,
-    });
-    setPreviewTitle("Informe interno BMC");
-    setPreviewHTML(html);
+    openPrintWindow(html);
   };
 
   const handleReset = () => {
-    setScenario("solo_techo");
-    setLP("web");
-    setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho({ familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+    setTecho({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
-    setTechoAnchoModo("metros");
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
-    setExcludedItems({});
-    setCategoriasActivas(() => {
-      const initial = {};
-      Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
-      return initial;
-    });
+    setActiveStep(0);
   };
 
   // ── Input updaters ──
@@ -975,597 +1230,139 @@ export default function PanelinCalculadoraV3() {
   const uP = (k, v) => setPared(pd => ({ ...pd, [k]: v }));
   const uPr = (k, v) => setProyecto(pr => ({ ...pr, [k]: v }));
 
-  const handleOverride = useCallback((lineId, field, value) => {
-    setOverrides(prev => ({ ...prev, [lineId]: { field, value: +value } }));
-  }, []);
-
-  const handleRevert = useCallback((lineId) => {
-    setOverrides(prev => { const next = { ...prev }; delete next[lineId]; return next; });
-  }, []);
-
-  const handleExclude = useCallback((lineId, label) => {
-    setExcludedItems(prev => ({ ...prev, [lineId]: label }));
-  }, []);
-
-  const handleRestore = useCallback((lineId) => {
-    setExcludedItems(prev => { const next = { ...prev }; delete next[lineId]; return next; });
-  }, []);
-
-  const handleRestoreAll = useCallback(() => {
-    setExcludedItems({});
-  }, []);
-
-  const setTechoFamilia = (fam) => {
-    const pd = PANELS_TECHO[fam];
+  const setFamilia = (fam) => {
+    const all = { ...PANELS_TECHO, ...PANELS_PARED };
+    const pd = all[fam];
     if (!pd) return;
-    const firstEsp = Number(Object.keys(pd.esp)[0]);
-    const newFam = pd.fam;
-
-    // Clear incompatible borders when switching families
-    setTecho(t => {
-      const newBorders = { ...t.borders };
-      Object.entries(BORDER_OPTIONS).forEach(([side, opts]) => {
-        const currentVal = newBorders[side];
-        const opt = opts.find(o => o.id === currentVal);
-        // If current border has familias restriction and new family is not included, reset to first valid option
-        if (opt?.familias && !opt.familias.includes(newFam)) {
-          const firstValid = opts.find(o => !o.familias || o.familias.includes(newFam));
-          newBorders[side] = firstValid?.id || "none";
-        }
-      });
-      return { ...t, familia: fam, espesor: firstEsp, borders: newBorders };
-    });
-    // Auto-scroll to dimensiones after selecting family
-    setTimeout(() => scrollToSection("dimensiones"), 100);
+    if (pd.tipo === "techo") uT("familia", fam);
+    else uP("familia", fam);
+    // Also set the espesor to first available
+    const firstEsp = Object.keys(pd.esp)[0];
+    if (pd.tipo === "techo") uT("espesor", Number(firstEsp));
+    else uP("espesor", Number(firstEsp));
   };
-
-  const setParedFamilia = (fam) => {
-    const pd = PANELS_PARED[fam];
-    if (!pd) return;
-    const firstEsp = Number(Object.keys(pd.esp)[0]);
-    setPared(pd2 => ({ ...pd2, familia: fam, espesor: firstEsp }));
-  };
-
-  // ── Budget log state ──
-  const [showLogPanel, setShowLogPanel] = useState(false);
-  const [logEntries, setLogEntries] = useState(() => getAllLogs());
-  const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
-  const autoSaveTimer = useRef(null);
-  const lastSavedHash = useRef("");
-
-  // ── GPT quotation registry state ──
-  const [gptQuotations, setGptQuotations] = useState([]);
-  const [gptLoading, setGptLoading] = useState(false);
-
-  const fetchGptQuotations = useCallback(async () => {
-    const apiUrl = import.meta.env?.VITE_API_URL;
-    if (!apiUrl) return;
-    setGptLoading(true);
-    try {
-      const resp = await fetch(`${apiUrl.replace(/\/$/, "")}/calc/cotizaciones`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      if (data.ok) setGptQuotations(data.cotizaciones || []);
-    } catch { /* silent — API may be unavailable */ }
-    finally { setGptLoading(false); }
-  }, []);
-
-  const scenarioLabels = useRef({ solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo+Fachada", camara_frig: "Cámara Frig." });
-
-  // ── Google Drive state ──
-  const [showDrivePanel, setShowDrivePanel] = useState(false);
-  const [driveAuth, setDriveAuth] = useState(false);
-  const [driveQuotations, setDriveQuotations] = useState([]);
-  const [driveLoading, setDriveLoading] = useState(false);
-  const [driveSaving, setDriveSaving] = useState(false);
-  const [driveError, setDriveError] = useState(null);
-  const [driveLastSave, setDriveLastSave] = useState(null);
-
-  useEffect(() => {
-    setAuthChangeCallback(setDriveAuth);
-    const timer = setTimeout(() => { initGoogleAuth(); setDriveAuth(gdriveIsAuth()); }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleDriveRefresh = useCallback(async () => {
-    setDriveLoading(true);
-    setDriveError(null);
-    try {
-      const folders = await listQuotations();
-      setDriveQuotations(folders);
-    } catch (err) {
-      setDriveError(err.message || "Error al cargar cotizaciones");
-    } finally {
-      setDriveLoading(false);
-    }
-  }, []);
-
-  const handleDriveSignIn = useCallback(async () => {
-    try {
-      await gdriveSignIn();
-      setDriveAuth(true);
-      handleDriveRefresh();
-    } catch (err) {
-      setDriveError(err.message || "Error al iniciar sesión");
-    }
-  }, [handleDriveRefresh]);
-
-  const handleDriveSignOut = useCallback(() => {
-    gdriveSignOut();
-    setDriveAuth(false);
-    setDriveQuotations([]);
-  }, []);
-
-  const handleDriveSave = useCallback(async () => {
-    if (!groups.length) return;
-    setDriveSaving(true);
-    setDriveError(null);
-    setDriveLastSave(null);
-    try {
-      const dimensions = buildPrintDimensions();
-      const html = generatePrintHTML({
-        client: proyecto, project: proyecto, scenario,
-        panel: panelInfo,
-        autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
-        groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
-        totals: grandTotal,
-        warnings: results?.warnings || [],
-        dimensions,
-        descarte: results?.paneles?.descarte,
-        listaPrecios,
-        quotationId: currentBudgetCode || undefined,
-        showSKU: false,
-        showUnitPrices: true,
-      });
-      const pdfBlob = await htmlToPdfBlob(html);
-      const projectData = serializeProject({
-        scenario, listaPrecios, proyecto, techo, pared, camara, flete,
-        overrides, excludedItems, categoriasActivas, techoAnchoModo,
-        quotationCode: currentBudgetCode,
-      });
-      const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
-      const result = await saveQuotation({
-        quotationCode: code,
-        clientName: proyecto.nombre,
-        pdfBlob,
-        projectData,
-      });
-      setDriveLastSave(result);
-      showToast("Guardado en Google Drive");
-      handleDriveRefresh();
-    } catch (err) {
-      setDriveError(err.message || "Error al guardar en Drive");
-    } finally {
-      setDriveSaving(false);
-    }
-  }, [groups, proyecto, scenario, panelInfo, results, grandTotal, listaPrecios, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, showToast, handleDriveRefresh]);
-
-  const handleDriveLoad = useCallback(async (folderId) => {
-    setDriveLoading(true);
-    setDriveError(null);
-    try {
-      const data = await loadProjectFromFolder(folderId);
-      if (!data) { setDriveError("No se encontró archivo de proyecto (.bmc.json)"); return; }
-      const state = deserializeProject(data);
-      setScenario(state.scenario);
-      setLP(state.listaPrecios);
-      setProyecto(state.proyecto);
-      setTecho(state.techo);
-      setPared(state.pared);
-      setCamara(state.camara);
-      setFlete(state.flete);
-      setOverrides(state.overrides);
-      setExcludedItems(state.excludedItems);
-      if (state.categoriasActivas && Object.keys(state.categoriasActivas).length) setCategoriasActivas(state.categoriasActivas);
-      if (state.techoAnchoModo) setTechoAnchoModo(state.techoAnchoModo);
-      if (state._meta?.quotationCode) setCurrentBudgetCode(state._meta.quotationCode);
-      setShowDrivePanel(false);
-      showToast("Cotización cargada desde Drive");
-    } catch (err) {
-      setDriveError(err.message || "Error al cargar cotización");
-    } finally {
-      setDriveLoading(false);
-    }
-  }, [showToast]);
-
-  const handleDriveDelete = useCallback(async (folderId) => {
-    if (!confirm("¿Eliminar esta cotización de Google Drive?")) return;
-    try {
-      await deleteQuotation(folderId);
-      handleDriveRefresh();
-    } catch (err) {
-      setDriveError(err.message || "Error al eliminar");
-    }
-  }, [handleDriveRefresh]);
 
   // ── Section style ──
   const sectionS = { background: C.surface, borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: SHC };
   const labelS = { fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" };
   const inputS = { width: "100%", padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${C.border}`, fontSize: 14, color: C.tp, outline: "none", fontFamily: FONT, boxShadow: SHI };
 
-  // ── KPI values (aggregate for combined scenarios) ──
-  const kpiArea = useMemo(() => {
-    if (!results) return 0;
-    let total = 0;
-    if (results.paneles) total += results.paneles.areaTotal || results.paneles.areaNeta || 0;
-    if (results.paredResult?.paneles) total += results.paredResult.paneles.areaNeta || 0;
-    if (results.techoResult?.paneles) total += results.techoResult.paneles.areaTotal || 0;
-    return total;
-  }, [results]);
-  
-  const kpiPaneles = useMemo(() => {
-    if (!results) return 0;
-    let total = 0;
-    if (results.paneles) total += results.paneles.cantPaneles || 0;
-    if (results.paredResult?.paneles) total += results.paredResult.paneles.cantPaneles || 0;
-    if (results.techoResult?.paneles) total += results.techoResult.paneles.cantPaneles || 0;
-    return total;
-  }, [results]);
-  
-  const kpiApoyos = useMemo(() => {
-    if (!results) return 0;
-    if (results.autoportancia?.apoyos) return results.autoportancia.apoyos;
-    if (results.techoResult?.autoportancia?.apoyos) return results.techoResult.autoportancia.apoyos;
-    return pared.numEsqExt + pared.numEsqInt;
-  }, [results, pared.numEsqExt, pared.numEsqInt]);
-  
-  const kpiFij = useMemo(() => {
-    if (!results) return 0;
-    let total = 0;
-    if (results.fijaciones?.puntosFijacion) total += results.fijaciones.puntosFijacion;
-    if (results.paredResult?.fijaciones?.items) total += results.paredResult.fijaciones.items.reduce((s, i) => s + (i.cant || 0), 0);
-    if (results.techoResult?.fijaciones?.puntosFijacion) total += results.techoResult.fijaciones.puntosFijacion;
-    return total;
-  }, [results]);
+  // ── KPI values ──
+  const kpiArea = results?.paneles?.areaTotal || results?.paneles?.areaNeta || 0;
+  const kpiPaneles = results?.paneles?.cantPaneles || 0;
+  const kpiApoyos = results?.autoportancia?.apoyos || (results?.paneles ? (pared.numEsqExt + pared.numEsqInt) : 0);
+  const kpiFij = results?.fijaciones?.puntosFijacion || 0;
 
-  // ── Auto-save: debounced, only when there are valid groups ──
-  useEffect(() => {
-    if (!groups.length || !grandTotal.totalFinal) return;
-    const productoStr = panelInfo.espesor
-      ? `${panelInfo.label} ${panelInfo.espesor}mm`
-      : panelInfo.label;
-    const hash = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
-    if (hash === lastSavedHash.current) return;
-
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      const snapshot = { scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas };
-      const entry = saveBudget({
-        cliente: proyecto.nombre,
-        producto: productoStr,
-        escenario: scenarioLabels.current[scenario] || scenario,
-        listaPrecios,
-        total: grandTotal.totalFinal,
-        groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
-        snapshot,
-      });
-      setCurrentBudgetCode(entry.id);
-      setLogEntries(getAllLogs());
-      lastSavedHash.current = hash;
-    }, 2000);
-
-    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas]);
-
-  // ── Manual save ──
-  const handleManualSave = useCallback(() => {
-    if (!groups.length) return;
-    const productoStr = panelInfo.espesor ? `${panelInfo.label} ${panelInfo.espesor}mm` : panelInfo.label;
-    const snapshot = { scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas };
-    const entry = saveBudget({
-      cliente: proyecto.nombre,
-      producto: productoStr,
-      escenario: scenarioLabels.current[scenario] || scenario,
-      listaPrecios,
-      total: grandTotal.totalFinal,
-      groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
-      snapshot,
-    });
-    setCurrentBudgetCode(entry.id);
-    setLogEntries(getAllLogs());
-    lastSavedHash.current = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
-    showToast(`Guardado ${entry.id}`);
-  }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, showToast]);
-
-  // ── Restore a saved budget ──
-  const handleRestoreBudget = useCallback((entry) => {
-    if (!entry.snapshot) return;
-    const s = entry.snapshot;
-    setScenario(s.scenario || "solo_techo");
-    setLP(s.listaPrecios || "web");
-    if (s.proyecto) setProyecto(s.proyecto);
-    if (s.techo) setTecho(s.techo);
-    if (s.pared) setPared(s.pared);
-    if (s.camara) setCamara(s.camara);
-    setFlete(s.flete ?? 280);
-    setOverrides(s.overrides || {});
-    setExcludedItems(s.excludedItems || {});
-    if (s.categoriasActivas) setCategoriasActivas(s.categoriasActivas);
-    setCurrentBudgetCode(entry.id);
-    setShowLogPanel(false);
-    showToast(`Restaurado ${entry.id}`);
-  }, [showToast]);
-
-  // ── Delete log entry ──
-  const handleDeleteLog = useCallback((id) => {
-    deleteBudget(id);
-    setLogEntries(getAllLogs());
-  }, []);
-
-  // ── Clear all logs ──
-  const handleClearLogs = useCallback(() => {
-    clearAllLogs();
-    setLogEntries([]);
-    setCurrentBudgetCode(null);
-  }, []);
+  const apiBase = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL
+    ? import.meta.env.VITE_API_URL
+    : "http://localhost:3001";
+  const finanzasUrl = `${apiBase.replace(/\/$/, "")}/finanzas${typeof import.meta !== "undefined" && import.meta.env?.DEV ? "?dev=1" : ""}`;
 
   return (
     <div style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
-      {/* HEADER */}
-      <div style={{ background: C.brand, color: "#fff", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 40 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* HEADER + main tabs: Invocar Panelin | Finanzas */}
+      <div style={{ background: C.brand, color: "#fff", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, position: "sticky", top: 0, zIndex: 40, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.0</div>
-          {currentBudgetCode && (
-            <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
-          )}
+          <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.1</div>
+          <div style={{ display: "flex", gap: 0, marginLeft: 8 }}>
+            <button onClick={() => setMainTab("invocar")} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: mainTab === "invocar" ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 13, fontWeight: mainTab === "invocar" ? 600 : 400, cursor: "pointer", transition: TR }}>Invocar Panelin</button>
+            <button onClick={() => setMainTab("finanzas")} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: mainTab === "finanzas" ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 13, fontWeight: mainTab === "finanzas" ? 600 : 400, cursor: "pointer", transition: TR }}>Finanzas</button>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: driveAuth ? "rgba(66,133,244,0.25)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
-            <Cloud size={14} />Drive
-          </button>
-          <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <Archive size={14} />Presupuestos
-            {(logEntries.length + gptQuotations.length) > 0 && (
-              <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
-            )}
-          </button>
-          {groups.length > 0 && (
-            <button onClick={handleManualSave} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Save size={14} />Guardar</button>
-          )}
-          <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
-          <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
-        </div>
+        {mainTab === "invocar" && (
+          <>
+            <SearchOverlay panelsTecho={PANELS_TECHO} panelsPared={PANELS_PARED} onSelect={setFamilia} />
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
+              <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
+            </div>
+          </>
+        )}
       </div>
 
+      {mainTab === "finanzas" ? (
+        <iframe src={finanzasUrl} title="Finanzas" style={{ width: "100%", height: "calc(100vh - 52px)", border: 0, display: "block" }} />
+      ) : (
+        <>
+      {/* PROGRESS */}
+      <div style={{ display: "flex", gap: 0, padding: "0 24px", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+        {["Proyecto", "Panel", "Bordes", "Opciones"].map((s, i) => (
+          <button key={s} onClick={() => setActiveStep(i)} style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: activeStep === i ? 600 : 400, color: activeStep === i ? C.primary : C.ts, borderBottom: `2px solid ${activeStep === i ? C.primary : "transparent"}`, background: "none", border: "none", borderBottomStyle: "solid", cursor: "pointer", transition: TR }}>{s}</button>
+        ))}
+      </div>
 
-      <div className="bmc-main-grid" style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(360px, 520px) 1fr",
-        gap: 24,
-        padding: 24,
-        maxWidth: 1400,
-        margin: "0 auto",
-        height: "calc(100vh - 100px)",
-        overflow: "hidden",
-      }}>
-        {/* LEFT PANEL — All sections in scrollable view */}
-        <div className="bmc-left-panel" style={{ overflowY: "auto", paddingRight: 8 }}>
-          {/* Lista precios + Escenario */}
+      <div style={{ display: "flex", gap: 24, padding: 24, maxWidth: 1400, margin: "0 auto", flexWrap: "wrap" }}>
+        {/* LEFT PANEL */}
+        <div style={{ flex: "1 1 420px", minWidth: 360, maxWidth: 520 }}>
+          {/* Lista precios */}
           <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
             <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
-            <div style={{ marginTop: 16 }}>
-              <div style={labelS}>ESCENARIO DE OBRA</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {SCENARIOS_DEF.map(sc => {
-                  const isS = scenario === sc.id;
-                  return <div key={sc.id} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
-                    <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 2 }}>{sc.label}</div>
-                    <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
-                  </div>;
-                })}
-              </div>
+          </div>
+
+          {/* Escenario */}
+          <div style={sectionS}>
+            <div style={labelS}>ESCENARIO DE OBRA</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {SCENARIOS_DEF.map(sc => {
+                const isS = scenario === sc.id;
+                return <div key={sc.id} onClick={() => setScenario(sc.id)} style={{ borderRadius: 16, padding: 20, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
+                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{sc.icon}</span>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 4 }}>{sc.label}</div>
+                  <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
+                </div>;
+              })}
             </div>
-            {scenarioDef?.hasTecho && <div style={{ marginTop: 16 }}>
-              <div style={labelS}>CAÍDAS DEL TECHO</div>
-              <TipoAguasSelector value={techo.tipoAguas} onChange={v => {
-                if (v === "dos_aguas") {
-                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-                } else {
-                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-                }
-              }} />
+          </div>
+
+          {/* Datos proyecto */}
+          <div style={sectionS}>
+            <div style={labelS}>DATOS DEL PROYECTO</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
+              {proyecto.tipoCliente === "empresa" && <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>}
+              <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+              <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <div style={labelS}>Descripción obra</div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+                  {OBRA_PRESETS.slice(0, 6).map(pr => <button key={pr} onClick={() => uPr("descripcion", pr)} style={{ padding: "3px 10px", borderRadius: 20, border: `1px solid ${proyecto.descripcion === pr ? C.primary : C.border}`, background: proyecto.descripcion === pr ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr}</button>)}
+                </div>
+                <input style={inputS} value={proyecto.descripcion} onChange={e => uPr("descripcion", e.target.value)} placeholder="Descripción libre..." />
+              </div>
+              <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
+              <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
+            </div>
+          </div>
+
+          {/* Panel selector */}
+          <div style={sectionS}>
+            <div style={labelS}>PANEL</div>
+            <CustomSelect label="Familia" value={currentFamilia} options={familyOptions} onChange={setFamilia} />
+            <div style={{ marginTop: 12 }}>
+              <CustomSelect label="Espesor" value={currentEspesor} options={espesorOptions.map(e => ({ ...e, value: e.value }))} onChange={v => { if (scenarioDef?.hasTecho && !scenarioDef?.hasPared) uT("espesor", v); else uP("espesor", v); }} showBadge />
+            </div>
+            {activePanelData && <div style={{ marginTop: 12 }}>
+              <div style={labelS}>Color</div>
+              <ColorChips colors={activePanelData.col} value={currentColor} onChange={c => { if (scenarioDef?.hasTecho && !scenarioDef?.hasPared) uT("color", c); else uP("color", c); }} notes={activePanelData.colNotes || {}} />
             </div>}
           </div>
 
-          {/* Datos proyecto (colapsable) */}
-          <details style={{ ...sectionS, padding: 0 }}>
-            <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              DATOS DEL PROYECTO {proyecto.nombre && <span style={{ fontSize: 11, fontWeight: 400, color: C.tp }}>· {proyecto.nombre}</span>}
-            </summary>
-            <div style={{ padding: "0 20px 20px" }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
-                {proyecto.tipoCliente === "empresa" && <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>}
-                <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
-                <div style={{ gridColumn: "1/-1" }}>
-                  <div style={labelS}>Descripción obra</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                    {OBRA_PRESETS.slice(0, 6).map(pr => <button key={pr} onClick={() => uPr("descripcion", pr)} style={{ padding: "3px 10px", borderRadius: 20, border: `1px solid ${proyecto.descripcion === pr ? C.primary : C.border}`, background: proyecto.descripcion === pr ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr}</button>)}
-                  </div>
-                  <input style={inputS} value={proyecto.descripcion} onChange={e => uPr("descripcion", e.target.value)} placeholder="Descripción libre..." />
-                </div>
-                <div><div style={labelS}>Ref. interna</div><input style={inputS} value={proyecto.refInterna} onChange={e => uPr("refInterna", e.target.value)} /></div>
-                <div><div style={labelS}>Fecha</div><input style={inputS} value={proyecto.fecha} onChange={e => uPr("fecha", e.target.value)} /></div>
-              </div>
+          {/* Dimensiones Techo */}
+          {vis.largoAncho && <div style={sectionS}>
+            <div style={labelS}>DIMENSIONES TECHO</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <StepperInput label="Largo (m)" value={techo.largo} onChange={v => uT("largo", v)} min={1} max={20} step={0.5} unit="m" />
+              <StepperInput label="Ancho (m)" value={techo.ancho} onChange={v => uT("ancho", v)} min={1} max={20} step={0.5} unit="m" />
             </div>
-          </details>
-
-          {/* Panel selector — TECHO */}
-          {scenarioDef?.hasTecho && <div ref={panelRef} style={sectionS}>
-            <div style={{ ...labelS, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 16 }}>🏠</span> PANEL TECHO
-            </div>
-            <CustomSelect label="Familia" value={techo.familia} options={techoFamilyOptions} onChange={setTechoFamilia} />
-            <div style={{ marginTop: 12 }}>
-              <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge />
-            </div>
-            {techoPanelData && <div style={{ marginTop: 12 }}>
-              <div style={labelS}>Color</div>
-              <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} notes={techoPanelData.colNotes || {}} />
-            </div>}
           </div>}
-
-          {/* Panel selector — PARED */}
-          {scenarioDef?.hasPared && <div ref={!scenarioDef?.hasTecho ? panelRef : null} style={sectionS}>
-            <div style={{ ...labelS, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 16 }}>🏢</span> PANEL PARED
-            </div>
-            <CustomSelect label="Familia" value={pared.familia} options={paredFamilyOptions} onChange={setParedFamilia} />
-            <div style={{ marginTop: 12 }}>
-              <CustomSelect label="Espesor" value={pared.espesor} options={paredEspesorOptions} onChange={v => uP("espesor", v)} showBadge />
-            </div>
-            {paredPanelData && <div style={{ marginTop: 12 }}>
-              <div style={labelS}>Color</div>
-              <ColorChips colors={paredPanelData.col} value={pared.color} onChange={c => uP("color", c)} notes={paredPanelData.colNotes || {}} />
-            </div>}
-          </div>}
-
-          {/* Dimensiones Techo — Zonas múltiples */}
-          {vis.largoAncho && (() => {
-            const fp = calcFactorPendiente(techo.pendiente);
-            const is2A = techo.tipoAguas === "dos_aguas";
-            const baseArea = is2A ? zonasTotales.area : zonasTotales.area;
-            const areaReal = techo.pendiente > 0 ? +(baseArea * fp).toFixed(1) : null;
-            return <div ref={dimensionesRef} style={sectionS}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={labelS}>DIMENSIONES TECHO {is2A && <span style={{ fontWeight: 400, textTransform: "none" }}>· 2 faldones</span>}</div>
-              <div style={{ fontSize: 12, color: C.ts, fontWeight: 500, ...TN }}>
-                {areaReal
-                  ? <>{baseArea}m² proy. <span style={{ color: C.primary, fontWeight: 600 }}>→ {areaReal}m² real</span></>
-                  : <>{baseArea}m² total</>
-                }
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: C.ts, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                COTIZAR ANCHO EN{" "}
-                {techoPanelData?.au && (
-                  <span style={{ fontWeight: 500, textTransform: "none", letterSpacing: 0 }}>
-                    · AU {techoPanelData.au}m{is2A ? " · paneles por faldón" : ""}
-                  </span>
-                )}
-              </div>
-              <SegmentedControl
-                value={techoAnchoModo}
-                onChange={(modo) => {
-                  if (modo === "paneles" && !techoPanelData) return;
-                  setTechoAnchoModo(modo);
-                  if (modo === "paneles" && techoPanelData) {
-                    setTecho(prev => ({
-                      ...prev,
-                      zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas) })),
-                    }));
-                  }
-                }}
-                options={[
-                  { id: "metros", label: "Metros" },
-                  { id: "paneles", label: "Paneles" },
-                ]}
-                disabledIds={!techoPanelData ? ["paneles"] : []}
-              />
-            </div>
-            {techo.zonas.map((zona, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
-                <div style={{ flex: 1 }}>
-                  <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.5} unit="m" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  {techoAnchoModo === "paneles" && techoPanelData ? (
-                    <StepperInput
-                      label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (${is2A ? "paneles/faldón" : "paneles"})`}
-                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, techo.tipoAguas)}
-                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))}
-                      min={1}
-                      max={500}
-                      step={1}
-                      unit={is2A ? "pzas/faldón" : "pzas"}
-                      decimals={0}
-                    />
-                  ) : (
-                    <StepperInput
-                      label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`}
-                      value={zona.ancho}
-                      onChange={v => updateZona(idx, "ancho", v)}
-                      min={1}
-                      max={20}
-                      step={0.5}
-                      unit="m"
-                    />
-                  )}
-                </div>
-                <div style={{ fontSize: 11, color: C.ts, minWidth: 50, textAlign: "right", paddingBottom: 8 }}>
-                  {(zona.largo * zona.ancho).toFixed(1)}m²
-                </div>
-                {techo.zonas.length > 1 && (
-                  <button onClick={() => removeZona(idx)} style={{ padding: 6, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: C.danger, marginBottom: 4 }}>
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Plus size={14} /> Agregar zona
-            </button>
-
-            {/* Pendiente de techo */}
-            <div style={{ marginTop: 16, padding: 12, background: C.surfaceAlt, borderRadius: 10 }}>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 16 }}>
-                <StepperInput label="Pendiente" value={techo.pendiente} onChange={v => uT("pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
-                <div style={{ flex: 1, paddingBottom: 4 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>PRESETS</div>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {PENDIENTES_PRESET.map(pr => (
-                      <button key={pr.valor} onClick={() => uT("pendiente", pr.valor)} title={pr.descripcion} style={{
-                        padding: "4px 10px", borderRadius: 20,
-                        border: `1.5px solid ${techo.pendiente === pr.valor ? C.primary : C.border}`,
-                        background: techo.pendiente === pr.valor ? C.primarySoft : C.surface,
-                        fontSize: 11, fontWeight: techo.pendiente === pr.valor ? 600 : 400,
-                        cursor: "pointer", color: techo.pendiente === pr.valor ? C.primary : C.ts,
-                        transition: TR,
-                      }}>
-                        {pr.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {techo.pendiente > 0 && (
-                <div style={{ marginTop: 8, fontSize: 11, color: C.ts, display: "flex", gap: 16, flexWrap: "wrap", ...TN }}>
-                  <span>Factor: <b style={{ color: C.tp }}>×{fp.toFixed(4)}</b></span>
-                  <span>Incremento: <b style={{ color: C.primary }}>+{((fp - 1) * 100).toFixed(1)}%</b></span>
-                  {techo.zonas[0] && (
-                    <span>Largo real: <b style={{ color: C.tp }}>{(techo.zonas[0].largo * fp).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {techoPanelData && techo.zonas.some(z => {
-              const lr = +(z.largo * fp).toFixed(3);
-              return lr < techoPanelData.lmin || lr > techoPanelData.lmax;
-            }) && (
-              <div style={{ marginTop: 8 }}>
-                <AlertBanner
-                  type="warning"
-                  message={techo.pendiente > 0
-                    ? `Algún largo real (con pendiente ${techo.pendiente}°) está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`
-                    : `Algún largo está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`}
-                />
-              </div>
-            )}
-          </div>;
-          })()}
 
           {/* Dimensiones Pared */}
-          {vis.altoPerim && <div ref={!vis.largoAncho ? dimensionesRef : null} style={sectionS}>
+          {vis.altoPerim && <div style={sectionS}>
             <div style={labelS}>DIMENSIONES PARED</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <StepperInput label="Alto (m)" value={pared.alto} onChange={v => uP("alto", v)} min={1} max={14} step={0.5} unit="m" />
@@ -1588,19 +1385,9 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Bordes techo */}
-          {vis.borders && <div ref={bordesRef} style={sectionS}>
+          {vis.borders && <div style={sectionS}>
             <div style={labelS}>BORDES Y PERFILERÍA</div>
-            {techo.tipoAguas === "dos_aguas" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: C.primarySoft, borderRadius: 10, marginBottom: 12, fontSize: 12, color: C.primary, fontWeight: 500 }}>
-                <span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón.
-              </div>
-            )}
-            <RoofBorderSelector
-              borders={techo.borders}
-              onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))}
-              panelFamilia={techo.familia}
-              disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
-            />
+            <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} />
           </div>}
 
           {/* Estructura */}
@@ -1610,41 +1397,18 @@ export default function PanelinCalculadoraV3() {
           </div>
 
           {/* Opciones */}
-          <div ref={opcionesRef} style={sectionS}>
+          <div style={sectionS}>
             <div style={labelS}>OPCIONES</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {vis.canalGot && <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />}
+              {vis.canalGot && <>
+                <Toggle label="Canalón" value={techo.opciones.inclCanalon} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclCanalon: v } }))} />
+                <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />
+              </>}
               <Toggle label="Selladores" value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.opciones.inclSell : pared.inclSell} onChange={v => { setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } })); uP("inclSell", v); }} />
               {vis.p5852 && <Toggle label="Perfil 5852 aluminio" value={pared.incl5852} onChange={v => uP("incl5852", v)} />}
               <div style={{ marginTop: 8 }}>
                 <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               </div>
-            </div>
-          </div>
-
-          {/* Categorías BOM */}
-          <div style={sectionS}>
-            <div style={labelS}>CATEGORÍAS A INCLUIR</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {Object.entries(CATEGORIAS_BOM).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  onClick={() => setCategoriasActivas(prev => ({ ...prev, [key]: !prev[key] }))}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 20,
-                    border: `1.5px solid ${categoriasActivas[key] ? C.primary : C.border}`,
-                    background: categoriasActivas[key] ? C.primarySoft : C.surface,
-                    fontSize: 12,
-                    fontWeight: categoriasActivas[key] ? 600 : 400,
-                    color: categoriasActivas[key] ? C.primary : C.ts,
-                    cursor: "pointer",
-                    transition: TR,
-                  }}
-                >
-                  {categoriasActivas[key] ? "✓ " : ""}{cfg.label}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1666,7 +1430,7 @@ export default function PanelinCalculadoraV3() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="bmc-right-panel" style={{ overflowY: "auto", paddingLeft: 8 }}>
+        <div style={{ flex: "1 1 480px", minWidth: 400 }}>
           {/* KPI Row */}
           {results && !results.error && <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
@@ -1674,16 +1438,6 @@ export default function PanelinCalculadoraV3() {
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
             <KPICard label="Pts fijación" value={kpiFij || "—"} borderColor={C.brand} />
           </div>}
-
-          {/* Descarte informativo */}
-          {results?.paneles?.descarte && results.paneles.descarte.anchoM > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <AlertBanner
-                type="warning"
-                message={`Descarte: ${results.paneles.descarte.anchoM}m de ancho × ${zonasTotales.largo}m = ${results.paneles.descarte.areaM2}m² (${results.paneles.descarte.porcentaje}% del ancho solicitado)`}
-              />
-            </div>
-          )}
 
           {/* Warnings */}
           {results?.warnings?.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
@@ -1706,33 +1460,8 @@ export default function PanelinCalculadoraV3() {
 
           {/* BOM Table */}
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
-            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
+            {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} />)}
           </div>}
-          {results && !results.error && groups.length === 0 && (
-            <AlertBanner type="warning" message="Todas las categorías están desactivadas. Activá al menos una para ver el presupuesto." />
-          )}
-
-          {/* Excluded items panel */}
-          {Object.keys(excludedItems).length > 0 && (
-            <div style={{ ...sectionS, background: C.dangerSoft, marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.danger, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Items excluidos ({Object.keys(excludedItems).length})
-                </div>
-                <button onClick={handleRestoreAll} style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${C.danger}`, background: C.surface, fontSize: 11, fontWeight: 500, color: C.danger, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                  <RefreshCw size={12} />Restaurar todos
-                </button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {Object.entries(excludedItems).map(([lineId, label]) => (
-                  <div key={lineId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", background: C.surface, borderRadius: 8, fontSize: 12 }}>
-                    <span style={{ color: C.ts }}>{label}</span>
-                    <button onClick={() => handleRestore(lineId)} style={{ padding: "2px 8px", borderRadius: 6, border: "none", background: C.primary, color: "#fff", fontSize: 10, fontWeight: 500, cursor: "pointer" }}>Restaurar</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Totals */}
           {groups.length > 0 && <div style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
@@ -1755,15 +1484,13 @@ export default function PanelinCalculadoraV3() {
             <div style={{ fontWeight: 700, marginBottom: 4, color: C.tp }}>Condiciones comerciales:</div>
             <div>Entrega: 10 a 15 días hábiles. Seña: 60%, saldo contra entrega. Validez: 10 días. Precios en USD.</div>
             <div style={{ marginTop: 12, fontWeight: 700, color: C.tp }}>Datos bancarios:</div>
-            <div>Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002</div>
+            <div>Metalog SAS · RUT: 120403630012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}
 
-          {/* Action buttons — desktop only */}
-          {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          {/* Action buttons */}
+          {groups.length > 0 && <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
             <button onClick={handleCopyWA} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
             <button onClick={handlePrint} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
-            <button onClick={handleInternalReport} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
-            <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#4285F4", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Cloud size={16} />Drive</button>
           </div>}
 
           {/* Transparency Panel */}
@@ -1775,168 +1502,21 @@ export default function PanelinCalculadoraV3() {
             {showTransp && <div style={{ padding: 20, fontSize: 12, color: C.ts, lineHeight: 1.8, fontFamily: "monospace" }}>
               <div>LISTA_ACTIVA: {listaPrecios}</div>
               <div>Escenario: {scenario}</div>
-              {scenarioDef?.hasTecho && results.paneles && <>
-                <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— TECHO —</div>
-                <div>Paneles: {results.paneles.cantPaneles} × AU={techoPanelData?.au}m = {results.paneles.anchoTotal || "—"}m</div>
+              {results.paneles && <>
+                <div>Paneles: {results.paneles.cantPaneles} × AU={activePanelData?.au}m = {results.paneles.anchoTotal || "—"}m</div>
                 <div>Área: {results.paneles.areaTotal || results.paneles.areaNeta} m²</div>
                 <div>Precio/m²: ${results.paneles.precioM2} (SIN IVA)</div>
               </>}
-              {results.paredResult?.paneles && <>
-                <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— PARED —</div>
-                <div>Paneles: {results.paredResult.paneles.cantPaneles} × AU={paredPanelData?.au}m</div>
-                <div>Área neta: {results.paredResult.paneles.areaNeta} m²</div>
-                <div>Precio/m²: ${results.paredResult.paneles.precioM2} (SIN IVA)</div>
-              </>}
-              {results.techoResult?.paneles && <>
-                <div style={{ fontWeight: 600, marginTop: 8, color: C.tp }}>— TECHO (cámara) —</div>
-                <div>Área: {results.techoResult.paneles.areaTotal} m²</div>
-              </>}
-              {(results.autoportancia?.maxSpan || results.techoResult?.autoportancia?.maxSpan) && <div>Autoportancia: {(results.autoportancia ?? results.techoResult?.autoportancia)?.ok ? "OK" : "EXCEDE"} · max={(results.autoportancia ?? results.techoResult?.autoportancia)?.maxSpan}m</div>}
+              {results.autoportancia && results.autoportancia.maxSpan && <div>Autoportancia: {results.autoportancia.ok ? "OK" : "EXCEDE"} · max={results.autoportancia.maxSpan}m · apoyos={results.autoportancia.apoyos}</div>}
               <div style={{ marginTop: 8, fontWeight: 700 }}>Todos los precios en USD SIN IVA. IVA 22% aplicado al total.</div>
             </div>}
           </div>}
         </div>
       </div>
+        </>
+      )}
 
       <Toast message={toast} visible={!!toast} />
-
-      {/* Mobile bottom bar with sticky total */}
-      {groups.length > 0 && (
-        <MobileBottomBar
-          total={grandTotal.totalFinal}
-          onPrint={handlePrint}
-          onWhatsApp={handleCopyWA}
-        />
-      )}
-
-      {/* ── PDF Preview Modal ── */}
-      {previewHTML && (
-        <PDFPreviewModal
-          html={previewHTML}
-          title={previewTitle}
-          onClose={() => setPreviewHTML(null)}
-        />
-      )}
-
-      {/* ── Google Drive Panel ── */}
-      <GoogleDrivePanel
-        visible={showDrivePanel}
-        onClose={() => setShowDrivePanel(false)}
-        onSave={handleDriveSave}
-        onLoad={handleDriveLoad}
-        onDelete={handleDriveDelete}
-        isAuthenticated={driveAuth}
-        onSignIn={handleDriveSignIn}
-        onSignOut={handleDriveSignOut}
-        quotations={driveQuotations}
-        loading={driveLoading}
-        saving={driveSaving}
-        error={driveError}
-        onRefresh={handleDriveRefresh}
-        currentQuotationCode={currentBudgetCode}
-        lastSaveResult={driveLastSave}
-      />
-
-      {/* ── Budget Log Panel (slide-over drawer) ── */}
-      {showLogPanel && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", justifyContent: "flex-end" }}>
-          <div onClick={() => setShowLogPanel(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
-          <div style={{ position: "relative", width: "100%", maxWidth: 480, background: C.bg, boxShadow: "-4px 0 30px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", animation: "bmc-fade 150ms ease-in-out", overflowY: "auto" }}>
-            {/* Drawer header */}
-            <div style={{ padding: "20px 24px", background: C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>Presupuestos guardados</div>
-                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{logEntries.length} registros</div>
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {logEntries.length > 0 && (
-                  <button onClick={() => exportLogsAsJSON()} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Download size={12} />JSON</button>
-                )}
-                {logEntries.length > 0 && (
-                  <button onClick={handleClearLogs} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,100,100,0.5)", background: "transparent", color: "#ffaaaa", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={12} />Borrar todo</button>
-                )}
-                <button onClick={() => setShowLogPanel(false)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 4 }}><X size={20} /></button>
-              </div>
-            </div>
-
-            {/* GPT-generated quotations */}
-            {(gptQuotations.length > 0 || gptLoading) && (
-              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.primary, display: "flex", alignItems: "center", gap: 6 }}>
-                    <FileText size={14} />Cotizaciones GPT
-                    <span style={{ fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 8, background: C.primarySoft, color: C.primary }}>{gptQuotations.length}</span>
-                  </div>
-                  <button onClick={fetchGptQuotations} disabled={gptLoading} style={{ padding: "3px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, fontSize: 10, cursor: gptLoading ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 3 }}>
-                    <RefreshCw size={10} style={gptLoading ? { animation: "spin 1s linear infinite" } : {}} />Actualizar
-                  </button>
-                </div>
-                {gptQuotations.map((q) => (
-                  <div key={q.id} style={{ background: C.surface, borderRadius: 10, padding: 12, marginBottom: 8, borderLeft: `4px solid ${C.primary}`, boxShadow: SHC }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: C.brand, ...TN }}>{q.code || q.id.slice(0, 8)}</div>
-                        <div style={{ fontSize: 11, color: C.ts }}>{q.client}</div>
-                      </div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: C.tp, ...TN }}>${fmtPrice(q.total)}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
-                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: C.primarySoft, color: C.primary, fontWeight: 500 }}>{q.scenario}</span>
-                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: C.surfaceAlt, color: C.ts }}>{q.lista === "venta" ? "BMC" : "Web"}</span>
-                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: C.surfaceAlt, color: C.tt }}>{new Date(q.timestamp).toLocaleString("es-UY", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
-                    <a href={q.pdfUrl} target="_blank" rel="noopener noreferrer" style={{
-                      display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                      width: "100%", padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      border: "none", background: C.primary, color: "#fff", cursor: "pointer", textDecoration: "none",
-                    }}>
-                      <FileText size={13} />Ver PDF
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Log entries list */}
-            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-              {logEntries.length === 0 && gptQuotations.length === 0 && (
-                <div style={{ textAlign: "center", padding: 40, color: C.ts }}>
-                  <Archive size={40} color={C.border} style={{ marginBottom: 12 }} />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginBottom: 4 }}>Sin presupuestos guardados</div>
-                  <div style={{ fontSize: 12 }}>Se guardan automáticamente al calcular</div>
-                </div>
-              )}
-              {logEntries.map((entry) => (
-                <div key={entry.id} style={{ background: C.surface, borderRadius: 12, padding: 16, marginBottom: 10, boxShadow: SHC, borderLeft: `4px solid ${entry.id === currentBudgetCode ? C.primary : C.border}` }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: C.brand, ...TN, marginBottom: 2 }}>{entry.id}</div>
-                      <div style={{ fontSize: 11, color: C.ts }}>{entry.fecha}</div>
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: C.tp, ...TN }}>
-                      ${fmtPrice(entry.total)}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-                    {entry.cliente && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.primarySoft, color: C.primary, fontWeight: 500 }}>{entry.cliente}</span>}
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.brandLight, color: C.brand, fontWeight: 500 }}>{entry.escenario}</span>
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.surfaceAlt, color: C.ts }}>{entry.producto}</span>
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: C.surfaceAlt, color: C.tt }}>{entry.listaPrecios === "venta" ? "BMC" : "Web"}</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: C.tt, marginBottom: 10, fontFamily: "monospace", wordBreak: "break-all" }}>{entry.nombre}</div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {entry.snapshot && (
-                      <button onClick={() => handleRestoreBudget(entry)} style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><RotateCcw size={12} />Restaurar</button>
-                    )}
-                    <button onClick={() => exportSingleBudget(entry)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Download size={12} /></button>
-                    <button onClick={() => handleDeleteLog(entry.id)} style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.dangerSoft}`, background: C.surface, color: C.danger, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={12} /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

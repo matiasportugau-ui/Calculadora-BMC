@@ -1,0 +1,276 @@
+{
+  "generated": "2026-03-11",
+  "phase": "PHASE_3_EVOLUTION_ANALYSIS",
+  "ecosystem_timeline": {
+    "2025-10": {
+      "events": [
+        {"date": "2025-10-14", "repo": "ChatBOT", "event": "CREATED", "description": "Initial chatbot platform with n8n, Chatwoot, Rasa, Qdrant"},
+        {"date": "2025-10-24", "repo": "bmc-cotizacion-inteligente", "event": "CREATED", "description": "Intelligent quotation system with AI, WhatsApp, Google Sheets"},
+        {"date": "2025-10-24", "repo": "chatbot-2311", "event": "FORKED", "description": "Forked from bmc-cotizacion-inteligente (same initial commit hash: 4f2720a2)"}
+      ]
+    },
+    "2025-11": {
+      "events": [
+        {"repo": "ChatBOT", "event": "PEAK_ACTIVITY", "commits": 15, "description": "Added autonomous agents, documentation maintainer, quality auditor, health monitor"},
+        {"repo": "chatbot-2311", "event": "HEAVY_DEVELOPMENT", "commits": 74, "description": "WhatsApp integration, cloud agent daily, training system, audio transcription"},
+        {"repo": "bmc-cotizacion-inteligente", "event": "ACTIVE", "commits": 29, "description": "Deployment attempts, performance workflows, security"},
+        {"date": "2025-11-18", "repo": "bmc-cotizacion-inteligente", "event": "LAST_COMMIT", "description": "Final activity — repo goes stale after this"}
+      ]
+    },
+    "2025-12": {
+      "events": [
+        {"repo": "chatbot-2311", "event": "PEAK_ACTIVITY", "commits": 77, "description": "Knowledge consolidation, k8s configs, AI agents architecture, backup system"},
+        {"date": "2025-12-31", "repo": "2026_Mono_rep", "event": "CREATED", "description": "Monorepo consolidation attempt with ingested apps and CI/CD"}
+      ]
+    },
+    "2026-01": {
+      "events": [
+        {"repo": "2026_Mono_rep", "event": "HEAVY_DEVELOPMENT", "commits": 152, "description": "Architecture docs, ADRs, agent registry, Turborepo, workflows. Nested copy issues."},
+        {"date": "2026-01-12", "repo": "ChatBOT", "event": "LAST_MEANINGFUL_COMMIT", "description": "Final commit 'all' — repo goes latent"},
+        {"date": "2026-01-13", "repo": "2026_Mono_rep", "event": "LAST_COMMIT", "description": "Merge conflicts resolution — repo stalls"},
+        {"date": "2026-01-19", "repo": "Chatbot-Truth-base--Creation", "event": "CREATED", "description": "Knowledge governance: GPT configurations, truth base, training systems"},
+        {"date": "2026-01-28", "repo": "GPT_Panelin", "event": "CREATED", "description": "Local-only prototype with Claude Code docs (3 commits total)"},
+        {"date": "2026-01-29", "repo": "chatbot-2311", "event": "LAST_COMMIT", "description": "Auto-approve workflow — repo goes legacy"}
+      ]
+    },
+    "2026-02": {
+      "events": [
+        {"date": "2026-02-10", "repo": "GPT-PANELIN-V3.2", "event": "CREATED", "description": "Core GPT repo with pricing master, accessories catalog, BOM rules, EVOLUCIONADOR"},
+        {"date": "2026-02-11", "repo": "aistudioPAnelin", "event": "CREATED", "description": "Google Gemini port experiment (17 files, 17 commits in 1 day)"},
+        {"date": "2026-02-11", "repo": "GPT-PANELIN-V3.2", "event": "LAST_COMMIT", "description": "PR consolidation — 51 commits in 2 days, then stops"}
+      ]
+    },
+    "2026-03": {
+      "events": [
+        {"date": "2026-03-05", "repo": "Calculadora-BMC", "event": "CREATED", "description": "v3.0 initial release — React/Vite calculator"},
+        {"date": "2026-03-10", "repo": "Calculadora-BMC", "event": "MAJOR_FEATURE", "description": "v3.1.0: API endpoints, OpenAPI spec, Cloud Run deployment, MercadoLibre OAuth"},
+        {"date": "2026-03-10", "repo": "Calculadora-BMC-GPT", "event": "CREATED", "description": "Isolated GPT config with Wolf workflow, manual gates, autopilot engine"},
+        {"date": "2026-03-11", "repo": "Calculadora-BMC", "event": "LATEST", "description": "GPT quotation tracking, PDF generation, Google Drive integration. 92 commits."}
+      ]
+    }
+  },
+  "repository_lineage": {
+    "chatbot_line": {
+      "description": "Chatbot platform evolution",
+      "path": "ChatBOT (Oct 2025) → bmc-cotizacion-inteligente (Oct 2025) → chatbot-2311 (forked Oct 2025, evolved Nov-Dec 2025)",
+      "note": "chatbot-2311 is a direct fork of bmc-cotizacion-inteligente that evolved far beyond it (167 vs 40 commits). Both share the same first commit hash.",
+      "current_status": "ChatBOT = latent platform, chatbot-2311 = legacy, bmc-cotizacion = stale"
+    },
+    "gpt_panelin_line": {
+      "description": "GPT Panelin configuration evolution",
+      "path": "Truth-base (Jan 2026) → GPT-PANELIN-V3.2 (Feb 2026) → Calculadora-BMC-GPT (Mar 2026)",
+      "note": "GPT instructions evolved from static KB-based (Truth-base) to Code Interpreter (GPT-PANELIN) to API-action based (Calculadora-BMC-GPT)",
+      "current_status": "Calculadora-BMC-GPT is the active system"
+    },
+    "calculator_line": {
+      "description": "Calculator tool evolution",
+      "path": "GPT-PANELIN-V3.2/quotation_calculator_v3.py (Feb 2026) → Calculadora-BMC (Mar 2026)",
+      "note": "Calculator started as a Python script in GPT-PANELIN, then became a full React+Express app",
+      "current_status": "Calculadora-BMC is the active calculator"
+    },
+    "consolidation_attempts": {
+      "description": "Monorepo and consolidation attempts",
+      "path": "2026_Mono_rep (Dec 2025) → stalled (Jan 2026)",
+      "note": "152 commits in January but stalled with merge conflicts and nested copies. Never completed consolidation.",
+      "current_status": "Stalled — but has valuable patterns (ADRs, agent registry, Turborepo)"
+    },
+    "experimental": {
+      "description": "Short-lived experiments",
+      "repos": ["GPT_Panelin (3 commits, local only)", "aistudioPAnelin (17 commits in 1 day, Gemini port)"],
+      "current_status": "Both abandoned after initial spike"
+    }
+  },
+  "gpt_instruction_evolution": {
+    "description": "How the GPT system prompt evolved across 3 generations",
+    "generations": [
+      {
+        "version": "v2.0",
+        "date": "2026-01-20",
+        "repo": "Chatbot-Truth-base--Creation",
+        "files": ["PANELIN_ULTIMATE_INSTRUCTIONS.md (389 lines)", "PANELIN_INSTRUCTIONS_OPTIMIZED.md (151 lines)"],
+        "approach": "Static KB-based — GPT reads JSON files and does calculations itself",
+        "kb_hierarchy": "4 levels (Master → Validation → Dynamic → Support)",
+        "iva_handling": "Prices already include IVA 22%, don't add more",
+        "unique_features": [
+          "Core behavior rules (Always be serviceable, Honesty radical)",
+          "Escalation protocol (collect contact → promise callback at 9am)",
+          "User personalizations (Mauro, Martin, Rami)",
+          "No-ego policy",
+          "Anti-overselling philosophy"
+        ]
+      },
+      {
+        "version": "v2.4",
+        "date": "2026-02-10",
+        "repo": "GPT-PANELIN-V3.2",
+        "files": ["Panelin_GPT_config.json (331 lines)"],
+        "approach": "Code Interpreter — GPT uses Python for calculations and PDF generation",
+        "kb_hierarchy": "7 levels (Master → Accessories → BOM → Pricing optimized → Catalog → Validation → Dynamic → Support)",
+        "iva_handling": "Prices already include IVA 22%, don't add more",
+        "unique_features": [
+          "accessories_catalog.json (70+ items)",
+          "bom_rules.json (parametric BOM per construction system)",
+          "PDF generation via Code Interpreter",
+          "SOP commands (/estado, /checkpoint, /consolidar, /evaluar_ventas, /entrenar, /pdf)",
+          "Guardrails checklist before responding",
+          "Audio policy (cannot transcribe)",
+          "Advanced analysis capabilities (pattern recognition, cost optimization)",
+          "Sales evaluation and training mode"
+        ]
+      },
+      {
+        "version": "current",
+        "date": "2026-03-10",
+        "repo": "Calculadora-BMC-GPT",
+        "files": ["gpt/instructions/system.md (94 lines)", "+ 5 supplemental files"],
+        "approach": "API-action mode — GPT calls calculator API for all calculations",
+        "kb_hierarchy": "None — delegates to API",
+        "iva_handling": "Subtotal sin IVA + IVA 22% + total final (aligned with calculator)",
+        "unique_features": [
+          "Real API integration via OpenAPI actions",
+          "Wolf workflow for lead/quote persistence (Sheets, Drive)",
+          "MercadoLibre lead ingestion pipeline",
+          "Manual gates protocol for commercial approval",
+          "Session qualification loop",
+          "Decision tree (INTAKE → QUALIFY → QUOTE → PERSIST → APPROVE)",
+          "Error handling policy"
+        ],
+        "features_lost_from_previous": [
+          "User personalizations (Mauro, Martin, Rami)",
+          "Core behavior rules (Always be serviceable, Honesty radical, No-ego)",
+          "Escalation protocol (contact collection, callback promise)",
+          "Sales evaluation and training mode",
+          "SOP commands",
+          "Guardrails checklist",
+          "Audio policy",
+          "Advanced analysis capabilities",
+          "Anti-overselling philosophy"
+        ]
+      }
+    ],
+    "rescue_recommendations": [
+      {
+        "feature": "Core behavior rules",
+        "source": "v2.0 PANELIN_ULTIMATE_INSTRUCTIONS.md",
+        "priority": "HIGH",
+        "reason": "Sets commercial philosophy — differentiates from generic calculator"
+      },
+      {
+        "feature": "User personalizations (Mauro, Martin, Rami)",
+        "source": "v2.0/v2.4",
+        "priority": "HIGH",
+        "reason": "Builds rapport with team members, makes GPT feel custom-built"
+      },
+      {
+        "feature": "Escalation protocol",
+        "source": "v2.0",
+        "priority": "HIGH",
+        "reason": "Critical for production — prevents dead-end conversations"
+      },
+      {
+        "feature": "Guardrails checklist",
+        "source": "v2.4",
+        "priority": "MEDIUM",
+        "reason": "Quality control mechanism before responding to customers"
+      },
+      {
+        "feature": "SOP commands",
+        "source": "v2.4",
+        "priority": "MEDIUM",
+        "reason": "Power user shortcuts — useful for internal team"
+      },
+      {
+        "feature": "Sales evaluation + training",
+        "source": "v2.4",
+        "priority": "MEDIUM",
+        "reason": "Unique capability for internal team development"
+      },
+      {
+        "feature": "Audio policy",
+        "source": "v2.4",
+        "priority": "LOW",
+        "reason": "Prevents user frustration — small but useful"
+      },
+      {
+        "feature": "Advanced analysis framing",
+        "source": "v2.4",
+        "priority": "LOW",
+        "reason": "Positions GPT as engineer/consultant, not just calculator"
+      }
+    ]
+  },
+  "pricing_analysis": {
+    "critical_finding": "TWO DIFFERENT PRICING MODELS",
+    "calculator_model": {
+      "source": "Calculadora-BMC/src/data/constants.js",
+      "approach": "All prices SIN IVA. IVA 22% applied ONCE at the end by calcTotalesSinIVA()",
+      "example": "ISODEC EPS 100mm: venta=37.76, web=45.97, costo=33.93 (all sin IVA)"
+    },
+    "gpt_kb_model": {
+      "source": "GPT-PANELIN-V3.2/bromyros_pricing_master.json + accessories_catalog.json",
+      "approach": "MIXED — bromyros has both sin/con IVA fields, accessories has prices CON IVA",
+      "example": "ISODEC EPS 100mm: sale_sin_iva=37.76, web_sin_iva=37.76, sale_iva_inc=46.07"
+    },
+    "price_discrepancies": [
+      {
+        "product": "ISODEC EPS 100mm",
+        "field": "web price",
+        "calculator": 45.97,
+        "gpt_kb": 37.76,
+        "difference": "8.21 USD (21.7%)",
+        "note": "Calculator has distinct venta/web prices; GPT KB has same price for both"
+      },
+      {
+        "product": "ISODEC EPS 100mm",
+        "field": "cost",
+        "calculator": 33.93,
+        "gpt_kb": 32.83,
+        "difference": "1.10 USD (3.3%)",
+        "note": "Minor cost difference"
+      }
+    ],
+    "recommendation": "constants.js should be PRIMARY source. GPT should call API for pricing instead of using KB files. Current GPT instructions (Calculadora-BMC-GPT) already do this via obtener_catalogo action."
+  },
+  "open_prs_analysis": {
+    "total_open": 117,
+    "breakdown": {
+      "GPT-PANELIN-V3.2": {"count": 30, "capped": true, "note": "Mostly copilot/codex auto-generated. Recent: autopilot consolidation plan PRs."},
+      "Chatbot-Truth-base--Creation": {"count": 30, "capped": true, "note": "Mostly Dependabot bumps (openai, @types/node, etc.)"},
+      "chatbot-2311": {"count": 30, "capped": true, "note": "Stale — auto-approve workflow, submodule fixes, CVE fixes"},
+      "2026_Mono_rep": {"count": 17, "note": "CI configuration, PR handling, stale monorepo attempts"},
+      "bmc-cotizacion-inteligente": {"count": 8, "note": "Stale — includes 'Find flights to Buenos Aires' (unrelated)"},
+      "Calculadora-BMC": {"count": 2, "note": "Active, legitimate PRs"}
+    },
+    "recommendation": "Close stale PRs in archived/legacy repos. Only Calculadora-BMC and Calculadora-BMC-GPT should have active PR management."
+  },
+  "abandoned_repos": [
+    {"repo": "bmc-cotizacion-inteligente", "last_activity": "2025-11-18", "months_stale": 4, "reason": "Superseded by Calculadora-BMC + Calculadora-BMC-GPT"},
+    {"repo": "GPT_Panelin", "last_activity": "2026-01-29", "total_commits": 3, "reason": "Local-only experiment, Claude Code docs dump"},
+    {"repo": "aistudioPAnelin", "last_activity": "2026-02-12", "total_commits": 17, "reason": "One-day Gemini experiment, merge strategy never executed"}
+  ],
+  "migration_patterns": [
+    {
+      "pattern": "FORK_AND_EVOLVE",
+      "from": "bmc-cotizacion-inteligente",
+      "to": "chatbot-2311",
+      "description": "chatbot-2311 forked from bmc-cotizacion and evolved 4x more (167 vs 40 commits)"
+    },
+    {
+      "pattern": "EXTRACT_AND_ISOLATE",
+      "from": "GPT-PANELIN-V3.2",
+      "to": "Calculadora-BMC-GPT",
+      "description": "GPT config extracted from the monolithic GPT-PANELIN repo into focused config repo"
+    },
+    {
+      "pattern": "SCRIPT_TO_APP",
+      "from": "GPT-PANELIN-V3.2/quotation_calculator_v3.py",
+      "to": "Calculadora-BMC (React + Express app)",
+      "description": "Python calculation script evolved into full web application"
+    },
+    {
+      "pattern": "CONSOLIDATION_STALL",
+      "repo": "2026_Mono_rep",
+      "description": "Attempted monorepo consolidation (152 commits) but stalled at merge conflicts"
+    }
+  ]
+}

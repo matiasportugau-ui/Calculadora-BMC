@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BMC — Administrador de Cotizaciones y Entregas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="logo">BMC <span class="logo-sub">Cotizaciones & Entregas</span></h1>
+      <div class="header-meta">
+        <span class="refresh-hint" id="lastRefresh">—</span>
+        <button type="button" class="btn btn-ghost" id="btnRefresh" title="Actualizar datos">Actualizar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="section card">
+      <div class="section-head">
+        <h2>Próximas entregas</h2>
+        <p class="section-desc">Entregas previstas para la semana actual (Confirmados con Fecha de entrega esta semana).</p>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tableEntregas">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Ubicación</th>
+              <th>Fecha entrega</th>
+              <th class="col-actions">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyEntregas">
+            <tr><td colspan="6" class="empty">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-actions">
+        <button type="button" class="btn btn-primary" id="btnCopyAllWhatsApp" disabled>
+          Copiar mensaje WhatsApp (todos)
+        </button>
+      </div>
+    </section>
+
+    <section class="section card">
+      <div class="section-head">
+        <h2>Coordinación logística</h2>
+        <p class="section-desc">Resumen listo para copiar y pegar en WhatsApp a transportistas: cliente, teléfono, ubicación (o link), nº pedido, items/cotización.</p>
+      </div>
+      <div class="logistica-preview">
+        <label class="label">Vista previa del mensaje (para todos los de la semana):</label>
+        <pre class="preview-box" id="previewWhatsApp"></pre>
+        <button type="button" class="btn btn-secondary" id="btnCopyPreview" disabled>Copiar texto al portapapeles</button>
+      </div>
+    </section>
+
+    <section class="section card">
+      <div class="section-head">
+        <h2>KPIs financieros</h2>
+        <p class="section-desc">Pagos pendientes, calendario de vencimientos y montos necesarios por periodo. Metas de ventas.</p>
+      </div>
+      <div class="kpi-cards" id="kpiCards">
+        <div class="kpi-card"><span class="kpi-label">Total pendiente</span><span class="kpi-value" id="kpiTotal">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">Esta semana</span><span class="kpi-value" id="kpiEstaSemana">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">Próxima semana</span><span class="kpi-value" id="kpiProximaSemana">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">Este mes</span><span class="kpi-value" id="kpiEsteMes">—</span></div>
+      </div>
+      <div class="section-head sub">
+        <h3>Calendario de vencimientos</h3>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tableVencimientos">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Monto ($)</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyVencimientos">
+            <tr><td colspan="2" class="empty">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-head sub">
+        <h3>Pagos pendientes (detalle)</h3>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tablePagos">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Pedido</th>
+              <th>Monto</th>
+              <th>Vencimiento</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPagos">
+            <tr><td colspan="4" class="empty">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-head sub">
+        <h3>Metas de ventas</h3>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tableMetas">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Tipo</th>
+              <th>Meta</th>
+              <th>Notas</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyMetas">
+            <tr><td colspan="4" class="empty">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section card">
+      <div class="section-head">
+        <h2>Audit log</h2>
+        <p class="section-desc">Registro de cambios (TIMESTAMP, ACTION, ROW, OLD_VALUE, NEW_VALUE, REASON, USER, SHEET). Exportar a CSV.</p>
+      </div>
+      <div class="audit-toolbar">
+        <input type="text" id="auditFilter" class="audit-filter" placeholder="Filtrar por acción, usuario, razón…">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnExportAuditCSV">Exportar CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tableAudit">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Acción</th>
+              <th>Fila</th>
+              <th>Valor anterior</th>
+              <th>Valor nuevo</th>
+              <th>Razón</th>
+              <th>Usuario</th>
+              <th>Hoja</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyAudit">
+            <tr><td colspan="8" class="empty">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Datos desde Google Sheets · Master_Cotizaciones · Ventas realizadas y entregadas</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    (function() {
+      if (typeof window === 'undefined' || !window.location.search.includes('dev=1')) return;
+      var lastMtime = 0;
+      function check() {
+        fetch('/api/dev/dashboard-mtime').then(function(r) { return r.json(); }).then(function(d) {
+          if (lastMtime && d.mtime && d.mtime !== lastMtime) window.location.reload();
+          if (d.mtime) lastMtime = d.mtime;
+        }).catch(function() {});
+      }
+      setInterval(check, 2000);
+      setTimeout(check, 500);
+    })();
+  </script>
+</body>
+</html>

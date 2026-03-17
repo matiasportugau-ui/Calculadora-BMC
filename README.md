@@ -37,6 +37,10 @@ npm run dev        # http://localhost:5173
 | Comando | Descripción |
 |---------|-------------|
 | `npm run dev` | Servidor de desarrollo Vite (puerto 5173) |
+| `npm run dev:full` | API (3001) + Vite (5173) — app completa con pestaña Finanzas |
+| `npm run dev:full-stack` | API + Vite + Panelin Evolution viewer (3847) si existe |
+| `npm run start:api` | Solo API Express (3001) |
+| `npm run bmc-dashboard` | Dashboard Finanzas standalone (3849) |
 | `npm run build` | Build de producción → `dist/` |
 | `npm run preview` | Preview local del build |
 | `npm test` | Suite de validación (63 assertions) |
@@ -164,6 +168,55 @@ Endpoints disponibles:
 
 ---
 
+## Desarrollo completo — Dashboard BMC
+
+El proyecto integra un **dashboard de Finanzas** (cotizaciones, entregas, pagos pendientes, KPIs) alimentado por Google Sheets. Todo el stack se configura con un solo comando.
+
+### One-Click Setup
+
+```bash
+./run_dashboard_setup.sh
+```
+
+El script valida `.env`, credenciales de Google, instala dependencias, inicia la API y opcionalmente ngrok. Opciones:
+
+- `--check-only` — solo verifica configuración, no inicia servicios
+- `--no-ngrok` — no inicia túnel ngrok
+
+### Requisitos previos (manual, una vez)
+
+1. **Google Cloud:** Crear service account con Sheets API (lectura + escritura). Descargar JSON → guardar en `docs/bmc-dashboard-modernization/service-account.json`.
+2. **Spreadsheet:** Compartir "2.0 - Administrador de Cotizaciones" con el email del service account como **Editor**.
+3. **Apps Script (Phase 1–2):** Pegar `Code.gs`, agregar `DialogEntregas.html`, ejecutar `runInitialSetup`, configurar triggers según [`docs/bmc-dashboard-modernization/IMPLEMENTATION.md`](docs/bmc-dashboard-modernization/IMPLEMENTATION.md).
+
+### Stack del dashboard
+
+| Componente | Puerto | Descripción |
+|------------|--------|-------------|
+| **API principal** | 3001 | Express: `/calc`, `/api/*`, `/auth/ml`, `/finanzas` |
+| **Vite (front)** | 5173 | App React con pestañas Invocar Panelin + Finanzas |
+| **Dashboard standalone** | 3849 | `npm run bmc-dashboard` — solo dashboard (opcional) |
+| **ngrok** | — | Túnel HTTPS para OAuth/webhooks externos |
+
+### Variables de entorno (`.env`)
+
+| Variable | Uso |
+|----------|-----|
+| `BMC_SHEET_ID` | ID del spreadsheet (de la URL de Google Sheets) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Ruta absoluta al JSON del service account |
+| `ML_CLIENT_ID`, `ML_CLIENT_SECRET` | OAuth MercadoLibre |
+| `ML_REDIRECT_URI_DEV` | Callback HTTPS (ej. ngrok) para OAuth |
+
+### Versionado y changelog
+
+```bash
+./scripts/bump_version.sh [major|minor|patch] ["Mensaje para el changelog"]
+```
+
+Criterios: **MAJOR** = breaking; **MINOR** = nuevas features; **PATCH** = fixes, refactors, docs.
+
+---
+
 ## Deploy
 
 ### Vercel (recomendado)
@@ -223,6 +276,9 @@ Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución
 
 | Documento | Contenido |
 |-----------|-----------|
+| [`docs/bmc-dashboard-modernization/IMPLEMENTATION.md`](docs/bmc-dashboard-modernization/IMPLEMENTATION.md) | Setup completo del dashboard (4 fases, triggers, testing) |
+| [`docs/bmc-dashboard-modernization/README.md`](docs/bmc-dashboard-modernization/README.md) | Quick start Phase 1–2 + dashboard |
+| [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) | Configuración OAuth MercadoLibre |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Arquitectura técnica detallada |
 | [`docs/CALC-TECHO.md`](docs/CALC-TECHO.md) | Motor de cálculo de techos |
 | [`docs/CALC-PARED.md`](docs/CALC-PARED.md) | Motor de cálculo de paredes |

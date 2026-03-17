@@ -1,4 +1,7 @@
 import crypto from "node:crypto";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import pino from "pino";
@@ -7,6 +10,11 @@ import { config } from "./config.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
+import legacyQuoteRouter from "./routes/legacyQuote.js";
+import createBmcDashboardRouter from "./routes/bmcDashboard.js";
+import createShopifyRouter from "./routes/shopify.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
@@ -14,7 +22,20 @@ const logger = pino({
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "1mb" }));
+
+// Security headers (OAuth 2.1–aligned)
+app.use((_req, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  next();
+});
+
+// Shopify webhook needs raw body for HMAC; skip json for that path
+app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
+app.use((req, res, next) => {
+  if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
+  return express.json({ limit: "1mb" })(req, res, next);
+});
 app.use(
   pinoHttp({
     logger,
@@ -28,7 +49,10 @@ const webhookEvents = [];
 const maxWebhookEvents = 250;
 
 const tokenStore = createTokenStore({
+  storageType: config.tokenStorage,
   filePath: config.tokenFile,
+  gcsBucket: config.tokenGcsBucket,
+  gcsObject: config.tokenGcsObject,
   encryptionKey: config.tokenEncryptionKey,
   logger,
 });
@@ -38,9 +62,9 @@ const missingConfig = () => {
   const missing = [];
   if (!config.mlClientId) missing.push("ML_CLIENT_ID");
   if (!config.mlClientSecret) missing.push("ML_CLIENT_SECRET");
-  if (!config.mlRedirectUriDev) missing.push("ML_REDIRECT_URI_DEV");
+  if (!config.useProdRedirect && !config.mlRedirectUriDev) missing.push("ML_REDIRECT_URI_DEV");
   if (config.useProdRedirect && !config.mlRedirectUriProd) {
-    missing.push("ML_REDIRECT_URI_PROD");
+    missing.push("PUBLIC_BASE_URL o ML_REDIRECT_URI_PROD");
   }
   return missing;
 };
@@ -61,10 +85,18 @@ const ensureValidState = (state) => {
 app.get("/health", asyncHandler(async (req, res) => {
   const tokens = await ml.getStoredTokens();
   const missing = missingConfig();
+  const credsPath =
+    config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  const hasSheets = !!(
+    config.bmcSheetId &&
+    credsPath &&
+    fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath))
+  );
   res.json({
     ok: true,
     appEnv: config.appEnv,
     hasTokens: Boolean(tokens?.access_token),
+    hasSheets,
     missingConfig: missing,
   });
 }));
@@ -220,6 +252,50 @@ app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
 }));
 
 app.use("/calc", calcRouter);
+// BMC Finanzas dashboard: API under /api, static UI at /finanzas
+app.use("/api", createBmcDashboardRouter(config));
+// Shopify integration v4 (questions/quotes – Mercado Libre replacement)
+app.use(createShopifyRouter(config, logger));
+
+const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
+const isDev = config.appEnv === "development";
+if (isDev) {
+  app.get("/api/dev/dashboard-mtime", (req, res) => {
+    try {
+      const files = ["index.html", "app.js", "styles.css"];
+      let max = 0;
+      for (const f of files) {
+        const stat = fs.statSync(path.join(dashboardDir, f));
+        if (stat.mtimeMs > max) max = stat.mtimeMs;
+      }
+      res.json({ mtime: max });
+    } catch {
+      res.json({ mtime: 0 });
+    }
+  });
+}
+app.use(
+  "/finanzas",
+  (req, res, next) => {
+    if (isDev) res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    next();
+  },
+  express.static(dashboardDir, { index: "index.html" })
+);
+
+// Avoid 404s when ngrok/browsers hit the API root or favicon (traffic audit: EXPORT_SEAL)
+app.get("/favicon.ico", (_req, res) => {
+  res.status(204).end();
+});
+app.get("/", (req, res) => {
+  if (req.accepts("html")) {
+    res.redirect(302, "/finanzas");
+    return;
+  }
+  res.status(404).json({ ok: false, error: "Not found", path: req.path });
+});
+
+app.use("/", legacyQuoteRouter);
 
 app.use((req, res) => {
   res.status(404).json({ ok: false, error: "Not found", path: req.path });
