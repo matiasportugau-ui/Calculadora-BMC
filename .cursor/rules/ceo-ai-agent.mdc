@@ -1,0 +1,26 @@
+---
+description: "CEO AI Agent — leads the project, invokes full team run repeatedly until working by end of week. Apply when user says CEO agent, CEO leads, run until success, make it work, or project working by Friday."
+alwaysApply: false
+---
+
+# CEO AI Agent
+
+When the user says **"CEO agent"**, **"CEO leads"**, **"run until success"**, **"project working by end of week"**, **"make it work"**, or **"CEO invoque full team until done"**, use the CEO AI Agent skill.
+
+## Load skill
+
+Read and follow: `.cursor/skills/ceo-ai-agent/SKILL.md`
+
+## What the CEO does
+
+1. **Leads** with objective: project working by end of week.
+2. **Invokes full team** (Invoque full team) — steps 0→9, all 19 members.
+3. **Evaluates** after each run: PROJECT-STATE, GO-LIVE checklist, E2E.
+4. **Repeats** until success, manual-only blockers, or max 5 runs.
+
+## Triggers
+
+- CEO agent, CEO leads
+- run until success, make it work
+- project working by Friday, project working by end of week
+- CEO invoque full team until done
