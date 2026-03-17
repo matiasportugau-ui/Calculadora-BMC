@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-18 (Full team run — Invoque full team run 5)
+**Última actualización:** 2026-03-17 (Full team run — Invoque full team run 6)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**Full team run 2026-03-17 run 6 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-17-run6.md. Pasos 1–8: Mapping vigente; Dependencies/service-map fecha 2026-03-17; Contract 4/4 PASS (código); Reporter REPORT-SOLUTION-CODING-run6; Judge JUDGE-REPORT-RUN-2026-03-17-run8 (promedio 4.94/5); Repo Sync REPO-SYNC-REPORT. Paso 9: PROMPT y BACKLOG actualizados; sin prompts automatizables; pendientes 1, 3, 6, 7 (Matias).
 
 **Full team run 2026-03-18 run 5 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run5.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
 

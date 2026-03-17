@@ -49,5 +49,5 @@
 
 ---
 
-**Última actualización:** 2026-03-16  
+**Última actualización:** 2026-03-17  
 **Handoff:** Usar con service-map.md, IMPLEMENTATION-PLAN-SOLUTION-CODING.md (Phase 1–2).
