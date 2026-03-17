@@ -15,28 +15,14 @@
 
 ## Próximos prompts (ejecutar en este run)
 
-**Run 2026-03-17 run 1:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+Sin prompts automatizables en este momento. Los pendientes activos requieren acción manual de Matias:
 
-**Run 2026-03-18 run 9:** Input: Evaluación logs v1–v34 y propuesta de evolución (Control Plane, Policy Engine, PQC, OWASP/NIST). Reporter creó EVOLUTION-PROPOSAL-CONTROL-PLANE.md. Pendientes: 1, 3, 6, 7 (Matias); opcional: integrar backlog P0–P3 del Control Plane. PROJECT-STATE y PROMPT actualizados.
+1. **[Matias — manual] Crear tabs y configurar triggers** — CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO, y 6 triggers Apps Script. BLOQUEANTE para automations. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §A1, §A2.
+2. **[Networks + Matias] Decidir y ejecutar deploy productivo** — Cloud Run (§B1) o VPS Netuy (§B2). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md. Antes de deploy: CORS restriction en server/index.js.
+3. **[Coding + Matias] npm audit fix** — `npm audit fix --force` (vite@8, breaking). Evaluar con Matias en branch separado.
+4. **[Matias] Repo Sync (opcional)** — Verificar bmc-dashboard-2.0 y bmc-development-team sincronizados.
 
-**Run 2026-03-18 run 8:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-18 run 7:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-18 run 6:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-18 run 5:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-16 run7:** Ejecutados todos los ítems automatizables de la agenda:
-- ✓ [Contract/Audit] kpi-report verificado en código: bmcDashboard.js L1130, montado en /api. 404 = restart servidor.
-- ✓ [Reporter] REPORT-SOLUTION-CODING-run7.md generado.
-- ✓ [Reporter] GUIA-RAPIDA-VENDEDORES.md creada (actualizada por linter).
-- ✓ [Audit] E2E checklist: .cursor/bmc-audit/latest-report-2026-03-16-run7.md.
-- ✓ [Judge] JUDGE-REPORT-RUN-2026-03-16-run7.md; JUDGE-REPORT-HISTORICO actualizado; promedio 4.93/5.
-- ✓ [Repo Sync] Repos verificados remotamente; artefactos sincronizados y pusheados.
-- ✓ [Dependencies] service-map.md fecha corregida + PUSH routes documentadas.
-- ✓ [Fiscal] Incumplimiento Medio detectado y corregido (service-map fecha).
-- ✓ [Parallel/Serial] PARALLEL-SERIAL-PLAN-2026-03-16-run7.md creado.
+> Historial de runs anteriores: ver `docs/team/PROJECT-STATE.md` sección "Cambios recientes".
 
 ---
 
