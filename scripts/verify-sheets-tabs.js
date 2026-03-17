@@ -1,90 +1,64 @@
-#!/usr/bin/env node
-/**
- * BMC Dashboard — Verify Sheets Tabs via API
- * Uses service account to list tabs in the workbook.
- * Run: node scripts/verify-sheets-tabs.js
- * Requires: .env with BMC_SHEET_ID, GOOGLE_APPLICATION_CREDENTIALS
- */
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import dotenv from "dotenv";
-import { google } from "googleapis";
+import { google } from 'googleapis';
+import 'dotenv/config';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(__dirname, "..");
-dotenv.config({ path: path.join(REPO, ".env") });
+// Configuración de autenticación
+const auth = new google.auth.GoogleAuth({
+  credentials: {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  },
+  scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+});
 
-const SHEET_ID = process.env.BMC_SHEET_ID;
-const CREDS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
-  ? path.resolve(REPO, process.env.GOOGLE_APPLICATION_CREDENTIALS.replace(/^["']|["']$/g, ""))
-  : path.join(REPO, "docs/bmc-dashboard-modernization/service-account.json");
+const sheets = google.sheets({ version: 'v4', auth });
 
-const REQUIRED_TABS = [
-  "CRM_Operativo",
-  "Pagos_Pendientes",
-  "Metas_Ventas",
-  "AUDIT_LOG",
-  "Master_Cotizaciones",
-  "Ventas realizadas y entregadas",
-];
+const PAGOS_SHEET_ID = process.env.BMC_PAGOS_SHEET_ID;
+const VENTAS_SHEET_ID = process.env.BMC_VENTAS_SHEET_ID;
+
+async function verifySheetExists(spreadsheetId, sheetName) {
+  try {
+    const res = await sheets.spreadsheets.get({
+      spreadsheetId,
+    });
+    const sheet = res.data.sheets.find(s => s.properties.title === sheetName);
+    if (sheet) {
+      console.log(`✅ VERIFICADO: El tab "${sheetName}" existe en el workbook ${spreadsheetId}.`);
+      return true;
+    } else {
+      console.error(`❌ ERROR: El tab "${sheetName}" NO existe en el workbook ${spreadsheetId}.`);
+      return false;
+    }
+  } catch (err) {
+    console.error(`Error al verificar el workbook ${spreadsheetId}:`, err.message);
+    return false;
+  }
+}
 
 async function main() {
-  console.log("\nBMC Sheets Tabs Verifier\n");
-
-  if (!SHEET_ID) {
-    console.error("  ✗ BMC_SHEET_ID not set in .env");
+  if (!PAGOS_SHEET_ID || !VENTAS_SHEET_ID) {
+    console.error('Asegúrate de que las variables de entorno BMC_PAGOS_SHEET_ID y BMC_VENTAS_SHEET_ID estén configuradas.');
     process.exit(1);
   }
 
-  if (!fs.existsSync(CREDS_PATH)) {
-    console.error("  ✗ Service account JSON not found:", CREDS_PATH);
-    process.exit(1);
-  }
+  console.log('Iniciando verificación de tabs en Google Sheets...');
 
-  const creds = JSON.parse(fs.readFileSync(CREDS_PATH, "utf8"));
-  const auth = new google.auth.GoogleAuth({
-    keyFile: CREDS_PATH,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-  });
+  const results = await Promise.all([
+    verifySheetExists(PAGOS_SHEET_ID, 'CONTACTOS'),
+    verifySheetExists(VENTAS_SHEET_ID, 'Ventas_Consolidado'),
+  ]);
 
-  const sheets = google.sheets({ version: "v4", auth });
+  const allVerified = results.every(res => res);
 
-  try {
-    const res = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
-    const tabs = (res.data.sheets || []).map((s) => s.properties?.title || "").filter(Boolean);
-
-    console.log("  Workbook:", res.data.properties?.title || SHEET_ID);
-    console.log("  Tabs found:", tabs.length);
-    console.log("");
-
-    const missing = REQUIRED_TABS.filter((t) => !tabs.includes(t));
-    const found = REQUIRED_TABS.filter((t) => tabs.includes(t));
-
-    for (const t of found) {
-      console.log("  ✓", t);
-    }
-    for (const t of missing) {
-      console.log("  ✗", t, "(missing)");
-    }
-
-    if (missing.length > 0) {
-      console.log("\n  → Run runInitialSetup() in Apps Script to create missing tabs.");
-      console.log("  → Or share workbook with service account and run: docs/bmc-dashboard-modernization/Code.gs\n");
-      process.exit(1);
-    }
-
-    console.log("\n  All required tabs present.\n");
-  } catch (err) {
-    if (err.code === 403 || err.message?.includes("permission")) {
-      console.error("  ✗ Permission denied. Share the workbook with the service account email as Editor.");
-      console.error("  → Service account email:", creds?.client_email || "(see service-account.json)");
-      console.error("  → In Google Sheets: Share → Add people →", email, "→ Editor\n");
-    } else {
-      console.error("  ✗", err.message || err);
-    }
+  if (allVerified) {
+    console.log('\nVerificación completada con éxito. Todos los tabs esperados existen.');
+    process.exit(0);
+  } else {
+    console.error('\nFalló la verificación. Faltan uno o más tabs.');
     process.exit(1);
   }
 }
 
-main();
+main().catch(err => {
+    console.error("Error inesperado durante la verificación:", err);
+    process.exit(1);
+});
