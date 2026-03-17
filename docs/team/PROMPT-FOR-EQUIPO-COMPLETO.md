@@ -15,7 +15,18 @@
 
 ## Próximos prompts (ejecutar en este run)
 
-**Run 2026-03-16:** Design, Dependencies, Reporter, Orchestrator, Mapping — ✓ completados.
+**Run 2026-03-18 run 5:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+
+**Run 2026-03-16 run7:** Ejecutados todos los ítems automatizables de la agenda:
+- ✓ [Contract/Audit] kpi-report verificado en código: bmcDashboard.js L1130, montado en /api. 404 = restart servidor.
+- ✓ [Reporter] REPORT-SOLUTION-CODING-run7.md generado.
+- ✓ [Reporter] GUIA-RAPIDA-VENDEDORES.md creada (actualizada por linter).
+- ✓ [Audit] E2E checklist: .cursor/bmc-audit/latest-report-2026-03-16-run7.md.
+- ✓ [Judge] JUDGE-REPORT-RUN-2026-03-16-run7.md; JUDGE-REPORT-HISTORICO actualizado; promedio 4.93/5.
+- ✓ [Repo Sync] Repos verificados remotamente; artefactos sincronizados y pusheados.
+- ✓ [Dependencies] service-map.md fecha corregida + PUSH routes documentadas.
+- ✓ [Fiscal] Incumplimiento Medio detectado y corregido (service-map fecha).
+- ✓ [Parallel/Serial] PARALLEL-SERIAL-PLAN-2026-03-16-run7.md creado.
 
 ---
 
@@ -37,15 +48,17 @@
 
 ## Próximos prompts para el siguiente run
 
-**Agenda siguiente run (post-go-live, execution):**
+**Run 2026-03-16 run7:** ✓ Todos los ítems automatizables ejecutados. Ver sección "Próximos prompts (ejecutar en este run)" para detalle.
 
-1. **[Matias — manual] Crear tabs y configurar triggers** — CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO, y 6 triggers Apps Script. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §A1, §A2 y AUTOMATIONS-BY-WORKBOOK.md.
-2. **[Coding] Verificar kpi-report runtime** — Reiniciar servidor y confirmar /api/kpi-report retorna 200 o 503. Ver §A3.
-3. **[Networks + Matias] Decidir y ejecutar deploy productivo** — Cloud Run (§B1) o VPS Netuy (§B2). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md.
-4. **[Reporter] Crear GUIA-RAPIDA-VENDEDORES.md** — Post-deploy; orientada a usuarios finales. Ver §C1.
-5. **[Audit/Debug] E2E validation checklist** — Ver §D1. Verificar datos reales end-to-end.
-6. **[Coding + Matias] npm audit fix** — `npm audit fix` sin --force primero; evaluar vite@8 upgrade.
-7. **[Matias] Configurar Repo Sync** — Añadir vars en .env; crear repos externos. Ver REPO-SYNC-SETUP.md.
+**Agenda siguiente run (post-go-live, execution — pendientes activos):**
+
+1. **[Matias — manual] Crear tabs y configurar triggers** — CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO, y 6 triggers Apps Script. BLOQUEANTE para automations. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §A1, §A2 y AUTOMATIONS-BY-WORKBOOK.md.
+2. ~~**[Coding] Verificar kpi-report runtime**~~ — ✓ Verificado en código run7: bmcDashboard.js L1130, mount /api. Acción Matias: restart servidor → curl http://localhost:3001/api/kpi-report → debe ser 200 o 503.
+3. **[Networks + Matias] Decidir y ejecutar deploy productivo** — Cloud Run (§B1) o VPS Netuy (§B2). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md. Antes de deploy: CORS restriction en server/index.js.
+4. ~~**[Reporter] Crear GUIA-RAPIDA-VENDEDORES.md**~~ — ✓ Hecho. Ver docs/GUIA-RAPIDA-VENDEDORES.md.
+5. **[Matias + Audit] E2E validation** — Ejecutar checklist .cursor/bmc-audit/latest-report-2026-03-16-run7.md con datos reales post-deploy.
+6. **[Coding + Matias] npm audit fix** — `npm audit fix --force` (vite@8, breaking). Evaluar con Matias en branch separado.
+7. **[Matias] Billing cierre mensual 2026-03** — Verificar cierre en Pagos Pendientes 2026 workbook.
 
 Al terminar el siguiente run, marcar ✓ en los completados y actualizar con los nuevos pendientes.
 
