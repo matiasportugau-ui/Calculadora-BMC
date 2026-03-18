@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-16 (run7)
+**Última actualización:** 2026-03-17 (run8)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -33,6 +33,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 
 **Promedio global Run 6:** 4.78/5
 **Promedio global Run 7:** 4.93/5 (18 agentes; Sheets Structure N/A este run)
+**Promedio global Run 8:** 4.94/5 (18 agentes; Sheets Structure N/A este run)
 
 ---
 
@@ -63,7 +64,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 
 ## Tendencias
 
-- **Evolución general:** 7 runs completados; Run 7 promedio 4.93/5 (mejora vs run 6: 4.78/5).
+- **Evolución general:** 8 runs completados; Run 8 promedio 4.94/5 (mejora vs run 7: 4.93/5).
 - **Agentes más fuertes:** Mapping, Design, Fiscal, Audit/Debug, Reporter, Security, Judge, Parallel/Serial, Orchestrator — todos 5/5 sostenidos.
 - **Mejoras evidentes run 7:**
   - Contract: 4.7 → 5.0 (kpi-report root cause confirmado).
@@ -91,6 +92,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-17 | Full team + sync + Repo Sync setup + git push | 19/19 (N/A) | N/A | [JUDGE-REPORT-RUN-2026-03-16.md](./JUDGE-REPORT-RUN-2026-03-16.md) §Run 5 |
 | 2026-03-16 | Full team Go-live & Hardening | 19/19 (formal) | 4.78 | [JUDGE-REPORT-RUN-2026-03-16-run6.md](./JUDGE-REPORT-RUN-2026-03-16-run6.md) |
 | 2026-03-16 | Full team run 7 — post-go-live agenda | 18/19 (Sheets N/A) | 4.93 | [JUDGE-REPORT-RUN-2026-03-16-run7.md](./JUDGE-REPORT-RUN-2026-03-16-run7.md) |
+| 2026-03-17 | Full team run 8 — Invoque full team | 18/19 (Sheets N/A) | 4.94 | [JUDGE-REPORT-RUN-2026-03-17-run8.md](./JUDGE-REPORT-RUN-2026-03-17-run8.md) |
 
 ---
 
