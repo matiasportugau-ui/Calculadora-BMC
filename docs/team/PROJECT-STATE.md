@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-18 (Full team run — Invoque full team run 5)
+**Última actualización:** 2026-03-19 (Full team run — propuestas por agente)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**Full team run 2026-03-19 (Propuestas por agente):** Tarea: cada agente propone mejoras individuales para su área. Generado [PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md](./PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md). Pendiente: Matias analiza y prioriza; equipo ejecutará las que se decidan.
 
 **Full team run 2026-03-18 run 5 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run5.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
 
