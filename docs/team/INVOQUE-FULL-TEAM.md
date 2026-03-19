@@ -15,6 +15,8 @@
 | Run the BMC Dashboard team | Full team run |
 | Orchestrate the dashboard agent team | Full team run |
 
+**Alternativa — Chat interactivo:** Si quieres un **diálogo conversacional** con el equipo (preguntas y respuestas, sin ejecutar el batch completo), di **"Chat con el equipo"** o **"diálogo interactivo con el equipo completo"**. Ver `docs/team/CHAT-EQUIPO-INTERACTIVO.md`.
+
 ---
 
 ## Qué hace "Invoque full team"
