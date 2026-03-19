@@ -4,6 +4,29 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## Chat de Equipo Interactivo
+
+**Skill:** `.cursor/skills/chat-equipo-interactivo/`
+
+**Rol:** Habilitar un diálogo conversacional con el equipo completo. En lugar de solo ejecutar "Invoque full team" en batch, el usuario puede hacer preguntas, recibir respuestas de los agentes apropiados y seguir la conversación.
+
+**Cuándo usar:**
+- Chat con el equipo, diálogo interactivo
+- conversar con el equipo completo
+- Quiero hablar con el equipo
+- Interactive team chat
+
+**Referencias:**
+- [SKILL.md](../.cursor/skills/chat-equipo-interactivo/SKILL.md)
+- [reference.md](../.cursor/skills/chat-equipo-interactivo/reference.md)
+- [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md) — guía de uso
+- [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md)
+- [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md)
+
+**Cursor Rule:** `.cursor/rules/chat-equipo-interactivo.mdc`
+
+---
+
 ## BMC Project Team Sync
 
 **Skill:** `.cursor/skills/bmc-project-team-sync/`

@@ -10,6 +10,7 @@ Estructura de documentación del equipo, organizada según decisión del equipo.
 docs/team/
 ├── README.md                    ← Este índice
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
+├── CHAT-EQUIPO-INTERACTIVO.md   Chat/diálogo interactivo con el equipo completo
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
 ├── AGENTS.md                    Lista de agentes y skills
@@ -33,6 +34,7 @@ docs/team/
 | Documento | Descripción |
 |-----------|-------------|
 | [PROJECT-STATE.md](./PROJECT-STATE.md) | Estado del proyecto; cambios recientes; pendientes; cómo usar |
+| [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md) | Chat/diálogo interactivo con el equipo completo |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
 | [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync) |

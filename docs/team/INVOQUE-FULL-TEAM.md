@@ -2,6 +2,8 @@
 
 **Propósito:** Unificar la invocación del equipo completo en una sola frase: **"Invoque full team"**.
 
+**Alternativa:** Para un **diálogo interactivo** (preguntas y respuestas conversacionales con el equipo), decí **"Chat con el equipo"**. Ver [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md).
+
 ---
 
 ## Frases que activan el full team
