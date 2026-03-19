@@ -252,13 +252,41 @@ app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
 }));
 
 app.use("/calc", calcRouter);
+// Diagnostic endpoint (dev only) — must be before /api router
+const isDev = config.appEnv === "development";
+if (isDev) {
+  app.get("/api/diagnostic", (req, res) => {
+    const credsPath =
+      config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    const hasSheets = !!(
+      config.bmcSheetId &&
+      credsPath &&
+      fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath))
+    );
+    res.json({
+      ok: true,
+      version: "1.0",
+      appEnv: config.appEnv,
+      envVarsPresent: [
+        "BMC_SHEET_ID",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "ML_CLIENT_ID",
+        "ML_CLIENT_SECRET",
+        "SHOPIFY_CLIENT_ID",
+        "SHOPIFY_CLIENT_SECRET",
+      ].filter((k) => !!process.env[k]),
+      hasSheets,
+      port: config.port,
+    });
+  });
+}
+
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
 app.use(createShopifyRouter(config, logger));
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
-const isDev = config.appEnv === "development";
 if (isDev) {
   app.get("/api/dev/dashboard-mtime", (req, res) => {
     try {

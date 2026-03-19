@@ -8,17 +8,17 @@
 
 ### Crítico (nivel 1)
 
-| Incumplimiento | Impacto | Control |
-|----------------|---------|---------|
-| **No actualizar "Cambios recientes" después de un cambio** | Otros no saben qué cambió; trabajo duplicado; handoffs rotos; bloqueos en cadena | Fiscal verifica que todo cambio relevante tenga fila en Cambios recientes |
-| **No añadir a "Pendientes" o Log for [Agent] cuando un cambio afecta a otros** | Los afectados no actúan; drift; trabajo desalineado; rework | Fiscal verifica tabla de propagación §4; si cambio afecta a X, debe haber Pendiente o Log for X |
+| Incumplimiento | Ejemplo concreto | Impacto | Control |
+|----------------|------------------|---------|---------|
+| **No actualizar "Cambios recientes" después de un cambio** | Mapping actualizó planilla-inventory pero no añadió fila en Cambios recientes | Otros no saben qué cambió; trabajo duplicado; handoffs rotos | Fiscal verifica que todo cambio relevante tenga fila |
+| **No añadir a "Pendientes" o Log for [Agent] cuando un cambio afecta a otros** | Design añadió sección que consume /api/X pero no notificó a Mapping | Los afectados no actúan; drift; rework | Fiscal verifica tabla de propagación §4 |
 
 ### Alto (nivel 2)
 
-| Incumplimiento | Impacto | Control |
-|----------------|---------|---------|
-| **No leer "Cambios recientes" y "Pendientes" antes de trabajar** | Actúa con información obsoleta; puede rehacer trabajo o chocar con cambios recientes | Fiscal observa si agentes citan estado actual al iniciar; si no, incumplimiento |
-| **No ejecutar sync cuando hay cambios que afectan a múltiples áreas** | Drift acumulado; estado desactualizado; descoordinación | Fiscal verifica si tras cambios multi-área se ejecutó "Sync project state" o full team run |
+| Incumplimiento | Ejemplo concreto | Impacto | Control |
+|----------------|------------------|---------|---------|
+| **No leer "Cambios recientes" y "Pendientes" antes de trabajar** | Reporter genera plan sin saber que Networks documentó migración pendiente | Actúa con información obsoleta; rework | Fiscal observa si agentes citan estado actual |
+| **No ejecutar sync cuando hay cambios que afectan a múltiples áreas** | Cambio en Sheets afecta Mapping, Design, Dependencies; no se ejecutó full team | Drift acumulado; descoordinación | Fiscal verifica si se ejecutó sync |
 
 ### Medio (nivel 3)
 

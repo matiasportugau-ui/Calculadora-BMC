@@ -222,25 +222,45 @@ Fase 4 — según disponibilidad de Matias
 
 ## Progreso de implementación (2026-03-19)
 
-### Fase 1 — Parcial
+### Fase 1 — Completa
 - [x] DECISION-LOG-ESTRUCTURA.md
 - [x] RESTRICCIONES-NEGOCIO.md
 - [x] DESIGN-SYSTEM.md
+- [x] ESTADO-VISUAL-SECCIONES.md
 - [x] CRITERIOS-SKIP-PASOS.md
 - [x] CHAT-EQUIPO-FAQ.md
 - [x] CHECKLIST-SEGURIDAD-PRE-DEPLOY.md
+- [x] FLUJOS-OAUTH.md
 - [x] ENV-VARS-MATRIX.md
-- [x] .env.example (TOKEN_ENCRYPTION_KEY añadido)
-- [x] PROJECT-STATE: Pendientes con prioridad, convención Mapping
-- [ ] Resto de docs Fase 1 (Billing, Fiscal, Calc, etc.)
+- [x] ENDPOINTS.md
+- [x] PLANTILLA-VALIDACION-COLUMNAS.md
+- [x] ORDEN-CREACION-TABS.md
+- [x] HOSTING-DECISION-LOG.md
+- [x] OAUTH-ESTADO.md
+- [x] CHECKLIST-PRE-GO-LIVE (integraciones)
+- [x] CHECKLIST-DRIFT-OPENAPI.md
+- [x] FISCAL: ejemplos, LOG-INCUMPLIMIENTOS, CONTEXTO-FISCAL
+- [x] Billing: REGLAS, CHECKLIST-CIERRE, FORMATO-EXPORT
+- [x] PLANTILLA-HANDOFF.md
+- [x] CONSTANTES-Y-FORMULAS.md
+- [x] FLUJO-COTIZACIONES-SHEETS.md
+- [x] GRAFO-DEPENDENCIAS-PASOS.md
+- [x] REPO-SYNC: mapa artefactos, CHECKLIST-PRE-PUSH, LOG
+- [x] planilla-inventory versionado
+- [x] JUDGE-CRITERIA con columna Entregable (Mapping)
+- [x] AUTOMATIONS-BY-WORKBOOK checklists extendidos
 
-### Fase 2 — Parcial
+### Fase 2 — Completa
 - [x] scripts/health-check.sh
-- [ ] scripts/validate-api-contract.sh
-- [ ] scripts/export-planilla-structure.sh
+- [x] scripts/validate-api-contract.sh
+- [x] scripts/export-planilla-structure.sh (documentación)
 
-### Fase 3–4
-- [ ] Pendiente
+### Fase 3 — Completa
+- [x] GET /api/diagnostic (solo dev)
+- [x] docs/api-samples/ (README + kpi-financiero.sample.json)
+
+### Fase 4 — Manual (Matias)
+- [ ] Workbook staging, logs Cloud Run, snapshot GPT Builder, capturas
 
 ---
 

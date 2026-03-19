@@ -12,7 +12,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 
-**Implementación mejoras aceptadas 2026-03-19:** Plan creado [PLAN-IMPLEMENTACION-MEJORAS-ACEPTADAS.md](./PLAN-IMPLEMENTACION-MEJORAS-ACEPTADAS.md). Fase 1 parcial: DECISION-LOG-ESTRUCTURA, RESTRICCIONES-NEGOCIO, DESIGN-SYSTEM, CRITERIOS-SKIP-PASOS, CHAT-EQUIPO-FAQ, CHECKLIST-SEGURIDAD-PRE-DEPLOY, ENV-VARS-MATRIX, health-check.sh, TOKEN_ENCRYPTION_KEY en .env.example. Pendiente: completar Fase 1, Fases 2–4.
+**Full team run 2026-03-19 (Equipo completo — implementación mejoras):** Ejecutado plan PLAN-IMPLEMENTACION-MEJORAS-ACEPTADAS. Fase 1 completa: 25+ docs (Mapping, Design, Sheets, Networks, Dependencies, Integrations, GPT, Fiscal, Billing, Reporter, Contract, Calc, Judge, Parallel, Repo Sync). Fase 2: health-check.sh, validate-api-contract.sh, export-planilla-structure.sh. Fase 3: GET /api/diagnostic (dev), docs/api-samples/. Fase 4 (manual): pendiente Matias. PARALLEL-SERIAL-PLAN-2026-03-19.md. PROJECT-STATE actualizado.
 
 **Full team run 2026-03-19 (Propuestas por agente):** Tarea: cada agente propone mejoras individuales para su área. Generado [PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md](./PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md). Todas aceptadas; plan de implementación creado.
 
