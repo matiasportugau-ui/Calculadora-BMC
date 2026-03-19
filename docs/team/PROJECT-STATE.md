@@ -12,7 +12,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 
-**Full team run 2026-03-19 (Propuestas por agente):** Tarea: cada agente propone mejoras individuales para su área. Generado [PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md](./PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md). Pendiente: Matias analiza y prioriza; equipo ejecutará las que se decidan.
+**Implementación mejoras aceptadas 2026-03-19:** Plan creado [PLAN-IMPLEMENTACION-MEJORAS-ACEPTADAS.md](./PLAN-IMPLEMENTACION-MEJORAS-ACEPTADAS.md). Fase 1 parcial: DECISION-LOG-ESTRUCTURA, RESTRICCIONES-NEGOCIO, DESIGN-SYSTEM, CRITERIOS-SKIP-PASOS, CHAT-EQUIPO-FAQ, CHECKLIST-SEGURIDAD-PRE-DEPLOY, ENV-VARS-MATRIX, health-check.sh, TOKEN_ENCRYPTION_KEY en .env.example. Pendiente: completar Fase 1, Fases 2–4.
+
+**Full team run 2026-03-19 (Propuestas por agente):** Tarea: cada agente propone mejoras individuales para su área. Generado [PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md](./PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md). Todas aceptadas; plan de implementación creado.
 
 **Full team run 2026-03-18 run 5 (Invoque full team):** Paso 0: state, prompt, backlog leídos. Paso 0b: PARALLEL-SERIAL-PLAN-2026-03-18-run5.md. Pasos 1–8: estado vigente. Paso 9: sin entregables automatizables; pendientes 1, 3, 6, 7 (Matias). PROJECT-STATE y PROMPT actualizados.
 
@@ -80,22 +82,24 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 
 ## Pendientes de sincronización
 
-- [x] **KPI Report (inicio):** Implementado 2026-03-16. GET /api/kpi-report + bloque UI en #inicio.
+**Prioridad:** bloqueante | alto | medio | bajo (cuando aplica)
+
+- [ ] **[bloqueante] Go-live:** Completar GO-LIVE-DASHBOARD-CHECKLIST — credenciales y stack local ✓; pendiente: 1.4 (compartir workbook con service account), 2.x (tabs manuales), 3.x (Apps Script triggers), 5.x (deploy Cloud Run / VPS Netuy), 6.x (verificación E2E). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md.
 - [x] **Paso 1:** C2, C6, C7 (quick wins) — completado (C2/C6 ya existían; C7 doc creada)
 - [x] **Fase 0:** Verificación stack (T0.1–T0.4) — completado
 - [x] **Paso 2:** C1–C5 (UX Opción A) — completado
 - [x] **Paso 3:** Skills PROJECT-STATE, orquestador extendido — completado
-- [ ] **Go-live:** Completar GO-LIVE-DASHBOARD-CHECKLIST — credenciales y stack local ✓; pendiente: 1.4 (compartir workbook con service account), 2.x (tabs manuales), 3.x (Apps Script triggers), 5.x (deploy Cloud Run / VPS Netuy), 6.x (verificación E2E). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md.
+- [x] **KPI Report (inicio):** Implementado 2026-03-16. GET /api/kpi-report + bloque UI en #inicio.
 - [x] **Guía usuarios:** docs/GUIA-RAPIDA-DASHBOARD-BMC.md existe
 - [x] **Phase 1 (GET):** Iteración 23 tabs Ventas (getAllVentasData, Promise.allSettled); GET /api/ventas?proveedor=; GET /api/ventas?tab=; GET /api/ventas/tabs; GET /api/calendario-vencimientos?month=2026-03 → tab "MARZO 2026". Pendiente: GET /api/stock/history (EXISTENCIAS_Y_PEDIDOS, Egresos)
 - [x] **Phase 2 (PUSH):** Implementado 2026-03-16. POST /api/cotizaciones, PATCH /api/cotizaciones/:id, POST /api/pagos, PATCH /api/pagos/:id, POST /api/ventas, PATCH /api/stock/:codigo; append AUDIT_LOG. Pendiente manual: crear tabs CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO; configurar triggers.
 - [x] **Planilla-inventory:** Tab Pagos corregida (Pendientes_); nuevos endpoints documentados. Pendiente: documentar columna MONTO autoritativa (D/E) en Pagos
 - [x] **Repo Sync:** BMC_DASHBOARD_2_REPO y BMC_DEVELOPMENT_TEAM_REPO configurados en .env ✓
-- [ ] **npm audit fix:** 7 vulns (5 low @tootallnate/once/teeny-request, 2 moderate esbuild/vite). `npm audit fix` sin --force no aplicó cambios (fix solo con --force, breaking). Evaluar con Matias si ejecutar `npm audit fix --force` (vite@8, @google-cloud/storage downgrade).
-- [ ] **kpi-report runtime:** Verificar que /api/kpi-report retorna 200 (o 503) tras restart servidor. Ruta verificada en código 2026-03-18: existe en bmcDashboard.js, montada en /api (index.js); 404 = reiniciar servidor.
+- [ ] **[medio] npm audit fix:** 7 vulns (5 low @tootallnate/once/teeny-request, 2 moderate esbuild/vite). `npm audit fix` sin --force no aplicó cambios (fix solo con --force, breaking). Evaluar con Matias si ejecutar `npm audit fix --force` (vite@8, @google-cloud/storage downgrade).
+- [ ] **[alto] kpi-report runtime:** Verificar que /api/kpi-report retorna 200 (o 503) tras restart servidor. Ruta verificada en código 2026-03-18: existe en bmcDashboard.js, montada en /api (index.js); 404 = reiniciar servidor.
 - [x] **Guía vendedores:** docs/GUIA-RAPIDA-VENDEDORES.md creada 2026-03-18 (Reporter, paso 9).
-- [ ] **Deploy producción:** Cloud Run o VPS Netuy. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §Fase B.
-- [ ] **E2E validation:** Ejecutar checklist docs/team/E2E-VALIDATION-CHECKLIST.md (D1) antes de go-live público. Creado 2026-03-18.
+- [ ] **[bloqueante] Deploy producción:** Cloud Run o VPS Netuy. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §Fase B.
+- [ ] **[alto] E2E validation:** Ejecutar checklist docs/team/E2E-VALIDATION-CHECKLIST.md (D1) antes de go-live público. Creado 2026-03-18.
 
 ---
 
@@ -103,6 +107,7 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 
 - **Antes de trabajar:** Leer "Cambios recientes" y "Pendientes".
 - **Después de un cambio:** Añadir fila en "Cambios recientes"; si afecta a otros, añadir en "Pendientes" o escribir Log for [Agent].
+- **Si Matias añade tab o columna en planilla:** Añadir en Pendientes: "Mapping: verificar y actualizar planilla-inventory". Ver DECISION-LOG-ESTRUCTURA.md.
 - **Sync completo:** Ejecutar "Sync project state" o full team run.
 
 **Supervisión:** El Fiscal (bmc-dgi-impositivo) fiscaliza que el equipo cumpla este protocolo según el ranking de criticidad en [fiscal/FISCAL-PROTOCOL-STATE-RANKING.md](./fiscal/FISCAL-PROTOCOL-STATE-RANKING.md). Controla que no sucedan incumplimientos; si ocurren, comunica a los involucrados para que no pase de nuevo.
