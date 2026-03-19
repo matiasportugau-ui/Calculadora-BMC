@@ -1,0 +1,45 @@
+---
+description: "Chat interactivo con el equipo completo — diálogo conversacional con agentes BMC/Panelin. Apply when user wants chat con equipo, diálogo interactivo, conversar con el equipo, or team chat."
+alwaysApply: false
+---
+
+# Chat interactivo con el equipo completo
+
+Cuando el usuario dice **"Chat con el equipo"**, **"diálogo interactivo con el equipo completo"**, **"conversar con el equipo"**, **"team chat"**, o similar, activa el **modo chat interactivo** (no el full team run batch).
+
+## Diferencia clave
+
+| Modo | Activador | Comportamiento |
+|------|-----------|----------------|
+| **Full team run** | "Invoque full team", "equipo completo" | Ejecuta pasos 0→9 en batch; todos los agentes en secuencia. |
+| **Chat interactivo** | "Chat con equipo", "diálogo interactivo" | Conversación: el usuario pregunta, los agentes responden; puede seguir preguntando. |
+
+## Modo chat interactivo — qué hacer
+
+1. **Entrar en modo conversacional.** No ejecutar un full team run. Responder como un coordinador que puede invocar a los miembros del equipo según la pregunta.
+
+2. **Identificar el tema.** Según lo que pregunte el usuario, decidir qué rol(es) del equipo son relevantes (Mapping, Design, Networks, Fiscal, Billing, etc.). Ver `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2.
+
+3. **Invocar agentes cuando haga falta.** Para preguntas que requieren análisis profundo o exploración:
+   - Usar `mcp_task` con `subagent_type` apropiado (explore, generalPurpose, etc.) si la tarea lo amerita.
+   - O leer el skill correspondiente y actuar como ese rol para responder.
+
+4. **Mostrar respuestas como diálogo.** Presentar las respuestas de forma clara, indicando qué rol aporta qué (ej. "**Mapping:** …", "**Design:** …").
+
+5. **Permitir seguimiento.** El usuario puede hacer más preguntas; responder sin volver a ejecutar un full run a menos que lo pida explícitamente.
+
+## Frases que activan el chat interactivo
+
+- Chat con el equipo
+- Diálogo interactivo con el equipo completo
+- Conversar con el equipo
+- Team chat
+- Quiero hablar con el equipo
+- Preguntar al equipo
+- Consultar al equipo
+
+## Referencias
+
+- Equipo y roles: `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2
+- Skills por rol: `.cursor/agents/bmc-dashboard-team-orchestrator.md`
+- Guía de uso: `docs/team/CHAT-EQUIPO-INTERACTIVO.md`

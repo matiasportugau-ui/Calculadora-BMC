@@ -29,6 +29,23 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## Chat interactivo con el equipo
+
+**Rule:** `.cursor/rules/chat-equipo-interactivo.mdc`
+
+**Rol:** Diálogo conversacional con el equipo BMC/Panelin. A diferencia del full team run (batch), permite preguntas y respuestas continuas.
+
+**Cuándo usar:**
+- Chat con el equipo, diálogo interactivo con el equipo completo
+- Conversar con el equipo, team chat
+- Preguntas puntuales a roles específicos (Mapping, Design, Networks, etc.)
+
+**Referencias:**
+- [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md) — guía de uso
+- [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md) — alternativa: full run batch
+
+---
+
 ## Networks & Development Agent
 
 **Skill:** `.cursor/skills/networks-development-agent/`
