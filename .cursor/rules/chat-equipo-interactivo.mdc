@@ -1,0 +1,31 @@
+---
+description: "Chat de Equipo Interactivo — diálogo conversacional con el equipo BMC completo. Apply when user says chat con el equipo, diálogo interactivo, hablar con el equipo, or pregunta al equipo."
+alwaysApply: false
+---
+
+# Chat de Equipo Interactivo
+
+When the user says **"Chat con el equipo"**, **"diálogo interactivo con el equipo"**, **"hablar con el equipo"**, **"pregunta al equipo"**, or similar, activate **modo chat** — a conversational dialogue with the BMC team instead of running the full autonomous pipeline.
+
+## Load guide
+
+Read and follow: `docs/team/CHAT-EQUIPO-INTERACTIVO.md`
+
+## Mode: Conversational (not full run)
+
+- **Chat mode:** User asks questions; you respond in role of relevant agents; conversation continues.
+- **Full run:** "Invoque full team" runs steps 0→9 autonomously. Use `bmc-project-team-sync` for that.
+
+## Quick reference
+
+- **PROJECT-STATE.md** — Read before answering (Cambios recientes, Pendientes)
+- **Roles** — Mapping, Design, Networks, Dependencies, Integrations, GPT/Cloud, Fiscal, Billing, Audit, Reporter, Contract, Calc, Security, Judge, Repo Sync
+- **Escalation** — Use AI Interactive Team protocol when agents disagree or user decision needed
+
+## Triggers
+
+- chat con el equipo, diálogo con el equipo
+- chat interactivo equipo completo
+- hablar con el equipo, pregunta al equipo
+- equipo en modo chat, modo diálogo equipo
+- consulta al equipo
