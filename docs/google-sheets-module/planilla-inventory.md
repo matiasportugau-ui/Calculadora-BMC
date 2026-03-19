@@ -1,7 +1,8 @@
 # Planilla Inventory — Inventario en vivo
 
 **Workbooks:** 5 workbooks BMC (multi-workbook). Principal: `1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg`  
-**Schema activo:** CRM_Operativo (BMC_SHEET_SCHEMA)
+**Schema activo:** CRM_Operativo (BMC_SHEET_SCHEMA)  
+**Planilla principal (integra y genera info para el dashboard):** [BMC crm_automatizado](https://docs.google.com/spreadsheets/d/1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg/edit?usp=sharing). Service account con acceso: `bmc-dashboard-sheets@chatbot-bmc-live.iam.gserviceaccount.com`. Ver [PLANILLA-PRINCIPAL-DASHBOARD.md](PLANILLA-PRINCIPAL-DASHBOARD.md).
 
 Inventario runtime de tabs, columnas y rutas API. Ver [SHEETS-MAPPING-5-WORKBOOKS.md](SHEETS-MAPPING-5-WORKBOOKS.md) para mapa detallado.
 
@@ -16,6 +17,7 @@ Inventario runtime de tabs, columnas y rutas API. Ver [SHEETS-MAPPING-5-WORKBOOK
 | BMC_VENTAS_SHEET_ID | 1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA | 2.0 - Ventas | ventas |
 | BMC_STOCK_SHEET_ID | 1egtKJAGaATLmmsJkaa2LlCv3Ah4lmNoGMNm4l0rXJQw | Stock E-Commerce | stock-ecommerce, stock-kpi |
 | BMC_CALENDARIO_SHEET_ID | 1bvnbYq7MTJRpa6xEHE5m-5JcGNI9oCFke3lsJj99tdk | Calendario vencimientos | calendario-vencimientos |
+| BMC_MATRIZ_SHEET_ID | 1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ | MATRIZ de COSTOS y VENTAS 2026 | actualizar-precios-calculadora |
 
 ---
 
@@ -31,6 +33,9 @@ Inventario runtime de tabs, columnas y rutas API. Ver [SHEETS-MAPPING-5-WORKBOOK
 | **Master_Cotizaciones** | conditional | Master_Cotizaciones | GET /api/cotizaciones, proximas-entregas, coordinacion; POST marcar-entregado | Solo cuando schema=Master |
 | **Ventas realizadas y entregadas** | conditional | Master_Cotizaciones | POST /api/marcar-entregado (destino) | Solo cuando schema=Master |
 | **Manual, Dashboard, Automatismos** | active_now | CRM_Operativo | — | Tabs del workbook; no consumidas por API dashboard |
+| **Admin_Cotizaciones** | conditional | Admin_Cotizaciones | — | Integrada desde "2.0 - Administrador de Cotizaciones"; script `npm run integrate-admin-cotizaciones`. Ver [INTEGRACION-ADMIN-COTIZACIONES.md](INTEGRACION-ADMIN-COTIZACIONES.md). |
+
+**Workbook origen para Admin_Cotizaciones:** `1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0` (2.0 - Administrador de Cotizaciones). La service account debe tener acceso de lector a ese workbook.
 
 ---
 
@@ -54,14 +59,16 @@ Ver planilla-map.md §2 para columnas completas y diff vs blueprint.
 
 ### Pagos_Pendientes (si existe)
 
-| Campo | Tipo | Uso |
-|-------|------|-----|
-| CLIENTE_NOMBRE | string | Breakdown table |
-| COTIZACION_ID | string | Pedido |
-| MONTO | number | KPI, trend, breakdown |
-| MONEDA | string | Filtro moneda ($, UES, etc.) |
-| FECHA_VENCIMIENTO | date | KPI, trend, breakdown, estado |
-| ESTADO_PAGO | string | Filtro pendiente |
+| Campo | Col | Columna origen | Tipo | Uso |
+|-------|-----|----------------|------|-----|
+| PRECIO_VENTA | D | Precio de Venta IVA Inc | number | Precio venta con IVA |
+| COSTO_COMPRA | E | Costo de la compra | number | Costo de compra |
+| CLIENTE_NOMBRE | — | CLIENTE | string | Breakdown table |
+| COTIZACION_ID | — | ÓRDEN / Ped. Nro | string | Pedido |
+| MONTO | — | Saldo a Proveedor / Pago a Proveedor | number | KPI, trend, breakdown |
+| MONEDA | — | — | string | Filtro moneda ($, UES, etc.) |
+| FECHA_VENCIMIENTO | — | FECHA / PLAZO | date | KPI, trend, breakdown, estado |
+| ESTADO_PAGO | — | ESTADO | string | Filtro pendiente |
 
 ### Metas_Ventas (si existe)
 

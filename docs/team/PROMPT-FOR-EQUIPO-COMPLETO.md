@@ -6,7 +6,7 @@
 
 ## Instrucción para el Orquestador (cada run)
 
-1. **Leer** `docs/team/PROJECT-STATE.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` y este archivo.
+1. **Leer** `docs/team/PROJECT-STATE.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`, este archivo y (cuando aplique) `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md`.
 2. **Ejecutar** pasos 0 → 0b → 1 → 2 → … → 8 como siempre (full team run).
 3. **Paso 9 — Ciclo de mejoras:** Ejecutar en este run los **Próximos prompts** listados abajo. Cada prompt se asigna al rol correspondiente; ese rol ejecuta la tarea y entrega el artefacto. El Orquestador verifica y actualiza `IMPROVEMENT-BACKLOG-BY-AGENT.md` (marcar ✓).
 4. **Al final del run:** Actualizar la sección **"Próximos prompts"** de este mismo archivo con los siguientes prompts pendientes (según backlog), para que el próximo "Equipo completo" continúe. Si ya todos los agentes están desarrollados, escribir: "Todos los agentes están completamente desarrollados. Solo mantenimiento (actualizar knowledge cuando cambie el dominio)."
@@ -15,17 +15,11 @@
 
 ## Próximos prompts (ejecutar en este run)
 
-**Run 2026-03-17 run 1:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+**Run 2026-03-19 run 18 (Invoque full team):** Full team run 0→9 ejecutado. Contexto: deploy completado (Cloud Run panelin-calc con /calculadora). Dockerfile fixes (easymidi --ignore-scripts), .dockerignore, cloudbuild.yaml, deploy script. Contract 4/4 PASS (runtime). Reporter REPORT-SOLUTION-CODING run18. Judge, Repo Sync reportes generados. Dependencies/service-map actualizados con deploy flow, Cloud Run URL, Vercel. PROMPT y PROJECT-STATE actualizados.
 
-**Run 2026-03-18 run 9:** Input: Evaluación logs v1–v34 y propuesta de evolución (Control Plane, Policy Engine, PQC, OWASP/NIST). Reporter creó EVOLUTION-PROPOSAL-CONTROL-PLANE.md. Pendientes: 1, 3, 6, 7 (Matias); opcional: integrar backlog P0–P3 del Control Plane. PROJECT-STATE y PROMPT actualizados.
+**Input para próximos runs:** Incluir `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md` (Study improvements) como referencia. Ver §20 Fases de implementación para secuencia recomendada.
 
-**Run 2026-03-18 run 8:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-18 run 7:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-18 run 6:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
-
-**Run 2026-03-18 run 5:** Estado vigente; sin prompts automatizables. Pendientes: 1 (tabs/triggers), 3 (deploy), 6 (npm --force), 7 (Repo Sync opcional). PROJECT-STATE y PROMPT actualizados.
+**Run 2026-03-18 run 15:** Estado vigente; Study improvements aplicadas.
 
 **Run 2026-03-16 run7:** Ejecutados todos los ítems automatizables de la agenda:
 - ✓ [Contract/Audit] kpi-report verificado en código: bmcDashboard.js L1130, montado en /api. 404 = restart servidor.
@@ -41,10 +35,6 @@
 ---
 
 ## Próximos prompts para el siguiente run (actualizar al final)
-
-**Run 2026-03-17 run 1:** Sin prompts automatizables. Agenda pendiente requiere Matias manual o decisión.
-
-**Run 2026-03-18 run 6:** Sin prompts automatizables. Agenda pendiente (1, 3, 6, 7) requiere Matias manual o decisión.
 
 **Run 2026-03-16 (go):** Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync, Sheets Structure — ✓ completados.
 **Todos los 19 agentes están completamente desarrollados.**
@@ -62,17 +52,22 @@
 
 ## Próximos prompts para el siguiente run
 
+**Run 2026-03-18 run6:** ✓ Full team run ejecutado; integración Admin Cotizaciones reflejada en Mapping, Dependencies, Reporter, Judge, Repo Sync. Sin nuevos ítems automatizables en este run.
+
 **Run 2026-03-16 run7:** ✓ Todos los ítems automatizables ejecutados. Ver sección "Próximos prompts (ejecutar en este run)" para detalle.
 
-**Agenda siguiente run (post-go-live, execution — pendientes activos):**
+**Input permanente:** `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md` — Study improvements como referencia en cada full team run. Ver §20 Fases de implementación.
+
+**Agenda siguiente run (post-deploy — pendientes activos):**
 
 1. **[Matias — manual] Crear tabs y configurar triggers** — CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO, y 6 triggers Apps Script. BLOQUEANTE para automations. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §A1, §A2 y AUTOMATIONS-BY-WORKBOOK.md.
-2. ~~**[Coding] Verificar kpi-report runtime**~~ — ✓ Verificado en código run7: bmcDashboard.js L1130, mount /api. Acción Matias: restart servidor → curl http://localhost:3001/api/kpi-report → debe ser 200 o 503.
-3. **[Networks + Matias] Decidir y ejecutar deploy productivo** — Cloud Run (§B1) o VPS Netuy (§B2). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md. Antes de deploy: CORS restriction en server/index.js.
+2. ~~**[Coding] Verificar kpi-report runtime**~~ — ✓ Verificado run17/run18: 4/4 PASS (runtime).
+3. ~~**[Networks + Matias] Deploy Calculadora**~~ — ✓ Deploy completado run18. Cloud Run panelin-calc live. Ver service-map.md §5.
 4. ~~**[Reporter] Crear GUIA-RAPIDA-VENDEDORES.md**~~ — ✓ Hecho. Ver docs/GUIA-RAPIDA-VENDEDORES.md.
-5. **[Matias + Audit] E2E validation** — Ejecutar checklist .cursor/bmc-audit/latest-report-2026-03-16-run7.md con datos reales post-deploy.
+5. **[Matias + Audit] E2E validation** — Ejecutar checklist docs/team/E2E-VALIDATION-CHECKLIST.md con URL Cloud Run (post-deploy).
 6. **[Coding + Matias] npm audit fix** — `npm audit fix --force` (vite@8, breaking). Evaluar con Matias en branch separado.
 7. **[Matias] Billing cierre mensual 2026-03** — Verificar cierre en Pagos Pendientes 2026 workbook.
+8. **[Repo Sync] Sincronizar repos** — Tras run18: actualizar bmc-dashboard-2.0 y bmc-development-team. Ver docs/team/reports/REPO-SYNC-REPORT-2026-03-19-run18.md.
 
 Al terminar el siguiente run, marcar ✓ en los completados y actualizar con los nuevos pendientes.
 

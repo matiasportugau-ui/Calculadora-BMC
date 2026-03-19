@@ -3,6 +3,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import crypto from "node:crypto";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import {
   calcTechoCompleto,
@@ -26,6 +29,136 @@ import {
 import { config } from "../config.js";
 
 const router = Router();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ── GET /gpt-entry-point — Discovery schema for GPT Builder full accessibility ────────
+
+const GPT_ACTIONS = [
+  {
+    operationId: "obtener_informe_completo",
+    method: "GET",
+    path: "/calc/informe",
+    summary: "Informe completo con precios, reglas de asesoría y fórmulas.",
+    whenToUse: "Llamar al INICIO de sesión para cargar contexto completo. Devuelve catálogo, matriz de precios, fijaciones, selladores, reglas de asesoría y fórmulas de cálculo.",
+    params: [{ name: "lista", in: "query", type: "string", enum: ["venta", "web"], default: "web" }],
+  },
+  {
+    operationId: "obtener_catalogo",
+    method: "GET",
+    path: "/calc/catalogo",
+    summary: "Catálogo de paneles, espesores, colores y opciones.",
+    whenToUse: "Para conocer familias válidas, espesores, colores y precios antes de cotizar. Guía la conversación con el usuario.",
+    params: [{ name: "lista", in: "query", type: "string", enum: ["venta", "web"], default: "web" }],
+  },
+  {
+    operationId: "obtener_escenarios",
+    method: "GET",
+    path: "/calc/escenarios",
+    summary: "Escenarios disponibles con campos requeridos y opcionales.",
+    whenToUse: "Para saber qué datos pedir según el tipo de proyecto (solo techo, fachada, techo+fachada, cámara frigorífica).",
+    params: [],
+  },
+  {
+    operationId: "calcular_cotizacion",
+    method: "POST",
+    path: "/calc/cotizar",
+    summary: "Calcula cotización completa con BOM, precios y textos.",
+    whenToUse: "Cuando el usuario tiene dimensiones y opciones definidas. Devuelve resumen, BOM, texto WhatsApp y texto resumen.",
+    params: [
+      { name: "escenario", in: "body", required: true, type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"] },
+      { name: "lista", in: "body", type: "string", enum: ["venta", "web"], default: "venta" },
+      { name: "techo", in: "body", type: "object", requiredFor: ["solo_techo", "techo_fachada"] },
+      { name: "pared", in: "body", type: "object", requiredFor: ["solo_fachada", "techo_fachada", "camara_frig"] },
+      { name: "camara", in: "body", type: "object", requiredFor: ["camara_frig"] },
+      { name: "flete", in: "body", type: "number", default: 0 },
+    ],
+  },
+  {
+    operationId: "generar_cotizacion_pdf",
+    method: "POST",
+    path: "/calc/cotizar/pdf",
+    summary: "Genera PDF profesional y devuelve link para compartir.",
+    whenToUse: "Cuando el cliente quiere la cotización en PDF. Incluir objeto cliente (nombre, teléfono, dirección). Link expira en 24h.",
+    params: [
+      { name: "escenario", in: "body", required: true, type: "string" },
+      { name: "cliente", in: "body", type: "object", description: "nombre, rut, telefono, direccion, obra, ref, fecha, quote_code" },
+      { name: "techo", in: "body", type: "object" },
+      { name: "pared", in: "body", type: "object" },
+      { name: "camara", in: "body", type: "object" },
+      { name: "flete", in: "body", type: "number" },
+    ],
+  },
+  {
+    operationId: "listar_cotizaciones_generadas",
+    method: "GET",
+    path: "/calc/cotizaciones",
+    summary: "Lista cotizaciones PDF generadas en la sesión.",
+    whenToUse: "Para consultar historial de cotizaciones generadas (código, cliente, total, link PDF).",
+    params: [],
+  },
+  {
+    operationId: "ver_pdf_cotizacion",
+    method: "GET",
+    path: "/calc/pdf/{id}",
+    summary: "Abre la cotización HTML (imprimir como PDF).",
+    whenToUse: "URL devuelta por generar_cotizacion_pdf. Compartir con el cliente. Expira en 24h.",
+    params: [{ name: "id", in: "path", required: true, type: "string", description: "pdf_id de la respuesta" }],
+  },
+];
+
+// ── GET /openapi — Serves OpenAPI schema for GPT Actions ─────────────────────────────
+
+router.get("/openapi", (req, res) => {
+  const openapiPath = path.resolve(__dirname, "../../docs/openapi-calc.yaml");
+  if (!fs.existsSync(openapiPath)) {
+    return res.status(404).json({ ok: false, error: "OpenAPI schema not found" });
+  }
+  res.setHeader("Content-Type", "application/x-yaml");
+  res.send(fs.readFileSync(openapiPath, "utf8"));
+});
+
+router.get("/gpt-entry-point", (req, res) => {
+  const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
+  res.json({
+    ok: true,
+    version: "1.0.0",
+    description: "Entry point para GPT Builder — acceso completo a todas las acciones de la Calculadora BMC.",
+    base_url: baseUrl,
+    openapi_url: `${baseUrl}/calc/openapi`,
+    actions: GPT_ACTIONS.map((a) => ({
+      ...a,
+      url: `${baseUrl}${a.path}`,
+    })),
+    recommended_flow: [
+      "1. GET /calc/informe (o /calc/catalogo + /calc/escenarios) al inicio para cargar contexto.",
+      "2. Recopilar datos del usuario: escenario, dimensiones, panel, color, opciones.",
+      "3. POST /calc/cotizar para calcular y mostrar resumen.",
+      "4. Si el cliente quiere PDF: POST /calc/cotizar/pdf con objeto cliente.",
+      "5. Compartir pdf_url con el cliente.",
+    ],
+    escenarios: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"],
+    listas_precio: ["venta", "web"],
+  });
+});
+
+// ── Interaction log (dev: save to file for Cursor workflow) ──────────────────────────
+
+router.post("/interaction-log", (req, res) => {
+  const body = req.body;
+  if (!body || typeof body !== "object") {
+    return res.status(400).json({ ok: false, error: "Missing body" });
+  }
+  try {
+    const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const filePath = path.join(logsDir, `interaction-${ts}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(body, null, 2), "utf8");
+    return res.json({ ok: true, path: filePath });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // ── PDF store (in-memory, TTL-based) ─────────────────────────────────────────
 

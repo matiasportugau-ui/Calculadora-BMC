@@ -10,6 +10,85 @@ servers:
   - url: https://panelin-calc-642127786762.us-central1.run.app
     description: Cloud Run Production
 paths:
+  /calc/gpt-entry-point:
+    get:
+      operationId: obtener_punto_entrada_gpt
+      summary: >-
+        Entry point para GPT Builder — descubre todas las acciones disponibles.
+      description: >-
+        Devuelve el esquema de descubrimiento con todas las operaciones,
+        URLs, flujo recomendado y parámetros. Llamar al configurar el GPT
+        para obtener acceso completo a la Calculadora BMC.
+      responses:
+        '200':
+          description: Esquema de entrada con todas las acciones.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  version:
+                    type: string
+                  description:
+                    type: string
+                  base_url:
+                    type: string
+                    format: uri
+                  openapi_url:
+                    type: string
+                    format: uri
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        operationId:
+                          type: string
+                        method:
+                          type: string
+                        path:
+                          type: string
+                        summary:
+                          type: string
+                        whenToUse:
+                          type: string
+                        url:
+                          type: string
+                          format: uri
+                        params:
+                          type: array
+                  recommended_flow:
+                    type: array
+                    items:
+                      type: string
+                  escenarios:
+                    type: array
+                    items:
+                      type: string
+                  listas_precio:
+                    type: array
+                    items:
+                      type: string
+
+  /calc/openapi:
+    get:
+      operationId: obtener_esquema_openapi
+      summary: >-
+        Devuelve el esquema OpenAPI completo (YAML) para GPT Actions.
+      description: >-
+        Usar esta URL en GPT Builder como schema URL para importar
+        todas las acciones de la Calculadora BMC.
+      responses:
+        '200':
+          description: Esquema OpenAPI en formato YAML.
+          content:
+            application/x-yaml:
+              schema:
+                type: string
+                description: Contenido del archivo openapi-calc.yaml
+
   /calc/cotizar:
     post:
       operationId: calcular_cotizacion

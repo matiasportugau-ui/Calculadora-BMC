@@ -198,6 +198,8 @@ export const PERFIL_TECHO = {
       50: { sku: "GLDCAM50", venta: 22.32, web: 27.23, largo: 3.0 },
       80: { sku: "GLDCAM80", venta: 25.11, web: 30.63, largo: 3.0 },
     },
+    ISODEC:     { _all: { sku: "GLDCAM-DC", venta: 22.65, web: 27.63, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, largo: 3.0 } },
   },
   gotero_superior: {
     ISOROOF: {
@@ -312,11 +314,48 @@ export const VIS = {
 
 export const OBRA_PRESETS = ["Vivienda","Barbacoa","Depósito comercial","Galpón industrial","Local comercial","Oficinas","Ampliación / Reforma","Nave logística","Taller","Cerramiento / Anexo","Tinglado / Cobertizo","Cámara frigorífica"];
 
+// BORDER_OPTIONS — Opciones por lado según familia. Fuente: PERFIL_TECHO (matriz costos/ventas).
+// ISOROOF: gotero_frontal(GFS), gotero_frontal_greca(GFCGR), gotero_lateral(GL), gotero_lateral_camara(GLDCAM),
+//          gotero_superior(GFSUP), babeta_adosar(BBAS3G), babeta_empotrar(BBESUP), cumbrera(CUMROOF3M),
+//          canalon(CD), soporte_canalon(SOPCAN3M).
 export const BORDER_OPTIONS = {
-  frente: [{ id: "gotero_frontal", label: "Gotero simple" },{ id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF"] },{ id: "canalon", label: "Canalón" },{ id: "none", label: "Sin perfil" }],
-  fondo: [{ id: "gotero_lateral", label: "Gotero lateral" },{ id: "gotero_frontal", label: "Gotero frontal" },{ id: "babeta_adosar", label: "Muro (adosar)" },{ id: "babeta_empotrar", label: "Muro (empotrar)" },{ id: "cumbrera", label: "Cumbrera" },{ id: "none", label: "Sin perfil" }],
-  latIzq: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
-  latDer: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
+  frente: [
+    { id: "gotero_frontal", label: "Gotero simple", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_frontal", label: "Gotero frontal", familias: ["ISOROOF"] },
+    { id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF"] },
+    { id: "canalon", label: "Canalón" },
+    { id: "none", label: "Sin perfil" },
+  ],
+  fondo: [
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"], descripcion: "Cuando techo volado" },
+    { id: "gotero_frontal", label: "Gotero frontal Superior", familias: ["ISOROOF"], descripcion: "Frente superior ISOROOF" },
+    { id: "babeta_adosar", label: "Babeta de adosar Superior", descripcion: "Encuentros con muros. Colocación atornillada" },
+    { id: "babeta_empotrar", label: "Babeta de empotrar Superior", descripcion: "Encuentros con muros. Babeta embutida en muro" },
+    { id: "cumbrera", label: "Cumbrera", descripcion: "2 Aguas — cumbrera central" },
+    { id: "none", label: "Sin perfil" },
+  ],
+  latIzq: [
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF"] },
+    { id: "none", label: "Sin perfil" },
+  ],
+  latDer: [
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF"] },
+    { id: "none", label: "Sin perfil" },
+  ],
 };
 
 // STEP_SECTIONS: maps each progress tab index to the section keys visible in the left panel.
@@ -357,5 +396,5 @@ export const PENDIENTES_PRESET = [
 export const TIPO_AGUAS = [
   { id: "una_agua", label: "1 Agua", description: "Pendiente única", enabled: true },
   { id: "dos_aguas", label: "2 Aguas", description: "Cumbrera central", enabled: true },
-  { id: "cuatro_aguas", label: "4 Aguas", description: "En proceso", enabled: false },
+  { id: "cuatro_aguas", label: "4 Aguas", description: "Próximamente", enabled: false },
 ];

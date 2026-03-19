@@ -43,6 +43,7 @@ export const config = {
   bmcCalendarioSheetId: process.env.BMC_CALENDARIO_SHEET_ID || "",
   bmcVentasSheetId: process.env.BMC_VENTAS_SHEET_ID || "",
   bmcStockSheetId: process.env.BMC_STOCK_SHEET_ID || "",
+  bmcMatrizSheetId: process.env.BMC_MATRIZ_SHEET_ID || "1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ",
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   bmcSheetSchema: process.env.BMC_SHEET_SCHEMA || "Master_Cotizaciones",
   // Shopify (questions/quotes flow – Mercado Libre replacement)

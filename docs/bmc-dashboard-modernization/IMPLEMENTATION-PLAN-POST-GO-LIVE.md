@@ -11,7 +11,7 @@
 - Dashboard en 3001 operativo con Phase 1 GET + Phase 2 PUSH implementados.
 - KPI Report en #inicio implementado.
 - Notifications bell implementado.
-- 4 tabs manuales pendientes en Sheets (bloquean Apps Script automations).
+- ~~4 tabs manuales pendientes en Sheets~~ — creadas vía `npm run setup-sheets-tabs` (2026-03-19).
 - Deploy productivo (Cloud Run / VPS Netuy) aún no ejecutado.
 - npm audit: 7 vulns (5 low, 2 moderate).
 - Repo Sync: repos externos no configurados.
@@ -87,7 +87,7 @@
 
 | Task | Descripción |
 |------|-------------|
-| B1.1 | Preparar Dockerfile para servidor Express (puerto 3001) |
+| B1.1 | ~~Preparar Dockerfile para servidor Express (puerto 3001)~~ ✓ Dockerfile.bmc-dashboard creado |
 | B1.2 | Variables de entorno en Cloud Run secrets (BMC_SHEET_ID, GOOGLE_APPLICATION_CREDENTIALS, etc.) |
 | B1.3 | Actualizar GOOGLE_REDIRECT_URI a la URL de Cloud Run |
 | B1.4 | Buildear y hacer push a Artifact Registry: `gcloud builds submit` |
@@ -184,5 +184,5 @@
 
 ---
 
-**Última actualización:** 2026-03-16
+**Última actualización:** 2026-03-19
 **Handoff:** Solution aprueba fases → Coding implementa A3, A4 → Matias ejecuta A1, A2, B, E.

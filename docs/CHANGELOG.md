@@ -1,5 +1,18 @@
 # 📝 Changelog — Panelin Calculadora BMC
 
+## [3.1.1] — 2026-03-17
+
+### 📦 Dependencias
+- FIX: `npm audit fix` — vulnerabilidad crítica jspdf corregida (HTML Injection, PDF Object Injection)
+- Pendiente: 7 vulns restantes (5 low @tootallnate/once, 2 moderate esbuild/vite) requieren `npm audit fix --force` (breaking)
+
+### 📄 Documentación e infra
+- Full team run 13: PARALLEL-SERIAL-PLAN, Judge report, PROJECT-STATE actualizado
+- service-map.md fecha 2026-03-17
+- Contract 4/4 PASS (kpi-financiero, proximas-entregas, audit, kpi-report)
+
+---
+
 ## [3.1.0] — 2026-03-10
 
 ### 🟢 Nuevas Funcionalidades

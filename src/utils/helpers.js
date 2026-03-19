@@ -43,6 +43,7 @@ export function bomToGroups(result) {
             if (match) {
               match.cant += item.cant;
               match.total = +(match.total + item.total).toFixed(2);
+              if (match.costo == null && item.costo != null) match.costo = item.costo;
             } else {
               targetArr.push({ ...item });
             }

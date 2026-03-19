@@ -283,6 +283,19 @@ app.use(
   express.static(dashboardDir, { index: "index.html" })
 );
 
+// Calculadora BMC (Vite SPA) — served from /calculadora when dist exists
+const calcDistDir = path.join(__dirname, "../dist");
+if (fs.existsSync(calcDistDir)) {
+  app.use(
+    "/calculadora",
+    (req, res, next) => {
+      if (isDev) res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      next();
+    },
+    express.static(calcDistDir, { index: "index.html" })
+  );
+}
+
 // Avoid 404s when ngrok/browsers hit the API root or favicon (traffic audit: EXPORT_SEAL)
 app.get("/favicon.ico", (_req, res) => {
   res.status(204).end();

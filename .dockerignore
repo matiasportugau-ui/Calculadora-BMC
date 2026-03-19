@@ -9,7 +9,11 @@ dist
 npm-debug.log
 public
 tests
-docs
+# docs excluded except dashboard (Dockerfile needs docs/bmc-dashboard-modernization/dashboard)
+docs/*
+!docs/bmc-dashboard-modernization
+docs/bmc-dashboard-modernization/*
+!docs/bmc-dashboard-modernization/dashboard
 *.md
 !package.json
 !package-lock.json
