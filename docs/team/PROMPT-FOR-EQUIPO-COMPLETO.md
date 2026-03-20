@@ -16,6 +16,14 @@
 
 ## Próximos prompts (ejecutar en este run)
 
+Sin prompts automatizables en este momento. Los pendientes activos requieren acción manual de Matias:
+
+1. **[Matias — manual] Crear tabs y configurar triggers** — CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO, y 6 triggers Apps Script. BLOQUEANTE para automations. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §A1, §A2.
+2. **[Networks + Matias] Decidir y ejecutar deploy productivo** — Cloud Run (§B1) o VPS Netuy (§B2). Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md. Antes de deploy: CORS restriction en server/index.js.
+3. **[Coding + Matias] npm audit fix** — `npm audit fix --force` (vite@8, breaking). Evaluar con Matias en branch separado.
+4. **[Matias] Repo Sync (opcional)** — Verificar bmc-dashboard-2.0 y bmc-development-team sincronizados.
+
+> Historial de runs anteriores: ver `docs/team/PROJECT-STATE.md` sección "Cambios recientes".
 **Run 2026-03-19 / run 31 (Invoque full team — post-autopilot + paso 9):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-19-run31.md](./matprompt/MATPROMT-RUN-2026-03-19-run31.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md](./reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-19-run31.md](./judge/JUDGE-REPORT-RUN-2026-03-19-run31.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-19-run31.md](./reports/REPO-SYNC-REPORT-2026-03-19-run31.md). **CI:** `npm run lint` 0 errores (11 warnings); `npm test` **119 passed**. **Guía canónica:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-19 / run31».
 
 **Autopilot Runs 24–30 (2026-03-20):** Plan **documental** para encadenar full team sin perder el hilo. **Leer primero:** [reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md). **MATPROMT:** [matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md](./parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md). **Judge (scores plan):** [judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md](./judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md). **Guía canónica:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — sección «Bundle — AUTOPILOT Runs 24–30». Marcar en el REPORT la tabla de estado cuando cada run se **ejecute** (no sustituye evidencia). Tras **Run 30**, definir aquí «Próximos prompts run31+» según PROJECT-STATE.

@@ -151,10 +151,10 @@ async function main() {
       path: "/api/kpi-report",
       check: checkKpiReport,
       allow503: true,
-      allow404: true, // route exists; 404 = server not restarted after deploy
     },
   ];
 
+  for (const { name, path, check, allow503 } of checks) {
   for (const { name, path, check, allow503, allow404, method, body } of checks) {
     try {
       const opts =
@@ -168,11 +168,6 @@ async function main() {
       const { status, data } = await fetchJson(path, opts);
       if (status === 503 && allow503) {
         console.log(`  ⚠️  ${name} — 503 (Sheets unavailable, skip contract)`);
-        passed++;
-        continue;
-      }
-      if (status === 404 && allow404) {
-        console.log(`  ⚠️  ${name} — 404 (route not loaded, restart server)`);
         passed++;
         continue;
       }
