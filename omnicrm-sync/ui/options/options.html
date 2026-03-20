@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniCRM Sync — Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <svg viewBox="0 0 32 32" width="28" height="28">
+        <circle cx="16" cy="16" r="14" fill="#4F46E5"/>
+        <path d="M10 16l4 4 8-8" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1>OmniCRM Sync <span class="topbar-version" id="appVersion">v1.0.0</span></h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-outline btn-sm" id="btnImport">Import</button>
+      <button class="btn btn-outline btn-sm" id="btnExport">Export</button>
+      <input type="file" id="importFileInput" accept=".json" style="display:none">
+    </div>
+  </header>
+
+  <!-- Tab Navigation -->
+  <nav class="tab-nav" id="tabNav">
+    <button class="tab-btn active" data-tab="platforms">Platforms</button>
+    <button class="tab-btn" data-tab="crm">CRM</button>
+    <button class="tab-btn" data-tab="ai">AI (Claude)</button>
+    <button class="tab-btn" data-tab="fieldmapping">Field Mapping</button>
+    <button class="tab-btn" data-tab="queue">Queue</button>
+    <button class="tab-btn" data-tab="about">About</button>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- ═══ Platforms Tab ═══ -->
+    <section class="tab-panel active" data-panel="platforms">
+      <h2 class="section-title">Platform Configuration</h2>
+      <p class="section-desc">Enable or disable platforms and configure per-platform settings.</p>
+
+      <div class="platform-config-cards">
+        <!-- WhatsApp -->
+        <div class="config-card" data-platform="whatsapp" style="--platform-color:#25D366">
+          <div class="config-card-header">
+            <div class="config-card-left">
+              <div class="config-card-icon" style="background:#25D366">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+              </div>
+              <div>
+                <span class="config-card-name">WhatsApp</span>
+                <span class="config-card-url">web.whatsapp.com</span>
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-setting="platforms.whatsapp.enabled" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+          <div class="config-card-body">
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input type="checkbox" data-setting="platforms.whatsapp.includeGroups" checked>
+                Include group messages
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input type="checkbox" data-setting="platforms.whatsapp.includeMedia" checked>
+                Capture media metadata
+              </label>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Sync Direction</label>
+              <select class="form-select" data-setting="platforms.whatsapp.syncDirection">
+                <option value="both">Both (incoming + outgoing)</option>
+                <option value="incoming">Incoming only</option>
+                <option value="outgoing">Outgoing only</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- MercadoLibre -->
+        <div class="config-card" data-platform="mercadolibre" style="--platform-color:#FFE600">
+          <div class="config-card-header">
+            <div class="config-card-left">
+              <div class="config-card-icon" style="background:#FFE600">
+                <svg viewBox="0 0 24 24" width="20" height="20"><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">ML</text></svg>
+              </div>
+              <div>
+                <span class="config-card-name">MercadoLibre</span>
+                <span class="config-card-url">mercadolibre.com</span>
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-setting="platforms.mercadolibre.enabled" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+          <div class="config-card-body">
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input type="checkbox" data-setting="platforms.mercadolibre.apiMode">
+                Use ML API (requires auth)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Facebook -->
+        <div class="config-card" data-platform="facebook" style="--platform-color:#0084FF">
+          <div class="config-card-header">
+            <div class="config-card-left">
+              <div class="config-card-icon" style="background:#0084FF">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              </div>
+              <div>
+                <span class="config-card-name">Facebook</span>
+                <span class="config-card-url">facebook.com / messenger.com</span>
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-setting="platforms.facebook.enabled" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+          <div class="config-card-body">
+            <div class="form-row">
+              <label class="checkbox-label">
+                <input type="checkbox" data-setting="platforms.facebook.includeMarketplace" checked>
+                Include Marketplace messages
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instagram -->
+        <div class="config-card" data-platform="instagram" style="--platform-color:#E1306C">
+          <div class="config-card-header">
+            <div class="config-card-left">
+              <div class="config-card-icon" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+              </div>
+              <div>
+                <span class="config-card-name">Instagram</span>
+                <span class="config-card-url">instagram.com</span>
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-setting="platforms.instagram.enabled" checked>
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+          </div>
+          <div class="config-card-body">
+            <p class="config-card-note">No additional settings available.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ CRM Tab ═══ -->
+    <section class="tab-panel" data-panel="crm">
+      <h2 class="section-title">CRM Destination</h2>
+      <p class="section-desc">Choose where synced data is sent and configure the connection.</p>
+
+      <div class="form-group">
+        <label class="form-label">CRM Type</label>
+        <select class="form-select" id="crmType" data-setting="crm.type">
+          <option value="webhook">Webhook (generic)</option>
+          <option value="google_sheets">Google Sheets</option>
+          <option value="hubspot">HubSpot</option>
+          <option value="notion">Notion</option>
+          <option value="airtable">Airtable</option>
+          <option value="custom">Custom API</option>
+        </select>
+      </div>
+
+      <!-- Webhook fields -->
+      <div class="crm-fields" data-crm="webhook">
+        <div class="form-group">
+          <label class="form-label">Webhook URL</label>
+          <input type="url" class="form-input" data-setting="crm.webhookUrl" placeholder="https://your-endpoint.com/webhook">
+        </div>
+        <div class="form-group">
+          <label class="form-label">HTTP Method</label>
+          <select class="form-select" data-setting="crm.webhookMethod">
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Custom Headers (JSON)</label>
+          <textarea class="form-textarea" data-setting="crm.webhookHeaders" rows="3" placeholder='{"Authorization": "Bearer ..."}'></textarea>
+        </div>
+      </div>
+
+      <!-- Google Sheets fields -->
+      <div class="crm-fields" data-crm="google_sheets" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Google Apps Script Web App URL</label>
+          <input type="url" class="form-input" data-setting="crm.googleSheetsUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sheet Name (optional)</label>
+          <input type="text" class="form-input" data-setting="crm.googleSheetsName" placeholder="Sheet1">
+        </div>
+      </div>
+
+      <!-- HubSpot fields -->
+      <div class="crm-fields" data-crm="hubspot" style="display:none">
+        <div class="form-group">
+          <label class="form-label">HubSpot Private App Token</label>
+          <input type="password" class="form-input" data-setting="crm.hubspotToken" placeholder="pat-na1-...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pipeline ID (optional)</label>
+          <input type="text" class="form-input" data-setting="crm.hubspotPipelineId" placeholder="default">
+        </div>
+      </div>
+
+      <!-- Notion fields -->
+      <div class="crm-fields" data-crm="notion" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Notion Integration Token</label>
+          <input type="password" class="form-input" data-setting="crm.notionToken" placeholder="secret_...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notion Database ID</label>
+          <input type="text" class="form-input" data-setting="crm.notionDatabaseId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+      </div>
+
+      <!-- Airtable fields -->
+      <div class="crm-fields" data-crm="airtable" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Airtable Personal Access Token</label>
+          <input type="password" class="form-input" data-setting="crm.airtableToken" placeholder="pat...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Base ID</label>
+          <input type="text" class="form-input" data-setting="crm.airtableBaseId" placeholder="appXXXXXXXXXXXXXX">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Table Name</label>
+          <input type="text" class="form-input" data-setting="crm.airtableTable" placeholder="Contacts">
+        </div>
+      </div>
+
+      <!-- Custom API fields -->
+      <div class="crm-fields" data-crm="custom" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Custom API Endpoint</label>
+          <input type="url" class="form-input" data-setting="crm.customUrl" placeholder="https://api.yourcrm.com/v1/contacts">
+        </div>
+        <div class="form-group">
+          <label class="form-label">HTTP Method</label>
+          <select class="form-select" data-setting="crm.customMethod">
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Custom Headers (JSON)</label>
+          <textarea class="form-textarea" data-setting="crm.customHeaders" rows="3" placeholder='{"Authorization": "Bearer ..."}'></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Request Body Template (JSON)</label>
+          <textarea class="form-textarea json-editor" data-setting="crm.customBodyTemplate" rows="6" placeholder='{"contact": "{{contact_name}}", "message": "{{message}}"}'></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ AI (Claude) Tab ═══ -->
+    <section class="tab-panel" data-panel="ai">
+      <h2 class="section-title">AI Features (Claude)</h2>
+      <p class="section-desc">Use Claude AI to automatically categorize, summarize, and suggest replies for conversations.</p>
+
+      <div class="form-group">
+        <label class="form-label">Claude API Key</label>
+        <div class="input-with-action">
+          <input type="password" class="form-input" id="aiApiKey" placeholder="sk-ant-api03-...">
+          <button class="btn btn-outline btn-sm" id="btnSaveApiKey">Save Key</button>
+        </div>
+        <p class="form-hint">Stored in session storage only -- cleared when the browser closes. Never persisted to disk.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="toggle-row">
+          <span class="toggle-row-label">Enable AI Features</span>
+          <label class="toggle">
+            <input type="checkbox" data-setting="ai.enabled">
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+        </label>
+      </div>
+
+      <div class="ai-features">
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" data-setting="ai.categorize" checked>
+            Auto-categorize conversations (lead, support, sales, etc.)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" data-setting="ai.summarize">
+            Generate conversation summaries
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" data-setting="ai.suggestReplies">
+            Suggest reply templates
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">AI Model</label>
+        <select class="form-select" data-setting="ai.model">
+          <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+          <option value="claude-haiku-4-20250414">Claude Haiku 4</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Max tokens per request</label>
+        <input type="number" class="form-input" data-setting="ai.maxTokens" value="1024" min="128" max="4096" step="128">
+      </div>
+    </section>
+
+    <!-- ═══ Field Mapping Tab ═══ -->
+    <section class="tab-panel" data-panel="fieldmapping">
+      <h2 class="section-title">Field Mapping</h2>
+      <p class="section-desc">Define how captured data maps to your CRM fields. Select a preset or write custom mappings.</p>
+
+      <div class="form-group">
+        <label class="form-label">Preset</label>
+        <select class="form-select" id="mappingPreset" data-setting="fieldMapping.preset">
+          <option value="google_sheets_all_platforms">Google Sheets -- All Platforms</option>
+          <option value="hubspot_contacts">HubSpot -- Contacts</option>
+          <option value="hubspot_deals">HubSpot -- Deals</option>
+          <option value="notion_database">Notion -- Database</option>
+          <option value="airtable_base">Airtable -- Base</option>
+          <option value="custom">Custom (JSON)</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="presetPreview">
+        <label class="form-label">Preset Preview (read-only)</label>
+        <textarea class="form-textarea json-editor" id="presetPreviewEditor" rows="12" readonly></textarea>
+      </div>
+
+      <div class="form-group" id="customMappingGroup" style="display:none">
+        <label class="form-label">Custom Field Mapping (JSON)</label>
+        <textarea class="form-textarea json-editor" id="customMappingEditor" rows="14" data-setting="fieldMapping.custom" placeholder='{
+  "contact_name": "$.contact.name",
+  "phone": "$.contact.phone",
+  "platform": "$.platform",
+  "message": "$.message.text",
+  "timestamp": "$.message.timestamp"
+}'></textarea>
+        <p class="form-hint">Use JSONPath expressions to map source fields to CRM fields.</p>
+      </div>
+    </section>
+
+    <!-- ═══ Queue Tab ═══ -->
+    <section class="tab-panel" data-panel="queue">
+      <h2 class="section-title">Sync Queue</h2>
+      <p class="section-desc">Monitor the status of pending sync operations.</p>
+
+      <div class="queue-stats" id="queueStats">
+        <div class="queue-stat-card">
+          <span class="queue-stat-value" id="qPending">0</span>
+          <span class="queue-stat-label">Pending</span>
+        </div>
+        <div class="queue-stat-card sent">
+          <span class="queue-stat-value" id="qSent">0</span>
+          <span class="queue-stat-label">Sent</span>
+        </div>
+        <div class="queue-stat-card error">
+          <span class="queue-stat-value" id="qDead">0</span>
+          <span class="queue-stat-label">Failed / Dead</span>
+        </div>
+      </div>
+
+      <div class="queue-actions">
+        <button class="btn btn-outline" id="btnRefreshQueue">Refresh</button>
+        <button class="btn btn-primary" id="btnForceSync">Force Sync</button>
+        <button class="btn btn-danger" id="btnClearDead">Clear Dead Items</button>
+      </div>
+
+      <div class="queue-table-wrapper">
+        <table class="queue-table" id="queueTable">
+          <thead>
+            <tr>
+              <th>Platform</th>
+              <th>Contact</th>
+              <th>Status</th>
+              <th>Retries</th>
+              <th>Last Attempt</th>
+            </tr>
+          </thead>
+          <tbody id="queueTableBody">
+            <tr class="queue-empty">
+              <td colspan="5">Queue is empty</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ About Tab ═══ -->
+    <section class="tab-panel" data-panel="about">
+      <h2 class="section-title">About OmniCRM Sync</h2>
+
+      <div class="about-card">
+        <div class="about-logo">
+          <svg viewBox="0 0 64 64" width="64" height="64">
+            <circle cx="32" cy="32" r="28" fill="#4F46E5"/>
+            <path d="M20 32l8 8 16-16" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>OmniCRM Sync</h3>
+        <p class="about-version" id="aboutVersion">Version 1.0.0</p>
+        <p class="about-desc">
+          Capture WhatsApp, MercadoLibre, Facebook &amp; Instagram interactions and sync them to your CRM automatically.
+        </p>
+      </div>
+
+      <div class="about-links">
+        <div class="about-link-row">
+          <span>Documentation</span>
+          <a href="https://github.com/omnicrm-sync/docs" target="_blank" rel="noopener">View Docs</a>
+        </div>
+        <div class="about-link-row">
+          <span>Report an Issue</span>
+          <a href="https://github.com/omnicrm-sync/issues" target="_blank" rel="noopener">GitHub Issues</a>
+        </div>
+        <div class="about-link-row">
+          <span>License</span>
+          <span>MIT</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Action Bar -->
+  <footer class="action-bar">
+    <button class="btn btn-outline" id="btnReset">Reset to Defaults</button>
+    <button class="btn btn-primary" id="btnSave">Save Settings</button>
+  </footer>
+
+  <!-- Save Toast -->
+  <div class="toast" id="saveToast">Settings saved</div>
+
+  <script src="options.js"></script>
+</body>
+</html>

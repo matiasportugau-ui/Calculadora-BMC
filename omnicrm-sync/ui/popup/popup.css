@@ -1,0 +1,345 @@
+/* OmniCRM Sync — Popup Styles */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 360px;
+  min-height: 420px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: #f8f9fa;
+  color: #1a1a2e;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  color: #fff;
+}
+
+.popup-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-logo {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.popup-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.popup-version {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.popup-header-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── Status Dots ───────────────────────────────────────── */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+}
+
+.status-dot.paused {
+  background: #eab308;
+  box-shadow: 0 0 4px rgba(234, 179, 8, 0.35);
+}
+
+.status-dot.offline {
+  background: #6b7280;
+}
+
+.status-dot.error {
+  background: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.45);
+}
+
+/* ── Body ──────────────────────────────────────────────── */
+
+.popup-body {
+  padding: 12px;
+}
+
+/* ── Platform Cards ────────────────────────────────────── */
+
+.platform-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.platform-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.platform-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Colored accent borders per platform */
+.platform-card[data-platform="whatsapp"] {
+  border-left-color: #25D366;
+}
+
+.platform-card[data-platform="mercadolibre"] {
+  border-left-color: #FFE600;
+}
+
+.platform-card[data-platform="facebook"] {
+  border-left-color: #1877F2;
+}
+
+.platform-card[data-platform="instagram"] {
+  border-left-color: #E4405F;
+}
+
+.platform-card-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.platform-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.platform-icon.whatsapp  { background: #dcfce7; color: #16a34a; }
+.platform-icon.mercadolibre { background: #fef9c3; color: #ca8a04; }
+.platform-icon.facebook  { background: #dbeafe; color: #2563eb; }
+.platform-icon.instagram { background: #fce7f3; color: #db2777; }
+
+.platform-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.platform-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.platform-stat {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.platform-card-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Toggle Switch ─────────────────────────────────────── */
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #d1d5db;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.toggle input:checked + .toggle-track {
+  background: #4F46E5;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.toggle input:checked ~ .toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* ── Summary Stats ─────────────────────────────────────── */
+
+.summary-stats {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 10px 8px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stat-value {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #4F46E5;
+}
+
+.stat-label {
+  display: block;
+  font-size: 10px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ── Quick Action Buttons ──────────────────────────────── */
+
+.quick-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  font-family: inherit;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:focus-visible {
+  outline: 2px solid #4F46E5;
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: #4F46E5;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #4338CA;
+}
+
+.btn-primary.paused {
+  background: #22c55e;
+}
+
+.btn-primary.paused:hover {
+  background: #16a34a;
+}
+
+.btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+
+.popup-footer {
+  text-align: center;
+  padding: 10px 16px;
+  font-size: 11px;
+  color: #9ca3af;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.popup-footer a {
+  color: #4F46E5;
+  text-decoration: none;
+}
+
+.popup-footer a:hover {
+  text-decoration: underline;
+}

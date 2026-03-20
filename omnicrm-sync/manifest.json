@@ -1,0 +1,142 @@
+{
+  "manifest_version": 3,
+  "name": "OmniCRM Sync",
+  "version": "1.0.0",
+  "description": "Capture WhatsApp, MercadoLibre, Facebook & Instagram interactions → sync to your CRM",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://*.mercadolibre.com.ar/*",
+    "https://*.mercadolibre.com/*",
+    "https://*.mercadolibre.com.mx/*",
+    "https://*.mercadolibre.com.co/*",
+    "https://*.mercadolivre.com.br/*",
+    "https://www.facebook.com/*",
+    "https://www.messenger.com/*",
+    "https://www.instagram.com/*",
+    "https://api.mercadolibre.com/*",
+    "https://api.anthropic.com/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_popup": "ui/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "options_page": "ui/options/options.html",
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": [
+        "shared/utils.js",
+        "shared/storage-manager.js",
+        "platforms/base/base-selectors.js",
+        "platforms/base/base-parser.js",
+        "platforms/base/base-observer.js",
+        "platforms/whatsapp/wa-selectors.js",
+        "platforms/whatsapp/wa-parser.js",
+        "platforms/whatsapp/wa-contact.js",
+        "platforms/whatsapp/wa-observer.js",
+        "ui/overlay/overlay.js",
+        "platforms/whatsapp/wa-content.js"
+      ],
+      "css": ["ui/overlay/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.mercadolibre.com.ar/*",
+        "https://*.mercadolibre.com/*",
+        "https://*.mercadolibre.com.mx/*",
+        "https://*.mercadolibre.com.co/*",
+        "https://*.mercadolivre.com.br/*"
+      ],
+      "js": [
+        "shared/utils.js",
+        "shared/storage-manager.js",
+        "platforms/base/base-selectors.js",
+        "platforms/base/base-parser.js",
+        "platforms/base/base-observer.js",
+        "platforms/mercadolibre/ml-selectors.js",
+        "platforms/mercadolibre/ml-parser.js",
+        "platforms/mercadolibre/ml-api.js",
+        "platforms/mercadolibre/ml-contact.js",
+        "platforms/mercadolibre/ml-observer.js",
+        "ui/overlay/overlay.js",
+        "platforms/mercadolibre/ml-content.js"
+      ],
+      "css": ["ui/overlay/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://www.messenger.com/*"
+      ],
+      "js": [
+        "shared/utils.js",
+        "shared/storage-manager.js",
+        "platforms/base/base-selectors.js",
+        "platforms/base/base-parser.js",
+        "platforms/base/base-observer.js",
+        "platforms/facebook/fb-selectors.js",
+        "platforms/facebook/fb-parser.js",
+        "platforms/facebook/fb-contact.js",
+        "platforms/facebook/fb-observer.js",
+        "ui/overlay/overlay.js",
+        "platforms/facebook/fb-content.js"
+      ],
+      "css": ["ui/overlay/overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": [
+        "shared/utils.js",
+        "shared/storage-manager.js",
+        "platforms/base/base-selectors.js",
+        "platforms/base/base-parser.js",
+        "platforms/base/base-observer.js",
+        "platforms/instagram/ig-selectors.js",
+        "platforms/instagram/ig-parser.js",
+        "platforms/instagram/ig-contact.js",
+        "platforms/instagram/ig-observer.js",
+        "ui/overlay/overlay.js",
+        "platforms/instagram/ig-content.js"
+      ],
+      "css": ["ui/overlay/overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/platform-icons/*"],
+      "matches": [
+        "https://web.whatsapp.com/*",
+        "https://*.mercadolibre.com.ar/*",
+        "https://*.mercadolibre.com/*",
+        "https://*.mercadolibre.com.mx/*",
+        "https://*.mercadolibre.com.co/*",
+        "https://*.mercadolivre.com.br/*",
+        "https://www.facebook.com/*",
+        "https://www.messenger.com/*",
+        "https://www.instagram.com/*"
+      ]
+    }
+  ]
+}
