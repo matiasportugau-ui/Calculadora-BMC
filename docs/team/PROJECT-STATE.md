@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-20 (Run35 ADR + Run36 audit --force)
+**Última actualización:** 2026-03-20 (Runs 37–50 itinerante; síntesis run 50)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Runs 37–50 — itinerante hasta run 50):** **Run 37:** Lista SKUs MATRIZ (72 en código) en [reports/REPORT-RUN37-MATRIZ-SKUS-2026-03-20.md](./reports/REPORT-RUN37-MATRIZ-SKUS-2026-03-20.md); validar vs col.D planilla. **Run 38:** [REPORT-RUN38-REPO-GPT-DRIFT-2026-03-20.md](./reports/REPORT-RUN38-REPO-GPT-DRIFT-2026-03-20.md) — Repo Sync y GPT drift anotados. **Run 39:** [REPORT-RUN39-SINTESIS-CICLO-2026-03-20.md](./reports/REPORT-RUN39-SINTESIS-CICLO-2026-03-20.md) — narrativa cierre 32–39. **Runs 40–50:** Extensión roadmap §2b; ejecución documental (revisión post-39, E2E, Pista 3, billing, contract, docs, data version, security, Judge, preparación y síntesis run 50). [REPORT-RUNS-40-50-ITINERANTE-2026-03-20.md](./reports/REPORT-RUNS-40-50-ITINERANTE-2026-03-20.md). HANDOFF itinerante actualizado: run 50 ✓, siguiente RUN 51.
 
 **2026-03-20 (Run36 — Audit --force):** Ejecutado **run36** en rama **run36-audit-force**. `npm audit fix --force` → **0 vulnerabilities** (vite@8.0.1, @google-cloud/storage@5.18.3). Lint 0 errores, tests 119 passed, build OK. Rama lista para PR; merge pendiente aprobación Matias. Ver [reports/REPORT-RUN36-AUDIT-FORCE-2026-03-20.md](./reports/REPORT-RUN36-AUDIT-FORCE-2026-03-20.md). RUN-ROADMAP run36 ✓. Handoff itinerante → run37.
 

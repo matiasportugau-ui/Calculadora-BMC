@@ -1,8 +1,8 @@
 # Handoff itinerante — siguiente RUN
 
-**Propósito:** El agente que lea este archivo toma el relevo del flujo **itinerante** de runs (full team 32→33→34→…). Debe: **(1)** ejecutar el RUN sugerido abajo; **(2)** investigar la mejor opción, solución o camino para ese RUN; **(3)** resolverlo y documentar; **(4)** al terminar, actualizar este handoff con la **siguiente sugerencia de RUN** y seguir trabajando itinerantemente (el próximo agente hará lo mismo).
+**Propósito:** El agente que lea este archivo toma el relevo del flujo **itinerante** de runs. Debe: **(1)** ejecutar el RUN sugerido abajo; **(2)** investigar la mejor opción, solución o camino; **(3)** resolverlo y documentar; **(4)** actualizar este handoff con la **siguiente sugerencia de RUN**.
 
-**Última actualización:** 2026-03-20 (post run36)
+**Última actualización:** 2026-03-20 (post run 50)
 
 ---
 
@@ -10,35 +10,32 @@
 
 | Run | Estado | Nota |
 |-----|--------|------|
-| **32** | ✓ | Full team sync; contratos; artefactos en repo. |
-| **33** | ✓ | Full team; Pista 3 coordinación + Mapping; handoff Matias; artefactos commitados. |
-| **34** | ✓ | Smoke post-Sheets ejecutado; E2E checklist actualizado. |
-| **35** | ✓ | ADR-001 Presupuesto libre backup vs V3; tests 119 passed. |
-| **36** | ✓ | Rama run36-audit-force; 0 vulns; lint/test/build OK; PR pendiente aprobación Matias. |
-| **37** | **← Siguiente sugerido** | Ver abajo. |
-| 38–39 | Pendientes | Roadmap: `reports/RUN-ROADMAP-FORWARD-2026.md`. |
+| **32–36** | ✓ | Full team, Pista 3, smoke, ADR-001, audit rama run36-audit-force. |
+| **37** | ✓ | MATRIZ SKUs lista (72); REPORT-RUN37-MATRIZ-SKUS. |
+| **38** | ✓ | Repo Sync + GPT drift anotados; REPORT-RUN38. |
+| **39** | ✓ | Síntesis ciclo; REPORT-RUN39-SINTESIS-CICLO. |
+| **40–50** | ✓ | Extensión roadmap §2b; revisión, E2E, Pista 3, billing, contract, docs, data version, security, Judge, síntesis run 50. REPORT-RUNS-40-50-ITINERANTE. |
+| **51** | **← Siguiente sugerido** | Ver abajo. |
 
 ---
 
 ## RUN sugerido para ti (próximo agente)
 
-### RUN 37 — MATRIZ SKUs + billing
+### RUN 51 — Ciclo siguiente (post run 50)
 
-**Objetivo (roadmap):** Run **29** autopilot: col.D vs `matrizPreciosMapping.js`; sanity billing/cierre. Roles foco: Mapping, Fiscal, Billing, Reporter. Entregable: Lista SKUs OK/pendiente. Depende de datos negocio (MATRIZ).
+**Objetivo:** Primer run del siguiente ciclo tras síntesis run 50. Priorizar según pendientes vivos: (1) Merge run36-audit-force si aprobado; (2) Validación SKUs en planilla MATRIZ real; (3) Repo Sync a bmc-dashboard-2.0 / bmc-development-team; (4) Pista 3 (tabs/triggers) si Matias cerró; (5) GPT Builder drift vs openapi-calc.
 
 **Qué hacer:**
 
-1. **Investigar** la mejor opción o camino: leer `docs/team/PROJECT-STATE.md` (SKUs MATRIZ, presupuesto libre), `src/data/matrizPreciosMapping.js`, `docs/google-sheets-module/planilla-inventory.md` (MATRIZ col.D). Comparar SKUs en código vs columna D (o equivalente) de la planilla MATRIZ de COSTOS y VENTAS; listar coincidencias y pendientes. Opcional: sanity de cierre billing (Pagos_Pendientes, errores, duplicados) si hay datos.
-2. **Ejecutar** ese plan: documento o lista (SKUs OK / pendiente de validar); actualizar matrizPreciosMapping o planilla-inventory si aplica; anotar hallazgos billing.
-3. **Documentar:** Actualizar PROJECT-STATE (Cambios recientes run37); entregable en docs/team/reports o sección en PROJECT-STATE.
-4. **Itinerante:** Al terminar run37, **actualizar este archivo**: poner run37 en ✓ y escribir como "Siguiente RUN sugerido" el **RUN 38** (Repos hermanos + GPT drift), con objetivo breve y los 4 pasos para el próximo agente.
+1. **Investigar:** Leer PROJECT-STATE (Pendientes, Cambios recientes), HANDOFF-ITINERANTE, RUN-ROADMAP-FORWARD-2026 §2 y §2b. Elegir la acción más prioritaria o de mayor impacto.
+2. **Ejecutar:** Llevar a cabo esa acción (código, doc, validación, sync, etc.).
+3. **Documentar:** Actualizar PROJECT-STATE; entregable en reports/ o entrada Cambios recientes.
+4. **Itinerante:** Poner run 51 en ✓ en este handoff; escribir RUN 52 como siguiente (objetivo breve + 4 pasos). Si con run 51 se cierran todos los pendientes del ciclo, RUN 52 puede ser "Mantenimiento / siguiente prioridad de negocio".
 
 ---
 
 ## Cómo actualizar este handoff al terminar tu RUN
 
 1. En **Estado al leer este handoff**: marcar tu run como ✓ y mover "Siguiente sugerido" al run que sigue.
-2. En **RUN sugerido para ti**: reemplazar con el **siguiente número de run** (ej. RUN 38), objetivo breve, y los 4 pasos (investigar, ejecutar, documentar, itinerante) para que el próximo agente sepa qué hacer.
+2. En **RUN sugerido para ti**: reemplazar con el **siguiente número de run**, objetivo breve, y los 4 pasos (investigar, ejecutar, documentar, itinerante).
 3. **Última actualización:** poner fecha del día.
-
-Así cada agente escucha la sugerencia del RUN anterior, investiga el mejor camino, lo resuelve y deja la siguiente sugerencia para el siguiente agente.

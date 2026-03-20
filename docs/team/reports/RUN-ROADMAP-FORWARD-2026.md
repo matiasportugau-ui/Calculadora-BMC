@@ -54,9 +54,25 @@
 | **34** | Smoke post-Sheets | Re-validar Cloud Run/Vercel; anotar si 503→200 en rutas clave; OAuth/CORS si aplica | Run **33** hecho o documentado “parcial” | Networks, Contract, Audit | E2E checklist actualizado | ✓ (2026-03-20) |
 | **35** | Presupuesto libre / canónico | Run **27** autopilot: paridad o ADR `backup` vs `V3`; opcional `PRESUPUESTO_LIBRE_IDS` | Ninguno bloqueante | Calc, Design, Mapping | Código o ADR + tests verdes | ✓ (2026-03-20) |
 | **36** | Audit `--force` | Run **28**: Rama dedicada; `npm audit fix --force`; lint/test/build; PR merge **o** abort documentado | Aprobación Matias | Security, Audit, Networks | CHANGELOG + decisión | ✓ (2026-03-20, rama run36-audit-force) |
-| **37** | MATRIZ SKUs + billing | Run **29**: col.D vs `matrizPreciosMapping.js`; sanity billing/cierre | Datos negocio | Mapping, Fiscal, Billing, Reporter | Lista SKUs OK/pendiente | ⬜ |
-| **38** | Repos hermanos + GPT drift | Repo Sync externo si aplica; revisar GPT Builder vs `openapi-calc` / `gpt-entry-point` | Red/credenciales | Repo Sync, GPT/Cloud, Security | REPO-SYNC report; nota drift | ⬜ |
-| **39** | Síntesis ciclo (run **30++**) | Cerrar narrativa: pendientes honestos, riesgos, **roadmap siguiente trimestre** | Runs **32–38** mayormente abordados | Orchestrator, Reporter, Judge, MATPROMT | PROMPT “post–39”; opcional Judge formal | ⬜ |
+| **37** | MATRIZ SKUs + billing | Run **29**: col.D vs `matrizPreciosMapping.js`; sanity billing/cierre | Datos negocio | Mapping, Fiscal, Billing, Reporter | Lista SKUs OK/pendiente | ✓ (2026-03-20) |
+| **38** | Repos hermanos + GPT drift | Repo Sync externo si aplica; revisar GPT Builder vs `openapi-calc` / `gpt-entry-point` | Red/credenciales | Repo Sync, GPT/Cloud, Security | REPO-SYNC report; nota drift | ✓ (2026-03-20) |
+| **39** | Síntesis ciclo (run **30++**) | Cerrar narrativa: pendientes honestos, riesgos, **roadmap siguiente trimestre** | Runs **32–38** mayormente abordados | Orchestrator, Reporter, Judge, MATPROMT | PROMPT “post–39”; opcional Judge formal | ✓ (2026-03-20) |
+
+### 2b. Secuencia Run 40 → Run 50 (extensión itinerante 2026-03-20)
+
+| Run | Nombre corto | Objetivo | Estado |
+|-----|----------------|----------|--------|
+| **40** | Revisión post-39 | Confirmar pendientes; checklist siguiente ciclo | ✓ (2026-03-20) |
+| **41** | Backlog E2E | Revisar E2E checklist; anotar ítems pendientes | ✓ (2026-03-20) |
+| **42** | Pista 3 seguimiento | Documentar estado tabs/triggers; handoff Matias vigente | ✓ (2026-03-20) |
+| **43** | Billing checklist | Nota cierre mensual; Pagos_Pendientes cuando haya datos | ✓ (2026-03-20) |
+| **44** | Contract test | test:contracts con API up cuando corresponda | ✓ (2026-03-20) |
+| **45** | Docs actualización | CHANGELOG / README si aplica; estado docs equipo | ✓ (2026-03-20) |
+| **46** | Data version check | calculatorDataVersion en main; dev/build OK | ✓ (2026-03-20) |
+| **47** | Security checklist | .env, CORS, tokens; sin cambios críticos | ✓ (2026-03-20) |
+| **48** | Judge histórico | Promedios runs 32+ en JUDGE-REPORT-HISTORICO | ✓ (2026-03-20) |
+| **49** | Preparación run 50 | Handoff y roadmap al día para síntesis | ✓ (2026-03-20) |
+| **50** | Síntesis hasta run 50 | Cierre narrativa runs 32–50; siguiente ciclo run 51+ | ✓ (2026-03-20) |
 
 \* *Sheets Structure: ejecución humana Matias; el “run” documenta y verifica.*
 
