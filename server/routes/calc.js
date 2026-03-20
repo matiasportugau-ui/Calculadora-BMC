@@ -436,6 +436,45 @@ function runCalculation({ escenario, lista, techo, pared, camara }) {
 
 // ── POST /cotizar ────────────────────────────────────────────────────────────
 
+function runPresupuestoLibreFromBody(body) {
+  const {
+    lista = "web",
+    librePanelLines = [],
+    librePerfilQty = {},
+    libreFijQty = {},
+    libreSellQty = {},
+    flete = 0,
+    libreExtra = {},
+  } = body || {};
+  setListaPrecios(lista === "venta" ? "venta" : "web");
+  const perfilRows = flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED);
+  const perfilCatalogById = new Map(perfilRows.map((r) => [r.id, r]));
+  return computePresupuestoLibreCatalogo({
+    listaPrecios: lista,
+    librePanelLines,
+    librePerfilQty,
+    perfilCatalogById,
+    libreFijQty,
+    libreSellQty,
+    flete,
+    libreExtra,
+  });
+}
+
+router.post("/cotizar/presupuesto-libre", (req, res) => {
+  try {
+    const { lista = "web" } = req.body || {};
+    const results = runPresupuestoLibreFromBody(req.body);
+    if (results?.error) {
+      return res.status(400).json({ ok: false, error: results.error });
+    }
+    return res.json(buildGptResponse("presupuesto_libre", lista, results, 0));
+  } catch (err) {
+    req.log.error({ err }, "calc/cotizar/presupuesto-libre failed");
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.post("/cotizar", (req, res) => {
   try {
     const { lista = "web", escenario, techo, pared, camara, flete = 0 } = req.body;
