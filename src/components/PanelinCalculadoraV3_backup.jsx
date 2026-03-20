@@ -727,16 +727,15 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
   );
 }
 
-// ── Wizard steps (Modo Vendedor — Solo Techo) ───────────────────────────────────
-// Otros wizards (p. ej. techo+fachada): definir WIZARD_STEPS_* y en el footer usar wizardPrimaryActionStyle(isValid) para Siguiente.
-// Al elegir Solo Techo → siguiente paso es Caída del techo
+// ── Wizard steps (Modo Vendedor — por escenario; excluye presupuesto_libre) ─────
+// Footer: wizardPrimaryActionStyle(isValid) para Siguiente en todos los flujos.
 const WIZARD_STEPS_SOLO_TECHO = [
   { id: "escenario", label: "Escenario de obra" },
   { id: "tipoAguas", label: "Caída del techo" },
   { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel" },
-  { id: "espesor", label: "Espesor" },
-  { id: "color", label: "Color" },
+  { id: "familia", label: "Familia panel techo" },
+  { id: "espesor", label: "Espesor techo" },
+  { id: "color", label: "Color techo" },
   { id: "dimensiones", label: "Dimensiones (metros o paneles)" },
   { id: "pendiente", label: "Pendiente" },
   { id: "estructura", label: "Estructura" },
@@ -745,6 +744,69 @@ const WIZARD_STEPS_SOLO_TECHO = [
   { id: "flete", label: "Flete" },
   { id: "proyecto", label: "Datos del proyecto" },
 ];
+
+const WIZARD_STEPS_SOLO_FACHADA = [
+  { id: "escenario", label: "Escenario de obra" },
+  { id: "lista", label: "Lista de precios" },
+  { id: "familia_pared", label: "Familia panel pared" },
+  { id: "espesor_pared", label: "Espesor pared" },
+  { id: "color_pared", label: "Color pared" },
+  { id: "dimensiones_pared", label: "Dimensiones pared" },
+  { id: "aberturas", label: "Aberturas (opcional)" },
+  { id: "estructura", label: "Estructura" },
+  { id: "selladores", label: "Selladores" },
+  { id: "flete", label: "Flete" },
+  { id: "proyecto", label: "Datos del proyecto" },
+];
+
+const WIZARD_STEPS_TECHO_FACHADA = [
+  { id: "escenario", label: "Escenario de obra" },
+  { id: "tipoAguas", label: "Caída del techo" },
+  { id: "lista", label: "Lista de precios" },
+  { id: "familia", label: "Familia panel techo" },
+  { id: "espesor", label: "Espesor techo" },
+  { id: "color", label: "Color techo" },
+  { id: "dimensiones", label: "Dimensiones techo" },
+  { id: "pendiente", label: "Pendiente" },
+  { id: "estructura", label: "Estructura" },
+  { id: "bordes", label: "Accesorios perimetrales" },
+  { id: "selladores", label: "Selladores" },
+  { id: "familia_pared", label: "Familia panel pared" },
+  { id: "espesor_pared", label: "Espesor pared" },
+  { id: "color_pared", label: "Color pared" },
+  { id: "dimensiones_pared", label: "Dimensiones pared" },
+  { id: "aberturas", label: "Aberturas (opcional)" },
+  { id: "perfil_5852", label: "Perfil 5852 aluminio" },
+  { id: "flete", label: "Flete" },
+  { id: "proyecto", label: "Datos del proyecto" },
+];
+
+const WIZARD_STEPS_CAMARA_FRIG = [
+  { id: "escenario", label: "Escenario de obra" },
+  { id: "lista", label: "Lista de precios" },
+  { id: "familia_pared", label: "Familia panel" },
+  { id: "espesor_pared", label: "Espesor" },
+  { id: "color_pared", label: "Color" },
+  { id: "camara_dim", label: "Dimensiones cámara (interiores)" },
+  { id: "aberturas", label: "Aberturas (opcional)" },
+  { id: "estructura", label: "Estructura" },
+  { id: "selladores", label: "Selladores" },
+  { id: "flete", label: "Flete" },
+  { id: "proyecto", label: "Datos del proyecto" },
+];
+
+/** Pasos del wizard modo vendedor. `presupuesto_libre` → [] (sin wizard). */
+function getWizardStepsForScenario(scenarioId) {
+  switch (scenarioId) {
+    case "solo_techo": return WIZARD_STEPS_SOLO_TECHO;
+    case "solo_fachada": return WIZARD_STEPS_SOLO_FACHADA;
+    case "techo_fachada": return WIZARD_STEPS_TECHO_FACHADA;
+    case "camara_frig": return WIZARD_STEPS_CAMARA_FRIG;
+    case "presupuesto_libre":
+    default:
+      return [];
+  }
+}
 
 const TECHO_INITIAL_VENDEDOR = {
   familia: "", espesor: "", color: "", zonas: [{ largo: 0, ancho: 0 }],
