@@ -2,6 +2,13 @@
 
 ## [3.1.2] — 2026-03-19
 
+### Equipo — Autopilot full team Runs 24–30 (2026-03-20)
+- **Reporter:** `docs/team/reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md` (índice + tabla ⬜/✓).
+- **MATPROMT:** `docs/team/matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`.
+- **Parallel/Serial:** `docs/team/parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md`.
+- **Judge:** `docs/team/judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md`; `JUDGE-REPORT-HISTORICO.md` — nota plan ~4.75/5 hasta evidencia.
+- **Guía:** `MATPROMT-FULL-RUN-PROMPTS.md` — bundle AUTOPILOT 24–30; `PROJECT-STATE` / `PROMPT-FOR-EQUIPO-COMPLETO` enlazados.
+
 ### Equipo — Run 23 fusión (2026-03-20)
 - **Judge:** `docs/team/judge/JUDGE-REPORT-RUN-2026-03-20-run23.md` (run22 documental + Presupuesto libre V3).
 - **MATPROMT:** `docs/team/matprompt/MATPROMT-RUN-2026-03-20-run23.md`; guía `MATPROMT-FULL-RUN-PROMPTS.md` — sección Bundle run23.

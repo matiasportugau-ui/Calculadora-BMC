@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-20 (Run 23 fusión Judge/MATPROMT; plan soluciones Pista 1 Git vigente)
+**Última actualización:** 2026-03-20 (Autopilot full team Runs 24–30 — artefactos equipo)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Autopilot full team — Runs 24 a 30):** Secuencia documental post–run23 para “Invoque full team” sin redactar 7 bundles desde cero: **24** Git/push (Pista 1), **25** smoke prod (Pista 2), **26** Sheets tabs/triggers (Pista 3), **27** calc backup / presupuesto libre paridad, **28** rama `npm audit fix --force` (Pista 4), **29** MATRIZ SKUs + billing (Pistas 5–6), **30** síntesis y PROMPT siguiente ciclo. **Índice:** [reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md). **MATPROMT:** [matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md](./parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md). **Judge (plan agregado):** [judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md](./judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md). **Guía:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — AUTOPILOT Runs 24–30». Tabla ⬜/✓ en el REPORT hasta ejecutar cada paso de verdad.
 
 **2026-03-20 (Run 23 fusión — Judge + MATPROMT + Parallel/Serial unificados):** Cierre explícito **run 22 (documental)** + **Presupuesto libre V3** bajo un solo **run 23**. **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-20-run23.md](./judge/JUDGE-REPORT-RUN-2026-03-20-run23.md). **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-20-run23.md](./matprompt/MATPROMT-RUN-2026-03-20-run23.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run23.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run23.md). **Guía:** sección «Bundle — RUN 2026-03-20 / run23» en [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md). [PROMPT-FOR-EQUIPO-COMPLETO.md](./PROMPT-FOR-EQUIPO-COMPLETO.md) actualizado con bloque fusión. [JUDGE-REPORT-HISTORICO.md](./judge/JUDGE-REPORT-HISTORICO.md) — línea promedio global run23 ~4.7/5.
 

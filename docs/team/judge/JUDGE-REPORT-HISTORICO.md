@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-20 (run23 fusión)
+**Última actualización:** 2026-03-20 (autopilot runs 24–30 plan)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -42,6 +42,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 19 (2026-03-19):** 4.96/5 (18 agentes; sync updates Calculadora)
 **Promedio global Run 22 (2026-03-20):** ~4.5/5 (18 roles con nota; run documental propagate/sync; Repo Sync sin push verificado)
 **Promedio global Run 23 (2026-03-20):** ~4.7/5 (18 roles con nota; fusión run22 + Presupuesto libre V3; ver `JUDGE-REPORT-RUN-2026-03-20-run23.md`)
+**Autopilot Runs 24–30 (2026-03-20):** ~4.75/5 **orientativo de plan** hasta evidencia real por run; ver [`JUDGE-REPORT-AUTOPILOT-RUN24-30.md`](./JUDGE-REPORT-AUTOPILOT-RUN24-30.md)
 
 ---
 

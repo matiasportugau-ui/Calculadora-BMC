@@ -124,6 +124,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /calc/cotizar/presupuesto-libre:
+    post:
+      operationId: calcular_presupuesto_libre
+      summary: >-
+        Calcula un presupuesto libre con líneas manuales (paneles por m²,
+        perfilería por id de catálogo, tornillería/herrajes, selladores,
+        flete como importe y partida extraordinaria).
+      description: >-
+        No requiere techo/pared dimensionados. Los ids de perfilería son los
+        devueltos por el catálogo interno (p. ej. pt:gotero_frontal:ISODEC:100).
+        Para paneles usá familia (clave de catálogo), espesor numérico y m2.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresupuestoLibreRequest'
+      responses:
+        '200':
+          description: Cotización generada (mismo formato que /calc/cotizar).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotizarResponse'
+        '400':
+          description: Cuerpo inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /calc/catalogo:
     get:
       operationId: obtener_catalogo
@@ -276,6 +307,56 @@ paths:
 components:
   schemas:
     # ── Request schemas ─────────────────────────────────────────────────
+
+    PresupuestoLibreRequest:
+      type: object
+      properties:
+        lista:
+          type: string
+          enum: [venta, web]
+          default: web
+        librePanelLines:
+          type: array
+          items:
+            type: object
+            properties:
+              familia:
+                type: string
+                description: Clave de familia (ej. ISODEC_EPS, ISOPANEL_EPS).
+              espesor:
+                type: number
+              color:
+                type: string
+              m2:
+                type: number
+        librePerfilQty:
+          type: object
+          additionalProperties:
+            type: number
+          description: Mapa id de perfil → cantidad de barras.
+        libreFijQty:
+          type: object
+          additionalProperties:
+            type: number
+        libreSellQty:
+          type: object
+          additionalProperties:
+            type: number
+        flete:
+          type: number
+          minimum: 0
+          default: 0
+        libreExtra:
+          type: object
+          properties:
+            texto:
+              type: string
+            precio:
+              type: string
+            unidades:
+              type: string
+            cantidad:
+              type: string
 
     CotizarRequest:
       type: object

@@ -201,10 +201,22 @@
 
 ---
 
+## Bundle — AUTOPILOT Runs 24–30 (2026-03-20)
+
+- **Resumen:** Secuencia **documental** que amarra runs **24→30** al plan [SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md): Git/push → smoke prod → Sheets → calc backup/libre → audit `--force` → SKUs/billing → síntesis.
+- **MATPROMT (prompts por run):** [`matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md)
+- **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md`](./parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md)
+- **Reporter / índice:** [`reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md`](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md)
+- **Judge (agregado):** [`judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md`](./judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md)
+- **Nota:** Marcar ⬜/✓ en la tabla del REPORT cuando cada run se ejecute de verdad; el autopilot no sustituye evidencia.
+
+---
+
 ## Histórico
 
 | Fecha | Run | Ubicación del bundle |
 |-------|-----|----------------------|
+| 2026-03-20 | autopilot 24–30 | Sección arriba + [`matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md) |
 | 2026-03-20 | run23 (fusión) | Sección arriba + [`matprompt/MATPROMT-RUN-2026-03-20-run23.md`](./matprompt/MATPROMT-RUN-2026-03-20-run23.md) |
 | 2026-03-19 | run21 | Sección «Bundle — RUN 2026-03-19 / run21» en este archivo |
 | 2026-03-19 | Sync review | `docs/team/matprompt/MATPROMT-RUN-SYNC-REVIEW-2026-03-19.md` + `IMPLEMENTATION-PLAN-SYSTEM-SYNC-100-2026-03-19.md` |

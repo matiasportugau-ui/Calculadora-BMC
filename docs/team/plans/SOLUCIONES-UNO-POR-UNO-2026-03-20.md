@@ -20,7 +20,7 @@
 
 **Riesgos:** Commits gigantes difíciles de revertir → preferir 2–3 commits temáticos si el diff es grande.
 
-**Estado:** ⬜ Pendiente · **← empezar aquí**
+**Estado:** ✅ **Hecho** (2026-03-20) — `npm run lint` (0 errores), `npm test` 115 passed; commits `e44e2bd` fix projectFile, `20e61d0` feat+docs, `fc5eba6` calc presupuesto libre; push `sheets-verify-config-b29b9` → origin.
 
 ---
 
@@ -144,4 +144,5 @@
 
 | Pista | Nombre | Estado |
 |-------|--------|--------|
-| **1** | Línea base Git | **← comenzar aquí** |
+| **1** | Línea base Git | ✅ Hecho |
+| **2** | Smoke producción | **← siguiente** |
