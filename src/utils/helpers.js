@@ -21,6 +21,10 @@ export function applyOverrides(groups, overrides) {
 export function bomToGroups(result) {
   if (!result || result.error) return [];
 
+  if (result.presupuestoLibre === true && Array.isArray(result.allItems) && result.allItems.length > 0) {
+    return [{ title: "PRESUPUESTO LIBRE", items: result.allItems.map((i) => ({ ...i })) }];
+  }
+
   const panelItems = [];
   const perfilItems = [];
   const fijacionItems = [];
@@ -43,6 +47,7 @@ export function bomToGroups(result) {
             if (match) {
               match.cant += item.cant;
               match.total = +(match.total + item.total).toFixed(2);
+              if (match.costo == null && item.costo != null) match.costo = item.costo;
             } else {
               targetArr.push({ ...item });
             }

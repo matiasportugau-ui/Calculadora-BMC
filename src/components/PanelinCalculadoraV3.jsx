@@ -11,6 +11,8 @@ import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
 } from "lucide-react";
+import { FIJACIONES, HERRAMIENTAS } from "../data/constants.js";
+import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // §1 DESIGN TOKENS + CSS
@@ -161,26 +163,12 @@ const PANELS_PARED = {
   },
 };
 
-const FIJACIONES = {
-  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.69, unidad: "unid" },
-  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12, web: 0.07, costo: 0.05, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.64, costo: 0.48, unidad: "unid" },
-  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',    venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
-  arandela_pp_gris:   { label: 'Tortuga PVC gris',          venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
-  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.83, unidad: "unid" },
-  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
-  anclaje_h:          { label: 'Kit anclaje H° (torn.N°10+arand+taco)', venta: 0.09, web: 0.03, costo: 0.07, unidad: "unid" },
-  tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
-  tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
-  tornillo_aguja:     { label: 'Tornillo aguja 5"',         venta: 17.00, web: 17.00, costo: 12.00, unidad: "x100" },
-  remache_pop:        { label: 'Remache POP blanco',        venta: 0.98, web: 0.98, costo: 0.70, unidad: "x1000" },
-};
-
 const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.49, web: 11.07, costo: 8.17, unidad: "unid", ml_por_unid: 10.27 },
+  silicona_300_neutra: { label: "Silicona Neutra Premium Silva Selantes", venta: 4.00, web: 4.88, costo: 2.57, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 14.89, web: 18.13, costo: 13.38, unidad: "unid" },
-  membrana:       { label: "Membrana autoadhesiva 30cm×10m", venta: 16.62, web: 20.28, costo: 14.00, unidad: "rollo" },
-  espuma_pu:      { label: "Espuma poliuretano 750cm³",      venta: 25.46, web: 31.06, costo: 25.88, unidad: "unid" },
+  membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
+  espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
 };
 
 const PERFIL_TECHO = {
@@ -405,9 +393,8 @@ function calcFijacionesCaballete(cantP, largo) {
   const items = [];
   const puCab = p(FIJACIONES.caballete);
   items.push({ label: FIJACIONES.caballete.label, sku: "caballete", cant: caballetes, unidad: "unid", pu: puCab, total: +(caballetes * puCab).toFixed(2) });
-  const paquetesAguja = Math.ceil(tornillosAguja / 100);
   const puAguja = p(FIJACIONES.tornillo_aguja);
-  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: paquetesAguja, unidad: "x100", pu: puAguja, total: +(paquetesAguja * puAguja).toFixed(2) });
+  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: tornillosAguja, unidad: "unid", pu: puAguja, total: +(tornillosAguja * puAguja).toFixed(2) });
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2), puntosFijacion: caballetes };
 }
@@ -458,9 +445,8 @@ function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espeso
   }
   if (totalML > 0) {
     const fijPerf = Math.ceil(totalML / 0.30);
-    const paquetesT1 = Math.ceil(fijPerf / 100);
     const puT1 = p(FIJACIONES.tornillo_t1);
-    items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: paquetesT1, unidad: "x100", pu: puT1, total: +(paquetesT1 * puT1).toFixed(2) });
+    items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: fijPerf, unidad: "unid", pu: puT1, total: +(fijPerf * puT1).toFixed(2) });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2), totalML: +totalML.toFixed(2) };
@@ -592,19 +578,17 @@ function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipoEst) {
   const puAnc = p(FIJACIONES.anclaje_h);
   items.push({ label: FIJACIONES.anclaje_h.label, sku: "anclaje_h", cant: anclajes, unidad: "unid", pu: puAnc, total: +(anclajes * puAnc).toFixed(2) });
   // 2. TORNILLOS T2 para fijar paneles a estructura (~5.5/m² para metal)
-  if (tipoEst === "metal" || tipoEst === "mixto") {
+  if (tipoEst === "metal" || tipoEst === "mixto" || tipoEst === "combinada" || tipoEst === "madera") {
     const areaNeta = cantP * alto * panel.au;
     const tornillosT2 = Math.ceil(areaNeta * 5.5);
-    const paquetes = Math.ceil(tornillosT2 / 100);
     const puT2 = p(FIJACIONES.tornillo_t2);
-    items.push({ label: FIJACIONES.tornillo_t2.label, sku: "tornillo_t2", cant: paquetes, unidad: "x100", pu: puT2, total: +(paquetes * puT2).toFixed(2) });
+    items.push({ label: FIJACIONES.tornillo_t2.label, sku: "tornillo_t2", cant: tornillosT2, unidad: "unid", pu: puT2, total: +(tornillosT2 * puT2).toFixed(2) });
   }
   // 3. REMACHES POP para uniones entre perfiles — ~2 por panel
   const remaches = Math.ceil(cantP * 2);
-  const paquetesRem = Math.ceil(remaches / 1000);
-  if (paquetesRem > 0) {
+  if (remaches > 0) {
     const puRem = p(FIJACIONES.remache_pop);
-    items.push({ label: FIJACIONES.remache_pop.label, sku: "remache_pop", cant: paquetesRem, unidad: "x1000", pu: puRem, total: +(paquetesRem * puRem).toFixed(2) });
+    items.push({ label: FIJACIONES.remache_pop.label, sku: "remache_pop", cant: remaches, unidad: "unid", pu: puRem, total: +(remaches * puRem).toFixed(2) });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
@@ -640,17 +624,28 @@ function calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) {
   return { items, total: +total.toFixed(2) };
 }
 
-// §D SELLADORES PARED: silicona + cinta butilo + membrana + espuma PU
-function calcSelladorPared(perimetro, cantPaneles, alto) {
+// §D SELLADORES PARED: silicona + (opc.) cinta butilo + membrana + espuma PU + (opc.) silicona 300 ml
+function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
   const items = [];
+  const inclCintaButilo = opts.inclCintaButilo === true;
+  const inclSil300 = opts.inclSilicona300Neutra === true;
   const juntasV = cantPaneles - 1;
   const mlJuntas = +(juntasV * alto + perimetro * 2).toFixed(2);
   const siliconas = Math.ceil(mlJuntas / 8);
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, total: +(siliconas * puSil).toFixed(2) });
-  const cintas = Math.ceil(mlJuntas / 22.5);
-  const puCinta = p(SELLADORES.cinta_butilo);
-  items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, total: +(cintas * puCinta).toFixed(2) });
+  if (inclSil300 && SELLADORES.silicona_300_neutra) {
+    const sil3 = SELLADORES.silicona_300_neutra;
+    const mPorUnid = Number(sil3.metros_cobertura_por_unid) > 0 ? Number(sil3.metros_cobertura_por_unid) : 8;
+    const cant3 = Math.ceil(mlJuntas / mPorUnid);
+    const pu3 = p(sil3);
+    items.push({ label: sil3.label, sku: "silicona_300_neutra", cant: cant3, unidad: "unid", pu: pu3, total: +(cant3 * pu3).toFixed(2) });
+  }
+  if (inclCintaButilo) {
+    const cintas = Math.ceil(mlJuntas / 22.5);
+    const puCinta = p(SELLADORES.cinta_butilo);
+    items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, total: +(cintas * puCinta).toFixed(2) });
+  }
   // Membrana autoadhesiva
   const mlMembrana = perimetro; // encuentros con muro
   const rollosMembrana = Math.ceil(mlMembrana / 10);
@@ -665,7 +660,7 @@ function calcSelladorPared(perimetro, cantPaneles, alto) {
 }
 
 function calcParedCompleto(inputs) {
-  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color } = inputs;
+  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false, inclSilicona300Neutra = false } = inputs;
   const panel = PANELS_PARED[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -683,7 +678,7 @@ function calcParedCompleto(inputs) {
   const fijaciones = calcFijacionesPared(panel, espesor, paneles.cantPaneles, alto, perimetro, tipoEst || "metal");
   const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, perimetro, { incl5852 });
   let sellador = { items: [], total: 0 };
-  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto);
+  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto, { inclCintaButilo, inclSilicona300Neutra });
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
   const allItems = [panelItem, ...perfilesU.items, ...esquineros.items, ...perfilesExtra.items, ...fijaciones.items, ...sellador.items];
   const totales = calcTotalesSinIVA(allItems);
@@ -699,6 +694,7 @@ const SCENARIOS_DEF = [
   { id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true },
   { id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: true, hasPared: true },
   { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOFRIG_PIR","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
+  { id: "presupuesto_libre", label: "Presupuesto libre", icon: "📋", description: "Líneas manuales por categoría (catálogo + extraordinarios)", familias: [], hasTecho: false, hasPared: false, isLibre: true },
 ];
 
 const VIS = {
@@ -706,6 +702,7 @@ const VIS = {
   solo_fachada:  { borders: false, largoAncho: false, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: false, canalGot: false, p5852: true },
   techo_fachada: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
   camara_frig:   { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
+  presupuesto_libre: { borders: false, largoAncho: false, altoPerim: false, esquineros: false, aberturas: false, camara: false, autoportancia: false, canalGot: false, p5852: false, libre: true },
 };
 
 const OBRA_PRESETS = ["Vivienda","Barbacoa","Depósito comercial","Galpón industrial","Local comercial","Oficinas","Ampliación / Reforma","Nave logística","Taller","Cerramiento / Anexo","Tinglado / Cobertizo","Cámara frigorífica"];
@@ -757,6 +754,38 @@ function bomToGroups(result) {
 // ═══════════════════════════════════════════════════════════════════════════
 // §6 UI COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════
+
+function LibreAccordionBar({ title, open, onToggle, children }) {
+  return (
+    <div style={{ marginBottom: 12, borderRadius: 16, border: `1.5px solid ${C.border}`, overflow: "hidden", background: C.surface, boxShadow: SHC }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          padding: "14px 18px",
+          border: "none",
+          background: C.surfaceAlt,
+          cursor: "pointer",
+          fontFamily: FONT,
+          transition: TR,
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.ts, letterSpacing: "0.1em", textTransform: "uppercase" }}>{title}</span>
+        {open ? <ChevronUp size={18} color={C.ts} strokeWidth={2.2} /> : <ChevronDown size={18} color={C.ts} strokeWidth={2.2} />}
+      </button>
+      {open && (
+        <div style={{ padding: 18, borderTop: `1px solid ${C.border}`, background: C.surface }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SearchOverlay({ panelsTecho, panelsPared, onSelect }) {
   const [hovered, setHovered] = useState(false);
@@ -1040,7 +1069,7 @@ const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits:
 function generatePrintHTML(data) {
   const { client, project, scenario, panel, autoportancia, groups, totals, warnings } = data;
   const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const scenarioLabel = { solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
+  const scenarioLabel = { solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica", presupuesto_libre: "Presupuesto libre" }[scenario] || scenario;
   const autoportStr = autoportancia?.ok === true ? `Autoportante ✓ · Apoyos: ${autoportancia.apoyos}` : autoportancia?.ok === false ? "⚠ Requiere estructura adicional" : "";
   let tableBody = "";
   groups.forEach(g => {
@@ -1061,7 +1090,7 @@ function generatePrintHTML(data) {
 <div><b>Obra:</b> ${esc(project.descripcion)}</div><div><b>Validez:</b> 10 días</div>
 <div><b>Tel:</b> ${esc(client.telefono)}</div><div><b>Dir:</b> ${esc(client.direccion)}</div>
 </div>
-<div style="background:#F0F4F8;padding:6px 10px;border-radius:4px;margin-bottom:6px"><b style="color:#003366">PRODUCTO:</b> ${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} <span style="background:#003366;color:#fff;font-size:7.5pt;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:8px">${esc(scenarioLabel)}</span>${autoportStr ? `<div style="font-size:8.5pt;color:#444;margin-top:2px">${autoportStr}</div>` : ""}</div>
+<div style="background:#F0F4F8;padding:6px 10px;border-radius:4px;margin-bottom:6px"><b style="color:#003366">PRODUCTO:</b> ${scenario === "presupuesto_libre" ? `Líneas manuales · ${esc(scenarioLabel)}` : `${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} <span style="background:#003366;color:#fff;font-size:7.5pt;font-weight:700;padding:1px 6px;border-radius:3px;margin-left:8px">${esc(scenarioLabel)}</span>${autoportStr ? `<div style="font-size:8.5pt;color:#444;margin-top:2px">${autoportStr}</div>` : ""}`}</div>
 <table style="font-size:9pt;margin-bottom:6px"><thead><tr style="background:#EDEDED;font-weight:700"><th style="text-align:left;width:38%;padding:3px 6px">Descripción</th><th style="text-align:center;width:10%;padding:3px 6px">SKU</th><th style="text-align:right;width:8%;padding:3px 6px">Cant.</th><th style="text-align:center;width:7%;padding:3px 6px">Unid.</th><th style="text-align:right;width:13%;padding:3px 6px">P.U. USD</th><th style="text-align:right;width:14%;padding:3px 6px">Total USD</th></tr></thead><tbody>${tableBody}</tbody></table>
 <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><table style="min-width:260px;font-size:10pt"><tr><td style="padding:2px 8px">Subtotal s/IVA</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.subtotalSinIVA)}</td></tr><tr><td style="padding:2px 8px">IVA 22%</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.iva)}</td></tr><tr style="border-top:1pt solid #000;font-size:14pt;font-weight:800"><td style="padding:2px 8px">TOTAL USD</td><td style="text-align:right;color:#003366;padding:2px 8px">$${fmtPrice(totals.totalFinal)}</td></tr></table></div>
 <div style="font-size:8pt;line-height:1.4;margin-bottom:6px"><b>COMENTARIOS:</b><ul style="margin:0;padding-left:14px"><li style="font-weight:700">Entrega 10 a 15 días.</li><li style="color:#FF3B30;font-weight:600">Oferta válida 10 días.</li><li style="font-weight:700;color:#FF3B30">Seña 60%, saldo contra entrega.</li><li>Precios en USD, IVA incluido en total.</li>${warnHTML}</ul></div>
@@ -1079,8 +1108,11 @@ function openPrintWindow(html) {
 
 function buildWhatsAppText(data) {
   const { client, project, scenario, panel, totals, listaLabel } = data;
-  const scenarioLabel = { solo_techo: "Solo techo", solo_fachada: "Solo fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
-  let txt = `*Cotización BMC Uruguay*\n📅 ${project.fecha} · Ref: ${project.refInterna || "—"}\n🏗 Cliente: ${client.nombre}${client.rut ? " · " + client.rut : ""}\n📐 Obra: ${project.descripcion || "—"} · ${client.direccion || "—"}\n💲 Lista: ${listaLabel}\n\n*Escenario:* ${scenarioLabel}\n*Panel:* ${panel.label} ${panel.espesor}mm · Color: ${panel.color}\n`;
+  const scenarioLabel = { solo_techo: "Solo techo", solo_fachada: "Solo fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica", presupuesto_libre: "Presupuesto libre" }[scenario] || scenario;
+  let txt = `*Cotización BMC Uruguay*\n📅 ${project.fecha} · Ref: ${project.refInterna || "—"}\n🏗 Cliente: ${client.nombre}${client.rut ? " · " + client.rut : ""}\n📐 Obra: ${project.descripcion || "—"} · ${client.direccion || "—"}\n💲 Lista: ${listaLabel}\n\n*Escenario:* ${scenarioLabel}\n`;
+  txt += scenario === "presupuesto_libre"
+    ? `*Cotización:* líneas manuales (catálogo)\n`
+    : `*Panel:* ${panel.label} ${panel.espesor}mm · Color: ${panel.color}\n`;
   txt += `\n💰 *Subtotal s/IVA:* USD ${fmtPrice(totals.subtotalSinIVA)}\n💰 *IVA 22%:* USD ${fmtPrice(totals.iva)}\n✅ *TOTAL USD: ${fmtPrice(totals.totalFinal)}*\n\n_Entrega 10-15d · Seña 60%_\n_092 663 245 · bmcuruguay.com.uy_`;
   return txt;
 }
@@ -1095,7 +1127,7 @@ export default function PanelinCalculadoraV3() {
   const [scenario, setScenario] = useState("solo_techo");
   const [proyecto, setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, setTecho] = useState({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
-  const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
+  const [pared, setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false, inclCintaButilo: false, inclSilicona300Neutra: false });
   const [camara, setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, setFlete] = useState(280);
   const [overrides, setOverrides] = useState({});
@@ -1104,6 +1136,15 @@ export default function PanelinCalculadoraV3() {
   const [activeStep, setActiveStep] = useState(0);
   const [showTransp, setShowTransp] = useState(false);
   const [mainTab, setMainTab] = useState("invocar"); // "invocar" | "finanzas"
+  const [libreAcc, setLibreAcc] = useState({
+    paneles: true, perfileria: false, tornilleria: false, selladores: false, servicios: false, extraordinarios: false,
+  });
+  const [librePanelLines, setLibrePanelLines] = useState([{ familia: "", espesor: "", color: "Blanco", m2: 0 }]);
+  const [librePerfilQty, setLibrePerfilQty] = useState({});
+  const [libreFijQty, setLibreFijQty] = useState({});
+  const [libreSellQty, setLibreSellQty] = useState({});
+  const [libreExtra, setLibreExtra] = useState({ texto: "", precio: "", unidades: "", cantidad: "" });
+  const [librePerfilFilter, setLibrePerfilFilter] = useState("");
 
   // Sync LISTA_ACTIVA
   useEffect(() => { setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -1136,11 +1177,47 @@ export default function PanelinCalculadoraV3() {
   const currentEspesor = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.espesor : pared.espesor;
   const currentColor = scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.color : pared.color;
 
+  const libreFamiliaOpts = useMemo(() => {
+    const all = { ...PANELS_TECHO, ...PANELS_PARED };
+    return Object.keys(all).map((k) => ({ value: k, label: all[k].label, sublabel: all[k].sub }));
+  }, []);
+
+  const librePerfilList = useMemo(() => flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED), []);
+  const librePerfilById = useMemo(() => new Map(librePerfilList.map((r) => [r.id, r])), [librePerfilList]);
+  const librePerfilFiltered = useMemo(() => {
+    const q = (librePerfilFilter || "").trim().toLowerCase();
+    if (!q) return librePerfilList;
+    return librePerfilList.filter((r) => r.label.toLowerCase().includes(q) || (r.sku && r.sku.toLowerCase().includes(q)));
+  }, [librePerfilList, librePerfilFilter]);
+
+  const libreTornilleriaKeys = useMemo(() => [...Object.keys(FIJACIONES), ...Object.keys(HERRAMIENTAS || {})].sort(), []);
+  const libreSelladorKeys = useMemo(() => Object.keys(SELLADORES), []);
+
   // ── Calculate results ──
   const results = useMemo(() => {
     setListaPrecios(listaPrecios);
     const sc = scenario;
     try {
+      if (sc === "presupuesto_libre") {
+        return computePresupuestoLibreCatalogo({
+          listaPrecios,
+          librePanelLines,
+          librePerfilQty,
+          perfilCatalogById: librePerfilById,
+          libreFijQty,
+          libreSellQty,
+          flete,
+          libreExtra,
+          catalog: {
+            PANELS_TECHO,
+            PANELS_PARED,
+            FIJACIONES,
+            HERRAMIENTAS,
+            SELLADORES,
+            SERVICIOS,
+          },
+        });
+      }
       if (sc === "solo_techo") {
         if (!techo.familia || !techo.espesor) return null;
         return calcTechoCompleto(techo);
@@ -1171,16 +1248,22 @@ export default function PanelinCalculadoraV3() {
       }
     } catch (e) { return { error: e.message }; }
     return null;
-  }, [listaPrecios, scenario, techo, pared, camara]);
+  }, [listaPrecios, scenario, techo, pared, camara, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
     if (!results || results.error) return [];
+    if (results.presupuestoLibre) {
+      const raw = results.libreGroups?.length ? results.libreGroups : bomToGroups(results);
+      return applyOverrides(raw || [], overrides);
+    }
     let g = bomToGroups(results);
-    // Add flete
     if (flete > 0) {
-      const puFlete = p(SERVICIOS.flete);
-      g.push({ title: "SERVICIOS", items: [{ label: SERVICIOS.flete.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: puFlete, total: puFlete }] });
+      const fl = SERVICIOS.flete;
+      g.push({
+        title: "SERVICIOS",
+        items: [{ label: fl.label, sku: "FLETE", cant: 1, unidad: "servicio", pu: flete, total: flete }],
+      });
     }
     return applyOverrides(g, overrides);
   }, [results, overrides, flete]);
@@ -1192,8 +1275,19 @@ export default function PanelinCalculadoraV3() {
     return calcTotalesSinIVA(allItems);
   }, [groups]);
 
+  const showTotals = results && !results.error && (groups.length > 0 || !!results.presupuestoLibre);
+
   // ── Helpers ──
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); };
+  const toggleLibreAcc = (k) => setLibreAcc((a) => ({ ...a, [k]: !a[k] }));
+  const updateLibrePanelLine = (idx, patch) => {
+    setLibrePanelLines((lines) => {
+      const next = lines.map((row, i) => (i === idx ? { ...row, ...patch } : row));
+      return next;
+    });
+  };
+  const addLibrePanelLine = () => setLibrePanelLines((l) => [...l, { familia: "", espesor: "", color: "Blanco", m2: 0 }]);
+  const removeLibrePanelLine = (idx) => setLibrePanelLines((l) => (l.length <= 1 ? l : l.filter((_, i) => i !== idx)));
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -1219,10 +1313,17 @@ export default function PanelinCalculadoraV3() {
 
   const handleReset = () => {
     setTecho({ familia: "", espesor: "", color: "Blanco", largo: 6.0, ancho: 5.0, tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
-    setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
+    setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false, inclCintaButilo: false, inclSilicona300Neutra: false });
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
     setOverrides({});
     setActiveStep(0);
+    setLibreAcc({ paneles: true, perfileria: false, tornilleria: false, selladores: false, servicios: false, extraordinarios: false });
+    setLibrePanelLines([{ familia: "", espesor: "", color: "Blanco", m2: 0 }]);
+    setLibrePerfilQty({});
+    setLibreFijQty({});
+    setLibreSellQty({});
+    setLibreExtra({ texto: "", precio: "", unidades: "", cantidad: "" });
+    setLibrePerfilFilter("");
   };
 
   // ── Input updaters ──
@@ -1339,6 +1440,8 @@ export default function PanelinCalculadoraV3() {
             </div>
           </div>
 
+          {!scenarioDef?.isLibre && (
+          <>
           {/* Panel selector */}
           <div style={sectionS}>
             <div style={labelS}>PANEL</div>
@@ -1389,7 +1492,112 @@ export default function PanelinCalculadoraV3() {
             <div style={labelS}>BORDES Y PERFILERÍA</div>
             <BorderConfigurator borders={techo.borders} onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))} />
           </div>}
+          </>
+          )}
 
+          {scenarioDef?.isLibre && (
+          <div style={sectionS}>
+            <div style={labelS}>PRESUPUESTO LIBRE — CATÁLOGO POR CATEGORÍA</div>
+            <div style={{ fontSize: 12, color: C.ts, marginBottom: 14, lineHeight: 1.5 }}>Desplegá cada categoría y cargá cantidades. Precio, unidades y cantidad en <b>Extraordinarios</b> son opcionales.</div>
+
+            <LibreAccordionBar title="Paneles" open={libreAcc.paneles} onToggle={() => toggleLibreAcc("paneles")}>
+              {librePanelLines.map((line, idx) => {
+                const all = { ...PANELS_TECHO, ...PANELS_PARED };
+                const pd = line.familia ? all[line.familia] : null;
+                const espOpts = pd ? Object.keys(pd.esp).map((e) => ({ value: Number(e), label: `${e} mm`, badge: pd.esp[e].ap ? `AP ${pd.esp[e].ap}m` : undefined })) : [];
+                return (
+                  <div key={idx} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: idx < librePanelLines.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                    <CustomSelect label="Familia" value={line.familia} options={libreFamiliaOpts} onChange={(v) => {
+                      const pan = all[v];
+                      const fe = pan ? Number(Object.keys(pan.esp)[0]) : "";
+                      const col0 = pan?.col?.[0] || "Blanco";
+                      updateLibrePanelLine(idx, { familia: v, espesor: fe, color: col0 });
+                    }} />
+                    {pd && <>
+                      <div style={{ marginTop: 12 }}>
+                        <CustomSelect label="Espesor" value={line.espesor} options={espOpts} onChange={(ev) => updateLibrePanelLine(idx, { espesor: ev })} showBadge />
+                      </div>
+                      <div style={{ marginTop: 12 }}>
+                        <div style={labelS}>Color</div>
+                        <ColorChips colors={pd.col} value={line.color} onChange={(c) => updateLibrePanelLine(idx, { color: c })} notes={pd.colNotes || {}} />
+                      </div>
+                    </>}
+                    <div style={{ marginTop: 12 }}>
+                      <StepperInput label="M² a cotizar" value={line.m2} onChange={(v) => updateLibrePanelLine(idx, { m2: v })} min={0} max={999999} step={1} unit="m²" />
+                    </div>
+                    {librePanelLines.length > 1 && (
+                      <button type="button" onClick={() => removeLibrePanelLine(idx)} style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 12, cursor: "pointer", color: C.danger }}>Quitar línea</button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={addLibrePanelLine} style={{ marginTop: 4, padding: "8px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500 }}>+ Agregar panel</button>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Perfilería" open={libreAcc.perfileria} onToggle={() => toggleLibreAcc("perfileria")}>
+              <input style={{ ...inputS, marginBottom: 12 }} value={librePerfilFilter} onChange={(e) => setLibrePerfilFilter(e.target.value)} placeholder="Filtrar por nombre o SKU…" />
+              <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {librePerfilFiltered.map((row) => (
+                  <div key={row.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                    <span style={{ flex: "1 1 200px", fontSize: 12, color: C.tp }}>{row.label}</span>
+                    <StepperInput label="Cant. barras" value={librePerfilQty[row.id] || 0} onChange={(v) => setLibrePerfilQty((q) => ({ ...q, [row.id]: v }))} min={0} max={9999} step={1} decimals={0} />
+                  </div>
+                ))}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Tornillería y herrajes" open={libreAcc.tornilleria} onToggle={() => toggleLibreAcc("tornilleria")}>
+              <div style={{ maxHeight: 280, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {libreTornilleriaKeys.map((key) => {
+                  const row = FIJACIONES[key] || HERRAMIENTAS[key];
+                  if (!row) return null;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{row.label}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{row.unidad || "unid"}</span>
+                      <StepperInput label="Cant." value={libreFijQty[key] || 0} onChange={(v) => setLibreFijQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
+                    </div>
+                  );
+                })}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Selladores" open={libreAcc.selladores} onToggle={() => toggleLibreAcc("selladores")}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {libreSelladorKeys.map((key) => {
+                  const s = SELLADORES[key];
+                  if (!s) return null;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: 8, borderRadius: 10, background: C.surfaceAlt }}>
+                      <span style={{ flex: "1 1 180px", fontSize: 12, color: C.tp }}>{s.label}</span>
+                      <span style={{ fontSize: 11, color: C.tt }}>{s.unidad || "unid"}</span>
+                      <StepperInput label="Cant." value={libreSellQty[key] || 0} onChange={(v) => setLibreSellQty((q) => ({ ...q, [key]: v }))} min={0} max={999999} step={1} decimals={0} />
+                    </div>
+                  );
+                })}
+              </div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
+              <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
+              <div style={{ fontSize: 12, color: C.ts, marginTop: 8 }}>Se suma al presupuesto como servicio con el importe indicado.</div>
+            </LibreAccordionBar>
+
+            <LibreAccordionBar title="Extraordinarios" open={libreAcc.extraordinarios} onToggle={() => toggleLibreAcc("extraordinarios")}>
+              <div style={{ marginBottom: 10 }}><div style={labelS}>Descripción / texto libre</div>
+                <textarea value={libreExtra.texto} onChange={(e) => setLibreExtra((x) => ({ ...x, texto: e.target.value }))} rows={4} placeholder="Escribí la partida…" style={{ ...inputS, resize: "vertical", minHeight: 88 }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                <div><div style={labelS}>Precio (USD s/IVA, opcional)</div><input style={inputS} value={libreExtra.precio} onChange={(e) => setLibreExtra((x) => ({ ...x, precio: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
+                <div><div style={labelS}>Unidades (opcional)</div><input style={inputS} value={libreExtra.unidades} onChange={(e) => setLibreExtra((x) => ({ ...x, unidades: e.target.value }))} placeholder="ej. unid, m²" /></div>
+                <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={libreExtra.cantidad} onChange={(e) => setLibreExtra((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
+              </div>
+            </LibreAccordionBar>
+          </div>
+          )}
+
+          {!scenarioDef?.isLibre && (
+          <>
           {/* Estructura */}
           <div style={sectionS}>
             <div style={labelS}>ESTRUCTURA</div>
@@ -1405,12 +1613,18 @@ export default function PanelinCalculadoraV3() {
                 <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />
               </>}
               <Toggle label="Selladores" value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.opciones.inclSell : pared.inclSell} onChange={v => { setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } })); uP("inclSell", v); }} />
+              {scenarioDef?.hasPared && pared.inclSell !== false && <>
+                <Toggle label="Cinta butilo (fachada)" value={!!pared.inclCintaButilo} onChange={v => uP("inclCintaButilo", v)} />
+                <Toggle label="Silicona 300 ml neutra (fachada)" value={!!pared.inclSilicona300Neutra} onChange={v => uP("inclSilicona300Neutra", v)} />
+              </>}
               {vis.p5852 && <Toggle label="Perfil 5852 aluminio" value={pared.incl5852} onChange={v => uP("incl5852", v)} />}
               <div style={{ marginTop: 8 }}>
                 <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               </div>
             </div>
           </div>
+          </>
+          )}
 
           {/* Aberturas */}
           {vis.aberturas && <div style={sectionS}>
@@ -1432,7 +1646,7 @@ export default function PanelinCalculadoraV3() {
         {/* RIGHT PANEL */}
         <div style={{ flex: "1 1 480px", minWidth: 400 }}>
           {/* KPI Row */}
-          {results && !results.error && <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          {results && !results.error && !scenarioDef?.isLibre && <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
             <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
@@ -1450,10 +1664,16 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* No data message */}
-          {!results && <div style={{ ...sectionS, textAlign: "center", padding: 60 }}>
+          {!results && !scenarioDef?.isLibre && <div style={{ ...sectionS, textAlign: "center", padding: 60 }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📐</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: C.tp, marginBottom: 4 }}>Seleccioná un panel y espesor</div>
             <div style={{ fontSize: 13, color: C.ts }}>Los resultados aparecerán aquí</div>
+          </div>}
+
+          {results?.presupuestoLibre && !results.error && groups.length === 0 && <div style={{ ...sectionS, textAlign: "center", padding: 48 }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>📋</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.tp, marginBottom: 6 }}>Presupuesto libre</div>
+            <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5 }}>Desplegá las categorías a la izquierda y cargá cantidades. El detalle y los totales aparecerán aquí.</div>
           </div>}
 
           {results?.error && <AlertBanner type="danger" message={results.error} />}
@@ -1480,7 +1700,7 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Condiciones */}
-          {groups.length > 0 && <div style={{ ...sectionS, fontSize: 12, color: C.ts, lineHeight: 1.6 }}>
+          {showTotals && <div style={{ ...sectionS, fontSize: 12, color: C.ts, lineHeight: 1.6 }}>
             <div style={{ fontWeight: 700, marginBottom: 4, color: C.tp }}>Condiciones comerciales:</div>
             <div>Entrega: 10 a 15 días hábiles. Seña: 60%, saldo contra entrega. Validez: 10 días. Precios en USD.</div>
             <div style={{ marginTop: 12, fontWeight: 700, color: C.tp }}>Datos bancarios:</div>
@@ -1488,13 +1708,13 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Action buttons */}
-          {groups.length > 0 && <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          {showTotals && <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
             <button onClick={handleCopyWA} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
             <button onClick={handlePrint} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
           </div>}
 
           {/* Transparency Panel */}
-          {results && !results.error && <div style={{ ...sectionS, padding: 0, overflow: "hidden" }}>
+          {results && !results.error && !scenarioDef?.isLibre && <div style={{ ...sectionS, padding: 0, overflow: "hidden" }}>
             <div onClick={() => setShowTransp(!showTransp)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", cursor: "pointer", background: C.surfaceAlt }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13, color: C.ts }}><Info size={14} />Transparencia — valores y reglas</div>
               {showTransp ? <ChevronUp size={16} color={C.ts} /> : <ChevronDown size={16} color={C.ts} />}

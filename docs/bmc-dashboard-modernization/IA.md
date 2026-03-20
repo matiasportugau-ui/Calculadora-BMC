@@ -48,8 +48,16 @@ KPI is **under Finanzas** (not a top-level item).
 
 ## Invoque Panelin (hybrid)
 
-- **Standalone:** Top-level nav item “Invoque Panelin” (placeholder until implemented).
+- **Standalone:** Top-level nav item “Invoque Panelin” (Link → Panelin Evolution (3847) con funcionalidad GPT completa).
 - **Transversal:** Future entry points in Cotizaciones, Operaciones, Finanzas (e.g. “Ask Panelin” in header or per section).
+
+---
+
+## Estrategia dual de dashboards
+
+**Mantener ambas opciones:** BMC Dashboard (3001) = vista principal con toda la funcionalidad actual. Panelin Evolution (3847) = Invoque Panelin funcional. Standalone (3849) = alternativa.
+
+**Visión a futuro:** El nuevo dashboard debería replicar **completamente** la funcionalidad de las planillas de Google Sheets a través de la interfaz. Mientras tanto, la versión actual es suficiente.
 
 ---
 
@@ -66,3 +74,4 @@ KPI is **under Finanzas** (not a top-level item).
 - [FULL-IMPROVEMENT-PLAN.md](./FULL-IMPROVEMENT-PLAN.md) — step-by-step improvement plan.
 - [02-investigation-and-discussion.md](./02-investigation-and-discussion.md) — gaps, dependencies, resolutions.
 - [context-briefs/](./context-briefs/) — per-module universe briefs; [05-universe-invoque-panelin.md](./context-briefs/05-universe-invoque-panelin.md) has transversal entry points spec.
+- [PANELIN-EVOLUTION-FLOW.md](../team/PANELIN-EVOLUTION-FLOW.md) — flujo completo (proxy 3848, viewer 3847, collector), fallback respuesta rápida, troubleshooting.

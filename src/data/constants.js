@@ -127,151 +127,202 @@ export const PANELS_PARED = {
   },
 };
 
+/**
+ * Fijaciones y herrajes — **todos los precios USD sin IVA**, **unidad = costeo por pieza** (sin paquetes ×100/×1000).
+ * Pack/promo web = otra capa. Valores anclajes/remaches/tornillos exagonales: planillas usuario c/IVA ÷ 1,22.
+ */
 export const FIJACIONES = {
   varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.69, unidad: "unid" },
-  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12, web: 0.07, costo: 0.05, unidad: "unid" },
+  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12,web: 0.07, costo: 0.05, unidad: "unid" },
   arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.64, costo: 0.48, unidad: "unid" },
-  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',    venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
-  arandela_pp_gris:   { label: 'Tortuga PVC gris',          venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
+  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
+  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.83, unidad: "unid" },
   caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
-  anclaje_h:          { label: 'Kit anclaje H° (torn.N°10+arand+taco)', venta: 0.09, web: 0.03, costo: 0.07, unidad: "unid" },
-  tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
-  tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 5.00, web: 5.00, costo: 3.50, unidad: "x100" },
-  tornillo_aguja:     { label: 'Tornillo aguja 5"',         venta: 17.00, web: 17.00, costo: 12.00, unidad: "x100" },
-  remache_pop:        { label: 'Remache POP blanco',        venta: 0.98, web: 0.98, costo: 0.70, unidad: "x1000" },
+  /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
+  anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
+  /** Perfilería techo y fijaciones Metálicas: T1 por tornillo (ex “×100” eliminado). */
+  tornillo_t1:        { label: 'Tornillo T1 (perfilería)',  venta: 0.0492, web: 0.0574, costo: 0.0115, unidad: "unid" },
+  tornillo_t2:        { label: 'Tornillo T2 (fachada)',     venta: 0.05, web: 0.05, costo: 0.035, unidad: "unid" },
+  /** Caballetes ISOROOF: punta aguja por unidad (Type 14×5). */
+  tornillo_aguja:     { label: 'Tornillo punta aguja Type 14×5"', venta: 0.4918, web: 0.5987, costo: 0.1803, unidad: "unid" },
+  /** Pared: remache default 5/32 × 1/2 (unidad). */
+  remache_pop:        { label: 'Remache POP 5/32 × 1/2',    venta: 0.0213, web: 0.0246, costo: 0.0139, unidad: "unid" },
+  remache_pop_316:    { label: 'Remache POP 3/16 × 1/2',    venta: 0.3443, web: 0.4180, costo: 0.2295, unidad: "unid" },
+  // ── Anclajes (catálogo planilla — principalmente Presupuesto libre; anclaje_h arriba para cálculo pared) ──
+  anclaje_isoroof_terracota: { label: 'Anclaje Isoroof TERRACOTAS (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.61, unidad: "unid" },
+  anclaje_isoroof_gris:      { label: 'Anclaje Isoroof GRISES (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.44, unidad: "unid" },
+  anclaje_chapa_bc18:        { label: 'Pac. anclaje chapas BC-18 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.37, unidad: "unid" },
+  anclaje_chapa_bc35:        { label: 'Pac. anclaje chapas BC-35 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.40, unidad: "unid" },
+  anclaje_kit_u_platea:     { label: 'Kin anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 0.89, web: 1.09, costo: 0.25, unidad: "unid" },
+  // ── Tornillos hex./exagonales (presupuesto libre; c/IVA ÷1,22) ──
+  tornillo_exagonal_12_34:     { label: 'Tornillo exagonal 12 × 3/4"', venta: 0.082, web: 0.098, costo: 0.041, unidad: "unid" },
+  tornillo_exagonal_12_1_pm:    { label: 'Tornillo exagonal 12 × 1" punta mecha', venta: 0.207, web: 0.254, costo: 0.052, unidad: "unid" },
+  tornillo_exagonal_12_212_pm: { label: 'Tornillo exagonal 12 × 2 1/2" punta mecha', venta: 0.315, web: 0.385, costo: 0.079, unidad: "unid" },
+  tornillo_punta_aguja_12x2:    { label: 'Tornillo exagonal punta aguja 12 × 2"', venta: 0.229, web: 0.279, costo: 0.076, unidad: "unid" },
+  tornillo_punta_aguja_12x3:    { label: 'Tornillo exagonal punta aguja 12 × 3"', venta: 0.213, web: 0.262, costo: 0.107, unidad: "unid" },
+  tornillo_hex_pu_20mm_4in:    { label: 'Tornillo hexagonal punta aguja PU 20 mm, 4" largo', venta: 0.234, web: 0.287, costo: 0.156, unidad: "unid" },
 };
+
+/** Herramientas y accesorios de aplicación (presupuesto libre). */
+export const HERRAMIENTAS = {
+  pistola_apl_dx03: { label: "APL-DX03 pistola aplicadora (espuma expansiva)", venta: 22.30, web: 27.20, costo: 13.93, unidad: "unid" },
+};
+
+/**
+ * Productos extra de planillas que **no** entran al BOM automático techo/pared;
+ * se listan en el escenario **Presupuesto libre** para líneas manuales.
+ */
+export const PRESUPUESTO_LIBRE_IDS = [
+  "anclaje_isoroof_terracota",
+  "anclaje_isoroof_gris",
+  "anclaje_chapa_bc18",
+  "anclaje_chapa_bc35",
+  "anclaje_kit_u_platea",
+  "remache_pop_316",
+  "tornillo_exagonal_12_34",
+  "tornillo_exagonal_12_1_pm",
+  "tornillo_exagonal_12_212_pm",
+  "tornillo_punta_aguja_12x2",
+  "tornillo_punta_aguja_12x3",
+  "tornillo_hex_pu_20mm_4in",
+  "pistola_apl_dx03",
+];
 
 export const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.49, web: 11.07, costo: 8.17, unidad: "unid", ml_por_unid: 10.27 },
+  /** Silicona Neutra Premium Silva Selantes (planilla c/IVA → sin IVA). */
+  silicona_300_neutra: { label: "Silicona Neutra Premium Silva Selantes", venta: 4.00, web: 4.88, costo: 2.57, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 14.89, web: 18.13, costo: 13.38, unidad: "unid" },
-  membrana:       { label: "Membrana autoadhesiva 30cm×10m", venta: 16.62, web: 20.28, costo: 14.00, unidad: "rollo" },
-  espuma_pu:      { label: "Espuma poliuretano 750cm³",      venta: 25.46, web: 31.06, costo: 25.88, unidad: "unid" },
+  membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
+  espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
 };
 
 export const PERFIL_TECHO = {
   gotero_frontal: {
     ISOROOF: {
-      30: { sku: "GFS30", venta: 15.83, web: 18.47, largo: 3.03 },
-      50: { sku: "GFS50", venta: 16.76, web: 19.56, largo: 3.03 },
-      80: { sku: "GFS80", venta: 17.63, web: 20.57, largo: 3.03 },
+      30: { sku: "GFS30", venta: 15.83, web: 18.47, costo: 14.25, largo: 3.03 },
+      50: { sku: "GFS50", venta: 16.76, web: 19.56, costo: 15.08, largo: 3.03 },
+      80: { sku: "GFS80", venta: 17.63, web: 20.57, costo: 15.87, largo: 3.03 },
     },
     ISODEC: {
-      100: { sku: "6838", venta: 15.67, web: 19.12, largo: 3.03 },
-      150: { sku: "6839", venta: 22.65, web: 27.63, largo: 3.03 },
-      200: { sku: "6840", venta: 23.57, web: 28.75, largo: 3.03 },
-      250: { sku: "6841", venta: 23.80, web: 29.03, largo: 3.03 },
+      100: { sku: "6838", venta: 15.67, web: 19.12, costo: 14.10, largo: 3.03 },
+      150: { sku: "6839", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.03 },
+      200: { sku: "6840", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 },
+      250: { sku: "6841", venta: 23.80, web: 29.03, costo: 21.42, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GF80DC",  venta: 19.97, web: 23.30, largo: 3.03 },
-      80:  { sku: "GF120DC", venta: 20.87, web: 24.34, largo: 3.03 },
-      120: { sku: "GF120DC", venta: 24.69, web: 28.81, largo: 3.03 },
+      50:  { sku: "GF80DC",  venta: 19.97, web: 23.30, costo: 17.97, largo: 3.03 },
+      80:  { sku: "GF120DC", venta: 20.87, web: 24.34, costo: 18.78, largo: 3.03 },
+      120: { sku: "GF120DC", venta: 24.69, web: 28.81, costo: 22.22, largo: 3.03 },
     },
   },
   gotero_frontal_greca: {
     ISOROOF: {
-      30: { sku: "GFCGR30", venta: 17.99, web: 19.38, largo: 3.03 },
-      50: { sku: "GFCGR30", venta: 17.99, web: 19.38, largo: 3.03 },
-      80: { sku: "GFCGR30", venta: 17.99, web: 19.38, largo: 3.03 },
+      30: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
+      50: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
+      80: { sku: "GFCGR30", venta: 17.99, web: 19.38, costo: 16.19, largo: 3.03 },
     },
   },
   gotero_lateral: {
     ISOROOF: {
-      30: { sku: "GL30", venta: 21.83, web: 26.63, largo: 3.0 },
-      50: { sku: "GL50", venta: 23.57, web: 28.75, largo: 3.0 },
-      80: { sku: "GL80", venta: 25.31, web: 30.88, largo: 3.0 },
+      30: { sku: "GL30", venta: 21.83, web: 26.63, costo: 19.65, largo: 3.0 },
+      50: { sku: "GL50", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.0 },
+      80: { sku: "GL80", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
     },
     ISODEC: {
-      100: { sku: "6842", venta: 20.77, web: 25.34, largo: 3.0 },
-      150: { sku: "6843", venta: 29.07, web: 35.46, largo: 3.0 },
-      200: { sku: "6844", venta: 31.75, web: 38.74, largo: 3.0 },
-      250: { sku: "6845", venta: 31.75, web: 38.74, largo: 3.0 },
+      100: { sku: "6842", venta: 20.77, web: 25.34, costo: 18.69, largo: 3.0 },
+      150: { sku: "6843", venta: 29.07, web: 35.46, costo: 26.16, largo: 3.0 },
+      200: { sku: "6844", venta: 31.75, web: 38.74, costo: 28.58, largo: 3.0 },
+      250: { sku: "6845", venta: 31.75, web: 38.74, costo: 28.58, largo: 3.0 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
-      80:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
-      120: { sku: "GL120DC", venta: 31.08, web: 36.26, largo: 3.0 },
+      50:  { sku: "GL80DC",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
+      80:  { sku: "GL80DC",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
+      120: { sku: "GL120DC", venta: 31.08, web: 36.26, costo: 27.97, largo: 3.0 },
     },
   },
   gotero_lateral_camara: {
     ISOROOF: {
-      50: { sku: "GLDCAM50", venta: 22.32, web: 27.23, largo: 3.0 },
-      80: { sku: "GLDCAM80", venta: 25.11, web: 30.63, largo: 3.0 },
+      50: { sku: "GLDCAM50", venta: 22.32, web: 27.23, costo: 20.09, largo: 3.0 },
+      80: { sku: "GLDCAM80", venta: 25.11, web: 30.63, costo: 22.60, largo: 3.0 },
     },
+    ISODEC:     { _all: { sku: "GLDCAM-DC", venta: 22.65, web: 27.63, costo: 20.39, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "GLDCAM-DC", venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 } },
   },
   gotero_superior: {
     ISOROOF: {
-      30: { sku: "GFSUP30", venta: 28.21, web: 32.91, largo: 3.03 },
-      50: { sku: "GFSUP50", venta: 29.08, web: 33.92, largo: 3.03 },
-      80: { sku: "GFSUP80", venta: 30.84, web: 35.98, largo: 3.03 },
+      30: { sku: "GFSUP30", venta: 28.21, web: 32.91, costo: 25.39, largo: 3.03 },
+      50: { sku: "GFSUP50", venta: 29.08, web: 33.92, costo: 26.17, largo: 3.03 },
+      80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50: { sku: "GSDECAM50", venta: 27.32, web: 31.88, largo: 3.03 },
-      80: { sku: "GSDECAM80", venta: 29.94, web: 34.93, largo: 3.03 },
+      50: { sku: "GSDECAM50", venta: 27.32, web: 31.88, costo: 24.59, largo: 3.03 },
+      80: { sku: "GSDECAM80", venta: 29.94, web: 34.93, costo: 26.95, largo: 3.03 },
     },
   },
   babeta_adosar: {
-    ISODEC:     { _all: { sku: "6828", venta: 12.19, web: 14.22, largo: 3.0 } },
-    ISODEC_PIR: { _all: { sku: "6828", venta: 12.19, web: 14.22, largo: 3.0 } },
-    ISOROOF:    { _all: { sku: "BBAS3G", venta: 23.74, web: 28.96, largo: 3.03 } },
+    ISODEC:     { _all: { sku: "6828", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "6828", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
+    ISOROOF:    { _all: { sku: "BBAS3G", venta: 23.74, web: 28.96, costo: 21.37, largo: 3.03 } },
   },
   babeta_empotrar: {
-    ISODEC:     { _all: { sku: "6865", venta: 12.19, web: 14.22, largo: 3.0 } },
-    ISODEC_PIR: { _all: { sku: "6865", venta: 12.19, web: 14.22, largo: 3.0 } },
-    ISOROOF:    { _all: { sku: "BBESUP", venta: 22.87, web: 27.90, largo: 3.03 } },
+    ISODEC:     { _all: { sku: "6865", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "6865", venta: 12.19, web: 14.22, costo: 10.97, largo: 3.0 } },
+    ISOROOF:    { _all: { sku: "BBESUP", venta: 22.87, web: 27.90, costo: 20.58, largo: 3.03 } },
   },
   cumbrera: {
-    ISODEC:     { _all: { sku: "6847", venta: 23.57, web: 28.75, largo: 3.03 } },
-    ISODEC_PIR: { _all: { sku: "6847", venta: 23.57, web: 28.75, largo: 3.03 } },
-    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 97.86, web: 119.39, largo: 2.20 } },
+    ISODEC:     { _all: { sku: "6847", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 } },
+    ISODEC_PIR: { _all: { sku: "6847", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 } },
+    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 97.86, web: 119.39, costo: 88.07, largo: 2.20 } },
   },
   canalon: {
     ISOROOF: {
-      30: { sku: "CD30", venta: 71.83, web: 83.80, largo: 3.03 },
-      50: { sku: "CD50", venta: 73.19, web: 85.39, largo: 3.03 },
-      80: { sku: "CD80", venta: 74.22, web: 86.59, largo: 3.03 },
+      30: { sku: "CD30", venta: 71.83, web: 83.80, costo: 64.65, largo: 3.03 },
+      50: { sku: "CD50", venta: 73.19, web: 85.39, costo: 65.87, largo: 3.03 },
+      80: { sku: "CD80", venta: 74.22, web: 86.59, costo: 66.80, largo: 3.03 },
     },
     ISODEC: {
-      100: { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
-      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, largo: 3.03 },
-      150: { sku: "6802", venta: 80.05, web: 93.39, largo: 3.03 },
-      200: { sku: "6803", venta: 79.73, web: 93.02, largo: 3.03 },
-      250: { sku: "6804", venta: 104.30, web: 121.69, largo: 3.03 },
+      100: { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, costo: 83.93, largo: 3.03 },
+      150: { sku: "6802", venta: 80.05, web: 93.39, costo: 72.05, largo: 3.03 },
+      200: { sku: "6803", venta: 79.73, web: 93.02, costo: 71.76, largo: 3.03 },
+      250: { sku: "6804", venta: 104.30, web: 121.69, costo: 93.87, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
-      80:  { sku: "6801", venta: 69.54, web: 81.13, largo: 3.03 },
-      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, largo: 3.03 },
+      50:  { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
+      80:  { sku: "6801", venta: 69.54, web: 81.13, costo: 62.59, largo: 3.03 },
+      120: { sku: "CAN.ISDC120", venta: 93.26, web: 108.80, costo: 83.93, largo: 3.03 },
     },
   },
   soporte_canalon: {
-    ISOROOF: { _all: { sku: "SOPCAN3M", venta: 13.12, web: 15.30, largo: 3.0 } },
-    ISODEC:  { _all: { sku: "6805",     venta: 15.94, web: 18.59, largo: 3.0 } },
-    ISODEC_PIR: { _all: { sku: "6805",  venta: 15.94, web: 18.59, largo: 3.0 } },
+    ISOROOF: { _all: { sku: "SOPCAN3M", venta: 13.12, web: 15.30, costo: 11.81, largo: 3.0 } },
+    ISODEC:  { _all: { sku: "6805",     venta: 15.94, web: 18.59, costo: 14.35, largo: 3.0 } },
+    ISODEC_PIR: { _all: { sku: "6805",  venta: 15.94, web: 18.59, costo: 14.35, largo: 3.0 } },
   },
 };
 
 export const PERFIL_PARED = {
   perfil_u: {
     ISOPANEL: {
-      50:  { sku: "PU50MM",  venta: 10.00, web: 11.66, largo: 3.0 },
-      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
-      150: { sku: "PU150MM", venta: 13.97, web: 17.04, largo: 3.0 },
-      200: { sku: "PU200MM", venta: 17.43, web: 21.26, largo: 3.0 },
-      250: { sku: "PU200MM", venta: 17.43, web: 21.26, largo: 3.0 },
+      50:  { sku: "PU50MM",  venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
+      150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
+      200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      250: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
     ISOWALL: {
-      50:  { sku: "PU50MM", venta: 10.00, web: 11.66, largo: 3.0 },
-      80:  { sku: "PU50MM", venta: 13.12, web: 16.01, largo: 3.0 },
-      100: { sku: "PU100MM", venta: 12.42, web: 15.15, largo: 3.0 },
+      50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
+      80:  { sku: "PU50MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
   },
   perfil_g2: {
     ISOPANEL: {
-      100: { sku: "G2-100", venta: 15.34, web: 18.72, largo: 3.0 },
-      150: { sku: "G2-150", venta: 17.61, web: 21.49, largo: 3.0 },
-      200: { sku: "G2-200", venta: 21.13, web: 25.78, largo: 3.0 },
-      250: { sku: "G2-250", venta: 21.30, web: 25.99, largo: 3.0 },
+      100: { sku: "G2-100", venta: 15.34, web: 18.72, costo: 13.81, largo: 3.0 },
+      150: { sku: "G2-150", venta: 17.61, web: 21.49, costo: 15.85, largo: 3.0 },
+      200: { sku: "G2-200", venta: 21.13, web: 25.78, costo: 19.02, largo: 3.0 },
+      250: { sku: "G2-250", venta: 21.30, web: 25.99, costo: 19.17, largo: 3.0 },
     },
   },
   perfil_k2: {
@@ -279,10 +330,10 @@ export const PERFIL_PARED = {
             label: "Perfil K2 (junta interior 35×35)" },
   },
   esquinero_ext: {
-    _all: { sku: "ESQ-EXT", venta: 8.59, web: 10.48, largo: 3.0, label: "Esquinero exterior" },
+    _all: { sku: "ESQ-EXT", venta: 8.59, web: 10.48, costo: 7.73, largo: 3.0, label: "Esquinero exterior" },
   },
   esquinero_int: {
-    _all: { sku: "ESQ-INT", venta: 8.59, web: 10.48, largo: 3.0, label: "Esquinero interior" },
+    _all: { sku: "ESQ-INT", venta: 8.59, web: 10.48, costo: 7.73, largo: 3.0, label: "Esquinero interior" },
   },
   perfil_5852: {
     _all: { sku: "PLECHU98", venta: 51.84, web: 63.24, costo: 45.00, largo: 6.8,
@@ -301,6 +352,7 @@ export const SCENARIOS_DEF = [
   { id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true },
   { id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: true, hasPared: true },
   { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
+  { id: "presupuesto_libre", label: "Presupuesto libre", icon: "📋", description: "Líneas manuales desde catálogo herrajes y anclajes", familias: [], hasTecho: false, hasPared: false, isLibre: true },
 ];
 
 export const VIS = {
@@ -308,15 +360,53 @@ export const VIS = {
   solo_fachada:  { borders: false, largoAncho: false, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: false, canalGot: false, p5852: true },
   techo_fachada: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
   camara_frig:   { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
+  presupuesto_libre: { borders: false, largoAncho: false, altoPerim: false, esquineros: false, aberturas: false, camara: false, autoportancia: false, canalGot: false, p5852: false, libre: true },
 };
 
 export const OBRA_PRESETS = ["Vivienda","Barbacoa","Depósito comercial","Galpón industrial","Local comercial","Oficinas","Ampliación / Reforma","Nave logística","Taller","Cerramiento / Anexo","Tinglado / Cobertizo","Cámara frigorífica"];
 
+// BORDER_OPTIONS — Opciones por lado según familia. Fuente: PERFIL_TECHO (matriz costos/ventas).
+// ISOROOF: gotero_frontal(GFS), gotero_frontal_greca(GFCGR), gotero_lateral(GL), gotero_lateral_camara(GLDCAM),
+//          gotero_superior(GFSUP), babeta_adosar(BBAS3G), babeta_empotrar(BBESUP), cumbrera(CUMROOF3M),
+//          canalon(CD), soporte_canalon(SOPCAN3M).
 export const BORDER_OPTIONS = {
-  frente: [{ id: "gotero_frontal", label: "Gotero simple" },{ id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF"] },{ id: "canalon", label: "Canalón" },{ id: "none", label: "Sin perfil" }],
-  fondo: [{ id: "gotero_lateral", label: "Gotero lateral" },{ id: "gotero_frontal", label: "Gotero frontal" },{ id: "babeta_adosar", label: "Muro (adosar)" },{ id: "babeta_empotrar", label: "Muro (empotrar)" },{ id: "cumbrera", label: "Cumbrera" },{ id: "none", label: "Sin perfil" }],
-  latIzq: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
-  latDer: [{ id: "gotero_lateral", label: "Gotero lat." },{ id: "gotero_lateral_camara", label: "Cámara" },{ id: "babeta_adosar", label: "Enc. muro" },{ id: "none", label: "Sin perfil" }],
+  frente: [
+    { id: "gotero_frontal", label: "Gotero simple", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_frontal", label: "Gotero frontal", familias: ["ISOROOF"] },
+    { id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF"] },
+    { id: "canalon", label: "Canalón" },
+    { id: "none", label: "Sin perfil" },
+  ],
+  fondo: [
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"], descripcion: "Cuando techo volado" },
+    { id: "gotero_frontal", label: "Gotero frontal Superior", familias: ["ISOROOF"], descripcion: "Frente superior ISOROOF" },
+    { id: "babeta_adosar", label: "Babeta de adosar Superior", descripcion: "Encuentros con muros. Colocación atornillada" },
+    { id: "babeta_empotrar", label: "Babeta de empotrar Superior", descripcion: "Encuentros con muros. Babeta embutida en muro" },
+    { id: "cumbrera", label: "Cumbrera", descripcion: "2 Aguas — cumbrera central" },
+    { id: "none", label: "Sin perfil" },
+  ],
+  latIzq: [
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF"] },
+    { id: "none", label: "Sin perfil" },
+  ],
+  latDer: [
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISODEC", "ISODEC_PIR"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF"] },
+    { id: "none", label: "Sin perfil" },
+  ],
 };
 
 // STEP_SECTIONS: maps each progress tab index to the section keys visible in the left panel.
@@ -331,18 +421,21 @@ export const STEP_SECTIONS = {
 // ── §5 CATEGORIAS BOM ─────────────────────────────────────────────────────────
 export const CATEGORIAS_BOM = {
   PANELES: { label: "Paneles", default: true },
-  FIJACIONES: { label: "Fijaciones", default: true },
+  FIJACIONES: { label: "Fijaciones / tornillería", default: true },
   PERFILERIA: { label: "Perfilería", default: true },
   SELLADORES: { label: "Selladores", default: true },
   SERVICIOS: { label: "Servicios", default: true },
+  EXTRAORDINARIOS: { label: "Extraordinarios", default: true },
 };
 
 export const CATEGORIA_TO_GROUPS = {
   PANELES: ["PANELES"],
-  FIJACIONES: ["FIJACIONES"],
+  /** Incluye FIJACIONES (BOM estándar) y TORNILLERÍA (presupuesto libre). */
+  FIJACIONES: ["FIJACIONES", "TORNILLERÍA"],
   PERFILERIA: ["PERFILERÍA"],
   SELLADORES: ["SELLADORES"],
   SERVICIOS: ["SERVICIOS"],
+  EXTRAORDINARIOS: ["EXTRAORDINARIOS"],
 };
 
 // ── §6 PENDIENTE DE TECHO ─────────────────────────────────────────────────────
@@ -357,5 +450,5 @@ export const PENDIENTES_PRESET = [
 export const TIPO_AGUAS = [
   { id: "una_agua", label: "1 Agua", description: "Pendiente única", enabled: true },
   { id: "dos_aguas", label: "2 Aguas", description: "Cumbrera central", enabled: true },
-  { id: "cuatro_aguas", label: "4 Aguas", description: "En proceso", enabled: false },
+  { id: "cuatro_aguas", label: "4 Aguas", description: "Próximamente", enabled: false },
 ];

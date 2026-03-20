@@ -1,6 +1,6 @@
 {
   "name": "calculadora-bmc",
-  "version": "3.1.0",
+  "version": "3.1.2",
   "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
   "private": true,
   "type": "module",
@@ -19,7 +19,11 @@
     "preview": "vite preview",
     "test": "node tests/validation.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
+    "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
     "verify-tabs": "node scripts/verify-sheets-tabs.js",
+    "setup-sheets-tabs": "node scripts/setup-sheets-tabs.js",
+    "integrate-admin-cotizaciones": "node scripts/integrate-admin-cotizaciones.js",
+    "watch-full-team": "./scripts/watch-full-team-run.sh",
     "map-all-sheets": "node scripts/map-all-sheets-audit.js",
     "launchpad": "node scripts/launchpad-bmc-dev.js",
     "launchpad:learn": "node scripts/launchpad-bmc-dev.js --learn",
@@ -42,6 +46,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.3",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@vitejs/plugin-react": "^4.0.0",
     "concurrently": "^9.1.0",
     "easymidi": "^2.1.1",

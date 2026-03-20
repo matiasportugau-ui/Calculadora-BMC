@@ -21,6 +21,7 @@ Cada archivo en esta carpeta es la **base de conocimiento** de un rol: entradas/
 - `Security.md` — Seguridad
 - `Judge.md` — Juez
 - `ParallelSerial.md` — Paralelo
+- `MATPROMT.md` — MATPROMT (prompts por full team run, paso 0a)
 - `RepoSync.md` — RepoSync
 
 ## Contenido mínimo por archivo

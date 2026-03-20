@@ -39,6 +39,17 @@ Rol: Calculadora Specialist. Skill: `bmc-calculadora-specialist`.
 
 ---
 
+## Modificaciones en tiempo real
+
+- **Describe** en lenguaje natural: "Cambiar precio ISODEC 100mm web a 48.50" o "Cambiar color primario a #0066CC"
+- **El agente** edita `src/data/constants.js` o `src/utils/calculations.js`
+- **Vite HMR** recarga el navegador en ~1s (si `npm run dev` está corriendo)
+- **Revisar** → commit cuando estés listo
+
+Ver `docs/team/CALCULATOR-REAL-TIME-CONTROL-PLAN.md` para el plan completo.
+
+---
+
 ## Referencias
 
 - Criterios del Juez: `docs/team/judge/JUDGE-CRITERIA-POR-AGENTE.md` (sección Calc)

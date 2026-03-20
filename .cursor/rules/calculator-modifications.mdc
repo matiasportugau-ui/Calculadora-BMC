@@ -1,0 +1,57 @@
+---
+description: "Calculator Modifications — modify variables, logic, prices, design in Calculadora BMC. Apply when user says modify calculator, change price, update calculadora, edit panel pricing, or calculator real-time."
+alwaysApply: false
+---
+
+# Calculator Modifications
+
+When the user wants to **modify the calculator** (variables, logic, prices, design), apply changes directly and ensure real-time feedback.
+
+## Triggers
+
+- modify calculator, change price, update calculadora
+- edit panel pricing, update ISODEC/ISOROOF price
+- calculator variables, calculator logic, calculator design
+- real-time calculator modifications
+
+## Load skill first
+
+Read and follow: `.cursor/skills/bmc-calculadora-specialist/SKILL.md`
+
+## Key files
+
+| File | Role |
+|------|------|
+| `src/data/constants.js` | Prices (PANELS_TECHO, PANELS_PARED, FIJACIONES, SELLADORES, PERFIL_*), design tokens (C, FONT, SHC, IVA) |
+| `src/utils/calculations.js` | calcTechoCompleto, calcParedCompleto, formulas |
+| `src/utils/helpers.js` | bomToGroups, applyOverrides |
+| `src/components/PanelinCalculadoraV3.jsx` | Main UI component |
+
+## Workflow
+
+1. **Read** the target file(s) before editing
+2. **Apply** the user's requested change (price, variable, logic, design)
+3. **Run** `npm run lint` after edits
+4. **Run** `node tests/validation.js` after changes in calculations/helpers
+
+## Real-time
+
+- User runs `npm run dev` → Vite serves at localhost:5173 with HMR
+- Edits to constants.js, calculations.js, or components → browser refreshes automatically
+- User reviews → commits when ready
+
+## Log de interacción (workflow integrado)
+
+When the user pastes an **interaction log** (JSON from "Copiar log" in the calculator):
+
+1. **Parse** the `actions` array — each entry has `type`, `target`, `prev`, `next`
+2. **Understand** the user's flow: which scenario, panel, dimensions, options they selected
+3. **Apply** the requested modification in context of that flow
+4. **Integrate** — ensure the change works with the logged state (e.g. if they selected ISODEC 100mm, the modification should apply to that path)
+
+Example: User says "Cuando selecciono ISOROOF 3G 50mm y área > 80m², mostrar badge Promo" — use the log to see where that selection happens and add the badge in the right component.
+
+## Reference
+
+- `docs/team/CALCULATOR-REAL-TIME-CONTROL-PLAN.md` — full implementation plan
+- `docs/team/knowledge/Calc.md` — Calc knowledge

@@ -3,8 +3,10 @@
 // Format: .bmc.json (Panelin BMC project file)
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { CATEGORIAS_BOM } from "../data/constants.js";
+
 const FILE_FORMAT_VERSION = 1;
-const APP_VERSION = "3.1.0";
+const APP_VERSION = "3.1.2";
 
 /**
  * Serialize the full calculator state into a .bmc.json object.
@@ -23,6 +25,13 @@ export function serializeProject({
   categoriasActivas,
   techoAnchoModo,
   quotationCode,
+  libreAcc,
+  librePanelLines,
+  librePerfilQty,
+  libreFijQty,
+  libreSellQty,
+  libreExtra,
+  librePerfilFilter,
 }) {
   return {
     _meta: {
@@ -42,6 +51,13 @@ export function serializeProject({
     excludedItems: excludedItems || {},
     categoriasActivas: categoriasActivas || {},
     techoAnchoModo: techoAnchoModo || "metros",
+    libreAcc: libreAcc || undefined,
+    librePanelLines: librePanelLines || undefined,
+    librePerfilQty: librePerfilQty || undefined,
+    libreFijQty: libreFijQty || undefined,
+    libreSellQty: libreSellQty || undefined,
+    libreExtra: libreExtra || undefined,
+    librePerfilFilter: librePerfilFilter || undefined,
   };
 }
 
@@ -73,6 +89,7 @@ export function deserializeProject(data) {
       familia: "", espesor: "", color: "Blanco",
       alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0,
       aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false,
+      inclCintaButilo: false, inclSilicona300Neutra: false,
     },
     camara: { largo_int: 6, ancho_int: 4, alto_int: 3 },
     flete: 280,
@@ -80,7 +97,23 @@ export function deserializeProject(data) {
     excludedItems: {},
     categoriasActivas: {},
     techoAnchoModo: "metros",
+    libreAcc: null,
+    librePanelLines: null,
+    librePerfilQty: null,
+    libreFijQty: null,
+    libreSellQty: null,
+    libreExtra: null,
+    librePerfilFilter: null,
   };
+
+  const categoriasBase = {};
+  try {
+    Object.keys(CATEGORIAS_BOM).forEach((k) => {
+      categoriasBase[k] = CATEGORIAS_BOM[k].default;
+    });
+  } catch {
+    /* sin constants en entorno de test */
+  }
 
   return {
     _meta: data._meta || {},
@@ -93,8 +126,17 @@ export function deserializeProject(data) {
     flete: data.flete ?? defaults.flete,
     overrides: data.overrides || defaults.overrides,
     excludedItems: data.excludedItems || defaults.excludedItems,
-    categoriasActivas: data.categoriasActivas || defaults.categoriasActivas,
+    categoriasActivas: { ...categoriasBase, ...(data.categoriasActivas || {}) },
     techoAnchoModo: data.techoAnchoModo || defaults.techoAnchoModo,
+    libreAcc: { ...defaults.libreAcc, ...(data.libreAcc && typeof data.libreAcc === "object" ? data.libreAcc : {}) },
+    librePanelLines: Array.isArray(data.librePanelLines) && data.librePanelLines.length > 0
+      ? data.librePanelLines
+      : defaults.librePanelLines,
+    librePerfilQty: data.librePerfilQty && typeof data.librePerfilQty === "object" ? data.librePerfilQty : defaults.librePerfilQty,
+    libreFijQty: data.libreFijQty && typeof data.libreFijQty === "object" ? data.libreFijQty : defaults.libreFijQty,
+    libreSellQty: data.libreSellQty && typeof data.libreSellQty === "object" ? data.libreSellQty : defaults.libreSellQty,
+    libreExtra: { ...defaults.libreExtra, ...(data.libreExtra && typeof data.libreExtra === "object" ? data.libreExtra : {}) },
+    librePerfilFilter: typeof data.librePerfilFilter === "string" ? data.librePerfilFilter : defaults.librePerfilFilter,
   };
 }
 

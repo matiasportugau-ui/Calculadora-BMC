@@ -1,0 +1,13 @@
+# Cloud Build — BMC Dashboard + Calculadora
+# Used by: ./scripts/deploy-cloud-run.sh
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile.bmc-dashboard'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/panelin-calc'
+      - '.'
+images:
+  - 'gcr.io/$PROJECT_ID/panelin-calc'

@@ -11,7 +11,8 @@
 | Página | URL | Puerto | Comando |
 |--------|-----|--------|---------|
 | **Dashboard Finanzas/Operaciones** | /finanzas (3001) o / (3849) | 3001, 3849 | npm run start:api, npm run bmc-dashboard |
-| **Calculadora** | http://localhost:5173 | 5173 | npm run dev |
+| **Calculadora (local)** | http://localhost:5173 | 5173 | npm run dev |
+| **Calculadora (Cloud Run)** | [URL]/calculadora | — | panelin-calc (deploy completado); URL vía gcloud run services describe |
 | **Inicio** | # (mismo documento) | 3001, 3849 | — |
 | **Operaciones** | #operaciones | 3001, 3849 | — |
 | **Finanzas** | #finanzas | 3001, 3849 | — |
@@ -129,7 +130,8 @@
 
 | Elemento | Tipo | Estado |
 |----------|------|--------|
-| Placeholder | p | "Próximamente." |
+| Botón "Abrir Invoque Panelin" | link | Abre Panelin Evolution (localhost:3847) en nueva pestaña |
+| Hint requisitos | p | run_proxy_openai.sh (3848) + Panelin Evolution (3847) |
 
 ---
 
@@ -158,6 +160,8 @@
 1. `npm run dev`
 2. Abrir http://localhost:5173
 3. App React: cotizador, Drive, Budget Log, PDF. Sin dashboard nav.
+4. **Mejoras 2026-03-19:** Accesorios perimetrales sobre vista previa techo (RoofBorderSelector); columnas Costo, % Margen, Ganancia en tabla resultados; botón "Cargar desde MATRIZ" en Config; Enter para Siguiente en wizard; display título dimensiones corregido.
+5. **Mejoras 2026-03-19 (run 19):** Config con 3 tabs — General, Precios, Fórmulas. **Precios:** costos editables (costo, venta_bmc_local, venta_web); download/upload CSV; "Cargar desde MATRIZ" (col Costo + Venta). **Fórmulas:** DimensioningFormulasEditor — download/upload CSV de parámetros de dimensionamiento (fijaciones, selladores, perfilería); edición inline; reset a defaults.
 
 ---
 
@@ -182,8 +186,9 @@
 | AUDIT_LOG | Audit log | GET /api/audit | conditional |
 | 2.0 - Ventas | Ventas 2.0 | GET /api/ventas | conditional (BMC_VENTAS_SHEET_ID) |
 | Stock E-Commerce | Stock E-Commerce | GET /api/stock-ecommerce, /api/stock-kpi | conditional (BMC_STOCK_SHEET_ID) |
-| — | Invoque Panelin | — | placeholder |
+| MATRIZ de COSTOS y VENTAS 2026 | Calculadora (Cargar desde MATRIZ) | GET /api/actualizar-precios-calculadora | conditional (BMC_MATRIZ_SHEET_ID); col Costo + Venta BMC/Web |
+| — | Invoque Panelin | Link → localhost:3847 | live (link) |
 
 ---
 
-**Última actualización:** 2026-03-16
+**Última actualización:** 2026-03-19 run19 (Config costos editables, fórmulas dimensionamiento download/upload)

@@ -7,7 +7,7 @@ Rol: BMC Dashboard Team Orchestrator. Skills: `bmc-dashboard-team-orchestrator`,
 ## Entradas (leer antes de trabajar)
 
 - `docs/team/PROJECT-STATE.md` — cambios recientes, pendientes.
-- `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2 — lista canónica de 19 miembros.
+- `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2 — lista canónica de roles (N dinámico; §2.1); **§2.2** skills transversales; **§2.3** alta de nuevos miembros.
 - `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md` — próximos prompts, ciclo de mejoras.
 - `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` — estado por agente.
 

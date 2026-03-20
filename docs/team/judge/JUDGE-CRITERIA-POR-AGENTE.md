@@ -161,6 +161,19 @@
 
 ---
 
+## MATPROMT (matprompt)
+
+| Criterio | Entregable / Cómo juzgar |
+|----------|---------------------------|
+| **Bundle** | Prompts orientadores por rol §2 para el run (objetivo, lecturas, entregables, criterios, anti-patrones, handoff) en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-*.md` |
+| **Delta** | Si hubo tarea nueva o cambio de prioridad: subsección DELTA con roles afectados e instrucciones optimizadas |
+| **Alineación** | Coherente con PROJECT-STATE, PROMPT-FOR-EQUIPO-COMPLETO y orden acordado con Parallel/Serial; roles N/A explícitos |
+| **Calidad** | Prompts accionables; rutas de repo concretas; sin secretos en texto |
+
+**Áreas de ranqueo:** Utilidad de los prompts (1–5), Alineación al run (1–5), Reacción a cambios mid-run (1–5).
+
+---
+
 ## Contract (bmc-api-contract-validator)
 
 | Criterio | Entregable / Cómo juzgar |

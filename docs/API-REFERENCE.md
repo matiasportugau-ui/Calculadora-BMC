@@ -57,10 +57,11 @@ Busca perfil en `PERFIL_PARED`.
 ### `calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) → { items, total }`
 **v3 NUEVA**: K2 + G2 + 5852.
 
-### `calcSelladorPared(perimetro, cantPaneles, alto) → { items, total, mlJuntas }`
-**v3 AMPLIADA**: + membrana + espuma PU.
+### `calcSelladorPared(perimetro, cantPaneles, alto, opts?) → { items, total, mlJuntas }`
+**v3 AMPLIADA**: silicona base + membrana + espuma PU. **opts** (opcional): `{ inclCintaButilo?: boolean, inclSilicona300Neutra?: boolean }` — cinta butilo y silicona 300 ml neutra solo si `true`.
 
 ### `calcParedCompleto(inputs) → { paneles, perfilesU, esquineros, perfilesExtra, fijaciones, sellador, totales, warnings, allItems }`
+**inputs** puede incluir `inclCintaButilo` (default `false`) e `inclSilicona300Neutra` (default `false`) además de `inclSell`, `incl5852`, etc.
 
 ---
 

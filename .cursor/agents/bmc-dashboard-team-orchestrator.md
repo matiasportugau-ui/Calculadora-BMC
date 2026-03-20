@@ -15,7 +15,7 @@ is_background: true
 
 This agent is **transformed into a Team** by the orchestrator. The orchestrator assigns roles, runs them in order, and passes handoffs. One agent (you) plays the orchestrator and invokes the right skills in sequence.
 
-**Regla obligatoria:** Al ejecutar "Equipo completo" / "Full team run", incluir SIEMPRE a todos los miembros definidos en `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2. Ningún rol debe quedar fuera. La tabla de §2 es la fuente de verdad; cualquier skill nuevo debe añadirse allí.
+**Regla obligatoria:** Al ejecutar "Equipo completo" / "Full team run", incluir SIEMPRE a todos los roles de `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` **§2** (N = filas actuales; §2.1). En **paso 0**, revisar también **§2.2** (skills transversales) y marcar aplicables o N/A. La tabla §2 es la fuente de verdad para miembros numerados; **alta obligatoria §2.3** al crear un rol nuevo.
 
 **Clonación:** Para paralelizar, puede invocarse un clon: `Mapping+1`, `Design+1`, etc. Cada clon comparte el skill del rol base; el sufijo +N se incrementa cada vez que se crea un nuevo clon.
 
@@ -43,6 +43,7 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 | **Audit/Debug** | `bmc-dashboard-audit-runner`, `cloudrun-diagnostics-reporter` | Auditoría, logs, diagnóstico. |
 | **Reporter** | `bmc-implementation-plan-reporter` | Planes Solution/Coding, handoffs. |
 | **Orchestrator** | `bmc-dashboard-team-orchestrator`, `ai-interactive-team` | Orden, handoffs, diálogo entre agentes. |
+| **MATPROMT** | `matprompt` | Prompts orientadores por rol (paso 0a); delta prompts ante tareas nuevas; planificación con Orquestador. |
 | **Contract** | `bmc-api-contract-validator` | Validar respuestas contra contrato canónico. |
 | **Calc** | `bmc-calculadora-specialist` | BOM, precios, Drive, PDF, 5173. |
 | **Security** | `bmc-security-reviewer` | OAuth, tokens, env, CORS, HMAC. |
@@ -60,8 +61,9 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 
 | Step | Role | Skill(s) | Handoff |
 |------|------|----------|---------|
-| 0 | Orchestrator | — | Read `PROJECT-STATE.md`, `PROMPT-FOR-EQUIPO-COMPLETO.md`, `IMPROVEMENT-BACKLOG-BY-AGENT.md`; resolver pendientes. |
-| 0b | Parallel/Serial | `bmc-parallel-serial-agent` | Plan de ejecución (paralelo vs serie, clones). |
+| 0 | Orchestrator | — | Read `PROJECT-STATE.md`, `PROMPT-FOR-EQUIPO-COMPLETO.md`, `IMPROVEMENT-BACKLOG-BY-AGENT.md`; re-count §2 y revisar **§2.2** (skills transversales); resolver pendientes. |
+| 0a | **MATPROMT** | `matprompt` | Emitir **bundle de prompts orientadores** por rol §2 para este run (objetivo, lecturas, entregables, criterios, anti-patrones, handoff). Escribir en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si hay tarea nueva o cambio de prioridad, emitir **MATPROMT-DELTA** para roles afectados. Coordinar con Orchestrator y Parallel/Serial si el orden de ejecución cambia. |
+| 0b | Parallel/Serial | `bmc-parallel-serial-agent` | Plan de ejecución (paralelo vs serie, clones). Puede usar el bundle MATPROMT como insumo de dependencias entre roles. |
 | 1 | Orchestrator | — | Plan & proposal confirmado (`PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md`). |
 | 2 | Mapping | `bmc-planilla-dashboard-mapper`, `google-sheets-mapping-agent` | Planilla map, DASHBOARD-INTERFACE-MAP, cross-reference. |
 | 2b | Sheets Structure | `bmc-sheets-structure-editor` | *Conditional:* solo si hay cambios estructurales en sheets (tabs, dropdowns). Matias only. |
@@ -82,7 +84,7 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 | 8 | Orchestrator | — | Update `PROJECT-STATE.md` (Cambios recientes, Pendientes). |
 | 9 | Orchestrator + roles asignados | — | **Ciclo de mejoras:** Ejecutar los "Próximos prompts" de `PROMPT-FOR-EQUIPO-COMPLETO.md`; cada rol hace su tarea; actualizar `IMPROVEMENT-BACKLOG-BY-AGENT.md` (✓) y la sección "Próximos prompts" para el siguiente run. |
 
-**Orden de ejecución:** 0 → 0b → 1 → 2 → [2b si aplica] → 3 → 3b → 3c → 4 → 4b → 5 → 5b → 5c → 5d → 5e → 5f → 5g → 6 → 7 → 8 → 9.
+**Orden de ejecución:** 0 → **0a (MATPROMT)** → 0b → 1 → 2 → [2b si aplica] → 3 → 3b → 3c → 4 → 4b → 5 → 5b → 5c → 5d → 5e → 5f → 5g → 6 → 7 → 8 → 9.
 
 **Pasos opcionales según contexto:** 2b (Sheets Structure), 4b (Integrations si no hay cambios ML/Shopify), 5c (GPT/Cloud si no hay cambios OpenAPI), 5e (Billing si no hay cambios facturación), 5g (Calc si no hay cambios Calculadora). El Orquestador decide según pendientes y alcance.
 
@@ -92,13 +94,13 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 
 **As orchestrator (you):**
 
-- **Full run:** Execute steps 0 → 0b → 1 → … → 8 → **9**. En paso 0 leer `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md` y `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`. En paso 9 ejecutar los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO y actualizar backlog y prompt para el siguiente run. Todos los 19 miembros se invocan. Pasos opcionales (2b, 4b, 5c, 5e, 5g) según contexto.
+- **Full run:** Execute steps 0 → **0a (MATPROMT)** → 0b → 1 → … → 8 → **9**. En **paso 0** leer `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` y **revisar `PROJECT-TEAM-FULL-COVERAGE.md` §2.2** (skills transversales; marcar aplicables o N/A). En **paso 0a** invocar **MATPROMT** (`matprompt`) para generar el bundle de prompts por rol; durante el run, **re-consultar MATPROMT** ante tareas nuevas para delta prompts. En paso 9 ejecutar los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO y actualizar backlog y prompt para el siguiente run. Se invocan **todos los roles** de **§2** (N = filas actuales de la tabla; ver §2.1). Pasos opcionales (2b, 4b, 5c, 5e, 5g) según contexto. **Alta de nuevos roles:** §2.3.
 - **Partial run:** User says e.g. "only mapping" → steps 1, 2. "Only design" → step 4 (with existing map). "Only report" → step 5. "Mapping + dependencies" → steps 1, 2, 3.
 - **Single role:** User names a role (e.g. "Design") → run only that skill with context from plan or existing docs.
 
 **Invocation examples:**
 
-- "Run the BMC Dashboard team" / "Orchestrate the dashboard agent team" / "Full team run" → full run (all 17 members).
+- "Run the BMC Dashboard team" / "Orchestrate the dashboard agent team" / "Full team run" → full run (all §2 roles + §2.2 considered in step 0).
 - "Run the team but only mapping and dependencies" → steps 1, 2, 3.
 - "I need the implementation plan for Solution and Coding" → step 5 (with FULL-IMPROVEMENT-PLAN and context briefs as input).
 

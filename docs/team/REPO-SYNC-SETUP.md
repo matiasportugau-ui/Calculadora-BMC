@@ -2,7 +2,9 @@
 
 **Propósito:** Configurar los repositorios externos para que el agente `bmc-repo-sync-agent` pueda sincronizar artefactos tras cada full team run.
 
-**Estado actual:** `BMC_DASHBOARD_2_REPO` y `BMC_DEVELOPMENT_TEAM_REPO` no están configurados en `.env` ni en PROJECT-STATE.
+**Estado actual:** Ambos configurados en `.env`:
+- `BMC_DASHBOARD_2_REPO`: https://github.com/matiasportugau-ui/bmc-dashboard-2.0.git
+- `BMC_DEVELOPMENT_TEAM_REPO`: https://github.com/matiasportugau-ui/bmc-development-team.git
 
 ---
 
