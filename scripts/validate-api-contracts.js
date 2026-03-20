@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * BMC API Contract Validator
- * Validates API responses against canonical contract.
+ * Validates API responses against canonical contract (dashboard /api/*, calculator /calc/*, GET /capabilities).
  * Run: BMC_API_BASE=http://localhost:3001 node scripts/validate-api-contracts.js
  * Requires: server running (npm run start:api)
  */

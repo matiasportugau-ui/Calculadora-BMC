@@ -2,9 +2,16 @@
 
 ## [3.1.2] — 2026-03-19
 
+### Agente IA — capacidades, contratos, MCP (2026-03-20)
+- **`GET /capabilities`:** manifiesto único (Calculadora `/calc/*` + Dashboard `/api/*` + punteros UI); `server/agentCapabilitiesManifest.js`.
+- **`server/gptActions.js`:** `GPT_ACTIONS` centralizado (usado por `/calc/gpt-entry-point` y manifiesto).
+- **Contratos:** `scripts/validate-api-contracts.js` — añade `GET /capabilities`, `GET /calc/gpt-entry-point`, `POST /calc/cotizar`, `POST /calc/cotizar/presupuesto-libre`.
+- **Docs:** `docs/AGENT-UI-VS-API.md`, `docs/api/AGENT-CAPABILITIES.json` (snapshot).
+- **MCP (opcional):** `@modelcontextprotocol/sdk` (devDependency), `npm run mcp:panelin` → `scripts/mcp-panelin-http.mjs` (stdio, `BMC_API_BASE`).
+
 ### UI — Wizard dimensiones / vista previa techo (2026-03-20)
 - **`RoofPreview.jsx`:** Etiquetas **largo × ancho** en el SVG alineadas al rectángulo dibujado (en **dos aguas**, ancho = **faldón**); nota aclaratoria bajo instrucciones de arrastre; en el desglose **Por zona**, segunda línea con medidas en planta y fila **Suma zonas** que coincide con el total.
-- **`PanelinCalculadoraV3_backup.jsx`:** Botón **Siguiente** con mejor contraste en estado deshabilitado (fondo `#E8E8ED`, texto oscuro, borde).
+- **`PanelinCalculadoraV3_backup.jsx`:** Botón **Siguiente** con mejor contraste en estado deshabilitado; helper **`wizardPrimaryActionStyle(enabled)`** para reutilizar en futuros wizards (techo+fachada, etc.). **Anterior** con `type="button"`.
 
 ### Presupuesto libre — backup + API (2026-03-19)
 - **Módulo:** `src/utils/presupuestoLibreCatalogo.js` — catálogo acordeón (paneles m², perfiles, tornillería/herrajes, selladores, flete, extraordinarios).

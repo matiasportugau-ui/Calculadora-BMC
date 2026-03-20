@@ -11,7 +11,8 @@ Lee este archivo antes de cualquier tarea.
 |---------|---------------|
 | `npm run lint` | Después de editar cualquier archivo en `src/` |
 | `npm test` | Después de cambios en lógica de negocio o helpers |
-| `npm run test:contracts` | Requiere servidor corriendo (`npm run start:api`); valida contrato API |
+| `npm run test:contracts` | Requiere servidor corriendo (`npm run start:api`); valida contrato API (`/api/*`, `/calc/*`, `GET /capabilities`) |
+| `npm run mcp:panelin` | Servidor MCP (stdio) proxy HTTP — requiere API corriendo; `BMC_API_BASE` opcional |
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
 | `npm run pre-deploy` | Checklist completo pre-deploy |
@@ -26,7 +27,8 @@ Lee este archivo antes de cualquier tarea.
 
 ```
 server/
-  index.js                  # Entry point — monta rutas en /api, sirve /finanzas
+  index.js                  # Entry point — monta rutas en /api, sirve /finanzas; GET /capabilities
+  gptActions.js             # GPT_ACTIONS (compartido con /calc/gpt-entry-point y /capabilities)
   routes/
     bmcDashboard.js         # Todas las rutas del dashboard BMC (/api/*)
     calc.js                 # Rutas de la calculadora

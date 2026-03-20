@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-19 (Full team run 31 — post-autopilot)
+**Última actualización:** 2026-03-20 (Agente IA — capacidades / contratos / MCP)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Agente IA — capacidades + contratos + MCP):** `GET /capabilities` (manifiesto Calculadora + Dashboard); `server/gptActions.js` como fuente única de `GPT_ACTIONS`; `scripts/validate-api-contracts.js` incluye `/capabilities`, `/calc/gpt-entry-point`, `POST /calc/cotizar`, `POST /calc/cotizar/presupuesto-libre`; `docs/AGENT-UI-VS-API.md`, `docs/api/AGENT-CAPABILITIES.json`; `npm run mcp:panelin` (`scripts/mcp-panelin-http.mjs`, `@modelcontextprotocol/sdk`). Detalle: `docs/CHANGELOG.md`.
 
 **2026-03-19 (Git — commit + push rama `sheets-verify-config-b29b9`):** Commit `09b5385` — capabilities `/capabilities`, manifest + snapshot `docs/api/AGENT-CAPABILITIES.json`, cambios calc/GPT, UI RoofPreview/backup, tests 119, docs equipo (autopilot Judge run24–30, run31, handoff presupuesto libre), `.gitignore` ignora copias anidadas `Calculadora-BMC/` y `OmniCRM-Sync/`. **Push:** `origin/sheets-verify-config-b29b9` OK.
 

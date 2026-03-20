@@ -75,6 +75,25 @@ if (typeof document !== "undefined" && !document.getElementById("bmc-kf")) {
   document.head.appendChild(s);
 }
 
+/**
+ * Botón principal del footer del wizard (p. ej. **Siguiente**): alto contraste cuando está deshabilitado.
+ * Al añadir otro wizard (techo+fachada, cámara, etc.), reutilizar este mismo estilo para consistencia.
+ * @param {boolean} enabled — paso válido / puede avanzar
+ */
+function wizardPrimaryActionStyle(enabled) {
+  return {
+    padding: "12px 28px",
+    borderRadius: 12,
+    border: enabled ? "none" : `1.5px solid ${C.border}`,
+    background: enabled ? C.primary : "#E8E8ED",
+    color: enabled ? "#fff" : "#3A3A3C",
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: enabled ? "pointer" : "not-allowed",
+    boxShadow: enabled ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+  };
+}
+
 // ── UI Components ─────────────────────────────────────────────────────────────
 
 function AnimNum({ value, style }) {
@@ -709,6 +728,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
 }
 
 // ── Wizard steps (Modo Vendedor — Solo Techo) ───────────────────────────────────
+// Otros wizards (p. ej. techo+fachada): definir WIZARD_STEPS_* y en el footer usar wizardPrimaryActionStyle(isValid) para Siguiente.
 // Al elegir Solo Techo → siguiente paso es Caída del techo
 const WIZARD_STEPS_SOLO_TECHO = [
   { id: "escenario", label: "Escenario de obra" },
@@ -1917,26 +1937,14 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}` }}>
-                    {canPrev && <button onClick={() => setWizardStep(s => s - 1)} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>Anterior</button>}
+                    {canPrev && (
+                      <button type="button" onClick={() => setWizardStep(s => s - 1)} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
+                        Anterior
+                      </button>
+                    )}
                     <div style={{ flex: 1 }} />
                     {canNext ? (
-                      <button
-                        type="button"
-                        onClick={() => isValid && setWizardStep(s => s + 1)}
-                        disabled={!isValid}
-                        style={{
-                          padding: "12px 28px",
-                          borderRadius: 12,
-                          border: isValid ? "none" : `1.5px solid ${C.border}`,
-                          background: isValid ? C.primary : "#E8E8ED",
-                          color: isValid ? "#fff" : "#3A3A3C",
-                          fontSize: 15,
-                          fontWeight: 600,
-                          cursor: isValid ? "pointer" : "not-allowed",
-                          opacity: isValid ? 1 : 1,
-                          boxShadow: isValid ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-                        }}
-                      >
+                      <button type="button" onClick={() => isValid && setWizardStep(s => s + 1)} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
                         Siguiente
                       </button>
                     ) : (

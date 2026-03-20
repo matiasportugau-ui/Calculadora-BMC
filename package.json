@@ -19,6 +19,7 @@
     "preview": "vite preview",
     "test": "node tests/validation.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
+    "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
     "verify-tabs": "node scripts/verify-sheets-tabs.js",
     "setup-sheets-tabs": "node scripts/setup-sheets-tabs.js",
     "integrate-admin-cotizaciones": "node scripts/integrate-admin-cotizaciones.js",
