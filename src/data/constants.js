@@ -452,3 +452,6 @@ export const TIPO_AGUAS = [
   { id: "dos_aguas", label: "2 Aguas", description: "Cumbrera central", enabled: true },
   { id: "cuatro_aguas", label: "4 Aguas", description: "Próximamente", enabled: false },
 ];
+
+// Versión de datos (paneles, precios, mapeo MATRIZ): se actualiza al modificar constants.js o matrizPreciosMapping.js
+export { CALCULATOR_DATA_VERSION, CALCULATOR_DATA_VERSION_DATE } from "./calculatorDataVersion.js";

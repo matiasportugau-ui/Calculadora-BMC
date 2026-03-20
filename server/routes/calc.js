@@ -27,6 +27,8 @@ import {
   FIJACIONES,
   SELLADORES,
   p,
+  CALCULATOR_DATA_VERSION,
+  CALCULATOR_DATA_VERSION_DATE,
 } from "../../src/data/constants.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src/utils/presupuestoLibreCatalogo.js";
 import { config } from "../config.js";
@@ -51,6 +53,8 @@ router.get("/gpt-entry-point", (req, res) => {
   res.json({
     ok: true,
     version: "1.0.0",
+    data_version: CALCULATOR_DATA_VERSION,
+    data_version_date: CALCULATOR_DATA_VERSION_DATE,
     description: "Entry point para GPT Builder — acceso completo a todas las acciones de la Calculadora BMC.",
     base_url: baseUrl,
     openapi_url: `${baseUrl}/calc/openapi`,
@@ -250,6 +254,8 @@ function buildGptResponse(escenario, lista, results, flete) {
       lista,
       lista_label: LISTA_LABELS[lista] || lista,
       version: "3.1.0",
+      data_version: CALCULATOR_DATA_VERSION,
+      data_version_date: CALCULATOR_DATA_VERSION_DATE,
       timestamp: new Date().toISOString(),
     },
     resumen,
@@ -566,6 +572,8 @@ router.get("/catalogo", (req, res) => {
 
     res.json({
       ok: true,
+      data_version: CALCULATOR_DATA_VERSION,
+      data_version_date: CALCULATOR_DATA_VERSION_DATE,
       lista,
       lista_label: LISTA_LABELS[lista] || lista,
       paneles_techo: panelSummary(PANELS_TECHO, lista),

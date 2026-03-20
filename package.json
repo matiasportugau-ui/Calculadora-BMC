@@ -6,7 +6,8 @@
   "type": "module",
   "main": "src/components/PanelinCalculadoraV3.jsx",
   "scripts": {
-    "dev": "vite",
+    "version:data": "node scripts/update-calculator-data-version.js",
+    "dev": "npm run version:data && vite",
     "dev:api": "node --watch server/index.js",
     "start:api": "node server/index.js",
     "dev:full": "concurrently -n api,vite -c blue,green \"npm run start:api\" \"npm run dev\"",
@@ -15,6 +16,7 @@
     "bmc-dashboard": "node docs/bmc-dashboard-modernization/sheets-api-server.js",
     "ml:cloud-run": "./run_ml_cloud_run_setup.sh",
     "proxy:openai": "./run_proxy_openai.sh",
+    "prebuild": "npm run version:data",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/validation.js",

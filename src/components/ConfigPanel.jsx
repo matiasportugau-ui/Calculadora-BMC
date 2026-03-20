@@ -8,7 +8,7 @@ import { getConfig, setConfig, resetConfig } from "../utils/calculatorConfig.js"
 import PricingEditor from "./PricingEditor.jsx";
 import DimensioningFormulasEditor from "./DimensioningFormulasEditor.jsx";
 import { invalidatePricingCache } from "../data/pricing.js";
-import { C, FONT } from "../data/constants.js";
+import { C, FONT, CALCULATOR_DATA_VERSION } from "../data/constants.js";
 
 export default function ConfigPanel({ visible, onClose, onConfigChange }) {
   const [config, setConfigState] = useState(getConfig);
@@ -106,7 +106,7 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
             <Settings size={20} />
             <div>
               <div style={{ fontSize: 18, fontWeight: 800 }}>Configuración</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Variables de la calculadora</div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Variables de la calculadora · datos v.{CALCULATOR_DATA_VERSION}</div>
             </div>
           </div>
           <button
