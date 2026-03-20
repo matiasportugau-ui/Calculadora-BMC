@@ -23,7 +23,7 @@
 2. **Lee** `docs/team/PROJECT-STATE.md`, `docs/team/PROJECT-TEAM-FULL-COVERAGE.md`, **`docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`** y **`docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`**
 3. **Invoca al Orquestador** (`.cursor/agents/bmc-dashboard-team-orchestrator.md`)
 4. **Ejecuta** todos los pasos 0 → 0b → 1 → … → 8 → **9** (ciclo de mejoras)
-5. **Incluye** a todos los 19 miembros de `PROJECT-TEAM-FULL-COVERAGE.md` §2
+5. **Incluye** a **todos los roles** de la tabla canónica `PROJECT-TEAM-FULL-COVERAGE.md` §2 (N = número de filas vigentes) y **considera** las **skills transversales** §2.2 en paso 0
 6. **Paso 9:** Ejecuta los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO; actualiza el backlog y la sección "Próximos prompts" para que el **siguiente** "Equipo completo" continúe hasta que todos los agentes estén completamente desarrollados
 
 ---
@@ -32,8 +32,9 @@
 
 | Paso | Rol | Acción |
 |------|-----|--------|
-| 0 | Orchestrator | Leer PROJECT-STATE; resolver pendientes |
-| 0b | Parallel/Serial | Plan de ejecución (paralelo vs serie) |
+| 0 | Orchestrator | Leer PROJECT-STATE, PROMPT, BACKLOG; revisar **§2.2** (skills transversales); resolver pendientes |
+| 0a | **MATPROMT** | Bundle de prompts por rol §2 (`matprompt`); delta prompts si hay tareas nuevas en el run |
+| 0b | Parallel/Serial | Plan de ejecución (paralelo vs serie); puede usar el bundle MATPROMT |
 | 1 | Orchestrator | Plan & proposal confirmado |
 | 2 | Mapping | Planilla map, DASHBOARD-INTERFACE-MAP |
 | 2b | Sheets Structure | *Condicional:* cambios estructurales (Matias only) |
@@ -56,9 +57,9 @@
 
 ---
 
-## Miembros del equipo (19)
+## Miembros del equipo (N = §2 + §2.2)
 
-Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2 para la tabla canónica.
+Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` **§2** (roles) y **§2.2** (skills transversales) para la lista canónica. **Alta de nuevos agentes:** §2.3 del mismo documento.
 
 ---
 

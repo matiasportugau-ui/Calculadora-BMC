@@ -5,6 +5,7 @@
 import { p } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
+import { getDimensioningParam } from "./dimensioningFormulas.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -88,7 +89,8 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
     pMadera = Math.max(0, Math.floor(ptsMadera || 0));
     puntosFijacion = pH + pMetal + pMadera;
   } else {
-    puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / 2.5));
+    const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
+    puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / espPerim));
     if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
     else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
     else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
@@ -96,7 +98,8 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   }
   const tuercas = (pMetal * 2) + (pH * 1) + (pMadera * 2);
   const tacos = pH;
-  const varillas = Math.ceil(puntosFijacion / 4);
+  const varillasPorPunto = getDimensioningParam("FIJACIONES_VARILLA.varillas_por_punto", 4);
+  const varillas = Math.ceil(puntosFijacion / varillasPorPunto);
   const items = [];
   const c = (x) => (x?.costo ?? 0);
   const puVar = p(FIJACIONES.varilla_38);
@@ -117,15 +120,16 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
 
 export function calcFijacionesCaballete(cantP, largo) {
   const { FIJACIONES } = getPricing();
-  const caballetes = Math.ceil((cantP * 3 * (largo / 2.9 + 1)) + ((largo * 2) / 0.3));
+  const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9);
+  const factorAncho = getDimensioningParam("FIJACIONES_CABALETE.factor_ancho", 0.3);
+  const caballetes = Math.ceil((cantP * 3 * (largo / factorLargo + 1)) + ((largo * 2) / factorAncho));
   const tornillosAguja = caballetes * 2;
   const items = [];
   const c = (x) => (x?.costo ?? 0);
   const puCab = p(FIJACIONES.caballete);
   items.push({ label: FIJACIONES.caballete.label, sku: "caballete", cant: caballetes, unidad: "unid", pu: puCab, costo: c(FIJACIONES.caballete), total: +(caballetes * puCab).toFixed(2) });
-  const paquetesAguja = Math.ceil(tornillosAguja / 100);
   const puAguja = p(FIJACIONES.tornillo_aguja);
-  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: paquetesAguja, unidad: "x100", pu: puAguja, costo: c(FIJACIONES.tornillo_aguja), total: +(paquetesAguja * puAguja).toFixed(2) });
+  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: tornillosAguja, unidad: "unid", pu: puAguja, costo: c(FIJACIONES.tornillo_aguja), total: +(tornillosAguja * puAguja).toFixed(2) });
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2), puntosFijacion: caballetes };
 }
@@ -156,7 +160,8 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     }
     const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
     if (sopData) {
-      const mlSoportes = (cantP + 1) * 0.30;
+      const mlPorApoyo = getDimensioningParam("PERFILERIA.soporte_canalon_ml_por_apoyo", 0.30);
+      const mlSoportes = (cantP + 1) * mlPorApoyo;
       const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
       const precioSop = p(sopData);
       items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, costo: sopData.costo ?? 0, total: +(barrasSoporte * precioSop).toFixed(2), largoBarra: sopData.largo });
@@ -181,10 +186,11 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
 
   if (totalML > 0) {
     const { FIJACIONES } = getPricing();
-    const fijPerf = Math.ceil(totalML / 0.30);
-    const paquetesT1 = Math.ceil(fijPerf / 100);
+    const espFijMl = getDimensioningParam("PERFILERIA.espaciado_fijacion_ml", 0.30);
+    const fijPerf = Math.ceil(totalML / espFijMl);
     const puT1 = p(FIJACIONES.tornillo_t1);
-    items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: paquetesT1, unidad: "x100", pu: puT1, costo: FIJACIONES.tornillo_t1?.costo ?? 0, total: +(paquetesT1 * puT1).toFixed(2) });
+    const coT1 = FIJACIONES.tornillo_t1?.costo ?? 0;
+    items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: fijPerf, unidad: "unid", pu: puT1, costo: coT1, total: +(fijPerf * puT1).toFixed(2) });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2), totalML: +totalML.toFixed(2) };
@@ -199,7 +205,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
  */
 export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0, largoReal = 0, familiaP, espesor } = {}) {
   const { SELLADORES } = getPricing();
-  const ML_POR_UNID_SILICONA = SELLADORES.silicona?.ml_por_unid ?? 10.27;
+  const ML_POR_UNID_SILICONA = getDimensioningParam("SELLADORES_TECHO.silicona_ml_por_unid", SELLADORES.silicona?.ml_por_unid ?? 10.27);
   const items = [];
 
   let mlSilicona = 0;
@@ -228,7 +234,8 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
     const largoCan = canData?.largo ?? 3.03;
     const pzasCan = Math.ceil(anchoTotal / largoCan);
     if (pzasCan > 1) {
-      mlSilicona += (pzasCan - 1) * 0.6 * 2; // 60 cm × 2 cordones por empalme
+      const empalmeMl = getDimensioningParam("PERFILERIA.canalon_empalme_silicona_ml", 0.6);
+      mlSilicona += (pzasCan - 1) * empalmeMl * 2; // 2 cordones por empalme
     }
   }
 
@@ -237,7 +244,8 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, costo: c(SELLADORES.silicona), total: +(siliconas * puSil).toFixed(2) });
 
-  const cintas = Math.ceil(cantP / 10);
+  const panelesPorRollo = getDimensioningParam("SELLADORES_TECHO.cinta_paneles_por_rollo", 10);
+  const cintas = Math.ceil(cantP / panelesPorRollo);
   const puCinta = p(SELLADORES.cinta_butilo);
   items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, costo: c(SELLADORES.cinta_butilo), total: +(cintas * puCinta).toFixed(2) });
 
@@ -460,23 +468,24 @@ export function calcFijacionesPared(panel, espesor, cantP, alto, perimetro, tipo
   const { FIJACIONES } = getPricing();
   const items = [];
   const anchoTotal = cantP * panel.au;
-  // 1. ANCLAJES A HORMIGÓN — kit cada 0.30m en perímetro inferior
   const c = (x) => (x?.costo ?? 0);
-  const anclajes = Math.ceil(anchoTotal / 0.30);
+  const espAnclaje = getDimensioningParam("FIJACIONES_PARED.anclaje_espaciado", 0.30);
+  const anclajes = Math.ceil(anchoTotal / espAnclaje);
   const puAnc = p(FIJACIONES.anclaje_h);
   items.push({ label: FIJACIONES.anclaje_h.label, sku: "anclaje_h", cant: anclajes, unidad: "unid", pu: puAnc, costo: c(FIJACIONES.anclaje_h), total: +(anclajes * puAnc).toFixed(2) });
   if (tipoEst === "metal" || tipoEst === "mixto" || tipoEst === "combinada" || tipoEst === "madera") {
     const areaNeta = cantP * alto * panel.au;
-    const tornillosT2 = Math.ceil(areaNeta * 5.5);
-    const paquetes = Math.ceil(tornillosT2 / 100);
+    const tornillosPorM2 = getDimensioningParam("FIJACIONES_PARED.tornillo_t2_por_m2", 5.5);
+    const tornillosT2 = Math.ceil(areaNeta * tornillosPorM2);
     const puT2 = p(FIJACIONES.tornillo_t2);
-    items.push({ label: FIJACIONES.tornillo_t2.label, sku: "tornillo_t2", cant: paquetes, unidad: "x100", pu: puT2, costo: c(FIJACIONES.tornillo_t2), total: +(paquetes * puT2).toFixed(2) });
+    const cuT2 = c(FIJACIONES.tornillo_t2);
+    items.push({ label: FIJACIONES.tornillo_t2.label, sku: "tornillo_t2", cant: tornillosT2, unidad: "unid", pu: puT2, costo: cuT2, total: +(tornillosT2 * puT2).toFixed(2) });
   }
-  const remaches = Math.ceil(cantP * 2);
-  const paquetesRem = Math.ceil(remaches / 1000);
-  if (paquetesRem > 0) {
+  const remachesPorPanel = getDimensioningParam("FIJACIONES_PARED.remaches_por_panel", 2);
+  const remaches = Math.ceil(cantP * remachesPorPanel);
+  if (remaches > 0) {
     const puRem = p(FIJACIONES.remache_pop);
-    items.push({ label: FIJACIONES.remache_pop.label, sku: "remache_pop", cant: paquetesRem, unidad: "x1000", pu: puRem, costo: c(FIJACIONES.remache_pop), total: +(paquetesRem * puRem).toFixed(2) });
+    items.push({ label: FIJACIONES.remache_pop.label, sku: "remache_pop", cant: remaches, unidad: "unid", pu: puRem, costo: c(FIJACIONES.remache_pop), total: +(remaches * puRem).toFixed(2) });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2) };
@@ -510,24 +519,39 @@ export function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
   return { items, total: +total.toFixed(2) };
 }
 
-// §D SELLADORES PARED: silicona + cinta butilo + membrana + espuma PU
-export function calcSelladorPared(perimetro, cantPaneles, alto) {
+// §D SELLADORES PARED: silicona + (opc.) cinta butilo + membrana + espuma PU + (opc.) silicona 300 ml
+export function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
   const { SELLADORES } = getPricing();
   const items = [];
+  const inclCintaButilo = opts.inclCintaButilo === true;
+  const inclSil300 = opts.inclSilicona300Neutra === true;
   const juntasV = cantPaneles - 1;
   const mlJuntas = +(juntasV * alto + perimetro * 2).toFixed(2);
   const c = (x) => (x?.costo ?? 0);
-  const siliconas = Math.ceil(mlJuntas / 8);
+  const silMlUnid = getDimensioningParam("SELLADORES_PARED.silicona_ml_por_unid", 8);
+  const siliconas = Math.ceil(mlJuntas / silMlUnid);
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, costo: c(SELLADORES.silicona), total: +(siliconas * puSil).toFixed(2) });
-  const cintas = Math.ceil(mlJuntas / 22.5);
-  const puCinta = p(SELLADORES.cinta_butilo);
-  items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, costo: c(SELLADORES.cinta_butilo), total: +(cintas * puCinta).toFixed(2) });
+  if (inclSil300 && SELLADORES.silicona_300_neutra) {
+    const sil3 = SELLADORES.silicona_300_neutra;
+    const mPorUnid = Number(sil3.metros_cobertura_por_unid) > 0 ? Number(sil3.metros_cobertura_por_unid) : 8;
+    const cant3 = Math.ceil(mlJuntas / mPorUnid);
+    const pu3 = p(sil3);
+    items.push({ label: sil3.label, sku: "silicona_300_neutra", cant: cant3, unidad: "unid", pu: pu3, costo: c(sil3), total: +(cant3 * pu3).toFixed(2) });
+  }
+  if (inclCintaButilo) {
+    const cintaMlRollo = getDimensioningParam("SELLADORES_PARED.cinta_ml_por_rollo", 22.5);
+    const cintas = Math.ceil(mlJuntas / cintaMlRollo);
+    const puCinta = p(SELLADORES.cinta_butilo);
+    items.push({ label: SELLADORES.cinta_butilo.label, sku: "cinta_butilo", cant: cintas, unidad: "unid", pu: puCinta, costo: c(SELLADORES.cinta_butilo), total: +(cintas * puCinta).toFixed(2) });
+  }
   const mlMembrana = perimetro;
-  const rollosMembrana = Math.ceil(mlMembrana / 10);
+  const membranaMlRollo = getDimensioningParam("SELLADORES_PARED.membrana_ml_por_rollo", 10);
+  const rollosMembrana = Math.ceil(mlMembrana / membranaMlRollo);
   const puMem = p(SELLADORES.membrana);
   items.push({ label: SELLADORES.membrana.label, sku: "membrana", cant: rollosMembrana, unidad: "rollo", pu: puMem, costo: c(SELLADORES.membrana), total: +(rollosMembrana * puMem).toFixed(2) });
-  const espumas = rollosMembrana * 2;
+  const espumasPorRollo = getDimensioningParam("SELLADORES_PARED.espumas_por_rollo_membrana", 2);
+  const espumas = rollosMembrana * espumasPorRollo;
   const puEsp = p(SELLADORES.espuma_pu);
   items.push({ label: SELLADORES.espuma_pu.label, sku: "espuma_pu", cant: espumas, unidad: "unid", pu: puEsp, costo: c(SELLADORES.espuma_pu), total: +(espumas * puEsp).toFixed(2) });
   const total = items.reduce((s, i) => s + i.total, 0);
@@ -536,7 +560,7 @@ export function calcSelladorPared(perimetro, cantPaneles, alto) {
 
 export function calcParedCompleto(inputs) {
   const { PANELS_PARED } = getPricing();
-  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color } = inputs;
+  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false, inclSilicona300Neutra = false } = inputs;
   const panel = PANELS_PARED[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -554,9 +578,46 @@ export function calcParedCompleto(inputs) {
   const fijaciones = calcFijacionesPared(panel, espesor, paneles.cantPaneles, alto, perimetro, tipoEst || "metal");
   const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, { incl5852 });
   let sellador = { items: [], total: 0 };
-  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto);
+  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto, { inclCintaButilo, inclSilicona300Neutra });
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, costo: espData.costo ?? 0, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: alto };
   const allItems = [panelItem, ...perfilesU.items, ...esquineros.items, ...perfilesExtra.items, ...fijaciones.items, ...sellador.items];
   const totales = calcTotalesSinIVA(allItems);
   return { paneles, perfilesU, esquineros, perfilesExtra, fijaciones, sellador, totales, warnings, allItems };
+}
+
+/**
+ * Presupuesto libre: líneas manuales desde FIJACIONES / HERRAMIENTAS.
+ * `lineas`: [{ bucket?: "FIJACIONES"|"HERRAMIENTAS", id: string, cant: number }]
+ */
+export function calcPresupuestoLibre(lineas = []) {
+  const pricing = getPricing();
+  const c = (x) => (x?.costo ?? 0);
+  const items = [];
+  for (const row of lineas) {
+    if (!row || row.id == null || row.cant == null || Number(row.cant) <= 0) continue;
+    const bucket = row.bucket === "HERRAMIENTAS" ? "HERRAMIENTAS" : "FIJACIONES";
+    const data = bucket === "HERRAMIENTAS" ? pricing.HERRAMIENTAS?.[row.id] : pricing.FIJACIONES?.[row.id];
+    if (!data) continue;
+    const pu = p(data);
+    const co = c(data);
+    const cant = Number(row.cant);
+    items.push({
+      label: data.label,
+      sku: row.id,
+      cant,
+      unidad: data.unidad || "unid",
+      pu,
+      costo: co,
+      total: +(cant * pu).toFixed(2),
+    });
+  }
+  const sub = items.reduce((s, i) => s + i.total, 0);
+  const totales = calcTotalesSinIVA(items);
+  return {
+    presupuestoLibre: true,
+    allItems: items,
+    fijaciones: { items, total: +sub.toFixed(2) },
+    totales,
+    warnings: [],
+  };
 }

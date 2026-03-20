@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // matrizPreciosMapping.js — Mapeo SKU MATRIZ → path calculadora
-// MATRIZ de COSTOS y VENTAS 2026
-// Col G = Costo (con IVA) → sin IVA / 1.22
-// Col L = Venta consumidor (con IVA) → sin IVA / 1.22
-// Col M = Venta web (con IVA) → sin IVA / 1.22 (si existe)
+// MATRIZ de COSTOS y VENTAS 2026 — misma planilla para costos y precios de venta
+// Columnas (búsqueda por nombre en bmcDashboard.buildPlanillaDesdeMatriz):
+//   - Costo/Costos (fallback col G) — con IVA → sin IVA / 1.22
+//   - Venta BMC/consumidor (fallback col L) — con IVA → sin IVA / 1.22
+//   - Venta Web (fallback col M) — con IVA → sin IVA / 1.22
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Normaliza SKU para match (uppercase, sin espacios, guiones opcionales) */
@@ -76,9 +77,31 @@ export const MATRIZ_SKU_TO_PATH = {
   // Selladores
   CBUT: "SELLADORES.cinta_butilo",
   BROMPLAST: "SELLADORES.silicona",
+  SIL300N: "SELLADORES.silicona_300_neutra",
 
   // Fijaciones
   CABROJ: "FIJACIONES.caballete",
+  /** Presupuesto libre / catálogo — SKU col.D: confirmar en MATRIZ 2026 si difiere */
+  ANCISOTER: "FIJACIONES.anclaje_isoroof_terracota",
+  ANCISOGR: "FIJACIONES.anclaje_isoroof_gris",
+  ANCBC18: "FIJACIONES.anclaje_chapa_bc18",
+  ANCBC35: "FIJACIONES.anclaje_chapa_bc35",
+  ANCUPLAT: "FIJACIONES.anclaje_kit_u_platea",
+  REMPOP532: "FIJACIONES.remache_pop",
+  REMPOP316: "FIJACIONES.remache_pop_316",
+  THEX1234: "FIJACIONES.tornillo_exagonal_12_34",
+  THEX121PM: "FIJACIONES.tornillo_exagonal_12_1_pm",
+  THEX12212: "FIJACIONES.tornillo_exagonal_12_212_pm",
+  TAG12X2: "FIJACIONES.tornillo_punta_aguja_12x2",
+  TAG12X3: "FIJACIONES.tornillo_punta_aguja_12x3",
+  THEXPU204: "FIJACIONES.tornillo_hex_pu_20mm_4in",
+  T1PERF: "FIJACIONES.tornillo_t1",
+  T2FACH: "FIJACIONES.tornillo_t2",
+  TAGU14X5: "FIJACIONES.tornillo_aguja",
+  ANC100MM: "FIJACIONES.anclaje_h",
+
+  // Herramientas
+  APLDX03: "HERRAMIENTAS.pistola_apl_dx03",
 
   // Servicios
   FLETEBRO: "SERVICIOS.flete",

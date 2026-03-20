@@ -2,9 +2,20 @@
 
 **Owner:** Audit/Debug + Matias  
 **Referencia:** IMPLEMENTATION-PLAN-POST-GO-LIVE.md §D1  
-**Última actualización:** 2026-03-18
+**Última actualización:** 2026-03-20
 
 Completar antes de presentar el dashboard a usuarios finales. Marcar con ✓ cuando se verifique.
+
+---
+
+## URLs producción (opcional — mismo checklist sustituyendo base URL)
+
+| Entorno | Base URL | Notas |
+|---------|----------|--------|
+| **Cloud Run** | `https://panelin-calc-642127786762.us-central1.run.app` (o la URL actual de `gcloud run services describe panelin-calc`) | API: `<BASE>/api/...`; Calculadora: `<BASE>/calculadora`; Finanzas: `<BASE>/finanzas`. |
+| **Vercel** | `https://calculadora-bmc.vercel.app` | Front calculadora; API debe apuntar a Cloud Run (`VITE_API_URL`) para datos Sheets. |
+
+Ejemplo: `curl -sS -o /dev/null -w "%{http_code}" "https://…/api/health"` o `/api/kpi-report` (esperar 200 o 503 según config).
 
 ---
 

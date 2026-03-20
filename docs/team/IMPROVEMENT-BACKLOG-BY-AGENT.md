@@ -1,6 +1,6 @@
 # Backlog de mejoras por agente — Hasta equipo completamente desarrollado
 
-**Estado 2026-03-16:** ✅ **Todos los 19 agentes desarrollados.** Solo mantenimiento: actualizar knowledge cuando cambie el dominio; completar reference.md y examples.md donde falten.
+**Estado 2026-03-20:** ✅ **Todos los roles §2 desarrollados** (incl. **MATPROMT**). Solo mantenimiento: actualizar knowledge cuando cambie el dominio; completar reference.md y examples.md donde falten.
 
 **Propósito:** Cada agente se considera **completamente desarrollado** cuando cumple todos los criterios de su fila. Cada run del Equipo completo ejecuta los **prompts** pendientes (ver `PROMPT-FOR-EQUIPO-COMPLETO.md`) y actualiza este backlog. Se repite hasta que todos estén ✓.
 
@@ -59,4 +59,4 @@ Por agente deben cumplirse:
 
 - Al final del paso 9 (Improvement cycle), el Orquestador o el agente que ejecutó cada prompt marca ✓ en la fila correspondiente.
 - Si un criterio no aplica (ej. examples para un rol muy estable), se escribe "N/A" y se considera cumplido.
-- Cuando todos los 19 tienen todos los criterios ✓ o N/A, el equipo se considera **completamente desarrollado** y el run de mejoras puede pasarse a "mantenimiento" (solo actualizar knowledge cuando haya cambios de dominio).
+- Cuando todos los roles de §2 tienen todos los criterios ✓ o N/A, el equipo se considera **completamente desarrollado** y el run de mejoras puede pasarse a "mantenimiento" (solo actualizar knowledge cuando haya cambios de dominio). **N** = filas §2 (ver PROJECT-TEAM-FULL-COVERAGE §2.1).

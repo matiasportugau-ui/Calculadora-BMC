@@ -862,37 +862,61 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
 }
 
 // ─── MATRIZ precios → planilla calculadora ──────────────────────────────────
+// MATRIZ de COSTOS y VENTAS: extrae costo, venta_bmc y venta_web de la misma planilla.
+// Columnas buscadas por nombre: costo/costos, venta/venta_bmc, venta_web/web. Fallback índices fijos.
 
 const IVA_MULT = 1.22;
 
+function findColIndex(headers, ...patterns) {
+  for (const p of patterns) {
+    const re = typeof p === "string" ? new RegExp(p, "i") : p;
+    const idx = (headers || []).findIndex((h) => re.test(String(h || "").trim()));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
 async function buildPlanillaDesdeMatriz(matrizSheetId) {
-  const { getPathForMatrizSku, normalizeSku } = await import("../../src/data/matrizPreciosMapping.js");
+  const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const sheetName = await getFirstSheetName(matrizSheetId);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: matrizSheetId,
-    range: `'${sheetName}'!A4:M500`,
+    range: `'${sheetName}'!A1:Z500`,
   });
-  const rows = res.data.values || [];
+  const allRows = res.data.values || [];
+  if (allRows.length === 0) return { csv: "\uFEFFpath,label,categoria,costo,venta_bmc_local,venta_web,unidad\n", count: 0 };
+
+  const headerRow = allRows[0] || [];
+  const skuIdx = findColIndex(headerRow, /sku|código|codigo/i);
+  const costoIdx = findColIndex(headerRow, /^costo[s]?$/i, /costo\s*\(/i);
+  const ventaIdx = findColIndex(headerRow, /venta_bmc|venta\s*consumidor|venta\s*directa|^venta\s*$/i);
+  const webIdx = findColIndex(headerRow, /venta_web|venta\s*web|^web\s*$/i);
+  const skuCol = skuIdx >= 0 ? skuIdx : 3;
+  const costoCol = costoIdx >= 0 ? costoIdx : 6;
+  const ventaCol = ventaIdx >= 0 ? ventaIdx : 11;
+  const webCol = webIdx >= 0 ? webIdx : 12;
+
+  const dataRows = allRows.slice(1);
   const csvRows = [];
   const header = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_web", "unidad"];
   csvRows.push(header.join(","));
   let count = 0;
-  for (const row of rows) {
-    const skuRaw = row[3];
-    const costoRaw = row[6];
-    const ventaRaw = row[11];
-    const webRaw = row[12];
+  const parseNum = (v) => {
+    if (v == null || v === "") return null;
+    const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  };
+  for (const row of dataRows) {
+    const skuRaw = row[skuCol];
+    const costoRaw = row[costoCol];
+    const ventaRaw = row[ventaCol];
+    const webRaw = row[webCol];
     const path = getPathForMatrizSku(skuRaw);
     if (!path) continue;
-    const parseNum = (v) => {
-      if (v == null || v === "") return null;
-      const s = String(v).trim().replace(/\./g, "").replace(",", ".");
-      const n = parseFloat(s);
-      return isNaN(n) ? null : n;
-    };
     const costoConIva = parseNum(costoRaw);
     const ventaConIva = parseNum(ventaRaw);
     const webConIva = parseNum(webRaw);

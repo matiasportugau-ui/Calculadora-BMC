@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-19 (run18)
+**Última actualización:** 2026-03-20 (run23 fusión)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -39,6 +39,9 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 16 (2026-03-19):** 4.95/5 (18 agentes; post mejoras Calculadora UI)
 **Promedio global Run 17 (2026-03-19):** 4.96/5 (18 agentes; deploy calc prep)
 **Promedio global Run 18 (2026-03-19):** 4.96/5 (18 agentes; deploy completado)
+**Promedio global Run 19 (2026-03-19):** 4.96/5 (18 agentes; sync updates Calculadora)
+**Promedio global Run 22 (2026-03-20):** ~4.5/5 (18 roles con nota; run documental propagate/sync; Repo Sync sin push verificado)
+**Promedio global Run 23 (2026-03-20):** ~4.7/5 (18 roles con nota; fusión run22 + Presupuesto libre V3; ver `JUDGE-REPORT-RUN-2026-03-20-run23.md`)
 
 ---
 
@@ -103,6 +106,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-19 | Full team run 16 — post mejoras Calculadora UI | 18/19 (Sheets N/A) | 4.95 | [JUDGE-REPORT-RUN-2026-03-19-run16.md](./JUDGE-REPORT-RUN-2026-03-19-run16.md) |
 | 2026-03-19 | Full team run 17 — deploy calc prep | 18/19 (Sheets N/A) | 4.96 | [JUDGE-REPORT-RUN-2026-03-19-run17.md](./JUDGE-REPORT-RUN-2026-03-19-run17.md) |
 | 2026-03-19 | Full team run 18 — deploy completado | 18/19 (Sheets N/A) | 4.96 | [JUDGE-REPORT-RUN-2026-03-19-run18.md](./JUDGE-REPORT-RUN-2026-03-19-run18.md) |
+| 2026-03-19 | Full team run 19 — sync updates Calculadora | 18/19 (Sheets N/A) | 4.96 | [JUDGE-REPORT-RUN-2026-03-19-run19.md](./JUDGE-REPORT-RUN-2026-03-19-run19.md) |
+| 2026-03-20 | Full team run 22 — propagate & synchronize | 18/19 (Sheets N/A) | ~4.5 | [JUDGE-REPORT-RUN-2026-03-20-run22.md](./JUDGE-REPORT-RUN-2026-03-20-run22.md) |
 
 ---
 

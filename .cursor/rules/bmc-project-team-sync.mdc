@@ -13,7 +13,7 @@ Read and follow: `.cursor/skills/bmc-project-team-sync/SKILL.md`
 
 ## Invoque full team
 
-**Invocación unificada:** "Invoque full team" activa el full team run. Ver `docs/team/INVOQUE-FULL-TEAM.md` para el flujo completo. El Orquestador ejecuta pasos 0–8 e invoca a todos los 19 miembros de `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2.
+**Invocación unificada:** "Invoque full team" activa el full team run. Ver `docs/team/INVOQUE-FULL-TEAM.md` para el flujo completo. El Orquestador ejecuta pasos 0–9 e invoca **todos los roles** de `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` **§2** (N = filas vigentes) y **considera §2.2** (skills transversales) en paso 0. Alta de agentes: **§2.3**.
 
 ## Quick reference
 

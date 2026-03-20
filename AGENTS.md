@@ -62,12 +62,14 @@ docs/
 
 ## Contexto del equipo de agentes
 
-Este proyecto usa un equipo de 19 agentes IA coordinados. Antes de trabajar:
+Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico es **`docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2** (N roles) más **§2.2** (skills transversales consideradas en full team). Antes de trabajar:
 
 1. Leer `docs/team/PROJECT-STATE.md` — estado actual, pendientes, cambios recientes.
 2. Leer `docs/team/knowledge/<TuRol>.md` si existe.
 3. Consultar `docs/google-sheets-module/planilla-inventory.md` para estructura de Sheets.
 4. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
+
+En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 
 Al terminar una tarea:
 - Actualizar `docs/team/PROJECT-STATE.md` (sección "Cambios recientes" y "Pendientes").

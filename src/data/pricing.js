@@ -11,8 +11,10 @@ import {
   PERFIL_TECHO as PET,
   PERFIL_PARED as PEP,
   SERVICIOS as SRV,
+  HERRAMIENTAS as H,
 } from "./constants.js";
 import { getPricingOverrides, applyOverridesToObject } from "../utils/pricingOverrides.js";
+import { getDimensioningOverrides } from "../utils/dimensioningFormulasOverrides.js";
 
 const BASE = {
   PANELS_TECHO: PT,
@@ -22,6 +24,7 @@ const BASE = {
   PERFIL_TECHO: PET,
   PERFIL_PARED: PEP,
   SERVICIOS: SRV,
+  HERRAMIENTAS: H,
 };
 
 let _cache = null;
@@ -29,8 +32,10 @@ let _cache = null;
 /** Obtener pricing con overrides aplicados. Cache se invalida al guardar overrides. */
 export function getPricing() {
   if (_cache) return _cache;
-  const overrides = getPricingOverrides();
-  _cache = applyOverridesToObject(BASE, overrides);
+  const pricingOverrides = getPricingOverrides();
+  const dimensioningOverrides = getDimensioningOverrides();
+  const allOverrides = { ...pricingOverrides, ...dimensioningOverrides };
+  _cache = applyOverridesToObject(BASE, allOverrides);
   return _cache;
 }
 
@@ -105,6 +110,11 @@ export function getPricingItemsFlat() {
   // Servicios
   for (const [id, data] of Object.entries(pricing.SERVICIOS || {})) {
     if (data.venta != null) items.push({ path: `SERVICIOS.${id}`, label: data.label, venta: data.venta, web: data.web, costo: data.costo, unidad: data.unidad || "servicio", categoria: "Servicios" });
+  }
+
+  // Herramientas (presupuesto libre / MATRIZ)
+  for (const [id, data] of Object.entries(pricing.HERRAMIENTAS || {})) {
+    if (data.venta != null) items.push({ path: `HERRAMIENTAS.${id}`, label: data.label, venta: data.venta, web: data.web, costo: data.costo, unidad: data.unidad || "unid", categoria: "Herramientas" });
   }
 
   return items;

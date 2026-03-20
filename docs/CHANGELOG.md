@@ -1,5 +1,45 @@
 # 📝 Changelog — Panelin Calculadora BMC
 
+## [3.1.2] — 2026-03-19
+
+### Equipo — Run 23 fusión (2026-03-20)
+- **Judge:** `docs/team/judge/JUDGE-REPORT-RUN-2026-03-20-run23.md` (run22 documental + Presupuesto libre V3).
+- **MATPROMT:** `docs/team/matprompt/MATPROMT-RUN-2026-03-20-run23.md`; guía `MATPROMT-FULL-RUN-PROMPTS.md` — sección Bundle run23.
+- **Parallel/Serial:** `docs/team/parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run23.md`.
+- **HISTORICO Judge:** promedio global run23 ~4.7/5; `PROMPT-FOR-EQUIPO-COMPLETO` y `PROJECT-STATE` enlazados.
+
+### Equipo / deps (2026-03-20 — Run 23 next steps)
+- **Plan:** `docs/team/plans/NEXT-STEPS-RUN-23-2026-03-20.md` — lint, tests, `npm audit fix` (sin `--force`), pendientes humanos.
+- **`npm audit fix`:** 4 packages actualizados; quedan **7** vulnerabilidades; `--force` pendiente aprobación (breaking).
+- **E2E:** `docs/team/E2E-VALIDATION-CHECKLIST.md` — tabla URLs producción (Cloud Run / Vercel).
+- **PROJECT-STATE** / **PROMPT** actualizados.
+
+### Sync motor / UI — Fijaciones unitarias (2026-03-20)
+- **Motor:** `calcFijacionesCaballete` / `calcPerfileriaTecho` / `calcFijacionesPared` usan cantidades reales y `p()` **sin** paquetes ×100/×1000 (alineado a `constants.js`).
+- **Nuevo:** `calcPresupuestoLibre(lineas)` en `calculations.js` (`FIJACIONES` / `HERRAMIENTAS`).
+- **BOM:** `bomToGroups` agrupa resultado presupuesto libre en **PRESUPUESTO LIBRE**.
+- **UI datos:** `PanelinCalculadoraV3.jsx` importa `FIJACIONES` y `HERRAMIENTAS` desde `constants.js`; fórmulas locales igual que el motor.
+- **MATRIZ:** `matrizPreciosMapping.js` — filas catálogo (SKUs placeholder; confirmar con planilla).
+- **Tests:** `validation.js` — casos T1/aguja unitarios + integración `calcPresupuestoLibre` / `bomToGroups`.
+
+### Calculadora — Fachada (BOM)
+- **T2:** Cotización por **unidad**; precio lista = **unitario** en `constants` (sin `unidades_por_paquete` en costeo).
+- **Cinta butilo:** Inclusión **opcional** (`inclCintaButilo`, default `false`); toggles en UI cuando hay pared y selladores activos.
+- **Silicona 300 ml neutra:** Nuevo producto `SELLADORES.silicona_300_neutra` (precios placeholder); opcional `inclSilicona300Neutra`; MATRIZ SKU `SIL300N`.
+- **API:** `calcSelladorPared(perimetro, cantPaneles, alto, opts?)`; `calcParedCompleto` acepta flags opcionales.
+- **Tests:** `tests/validation.js` ampliados (113 assertions con suite vista previa).
+
+### Calculadora — Vista previa del techo
+- **Nuevo** `src/components/RoofPreview.jsx`: rejilla según ancho útil del panel (`au`), arrastre de zonas en planta (`techo.zonas[].preview.x/y`), doble clic / doble toque para ciclar indicador visual de pendiente (`slopeMark`); botón «Alinear zonas». No modifica el BOM. Persistencia vía `.bmc.json` existente.
+- **Tests:** suite 19 en `validation.js` (deserialize `preview`).
+
+### Equipo / docs
+- Full team **run 22 (2026-03-20):** propagate & synchronize — `MATPROMT-RUN-PROPAGATE-SYNC-2026-03-20.md`, `PARALLEL-SERIAL-PLAN-2026-03-20-run22.md`, REPORT / REPO-SYNC / Judge run22; `PROJECT-STATE`, `PROMPT-FOR-EQUIPO-COMPLETO`, `JUDGE-REPORT-HISTORICO`, `service-map.md` (fecha); `IMPROVEMENT-BACKLOG-BY-AGENT` fila **MATPROMT**; `docs/team/knowledge/MATPROMT.md` + README; agenda siguiente run + checklist push repos hermanos.
+- Full team **run 21:** MATPROMT bundle, PARALLEL-SERIAL plan, REPORT, Judge; `PROJECT-STATE` / `PROMPT-FOR-EQUIPO-COMPLETO` actualizados.
+
+### Precios (planilla usuario — Mar 2022 María G. Fleurquin)
+- Valores de columnas **con IVA** convertidos a **sin IVA** (÷ 1,22): silicona neutra premium, membrana, PU gris, T1 y punta aguja (T1/aguja: fila como **unidad** ×100 para paquete `x100`).
+
 ## [3.1.1] — 2026-03-17
 
 ### 📦 Dependencias

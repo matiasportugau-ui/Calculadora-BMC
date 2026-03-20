@@ -23,7 +23,7 @@
 | Servicio | Env requerido | APIs/Sheets | Otros |
 |----------|----------------|-------------|-------|
 | **bmcDashboard.js** | BMC_SHEET_ID, GOOGLE_APPLICATION_CREDENTIALS, BMC_SHEET_SCHEMA | Sheets API (values.get, values.append, batchUpdate) | config.js |
-| **Calculadora (5173)** | VITE_API_URL, VITE_GOOGLE_CLIENT_ID, BMC_MATRIZ_SHEET_ID | /api/calc, /api/actualizar-precios-calculadora, Google Drive, MATRIZ Costos 2026 | — |
+| **Calculadora (5173)** | VITE_API_URL, VITE_GOOGLE_CLIENT_ID, BMC_MATRIZ_SHEET_ID | /api/calc, /api/actualizar-precios-calculadora, Google Drive, MATRIZ Costos 2026; Config: PricingEditor (costos), DimensioningFormulasEditor (fórmulas) | — |
 | **Dashboard 3001** | — | /api/* (bmcDashboard) | Express static |
 | **Dashboard 3849** | BMC_SHEET_ID, creds | sheets-api-server.js (propio) | Schema fijo Master |
 | **Shopify** | SHOPIFY_* | Firestore, webhooks | tokenStore |
@@ -63,5 +63,5 @@
 
 ---
 
-**Última actualización:** 2026-03-19 (run18; deploy completado)  
+**Última actualización:** 2026-03-19 (run19; Config costos editables, fórmulas dimensionamiento)  
 **Handoff:** Usar con service-map.md, IMPLEMENTATION-PLAN-SOLUTION-CODING.md (Phase 1–2), INTEGRACION-ADMIN-COTIZACIONES.md, MATRIZ-PRECIOS-CALCULADORA.md.

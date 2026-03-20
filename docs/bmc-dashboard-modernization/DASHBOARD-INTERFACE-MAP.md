@@ -161,6 +161,7 @@
 2. Abrir http://localhost:5173
 3. App React: cotizador, Drive, Budget Log, PDF. Sin dashboard nav.
 4. **Mejoras 2026-03-19:** Accesorios perimetrales sobre vista previa techo (RoofBorderSelector); columnas Costo, % Margen, Ganancia en tabla resultados; botón "Cargar desde MATRIZ" en Config; Enter para Siguiente en wizard; display título dimensiones corregido.
+5. **Mejoras 2026-03-19 (run 19):** Config con 3 tabs — General, Precios, Fórmulas. **Precios:** costos editables (costo, venta_bmc_local, venta_web); download/upload CSV; "Cargar desde MATRIZ" (col Costo + Venta). **Fórmulas:** DimensioningFormulasEditor — download/upload CSV de parámetros de dimensionamiento (fijaciones, selladores, perfilería); edición inline; reset a defaults.
 
 ---
 
@@ -185,9 +186,9 @@
 | AUDIT_LOG | Audit log | GET /api/audit | conditional |
 | 2.0 - Ventas | Ventas 2.0 | GET /api/ventas | conditional (BMC_VENTAS_SHEET_ID) |
 | Stock E-Commerce | Stock E-Commerce | GET /api/stock-ecommerce, /api/stock-kpi | conditional (BMC_STOCK_SHEET_ID) |
-| MATRIZ de COSTOS y VENTAS 2026 | Calculadora (Cargar desde MATRIZ) | GET /api/actualizar-precios-calculadora | conditional (BMC_MATRIZ_SHEET_ID) |
+| MATRIZ de COSTOS y VENTAS 2026 | Calculadora (Cargar desde MATRIZ) | GET /api/actualizar-precios-calculadora | conditional (BMC_MATRIZ_SHEET_ID); col Costo + Venta BMC/Web |
 | — | Invoque Panelin | Link → localhost:3847 | live (link) |
 
 ---
 
-**Última actualización:** 2026-03-19 (Invoque link → localhost:3847)
+**Última actualización:** 2026-03-19 run19 (Config costos editables, fórmulas dimensionamiento download/upload)

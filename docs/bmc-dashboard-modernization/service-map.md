@@ -19,7 +19,8 @@
 | **sheets-api-server (3849)** | Backend standalone | http://localhost:3849 | Dashboard + API propio | — | Shell |
 | **legacyQuote** | API | /api/legacy/* | Quote legacy | — | Cotizaciones |
 | **calc** | API | /api/calc/* | Cálculos | — | Cotizaciones |
-| **actualizar-precios-calculadora** | API | GET /api/actualizar-precios-calculadora | MATRIZ Costos 2026 → CSV | — | Cotizaciones |
+| **actualizar-precios-calculadora** | API | GET /api/actualizar-precios-calculadora | MATRIZ Costos 2026 → CSV (path, costo, venta_bmc_local, venta_web) | — | Cotizaciones |
+| **ConfigPanel (Calculadora)** | UI | Config → Precios, Fórmulas | PricingEditor (costos editables, Cargar desde MATRIZ, download/upload); DimensioningFormulasEditor (fórmulas dimensionamiento download/upload) | — | Cotizaciones |
 | **Shopify** | API | /api/shopify/*, /webhooks/shopify | OAuth, webhooks | — | Integraciones |
 | **Apps Script** | Automation | Code.gs, DialogEntregas, triggers | doGet/doPost, Sheets append, cron | — | Sheets Structure |
 
@@ -82,5 +83,5 @@
 
 ---
 
-**Última actualización:** 2026-03-19 (run18; deploy completado)
+**Última actualización:** 2026-03-20 (run22; full team propagate & sync — revisión inventario, sin cambio rutas)
 **Handoff:** Usar con dependencies.md para validar integración end-to-end.

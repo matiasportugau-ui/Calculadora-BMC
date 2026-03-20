@@ -21,6 +21,10 @@ export function applyOverrides(groups, overrides) {
 export function bomToGroups(result) {
   if (!result || result.error) return [];
 
+  if (result.presupuestoLibre === true && Array.isArray(result.allItems) && result.allItems.length > 0) {
+    return [{ title: "PRESUPUESTO LIBRE", items: result.allItems.map((i) => ({ ...i })) }];
+  }
+
   const panelItems = [];
   const perfilItems = [];
   const fijacionItems = [];

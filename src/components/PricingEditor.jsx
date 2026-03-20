@@ -18,17 +18,7 @@ import {
   resetPricingOverrides,
   getPricingOverrides,
 } from "../utils/pricingOverrides.js";
-
-const C = {
-  border: "#E5E5EA",
-  surface: "#FFFFFF",
-  surfaceAlt: "#FAFAFA",
-  primary: "#0071E3",
-  primarySoft: "#E8F1FB",
-  ts: "#6E6E73",
-  tp: "#1D1D1F",
-  success: "#34C759",
-};
+import { C, FONT } from "../data/constants.js";
 
 export default function PricingEditor({ onSave }) {
   const [items, setItems] = useState(() => getPricingItemsFlat());
@@ -39,6 +29,7 @@ export default function PricingEditor({ onSave }) {
   const [editing, setEditing] = useState(null);
   const [importMsg, setImportMsg] = useState(null);
   const [cargandoMatriz, setCargandoMatriz] = useState(false);
+  const [hoveredRow, setHoveredRow] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleCargarDesdeMatriz = async () => {
@@ -119,10 +110,14 @@ export default function PricingEditor({ onSave }) {
   };
 
   const handleCellChange = (path, field, value) => {
-    const num = parseFloat(value);
-    if (isNaN(num) || num < 0) return;
     const fullPath = `${path}.${field}`;
-    setPricingOverride(fullPath, num);
+    if (value === "" || value == null) {
+      setPricingOverride(fullPath, null);
+    } else {
+      const num = parseFloat(value);
+      if (isNaN(num) || num < 0) return;
+      setPricingOverride(fullPath, num);
+    }
     refresh();
     setEditing(null);
     onSave?.();
@@ -261,7 +256,8 @@ export default function PricingEditor({ onSave }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Descripción clara */}
       <div style={{ padding: 12, background: C.primarySoft, borderRadius: 12, border: `1px solid ${C.primary}`, fontSize: 12, color: C.tp, lineHeight: 1.5 }}>
-        <strong>Modificar costos y precios de venta</strong>
+        <strong>Editar costos y precios de venta</strong>
+        <p style={{ margin: "6px 0 0 0" }}>Clic en cualquier celda para editar. Aplica a todos los productos y servicios.</p>
         <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
           <li><strong>Costo</strong> — Costo unitario (USD s/IVA)</li>
           <li><strong>Precio Venta BMC (Local)</strong> — Lista venta directa</li>
@@ -269,10 +265,11 @@ export default function PricingEditor({ onSave }) {
         </ul>
       </div>
 
-      {/* Descargar / Importar planilla */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Button groups: MATRIZ | Download/Import */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ fontSize: 11, color: C.ts }}>Editar en Excel o Google Sheets y reimportar para modificación en masa.</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", paddingRight: 12, borderRight: `1px solid ${C.border}` }}>
         <button
           onClick={handleCargarDesdeMatriz}
           disabled={cargandoMatriz}
@@ -295,6 +292,8 @@ export default function PricingEditor({ onSave }) {
           <RefreshCw size={16} />
           {cargandoMatriz ? "Cargando..." : "Cargar desde MATRIZ (costo + venta)"}
         </button>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <a
           href={`${(import.meta.env?.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "")}/api/actualizar-precios-calculadora`}
           download="bmc-precios-matriz.csv"
@@ -354,8 +353,9 @@ export default function PricingEditor({ onSave }) {
           Importar planilla modificada
           <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportPlanilla} style={{ display: "none" }} />
         </label>
-        {importMsg && <span style={{ fontSize: 12, color: importMsg.includes("Error") ? "#FF3B30" : C.primary }}>{importMsg}</span>}
         </div>
+        </div>
+        {importMsg && <span style={{ fontSize: 12, color: importMsg.includes("Error") ? C.danger : C.primary, display: "block", marginTop: 8 }}>{importMsg}</span>}
       </div>
 
       {/* Buscador */}
@@ -431,23 +431,31 @@ export default function PricingEditor({ onSave }) {
       )}
 
       {/* Tabla */}
-      <div style={{ overflowX: "auto", maxHeight: 400, overflowY: "auto" }}>
+      <div style={{ overflowX: "auto", maxHeight: 400, overflowY: "auto", borderRadius: 12, border: `1px solid ${C.border}`, fontFamily: FONT }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead style={{ position: "sticky", top: 0, background: C.surfaceAlt, zIndex: 1 }}>
+          <thead style={{ position: "sticky", top: 0, background: C.brand, color: "#fff", zIndex: 1, boxShadow: "0 2px 4px rgba(0,0,0,0.06)" }}>
             <tr>
-              <th style={{ padding: "8px 6px", textAlign: "left", borderBottom: `2px solid ${C.border}` }}>
+              <th style={{ padding: "12px 10px", textAlign: "left", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 <input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={toggleSelectAll} />
               </th>
-              <th style={{ padding: "8px 6px", textAlign: "left", borderBottom: `2px solid ${C.border}` }}>Ítem</th>
-              <th style={{ padding: "8px 6px", textAlign: "right", borderBottom: `2px solid ${C.border}` }} title="Costo unitario USD s/IVA">Costo</th>
-              <th style={{ padding: "8px 6px", textAlign: "right", borderBottom: `2px solid ${C.border}` }} title="Precio venta directa BMC">Venta BMC</th>
-              <th style={{ padding: "8px 6px", textAlign: "right", borderBottom: `2px solid ${C.border}` }} title="Precio venta web">Venta Web</th>
-              <th style={{ padding: "8px 6px", textAlign: "center", borderBottom: `2px solid ${C.border}` }}>Unidad</th>
+              <th style={{ padding: "12px 10px", textAlign: "left", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Ítem</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Costo unitario USD s/IVA">Costo</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC">Venta BMC</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web">Venta Web</th>
+              <th style={{ padding: "12px 10px", textAlign: "center", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((row) => (
-                <tr key={row.path} style={{ background: selected.has(row.path) ? C.primarySoft : "transparent" }}>
+                <tr
+                  key={row.path}
+                  onMouseEnter={() => setHoveredRow(row.path)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                  style={{
+                    background: selected.has(row.path) ? C.primarySoft : hoveredRow === row.path ? C.surfaceAlt : "transparent",
+                    transition: "background 120ms ease",
+                  }}
+                >
                   <td style={{ padding: "6px" }}>
                     <input type="checkbox" checked={selected.has(row.path)} onChange={() => toggleSelect(row.path)} />
                   </td>

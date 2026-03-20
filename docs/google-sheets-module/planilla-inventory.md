@@ -19,6 +19,14 @@ Inventario runtime de tabs, columnas y rutas API. Ver [SHEETS-MAPPING-5-WORKBOOK
 | BMC_CALENDARIO_SHEET_ID | 1bvnbYq7MTJRpa6xEHE5m-5JcGNI9oCFke3lsJj99tdk | Calendario vencimientos | calendario-vencimientos |
 | BMC_MATRIZ_SHEET_ID | 1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ | MATRIZ de COSTOS y VENTAS 2026 | actualizar-precios-calculadora |
 
+**MATRIZ de COSTOS y VENTAS:** La misma planilla alimenta costos y precios de venta. Columnas buscadas por nombre (flexible):
+- **SKU / Código** — para mapear a path calculadora
+- **Costo / Costos** — costo unitario (con IVA; se convierte a sin IVA)
+- **Venta BMC / Venta consumidor / Venta directa** — precio venta directa
+- **Venta Web / Web** — precio venta web
+
+El CSV exportado incluye `path`, `label`, `categoria`, `costo`, `venta_bmc_local`, `venta_web`, `unidad`. Los valores son editables en Configuración → Listado de precios (PricingEditor). La columna **Costo** se usa para "Cargar desde MATRIZ" junto con Venta BMC/Web.
+
 ---
 
 ## 1. Tabs — estado y API (workbook principal)
