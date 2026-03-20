@@ -228,10 +228,19 @@
 
 ---
 
+## Roadmap — Runs 32–39 (adelante, 2026)
+
+- **Documento canónico:** [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md)
+- **Regla:** Antes de cada run numerado, **MATPROMT** confirma o ajusta el bundle (paso **0.1** del roadmap). Si el run actual revela prioridad nueva → **DELTA** + posible run intermedio (**32b**, etc.).
+- **Cruzamiento:** Run **32** ≈ honestidad AUTOPILOT + `test:contracts`; **33–34** ≈ Pista 3 Sheets + smoke post-Sheets; **35–37** ≈ AUTOPILOT **27–29**; **38** GPT/Repo Sync; **39** síntesis (AUTOPILOT **30** ampliado).
+
+---
+
 ## Histórico
 
 | Fecha | Run | Ubicación del bundle |
 |-------|-----|----------------------|
+| 2026-03-20 | roadmap 32–39 | [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md) — plan vivo; bundles por run se añaden al ejecutar cada uno |
 | 2026-03-19 | run31 (post-autopilot) | Sección arriba + [`matprompt/MATPROMT-RUN-2026-03-19-run31.md`](./matprompt/MATPROMT-RUN-2026-03-19-run31.md) |
 | 2026-03-20 | autopilot 24–30 | Sección arriba + [`matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md) + Judge formal run24–run30 (`judge/JUDGE-REPORT-RUN-2026-03-20-run24.md` … `run30.md`) |
 | 2026-03-20 | run23 (fusión) | Sección arriba + [`matprompt/MATPROMT-RUN-2026-03-20-run23.md`](./matprompt/MATPROMT-RUN-2026-03-20-run23.md) |

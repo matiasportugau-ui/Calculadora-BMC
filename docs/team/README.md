@@ -59,6 +59,8 @@ docs/team/
 
 | Documento | Descripción |
 |-----------|-------------|
+| [reports/RUN-ROADMAP-FORWARD-2026.md](./reports/RUN-ROADMAP-FORWARD-2026.md) | **Runs 32–39** planificados; **revisión pre-run** §0.1; DELTA ante cambios de prioridad |
+| [reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) | Pack documental autopilot **24–30**; tabla ⬜/✓ de ejecución real |
 | [plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md) | Plan por solución (8 pistas); avance **uno por uno**; empezar Pista 1 Git |
 | [plans/NEXT-STEPS-RUN-23-2026-03-20.md](./plans/NEXT-STEPS-RUN-23-2026-03-20.md) | Run 23: lint, tests, npm audit sin --force |
 | [plans/PLAN-EQUIPO-3-PASOS-SIGUIENTES.md](./plans/PLAN-EQUIPO-3-PASOS-SIGUIENTES.md) | Plan vigente: Paso 1 (C2,C6,C7), Paso 2 (S1+C1-C5), Paso 3 (hardening) |

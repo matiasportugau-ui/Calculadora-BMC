@@ -2,6 +2,8 @@
 
 **Uso:** Al decir **"Equipo completo"** o **"Invoque full team"**, usa este documento como **input del run**. Ejecuta la secuencia normal (pasos 0 → **0a MATPROMT** → 0b–8) y además el **ciclo de mejoras** (paso 9) con los prompts abajo. Al terminar, actualiza el backlog y la sección "Próximos prompts" para el siguiente run, hasta que todos los agentes estén completamente desarrollados.
 
+**Roadmap de runs pendientes (32→39) + regla de revisión pre-run:** [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md). Ante hallazgos o cambios de prioridad, **revisar el plan** con MATPROMT antes de ejecutar el siguiente run numerado.
+
 ---
 
 ## Instrucción para el Orquestador (cada run)
@@ -55,15 +57,19 @@
 
 ## Próximos prompts para el siguiente run (actualizar al final)
 
-**Run32+ (2026-03-19 — agenda tras run 31):**
+**Run32+ (2026-03-19 — agenda tras run 31):** Detalle **por run (32–39)**, dependencias y **revisión pre-run** en [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md).
 
+Resumen ejecutivo:
 1. ~~**[Repo / Security]**~~ — ✓ **2026-03-20:** `.gitignore` ignora `Calculadora-BMC/`, `OmniCRM-Sync/`.
-2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** rama fusionada — **PR #33** → `main` (`5f9855d`); seguir con deploy/repos hermanos si aplica.
-3. **[Matias — manual] Pista 3** — tabs + triggers Sheets según AUTOMATIONS-BY-WORKBOOK / IMPLEMENTATION-PLAN-POST-GO-LIVE §A1–A2.
-4. **[Audit]** Completar filas ⬜→✓ en [AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) con evidencia real por run.
-5. **[Contract]** Con API levantada: `npm run test:contracts`.
-6. **[Calc / Mapping]** SKUs MATRIZ col.D + opcional acotar tornillería presupuesto libre (`PRESUPUESTO_LIBRE_IDS`).
-7. **[Coding + Matias]** Rama `npm audit fix --force` si se aprueba (run28 autopilot).
+2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** **PR #33** → `main`; seguir **Run 38** roadmap si sync repos hermanos.
+3. **[Run 32]** Contratos + tabla AUTOPILOT honesta + E2E según roadmap.
+4. **[Run 33]** Pista 3 — tabs + triggers (Matias) + verificación Mapping.
+5. **[Run 34]** Smoke post-Sheets producción.
+6. **Runs 35–37** Presupuesto libre / audit `--force` / SKUs + billing (ver tabla roadmap).
+7. **[Run 38]** GPT/Repo Sync drift.
+8. **[Run 39]** Síntesis ciclo (equivalente autopilot run 30 ampliado).
+
+*Antes de cada ítem: §0.1 Revisión pre-run en el roadmap (R1–R5).*
 
 **Run 2026-03-16 (go):** Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync, Sheets Structure — ✓ completados.
 **Todos los 19 agentes están completamente desarrollados.**

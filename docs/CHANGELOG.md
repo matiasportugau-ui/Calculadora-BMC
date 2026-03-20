@@ -2,6 +2,11 @@
 
 ## [3.1.2] — 2026-03-19
 
+### Equipo — Roadmap runs 32–39 + AUTOPILOT 24–25 ✓ (2026-03-20)
+- **Roadmap:** `docs/team/reports/RUN-ROADMAP-FORWARD-2026.md` — planificación **Run 32→39**, **§0.1 revisión pre-run** (R1–R5), plantilla **DELTA**, cruce con AUTOPILOT **26–30** y pistas SOLUCIONES.
+- **AUTOPILOT:** `docs/team/reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md` — ejecución **24–25** marcada ✓ con referencias; **26–30** ⬜.
+- **Enlaces:** `PROMPT-FOR-EQUIPO-COMPLETO.md`, `INVOQUE-FULL-TEAM.md`, `MATPROMT-FULL-RUN-PROMPTS.md`, `PROJECT-STATE.md`.
+
 ### Git — PR #33 merge a `main` (2026-03-20)
 - **Merged:** [PR #33](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/33) — rama `sheets-verify-config-b29b9` → `main` (merge `5f9855d`). Incluye capabilities, presupuesto libre, docs equipo (autopilot, run31), MCP, contratos ampliados.
 - **Estado:** `Run32+` items repo/gitignore y merge documentados en `PROJECT-STATE.md` / `PROMPT-FOR-EQUIPO-COMPLETO.md`.

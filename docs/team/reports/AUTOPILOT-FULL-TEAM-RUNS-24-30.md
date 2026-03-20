@@ -115,12 +115,14 @@
 
 | Run | Estado ejecución real | Nota |
 |-----|----------------------|------|
-| 24 | ⬜ Pendiente | |
-| 25 | ⬜ Pendiente | |
-| 26 | ⬜ Pendiente | |
-| 27 | ⬜ Pendiente | |
-| 28 | ⬜ Pendiente | |
-| 29 | ⬜ Pendiente | |
-| 30 | ⬜ Pendiente | |
+| 24 | ✓ **2026-03-20** | Alineado a Pista 1 SOLUCIONES + PR **#33** → `main`; ver [RUN-ROADMAP-FORWARD-2026.md](./RUN-ROADMAP-FORWARD-2026.md) §1. |
+| 25 | ✓ **2026-03-20** | Smoke prod documentado en [E2E-VALIDATION-CHECKLIST.md](../E2E-VALIDATION-CHECKLIST.md) §Resultados smoke; 503 Sheets coherente. |
+| 26 | ⬜ Pendiente | Pista 3 — tabs/triggers (Matias). |
+| 27 | ⬜ Pendiente | Paridad presupuesto libre / `PRESUPUESTO_LIBRE_IDS` — plan **Run 35** en roadmap forward. |
+| 28 | ⬜ Pendiente | Rama `npm audit fix --force` — plan **Run 36**. |
+| 29 | ⬜ Pendiente | SKUs col.D + billing — plan **Run 37**. |
+| 30 | ⬜ Pendiente | Síntesis ciclo — plan **Run 39**. |
+
+**Runs siguientes (full team 32+):** ver [RUN-ROADMAP-FORWARD-2026.md](./RUN-ROADMAP-FORWARD-2026.md) (revisión pre-run obligatoria antes de cada uno).
 
 *(Reemplazar ⬜ por ✓ y fecha cuando Matias/código cierren cada run.)*

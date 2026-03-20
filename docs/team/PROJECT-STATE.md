@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-20 (PR #33 merge a `main`)
+**Última actualización:** 2026-03-20 (Roadmap runs 32–39 + tabla AUTOPILOT 24–25)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Planificación — runs 32→39 + revisión pre-run):** Roadmap canónico [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md): secuencia **Run 32** (contratos + cierre honesto AUTOPILOT) … **Run 39** (síntesis ciclo); reglas **§0.1** (R1–R5) antes de cada run; plantilla **DELTA** si cambian prioridades. **AUTOPILOT** [`reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md`](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) — runs **24–25** marcados ✓ con evidencia; **26–30** ⬜. Enlaces: [`PROMPT-FOR-EQUIPO-COMPLETO.md`](./PROMPT-FOR-EQUIPO-COMPLETO.md), [`INVOQUE-FULL-TEAM.md`](./INVOQUE-FULL-TEAM.md), [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md).
 
 **2026-03-20 (Git — PR #33 merge a `main`):** [Pull Request #33](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/33) **MERGED** (merge commit `5f9855d`). Integra rama `sheets-verify-config-b29b9`: `/capabilities`, presupuesto libre (API + UI), documentación equipo (autopilot Judge run24–30, run31), `docs/AGENT-UI-VS-API.md`, `npm run mcp:panelin`, contratos ampliados en `validate-api-contracts.js`, `.gitignore` anti-copias anidadas. **Trabajar desde `main` actualizado** (`git pull origin main`).
 

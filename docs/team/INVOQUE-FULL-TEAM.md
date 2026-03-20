@@ -28,6 +28,8 @@
 
 **Secuencia autopilot (runs 24–30):** Para encadenar varios full team sin perder el hilo operativo, usar el paquete en [`reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md`](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) + bundle [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md) («AUTOPILOT Runs 24–30»).
 
+**Runs 32–39 (adelante) + revisión pre-run:** [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md) — plan abierto a **DELTA** si el run actual descubre prioridades nuevas.
+
 ---
 
 ## Flujo completo (pasos)
