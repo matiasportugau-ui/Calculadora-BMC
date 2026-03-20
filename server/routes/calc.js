@@ -18,6 +18,8 @@ import {
   setListaPrecios,
   PANELS_TECHO,
   PANELS_PARED,
+  PERFIL_TECHO,
+  PERFIL_PARED,
   SCENARIOS_DEF,
   VIS,
   BORDER_OPTIONS,
@@ -26,6 +28,7 @@ import {
   SELLADORES,
   p,
 } from "../../src/data/constants.js";
+import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src/utils/presupuestoLibreCatalogo.js";
 import { config } from "../config.js";
 
 const router = Router();
@@ -57,6 +60,22 @@ const GPT_ACTIONS = [
     summary: "Escenarios disponibles con campos requeridos y opcionales.",
     whenToUse: "Para saber qué datos pedir según el tipo de proyecto (solo techo, fachada, techo+fachada, cámara frigorífica).",
     params: [],
+  },
+  {
+    operationId: "calcular_presupuesto_libre",
+    method: "POST",
+    path: "/calc/cotizar/presupuesto-libre",
+    summary: "Calcula presupuesto libre (líneas manuales por catálogo).",
+    whenToUse: "Cuando el cliente pide partidas sueltas (paneles por m², perfilería por barra, tornillería, selladores, flete manual, extraordinarios) sin cotización techo/pared automática.",
+    params: [
+      { name: "lista", in: "body", type: "string", enum: ["venta", "web"], default: "web" },
+      { name: "librePanelLines", in: "body", type: "array" },
+      { name: "librePerfilQty", in: "body", type: "object" },
+      { name: "libreFijQty", in: "body", type: "object" },
+      { name: "libreSellQty", in: "body", type: "object" },
+      { name: "flete", in: "body", type: "number", default: 0 },
+      { name: "libreExtra", in: "body", type: "object" },
+    ],
   },
   {
     operationId: "calcular_cotizacion",
@@ -136,7 +155,7 @@ router.get("/gpt-entry-point", (req, res) => {
       "4. Si el cliente quiere PDF: POST /calc/cotizar/pdf con objeto cliente.",
       "5. Compartir pdf_url con el cliente.",
     ],
-    escenarios: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"],
+    escenarios: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig", "presupuesto_libre"],
     listas_precio: ["venta", "web"],
   });
 });
@@ -225,6 +244,7 @@ const SCENARIO_LABELS = {
   solo_fachada: "Solo Fachada",
   techo_fachada: "Techo + Fachada",
   camara_frig: "Cámara Frigorífica",
+  presupuesto_libre: "Presupuesto libre",
 };
 
 const LISTA_LABELS = { venta: "BMC Directo", web: "Web" };
@@ -268,14 +288,24 @@ function buildGptResponse(escenario, lista, results, flete) {
     };
   });
 
-  const resumen = {
-    area_m2: results.paneles?.areaTotal ?? results.paneles?.areaNeta ?? 0,
-    cant_paneles: results.paneles?.cantPaneles ?? 0,
-    puntos_fijacion: results.fijaciones?.puntosFijacion ?? 0,
-    subtotal_usd: totales.subtotalSinIVA,
-    iva_usd: totales.iva,
-    total_usd: totales.totalFinal,
-  };
+  const resumen = results.presupuestoLibre
+    ? {
+        area_m2: 0,
+        cant_paneles: 0,
+        puntos_fijacion: 0,
+        lineas_bom: allItems.length,
+        subtotal_usd: totales.subtotalSinIVA,
+        iva_usd: totales.iva,
+        total_usd: totales.totalFinal,
+      }
+    : {
+        area_m2: results.paneles?.areaTotal ?? results.paneles?.areaNeta ?? 0,
+        cant_paneles: results.paneles?.cantPaneles ?? 0,
+        puntos_fijacion: results.fijaciones?.puntosFijacion ?? 0,
+        subtotal_usd: totales.subtotalSinIVA,
+        iva_usd: totales.iva,
+        total_usd: totales.totalFinal,
+      };
 
   const autoportancia = results.autoportancia
     ? { ok: results.autoportancia.ok, apoyos: results.autoportancia.apoyos, vano_max_m: results.autoportancia.maxSpan }
@@ -286,10 +316,12 @@ function buildGptResponse(escenario, lista, results, flete) {
     : null;
 
   const panelLabel = allItems.find(i => i.unidad === "m²")?.label || "";
-  const textoResumen = `Cotización ${panelLabel} — ${SCENARIO_LABELS[escenario]}. `
-    + `Área: ${resumen.area_m2} m². Paneles: ${resumen.cant_paneles}. `
-    + `Subtotal: USD ${fmtPrice(resumen.subtotal_usd)} + IVA 22%: USD ${fmtPrice(resumen.iva_usd)} = `
-    + `TOTAL USD ${fmtPrice(resumen.total_usd)}.`;
+  const textoResumen = results.presupuestoLibre
+    ? `Presupuesto libre — ${allItems.length} línea(s) en BOM. Subtotal: USD ${fmtPrice(resumen.subtotal_usd)} + IVA 22%: USD ${fmtPrice(resumen.iva_usd)} = TOTAL USD ${fmtPrice(resumen.total_usd)}.`
+    : `Cotización ${panelLabel} — ${SCENARIO_LABELS[escenario] || escenario}. `
+      + `Área: ${resumen.area_m2} m². Paneles: ${resumen.cant_paneles}. `
+      + `Subtotal: USD ${fmtPrice(resumen.subtotal_usd)} + IVA 22%: USD ${fmtPrice(resumen.iva_usd)} = `
+      + `TOTAL USD ${fmtPrice(resumen.total_usd)}.`;
 
   const textoWhatsapp = buildWhatsAppText({
     client: { nombre: "—", rut: "", telefono: "" },
