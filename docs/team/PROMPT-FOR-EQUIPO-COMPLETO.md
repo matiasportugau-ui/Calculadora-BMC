@@ -57,8 +57,8 @@
 
 **Run32+ (2026-03-19 — agenda tras run 31):**
 
-1. **[Repo / Security]** Auditar y excluir del índice `Calculadora-BMC/`, `OmniCRM-Sync/` si son copias accidentales; o documentar propósito + `.gitignore`.
-2. **[Repo Sync]** Commit temático (docs equipo + calculadora) y `git push` en rama vigente; cerrar gap “push no verificado” si aún aplica.
+1. ~~**[Repo / Security]**~~ — ✓ **2026-03-20:** `.gitignore` ignora `Calculadora-BMC/`, `OmniCRM-Sync/`.
+2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** rama fusionada — **PR #33** → `main` (`5f9855d`); seguir con deploy/repos hermanos si aplica.
 3. **[Matias — manual] Pista 3** — tabs + triggers Sheets según AUTOMATIONS-BY-WORKBOOK / IMPLEMENTATION-PLAN-POST-GO-LIVE §A1–A2.
 4. **[Audit]** Completar filas ⬜→✓ en [AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) con evidencia real por run.
 5. **[Contract]** Con API levantada: `npm run test:contracts`.

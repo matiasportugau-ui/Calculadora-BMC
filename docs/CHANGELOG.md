@@ -2,6 +2,10 @@
 
 ## [3.1.2] — 2026-03-19
 
+### Git — PR #33 merge a `main` (2026-03-20)
+- **Merged:** [PR #33](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/33) — rama `sheets-verify-config-b29b9` → `main` (merge `5f9855d`). Incluye capabilities, presupuesto libre, docs equipo (autopilot, run31), MCP, contratos ampliados.
+- **Estado:** `Run32+` items repo/gitignore y merge documentados en `PROJECT-STATE.md` / `PROMPT-FOR-EQUIPO-COMPLETO.md`.
+
 ### Agente IA — capacidades, contratos, MCP (2026-03-20)
 - **`GET /capabilities`:** manifiesto único (Calculadora `/calc/*` + Dashboard `/api/*` + punteros UI); `server/agentCapabilitiesManifest.js`.
 - **`server/gptActions.js`:** `GPT_ACTIONS` centralizado (usado por `/calc/gpt-entry-point` y manifiesto).

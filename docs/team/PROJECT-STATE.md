@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-20 (Agente IA — capacidades / contratos / MCP)
+**Última actualización:** 2026-03-20 (PR #33 merge a `main`)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Git — PR #33 merge a `main`):** [Pull Request #33](https://github.com/matiasportugau-ui/Calculadora-BMC/pull/33) **MERGED** (merge commit `5f9855d`). Integra rama `sheets-verify-config-b29b9`: `/capabilities`, presupuesto libre (API + UI), documentación equipo (autopilot Judge run24–30, run31), `docs/AGENT-UI-VS-API.md`, `npm run mcp:panelin`, contratos ampliados en `validate-api-contracts.js`, `.gitignore` anti-copias anidadas. **Trabajar desde `main` actualizado** (`git pull origin main`).
 
 **2026-03-20 (Agente IA — capacidades + contratos + MCP):** `GET /capabilities` (manifiesto Calculadora + Dashboard); `server/gptActions.js` como fuente única de `GPT_ACTIONS`; `scripts/validate-api-contracts.js` incluye `/capabilities`, `/calc/gpt-entry-point`, `POST /calc/cotizar`, `POST /calc/cotizar/presupuesto-libre`; `docs/AGENT-UI-VS-API.md`, `docs/api/AGENT-CAPABILITIES.json`; `npm run mcp:panelin` (`scripts/mcp-panelin-http.mjs`, `@modelcontextprotocol/sdk`). Detalle: `docs/CHANGELOG.md`.
 
