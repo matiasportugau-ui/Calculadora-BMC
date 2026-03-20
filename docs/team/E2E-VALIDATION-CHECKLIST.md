@@ -2,7 +2,7 @@
 
 **Owner:** Audit/Debug + Matias  
 **Referencia:** IMPLEMENTATION-PLAN-POST-GO-LIVE.md §D1  
-**Última actualización:** 2026-03-20 (smoke prod Cloud Run + Vercel)
+**Última actualización:** 2026-03-20 (run34 smoke post-Sheets)
 
 Completar antes de presentar el dashboard a usuarios finales. Marcar con ✓ cuando se verifique.
 
@@ -33,6 +33,19 @@ Base **Cloud Run:** `https://panelin-calc-642127786762.us-central1.run.app`
 **Vercel:** `https://calculadora-bmc.vercel.app` → `/` y `/calculadora/` **200**.
 
 *Ejecutado por agente (Pista 2 — [SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md)).*
+
+### Resultados smoke — run34 (2026-03-20, curl red pública)
+
+| Origen | Ruta | HTTP | Nota |
+|--------|------|------|------|
+| **Cloud Run** | `/health` | 200 | Servicio vivo |
+| **Cloud Run** | `/api/kpi-report` | 503 | Sheets no config en deploy — esperable |
+| **Cloud Run** | `/api/cotizaciones` | 503 | Idem |
+| **Cloud Run** | `/api/kpi-financiero` | 503 | Idem |
+| **Cloud Run** | `/calculadora/`, `/finanzas/` | 404 | Revisar base path / deploy si se esperaban SPAs aquí |
+| **Vercel** | `/`, `/calculadora/` | 200 | SPAs OK |
+
+*Run34 (handoff itinerante): re-validación post-run33; APIs 503 coherente; Vercel 200; Cloud Run SPAs 404 — anotar para Networks si se requiere calculadora/finanzas en Cloud Run.*
 
 ---
 

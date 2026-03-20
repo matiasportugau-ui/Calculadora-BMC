@@ -51,7 +51,7 @@
 |-----|----------------|----------|------------|------------|-------------|--------|
 | **32** | Cierre honesto + contratos | Marcar ✓ real en [AUTOPILOT](./AUTOPILOT-FULL-TEAM-RUNS-24-30.md) 24–25; ejecutar `npm run test:contracts` con API arriba; ampliar E2E checklist si hubo cambios en `/capabilities` | `main` actual | Contract, Audit, Reporter | REPORT + checklist + PASS/FAIL documentado | ⬜ |
 | **33** | Pista 3 Sheets (coordinación) | Checklist tabs/triggers; handoff Matias; preparar verificación Mapping/Dependencies cuando cierren tabs | Planilla accesible | Sheets Structure*, Mapping, Dependencies, Integrations | Log en PROJECT-STATE; planilla-inventory sin drift nombres | ✓ (2026-03-20) |
-| **34** | Smoke post-Sheets | Re-validar Cloud Run/Vercel; anotar si 503→200 en rutas clave; OAuth/CORS si aplica | Run **33** hecho o documentado “parcial” | Networks, Contract, Audit | E2E checklist actualizado | ⬜ |
+| **34** | Smoke post-Sheets | Re-validar Cloud Run/Vercel; anotar si 503→200 en rutas clave; OAuth/CORS si aplica | Run **33** hecho o documentado “parcial” | Networks, Contract, Audit | E2E checklist actualizado | ✓ (2026-03-20) |
 | **35** | Presupuesto libre / canónico | Run **27** autopilot: paridad o ADR `backup` vs `V3`; opcional `PRESUPUESTO_LIBRE_IDS` | Ninguno bloqueante | Calc, Design, Mapping | Código o ADR + tests verdes | ⬜ |
 | **36** | Audit `--force` | Run **28**: Rama dedicada; `npm audit fix --force`; lint/test/build; PR merge **o** abort documentado | Aprobación Matias | Security, Audit, Networks | CHANGELOG + decisión | ⬜ |
 | **37** | MATRIZ SKUs + billing | Run **29**: col.D vs `matrizPreciosMapping.js`; sanity billing/cierre | Datos negocio | Mapping, Fiscal, Billing, Reporter | Lista SKUs OK/pendiente | ⬜ |

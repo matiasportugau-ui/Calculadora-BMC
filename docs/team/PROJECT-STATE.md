@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-20 (Full team run33 — Pista 3 coordinación + Mapping)
+**Última actualización:** 2026-03-20 (Run34 smoke post-Sheets + handoff run35)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Run34 — smoke post-Sheets):** Ejecutado **run34** (handoff itinerante). Re-validación producción: **Cloud Run** `/health` 200, `/api/kpi-report`, `/api/cotizaciones`, `/api/kpi-financiero` 503 (Sheets no config — esperable); `/calculadora/`, `/finanzas/` 404 (anotar para Networks si se requieren SPAs en Cloud Run). **Vercel** `/`, `/calculadora/` 200. E2E checklist actualizado con resultados run34; handoff itinerante actualizado → siguiente **run35** (Presupuesto libre / canónico).
 
 **2026-03-20 (Full team run33 — Invoque full team 0→9):** Ejecutado **Invoque full team** completo (pasos 0→0a→0b→1→…→8→9) como **run33**. **Foco:** Pista 3 (tabs/triggers Sheets) coordinación; handoff Matias documentado; **Mapping** verificó alineación planilla-inventory ↔ nombres de tabs esperados (sin drift). **0a MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-20-run33.md](./matprompt/MATPROMT-RUN-2026-03-20-run33.md); [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) Bundle run33. **0b:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md). **1–8:** Estado vigente; service-map fecha run33. **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-20-run33.md](./reports/REPORT-SOLUTION-CODING-2026-03-20-run33.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-20-run33.md](./judge/JUDGE-REPORT-RUN-2026-03-20-run33.md); JUDGE-REPORT-HISTORICO (~4.4/5 run33). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-20-run33.md](./reports/REPO-SYNC-REPORT-2026-03-20-run33.md). **Paso 9:** Próximos prompts actualizados para **run34** (smoke post-Sheets). Pista 3 ejecución manual (Matias); run34 re-validar prod cuando tabs/triggers estén listos.
 
