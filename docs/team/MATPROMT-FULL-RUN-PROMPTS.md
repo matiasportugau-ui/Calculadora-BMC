@@ -54,6 +54,28 @@
 
 ---
 
+## Bundle — RUN 2026-03-20 / run33
+
+**Archivo dedicado:** [matprompt/MATPROMT-RUN-2026-03-20-run33.md](./matprompt/MATPROMT-RUN-2026-03-20-run33.md)
+
+- **Resumen ejecutivo:** Full team run33; Pista 3 (tabs/triggers) coordinación; handoff Matias; verificación Mapping (planilla-inventory ↔ tabs esperados, sin drift); §2.2 transversales revisadas. Estado vigente por rol; REPORT, JUDGE, REPO-SYNC; PROJECT-STATE y Próximos prompts actualizados para run34 (smoke post-Sheets).
+- **Objetivos:** Pasos 0→0a→0b→1→…→8→9; Pista 3 checklist/handoff; Mapping verificación; salida artefactos + STATE + Próximos prompts run34.
+- **Roles N/A profundo:** Sheets Structure (ejecución Matias); GPT/Cloud (Run 38).
+- **Orden:** Serie; ver [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md).
+
+---
+
+## Bundle — RUN 2026-03-20 / run32
+
+**Archivo dedicado:** [matprompt/MATPROMT-RUN-2026-03-20-run32.md](./matprompt/MATPROMT-RUN-2026-03-20-run32.md)
+
+- **Resumen ejecutivo:** Full team sync (Invoque full team); Run 32 roadmap: cierre honesto AUTOPILOT 24–25 + contratos; §2.2 transversales revisadas (ai-interactive-team, bmc-project-team-sync aplicables; chat-equipo N/A). Estado vigente por rol; artefactos REPORT, JUDGE, REPO-SYNC; PROJECT-STATE y Próximos prompts actualizados.
+- **Objetivos:** Pasos 0→0a→0b→1→…→8→9; salida resumen ejecutivo + enlaces a artefactos.
+- **Roles N/A profundo:** Sheets Structure (Pista 3 manual); GPT/Cloud (Run 38).
+- **Orden:** Serie documental; ver [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run32.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run32.md).
+
+---
+
 ## Convenciones
 
 - **SMART:** objetivos medibles por artefacto en repo (archivo, sección de doc, test).

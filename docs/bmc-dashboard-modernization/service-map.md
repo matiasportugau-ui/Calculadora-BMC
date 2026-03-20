@@ -1,6 +1,6 @@
 # BMC Dashboard — Service Map
 
-**Propósito:** Inventario de servicios, entry points, contratos y health checks. Fuente: server/, DASHBOARD-INTERFACE-MAP, planilla-inventory.
+**Propósito:** Inventario de servicios, entry points, contratos y health checks. Fuente: server/, DASHBOARD-INTERFACE-MAP, planilla-inventory. **Última revisión:** run33 (2026-03-20).
 
 ---
 

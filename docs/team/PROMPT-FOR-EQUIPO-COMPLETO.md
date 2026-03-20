@@ -18,6 +18,10 @@
 
 ## Próximos prompts (ejecutar en este run)
 
+**Run 2026-03-20 / run 33 (Full team — Pista 3 coordinación):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-20-run33.md](./matprompt/MATPROMT-RUN-2026-03-20-run33.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-20-run33.md](./reports/REPORT-SOLUTION-CODING-2026-03-20-run33.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-20-run33.md](./judge/JUDGE-REPORT-RUN-2026-03-20-run33.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-20-run33.md](./reports/REPO-SYNC-REPORT-2026-03-20-run33.md). **Guía:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-20 / run33». PROJECT-STATE y Próximos prompts actualizados para run34.
+
+**Run 2026-03-20 / run 32 (Full team sync — Invoque full team 0→9):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-20-run32.md](./matprompt/MATPROMT-RUN-2026-03-20-run32.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run32.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run32.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-20-run32.md](./reports/REPORT-SOLUTION-CODING-2026-03-20-run32.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-20-run32.md](./judge/JUDGE-REPORT-RUN-2026-03-20-run32.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-20-run32.md](./reports/REPO-SYNC-REPORT-2026-03-20-run32.md). **Guía:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-20 / run32». PROJECT-STATE y Próximos prompts actualizados para run33.
+
 **Run 2026-03-19 / run 31 (Invoque full team — post-autopilot + paso 9):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-19-run31.md](./matprompt/MATPROMT-RUN-2026-03-19-run31.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md](./reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-19-run31.md](./judge/JUDGE-REPORT-RUN-2026-03-19-run31.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-19-run31.md](./reports/REPO-SYNC-REPORT-2026-03-19-run31.md). **CI:** `npm run lint` 0 errores (11 warnings); `npm test` **119 passed**. **Guía canónica:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-19 / run31».
 
 **Autopilot Runs 24–30 (2026-03-20):** Plan **documental** para encadenar full team sin perder el hilo. **Leer primero:** [reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md). **MATPROMT:** [matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md](./parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md). **Judge (scores plan):** [judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md](./judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md). **Guía canónica:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — sección «Bundle — AUTOPILOT Runs 24–30». Marcar en el REPORT la tabla de estado cuando cada run se **ejecute** (no sustituye evidencia). Tras **Run 30**, definir aquí «Próximos prompts run31+» según PROJECT-STATE.
@@ -62,9 +66,9 @@
 Resumen ejecutivo:
 1. ~~**[Repo / Security]**~~ — ✓ **2026-03-20:** `.gitignore` ignora `Calculadora-BMC/`, `OmniCRM-Sync/`.
 2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** **PR #33** → `main`; seguir **Run 38** roadmap si sync repos hermanos.
-3. **[Run 32]** Contratos + tabla AUTOPILOT honesta + E2E según roadmap.
-4. **[Run 33]** Pista 3 — tabs + triggers (Matias) + verificación Mapping.
-5. **[Run 34]** Smoke post-Sheets producción.
+3. ~~**[Run 32]**~~ — ✓ **2026-03-20:** Full team sync ejecutado; contratos documentados (test:contracts con API up cuando corresponda); tabla AUTOPILOT según evidencia.
+4. ~~**[Run 33]**~~ — ✓ **2026-03-20:** Full team run33 ejecutado; Pista 3 handoff Matias + verificación Mapping.
+5. **[Run 34]** Próximo: Smoke post-Sheets producción.
 6. **Runs 35–37** Presupuesto libre / audit `--force` / SKUs + billing (ver tabla roadmap).
 7. **[Run 38]** GPT/Repo Sync drift.
 8. **[Run 39]** Síntesis ciclo (equivalente autopilot run 30 ampliado).

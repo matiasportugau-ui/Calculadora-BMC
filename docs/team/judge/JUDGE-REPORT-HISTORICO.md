@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-19 (run31 full team post-autopilot + Judge formal run24–run30)
+**Última actualización:** 2026-03-20 (run33 full team + Judge run33)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -43,6 +43,10 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 22 (2026-03-20):** ~4.5/5 (18 roles con nota; run documental propagate/sync; Repo Sync sin push verificado)
 **Promedio global Run 23 (2026-03-20):** ~4.7/5 (18 roles con nota; fusión run22 + Presupuesto libre V3; ver `JUDGE-REPORT-RUN-2026-03-20-run23.md`)
 **Autopilot Runs 24–30 (2026-03-20):** Reporte agregado + **un Judge formal por run** (plan/evidencia); promedios por run en cada `JUDGE-REPORT-RUN-2026-03-20-run24.md` … `run30.md`; resumen: [`JUDGE-REPORT-AUTOPILOT-RUN24-30.md`](./JUDGE-REPORT-AUTOPILOT-RUN24-30.md); índice en [`JUDGE-REPORT-RUN-2026-03-20-run30.md`](./JUDGE-REPORT-RUN-2026-03-20-run30.md) §Judge formal por run.
+
+**Promedio global Run 32 (2026-03-20):** ~4.35/5 (18 roles con nota; full team sync documental; ver [`JUDGE-REPORT-RUN-2026-03-20-run32.md`](./JUDGE-REPORT-RUN-2026-03-20-run32.md)).
+
+**Promedio global Run 33 (2026-03-20):** ~4.4/5 (18 roles con nota; Pista 3 coordinación + Mapping; ver [`JUDGE-REPORT-RUN-2026-03-20-run33.md`](./JUDGE-REPORT-RUN-2026-03-20-run33.md)).
 
 ---
 
