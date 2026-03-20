@@ -3,6 +3,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import crypto from "node:crypto";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import {
   calcTechoCompleto,
@@ -15,6 +18,8 @@ import {
   setListaPrecios,
   PANELS_TECHO,
   PANELS_PARED,
+  PERFIL_TECHO,
+  PERFIL_PARED,
   SCENARIOS_DEF,
   VIS,
   BORDER_OPTIONS,
@@ -23,9 +28,66 @@ import {
   SELLADORES,
   p,
 } from "../../src/data/constants.js";
+import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src/utils/presupuestoLibreCatalogo.js";
 import { config } from "../config.js";
+import { GPT_ACTIONS } from "../gptActions.js";
 
 const router = Router();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// ── GET /openapi — Serves OpenAPI schema for GPT Actions ─────────────────────────────
+
+router.get("/openapi", (req, res) => {
+  const openapiPath = path.resolve(__dirname, "../../docs/openapi-calc.yaml");
+  if (!fs.existsSync(openapiPath)) {
+    return res.status(404).json({ ok: false, error: "OpenAPI schema not found" });
+  }
+  res.setHeader("Content-Type", "application/x-yaml");
+  res.send(fs.readFileSync(openapiPath, "utf8"));
+});
+
+router.get("/gpt-entry-point", (req, res) => {
+  const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
+  res.json({
+    ok: true,
+    version: "1.0.0",
+    description: "Entry point para GPT Builder — acceso completo a todas las acciones de la Calculadora BMC.",
+    base_url: baseUrl,
+    openapi_url: `${baseUrl}/calc/openapi`,
+    actions: GPT_ACTIONS.map((a) => ({
+      ...a,
+      url: `${baseUrl}${a.path}`,
+    })),
+    recommended_flow: [
+      "1. GET /calc/informe (o /calc/catalogo + /calc/escenarios) al inicio para cargar contexto.",
+      "2. Recopilar datos del usuario: escenario, dimensiones, panel, color, opciones.",
+      "3. POST /calc/cotizar para calcular y mostrar resumen.",
+      "4. Si el cliente quiere PDF: POST /calc/cotizar/pdf con objeto cliente.",
+      "5. Compartir pdf_url con el cliente.",
+    ],
+    escenarios: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig", "presupuesto_libre"],
+    listas_precio: ["venta", "web"],
+  });
+});
+
+// ── Interaction log (dev: save to file for Cursor workflow) ──────────────────────────
+
+router.post("/interaction-log", (req, res) => {
+  const body = req.body;
+  if (!body || typeof body !== "object") {
+    return res.status(400).json({ ok: false, error: "Missing body" });
+  }
+  try {
+    const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const filePath = path.join(logsDir, `interaction-${ts}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(body, null, 2), "utf8");
+    return res.json({ ok: true, path: filePath });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // ── PDF store (in-memory, TTL-based) ─────────────────────────────────────────
 
@@ -92,6 +154,7 @@ const SCENARIO_LABELS = {
   solo_fachada: "Solo Fachada",
   techo_fachada: "Techo + Fachada",
   camara_frig: "Cámara Frigorífica",
+  presupuesto_libre: "Presupuesto libre",
 };
 
 const LISTA_LABELS = { venta: "BMC Directo", web: "Web" };
@@ -135,14 +198,24 @@ function buildGptResponse(escenario, lista, results, flete) {
     };
   });
 
-  const resumen = {
-    area_m2: results.paneles?.areaTotal ?? results.paneles?.areaNeta ?? 0,
-    cant_paneles: results.paneles?.cantPaneles ?? 0,
-    puntos_fijacion: results.fijaciones?.puntosFijacion ?? 0,
-    subtotal_usd: totales.subtotalSinIVA,
-    iva_usd: totales.iva,
-    total_usd: totales.totalFinal,
-  };
+  const resumen = results.presupuestoLibre
+    ? {
+        area_m2: 0,
+        cant_paneles: 0,
+        puntos_fijacion: 0,
+        lineas_bom: allItems.length,
+        subtotal_usd: totales.subtotalSinIVA,
+        iva_usd: totales.iva,
+        total_usd: totales.totalFinal,
+      }
+    : {
+        area_m2: results.paneles?.areaTotal ?? results.paneles?.areaNeta ?? 0,
+        cant_paneles: results.paneles?.cantPaneles ?? 0,
+        puntos_fijacion: results.fijaciones?.puntosFijacion ?? 0,
+        subtotal_usd: totales.subtotalSinIVA,
+        iva_usd: totales.iva,
+        total_usd: totales.totalFinal,
+      };
 
   const autoportancia = results.autoportancia
     ? { ok: results.autoportancia.ok, apoyos: results.autoportancia.apoyos, vano_max_m: results.autoportancia.maxSpan }
@@ -153,10 +226,12 @@ function buildGptResponse(escenario, lista, results, flete) {
     : null;
 
   const panelLabel = allItems.find(i => i.unidad === "m²")?.label || "";
-  const textoResumen = `Cotización ${panelLabel} — ${SCENARIO_LABELS[escenario]}. `
-    + `Área: ${resumen.area_m2} m². Paneles: ${resumen.cant_paneles}. `
-    + `Subtotal: USD ${fmtPrice(resumen.subtotal_usd)} + IVA 22%: USD ${fmtPrice(resumen.iva_usd)} = `
-    + `TOTAL USD ${fmtPrice(resumen.total_usd)}.`;
+  const textoResumen = results.presupuestoLibre
+    ? `Presupuesto libre — ${allItems.length} línea(s) en BOM. Subtotal: USD ${fmtPrice(resumen.subtotal_usd)} + IVA 22%: USD ${fmtPrice(resumen.iva_usd)} = TOTAL USD ${fmtPrice(resumen.total_usd)}.`
+    : `Cotización ${panelLabel} — ${SCENARIO_LABELS[escenario] || escenario}. `
+      + `Área: ${resumen.area_m2} m². Paneles: ${resumen.cant_paneles}. `
+      + `Subtotal: USD ${fmtPrice(resumen.subtotal_usd)} + IVA 22%: USD ${fmtPrice(resumen.iva_usd)} = `
+      + `TOTAL USD ${fmtPrice(resumen.total_usd)}.`;
 
   const textoWhatsapp = buildWhatsAppText({
     client: { nombre: "—", rut: "", telefono: "" },
@@ -270,6 +345,45 @@ function runCalculation({ escenario, lista, techo, pared, camara }) {
 }
 
 // ── POST /cotizar ────────────────────────────────────────────────────────────
+
+function runPresupuestoLibreFromBody(body) {
+  const {
+    lista = "web",
+    librePanelLines = [],
+    librePerfilQty = {},
+    libreFijQty = {},
+    libreSellQty = {},
+    flete = 0,
+    libreExtra = {},
+  } = body || {};
+  setListaPrecios(lista === "venta" ? "venta" : "web");
+  const perfilRows = flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED);
+  const perfilCatalogById = new Map(perfilRows.map((r) => [r.id, r]));
+  return computePresupuestoLibreCatalogo({
+    listaPrecios: lista,
+    librePanelLines,
+    librePerfilQty,
+    perfilCatalogById,
+    libreFijQty,
+    libreSellQty,
+    flete,
+    libreExtra,
+  });
+}
+
+router.post("/cotizar/presupuesto-libre", (req, res) => {
+  try {
+    const { lista = "web" } = req.body || {};
+    const results = runPresupuestoLibreFromBody(req.body);
+    if (results?.error) {
+      return res.status(400).json({ ok: false, error: results.error });
+    }
+    return res.json(buildGptResponse("presupuesto_libre", lista, results, 0));
+  } catch (err) {
+    req.log.error({ err }, "calc/cotizar/presupuesto-libre failed");
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 router.post("/cotizar", (req, res) => {
   try {
@@ -670,4 +784,5 @@ router.get("/informe", (req, res) => {
   }
 });
 
+export { GPT_ACTIONS } from "../gptActions.js";
 export default router;

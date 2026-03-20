@@ -10,6 +10,85 @@ servers:
   - url: https://panelin-calc-642127786762.us-central1.run.app
     description: Cloud Run Production
 paths:
+  /calc/gpt-entry-point:
+    get:
+      operationId: obtener_punto_entrada_gpt
+      summary: >-
+        Entry point para GPT Builder — descubre todas las acciones disponibles.
+      description: >-
+        Devuelve el esquema de descubrimiento con todas las operaciones,
+        URLs, flujo recomendado y parámetros. Llamar al configurar el GPT
+        para obtener acceso completo a la Calculadora BMC.
+      responses:
+        '200':
+          description: Esquema de entrada con todas las acciones.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  version:
+                    type: string
+                  description:
+                    type: string
+                  base_url:
+                    type: string
+                    format: uri
+                  openapi_url:
+                    type: string
+                    format: uri
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        operationId:
+                          type: string
+                        method:
+                          type: string
+                        path:
+                          type: string
+                        summary:
+                          type: string
+                        whenToUse:
+                          type: string
+                        url:
+                          type: string
+                          format: uri
+                        params:
+                          type: array
+                  recommended_flow:
+                    type: array
+                    items:
+                      type: string
+                  escenarios:
+                    type: array
+                    items:
+                      type: string
+                  listas_precio:
+                    type: array
+                    items:
+                      type: string
+
+  /calc/openapi:
+    get:
+      operationId: obtener_esquema_openapi
+      summary: >-
+        Devuelve el esquema OpenAPI completo (YAML) para GPT Actions.
+      description: >-
+        Usar esta URL en GPT Builder como schema URL para importar
+        todas las acciones de la Calculadora BMC.
+      responses:
+        '200':
+          description: Esquema OpenAPI en formato YAML.
+          content:
+            application/x-yaml:
+              schema:
+                type: string
+                description: Contenido del archivo openapi-calc.yaml
+
   /calc/cotizar:
     post:
       operationId: calcular_cotizacion
@@ -40,6 +119,37 @@ paths:
                 $ref: '#/components/schemas/CotizarResponse'
         '400':
           description: Parámetros inválidos o faltantes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /calc/cotizar/presupuesto-libre:
+    post:
+      operationId: calcular_presupuesto_libre
+      summary: >-
+        Calcula un presupuesto libre con líneas manuales (paneles por m²,
+        perfilería por id de catálogo, tornillería/herrajes, selladores,
+        flete como importe y partida extraordinaria).
+      description: >-
+        No requiere techo/pared dimensionados. Los ids de perfilería son los
+        devueltos por el catálogo interno (p. ej. pt:gotero_frontal:ISODEC:100).
+        Para paneles usá familia (clave de catálogo), espesor numérico y m2.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresupuestoLibreRequest'
+      responses:
+        '200':
+          description: Cotización generada (mismo formato que /calc/cotizar).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CotizarResponse'
+        '400':
+          description: Cuerpo inválido.
           content:
             application/json:
               schema:
@@ -197,6 +307,56 @@ paths:
 components:
   schemas:
     # ── Request schemas ─────────────────────────────────────────────────
+
+    PresupuestoLibreRequest:
+      type: object
+      properties:
+        lista:
+          type: string
+          enum: [venta, web]
+          default: web
+        librePanelLines:
+          type: array
+          items:
+            type: object
+            properties:
+              familia:
+                type: string
+                description: Clave de familia (ej. ISODEC_EPS, ISOPANEL_EPS).
+              espesor:
+                type: number
+              color:
+                type: string
+              m2:
+                type: number
+        librePerfilQty:
+          type: object
+          additionalProperties:
+            type: number
+          description: Mapa id de perfil → cantidad de barras.
+        libreFijQty:
+          type: object
+          additionalProperties:
+            type: number
+        libreSellQty:
+          type: object
+          additionalProperties:
+            type: number
+        flete:
+          type: number
+          minimum: 0
+          default: 0
+        libreExtra:
+          type: object
+          properties:
+            texto:
+              type: string
+            precio:
+              type: string
+            unidades:
+              type: string
+            cantidad:
+              type: string
 
     CotizarRequest:
       type: object

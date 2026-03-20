@@ -7,6 +7,7 @@ import cors from "cors";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
+import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -81,6 +82,11 @@ const ensureValidState = (state) => {
   oauthStates.delete(state);
   return !expired;
 };
+
+/** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
+app.get("/capabilities", (req, res) => {
+  res.json(buildAgentCapabilitiesManifest(config));
+});
 
 app.get("/health", asyncHandler(async (req, res) => {
   const tokens = await ml.getStoredTokens();
@@ -282,6 +288,19 @@ app.use(
   },
   express.static(dashboardDir, { index: "index.html" })
 );
+
+// Calculadora BMC (Vite SPA) — served from /calculadora when dist exists
+const calcDistDir = path.join(__dirname, "../dist");
+if (fs.existsSync(calcDistDir)) {
+  app.use(
+    "/calculadora",
+    (req, res, next) => {
+      if (isDev) res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      next();
+    },
+    express.static(calcDistDir, { index: "index.html" })
+  );
+}
 
 // Avoid 404s when ngrok/browsers hit the API root or favicon (traffic audit: EXPORT_SEAL)
 app.get("/favicon.ico", (_req, res) => {

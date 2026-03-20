@@ -3,8 +3,11 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults } from "../src/utils/calculations.js";
+import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre } from "../src/utils/calculations.js";
+import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
+import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
+import { PERFIL_TECHO, PERFIL_PARED } from "../src/data/constants.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -142,9 +145,6 @@ const areaNeta_p = cantP_p * alto_p * au_p;
 const tornillosT2 = Math.ceil(areaNeta_p * 5.5);
 assert("Tornillos T2 total > 700", tornillosT2 > 700, tornillosT2, ">700");
 
-const paqT2 = Math.ceil(tornillosT2 / 100);
-assert("Paquetes T2 = " + paqT2, paqT2 > 0, paqT2, ">0");
-
 // Remaches POP
 const remaches = Math.ceil(cantP_p * 2);
 assert("Remaches = 72", remaches === 72, remaches, 72);
@@ -204,8 +204,7 @@ const caballetes = Math.ceil((cantP_cb * 3 * (largo_cb / 2.9 + 1)) + ((largo_cb 
 assert("Caballetes: positive integer", caballetes > 0 && Number.isInteger(caballetes), caballetes, ">0");
 
 const tornillosAguja = caballetes * 2;
-const paquetesAguja = Math.ceil(tornillosAguja / 100);
-assert("Paquetes tornillo aguja >= 1", paquetesAguja >= 1, paquetesAguja, ">=1");
+assert("Tornillo aguja cant >= 1 unidad", tornillosAguja >= 1, tornillosAguja, ">=1");
 assert("Tornillos aguja = caballetes × 2", tornillosAguja === caballetes * 2, tornillosAguja, caballetes * 2);
 
 // Smaller roof: 3 panels × 4m
@@ -232,8 +231,7 @@ const mlFrente = pzasFrente * largo_gotero;
 const mlLateral = pzasLateral * 3.0;
 const mlTotal = mlFrente + mlLateral;
 const fijPerf = Math.ceil(mlTotal / 0.30);
-const paquetesT1 = Math.ceil(fijPerf / 100);
-assert("Tornillos T1 paquetes >= 1", paquetesT1 >= 1, paquetesT1, ">=1");
+assert("Tornillos T1 (unidades perfilería) >= 1", fijPerf >= 1, fijPerf, ">=1");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 11: Selladores Techo
@@ -377,6 +375,34 @@ assert("calcParedCompleto: areaNeta ≈ 139.35 m²", approx(paredResult.paneles?
 assert("calcParedCompleto: allItems is non-empty array", Array.isArray(paredResult.allItems) && paredResult.allItems.length > 0, paredResult.allItems?.length, ">0");
 assert("calcParedCompleto: totales.subtotalSinIVA > 0", paredResult.totales?.subtotalSinIVA > 0, paredResult.totales?.subtotalSinIVA, ">0");
 
+// T2 fachada: cotización por unidad (no paquete ×100); cinta/sil300 opcionales
+const t2Line = paredResult.fijaciones?.items?.find((i) => i.sku === "tornillo_t2");
+const expT2Cant = Math.ceil(paredResult.paneles.areaBruta * 5.5);
+assert("calcParedCompleto: T2 unidad = unid", t2Line?.unidad === "unid", t2Line?.unidad, "unid");
+assert("calcParedCompleto: T2 cant = ceil(areaBruta×5.5)", t2Line?.cant === expT2Cant, t2Line?.cant, expT2Cant);
+assert(
+  "calcParedCompleto: T2 PU = lista web unitario",
+  t2Line && approx(t2Line.pu, 0.05, 0.0001),
+  t2Line?.pu,
+  0.05
+);
+const hasCintaDef = paredResult.allItems.some((i) => i.sku === "cinta_butilo");
+assert("calcParedCompleto: sin cinta butilo por defecto", !hasCintaDef, hasCintaDef, false);
+const paredConCinta = calcParedCompleto({ ...paredInput, inclCintaButilo: true });
+assert(
+  "calcParedCompleto + inclCintaButilo: incluye cinta",
+  paredConCinta.allItems.some((i) => i.sku === "cinta_butilo"),
+  paredConCinta.allItems.filter((i) => i.sku === "cinta_butilo").length,
+  ">=1"
+);
+const paredConSil300 = calcParedCompleto({ ...paredInput, inclSilicona300Neutra: true });
+assert(
+  "calcParedCompleto + inclSilicona300Neutra: incluye silicona 300",
+  paredConSil300.allItems.some((i) => i.sku === "silicona_300_neutra"),
+  paredConSil300.allItems.filter((i) => i.sku === "silicona_300_neutra").length,
+  ">=1"
+);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 15: Pendiente Engine
 // ═══════════════════════════════════════════════════════════════════════════
@@ -426,6 +452,39 @@ const combinedResult = {
 };
 const btgCombined = bomToGroups(combinedResult);
 assert("bomToGroups(combined): merges techo+pared groups", btgCombined.length >= btgTecho.length, btgCombined.length, ">=" + btgTecho.length);
+
+const presupuestoLibreResult = calcPresupuestoLibre([
+  { id: "tornillo_t2", cant: 100 },
+  { bucket: "HERRAMIENTAS", id: "pistola_apl_dx03", cant: 1 },
+]);
+assert("calcPresupuestoLibre: flag set", presupuestoLibreResult.presupuestoLibre === true, presupuestoLibreResult.presupuestoLibre, true);
+assert("calcPresupuestoLibre: 2 líneas en allItems", presupuestoLibreResult.allItems.length === 2, presupuestoLibreResult.allItems.length, 2);
+const btgLibre = bomToGroups(presupuestoLibreResult);
+assert(
+  "bomToGroups(presupuesto libre): grupo único PRESUPUESTO LIBRE",
+  btgLibre.length === 1 && btgLibre[0]?.title === "PRESUPUESTO LIBRE" && btgLibre[0]?.items?.length === 2,
+  JSON.stringify(btgLibre.map(g => ({ t: g.title, n: g.items?.length }))),
+  "1 group, 2 items"
+);
+
+console.log("\n═══ SUITE 16b: computePresupuestoLibreCatalogo ═══");
+const perfilRows = flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED);
+const perfMap = new Map(perfilRows.map((r) => [r.id, r]));
+const firstPerfilId = perfilRows[0]?.id;
+const catLibre = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{ familia: "ISODEC_EPS", espesor: 100, color: "Blanco", m2: 10 }],
+  librePerfilQty: firstPerfilId ? { [firstPerfilId]: 2 } : {},
+  perfilCatalogById: perfMap,
+  libreFijQty: { tornillo_t2: 50 },
+  libreSellQty: {},
+  flete: 100,
+  libreExtra: {},
+});
+assert("computePresupuestoLibreCatalogo: presupuestoLibre flag", catLibre.presupuestoLibre === true, catLibre.presupuestoLibre, true);
+assert("computePresupuestoLibreCatalogo: incluye m²", catLibre.allItems.some(i => i.unidad === "m²"), catLibre.allItems.filter(i => i.unidad === "m²").length, ">0");
+assert("computePresupuestoLibreCatalogo: totalFinal > 0", catLibre.totales.totalFinal > 0, catLibre.totales.totalFinal, ">0");
+assert("computePresupuestoLibreCatalogo: libreGroups", Array.isArray(catLibre.libreGroups) && catLibre.libreGroups.length > 0, catLibre.libreGroups?.length, ">0");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 17: applyOverrides
@@ -487,6 +546,39 @@ assert("mergeZonaResults: does not mutate zona1 paneles", zona1Copy.paneles.cant
 const zona3 = calcTechoCompleto({ ...techoInput, largo: 3.0, ancho: 2.24 });
 const merged3 = mergeZonaResults([zona1, zona2, zona3]);
 assert("mergeZonaResults(3 zones): cantPaneles correct", merged3.paneles.cantPaneles === zona1.paneles.cantPaneles + zona2.paneles.cantPaneles + zona3.paneles.cantPaneles, merged3.paneles.cantPaneles, zona1.paneles.cantPaneles + zona2.paneles.cantPaneles + zona3.paneles.cantPaneles);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 19: projectFile — techo.zonas.preview (vista previa)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 19: projectFile — techo.zonas.preview ═══");
+
+const rawProjPreview = {
+  scenario: "solo_techo",
+  listaPrecios: "web",
+  proyecto: {},
+  techo: {
+    familia: "",
+    zonas: [
+      { largo: 5, ancho: 3.36, preview: { x: 1.2, y: 0.5, slopeMark: "along_largo_pos" } },
+    ],
+  },
+  pared: {},
+  camara: {},
+  flete: 0,
+};
+const deserP = deserializeProject(rawProjPreview);
+assert(
+  "deserialize preserves zonas[0].preview.x",
+  deserP.techo.zonas[0].preview?.x === 1.2,
+  deserP.techo.zonas[0].preview?.x,
+  1.2,
+);
+assert(
+  "deserialize preserves slopeMark",
+  deserP.techo.zonas[0].preview?.slopeMark === "along_largo_pos",
+  deserP.techo.zonas[0].preview?.slopeMark,
+  "along_largo_pos",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

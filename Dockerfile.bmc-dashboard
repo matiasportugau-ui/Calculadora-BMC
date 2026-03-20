@@ -1,0 +1,50 @@
+# ==============================================================================
+# BMC Dashboard — Full stack (API + /finanzas + /calculadora UI)
+# ==============================================================================
+# Express server on port 3001: /api/*, /finanzas, /calculadora, /health, /calc, Shopify, ML.
+# Build: docker build -f Dockerfile.bmc-dashboard -t bmc-dashboard .
+# Run:   docker run -p 3001:3001 --env-file .env bmc-dashboard
+
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+FROM node:20-alpine AS calc-build
+WORKDIR /app
+COPY package.json package-lock.json* ./
+# --ignore-scripts: skip easymidi node-gyp (needs Python); calc build doesn't need it
+RUN npm ci --ignore-scripts
+COPY index.html vite.config.js ./
+COPY src/ ./src/
+ENV VITE_BASE=/calculadora/
+RUN npm run build
+
+FROM node:20-alpine AS runtime
+LABEL maintainer="BMC Uruguay / METALOG SAS"
+LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY server/ ./server/
+COPY src/utils/ ./src/utils/
+COPY src/data/ ./src/data/
+COPY docs/bmc-dashboard-modernization/dashboard ./docs/bmc-dashboard-modernization/dashboard
+COPY --from=calc-build /app/dist ./dist
+
+RUN addgroup -g 1001 -S bmc && \
+    adduser -S -u 1001 -G bmc bmc && \
+    chown -R bmc:bmc /app
+
+USER bmc
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD sh -c 'wget -qO- http://127.0.0.1:${PORT:-3001}/health || exit 1'
+
+ENV NODE_ENV=production \
+    PORT=3001
+
+CMD ["node", "server/index.js"]

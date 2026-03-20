@@ -59,12 +59,46 @@
 | **Audit/Debug** | bmc-dashboard-audit-runner, cloudrun-diagnostics-reporter | Audit | Auditoría, logs, diagnóstico |
 | **Reporter** | bmc-implementation-plan-reporter | Reporting | Planes Solution/Coding, handoffs |
 | **Orchestrator** | bmc-dashboard-team-orchestrator, ai-interactive-team | Coordinación | Orden, handoffs, diálogo entre agentes |
+| **MATPROMT** | matprompt | Coordinación / Prompts | Genera prompts orientadores por rol para cada full team run (paso 0a); refina instrucciones ante tareas nuevas durante el run (delta prompts); participa en planificación del run con Orquestador y Parallel/Serial; entrega bundles en docs/team/MATPROMT-FULL-RUN-PROMPTS.md o matprompt/MATPROMT-RUN-*.md |
 | **Contract** | bmc-api-contract-validator | API | Validar respuestas contra contrato canónico |
 | **Calc** | bmc-calculadora-specialist | Calculadora | BOM, precios, Drive, PDF, 5173 |
 | **Security** | bmc-security-reviewer | Seguridad | OAuth, tokens, env, CORS, HMAC |
 | **Judge** | bmc-team-judge | Evaluación y ranqueo | Evalúa forma de trabajo y desempeño; ranqueo por agente; reporte por run y promedio histórico; criterios individuales por agente; evolución continua |
 | **Parallel/Serial** | bmc-parallel-serial-agent | Estrategia de ejecución | Evalúa según mejores desempeños en áreas y tareas; sabe qué procesos ejecutar en paralelo vs serie; prevé mejor combinación de agentes según scores y contexto; muy orientado a objetivos |
 | **Repo Sync** | bmc-repo-sync-agent | Repos | Mantiene actualizados bmc-dashboard-2.0 (desarrollo y funcionamiento del dashboard) y bmc-development-team; tras cada corrida evalúa qué actualizar y sincroniza |
+
+### 2.1 Conteo canónico e “Invoque full team”
+
+- **N (tamaño del equipo):** es **el número de filas de rol** en la tabla de arriba (§2), **sin contar** encabezados. No usar un número fijo en documentación viva (p. ej. “19”): el Orquestador y los agentes deben leer **esta tabla** en cada run.
+- **Regla de invocación:** `"Invoque full team"` / `"Equipo completo"` debe cubrir **todas las filas §2** y **todas las skills transversales §2.2** aplicables al contexto del run. Ningún rol añadido a §2 puede quedar fuera por olvido.
+
+### 2.2 Skills transversales (siempre consideradas en el full team)
+
+Son **modos o protocolos compartidos** por el equipo; **no sustituyen** una fila §2 salvo que se promuevan a rol explícito. En **paso 0**, el Orquestador revisa si aplican y las documenta en el resumen del run (incluso como “N/A este run”).
+
+| Skill / protocolo | Ruta | Uso en full team |
+|-------------------|------|------------------|
+| **AI Interactive Team** | `.cursor/skills/ai-interactive-team/SKILL.md` | Diálogo entre agentes, escalación, acuerdos cuando hay varios criterios. |
+| **Chat equipo (interactivo)** | `.cursor/skills/chat-equipo-interactivo/SKILL.md` | *Cuando exista en el repo:* comunicación dialógica con Matias dentro del run; complementa batch sin reemplazar pasos 1–8. |
+| **Project Team Sync** | `.cursor/skills/bmc-project-team-sync/SKILL.md` | Carga al invocar full team; define orden y actualización de PROJECT-STATE. |
+
+*(Añadir aquí toda skill transversal nueva; al dar de alta una skill que deba correr en cada full team, actualizar esta subtabla en el mismo PR.)*
+
+### 2.3 Alta de un miembro nuevo (checklist obligatoria)
+
+**Cada vez** que se cree un agente/rol nuevo o se promueva una skill a “miembro de equipo completo”, completar **en el mismo cambio** (misma PR / mismo commit):
+
+1. **§2 — Tabla canónica:** nueva fila con Rol, Skill(s), Área(s), Responsabilidad.
+2. **`docs/team/judge/JUDGE-CRITERIA-POR-AGENTE.md`:** criterios de evaluación para el Judge en ese rol (o marca N/A justificado).
+3. **Orquestador:** `.cursor/agents/bmc-dashboard-team-orchestrator.md` — si el rol requiere **paso dedicado** o handoff explícito, actualizar la tabla de pasos (o documentar en qué paso 3c–5g encaja).
+4. **Definición Cursor:** `.cursor/agents/<nombre>.md` y/o `.cursor/skills/<nombre>/SKILL.md` según corresponda.
+5. **`docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`:** fila o nota de estado del agente (hasta “desarrollado” o mantenimiento).
+6. **`docs/team/PROJECT-STATE.md`:** línea en **Cambios recientes** (“Alta rol X en §2”).
+7. **Repo `bmc-development-team`:** si usás sync de equipo, repetir los artefactos de equipo que apliquen (`PROJECT-TEAM-FULL-COVERAGE`, judge, etc.).
+
+**Skills solo transversales (sin fila §2):** no paso 1–5 para “nuevo miembro numerado”; solo **§2.2** + criterio de cuándo aplica. Si más adelante debe evaluarse en Judge como rol propio, promover a fila §2 y completar checklist.
+
+**Meta-roles (p. ej. CEO):** si son visión/objetivos y no un paso técnico, pueden ser **skill + agent** + fila opcional en §2 o sección aparte; hasta entonces, mantenerlos en §2.2 o en doc dedicado y enlazados desde paso 0 del Orquestador.
 
 ---
 

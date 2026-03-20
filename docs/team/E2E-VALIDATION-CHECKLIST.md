@@ -2,9 +2,37 @@
 
 **Owner:** Audit/Debug + Matias  
 **Referencia:** IMPLEMENTATION-PLAN-POST-GO-LIVE.md §D1  
-**Última actualización:** 2026-03-18
+**Última actualización:** 2026-03-20 (smoke prod Cloud Run + Vercel)
 
 Completar antes de presentar el dashboard a usuarios finales. Marcar con ✓ cuando se verifique.
+
+---
+
+## URLs producción (opcional — mismo checklist sustituyendo base URL)
+
+| Entorno | Base URL | Notas |
+|---------|----------|--------|
+| **Cloud Run** | `https://panelin-calc-642127786762.us-central1.run.app` (o la URL actual de `gcloud run services describe panelin-calc`) | API: `<BASE>/api/...`; Calculadora: `<BASE>/calculadora`; Finanzas: `<BASE>/finanzas`. |
+| **Vercel** | `https://calculadora-bmc.vercel.app` | Front calculadora; API debe apuntar a Cloud Run (`VITE_API_URL`) para datos Sheets. |
+
+Ejemplo: `curl -sS -o /dev/null -w "%{http_code}" "https://…/health"` o `/api/kpi-report` (esperar 200 o 503 según config).
+
+### Resultados smoke — 2026-03-20 (curl, red pública)
+
+Base **Cloud Run:** `https://panelin-calc-642127786762.us-central1.run.app`
+
+| Ruta | HTTP | Nota |
+|------|------|------|
+| `/health` | 200 | Servicio vivo |
+| `/api/kpi-report` | 503 | Sheets/credenciales no disponibles o no configurados en deploy — **esperable** (no 404) |
+| `/api/cotizaciones` | 503 | Idem |
+| `/api/kpi-financiero` | 503 | Idem |
+| `/calculadora/` | 200 | SPA calculadora |
+| `/finanzas/` | 200 | Dashboard finanzas |
+
+**Vercel:** `https://calculadora-bmc.vercel.app` → `/` y `/calculadora/` **200**.
+
+*Ejecutado por agente (Pista 2 — [SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md)).*
 
 ---
 

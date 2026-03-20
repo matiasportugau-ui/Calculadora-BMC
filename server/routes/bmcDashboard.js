@@ -197,13 +197,15 @@ function mapPagos2026ToCanonical(row) {
   const cliente = findKey(row, "CLIENTE", "Cliente");
   const orden = findKey(row, "ÓRDEN", "ORDEN", "Pedido", "N° Pedido", "Ped. Nro");
   const saldoUsd = findKey(row, "Saldo a Proveedor USD", "Pago a Proveedor USD");
-  const ventaUsd = findKey(row, "Venta U$S IVA inc.");
+  const ventaUsd = findKey(row, "Venta U$S IVA inc.", "Precio de Venta IVA Inc");
   const saldoPesos = findKey(row, "Saldo a Proveedor", "Pago a Proveedor");
   const montoUsd = parseNum(saldoUsd || ventaUsd);
   const montoPesos = parseNum(saldoPesos);
   const monto = montoUsd || montoPesos;
   const moneda = montoUsd ? "UES" : "$";
   const estado = findKey(row, "ESTADO", "Estado") || "Pendiente";
+  const precioVenta = parseNum(findKey(row, "Precio de Venta IVA Inc", "Venta U$S IVA inc."));
+  const costoCompra = parseNum(findKey(row, "Costo de la compra"));
   return {
     CLIENTE_NOMBRE: cliente,
     COTIZACION_ID: orden,
@@ -212,6 +214,8 @@ function mapPagos2026ToCanonical(row) {
     FECHA_VENCIMIENTO: fecha,
     ESTADO_PAGO: estado,
     PROVEEDOR: findKey(row, "PROVEEDOR", "Proveedor"),
+    PRECIO_VENTA: precioVenta,
+    COSTO_COMPRA: costoCompra,
   };
 }
 
@@ -857,6 +861,79 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
   return { ok: true, codigo };
 }
 
+// ─── MATRIZ precios → planilla calculadora ──────────────────────────────────
+// MATRIZ de COSTOS y VENTAS: extrae costo, venta_bmc y venta_web de la misma planilla.
+// Columnas buscadas por nombre: costo/costos, venta/venta_bmc, venta_web/web. Fallback índices fijos.
+
+const IVA_MULT = 1.22;
+
+function findColIndex(headers, ...patterns) {
+  for (const p of patterns) {
+    const re = typeof p === "string" ? new RegExp(p, "i") : p;
+    const idx = (headers || []).findIndex((h) => re.test(String(h || "").trim()));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+async function buildPlanillaDesdeMatriz(matrizSheetId) {
+  const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const sheetName = await getFirstSheetName(matrizSheetId);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: matrizSheetId,
+    range: `'${sheetName}'!A1:Z500`,
+  });
+  const allRows = res.data.values || [];
+  if (allRows.length === 0) return { csv: "\uFEFFpath,label,categoria,costo,venta_bmc_local,venta_web,unidad\n", count: 0 };
+
+  const headerRow = allRows[0] || [];
+  const skuIdx = findColIndex(headerRow, /sku|código|codigo/i);
+  const costoIdx = findColIndex(headerRow, /^costo[s]?$/i, /costo\s*\(/i);
+  const ventaIdx = findColIndex(headerRow, /venta_bmc|venta\s*consumidor|venta\s*directa|^venta\s*$/i);
+  const webIdx = findColIndex(headerRow, /venta_web|venta\s*web|^web\s*$/i);
+  const skuCol = skuIdx >= 0 ? skuIdx : 3;
+  const costoCol = costoIdx >= 0 ? costoIdx : 6;
+  const ventaCol = ventaIdx >= 0 ? ventaIdx : 11;
+  const webCol = webIdx >= 0 ? webIdx : 12;
+
+  const dataRows = allRows.slice(1);
+  const csvRows = [];
+  const header = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_web", "unidad"];
+  csvRows.push(header.join(","));
+  let count = 0;
+  const parseNum = (v) => {
+    if (v == null || v === "") return null;
+    const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  };
+  for (const row of dataRows) {
+    const skuRaw = row[skuCol];
+    const costoRaw = row[costoCol];
+    const ventaRaw = row[ventaCol];
+    const webRaw = row[webCol];
+    const path = getPathForMatrizSku(skuRaw);
+    if (!path) continue;
+    const costoConIva = parseNum(costoRaw);
+    const ventaConIva = parseNum(ventaRaw);
+    const webConIva = parseNum(webRaw);
+    const costo = costoConIva != null ? +(costoConIva / IVA_MULT).toFixed(2) : "";
+    const venta = ventaConIva != null ? +(ventaConIva / IVA_MULT).toFixed(2) : "";
+    const web = webConIva != null ? +(webConIva / IVA_MULT).toFixed(2) : venta;
+    const label = path.split(".").slice(-2).join(" ").replace(/_/g, " ") || path;
+    const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo" : path.startsWith("PANELS_PARED") ? "Paneles Pared" : path.startsWith("PERFIL_") ? "Perfilería Techo" : path.startsWith("SELLADORES") ? "Selladores" : path.startsWith("FIJACIONES") ? "Fijaciones" : path.startsWith("SERVICIOS") ? "Servicios" : "Otros";
+    const unidad = path.includes("esp.") ? "m²" : "unid";
+    const ventaBmc = venta || web;
+    const esc = (s) => (String(s).includes(",") || String(s).includes('"') ? `"${String(s).replace(/"/g, '""')}"` : s);
+    csvRows.push([path, esc(label), categoria, costo, ventaBmc, web, unidad].join(","));
+    count++;
+  }
+  return { csv: "\uFEFF" + csvRows.join("\n"), count };
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────
 
 export default function createBmcDashboardRouter(config) {
@@ -1358,6 +1435,27 @@ export default function createBmcDashboardRouter(config) {
       res.json(result);
     } catch (e) {
       res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.get("/actualizar-precios-calculadora", async (req, res) => {
+    const matrizId = config.bmcMatrizSheetId;
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    if (!matrizId || !credsPath) {
+      return res.status(503).json({ ok: false, error: "MATRIZ sheet no configurado (BMC_MATRIZ_SHEET_ID, GOOGLE_APPLICATION_CREDENTIALS)" });
+    }
+    const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+    if (!fs.existsSync(resolved)) {
+      return res.status(503).json({ ok: false, error: "Credenciales Google no encontradas" });
+    }
+    try {
+      const { csv, count } = await buildPlanillaDesdeMatriz(matrizId);
+      const filename = `bmc-precios-matriz-${new Date().toISOString().slice(0, 10)}.csv`;
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(csv);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 

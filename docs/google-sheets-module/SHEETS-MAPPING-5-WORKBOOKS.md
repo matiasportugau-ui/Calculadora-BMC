@@ -35,17 +35,19 @@
 | Consulta / Pedido | NOTAS | string |
 | Monto estimado USD | MONTO_ESTIMADO | number |
 
-### 2.2 Pagos Pendientes 2026
+### 2.2 Pagos Pendientes 2026 (Pagos Pendientes Dashboard)
 
-| Columna origen | Campo canónico | Tipo |
-|----------------|----------------|------|
-| FECHA / PLAZO | FECHA_VENCIMIENTO | date |
-| PROVEEDOR | PROVEEDOR | string |
-| CLIENTE | CLIENTE_NOMBRE | string |
-| ÓRDEN / Ped. Nro / N° Pedido | COTIZACION_ID | string |
-| Saldo a Proveedor USD / Pago a Proveedor USD | MONTO | number |
-| Venta U$S IVA inc. | MONTO (fallback) | number |
-| ESTADO | ESTADO_PAGO | string |
+| Col | Columna origen | Campo canónico | Tipo |
+|-----|----------------|----------------|------|
+| D | Precio de Venta IVA Inc | PRECIO_VENTA / MONTO (fallback) | number |
+| E | Costo de la compra | COSTO_COMPRA | number |
+| — | FECHA / PLAZO | FECHA_VENCIMIENTO | date |
+| — | PROVEEDOR | PROVEEDOR | string |
+| — | CLIENTE | CLIENTE_NOMBRE | string |
+| — | ÓRDEN / Ped. Nro / N° Pedido | COTIZACION_ID | string |
+| — | Saldo a Proveedor USD / Pago a Proveedor USD | MONTO | number |
+| — | Venta U$S IVA inc. | MONTO (fallback) | number |
+| — | ESTADO | ESTADO_PAGO | string |
 
 Mapper: `mapPagos2026ToCanonical` en bmcDashboard.js.
 
