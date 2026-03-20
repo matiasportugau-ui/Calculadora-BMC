@@ -39,7 +39,7 @@
 
 **Depende de:** Pista 1 opcional (pero recomendable tener código alineado al deploy).
 
-**Estado:** ⬜ Pendiente
+**Estado:** ✅ **Hecho** (2026-03-20) — Ver [E2E-VALIDATION-CHECKLIST.md](../E2E-VALIDATION-CHECKLIST.md) §Resultados smoke. Cloud Run: `/health` 200; `/calculadora/` y `/finanzas/` 200; `/api/kpi-report`, `/api/cotizaciones`, `/api/kpi-financiero` **503** (Sheets/credenciales — OK, no 404). Vercel raíz y `/calculadora/` 200.
 
 ---
 
@@ -145,4 +145,5 @@
 | Pista | Nombre | Estado |
 |-------|--------|--------|
 | **1** | Línea base Git | ✅ Hecho |
-| **2** | Smoke producción | **← siguiente** |
+| **2** | Smoke producción | ✅ Hecho |
+| **3** | Sheets tabs/triggers | **← siguiente** (manual Matias) |

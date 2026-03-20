@@ -2,6 +2,17 @@
 
 ## [3.1.2] — 2026-03-19
 
+### Presupuesto libre — backup + API (2026-03-19)
+- **Módulo:** `src/utils/presupuestoLibreCatalogo.js` — catálogo acordeón (paneles m², perfiles, tornillería/herrajes, selladores, flete, extraordinarios).
+- **UI canónica:** `PanelinCalculadoraV3_backup.jsx` — escenario `presupuesto_libre`, `groups` sin duplicar flete; categorías BOM (`EXTRAORDINARIOS`, `TORNILLERÍA` vía `FIJACIONES`); snapshots / Drive / `projectFile`.
+- **V3 standalone:** `PanelinCalculadoraV3.jsx` — llama al mismo motor con catálogo inline.
+- **API:** `POST /calc/cotizar/presupuesto-libre`; `buildGptResponse` evita segundo flete si `presupuestoLibre`; `docs/openapi-calc.yaml` + `GPT_ACTIONS`.
+- **Tests:** suite 16b en `tests/validation.js` (**119 passed**).
+
+### Equipo — Pista 2 smoke producción (2026-03-20)
+- **E2E checklist:** `docs/team/E2E-VALIDATION-CHECKLIST.md` — tabla de códigos HTTP Cloud Run + Vercel (health/SPAs 200; API Sheets 503 coherente).
+- **Plan:** `docs/team/plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md` — Pista 2 ✅; siguiente Pista 3 (Sheets manual).
+
 ### Equipo — Autopilot full team Runs 24–30 (2026-03-20)
 - **Reporter:** `docs/team/reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md` (índice + tabla ⬜/✓).
 - **MATPROMT:** `docs/team/matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`.
