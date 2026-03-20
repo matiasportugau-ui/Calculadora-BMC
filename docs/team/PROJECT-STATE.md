@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-20 (Run34 smoke post-Sheets + handoff run35)
+**Última actualización:** 2026-03-20 (Run35 ADR + Run36 audit --force)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-20 (Run35 — Presupuesto libre / canónico):** Ejecutado **run35** (handoff itinerante). **ADR-001** [team/adr/ADR-001-PRESUPUESTO-LIBRE-BACKUP-VS-V3.md](./adr/ADR-001-PRESUPUESTO-LIBRE-BACKUP-VS-V3.md): backup = app canónica para Presupuesto libre; V3 = standalone con datos inline; paridad de motor y API ya vigente. Tests **119 passed**. RUN-ROADMAP run35 ✓. Siguiente run36 (audit --force).
 
 **2026-03-20 (Run34 — smoke post-Sheets):** Ejecutado **run34** (handoff itinerante). Re-validación producción: **Cloud Run** `/health` 200, `/api/kpi-report`, `/api/cotizaciones`, `/api/kpi-financiero` 503 (Sheets no config — esperable); `/calculadora/`, `/finanzas/` 404 (anotar para Networks si se requieren SPAs en Cloud Run). **Vercel** `/`, `/calculadora/` 200. E2E checklist actualizado con resultados run34; handoff itinerante actualizado → siguiente **run35** (Presupuesto libre / canónico).
 
