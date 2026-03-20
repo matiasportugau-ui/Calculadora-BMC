@@ -14,6 +14,15 @@ function effAnchoM(z, is2A) {
   return is2A ? z.ancho / 2 : z.ancho;
 }
 
+/** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
+function zonaLabelPlanta(r) {
+  const L = Number(r.z.largo);
+  const W = Number(r.w);
+  if (!Number.isFinite(L) || !Number.isFinite(W)) return "—";
+  const fmt = (x) => (Math.abs(x - Math.round(x)) < 1e-6 ? String(Math.round(x)) : x.toFixed(2).replace(/\.?0+$/, ""));
+  return `${fmt(L)}×${fmt(W)}m`;
+}
+
 function clientToSvg(svgEl, cx, cy) {
   if (!svgEl) return { x: 0, y: 0 };
   const pt = svgEl.createSVGPoint();
@@ -343,7 +352,7 @@ export default function RoofPreview({
                     fontFamily={FONT}
                     pointerEvents="none"
                   >
-                    {r.z.largo}×{r.z.ancho}m
+                    {zonaLabelPlanta(r)}
                   </text>
                   {showSlope && (
                     <SlopeArrow
@@ -358,12 +367,62 @@ export default function RoofPreview({
             })}
           </svg>
         )}
-        <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>
-          <div>
-            <strong>{layout.totalArea.toFixed(1)} m²</strong> total
+        <div style={{ minWidth: 0, flex: "1 1 160px" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>
+            <strong style={{ fontSize: 15 }}>{layout.totalArea.toFixed(1)} m²</strong>
+            <span style={{ fontWeight: 500, color: C.ts }}> total</span>
           </div>
+          {layout.entries.length > 0 && (
+            <div
+              style={{
+                fontSize: 11,
+                color: C.ts,
+                marginTop: 8,
+                lineHeight: 1.45,
+                padding: "8px 10px",
+                background: C.surface,
+                borderRadius: 8,
+                border: `1px solid ${C.border}`,
+              }}
+              aria-label="Desglose de superficie por zona"
+            >
+              <div style={{ fontWeight: 600, color: C.tp, marginBottom: 4, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                Por zona
+              </div>
+              {layout.entries.map((r, i) => {
+                const a = r.z.largo * r.z.ancho;
+                return (
+                  <div key={r.gi} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                    <span style={{ color: C.ts }}>
+                      Zona {i + 1}
+                      <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>
+                        {zonaLabelPlanta(r)} en planta
+                      </span>
+                    </span>
+                    <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
+                  </div>
+                );
+              })}
+              <div
+                style={{
+                  marginTop: 8,
+                  paddingTop: 8,
+                  borderTop: `1px dashed ${C.border}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: C.tp,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                <span>Suma zonas</span>
+                <span>{layout.entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0).toFixed(1)} m²</span>
+              </div>
+            </div>
+          )}
           {pendiente > 0 && (
-            <div style={{ fontSize: 11, color: C.ts }}>Largo real: ×{fp.toFixed(2)}</div>
+            <div style={{ fontSize: 11, color: C.ts, marginTop: 8 }}>Largo real (pendiente): ×{fp.toFixed(2)}</div>
           )}
         </div>
       </div>

@@ -1779,6 +1779,27 @@ export default function PanelinCalculadoraV3() {
                         <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad de medida</div>
                         <SegmentedControl value={techoAnchoModo || "metros"} onChange={v => setTechoAnchoModo(v)} options={[{ id: "metros", label: "Metros (largo × ancho)" }, { id: "paneles", label: "Paneles (cantidad)" }]} />
                       </div>
+                      {techoAnchoModo === "paneles" && techoPanelData && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: C.ts,
+                            lineHeight: 1.5,
+                            padding: "12px 14px",
+                            background: C.surface,
+                            borderRadius: 10,
+                            border: `1px solid ${C.border}`,
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, color: C.tp }}>Paneles (ancho):</span>{" "}
+                          el ancho en planta se calcula como{" "}
+                          <strong style={{ color: C.primary }}>cantidad × {Number(techoPanelData.au ?? 1.12).toFixed(2)} m</strong>{" "}
+                          (ancho útil del panel según familia/espesor).
+                          {techo.tipoAguas === "dos_aguas" ? (
+                            <> En <strong>dos aguas</strong>, el ancho total de zona reparte el techo en dos faldones en la vista previa.</>
+                          ) : null}
+                        </div>
+                      )}
                       <RoofPreview
                         zonas={techo.zonas || []}
                         tipoAguas={techo.tipoAguas}
@@ -1899,7 +1920,25 @@ export default function PanelinCalculadoraV3() {
                     {canPrev && <button onClick={() => setWizardStep(s => s - 1)} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>Anterior</button>}
                     <div style={{ flex: 1 }} />
                     {canNext ? (
-                      <button onClick={() => isValid && setWizardStep(s => s + 1)} disabled={!isValid} style={{ padding: "12px 28px", borderRadius: 12, border: "none", background: isValid ? C.primary : C.border, color: isValid ? "#fff" : C.tt, fontSize: 15, fontWeight: 600, cursor: isValid ? "pointer" : "not-allowed", opacity: isValid ? 1 : 0.7 }}>Siguiente</button>
+                      <button
+                        type="button"
+                        onClick={() => isValid && setWizardStep(s => s + 1)}
+                        disabled={!isValid}
+                        style={{
+                          padding: "12px 28px",
+                          borderRadius: 12,
+                          border: isValid ? "none" : `1.5px solid ${C.border}`,
+                          background: isValid ? C.primary : "#E8E8ED",
+                          color: isValid ? "#fff" : "#3A3A3C",
+                          fontSize: 15,
+                          fontWeight: 600,
+                          cursor: isValid ? "pointer" : "not-allowed",
+                          opacity: isValid ? 1 : 1,
+                          boxShadow: isValid ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                        }}
+                      >
+                        Siguiente
+                      </button>
                     ) : (
                       <span style={{ fontSize: 14, color: C.success, fontWeight: 700 }}>✓ Cotización lista</span>
                     )}

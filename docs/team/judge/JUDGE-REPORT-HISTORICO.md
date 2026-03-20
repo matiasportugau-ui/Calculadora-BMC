@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-20 (autopilot runs 24–30 plan)
+**Última actualización:** 2026-03-19 (run31 full team post-autopilot + Judge formal run24–run30)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -42,7 +42,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 19 (2026-03-19):** 4.96/5 (18 agentes; sync updates Calculadora)
 **Promedio global Run 22 (2026-03-20):** ~4.5/5 (18 roles con nota; run documental propagate/sync; Repo Sync sin push verificado)
 **Promedio global Run 23 (2026-03-20):** ~4.7/5 (18 roles con nota; fusión run22 + Presupuesto libre V3; ver `JUDGE-REPORT-RUN-2026-03-20-run23.md`)
-**Autopilot Runs 24–30 (2026-03-20):** ~4.75/5 **orientativo de plan** hasta evidencia real por run; ver [`JUDGE-REPORT-AUTOPILOT-RUN24-30.md`](./JUDGE-REPORT-AUTOPILOT-RUN24-30.md)
+**Autopilot Runs 24–30 (2026-03-20):** Reporte agregado + **un Judge formal por run** (plan/evidencia); promedios por run en cada `JUDGE-REPORT-RUN-2026-03-20-run24.md` … `run30.md`; resumen: [`JUDGE-REPORT-AUTOPILOT-RUN24-30.md`](./JUDGE-REPORT-AUTOPILOT-RUN24-30.md); índice en [`JUDGE-REPORT-RUN-2026-03-20-run30.md`](./JUDGE-REPORT-RUN-2026-03-20-run30.md) §Judge formal por run.
 
 ---
 
@@ -109,6 +109,15 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-19 | Full team run 18 — deploy completado | 18/19 (Sheets N/A) | 4.96 | [JUDGE-REPORT-RUN-2026-03-19-run18.md](./JUDGE-REPORT-RUN-2026-03-19-run18.md) |
 | 2026-03-19 | Full team run 19 — sync updates Calculadora | 18/19 (Sheets N/A) | 4.96 | [JUDGE-REPORT-RUN-2026-03-19-run19.md](./JUDGE-REPORT-RUN-2026-03-19-run19.md) |
 | 2026-03-20 | Full team run 22 — propagate & synchronize | 18/19 (Sheets N/A) | ~4.5 | [JUDGE-REPORT-RUN-2026-03-20-run22.md](./JUDGE-REPORT-RUN-2026-03-20-run22.md) |
+| 2026-03-20 | Full team run 23 — fusión run22 + Presupuesto libre V3 | 18/19 (Judge N/A) | ~4.7 | [JUDGE-REPORT-RUN-2026-03-20-run23.md](./JUDGE-REPORT-RUN-2026-03-20-run23.md) |
+| 2026-03-20 | Autopilot run 24 — Git / Repo Sync (Pista 1) | 18/19 (Judge N/A) | ~4.55 | [JUDGE-REPORT-RUN-2026-03-20-run24.md](./JUDGE-REPORT-RUN-2026-03-20-run24.md) |
+| 2026-03-20 | Autopilot run 25 — Smoke producción | 18/19 (Judge N/A) | ~4.5 | [JUDGE-REPORT-RUN-2026-03-20-run25.md](./JUDGE-REPORT-RUN-2026-03-20-run25.md) |
+| 2026-03-20 | Autopilot run 26 — Sheets tabs / triggers | 18/19 (Judge N/A) | ~4.65 | [JUDGE-REPORT-RUN-2026-03-20-run26.md](./JUDGE-REPORT-RUN-2026-03-20-run26.md) |
+| 2026-03-20 | Autopilot run 27 — Calculadora backup / catálogo libre | 18/19 (Judge N/A) | ~4.6 | [JUDGE-REPORT-RUN-2026-03-20-run27.md](./JUDGE-REPORT-RUN-2026-03-20-run27.md) |
+| 2026-03-20 | Autopilot run 28 — Audit `--force` | 18/19 (Judge N/A) | ~4.75 | [JUDGE-REPORT-RUN-2026-03-20-run28.md](./JUDGE-REPORT-RUN-2026-03-20-run28.md) |
+| 2026-03-20 | Autopilot run 29 — MATRIZ SKUs + billing | 18/19 (Judge N/A) | ~4.65 | [JUDGE-REPORT-RUN-2026-03-20-run29.md](./JUDGE-REPORT-RUN-2026-03-20-run29.md) |
+| 2026-03-20 | Autopilot run 30 — Síntesis ciclo | 18/19 (Judge N/A) | ~4.65 | [JUDGE-REPORT-RUN-2026-03-20-run30.md](./JUDGE-REPORT-RUN-2026-03-20-run30.md) |
+| 2026-03-19 | Full team run 31 — post-autopilot + CI | 18/19 (Judge N/A) | ~4.55 | [JUDGE-REPORT-RUN-2026-03-19-run31.md](./JUDGE-REPORT-RUN-2026-03-19-run31.md) |
 
 ---
 

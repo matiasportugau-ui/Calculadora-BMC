@@ -201,6 +201,21 @@
 
 ---
 
+## Bundle — RUN 2026-03-19 / run31 (post-autopilot + ciclo mejora)
+
+- **Resumen:** **Invoque full team** 0→9 inmediatamente después del paquete AUTOPILOT 24–30: síntesis de estado, **CI local** (`npm run lint` 0 errores / `npm test` **119 passed**), artefactos Reporter/Judge/Repo Sync, y **PROMPT run32+**.
+- **Bundle completo (prompts por rol):** [`matprompt/MATPROMT-RUN-2026-03-19-run31.md`](./matprompt/MATPROMT-RUN-2026-03-19-run31.md)
+- **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md`](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md)
+- **Reporter:** [`reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md`](./reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md)
+- **Judge:** [`judge/JUDGE-REPORT-RUN-2026-03-19-run31.md`](./judge/JUDGE-REPORT-RUN-2026-03-19-run31.md)
+- **Repo Sync:** [`reports/REPO-SYNC-REPORT-2026-03-19-run31.md`](./reports/REPO-SYNC-REPORT-2026-03-19-run31.md)
+
+### DELTA — (run31)
+- **Disparador:** Working tree con directorios `?? Calculadora-BMC/`, `?? OmniCRM-Sync/` — auditar antes de commit.
+- **Roles:** Security, Repo Sync, Orchestrator.
+
+---
+
 ## Bundle — AUTOPILOT Runs 24–30 (2026-03-20)
 
 - **Resumen:** Secuencia **documental** que amarra runs **24→30** al plan [SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md): Git/push → smoke prod → Sheets → calc backup/libre → audit `--force` → SKUs/billing → síntesis.
@@ -208,6 +223,7 @@
 - **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md`](./parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md)
 - **Reporter / índice:** [`reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md`](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md)
 - **Judge (agregado):** [`judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md`](./judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md)
+- **Judge formal (un archivo por run):** [run24](./judge/JUDGE-REPORT-RUN-2026-03-20-run24.md) · [run25](./judge/JUDGE-REPORT-RUN-2026-03-20-run25.md) · [run26](./judge/JUDGE-REPORT-RUN-2026-03-20-run26.md) · [run27](./judge/JUDGE-REPORT-RUN-2026-03-20-run27.md) · [run28](./judge/JUDGE-REPORT-RUN-2026-03-20-run28.md) · [run29](./judge/JUDGE-REPORT-RUN-2026-03-20-run29.md) · [run30](./judge/JUDGE-REPORT-RUN-2026-03-20-run30.md)
 - **Nota:** Marcar ⬜/✓ en la tabla del REPORT cuando cada run se ejecute de verdad; el autopilot no sustituye evidencia.
 
 ---
@@ -216,7 +232,8 @@
 
 | Fecha | Run | Ubicación del bundle |
 |-------|-----|----------------------|
-| 2026-03-20 | autopilot 24–30 | Sección arriba + [`matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md) |
+| 2026-03-19 | run31 (post-autopilot) | Sección arriba + [`matprompt/MATPROMT-RUN-2026-03-19-run31.md`](./matprompt/MATPROMT-RUN-2026-03-19-run31.md) |
+| 2026-03-20 | autopilot 24–30 | Sección arriba + [`matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md) + Judge formal run24–run30 (`judge/JUDGE-REPORT-RUN-2026-03-20-run24.md` … `run30.md`) |
 | 2026-03-20 | run23 (fusión) | Sección arriba + [`matprompt/MATPROMT-RUN-2026-03-20-run23.md`](./matprompt/MATPROMT-RUN-2026-03-20-run23.md) |
 | 2026-03-19 | run21 | Sección «Bundle — RUN 2026-03-19 / run21» en este archivo |
 | 2026-03-19 | Sync review | `docs/team/matprompt/MATPROMT-RUN-SYNC-REVIEW-2026-03-19.md` + `IMPLEMENTATION-PLAN-SYSTEM-SYNC-100-2026-03-19.md` |

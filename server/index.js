@@ -7,6 +7,7 @@ import cors from "cors";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
+import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -81,6 +82,11 @@ const ensureValidState = (state) => {
   oauthStates.delete(state);
   return !expired;
 };
+
+/** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
+app.get("/capabilities", (req, res) => {
+  res.json(buildAgentCapabilitiesManifest(config));
+});
 
 app.get("/health", asyncHandler(async (req, res) => {
   const tokens = await ml.getStoredTokens();

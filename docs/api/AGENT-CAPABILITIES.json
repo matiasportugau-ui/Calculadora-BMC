@@ -1,0 +1,36 @@
+{
+  "_comment": "Snapshot aligned with GET /capabilities. Regenerate: node -e \"import('./server/agentCapabilitiesManifest.js').then(m=>console.log(JSON.stringify(m.buildAgentCapabilitiesManifest({publicBaseUrl:'http://localhost:3001'}),null,2)))\"",
+  "ok": true,
+  "schema_version": "1",
+  "description": "Offline reference: same shape as GET /capabilities (replace public_base_url with your BMC_API_BASE).",
+  "public_base_url": "http://localhost:3001",
+  "calculator": {
+    "prefix": "/calc",
+    "canonical": {
+      "gpt_entry_point": "http://localhost:3001/calc/gpt-entry-point",
+      "openapi_yaml": "http://localhost:3001/calc/openapi",
+      "informe": "http://localhost:3001/calc/informe",
+      "catalogo": "http://localhost:3001/calc/catalogo",
+      "escenarios": "http://localhost:3001/calc/escenarios"
+    },
+    "actions": "See live GET /capabilities — list mirrors GPT_ACTIONS in server/routes/calc.js"
+  },
+  "dashboard": {
+    "prefix": "/api",
+    "routes_note": "Full list in server/agentCapabilitiesManifest.js (DASHBOARD_ROUTES)"
+  },
+  "ui": {
+    "finanzas_spa": "http://localhost:3001/finanzas",
+    "calculadora_spa": "http://localhost:3001/calculadora",
+    "notes": "SPA routes require browser; see docs/AGENT-UI-VS-API.md"
+  },
+  "discovery": {
+    "capabilities_url": "http://localhost:3001/capabilities",
+    "health_url": "http://localhost:3001/health",
+    "docs": {
+      "agent_ui_vs_api": "docs/AGENT-UI-VS-API.md",
+      "static_capabilities_json": "docs/api/AGENT-CAPABILITIES.json",
+      "openapi_calc_file": "docs/openapi-calc.yaml"
+    }
+  }
+}

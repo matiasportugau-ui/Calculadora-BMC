@@ -40,3 +40,7 @@ yarn-error.log*
 .parcel-cache
 .codebuddy
 .vercel
+
+# Nested copies / other projects accidentally created inside this repo (never commit)
+Calculadora-BMC/
+OmniCRM-Sync/

@@ -83,5 +83,5 @@
 
 ---
 
-**Última actualización:** 2026-03-20 (run22; full team propagate & sync — revisión inventario, sin cambio rutas)
+**Última actualización:** 2026-03-19 (run31; full team post-autopilot — revisión inventario, sin cambio rutas)
 **Handoff:** Usar con dependencies.md para validar integración end-to-end.

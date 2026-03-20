@@ -26,6 +26,8 @@
 5. **Incluye** a **todos los roles** de la tabla canónica `PROJECT-TEAM-FULL-COVERAGE.md` §2 (N = número de filas vigentes) y **considera** las **skills transversales** §2.2 en paso 0
 6. **Paso 9:** Ejecuta los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO; actualiza el backlog y la sección "Próximos prompts" para que el **siguiente** "Equipo completo" continúe hasta que todos los agentes estén completamente desarrollados
 
+**Secuencia autopilot (runs 24–30):** Para encadenar varios full team sin perder el hilo operativo, usar el paquete en [`reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md`](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) + bundle [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md) («AUTOPILOT Runs 24–30»).
+
 ---
 
 ## Flujo completo (pasos)

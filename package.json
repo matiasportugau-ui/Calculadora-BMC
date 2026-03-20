@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.3",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@vitejs/plugin-react": "^4.0.0",
     "concurrently": "^9.1.0",
     "easymidi": "^2.1.1",

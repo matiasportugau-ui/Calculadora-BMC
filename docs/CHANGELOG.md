@@ -2,6 +2,10 @@
 
 ## [3.1.2] — 2026-03-19
 
+### UI — Wizard dimensiones / vista previa techo (2026-03-20)
+- **`RoofPreview.jsx`:** Etiquetas **largo × ancho** en el SVG alineadas al rectángulo dibujado (en **dos aguas**, ancho = **faldón**); nota aclaratoria bajo instrucciones de arrastre; en el desglose **Por zona**, segunda línea con medidas en planta y fila **Suma zonas** que coincide con el total.
+- **`PanelinCalculadoraV3_backup.jsx`:** Botón **Siguiente** con mejor contraste en estado deshabilitado (fondo `#E8E8ED`, texto oscuro, borde).
+
 ### Presupuesto libre — backup + API (2026-03-19)
 - **Módulo:** `src/utils/presupuestoLibreCatalogo.js` — catálogo acordeón (paneles m², perfiles, tornillería/herrajes, selladores, flete, extraordinarios).
 - **UI canónica:** `PanelinCalculadoraV3_backup.jsx` — escenario `presupuesto_libre`, `groups` sin duplicar flete; categorías BOM (`EXTRAORDINARIOS`, `TORNILLERÍA` vía `FIJACIONES`); snapshots / Drive / `projectFile`.
@@ -14,11 +18,16 @@
 - **Plan:** `docs/team/plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md` — Pista 2 ✅; siguiente Pista 3 (Sheets manual).
 
 ### Equipo — Autopilot full team Runs 24–30 (2026-03-20)
-- **Reporter:** `docs/team/reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md` (índice + tabla ⬜/✓).
+- **Reporter:** `docs/team/reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md` (índice + tabla ⬜/✓ + enlaces Judge formal por sección).
 - **MATPROMT:** `docs/team/matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`.
 - **Parallel/Serial:** `docs/team/parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md`.
-- **Judge:** `docs/team/judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md`; `JUDGE-REPORT-HISTORICO.md` — nota plan ~4.75/5 hasta evidencia.
+- **Judge:** agregado `docs/team/judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md`; **formal por run** `JUDGE-REPORT-RUN-2026-03-20-run24.md` … `run30.md` (índice en run30); `JUDGE-REPORT-HISTORICO.md` — filas run23 + run24–30.
 - **Guía:** `MATPROMT-FULL-RUN-PROMPTS.md` — bundle AUTOPILOT 24–30; `PROJECT-STATE` / `PROMPT-FOR-EQUIPO-COMPLETO` enlazados.
+
+### Equipo — Full team run 31 (2026-03-19)
+- **Invoque full team** 0→9 post-autopilot: **MATPROMT** `docs/team/matprompt/MATPROMT-RUN-2026-03-19-run31.md`; **Parallel/Serial** `docs/team/parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md`; **Reporter** `docs/team/reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md`; **Judge** `docs/team/judge/JUDGE-REPORT-RUN-2026-03-19-run31.md`; **Repo Sync** `docs/team/reports/REPO-SYNC-REPORT-2026-03-19-run31.md`.
+- **Guía:** `MATPROMT-FULL-RUN-PROMPTS.md` — Bundle run31; `PROMPT-FOR-EQUIPO-COMPLETO.md` — run31 ✓ + agenda **run32+**; `JUDGE-REPORT-HISTORICO.md` fila run31; `service-map.md` fecha run31; AUTOPILOT índice — enlace Judge formal Run 26.
+- **CI:** `npm test` **119 passed**; `npm run lint` 0 errores (warnings en backup / calculatorConfig).
 
 ### Equipo — Run 23 fusión (2026-03-20)
 - **Judge:** `docs/team/judge/JUDGE-REPORT-RUN-2026-03-20-run23.md` (run22 documental + Presupuesto libre V3).

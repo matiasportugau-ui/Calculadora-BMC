@@ -16,6 +16,8 @@
 
 ## Próximos prompts (ejecutar en este run)
 
+**Run 2026-03-19 / run 31 (Invoque full team — post-autopilot + paso 9):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-19-run31.md](./matprompt/MATPROMT-RUN-2026-03-19-run31.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-19-run31.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md](./reports/REPORT-SOLUTION-CODING-2026-03-19-run31.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-19-run31.md](./judge/JUDGE-REPORT-RUN-2026-03-19-run31.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-19-run31.md](./reports/REPO-SYNC-REPORT-2026-03-19-run31.md). **CI:** `npm run lint` 0 errores (11 warnings); `npm test` **119 passed**. **Guía canónica:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-19 / run31».
+
 **Autopilot Runs 24–30 (2026-03-20):** Plan **documental** para encadenar full team sin perder el hilo. **Leer primero:** [reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md). **MATPROMT:** [matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md](./parallel-serial/PARALLEL-SERIAL-AUTOPILOT-24-30.md). **Judge (scores plan):** [judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md](./judge/JUDGE-REPORT-AUTOPILOT-RUN24-30.md). **Guía canónica:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — sección «Bundle — AUTOPILOT Runs 24–30». Marcar en el REPORT la tabla de estado cuando cada run se **ejecute** (no sustituye evidencia). Tras **Run 30**, definir aquí «Próximos prompts run31+» según PROJECT-STATE.
 
 **Run 2026-03-20 run 23 (fusión — run22 + Presupuesto libre V3 + cierre Judge/MATPROMT):** ✓ Cierre documental unificado. **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-20-run23.md](./judge/JUDGE-REPORT-RUN-2026-03-20-run23.md) (~4.7/5 orientativo). **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-20-run23.md](./matprompt/MATPROMT-RUN-2026-03-20-run23.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run23.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run23.md). **Guía canónica:** sección «Bundle — RUN 2026-03-20 / run23» en [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md). **Código:** Presupuesto libre acordeones en `PanelinCalculadoraV3.jsx`; reporte [reports/REPORT-SOLUTION-CODING-2026-03-20-full-team-implement.md](./reports/REPORT-SOLUTION-CODING-2026-03-20-full-team-implement.md).
@@ -52,6 +54,16 @@
 ---
 
 ## Próximos prompts para el siguiente run (actualizar al final)
+
+**Run32+ (2026-03-19 — agenda tras run 31):**
+
+1. **[Repo / Security]** Auditar y excluir del índice `Calculadora-BMC/`, `OmniCRM-Sync/` si son copias accidentales; o documentar propósito + `.gitignore`.
+2. **[Repo Sync]** Commit temático (docs equipo + calculadora) y `git push` en rama vigente; cerrar gap “push no verificado” si aún aplica.
+3. **[Matias — manual] Pista 3** — tabs + triggers Sheets según AUTOMATIONS-BY-WORKBOOK / IMPLEMENTATION-PLAN-POST-GO-LIVE §A1–A2.
+4. **[Audit]** Completar filas ⬜→✓ en [AUTOPILOT-FULL-TEAM-RUNS-24-30.md](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) con evidencia real por run.
+5. **[Contract]** Con API levantada: `npm run test:contracts`.
+6. **[Calc / Mapping]** SKUs MATRIZ col.D + opcional acotar tornillería presupuesto libre (`PRESUPUESTO_LIBRE_IDS`).
+7. **[Coding + Matias]** Rama `npm audit fix --force` si se aprueba (run28 autopilot).
 
 **Run 2026-03-16 (go):** Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync, Sheets Structure — ✓ completados.
 **Todos los 19 agentes están completamente desarrollados.**

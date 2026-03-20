@@ -6,6 +6,8 @@
 import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
+import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
+import { PERFIL_TECHO, PERFIL_PARED } from "../src/data/constants.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -464,6 +466,25 @@ assert(
   JSON.stringify(btgLibre.map(g => ({ t: g.title, n: g.items?.length }))),
   "1 group, 2 items"
 );
+
+console.log("\n═══ SUITE 16b: computePresupuestoLibreCatalogo ═══");
+const perfilRows = flattenPerfilesLibre(PERFIL_TECHO, PERFIL_PARED);
+const perfMap = new Map(perfilRows.map((r) => [r.id, r]));
+const firstPerfilId = perfilRows[0]?.id;
+const catLibre = computePresupuestoLibreCatalogo({
+  listaPrecios: "web",
+  librePanelLines: [{ familia: "ISODEC_EPS", espesor: 100, color: "Blanco", m2: 10 }],
+  librePerfilQty: firstPerfilId ? { [firstPerfilId]: 2 } : {},
+  perfilCatalogById: perfMap,
+  libreFijQty: { tornillo_t2: 50 },
+  libreSellQty: {},
+  flete: 100,
+  libreExtra: {},
+});
+assert("computePresupuestoLibreCatalogo: presupuestoLibre flag", catLibre.presupuestoLibre === true, catLibre.presupuestoLibre, true);
+assert("computePresupuestoLibreCatalogo: incluye m²", catLibre.allItems.some(i => i.unidad === "m²"), catLibre.allItems.filter(i => i.unidad === "m²").length, ">0");
+assert("computePresupuestoLibreCatalogo: totalFinal > 0", catLibre.totales.totalFinal > 0, catLibre.totales.totalFinal, ">0");
+assert("computePresupuestoLibreCatalogo: libreGroups", Array.isArray(catLibre.libreGroups) && catLibre.libreGroups.length > 0, catLibre.libreGroups?.length, ">0");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 17: applyOverrides
