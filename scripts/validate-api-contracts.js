@@ -7,8 +7,8 @@
  */
 const BASE = process.env.BMC_API_BASE || "http://localhost:3001";
 
-async function fetchJson(path) {
-  const res = await fetch(`${BASE}${path}`);
+async function fetchJson(path, options) {
+  const res = await fetch(`${BASE}${path}`, options);
   const data = await res.json().catch(() => null);
   return { status: res.status, data };
 }
@@ -51,12 +51,83 @@ function checkKpiReport(data) {
   return { ok: true };
 }
 
+/** Minimal solo_techo body — must stay valid with PANELS_TECHO in constants */
+const MIN_COTIZAR_SOLO_TECHO = {
+  escenario: "solo_techo",
+  lista: "web",
+  techo: {
+    familia: "ISODEC_EPS",
+    espesor: 100,
+    largo: 6,
+    ancho: 5,
+    color: "Blanco",
+  },
+};
+
+const MIN_PRESUPUESTO_LIBRE = {
+  lista: "web",
+  librePanelLines: [{ familia: "ISODEC_EPS", espesor: 100, m2: 10 }],
+};
+
+function checkGptEntryPoint(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
+  if (!Array.isArray(data.actions) || data.actions.length < 1) return { ok: false, msg: "actions must be non-empty array" };
+  if (typeof data.openapi_url !== "string" || !data.openapi_url.includes("/calc/openapi")) {
+    return { ok: false, msg: "openapi_url must point to /calc/openapi" };
+  }
+  const cotizar = data.actions.find((a) => a.path === "/calc/cotizar");
+  if (!cotizar) return { ok: false, msg: "actions must include /calc/cotizar" };
+  return { ok: true };
+}
+
+function checkCotizarResponse(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "expected ok: true" };
+  if (!hasKeys(data, ["meta", "resumen", "bom"])) return { ok: false, msg: "Missing meta, resumen or bom" };
+  if (!Array.isArray(data.bom)) return { ok: false, msg: "bom must be array" };
+  return { ok: true };
+}
+
+function checkCapabilities(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
+  if (!hasKeys(data, ["calculator", "dashboard", "discovery"])) return { ok: false, msg: "Missing calculator, dashboard or discovery" };
+  if (!data.calculator?.actions?.length) return { ok: false, msg: "calculator.actions required" };
+  return { ok: true };
+}
+
 async function main() {
   console.log(`\nBMC API Contract Validator — ${BASE}\n`);
   let passed = 0;
   let failed = 0;
 
   const checks = [
+    {
+      name: "GET /capabilities",
+      path: "/capabilities",
+      check: checkCapabilities,
+      allow503: false,
+    },
+    {
+      name: "GET /calc/gpt-entry-point",
+      path: "/calc/gpt-entry-point",
+      check: checkGptEntryPoint,
+      allow503: false,
+    },
+    {
+      name: "POST /calc/cotizar (solo_techo mínimo)",
+      path: "/calc/cotizar",
+      method: "POST",
+      body: MIN_COTIZAR_SOLO_TECHO,
+      check: checkCotizarResponse,
+      allow503: false,
+    },
+    {
+      name: "POST /calc/cotizar/presupuesto-libre (mínimo)",
+      path: "/calc/cotizar/presupuesto-libre",
+      method: "POST",
+      body: MIN_PRESUPUESTO_LIBRE,
+      check: checkCotizarResponse,
+      allow503: false,
+    },
     {
       name: "GET /api/kpi-financiero",
       path: "/api/kpi-financiero",
@@ -84,9 +155,17 @@ async function main() {
     },
   ];
 
-  for (const { name, path, check, allow503, allow404 } of checks) {
+  for (const { name, path, check, allow503, allow404, method, body } of checks) {
     try {
-      const { status, data } = await fetchJson(path);
+      const opts =
+        method === "POST"
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body || {}),
+            }
+          : undefined;
+      const { status, data } = await fetchJson(path, opts);
       if (status === 503 && allow503) {
         console.log(`  ⚠️  ${name} — 503 (Sheets unavailable, skip contract)`);
         passed++;
