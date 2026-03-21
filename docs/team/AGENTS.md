@@ -4,6 +4,31 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## CEO AI Agent
+
+**Agent:** `.cursor/agents/ceo-ai-agent.md`  
+**Skill:** `.cursor/skills/ceo-ai-agent/`
+
+**Rol:** Liderar el proyecto con el objetivo de tenerlo funcionando para fin de semana. Invoca full team run una y otra vez hasta alcanzar el objetivo.
+
+**Cuándo usar:**
+- CEO agent, CEO run, CEO lead
+- Make it work by end of week
+- Lead until done
+- Invoque full team again and again until the project works
+
+**Comportamiento:** Evalúa estado (PROJECT-STATE, GO-LIVE checklist), invoca Invoque full team vía bmc-dashboard-team-orchestrator, re-evalúa tras cada run, repite hasta éxito o max 10 runs (o handoff a Matias para ítems manuales).
+
+**Referencias:**
+- [SKILL.md](../.cursor/skills/ceo-ai-agent/SKILL.md)
+- [reference.md](../.cursor/skills/ceo-ai-agent/reference.md)
+- [CEO-RUN-SUMMARY.md](./CEO-RUN-SUMMARY.md) — log de runs del CEO
+- [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md)
+
+**Cursor Rule:** `.cursor/rules/ceo-ai-agent.mdc`
+
+---
+
 ## BMC Project Team Sync
 
 **Skill:** `.cursor/skills/bmc-project-team-sync/`

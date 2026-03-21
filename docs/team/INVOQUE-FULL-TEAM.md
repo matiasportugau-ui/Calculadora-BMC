@@ -67,8 +67,17 @@ Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE
 
 ---
 
+## CEO AI Agent (liderazgo)
+
+Para que el proyecto esté funcionando para fin de semana, el **CEO AI Agent** invoca "Invoque full team" una y otra vez hasta alcanzar el objetivo. Ver `.cursor/agents/ceo-ai-agent.md` y `.cursor/skills/ceo-ai-agent/SKILL.md`.
+
+**Triggers:** "CEO agent", "CEO run", "make it work by end of week", "lead until done".
+
+---
+
 ## Referencias
 
+- **CEO Agent:** `.cursor/agents/ceo-ai-agent.md` — lidera e invoca full team hasta éxito
 - **Orquestador:** `.cursor/agents/bmc-dashboard-team-orchestrator.md`
 - **Skill sync:** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 - **Rule:** `.cursor/rules/bmc-project-team-sync.mdc` (triggers incl. "Invoque full team")
