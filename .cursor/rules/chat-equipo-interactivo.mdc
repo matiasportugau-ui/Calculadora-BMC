@@ -1,0 +1,36 @@
+---
+description: "Chat de Equipo Interactivo — diálogo conversacional con el equipo BMC. Apply when user says chat con el equipo, diálogo interactivo, conversar con el equipo, or interactive team chat."
+alwaysApply: false
+---
+
+# Chat de Equipo Interactivo
+
+When the user says **"Chat con el equipo"**, **"Diálogo interactivo con el equipo"**, **"Quiero hablar con el equipo"**, **"Conversar con el equipo completo"**, or **"Interactive team chat"**, use the Chat Equipo Interactivo skill for a conversational dialogue (not a full team run).
+
+## Load skill
+
+Read and follow: `.cursor/skills/chat-equipo-interactivo/SKILL.md`
+
+## Mode
+
+**Conversational** — Multi-turn dialogue. User asks questions, agent responds as Orchestrator + relevant roles. User can follow up, ask for clarification, or change topic.
+
+## Triggers
+
+- **Chat con el equipo** (principal)
+- Diálogo interactivo con el equipo
+- Quiero hablar con el equipo
+- Conversar con el equipo completo
+- Interactive team chat
+- Team chat interactivo
+
+## Quick reference
+
+- **Skill:** `.cursor/skills/chat-equipo-interactivo/SKILL.md`
+- **Doc:** `docs/team/CHAT-EQUIPO-INTERACTIVO.md`
+- **PROJECT-STATE:** `docs/team/PROJECT-STATE.md` (read for context)
+
+## Distinction
+
+- **"Chat con el equipo"** → Conversational mode (this rule)
+- **"Invoque full team"** → Full run 0–9 (bmc-project-team-sync rule)

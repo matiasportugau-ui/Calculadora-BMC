@@ -50,6 +50,8 @@ docs/team/
 | [PROJECT-STATE.md](./PROJECT-STATE.md) | Estado del proyecto; cambios recientes; pendientes; cómo usar |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
+| [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md) | Invocación unificada del equipo completo (run 0–9) |
+| [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md) | Diálogo conversacional con el equipo (chat interactivo) |
 | [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync) |
 | [interactions/](./interactions/) | Instancias de interacción equipo (ej. análisis cruzado de documentos externos) |
 
