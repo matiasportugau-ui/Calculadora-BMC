@@ -9,6 +9,7 @@ Estructura de documentación del equipo, organizada según decisión del equipo.
 ```
 docs/team/
 ├── README.md                    ← Este índice
+├── SESSION-WORKSPACE-CRM.md     Cockpit por sesión: foco, logros recientes, próximos pasos, auto-start agente
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
@@ -29,6 +30,16 @@ docs/team/
 └── meta/                        Meta-evaluación del equipo
     └── EQUIPO-META-EVALUACION.md
 ```
+
+---
+
+## Google Sheets — mapeo y sync (canónico)
+
+| Documento | Descripción |
+|-----------|-------------|
+| [google-sheets-module/README.md](../google-sheets-module/README.md) | **Índice del módulo:** inventario, mapeo código, variables 1:1, sync full team |
+| [SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md](../google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md) | Quién accede a qué datos (dashboard, API, calculadora, GPT, OmniCRM) |
+| [MAPPER-PRECISO-PLANILLAS-CODIGO.md](../google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md) | Pestañas/columnas según `bmcDashboard.js` |
 
 ---
 

@@ -21,11 +21,18 @@ Documentación de agentes especializados disponibles en el repositorio.
 - [SKILL.md](../.cursor/skills/bmc-project-team-sync/SKILL.md)
 - [reference.md](../.cursor/skills/bmc-project-team-sync/reference.md)
 - [PROJECT-STATE.md](./PROJECT-STATE.md)
+- [SESSION-WORKSPACE-CRM.md](./SESSION-WORKSPACE-CRM.md) — foco por sesión y checklist para agentes
 - [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md)
 - [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md) — invocación unificada
 - [JUDGE-CRITERIA-POR-AGENTE.md](./judge/JUDGE-CRITERIA-POR-AGENTE.md)
 
 **Cursor Rule:** `.cursor/rules/bmc-project-team-sync.mdc`
+
+---
+
+## Google Sheets — documentación canónica
+
+Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapper código, sync full team, variables 1:1). El informe de capacidades del equipo enlaza al mapa de acceso en ese módulo.
 
 ---
 

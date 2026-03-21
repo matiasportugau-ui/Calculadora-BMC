@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-20 (run33 full team + Judge run33)
+**Última actualización:** 2026-03-22 (run52 full team + Judge run52)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -47,6 +47,10 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 32 (2026-03-20):** ~4.35/5 (18 roles con nota; full team sync documental; ver [`JUDGE-REPORT-RUN-2026-03-20-run32.md`](./JUDGE-REPORT-RUN-2026-03-20-run32.md)).
 
 **Promedio global Run 33 (2026-03-20):** ~4.4/5 (18 roles con nota; Pista 3 coordinación + Mapping; ver [`JUDGE-REPORT-RUN-2026-03-20-run33.md`](./JUDGE-REPORT-RUN-2026-03-20-run33.md)).
+
+**Promedio global Run 51 (2026-03-21):** ~4.45/5 (18 roles con nota; hub Sheets + itinerante 37–50 + audit branch; ver [`JUDGE-REPORT-RUN-2026-03-21-run51.md`](./JUDGE-REPORT-RUN-2026-03-21-run51.md)).
+
+**Promedio global Run 52 (2026-03-22):** ~4.4/5 (18 roles con nota; cierre R3–R5 + agenda Pista 3/E2E/Repo Sync; ver [`JUDGE-REPORT-RUN-2026-03-22-run52.md`](./JUDGE-REPORT-RUN-2026-03-22-run52.md)).
 
 ---
 
@@ -122,6 +126,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-20 | Autopilot run 29 — MATRIZ SKUs + billing | 18/19 (Judge N/A) | ~4.65 | [JUDGE-REPORT-RUN-2026-03-20-run29.md](./JUDGE-REPORT-RUN-2026-03-20-run29.md) |
 | 2026-03-20 | Autopilot run 30 — Síntesis ciclo | 18/19 (Judge N/A) | ~4.65 | [JUDGE-REPORT-RUN-2026-03-20-run30.md](./JUDGE-REPORT-RUN-2026-03-20-run30.md) |
 | 2026-03-19 | Full team run 31 — post-autopilot + CI | 18/19 (Judge N/A) | ~4.55 | [JUDGE-REPORT-RUN-2026-03-19-run31.md](./JUDGE-REPORT-RUN-2026-03-19-run31.md) |
+| 2026-03-21 | Full team run 51 — hub Sheets + itinerante | 18/19 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-21-run51.md](./JUDGE-REPORT-RUN-2026-03-21-run51.md) |
+| 2026-03-22 | Full team run 52 — cierre R3–R5 | 18/19 (Judge N/A) | ~4.4 | [JUDGE-REPORT-RUN-2026-03-22-run52.md](./JUDGE-REPORT-RUN-2026-03-22-run52.md) |
 
 ---
 

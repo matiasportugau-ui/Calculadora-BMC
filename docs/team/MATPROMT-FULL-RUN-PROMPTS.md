@@ -258,10 +258,41 @@
 
 ---
 
+## Bundle — RUN 2026-03-21 / run51 (hub Sheets + cierre itinerante 37–50)
+
+- **Resumen:** **Invoque full team** **run 51** tras **runs 40–50** itinerantes. Unificación del **hub Google Sheets** (`README` + `MAPPER-PRECISO-PLANILLAS-CODIGO`, `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP`, `VARIABLES-Y-MAPEO-UNO-A-UNO`). **Run36:** rama `run36-audit-force` con **0** vulns; **`main`** con **7** hasta merge. CI: lint 0 errores; tests **119 passed**.
+- **Bundle completo (prompts por rol):** [`matprompt/MATPROMT-RUN-2026-03-21-run51.md`](./matprompt/MATPROMT-RUN-2026-03-21-run51.md)
+- **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-21-run51.md`](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-21-run51.md)
+- **Reporter:** [`reports/REPORT-SOLUTION-CODING-2026-03-21-run51.md`](./reports/REPORT-SOLUTION-CODING-2026-03-21-run51.md)
+- **Judge:** [`judge/JUDGE-REPORT-RUN-2026-03-21-run51.md`](./judge/JUDGE-REPORT-RUN-2026-03-21-run51.md)
+- **Repo Sync:** [`reports/REPO-SYNC-REPORT-2026-03-21-run51.md`](./reports/REPO-SYNC-REPORT-2026-03-21-run51.md)
+
+### DELTA — (run51)
+- **Disparador opcional:** Merge `run36-audit-force` → `main` — Security + Orchestrator actualizan PROJECT-STATE y pendientes npm.
+
+---
+
+## Bundle — RUN 2026-03-22 / run52 (cierre R3–R5 + agenda Pista 3 / E2E / Repo Sync)
+
+- **Resumen:** **Invoque full team** **run 52** — artefactos **R3** (MATPROMT), **R4** (Parallel/Serial), **R5** (Judge) tras pre-run R1–R2; **`main`** ya en **origin** con deps run36; **`npm audit`:** **0**; tests **119 passed**.
+
+- **Bundle completo (prompts por rol):** [`matprompt/MATPROMT-RUN-2026-03-22-run52.md`](./matprompt/MATPROMT-RUN-2026-03-22-run52.md)
+- **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md`](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md)
+- **Reporter:** [`reports/REPORT-SOLUTION-CODING-2026-03-22-run52.md`](./reports/REPORT-SOLUTION-CODING-2026-03-22-run52.md)
+- **Judge:** [`judge/JUDGE-REPORT-RUN-2026-03-22-run52.md`](./judge/JUDGE-REPORT-RUN-2026-03-22-run52.md)
+- **Repo Sync:** [`reports/REPO-SYNC-REPORT-2026-03-22-run52.md`](./reports/REPO-SYNC-REPORT-2026-03-22-run52.md)
+
+### DELTA — (run52)
+- **Disparador opcional:** Avance real en Pista 3 o E2E → Mapping + Audit actualizan PROJECT-STATE; MATPROMT emitir **DELTA** solo si cambia prioridad del run 53.
+
+---
+
 ## Histórico
 
 | Fecha | Run | Ubicación del bundle |
 |-------|-----|----------------------|
+| 2026-03-22 | run52 (R3–R5 cierre + agenda operativa) | [`matprompt/MATPROMT-RUN-2026-03-22-run52.md`](./matprompt/MATPROMT-RUN-2026-03-22-run52.md) |
+| 2026-03-21 | run51 (hub Sheets + itinerante) | [`matprompt/MATPROMT-RUN-2026-03-21-run51.md`](./matprompt/MATPROMT-RUN-2026-03-21-run51.md) |
 | 2026-03-20 | roadmap 32–39 | [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md) — plan vivo; bundles por run se añaden al ejecutar cada uno |
 | 2026-03-19 | run31 (post-autopilot) | Sección arriba + [`matprompt/MATPROMT-RUN-2026-03-19-run31.md`](./matprompt/MATPROMT-RUN-2026-03-19-run31.md) |
 | 2026-03-20 | autopilot 24–30 | Sección arriba + [`matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md`](./matprompt/MATPROMT-RUN-AUTOPILOT-24-30.md) + Judge formal run24–run30 (`judge/JUDGE-REPORT-RUN-2026-03-20-run24.md` … `run30.md`) |

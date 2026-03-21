@@ -104,9 +104,31 @@
 
 ## 5. Próximo paso inmediato
 
-1. Ejecutar **§0.1 Revisión pre-run** para **Run 32**.  
-2. Tras Run 32, **no** asumir Run 33 hasta confirmar si Pista 3 está desbloqueada (tiempo Matias).
+1. Los runs **32–39** y la extensión **40–50** están **cerrados en tabla** (✓ 2026-03-20) con informes / handoff en `PROJECT-STATE.md`; la ejecución humana pendiente sigue siendo **Pista 3** (tabs/triggers) y ítems en `PROMPT-FOR-EQUIPO-COMPLETO.md` (agenda manual).
+2. **Run 51** (2026-03-21): **Invoque full team** ejecutado — hub Sheets unificado + síntesis itinerante; artefactos en `docs/team/matprompt/MATPROMT-RUN-2026-03-21-run51.md`, REPORT/Judge/REPO-SYNC run51; ver Cambios recientes en `PROJECT-STATE.md`.
+3. **Run 52** (2026-03-22): **Invoque full team** con cierre **R3–R5** — [`matprompt/MATPROMT-RUN-2026-03-22-run52.md`](../matprompt/MATPROMT-RUN-2026-03-22-run52.md), [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md`](../parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md), [`judge/JUDGE-REPORT-RUN-2026-03-22-run52.md`](../judge/JUDGE-REPORT-RUN-2026-03-22-run52.md); ver `PROJECT-STATE.md` Cambios recientes.
+4. Antes del próximo **Invoque full team** numerado: ejecutar **§0.1 Revisión pre-run** para **run 53** (prioridad: **Pista 3**, **E2E**, **Repo Sync** — ver `PROMPT-FOR-EQUIPO-COMPLETO` agenda).
+
+### 5.1 Pre-run 52 — checklist §0.1 (R1–R5) — 2026-03-21 / cerrado 2026-03-22
+
+| Paso | Estado | Nota breve |
+|------|--------|------------|
+| **R1** Orchestrator | ✓ | `PROJECT-STATE` actualizado (merge run36 + **`git push origin main`**; `npm audit` 0 local). Roadmap §5–§5.1 leídos. |
+| **R2** Roles afectados | ✓ | Objetivo run52: operativo/manual + docs; **Pista 3** (tabs/triggers) sigue manual; **E2E** y **Repo Sync** pendientes según agenda. |
+| **R3** MATPROMT | ✓ | Bundle **run 52:** [`matprompt/MATPROMT-RUN-2026-03-22-run52.md`](../matprompt/MATPROMT-RUN-2026-03-22-run52.md) + sección en `MATPROMT-FULL-RUN-PROMPTS.md`. |
+| **R4** Parallel/Serial | ✓ | [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md`](../parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md) — **serie** documental. |
+| **R5** Judge | ✓ | [`judge/JUDGE-REPORT-RUN-2026-03-22-run52.md`](../judge/JUDGE-REPORT-RUN-2026-03-22-run52.md) + pendientes (E2E, Repo Sync, Pista 3). |
+
+### 5.2 Pre-run 53 — checklist §0.1 (R1–R5) — plantilla
+
+| Paso | Estado | Nota breve |
+|------|--------|------------|
+| **R1** Orchestrator | ⬜ | Leer `PROJECT-STATE`, este roadmap, sección run 53. |
+| **R2** Roles afectados | ⬜ | ¿Sigue vigente Pista 3 / E2E / Repo Sync como foco? |
+| **R3** MATPROMT | ⬜ | Bundle run 53 al invocar «Equipo completo». |
+| **R4** Parallel/Serial | ⬜ | Plan `PARALLEL-SERIAL-PLAN-*-run53.md`. |
+| **R5** Judge | ⬜ | `JUDGE-REPORT-RUN-*-run53.md` post-run. |
 
 ---
 
-*Última actualización del documento: 2026-03-20. Mantener fecha al pie tras cada revisión significativa.*
+*Última actualización del documento: 2026-03-22. Mantener fecha al pie tras cada revisión significativa.*

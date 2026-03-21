@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workspace CRM — Panelin / BMC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a222c;
+      --surface2: #232d3a;
+      --border: #2f3d4d;
+      --text: #e8eef4;
+      --muted: #9ab0c4;
+      --accent: #3dd6c3;
+      --accent-dim: #2a9d8a;
+      --warn: #f4b860;
+      --danger: #e07a7a;
+      --radius: 12px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      --font-display: "Fraunces", Georgia, serif;
+      --font-body: "DM Sans", system-ui, sans-serif;
+      --nav-width: 280px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(61, 214, 195, 0.12), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(244, 184, 96, 0.06), transparent 45%),
+        var(--bg);
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--nav-width) 1fr;
+      min-height: 100vh;
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+      .shell-nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        max-height: 50vh;
+        overflow-y: auto;
+      }
+    }
+
+    .shell-nav {
+      background: rgba(26, 34, 44, 0.95);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 1rem 2rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .shell-brand {
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .shell-brand .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--bg);
+      background: var(--accent);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+
+    .shell-brand h1 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .shell-brand p {
+      margin: 0.35rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .nav-group {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin: 1rem 0 0.5rem;
+    }
+
+    .nav-group:first-of-type {
+      margin-top: 0;
+    }
+
+    .nav-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      padding: 0.45rem 0.55rem;
+      margin-bottom: 0.2rem;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .nav-btn:hover {
+      background: var(--surface2);
+      border-color: var(--border);
+    }
+
+    .nav-btn.active {
+      background: rgba(61, 214, 195, 0.12);
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .shell-main {
+      padding: 1.5rem 1.25rem 3rem;
+      max-width: 920px;
+    }
+
+    .wrap {
+      max-width: 100%;
+    }
+
+    header.intro {
+      margin-bottom: 1.5rem;
+    }
+
+    header.intro h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+
+    header.intro p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+
+    .badge-inline {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--bg);
+      background: var(--accent);
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      margin-bottom: 0.65rem;
+    }
+
+    details.howto {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    details.howto summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--warn);
+    }
+
+    details.howto ol {
+      margin: 0.75rem 0 0;
+      padding-left: 1.25rem;
+      color: var(--muted);
+    }
+
+    details.howto code {
+      font-size: 0.85em;
+      background: var(--surface2);
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.15rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0 0 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card h3 span.dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent-dim);
+      flex-shrink: 0;
+    }
+
+    ul.links {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    ul.links li {
+      margin-bottom: 0.45rem;
+    }
+
+    a.doc-link {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s ease;
+      cursor: pointer;
+      background: none;
+      border-left: none;
+      border-right: none;
+      border-top: none;
+      padding: 0;
+      font: inherit;
+      text-align: left;
+    }
+
+    a.doc-link:hover,
+    button.doc-link:hover {
+      border-bottom-color: var(--accent-dim);
+    }
+
+    button.doc-link {
+      color: var(--accent);
+      border-bottom: 1px solid transparent;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.65rem;
+    }
+
+    button.action {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    button.action:hover {
+      background: #2c3846;
+      border-color: var(--accent-dim);
+    }
+
+    button.action.primary {
+      background: rgba(61, 214, 195, 0.15);
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    button.action:active {
+      transform: translateY(1px);
+    }
+
+    .stream {
+      border-left: 3px solid var(--border);
+      padding-left: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .stream strong {
+      display: block;
+      font-size: 0.92rem;
+    }
+
+    .stream .tag {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--warn);
+    }
+
+    #view-doc {
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .doc-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .doc-toolbar .path {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      word-break: break-all;
+    }
+
+    .md-content {
+      padding: 1.35rem 1.5rem 2rem;
+      max-width: none;
+    }
+
+    .md-content :first-child {
+      margin-top: 0;
+    }
+
+    .md-content h1,
+    .md-content h2,
+    .md-content h3,
+    .md-content h4 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin: 1.5rem 0 0.65rem;
+    }
+
+    .md-content h1 {
+      font-size: 1.65rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .md-content h2 {
+      font-size: 1.28rem;
+      color: var(--accent);
+    }
+
+    .md-content h3 {
+      font-size: 1.08rem;
+    }
+
+    .md-content p,
+    .md-content li {
+      color: #c5d4e0;
+    }
+
+    .md-content a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .md-content a:hover {
+      color: #6fe8d6;
+    }
+
+    .md-content code {
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: 0.86em;
+      background: var(--bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      color: #f0d9a8;
+    }
+
+    .md-content pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .md-content pre code {
+      border: none;
+      padding: 0;
+      background: none;
+      color: var(--text);
+      font-size: inherit;
+    }
+
+    .md-content blockquote {
+      margin: 1rem 0;
+      padding: 0.5rem 0 0.5rem 1rem;
+      border-left: 4px solid var(--accent-dim);
+      color: var(--muted);
+      background: rgba(42, 157, 138, 0.08);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .md-content table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 1rem 0;
+    }
+
+    .md-content th,
+    .md-content td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.6rem;
+      text-align: left;
+    }
+
+    .md-content th {
+      background: var(--surface2);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .md-content tr:nth-child(even) td {
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .md-content hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .md-content ul,
+    .md-content ol {
+      padding-left: 1.35rem;
+    }
+
+    .doc-error {
+      background: rgba(224, 122, 122, 0.12);
+      border: 1px solid var(--danger);
+      color: #f5c4c4;
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius);
+      margin-top: 1rem;
+    }
+
+    .doc-error strong {
+      color: #fff;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      background: var(--surface2);
+      border: 1px solid var(--accent-dim);
+      color: var(--text);
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .file-banner {
+      background: rgba(224, 122, 122, 0.18);
+      border: 1px solid var(--danger);
+      color: #fde8e8;
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      grid-column: 1 / -1;
+    }
+
+    .file-banner strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .file-banner code {
+      font-size: 0.82rem;
+      background: var(--bg);
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .file-banner .row-actions {
+      margin-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="file-protocol-banner" class="file-banner" hidden>
+    <strong>Estás abriendo este archivo como file://</strong>
+    El navegador <em>no permite</em> cargar los Markdown con <code>fetch</code> (por eso ves «Failed to fetch»). Tenés que servir la carpeta <code>docs</code> por HTTP.
+    <div class="row-actions">
+      <button type="button" class="action primary" data-copy="teamhub">Copiar comando (raíz del repo)</button>
+      <button type="button" class="action" data-copy="huburl">Copiar URL del hub</button>
+    </div>
+    <p class="muted" style="margin:0.75rem 0 0;font-size:0.85rem">
+      En la raíz de <code>Calculadora-BMC</code>: <code>npm run team:hub</code> (ver <code>package.json</code>). Luego abrí en el navegador:
+      <code>http://localhost:4710/team/WORKSPACE-CRM-HUB.html</code> — no uses doble clic en el <code>.html</code>.
+    </p>
+  </div>
+
+  <div class="app-shell">
+    <aside class="shell-nav" aria-label="Navegación del hub">
+      <div class="shell-brand">
+        <span class="badge">Calculadora-BMC</span>
+        <h1>Workspace CRM</h1>
+        <p>Misma interfaz para el tablero y los documentos del repo (Markdown).</p>
+      </div>
+      <button type="button" class="nav-btn active" data-nav="home">Inicio</button>
+      <div class="nav-group">Documentos</div>
+      <button type="button" class="nav-btn" data-open-doc="./SESSION-WORKSPACE-CRM.md">SESSION-WORKSPACE-CRM</button>
+      <button type="button" class="nav-btn" data-open-doc="./PROJECT-STATE.md">PROJECT-STATE</button>
+      <button type="button" class="nav-btn" data-open-doc="./PROMPT-FOR-EQUIPO-COMPLETO.md">PROMPT equipo completo</button>
+      <button type="button" class="nav-btn" data-open-doc="./INVOQUE-FULL-TEAM.md">INVOQUE full team</button>
+      <button type="button" class="nav-btn" data-open-doc="../google-sheets-module/README.md">Sheets hub</button>
+      <button type="button" class="nav-btn" data-open-doc="../AGENTS.md">AGENTS (raíz docs)</button>
+      <div class="nav-group">Planes y checks</div>
+      <button type="button" class="nav-btn" data-open-doc="./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md">Pistas 1–8</button>
+      <button type="button" class="nav-btn" data-open-doc="./E2E-VALIDATION-CHECKLIST.md">E2E checklist</button>
+      <div class="nav-group">Más</div>
+      <button type="button" class="nav-btn" data-open-doc="./IMPROVEMENT-BACKLOG-BY-AGENT.md">Backlog por agente</button>
+      <button type="button" class="nav-btn" data-open-doc="./reports/RUN-ROADMAP-FORWARD-2026.md">RUN roadmap</button>
+      <button type="button" class="nav-btn" data-open-doc="./PROJECT-TEAM-FULL-COVERAGE.md">PROJECT-TEAM-FULL</button>
+      <button type="button" class="nav-btn" data-open-doc="./MATPROMT-FULL-RUN-PROMPTS.md">MATPROMT prompts</button>
+    </aside>
+
+    <main class="shell-main">
+      <div id="view-home">
+        <div class="wrap">
+          <header class="intro">
+            <span class="badge-inline">docs/team · hub unificado</span>
+            <h2>Tablero</h2>
+            <p>
+              Fuentes de verdad, prompts y acciones. Los <code>.md</code> se abren en el panel principal con la misma estética (serví <code>docs/</code> por HTTP; ver abajo).
+            </p>
+          </header>
+
+          <details class="howto">
+            <summary>Cómo ver los Markdown con esta misma interfaz</summary>
+            <ol>
+              <li><strong>Servidor recomendado (enlaces <code>../</code> entre carpetas):</strong> en la raíz del repo: <code>npm run team:hub</code> (equivale a <code>npx serve docs -l 4710</code>) y abrí <code>http://localhost:4710/team/WORKSPACE-CRM-HUB.html</code>. Así los enlaces tipo <code>../AGENTS.md</code> dentro de los Markdown resuelven bien.</li>
+              <li><strong>Solo carpeta team:</strong> <code>npx --yes serve docs/team -l 4710</code> → <code>http://localhost:4710/WORKSPACE-CRM-HUB.html</code> (útil para el hub; los <code>../</code> hacia otros docs pueden fallar).</li>
+              <li>No uses <code>file://</code>: el navegador bloquea la carga de archivos.</li>
+              <li><strong>Vercel:</strong> <code>Simple Browser</code> → <code>https://calculadora-bmc.vercel.app/</code> (no se puede incrustar con la misma piel por políticas del sitio).</li>
+            </ol>
+          </details>
+
+          <div class="grid">
+            <section class="card" style="grid-column: 1 / -1; border-color: var(--accent-dim); background: linear-gradient(145deg, var(--surface) 0%, #1a2832 100%);">
+              <h3><span class="dot"></span> Calculadora BMC — producción (Vercel)</h3>
+              <p class="muted" style="margin-top:0">
+                App publicada. Se abre en navegador o Simple Browser (misma URL).
+              </p>
+              <div class="row-actions">
+                <a href="https://calculadora-bmc.vercel.app/" target="_blank" rel="noopener noreferrer" style="text-decoration:none">
+                  <button type="button" class="action primary">Abrir en navegador</button>
+                </a>
+                <button type="button" class="action" data-copy="vercel" title="Pegá en Simple Browser">Copiar URL Vercel</button>
+              </div>
+              <p class="muted" style="margin-bottom:0;font-size:0.82rem">Local dev: <code>npm run dev</code> — no es el deploy de Vercel.</p>
+            </section>
+
+            <section class="card">
+              <h3><span class="dot"></span> Fuentes de verdad</h3>
+              <ul class="links">
+                <li><button type="button" class="doc-link" data-open-doc="./SESSION-WORKSPACE-CRM.md">SESSION-WORKSPACE-CRM.md</button> — cockpit</li>
+                <li><button type="button" class="doc-link" data-open-doc="./PROJECT-STATE.md">PROJECT-STATE.md</button> — estado repo</li>
+                <li><button type="button" class="doc-link" data-open-doc="./PROMPT-FOR-EQUIPO-COMPLETO.md">PROMPT-FOR-EQUIPO-COMPLETO.md</button></li>
+                <li><button type="button" class="doc-link" data-open-doc="./INVOQUE-FULL-TEAM.md">INVOQUE-FULL-TEAM.md</button></li>
+                <li><button type="button" class="doc-link" data-open-doc="../google-sheets-module/README.md">google-sheets-module/README.md</button></li>
+                <li><button type="button" class="doc-link" data-open-doc="../AGENTS.md">AGENTS.md</button></li>
+              </ul>
+            </section>
+
+            <section class="card">
+              <h3><span class="dot"></span> Workstreams (resumen)</h3>
+              <p class="muted" style="margin-top:0">Canónico en <button type="button" class="doc-link" data-open-doc="./SESSION-WORKSPACE-CRM.md" style="display:inline">SESSION-WORKSPACE-CRM.md</button>. Próximo ciclo numerado: <strong style="color:var(--text)">run 51</strong>.</p>
+              <div class="stream">
+                <span class="tag">Sheets / Pista 3</span>
+                <strong>Tabs y triggers</strong>
+                <span class="muted">Manual en Sheets · SOLUCIONES-UNO-POR-UNO</span>
+              </div>
+              <div class="stream">
+                <span class="tag">Repo</span>
+                <strong>Merge / audit</strong>
+                <span class="muted">Rama run36-audit-force si aplica</span>
+              </div>
+              <div class="stream">
+                <span class="tag">E2E</span>
+                <strong>Smoke producción</strong>
+                <span class="muted">E2E-VALIDATION-CHECKLIST vs Cloud Run</span>
+              </div>
+              <div class="stream">
+                <span class="tag">Calculadora</span>
+                <strong>MATRIZ SKUs</strong>
+                <span class="muted">Validar col. D planilla</span>
+              </div>
+              <div class="row-actions">
+                <button type="button" class="action primary" data-open-doc="./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md">Abrir pistas 1–8</button>
+                <button type="button" class="action" data-open-doc="./E2E-VALIDATION-CHECKLIST.md">Checklist E2E</button>
+              </div>
+            </section>
+
+            <section class="card">
+              <h3><span class="dot"></span> Chat: auto-start</h3>
+              <p class="muted">Pegá en un chat nuevo (sesión §5).</p>
+              <div class="row-actions">
+                <button type="button" class="action primary" data-copy="autostart">Copiar checklist</button>
+              </div>
+            </section>
+
+            <section class="card">
+              <h3><span class="dot"></span> Comandos repo</h3>
+              <p class="muted">Terminal en la raíz del repo.</p>
+              <div class="row-actions">
+                <button type="button" class="action" data-copy="lint">npm run lint</button>
+                <button type="button" class="action" data-copy="test">npm test</button>
+                <button type="button" class="action" data-copy="api">npm run start:api</button>
+                <button type="button" class="action" data-copy="contracts">npm run test:contracts</button>
+              </div>
+            </section>
+
+            <section class="card">
+              <h3><span class="dot"></span> Más enlaces</h3>
+              <ul class="links">
+                <li><button type="button" class="doc-link" data-open-doc="./IMPROVEMENT-BACKLOG-BY-AGENT.md">IMPROVEMENT-BACKLOG-BY-AGENT.md</button></li>
+                <li><button type="button" class="doc-link" data-open-doc="./reports/RUN-ROADMAP-FORWARD-2026.md">RUN-ROADMAP-FORWARD-2026.md</button></li>
+                <li><button type="button" class="doc-link" data-open-doc="./PROJECT-TEAM-FULL-COVERAGE.md">PROJECT-TEAM-FULL-COVERAGE.md</button></li>
+                <li><button type="button" class="doc-link" data-open-doc="./MATPROMT-FULL-RUN-PROMPTS.md">MATPROMT-FULL-RUN-PROMPTS.md</button></li>
+              </ul>
+            </section>
+          </div>
+
+          <footer>
+            <code>docs/team/WORKSPACE-CRM-HUB.html</code> — visor Markdown integrado. Editá los <code>.md</code> en Cursor; recargá esta página para ver cambios.
+          </footer>
+        </div>
+      </div>
+
+      <div id="view-doc" hidden>
+        <div class="doc-toolbar">
+          <button type="button" class="action" id="btn-back">← Inicio</button>
+          <span class="path" id="doc-path-label"></span>
+        </div>
+        <div id="doc-error" class="doc-error" hidden></div>
+        <article class="card md-content" id="md-body"></article>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">Copiado</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" crossorigin="anonymous"></script>
+  <script>
+    (function () {
+      var AUTO_START =
+        "Before coding: read in order:\n" +
+        "1) docs/team/SESSION-WORKSPACE-CRM.md (sections 1–4)\n" +
+        "2) docs/team/PROJECT-STATE.md (Cambios recientes + Pendientes)\n" +
+        "3) Task-specific file if any (issue, plan, or PROMPT-FOR-EQUIPO-COMPLETO.md)\n\n" +
+        "Rules:\n" +
+        "- Prefer updating SESSION-WORKSPACE-CRM.md + PROJECT-STATE.md after meaningful steps (per project protocol).\n" +
+        "- Do not start a large refactor unless section 4 lists it.\n" +
+        '- Say explicitly when "next task" is ready: inputs present, blockers cleared, definition of done clear.';
+
+      var COMMANDS = {
+        lint: "npm run lint",
+        test: "npm test",
+        api: "npm run start:api",
+        contracts: "npm run test:contracts",
+        vercel: "https://calculadora-bmc.vercel.app/",
+        teamhub: "npm run team:hub",
+        huburl: "http://localhost:4710/team/WORKSPACE-CRM-HUB.html"
+      };
+
+      var viewHome = document.getElementById("view-home");
+      var viewDoc = document.getElementById("view-doc");
+      var mdBody = document.getElementById("md-body");
+      var docError = document.getElementById("doc-error");
+      var docPathLabel = document.getElementById("doc-path-label");
+      var currentDocPath = "";
+      var currentDocFullUrl = null;
+
+      if (typeof marked !== "undefined") {
+        marked.setOptions({
+          gfm: true,
+          breaks: false,
+          headerIds: true,
+          mangle: false
+        });
+      }
+
+      function setActiveNav() {
+        document.querySelectorAll(".nav-btn[data-open-doc]").forEach(function (b) {
+          var p = b.getAttribute("data-open-doc");
+          var same = false;
+          if (currentDocFullUrl && p) {
+            try {
+              same = new URL(p, window.location.href).href === currentDocFullUrl;
+            } catch (e) {
+              same = false;
+            }
+          }
+          b.classList.toggle("active", same);
+        });
+        document.querySelector('.nav-btn[data-nav="home"]').classList.toggle("active", !currentDocFullUrl);
+      }
+
+      function showHome() {
+        currentDocPath = "";
+        currentDocFullUrl = null;
+        viewHome.hidden = false;
+        viewDoc.hidden = true;
+        docError.hidden = true;
+        mdBody.innerHTML = "";
+        setActiveNav();
+        if (history.replaceState) {
+          history.replaceState({ hub: "home" }, "", window.location.pathname + window.location.search);
+        }
+      }
+
+      function showFetchError(err) {
+        docError.hidden = false;
+        var detail = String(err && err.message ? err.message : err);
+        var isFile = window.location.protocol === "file:";
+        var isFailedFetch = /failed to fetch/i.test(detail) || detail === "TypeError: Failed to fetch";
+
+        var html =
+          "<strong>No se pudo cargar el Markdown.</strong> ";
+
+        if (isFile) {
+          html +=
+            "Esta página está en <code>file://</code>: el navegador bloquea <code>fetch</code> a otros archivos locales. " +
+            "No abras el <code>.html</code> con doble clic. En la raíz del repo ejecutá <code>npm run team:hub</code> y entrá con la URL HTTP (copiá desde el cartel rojo arriba). ";
+        } else {
+          html +=
+            "Si la URL empieza con <code>http://localhost</code>, comprobá que el servidor esté corriendo: en la raíz del repo <code>npm run team:hub</code> y luego " +
+            "<code>http://localhost:4710/team/WORKSPACE-CRM-HUB.html</code>. ";
+          if (isFailedFetch) {
+            html +=
+              "«Failed to fetch» suele ser <code>file://</code>, servidor apagado, o puerto distinto. ";
+          }
+        }
+
+        html += "<br/><small>" + detail + "</small>";
+        docError.innerHTML = html;
+      }
+
+      function wireMarkdownLinks() {
+        mdBody.querySelectorAll("a[href]").forEach(function (a) {
+          var h = a.getAttribute("href");
+          if (!h || h.startsWith("mailto:")) return;
+          if (/^https?:\/\//i.test(h)) {
+            a.setAttribute("target", "_blank");
+            a.setAttribute("rel", "noopener noreferrer");
+            return;
+          }
+          var isMd = /\.md($|[#?])/i.test(h);
+          if (!isMd) return;
+          a.addEventListener("click", function (ev) {
+            ev.preventDefault();
+            var clean = h.split("#")[0];
+            if (/^https?:\/\//i.test(clean)) {
+              window.open(clean);
+              return;
+            }
+            var base = currentDocFullUrl || window.location.href;
+            openDoc(clean, true, base);
+          });
+        });
+      }
+
+      function openDoc(path, pushState, baseUrl) {
+        if (!path || !path.trim()) return;
+        var base = baseUrl || window.location.href;
+        try {
+          currentDocFullUrl = new URL(path, base).href;
+        } catch (e) {
+          showFetchError(e);
+          return;
+        }
+        currentDocPath = path;
+        viewHome.hidden = true;
+        viewDoc.hidden = false;
+        docError.hidden = true;
+        mdBody.innerHTML = "<p class=\"muted\">Cargando…</p>";
+        docPathLabel.textContent = currentDocFullUrl.replace(window.location.origin + "/", "");
+
+        if (pushState && history.pushState) {
+          history.pushState({ hub: "doc", url: currentDocFullUrl }, "", "#doc=" + encodeURIComponent(currentDocFullUrl));
+        }
+
+        fetch(currentDocFullUrl, { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.text();
+          })
+          .then(function (text) {
+            if (typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+              mdBody.textContent = text;
+              return;
+            }
+            var raw = marked.parse(text);
+            mdBody.innerHTML = DOMPurify.sanitize(raw, {
+              ADD_ATTR: ["id", "target", "rel"],
+              ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|file):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i
+            });
+            wireMarkdownLinks();
+          })
+          .catch(function (err) {
+            mdBody.innerHTML = "";
+            showFetchError(err);
+          });
+
+        setActiveNav();
+      }
+
+      function openDocByFullUrl(fullUrl, pushState) {
+        if (!fullUrl) return;
+        try {
+          var u = new URL(fullUrl);
+          if (u.origin !== window.location.origin) return;
+        } catch (e) {
+          return;
+        }
+        openDoc(fullUrl, pushState, fullUrl);
+      }
+
+      document.getElementById("btn-back").addEventListener("click", function () {
+        showHome();
+      });
+
+      document.querySelectorAll("[data-nav=\"home\"]").forEach(function (btn) {
+        btn.addEventListener("click", showHome);
+      });
+
+      document.querySelectorAll("[data-open-doc]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          var p = el.getAttribute("data-open-doc");
+          if (p) openDoc(p, true);
+        });
+      });
+
+      window.addEventListener("popstate", function (ev) {
+        if (ev.state && ev.state.hub === "doc" && ev.state.url) {
+          openDocByFullUrl(ev.state.url, false);
+        } else {
+          showHome();
+        }
+      });
+
+      window.addEventListener("load", function () {
+        var h = window.location.hash;
+        if (h.indexOf("#doc=") === 0) {
+          try {
+            var u = decodeURIComponent(h.slice(5));
+            if (u) openDocByFullUrl(u, false);
+          } catch (e) {
+            showHome();
+          }
+        }
+      });
+
+      function showToast() {
+        var t = document.getElementById("toast");
+        t.classList.add("show");
+        clearTimeout(showToast._id);
+        showToast._id = setTimeout(function () {
+          t.classList.remove("show");
+        }, 1800);
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(showToast);
+        }
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          showToast();
+        } finally {
+          document.body.removeChild(ta);
+        }
+      }
+
+      document.querySelectorAll("button[data-copy]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var key = btn.getAttribute("data-copy");
+          if (key === "autostart") return copyText(AUTO_START);
+          if (COMMANDS[key]) return copyText(COMMANDS[key]);
+        });
+      });
+
+      if (window.location.protocol === "file:") {
+        var fb = document.getElementById("file-protocol-banner");
+        if (fb) fb.hidden = false;
+      }
+    })();
+  </script>
+</body>
+</html>

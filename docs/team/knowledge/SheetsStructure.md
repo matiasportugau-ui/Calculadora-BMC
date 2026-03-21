@@ -7,7 +7,7 @@ Rol: Sheets Structure Editor. Skill: `bmc-sheets-structure-editor`.
 ## Entradas (leer antes de trabajar)
 
 - `docs/team/PROJECT-STATE.md` — cambios recientes, pendientes.
-- `docs/google-sheets-module/planilla-inventory.md` — estructura actual.
+- `docs/google-sheets-module/README.md` (hub) y `planilla-inventory.md` — estructura actual; mapeo/sync en archivos canónicos del hub.
 - Plan de Mapping — no implementar sin plan acordado.
 - **Restricción:** Solo Matías puede ejecutar edits desde Cursor.
 
@@ -41,6 +41,7 @@ Rol: Sheets Structure Editor. Skill: `bmc-sheets-structure-editor`.
 
 ## Referencias
 
+- Hub Sheets: `docs/google-sheets-module/README.md`
 - Criterios del Juez: `docs/team/judge/JUDGE-CRITERIA-POR-AGENTE.md` (sección Sheets Structure)
 - Propagación: `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §4
 - Skill: `.cursor/skills/bmc-sheets-structure-editor/SKILL.md`

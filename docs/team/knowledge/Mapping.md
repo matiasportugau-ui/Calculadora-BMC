@@ -8,7 +8,7 @@ Rol: Planilla & Dashboard Mapper. Skills: `bmc-planilla-dashboard-mapper`, `goog
 
 - `docs/team/PROJECT-STATE.md` — cambios recientes, pendientes.
 - `docs/bmc-dashboard-modernization/PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md` — plan y propuesta vigente.
-- Si existe: `docs/google-sheets-module/` (inventory, map previo).
+- **Hub Sheets (canónico):** `docs/google-sheets-module/README.md` → `MAPPER-PRECISO-PLANILLAS-CODIGO.md`, `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md`, `VARIABLES-Y-MAPEO-UNO-A-UNO.md`, `planilla-inventory.md`, `planilla-map.md`. No bifurcar mapeos en otros paths.
 - Si existe: `DASHBOARD-VISUAL-MAP.md`, `IA.md` (secciones y fuentes de datos).
 
 ---
@@ -42,6 +42,7 @@ Rol: Planilla & Dashboard Mapper. Skills: `bmc-planilla-dashboard-mapper`, `goog
 
 ## Referencias
 
+- Hub Sheets: `docs/google-sheets-module/README.md`
 - Skill: `.cursor/skills/bmc-planilla-dashboard-mapper/SKILL.md`
 - Criterios del Juez: `docs/team/judge/JUDGE-CRITERIA-POR-AGENTE.md` (sección Mapping)
 - Propagación: `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §4 (si cambia nueva tab/columna → Design, Dependencies)

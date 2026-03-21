@@ -8,7 +8,7 @@
 
 ## Instrucción para el Orquestador (cada run)
 
-1. **Leer** `docs/team/PROJECT-STATE.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`, este archivo y (cuando aplique) `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md`.
+1. **Leer** `docs/team/PROJECT-STATE.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`, este archivo y (cuando aplique) `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md`. **Sheets / sync:** `docs/google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md` (quién accede a qué datos y por qué API).
 2. **MATPROMT (paso 0a):** Invocar rol **MATPROMT** / skill `matprompt` para generar el **bundle de prompts orientadores** por cada miembro §2 (objetivo, lecturas, entregables, criterios, anti-patrones, handoff). Salida: `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si aparece tarea nueva o cambio de prioridad, MATPROMT emite **DELTA** solo para roles afectados.
 3. **Ejecutar** pasos 0 → **0a** → 0b → 1 → 2 → … → 8 como siempre (full team run).
 4. **Paso 9 — Ciclo de mejoras:** Ejecutar en este run los **Próximos prompts** listados abajo. Cada prompt se asigna al rol correspondiente; ese rol ejecuta la tarea y entrega el artefacto. El Orquestador verifica y actualiza `IMPROVEMENT-BACKLOG-BY-AGENT.md` (marcar ✓). Opcional: MATPROMT puede sintetizar **prompts mejorados** para el siguiente ciclo a partir de gaps detectados.
@@ -17,6 +17,10 @@
 ---
 
 ## Próximos prompts (ejecutar en este run)
+
+**Run 2026-03-22 / run 52 (Full team — cierre R3–R5):** ✓ Ejecutado. **MATPROMT (R3):** [matprompt/MATPROMT-RUN-2026-03-22-run52.md](./matprompt/MATPROMT-RUN-2026-03-22-run52.md). **Parallel/Serial (R4):** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-22-run52.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-22-run52.md](./reports/REPORT-SOLUTION-CODING-2026-03-22-run52.md). **Judge (R5):** [judge/JUDGE-REPORT-RUN-2026-03-22-run52.md](./judge/JUDGE-REPORT-RUN-2026-03-22-run52.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-22-run52.md](./reports/REPO-SYNC-REPORT-2026-03-22-run52.md). **Guía:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-22 / run52». **CI:** `npm audit` **0**; `npm test` **119 passed**. PROJECT-STATE y Próximos prompts actualizados para **run 53**.
+
+**Run 2026-03-21 / run 51 (Full team — hub Sheets unificado + itinerante 37–50 → run 51):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-21-run51.md](./matprompt/MATPROMT-RUN-2026-03-21-run51.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-21-run51.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-21-run51.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-21-run51.md](./reports/REPORT-SOLUTION-CODING-2026-03-21-run51.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-21-run51.md](./judge/JUDGE-REPORT-RUN-2026-03-21-run51.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-21-run51.md](./reports/REPO-SYNC-REPORT-2026-03-21-run51.md). **Guía:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-21 / run51». Hub Sheets: [README.md](../google-sheets-module/README.md) + mapper / sync map / variables 1:1. **Deps:** merge **`run36-audit-force`** → **`main`** ✓ **2026-03-21** (`npm audit` **0** local en `main`). PROJECT-STATE y Próximos prompts actualizados para **run 52**.
 
 **Run 2026-03-20 / run 33 (Full team — Pista 3 coordinación):** ✓ Ejecutado. **MATPROMT:** [matprompt/MATPROMT-RUN-2026-03-20-run33.md](./matprompt/MATPROMT-RUN-2026-03-20-run33.md). **Parallel/Serial:** [parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-20-run33.md). **Reporter:** [reports/REPORT-SOLUTION-CODING-2026-03-20-run33.md](./reports/REPORT-SOLUTION-CODING-2026-03-20-run33.md). **Judge:** [judge/JUDGE-REPORT-RUN-2026-03-20-run33.md](./judge/JUDGE-REPORT-RUN-2026-03-20-run33.md). **Repo Sync:** [reports/REPO-SYNC-REPORT-2026-03-20-run33.md](./reports/REPO-SYNC-REPORT-2026-03-20-run33.md). **Guía:** [MATPROMT-FULL-RUN-PROMPTS.md](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-20 / run33». PROJECT-STATE y Próximos prompts actualizados para run34.
 
@@ -61,19 +65,23 @@
 
 ## Próximos prompts para el siguiente run (actualizar al final)
 
-**Run32+ (2026-03-19 — agenda tras run 31):** Detalle **por run (32–39)**, dependencias y **revisión pre-run** en [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md).
+**Estado numeración (2026-03-22):** Evidencia de **run 51** y **run 52** arriba en este archivo. La secuencia **32→39** y **40–50** está cerrada en tablas en [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md); itinerante: [`reports/REPORT-RUNS-40-50-ITINERANTE-2026-03-20.md`](./reports/REPORT-RUNS-40-50-ITINERANTE-2026-03-20.md).
 
-Resumen ejecutivo:
+**Siguiente ciclo numerado:** **Run 53** — antes de invocar, **§0.1 Revisión pre-run** (R1–R5) en el roadmap (plantilla **§5.2** en `RUN-ROADMAP-FORWARD-2026.md`). Prioridad sugerida: **Pista 3**, **E2E**, **Repo Sync hermanos**, billing, OAuth, SKUs según `PROJECT-STATE`; opcional **GitHub → Security / Dependabot** si difiere de `npm audit` local.
+
+**Run32+ (histórico — agenda tras run 31):** Detalle por run (32–39), dependencias y revisión pre-run en el roadmap.
+
+Resumen ejecutivo (cerrado documental 2026-03-20 salvo trabajo humano/decisión merge):
 1. ~~**[Repo / Security]**~~ — ✓ **2026-03-20:** `.gitignore` ignora `Calculadora-BMC/`, `OmniCRM-Sync/`.
-2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** **PR #33** → `main`; seguir **Run 38** roadmap si sync repos hermanos.
+2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** **PR #33** → `main`; **Run 38** cubierto en informe drift / repos hermanos.
 3. ~~**[Run 32]**~~ — ✓ **2026-03-20:** Full team sync ejecutado; contratos documentados (test:contracts con API up cuando corresponda); tabla AUTOPILOT según evidencia.
 4. ~~**[Run 33]**~~ — ✓ **2026-03-20:** Full team run33 ejecutado; Pista 3 handoff Matias + verificación Mapping.
-5. **[Run 34]** Próximo: Smoke post-Sheets producción.
-6. **Runs 35–37** Presupuesto libre / audit `--force` / SKUs + billing (ver tabla roadmap).
-7. **[Run 38]** GPT/Repo Sync drift.
-8. **[Run 39]** Síntesis ciclo (equivalente autopilot run 30 ampliado).
+5. ~~**[Run 34]**~~ — ✓ **2026-03-20:** Smoke post-Sheets producción (handoff itinerante; ver PROJECT-STATE).
+6. ~~**Runs 35–37**~~ — ✓ **2026-03-20 / 2026-03-21:** Presupuesto libre / ADR; audit `--force` + merge **run36** → **main** (✓ **2026-03-21**); SKUs + billing (informes run37).
+7. ~~**[Run 38]**~~ — ✓ **2026-03-20:** GPT/Repo Sync drift (informe).
+8. ~~**[Run 39]**~~ — ✓ **2026-03-20:** Síntesis ciclo 32–39 (informe).
 
-*Antes de cada ítem: §0.1 Revisión pre-run en el roadmap (R1–R5).*
+*Pendientes operativos* (no “siguiente número de run” automático): **§Agenda manual vigente** más abajo — tabs/triggers, E2E, billing, Repo Sync hermanos, OAuth Vercel, validación SKUs MATRIZ col.D.
 
 **Run 2026-03-16 (go):** Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync, Sheets Structure — ✓ completados.
 **Todos los 19 agentes están completamente desarrollados.**
@@ -97,16 +105,18 @@ Resumen ejecutivo:
 
 **Input permanente:** `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md` — Study improvements como referencia en cada full team run. Ver §20 Fases de implementación.
 
-**Agenda siguiente run (post–run22 propagate & sync — pendientes activos):**
+**Backlog manual (independiente del número de run):** La tabla de **«Próximos prompts para el siguiente run»** fija el **siguiente run numerado** (p. ej. run 52) y el resumen 32→39. El bloque siguiente es la **agenda operativa** que puede seguir abierta aunque los runs avancen: se mantiene **a propósito** como lista de trabajo humano/decisión (Sheets, E2E, billing, repos, OAuth, SKUs). Actualizar tachados aquí y en `PROJECT-STATE` cuando corresponda.
+
+**Agenda manual vigente** (continuidad desde post–run22 propagate & sync):
 
 1. **[Matias — manual] Crear tabs y configurar triggers** — Bloqueante automations. Ver IMPLEMENTATION-PLAN-POST-GO-LIVE.md §A1–A2, AUTOMATIONS-BY-WORKBOOK.md.
 2. ~~**[Coding] Verificar kpi-report runtime**~~ — ✓ Documentación; validar tras restart API.
 3. ~~**[Networks] Deploy Calculadora**~~ — ✓ Cloud Run + Vercel.
 4. ~~**[Reporter] GUIA-RAPIDA-VENDEDORES**~~ — ✓
 5. **[Matias + Audit] E2E validation** — `docs/team/E2E-VALIDATION-CHECKLIST.md` con URL Cloud Run / Vercel.
-6. **[Coding + Matias] npm audit fix --force** — Branch separado; aprobación Matias.
+6. ~~**[Coding + Matias] npm audit fix --force / merge**~~ — ✓ **2026-03-21:** merge **`run36-audit-force`** → **`main`** + **`git push origin main`**; **`npm audit`:** **0** (local).
 7. **[Matias] Billing cierre mensual** — Workbook Pagos Pendientes.
-8. **[Repo Sync] Sincronizar repos** — Ejecutar push/copia según `reports/REPO-SYNC-REPORT-2026-03-20-run22.md` → bmc-dashboard-2.0, bmc-development-team.
+8. **[Repo Sync] Sincronizar repos** — Ejecutar push/copia según el **último** `reports/REPO-SYNC-REPORT-*.md` (p. ej. [`REPO-SYNC-REPORT-2026-03-21-run51.md`](./reports/REPO-SYNC-REPORT-2026-03-21-run51.md)) → bmc-dashboard-2.0, bmc-development-team.
 9. **[Matias / Security] OAuth Vercel** — Origen JS `https://calculadora-bmc.vercel.app` si `redirect_uri_mismatch`.
 10. **[Calc / Mapping] SKUs MATRIZ col.D** — Confirmar placeholders en `matrizPreciosMapping.js` (PROJECT-STATE).
 11. **[Equipo §2 opcional]** — Leer `docs/team/interactions/TEAM-INTERACTION-QUANTUM-DOC-2026-03-20.md` §1–§5 en próximo full team (cross-learn ya documentado en run22).
