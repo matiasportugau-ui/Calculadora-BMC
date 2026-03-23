@@ -14,6 +14,7 @@ import calcRouter from "./routes/calc.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import createShopifyRouter from "./routes/shopify.js";
+import teamAssistRouter from "./routes/teamAssist.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -258,6 +259,8 @@ app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
 }));
 
 app.use("/calc", calcRouter);
+// Asistente “equipo” (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
+app.use("/api/team-assist", teamAssistRouter);
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)

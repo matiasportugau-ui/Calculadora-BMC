@@ -54,6 +54,9 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
+  /** OpenAI — asistente equipo en /api/team-assist (clave solo servidor, nunca en el cliente) */
+  openaiApiKey: process.env.OPENAI_API_KEY || "",
+  openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
 };
 
 export const redirectUri = () => {

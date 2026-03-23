@@ -4,7 +4,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import {
-  ArrowLeft, FileDown, ClipboardList, Printer,
+  ArrowLeft, FileDown, ClipboardList, Printer, Sparkles, Send, Loader2, AlertCircle,
 } from "lucide-react";
 import { C, FONT, SHC, TR, TN } from "../data/constants.js";
 import {
@@ -14,12 +14,31 @@ import {
   revokePreviewUrl,
 } from "../utils/helpers.js";
 import { downloadPdf } from "../utils/pdfGenerator.js";
+import { fetchTeamAssistChat, fetchTeamAssistHealth } from "../utils/teamAssistApi.js";
 
 function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+const sectionBlockS = {
+  borderRadius: 16,
+  border: `1.5px solid ${C.border}`,
+  padding: 20,
+  background: C.surface,
+  boxShadow: SHC,
+  marginBottom: 16,
+  fontFamily: FONT,
+};
+
 export default function SpecManagementSandbox({ onBack }) {
+  useEffect(() => {
+    if (typeof document === "undefined" || document.getElementById("bmc-spec-spin")) return;
+    const s = document.createElement("style");
+    s.id = "bmc-spec-spin";
+    s.textContent = "@keyframes bmc-spin{to{transform:rotate(360deg)}}";
+    document.head.appendChild(s);
+  }, []);
+
   const [data, setData] = useState(() => {
     const d = deepClone(SPEC_SANDBOX_INITIAL);
     d.project.fecha = new Date().toLocaleDateString("es-UY");
@@ -27,8 +46,17 @@ export default function SpecManagementSandbox({ onBack }) {
   });
   const [previewHtml, setPreviewHtml] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [assistHealth, setAssistHealth] = useState(null);
 
   const html = useMemo(() => generateSpecManagementSandboxHTML(data), [data]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTeamAssistHealth()
+      .then((h) => { if (!cancelled) setAssistHealth(h); })
+      .catch(() => { if (!cancelled) setAssistHealth({ ok: false, error: "No se pudo contactar al servidor" }); });
+    return () => { cancelled = true; };
+  }, []);
 
   const updateCheck = useCallback((id, status) => {
     setData(prev => ({
@@ -59,16 +87,6 @@ export default function SpecManagementSandbox({ onBack }) {
       setBusy(false);
     }
   }, [html, data.quotationId]);
-
-  const sectionS = {
-    borderRadius: 16,
-    border: `1.5px solid ${C.border}`,
-    padding: 20,
-    background: C.surface,
-    boxShadow: SHC,
-    marginBottom: 16,
-    fontFamily: FONT,
-  };
 
   return (
     <div style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
@@ -164,7 +182,9 @@ export default function SpecManagementSandbox({ onBack }) {
           que la cotización de la calculadora. Los valores demo son editables; el PDF refleja lo que cargues acá.
         </p>
 
-        <div style={sectionS}>
+        <TeamAssistPanel data={data} assistHealth={assistHealth} />
+
+        <div style={sectionBlockS}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.brand, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Identificación
           </div>
@@ -196,7 +216,7 @@ export default function SpecManagementSandbox({ onBack }) {
           </div>
         </div>
 
-        <div style={sectionS}>
+        <div style={sectionBlockS}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.brand, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Checklist de especificación
           </div>
@@ -239,7 +259,7 @@ export default function SpecManagementSandbox({ onBack }) {
           </div>
         </div>
 
-        <div style={sectionS}>
+        <div style={sectionBlockS}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.brand, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Notas internas (PDF)
           </div>
@@ -256,7 +276,7 @@ export default function SpecManagementSandbox({ onBack }) {
           />
         </div>
 
-        <div style={sectionS}>
+        <div style={sectionBlockS}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.brand, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Totales USD (manual)
           </div>
@@ -323,6 +343,201 @@ const inputS = {
   outline: "none",
   boxShadow: "inset 0 1px 2px rgba(0,0,0,0.04)",
 };
+
+const AGENTS_UI = [
+  { id: "orchestrator", label: "Orquestador", hint: "Coordina y pregunta lo mínimo" },
+  { id: "analyst", label: "Análisis", hint: "Ordena la información que tirás" },
+  { id: "calc", label: "Presupuestación", hint: "Técnico calc / BOM" },
+  { id: "sheets", label: "Planillas", hint: "Sheets y carga de datos" },
+];
+
+function TeamAssistPanel({ data, assistHealth }) {
+  const [agentId, setAgentId] = useState("orchestrator");
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const send = useCallback(async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    setErr(null);
+    const userMsg = { role: "user", content: text };
+    const next = [...messages, userMsg];
+    setMessages(next);
+    setDraft("");
+    setSending(true);
+    try {
+      const res = await fetchTeamAssistChat({
+        agentId,
+        messages: next,
+        context: { specSandbox: data },
+      });
+      setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
+    } catch (e) {
+      setErr(e.message || String(e));
+      setMessages((m) => m.slice(0, -1));
+      setDraft(text);
+    } finally {
+      setSending(false);
+    }
+  }, [agentId, messages, data, sending]);
+
+  const ready = assistHealth?.openai_configured === true;
+  const needServer = assistHealth && assistHealth.ok === false && !assistHealth.openai_configured;
+
+  return (
+    <div style={{ ...sectionBlockS, marginBottom: 20, border: `1.5px solid ${C.primarySoft}`, background: "#FAFBFF" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <Sparkles size={20} color={C.primary} />
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>Asistente equipo (IA)</div>
+          <div style={{ fontSize: 12, color: C.ts }}>
+            Elegí un rol y escribí: el modelo responde como ese integrante del equipo BMC (servidor + OpenAI).
+          </div>
+        </div>
+      </div>
+
+      {assistHealth && (
+        <div
+          style={{
+            fontSize: 12,
+            padding: "8px 12px",
+            borderRadius: 8,
+            marginBottom: 12,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            background: ready ? C.successSoft : C.warningSoft,
+            color: C.tp,
+          }}
+        >
+          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            {ready
+              ? `Servidor listo · modelo ${assistHealth.model || "—"}`
+              : "Configurá OPENAI_API_KEY en el servidor (npm run start:api) y recargá. Opcional: API_AUTH_TOKEN + VITE_API_AUTH_TOKEN."}
+          </span>
+        </div>
+      )}
+      {needServer && (
+        <div style={{ fontSize: 11, color: C.ts, marginBottom: 10, lineHeight: 1.45 }}>
+          Sin clave, el chat no puede llamar a OpenAI; el resto del simulacro sigue funcionando.
+        </div>
+      )}
+
+      <label style={{ display: "block", marginBottom: 10 }}>
+        <span style={{ fontSize: 12, color: C.ts, display: "block", marginBottom: 6 }}>Rol del equipo</span>
+        <select
+          value={agentId}
+          onChange={e => setAgentId(e.target.value)}
+          disabled={!ready}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: `1.5px solid ${C.border}`,
+            fontSize: 14,
+            fontFamily: FONT,
+            background: C.surface,
+            color: C.tp,
+          }}
+        >
+          {AGENTS_UI.map(a => (
+            <option key={a.id} value={a.id}>{a.label} — {a.hint}</option>
+          ))}
+        </select>
+      </label>
+
+      <div
+        style={{
+          maxHeight: 260,
+          overflowY: "auto",
+          padding: 12,
+          borderRadius: 10,
+          border: `1px solid ${C.border}`,
+          background: C.surface,
+          marginBottom: 10,
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        {messages.length === 0 && (
+          <div style={{ color: C.tt, fontSize: 12 }}>
+            Ej.: «Tengo medidas 12×8, techo ISODEC 150 blanco, pendiente 15° — qué me falta para cerrar especificación?»
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            style={{
+              marginBottom: 10,
+              padding: "8px 10px",
+              borderRadius: 8,
+              background: m.role === "user" ? C.primarySoft : C.surfaceAlt,
+              borderLeft: m.role === "user" ? `3px solid ${C.primary}` : `3px solid ${C.border}`,
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, marginBottom: 4, textTransform: "uppercase" }}>
+              {m.role === "user" ? "Vos" : "Equipo"}
+            </div>
+            <div style={{ whiteSpace: "pre-wrap", color: C.tp }}>{m.content}</div>
+          </div>
+        ))}
+      </div>
+
+      {err && (
+        <div style={{ fontSize: 12, color: C.danger, marginBottom: 8 }}>{err}</div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        <textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder={ready ? "Escribí tu consulta… (Enter envía, Shift+Enter salto)" : "Servidor sin OpenAI — no se puede enviar"}
+          disabled={!ready || sending}
+          rows={3}
+          style={{
+            ...inputS,
+            flex: 1,
+            resize: "vertical",
+            minHeight: 72,
+            opacity: ready ? 1 : 0.6,
+          }}
+        />
+        <button
+          type="button"
+          onClick={send}
+          disabled={!ready || sending || !draft.trim()}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "none",
+            background: C.primary,
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: !ready || sending || !draft.trim() ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            alignSelf: "stretch",
+            opacity: !ready || sending || !draft.trim() ? 0.5 : 1,
+          }}
+        >
+          {sending ? <Loader2 size={18} style={{ animation: "bmc-spin 0.9s linear infinite" }} /> : <Send size={18} />}
+          Enviar
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function SandboxPreviewModal({ html, onClose }) {
   const [url, setUrl] = useState(null);

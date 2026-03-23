@@ -9,6 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/calc': { target: 'http://localhost:3001', changeOrigin: true },
+      '/api/team-assist': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
   build: { outDir: 'dist' },
