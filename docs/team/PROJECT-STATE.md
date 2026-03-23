@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-23 (plan 100% PANELSIM + correo — workspace + verify)
+**Última actualización:** 2026-03-24 (correo Netuy — 7 cuentas en accounts.json)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-24 (Repo correo — 7 casillas Netuy IMAP):** En repo hermano `conexion-cuentas-email-agentes-bmc`: `config/accounts.json` con **s111.nty.uy:993** para `administracion`, `info`, `ml`, `mportugau@expresooeste.com.uy`, `mportugau@bmcuruguay.com.uy`, `sarias`, `ventas@bmcuruguay.com.uy`. `.env.example` con variables `EMAIL_BMC_*` / `EMAIL_EXPRESOOESTE_MPORTUGAU_PASS`. **Pendiente:** completar `.env` local (no git) con contraseñas de cada buzón; luego `npm run panelsim-update`. Clasificación: dominios `bmcuruguay.com.uy` y `expresooeste.com.uy` en regla interno.
 
 **2026-03-23 (PANELSIM — plan configuración 100% correo multi-cuenta):** [`panelsim-email.code-workspace`](../../panelsim-email.code-workspace) (multi-root Calculadora-BMC + repo correo hermano). Docs: [`panelsim/EMAIL-WORKSPACE-SETUP.md`](./panelsim/EMAIL-WORKSPACE-SETUP.md), [`panelsim/EMAIL-PANELSIM-CHAT-VERIFY.md`](./panelsim/EMAIL-PANELSIM-CHAT-VERIFY.md). Repo local `conexion-cuentas-email-agentes-bmc`: `config/accounts.json` inicial con `accounts` vacío; `config/classification.json` (regla interno `panelin.com.uy`); [`docs/IMAP-SETUP.md`](../../conexion-cuentas-email-agentes-bmc/docs/IMAP-SETUP.md) (repo hermano); `scripts/verify-setup.sh`, `npm run verify-setup`; [`docs/CRON-EXAMPLE.md`](../../conexion-cuentas-email-agentes-bmc/docs/CRON-EXAMPLE.md); `accounts.example.json` sin `$schema` huérfano. **Pendiente operativo:** agregar cuentas IMAP reales y variables en `.env` del repo de correo (ver IMAP-SETUP).
 
@@ -118,7 +120,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-03-19 (Full team sync + análisis log Calculadora):** Sesión `http://localhost:5174/` analizada (interaction log). Flujo: **solo_techo**, lista **venta**, panel **ISODEC_EPS 100mm Blanco**, **una agua**, zona **6 × 7.84 m** (`techoAnchoModo: paneles`), **pendienteModo incluye_pendiente**, **tipoEst hormigón**, bordes frente **canalón**, fondo **babeta_empotrar**, laterales **gotero_lateral**, **inclSell false** (sin selladores en cotización), **flete 430 USD**, **grandTotal ~3400.49**, **4 grupos** BOM, categorías todas activas. Proyecto: cliente Matias, tel/dirección cargados. Sin cambio de código solicitado; el log muestra muchos eventos intermedios por steppers (largo/ancho). Equipo: estado vigente (deploy Cloud Run + Vercel); pendientes sin cambio (tabs/triggers, E2E, audit).
 
-**2026-03-19 (Deploy post-design + full team):** Cloud Run panelin-calc-00015-74l y Vercel producción desplegados con mejoras de diseño (ConfigPanel, PricingEditor, DimensioningFormulasEditor, wizard steps, tabla resultados). URLs: Cloud Run https://panelin-calc-642127786762.us-central1.run.app; Vercel https://calculadora-bmc.vercel.app.
+**2026-03-19 (Deploy post-design + full team):** Cloud Run panelin-calc-00015-74l y Vercel producción desplegados con mejoras de diseño (ConfigPanel, PricingEditor, DimensioningFormulasEditor, wizard steps, tabla resultados). URLs: Cloud Run <https://panelin-calc-642127786762.us-central1.run.app>; Vercel <https://calculadora-bmc.vercel.app>.
 
 **2026-03-19 (Calculadora UI/UX — diseño mejorado):** Mejoras de diseño en componentes de la Calculadora: (1) ConfigPanel — tabs con contenedor, espaciado y jerarquía visual; uso de C y FONT desde constants; (2) PricingEditor — encabezados de tabla con C.brand, hover en filas, agrupación de botones (MATRIZ | Descargar/Importar); (3) DimensioningFormulasEditor — estilos alineados con PricingEditor (tabla, hover, botones); (4) PanelinCalculadoraV3_backup — indicadores de paso en wizard (dots), card styling en secciones, tabla de resultados con encabezados C.brand y hover en filas (Costo/Margen/Ganancia). Lint y tests/validation.js OK.
 
@@ -176,7 +178,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ### Dashboard
 
 - **Puertos:** 3001 (canónico), 3849 (standalone), 5173 (Calculadora)
-- **URL principal:** http://localhost:3001/finanzas
+- **URL principal:** <http://localhost:3001/finanzas>
 - **Secciones:** Resumen financiero, Trend, Breakdown, Calendario, Entregas, Metas, Audit, Ventas 2.0 (tabla + filtro proveedor), Stock E-Commerce (KPIs + tabla + export CSV), Invoque (placeholder)
 - **Artefactos:** `DASHBOARD-INTERFACE-MAP.md`, `DASHBOARD-VISUAL-MAP.md`, `MAPA-VISUAL-ESTRUCTURA-POR-ESTACION.md`, `PUERTOS-3849-VS-3001.md`
 
@@ -188,8 +190,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ### Repos (Repo Sync)
 
-- **bmc-dashboard-2.0:** https://github.com/matiasportugau-ui/bmc-dashboard-2.0.git
-- **bmc-development-team:** https://github.com/matiasportugau-ui/bmc-development-team.git
+- **bmc-dashboard-2.0:** <https://github.com/matiasportugau-ui/bmc-dashboard-2.0.git>
+- **bmc-development-team:** <https://github.com/matiasportugau-ui/bmc-development-team.git>
 - **Config:** En `.env` ✓
 - **Guía:** `docs/team/REPO-SYNC-SETUP.md`
 
