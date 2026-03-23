@@ -13,6 +13,7 @@ docs/team/
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
+├── AGENT-SIMULATOR-SIM.md       SIM + SIM-REV: Cursor, checklist de conexiones, revisión backlog
 ├── AGENTS.md                    Lista de agentes y skills
 ├── plans/                       Planes vigentes
 │   ├── PLAN-EQUIPO-3-PASOS-SIGUIENTES.md
@@ -50,6 +51,7 @@ docs/team/
 | [PROJECT-STATE.md](./PROJECT-STATE.md) | Estado del proyecto; cambios recientes; pendientes; cómo usar |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
+| [AGENT-SIMULATOR-SIM.md](./AGENT-SIMULATOR-SIM.md) | SIM (Cursor) + SIM-REV: checklist de conexiones y revisión backlog |
 | [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync) |
 | [interactions/](./interactions/) | Instancias de interacción equipo (ej. análisis cruzado de documentos externos) |
 

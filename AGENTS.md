@@ -40,8 +40,8 @@ tests/
   validation.js             # Tests unitarios — corren sin servidor (CI)
 src/                        # Frontend React (Vite)
 docs/
-  team/                     # Equipo de agentes — PROJECT-STATE, knowledge, judge
-  google-sheets-module/     # planilla-inventory.md, SHEETS-MAPPING
+  team/                     # Equipo de agentes — PROJECT-STATE, knowledge, judge, panelsim/
+  google-sheets-module/     # Hub: README.md — MAPPER-PRECISO, SYNC equipo, VARIABLES 1:1, inventory, planilla-map
   bmc-dashboard-modernization/ # DASHBOARD-INTERFACE-MAP, implementation plans
 .cursor/
   agents/                   # Definiciones de agentes del equipo
@@ -67,9 +67,10 @@ docs/
 Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico es **`docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2** (N roles) más **§2.2** (skills transversales consideradas en full team). Antes de trabajar:
 
 1. Leer `docs/team/PROJECT-STATE.md` — estado actual, pendientes, cambios recientes.
-2. Leer `docs/team/knowledge/<TuRol>.md` si existe.
-3. Consultar `docs/google-sheets-module/planilla-inventory.md` para estructura de Sheets.
-4. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
+2. Si el usuario trabaja por sesiones o pide orientación de “qué sigue”: leer `docs/team/SESSION-WORKSPACE-CRM.md` (foco del día, próximos pasos, checklist auto-start).
+3. Leer `docs/team/knowledge/<TuRol>.md` si existe. **SIM / PANELSIM:** `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` e índice `docs/team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md` (hub `docs/team/panelsim/README.md`). **Correo / bandeja (repo aparte):** skill `.cursor/skills/panelsim-email-inbox/` — variable opcional `BMC_EMAIL_INBOX_REPO` en `.env` (ver `.env.example`).
+4. Consultar `docs/google-sheets-module/README.md` (hub) y `planilla-inventory.md` para Sheets; mapeo canónico en `MAPPER-PRECISO-PLANILLAS-CODIGO.md` y sync de accesos en `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md`.
+5. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
 
 En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 

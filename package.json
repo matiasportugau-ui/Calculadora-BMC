@@ -31,7 +31,8 @@
     "launchpad:learn": "node scripts/launchpad-bmc-dev.js --learn",
     "go-live": "./scripts/go-live-automation.sh",
     "pre-deploy": "./scripts/pre-deploy-check.sh",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "team:hub": "npx --yes serve docs -l 4710"
   },
   "dependencies": {
     "@google-cloud/storage": "^5.18.3",

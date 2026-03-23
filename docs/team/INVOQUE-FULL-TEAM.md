@@ -54,6 +54,7 @@
 | 5e | Billing | Errores, duplicados, cierre |
 | 5f | Audit/Debug | Auditoría, logs |
 | 5g | Calc | 5173, BOM, Drive, PDF |
+| 5h | SIM-REV | *Opcional si objetivo SIM:* `reports/SIM-REV-REVIEW-*.md` — ver `AGENT-SIMULATOR-SIM.md` |
 | 6 | Judge | JUDGE-REPORT-RUN, JUDGE-REPORT-HISTORICO |
 | 7 | Repo Sync | Sincroniza bmc-dashboard-2.0 y bmc-development-team |
 | 8 | Orchestrator | Actualizar PROJECT-STATE |

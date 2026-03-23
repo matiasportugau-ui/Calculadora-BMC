@@ -42,6 +42,8 @@ Por agente deben cumplirse:
 | Parallel/Serial | ✓ | ✓ | ⬜ | ✓ | Desarrollado |
 | Repo Sync | ✓ | ⬜ | ⬜ | ✓ | Desarrollado |
 | Sheets Structure | ✓ | ✓ | ✓ | ✓ | Desarrollado |
+| SIM | ✓ | doc AGENT-SIMULATOR-SIM | N/A | ⬜ | En desarrollo (protocolo Cursor) |
+| SIM-REV | ✓ | doc AGENT-SIMULATOR-SIM | N/A | ⬜ | En desarrollo (informes SIM-REV-REVIEW) |
 
 **Leyenda:** ✓ hecho | ⬜ pendiente | — N/A o ya cubierto por agent .md
 

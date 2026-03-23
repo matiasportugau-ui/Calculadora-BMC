@@ -66,6 +66,8 @@
 | **Judge** | bmc-team-judge | Evaluación y ranqueo | Evalúa forma de trabajo y desempeño; ranqueo por agente; reporte por run y promedio histórico; criterios individuales por agente; evolución continua |
 | **Parallel/Serial** | bmc-parallel-serial-agent | Estrategia de ejecución | Evalúa según mejores desempeños en áreas y tareas; sabe qué procesos ejecutar en paralelo vs serie; prevé mejor combinación de agentes según scores y contexto; muy orientado a objetivos |
 | **Repo Sync** | bmc-repo-sync-agent | Repos | Mantiene actualizados bmc-dashboard-2.0 (desarrollo y funcionamiento del dashboard) y bmc-development-team; tras cada corrida evalúa qué actualizar y sincroniza |
+| **SIM** | bmc-project-team-sync, bmc-calculadora-specialist; doc [`AGENT-SIMULATOR-SIM.md`](./AGENT-SIMULATOR-SIM.md) | Cursor / asistencia | Agente Simulador (**PANELSIM** = mismo rol): cotizaciones + administración BMC, ML pendientes vía API, modo aprobación/automático; checklist de conexiones (estado, API, Sheets hub, `/capabilities`, hub) |
+| **SIM-REV** | bmc-implementation-plan-reporter, bmc-team-judge; doc [`AGENT-SIMULATOR-SIM.md`](./AGENT-SIMULATOR-SIM.md) §4 | Validación / backlog | Revisa trabajo hecho con SIM vs mejoras propuestas (`IMPROVEMENT-BACKLOG-BY-AGENT`, `PROMPT-FOR-EQUIPO-COMPLETO`); entrega `reports/SIM-REV-REVIEW-*.md`; no sustituye al Judge |
 
 ### 2.1 Conteo canónico e “Invoque full team”
 

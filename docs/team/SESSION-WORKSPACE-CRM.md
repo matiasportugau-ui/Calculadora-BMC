@@ -10,8 +10,8 @@
 
 | Field | Value |
 |--------|--------|
-| **Date** | 2026-03-21 |
-| **Focus (one line)** | *e.g. Organize workspace + define next executable step* |
+| **Date** | 2026-03-23 |
+| **Focus (one line)** | PANELSIM: Handoff ejecutado + informe situación Sheets/API local |
 | **Energy / time box** | *e.g. 90 min / full day* |
 | **Definition of “done” for today** | *one measurable outcome* |
 
@@ -22,6 +22,7 @@
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
 - *Example: Hub Sheets docs unified under `docs/google-sheets-module/README.md` (mapper, sync map, variables 1:1).*
+- 2026-03-23: **PANELSIM** — Handoff [`panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md`](./panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md); informe [`panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md`](./panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md) (API local: CRM 297 filas; ML OAuth pendiente).
 - 2026-03-21: PROMPT «Próximos prompts» alineado con roadmap 32→39 (34–39 ✓ documental) y siguiente ciclo **run 52**; agenda manual sigue en `PROMPT-FOR-EQUIPO-COMPLETO.md`.
 - 2026-03-21: Merge **`run36-audit-force`** → **`main`** + push (ver `PROJECT-STATE`); workstreams cockpit actualizados (sin merge pendiente en audit).
 

@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "name": "Calculadora-BMC",
+      "path": "."
+    },
+    {
+      "name": "conexion-cuentas-email-agentes-bmc",
+      "path": "../conexion-cuentas-email-agentes-bmc"
+    }
+  ],
+  "settings": {}
+}

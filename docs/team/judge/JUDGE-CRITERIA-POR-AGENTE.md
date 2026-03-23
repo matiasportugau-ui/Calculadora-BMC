@@ -236,6 +236,30 @@
 
 ---
 
+## SIM (Agente Simulador — Cursor)
+
+| Criterio | Entregable / Cómo juzgar |
+|----------|---------------------------|
+| **Checklist** | Uso de `AGENT-SIMULATOR-SIM.md` + `SESSION-WORKSPACE-CRM.md` auto-start; no inventa IDs de sheet ni secretos |
+| **Conexiones** | Citas correctas a `/capabilities`, `calc`, hub Sheets; si API no está, lo declara |
+| **Handoff** | Consume artefactos de Mapping/Calc/Contract; no contradice `AGENTS.md` |
+
+**Áreas de ranqueo:** Fidelidad al repo (1–5), Claridad al usuario (1–5). *Evaluación indirecta vía calidad del “Handoff a SIM” en bundle MATPROMT cuando el run tiene objetivo SIM.*
+
+---
+
+## SIM-REV (revisor post-SIM)
+
+| Criterio | Entregable / Cómo juzgar |
+|----------|---------------------------|
+| **Informe** | `docs/team/reports/SIM-REV-REVIEW-YYYY-MM-DD.md` con secciones definidas en `AGENT-SIMULATOR-SIM.md` §4 |
+| **Contraste** | Mejoras en backlog vs estado real; riesgos contrato/Sheets/GPT mencionados |
+| **Límites** | No duplica Judge; puede referenciar hallazgos para el reporte del Judge |
+
+**Áreas de ranqueo:** Completitud del informe (1–5), Utilidad para siguiente run (1–5), No solapamiento dañino con Judge (1–5).
+
+---
+
 ## Regla para nuevos agentes
 
 Cuando se añade un nuevo rol a PROJECT-TEAM-FULL-COVERAGE §2, **debe** añadirse una sección aquí con:
