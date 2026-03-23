@@ -511,6 +511,154 @@ ${warnHTML ? `<h3 style="margin:12px 0 6px;color:#FF9500;font-size:11pt">ADVERTE
 </body></html>`;
 }
 
+// ── Simulacro: gestión de especificaciones (demo local, mismo pipeline PDF) ───
+
+/**
+ * Datos demo para el simulacro (editable en UI). Formato alineado a generatePrintHTML.
+ */
+export const SPEC_SANDBOX_INITIAL = {
+  quotationId: "SIM-ESP-2026-001",
+  listaPrecios: "venta",
+  client: {
+    nombre: "Cliente demo — Obra piloto",
+    rut: "—",
+    telefono: "092 000 000",
+    direccion: "Maldonado, UY",
+  },
+  project: {
+    fecha: new Date().toLocaleDateString("es-UY"),
+    refInterna: "REF-DEMO-01",
+    descripcion: "Cubierta metálica — simulacro especificaciones",
+    validityDays: 10,
+  },
+  scenario: "solo_techo",
+  panel: {
+    label: "ISODEC EPS",
+    espesor: 150,
+    color: "Blanco",
+    au: 1.12,
+  },
+  autoportancia: { ok: true, maxSpan: 7.5, apoyos: 2 },
+  dimensions: {
+    zonas: [{ largo: 12, ancho: 8 }],
+    alto: 4.2,
+    perimetro: 40,
+    area: 96,
+    cantPaneles: 42,
+  },
+  checklist: [
+    { id: "c1", label: "Escenario y lista de precios confirmados", status: "ok" },
+    { id: "c2", label: "Panel, espesor y color vs. MATRIZ / stock", status: "ok" },
+    { id: "c3", label: "Medidas de obra y vanos (AU / autoportancia)", status: "pending" },
+    { id: "c4", label: "BOM revisado (SKU, cantidades, exclusiones)", status: "pending" },
+    { id: "c5", label: "Términos y validez de oferta comunicados al cliente", status: "na" },
+  ],
+  notes: [
+    "Simulacro para practicar el flujo: especificación → revisión → cotización PDF.",
+    "No reemplaza la cotización generada desde la calculadora con datos reales.",
+  ],
+  groups: [
+    {
+      title: "PANELES",
+      items: [
+        { label: "ISODEC EPS 150mm — Blanco", sku: "ISO-EPS-150-W", cant: 96, unidad: "m²", pu: 42.48, total: 4078.08 },
+      ],
+    },
+    {
+      title: "PERFILERÍA",
+      items: [
+        { label: "Perfil U techo (referencia demo)", sku: "PERF-U-DEMO", cant: 120, unidad: "m", pu: 8.5, total: 1020.0 },
+      ],
+    },
+    {
+      title: "FIJACIONES",
+      items: [
+        { label: "Kit fijación varilla/tuerca (demo)", sku: "FIJ-DEMO", cant: 1, unidad: "kit", pu: 185.0, total: 185.0 },
+      ],
+    },
+  ],
+  totals: {
+    subtotalSinIVA: 5283.08,
+    iva: 1162.28,
+    totalFinal: 6445.36,
+  },
+  warnings: ["Simulacro: verificar medidas y SKU antes de enviar al cliente."],
+};
+
+const CHECK_STATUS_LABEL = { ok: "OK", pending: "Pend.", na: "N/A" };
+
+function buildSpecChecklistTable(checklist) {
+  if (!checklist?.length) return "";
+  let rows = "";
+  checklist.forEach((row, idx) => {
+    const bg = idx % 2 ? "#FAFAFA" : "#fff";
+    const st = CHECK_STATUS_LABEL[row.status] || row.status;
+    rows += `<tr style="background:${bg}">
+      <td style="padding:6px 8px;font-size:9pt">${esc(row.label)}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:9pt;font-weight:600;color:${COMPANY.brandColor}">${esc(st)}</td>
+    </tr>`;
+  });
+  return `
+<div class="section" style="margin-bottom:12px">
+  <div style="font-size:10pt;font-weight:700;color:${COMPANY.brandColor};margin-bottom:6px">CHECKLIST DE ESPECIFICACIÓN</div>
+  <table style="font-size:9pt;width:100%">
+    <thead><tr style="background:#EDEDED;font-weight:700">
+      <th style="text-align:left;padding:5px 8px;width:82%">Ítem</th>
+      <th style="text-align:center;padding:5px 8px;width:18%">Estado</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>`;
+}
+
+function buildSandboxNotes(notes) {
+  if (!notes?.length) return "";
+  const items = notes.map(n => `<li style="margin-bottom:4px">${esc(n)}</li>`).join("");
+  return `
+<div class="section" style="background:#FFF9E6;padding:10px 14px;border-radius:6px;margin-bottom:12px;border-left:4px solid #FF9500;font-size:8.5pt">
+  <b style="color:#856404">Notas internas</b>
+  <ul style="margin:6px 0 0;padding-left:16px;line-height:1.5">${items}</ul>
+</div>`;
+}
+
+function buildSandboxBanner() {
+  return `
+<div class="section" style="background:#E8F4FD;padding:10px 14px;border-radius:6px;margin-bottom:12px;border:1pt dashed ${COMPANY.brandColor};font-size:9pt">
+  <b style="color:${COMPANY.brandColor}">SIMULACRO</b> — Gestión de especificaciones para práctica en el entorno Panelin/BMC.
+  Misma plantilla visual que la cotización; los importes son ilustrativos salvo que edites desde la pantalla de simulacro.
+</div>`;
+}
+
+/**
+ * HTML listo para vista previa / PDF del simulacro de especificaciones.
+ * @param {object} data — objeto con la misma forma que SPEC_SANDBOX_INITIAL (groups, totals, etc.)
+ */
+export function generateSpecManagementSandboxHTML(data) {
+  const {
+    quotationId, listaPrecios, client, project, scenario, panel, autoportancia,
+    dimensions, checklist, notes, groups, totals, warnings,
+  } = data;
+
+  const sections = [
+    buildPdfHead("Simulacro — Especificaciones BMC"),
+    buildPageFooter(),
+    buildSandboxBanner(),
+    buildQuoteHeader({ quotationId, listaPrecios }),
+    buildClientGrid({ client, project, validityDays: project?.validityDays ?? 10 }),
+    buildSpecChecklistTable(checklist),
+    buildProductBadge({ scenario, panel, autoportancia }),
+    buildDimensionsSection({ dimensions }),
+    buildBomTable({ groups, showSKU: true, showUnitPrices: true }),
+    buildTotalsBlock({ totals }),
+    buildSandboxNotes(notes),
+    buildTermsSection({ warnings, terms: QUOTE_TERMS }),
+    buildBankBlock(),
+    "</body></html>",
+  ];
+
+  return sections.join("\n");
+}
+
 // ── Print / preview utilities ─────────────────────────────────────────────────
 
 export function openPrintWindow(html) {
