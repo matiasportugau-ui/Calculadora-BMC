@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(find '/Users/matias/Panelin calc loca/Calculadora-BMC' -type f -name *email*)",
+      "Bash(grep -r \"BMC_EMAIL_INBOX_REPO\\\\|panelsim.*email\\\\|email.*inbox\" '/Users/matias/Panelin calc loca/Calculadora-BMC' --include=*.md --include=*.js --include=*.sh)",
+      "Bash(grep -r \"IMAP\\\\|email\\\\|inbox\" '/Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/panelsim' --include=*.md)"
     ]
   }
 }
