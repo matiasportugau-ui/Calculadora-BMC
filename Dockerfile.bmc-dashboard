@@ -8,15 +8,16 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 FROM node:20-alpine AS calc-build
 WORKDIR /app
 COPY package.json package-lock.json* ./
 # --ignore-scripts: skip easymidi node-gyp (needs Python); calc build doesn't need it
-RUN npm ci --ignore-scripts
+RUN npm ci --ignore-scripts --legacy-peer-deps
 COPY index.html vite.config.js ./
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 ENV VITE_BASE=/calculadora/
 RUN npm run build
 

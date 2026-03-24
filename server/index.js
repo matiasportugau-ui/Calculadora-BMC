@@ -8,6 +8,7 @@ import pino from "pino";
 import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
+import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -364,11 +365,174 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
   if (webhookEvents.length > maxWebhookEvents) webhookEvents.pop();
 
   req.log.info({ eventId: event.id, topic: event.headers.topic }, "MercadoLibre webhook received");
+
+  // Trigger ML→CRM sync cuando llega una pregunta nueva (fire-and-forget — responde 200 de inmediato)
+  const topic = req.body?.topic || req.headers["x-topic"];
+  if (topic === "questions" && config.bmcSheetId) {
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log })
+      .catch((err) => req.log.error({ err }, "ML→CRM webhook sync failed"));
+  }
+
   res.status(200).json({ ok: true, eventId: event.id });
 }));
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
   res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
+}));
+
+// ── WhatsApp Business Cloud API webhook ──
+const waConversations = new Map(); // chatId → { messages: [], lastUpdate }
+
+// Limpieza de conversaciones viejas (>24h) cada hora
+setInterval(() => {
+  const cutoff = Date.now() - 24*60*60*1000;
+  for (const [k, v] of waConversations) {
+    if (v.lastUpdate < cutoff) waConversations.delete(k);
+  }
+}, 60*60*1000);
+
+// GET — verificación Meta
+app.get("/webhooks/whatsapp", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+  if (mode === "subscribe" && token === config.whatsappVerifyToken) {
+    return res.status(200).send(challenge);
+  }
+  res.status(403).send("Forbidden");
+});
+
+// POST — mensajes entrantes
+app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
+  res.status(200).json({ ok: true }); // responder rápido a Meta
+
+  const entry = req.body?.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const value = changes?.value;
+  if (!value?.messages) return;
+
+  for (const msg of value.messages) {
+    const chatId = msg.from; // número del cliente
+    const contactName = value.contacts?.[0]?.profile?.name || msg.from;
+    const text = msg.text?.body || msg.caption || "";
+    if (!text) continue;
+
+    if (!waConversations.has(chatId)) {
+      waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
+    }
+    const conv = waConversations.get(chatId);
+    conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
+    conv.lastUpdate = Date.now();
+
+    req.log.info({ chatId, contactName, msgCount: conv.messages.length }, "WA message received");
+
+    // 🚀 = trigger — procesar conversación completa
+    if (text.includes("🚀")) {
+      req.log.info({ chatId }, "WA 🚀 trigger detected — parsing conversation");
+
+      const dialogo = conv.messages
+        .map(m => `${m.ts.slice(11,16)} - ${m.from}: ${m.text}`)
+        .join("\n");
+
+      try {
+        const parseResp = await fetch(`http://localhost:${config.port}/api/crm/parse-conversation`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dialogo }),
+        });
+        const parsed = await parseResp.json();
+
+        if (parsed.ok && parsed.data) {
+          const d = parsed.data;
+          const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+          if (config.bmcSheetId && credsPath) {
+            const { google } = await import("googleapis");
+            const auth = new google.auth.GoogleAuth({
+              keyFile: credsPath,
+              scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+            });
+            const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
+            const sheetId = config.bmcSheetId;
+            const now = new Date().toISOString();
+
+            // Form responses 1 — buscar primera fila vacía
+            const formData = await sheets.spreadsheets.values.get({
+              spreadsheetId: sheetId, range: "'Form responses 1'!A:A",
+            });
+            const formRow = (formData.data.values?.length || 1) + 1;
+
+            await sheets.spreadsheets.values.update({
+              spreadsheetId: sheetId,
+              range: `'Form responses 1'!A${formRow}:P${formRow}`,
+              valueInputOption: "USER_ENTERED",
+              requestBody: { values: [[
+                now, now, d.cliente || "", d.telefono || contactName,
+                d.ubicacion || "", "WA", d.resumen_pedido || "", d.categoria || "",
+                d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
+                d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
+                d.probabilidad_cierre || "", dialogo,
+              ]] },
+            });
+
+            // CRM_Operativo — buscar última fila
+            const crmData = await sheets.spreadsheets.values.get({
+              spreadsheetId: sheetId, range: "'CRM_Operativo'!A:A",
+            });
+            const crmRow = (crmData.data.values?.length || 3) + 1;
+
+            await sheets.spreadsheets.values.update({
+              spreadsheetId: sheetId,
+              range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
+              valueInputOption: "USER_ENTERED",
+              requestBody: { values: [[
+                now, d.cliente || "", d.telefono || contactName,
+                d.ubicacion || "", "WA", d.resumen_pedido || "",
+                d.categoria || "", "", "Pendiente", d.vendedor || "",
+              ]] },
+            });
+            await sheets.spreadsheets.values.update({
+              spreadsheetId: sheetId,
+              range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
+              valueInputOption: "USER_ENTERED",
+              requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
+            });
+            await sheets.spreadsheets.values.update({
+              spreadsheetId: sheetId,
+              range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
+              valueInputOption: "USER_ENTERED",
+              requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
+            });
+
+            // Generar respuesta IA para col AF
+            const aiResp = await fetch(`http://localhost:${config.port}/api/crm/suggest-response`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                consulta: d.resumen_pedido, origen: "WA",
+                cliente: d.cliente, observaciones: d.observaciones,
+              }),
+            });
+            const ai = await aiResp.json();
+            if (ai.ok && ai.respuesta) {
+              await sheets.spreadsheets.values.update({
+                spreadsheetId: sheetId,
+                range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
+                valueInputOption: "USER_ENTERED",
+                requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
+              });
+            }
+
+            req.log.info({ chatId, crmRow, formRow, provider: ai.provider }, "WA conversation processed → CRM + Form");
+          }
+        }
+      } catch (err) {
+        req.log.error({ err, chatId }, "WA parse-conversation failed");
+      }
+
+      waConversations.delete(chatId);
+    }
+  }
 }));
 
 app.use("/calc", calcRouter);

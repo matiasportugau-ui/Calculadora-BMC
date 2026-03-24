@@ -1490,5 +1490,172 @@ export default function createBmcDashboardRouter(config) {
     }
   });
 
+  router.post("/crm/suggest-response", async (req, res) => {
+    const { consulta, origen, cliente, producto, observaciones, provider } = req.body || {};
+    if (!consulta) return res.status(400).json({ ok: false, error: "Missing consulta" });
+
+    // Ranking: 1-Claude (best instruction following + rioplatense)
+    //          2-OpenAI gpt-4o-mini (reliable, good Spanish)
+    //          3-Grok grok-3-mini  (proven working, fast)
+    //          4-Gemini 2.0-flash  (fallback)
+    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const chain = provider ? [provider] : RANKING;
+
+    const apiKeys = {
+      claude: config.anthropicApiKey,
+      openai: config.openaiApiKey,
+      grok:   config.grokApiKey,
+      gemini: config.geminiApiKey,
+    };
+
+    const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
+
+    const userMsg = [
+      `Canal: ${origen || "desconocido"}`,
+      `Cliente: ${cliente || "desconocido"}`,
+      producto     ? `Producto/publicación: ${producto}`     : null,
+      observaciones ? `Observaciones: ${observaciones}`      : null,
+      `Consulta: ${consulta}`,
+    ].filter(Boolean).join("\n");
+
+    const errors = [];
+
+    for (const p of chain) {
+      const apiKey = apiKeys[p];
+      if (!apiKey) { errors.push(`${p}: no key`); continue; }
+
+      try {
+        let respuesta = "";
+
+        if (p === "claude") {
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          const anthropic = new Anthropic({ apiKey });
+          const msg = await anthropic.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 300,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userMsg }],
+          });
+          respuesta = msg.content[0]?.text || "";
+
+        } else if (p === "openai") {
+          const { default: OpenAI } = await import("openai");
+          const openai = new OpenAI({ apiKey });
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            max_tokens: 300,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMsg },
+            ],
+          });
+          respuesta = completion.choices[0]?.message?.content || "";
+
+        } else if (p === "grok") {
+          const { default: OpenAI } = await import("openai");
+          const grok = new OpenAI({ apiKey, baseURL: "https://api.x.ai/v1" });
+          const completion = await grok.chat.completions.create({
+            model: "grok-3-mini",
+            max_tokens: 300,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMsg },
+            ],
+          });
+          respuesta = completion.choices[0]?.message?.content || "";
+
+        } else if (p === "gemini") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genai = new GoogleGenerativeAI(apiKey);
+          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}`);
+          respuesta = result.response.text() || "";
+        }
+
+        if (respuesta) return res.json({ ok: true, respuesta, provider: p });
+
+      } catch (e) {
+        errors.push(`${p}: ${e.message?.slice(0, 80)}`);
+      }
+    }
+
+    res.status(503).json({ ok: false, error: "All providers failed", details: errors });
+  });
+
+  router.post("/crm/parse-conversation", async (req, res) => {
+    const { dialogo } = req.body || {};
+    if (!dialogo) return res.status(400).json({ ok: false, error: "Missing dialogo" });
+
+    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const apiKeys = { claude: config.anthropicApiKey, openai: config.openaiApiKey, grok: config.grokApiKey, gemini: config.geminiApiKey };
+
+    const systemPrompt = `Sos un extractor de datos de conversaciones de WhatsApp para BMC Uruguay (paneles de aislamiento térmico). Analizás el diálogo y extraés datos estructurados en JSON.
+
+Reglas:
+- Identificá quién es el VENDEDOR (se presenta como parte de BMC/Bnesser) y quién es el CLIENTE
+- Si no se identifica vendedor, dejá vendedor vacío
+- Extraé teléfono solo si aparece explícito en el texto
+- Categoría: Accesorios, Paneles techo, Paneles pared, Proyecto completo, Ferretería, Repuestos, Servicio/instalación, Otro
+- Urgencia: Hoy, 24h, Esta semana, Este mes, Sin urgencia
+- tipo_cliente: Particular, Empresa, Arquitecto, Constructor, Distribuidor, Instalador, Cliente existente, Sin clasificar
+- probabilidad_cierre: Alta (quiere comprar ya), Media (interesado, comparando), Baja (solo consulta)
+- validar_stock: Si (entrega inmediata/urgente), No (sin urgencia de entrega)
+- cotizacion_formal: Si (pide presupuesto/cotización), No
+- El resumen_pedido debe ser conciso: qué necesita, medidas si las dio, uso
+- observaciones: contexto relevante que no entra en otros campos
+
+Respondé SOLO JSON válido, sin markdown ni explicación.`;
+
+    const userMsg = `Extraé los datos de esta conversación de WhatsApp:\n\n${dialogo}`;
+
+    const jsonSchema = `{
+  "cliente": "", "telefono": "", "ubicacion": "", "vendedor": "",
+  "resumen_pedido": "", "categoria": "", "urgencia": "",
+  "tipo_cliente": "", "cotizacion_formal": "", "validar_stock": "",
+  "probabilidad_cierre": "", "observaciones": ""
+}`;
+
+    const errors = [];
+    for (const p of RANKING) {
+      const apiKey = apiKeys[p];
+      if (!apiKey) { errors.push(`${p}: no key`); continue; }
+      try {
+        let raw = "";
+        if (p === "claude") {
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          const anthropic = new Anthropic({ apiKey });
+          const msg = await anthropic.messages.create({
+            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
+          });
+          raw = msg.content[0]?.text || "";
+        } else if (p === "openai" || p === "grok") {
+          const { default: OpenAI } = await import("openai");
+          const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
+          const completion = await client.chat.completions.create({
+            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
+            ],
+          });
+          raw = completion.choices[0]?.message?.content || "";
+        } else if (p === "gemini") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genai = new GoogleGenerativeAI(apiKey);
+          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          raw = result.response.text() || "";
+        }
+        const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        return res.json({ ok: true, data: parsed, provider: p });
+      } catch (e) {
+        errors.push(`${p}: ${e.message?.slice(0, 80)}`);
+      }
+    }
+    res.status(503).json({ ok: false, error: "All providers failed", details: errors });
+  });
+
   return router;
 }

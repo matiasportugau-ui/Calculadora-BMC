@@ -48,6 +48,15 @@ export const config = {
   bmcMatrizSheetId: process.env.BMC_MATRIZ_SHEET_ID || "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   bmcSheetSchema: process.env.BMC_SHEET_SCHEMA || "Master_Cotizaciones",
+  // AI providers — suggest-response endpoint
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
+  openaiApiKey: process.env.OPENAI_API_KEY || "",
+  geminiApiKey: process.env.GEMINI_API_KEY || "",
+  grokApiKey: process.env.GROK_API_KEY || "",
+  // WhatsApp Business Cloud API
+  whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
+  whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",

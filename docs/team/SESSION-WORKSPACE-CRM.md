@@ -13,7 +13,7 @@
 | Field | Value |
 |--------|--------|
 | **Date** | 2026-03-24 |
-| **Focus (one line)** | Project team sync: gate OK (119 tests); `main` ahead 3 — push / correo / E2E según prioridad |
+| **Focus (one line)** | Full team sync pasada 2: gate OK (119); 0/0 vs origin; WIP — `bmcDashboard` suggest-response, deps `package.json`, ML/CRM, Dockerfile — commit cuando cierres |
 | **Energy / time box** | *e.g. 90 min / full day* |
 | **Definition of “done” for today** | *one measurable outcome* |
 
@@ -24,7 +24,7 @@
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
 - *Example: Hub Sheets docs unified under `docs/google-sheets-module/README.md` (mapper, sync map, variables 1:1).*
-- 2026-03-24: **Sync** — `PROJECT-STATE` entrada «Project team sync»; `npm run gate:local` 119 passed; recordatorio pendientes Go-live / E2E / kpi prod + correo `.env`.
+- 2026-03-24: **Full team sync** — `PROJECT-STATE`: «verificación CI + árbol git» (última pasada) + entrada previa «full update + verify»; gate **119** (1 ESLint warning opcional `calculatorConfig.js`); git **0/0** vs `origin`; WIP: `bmcDashboard` suggest-response, `package.json`/lock, `.env.example`, ML/CRM, Dockerfile, team docs.
 - 2026-03-23: **PANELSIM** — Handoff [`panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md`](./panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md); informe [`panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md`](./panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md) (API local: CRM 297 filas; ML OAuth pendiente).
 - 2026-03-21: PROMPT «Próximos prompts» alineado con roadmap 32→39 (34–39 ✓ documental) y siguiente ciclo **run 52**; agenda manual sigue en `PROMPT-FOR-EQUIPO-COMPLETO.md`.
 - 2026-03-21: Merge **`run36-audit-force`** → **`main`** + push (ver `PROJECT-STATE`); workstreams cockpit actualizados (sin merge pendiente en audit).
