@@ -29,7 +29,7 @@ function writeAll(entries) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-export function saveBudget({ cliente, producto, escenario, total, listaPrecios, snapshot }) {
+export function saveBudget({ cliente, producto, escenario, total, listaPrecios, snapshot, groups }) {
   const entries = readAll();
   const id = nextCode();
   const entry = {
@@ -42,6 +42,7 @@ export function saveBudget({ cliente, producto, escenario, total, listaPrecios, 
     listaPrecios: listaPrecios || "web",
     fecha: new Date().toISOString(),
     snapshot: snapshot || null,
+    groups: groups || null,
   };
   entries.unshift(entry);
   if (entries.length > 100) entries.length = 100;
@@ -68,6 +69,64 @@ export function exportLogsAsJSON() {
   const a = document.createElement("a");
   a.href = url;
   a.download = `panelin-bmc-logs-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function exportLogsAsCSV() {
+  const data = readAll();
+  if (data.length === 0) return;
+
+  const csvEsc = (val) => {
+    const s = String(val ?? "");
+    return s.includes(",") || s.includes('"') || s.includes("\n")
+      ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  // Header row
+  const headers = ["ID", "Fecha", "Cliente", "Producto", "Escenario", "Lista Precios", "Total USD"];
+  const rows = [headers.join(",")];
+
+  data.forEach(entry => {
+    const fecha = entry.fecha
+      ? new Date(entry.fecha).toLocaleString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+      : "";
+    rows.push([
+      csvEsc(entry.id),
+      csvEsc(fecha),
+      csvEsc(entry.cliente),
+      csvEsc(entry.producto),
+      csvEsc(entry.escenario),
+      csvEsc(entry.listaPrecios === "venta" ? "BMC" : "Web"),
+      entry.total != null ? Number(entry.total).toFixed(2) : "0.00",
+    ].join(","));
+
+    // If entry has BOM groups, expand them as sub-rows
+    if (entry.groups) {
+      entry.groups.forEach(g => {
+        if (g.items) {
+          g.items.forEach(item => {
+            rows.push([
+              "",
+              "",
+              csvEsc(`  ${g.title}`),
+              csvEsc(item.label),
+              csvEsc(`${item.cant ?? ""} ${item.unidad ?? ""}`),
+              csvEsc(item.pu != null ? `PU: ${Number(item.pu).toFixed(2)}` : ""),
+              item.total != null ? Number(item.total).toFixed(2) : "",
+            ].join(","));
+          });
+        }
+      });
+    }
+  });
+
+  const bom = "\uFEFF" + rows.join("\r\n");
+  const blob = new Blob([bom], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `panelin-bmc-logs-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

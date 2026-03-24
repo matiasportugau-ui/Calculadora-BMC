@@ -31,7 +31,7 @@ import {
 } from "../utils/helpers.js";
 import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
-  exportLogsAsJSON, exportSingleBudget,
+  exportLogsAsJSON, exportLogsAsCSV, exportSingleBudget,
 } from "../utils/budgetLog.js";
 import { serializeProject, deserializeProject } from "../utils/projectFile.js";
 import { htmlToPdfBlob } from "../utils/pdfGenerator.js";
@@ -1864,6 +1864,9 @@ export default function PanelinCalculadoraV3() {
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{logEntries.length} registros</div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {logEntries.length > 0 && (
+                  <button onClick={() => exportLogsAsCSV()} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Download size={12} />CSV</button>
+                )}
                 {logEntries.length > 0 && (
                   <button onClick={() => exportLogsAsJSON()} style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Download size={12} />JSON</button>
                 )}
