@@ -11,6 +11,7 @@ docs/team/
 ├── README.md                    ← Este índice
 ├── SESSION-WORKSPACE-CRM.md     Cockpit por sesión: foco, logros recientes, próximos pasos, auto-start agente
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
+├── CHAT-EQUIPO-INTERACTIVO.md   Chat/diálogo interactivo con el equipo completo
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
 ├── panelsim/                    SIM / PANELSIM + SIM-REV: canónico, invocación §5.1 (panelsim:env + start:api), knowledge, matprompt, reports
@@ -50,6 +51,7 @@ docs/team/
 | Documento | Descripción |
 |-----------|-------------|
 | [PROJECT-STATE.md](./PROJECT-STATE.md) | Estado del proyecto; cambios recientes; pendientes; cómo usar |
+| [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md) | Chat/diálogo interactivo con el equipo completo (modo conversacional) |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
 | [panelsim/README.md](./panelsim/README.md) | SIM / PANELSIM: hub; proceso al invocar (`panelsim:env`, `start:api`) en canónico §5.1 |
@@ -66,6 +68,7 @@ docs/team/
 | **Judge** | [judge/JUDGE-CRITERIA-POR-AGENTE.md](./judge/JUDGE-CRITERIA-POR-AGENTE.md), [judge/JUDGE-REPORT-HISTORICO.md](./judge/JUDGE-REPORT-HISTORICO.md) |
 | **Parallel/Serial** | [parallel-serial/](./parallel-serial/) — planes de ejecución |
 | **Orquestador** | PROJECT-TEAM-FULL-COVERAGE §5.4; bmc-dashboard-team-orchestrator |
+| **Chat equipo** | [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md); regla `.cursor/rules/chat-equipo-interactivo.mdc` |
 
 ---
 
