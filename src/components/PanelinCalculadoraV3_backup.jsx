@@ -1763,6 +1763,14 @@ export default function PanelinCalculadoraV3() {
           >
             <ClipboardList size={14} />Especificaciones
           </button>
+          <button
+            type="button"
+            onClick={() => { window.location.hash = "presentacion-licitacion"; }}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+            title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
+          >
+            <FileText size={14} />Presentación
+          </button>
           <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Settings size={14} />Config
           </button>
