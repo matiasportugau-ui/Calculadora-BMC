@@ -456,11 +456,15 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
             const sheetId = config.bmcSheetId;
             const now = new Date().toISOString();
 
-            // Form responses 1 — buscar primera fila vacía
-            const formData = await sheets.spreadsheets.values.get({
-              spreadsheetId: sheetId, range: "'Form responses 1'!A:A",
+            // Form responses 1 — primera fila con col C (Cliente) vacía
+            const formClientes = await sheets.spreadsheets.values.get({
+              spreadsheetId: sheetId, range: "'Form responses 1'!C2:C200",
             });
-            const formRow = (formData.data.values?.length || 1) + 1;
+            const formRows = formClientes.data.values || [];
+            let formRow = formRows.length + 2;
+            for (let i = 0; i < formRows.length; i++) {
+              if (!formRows[i][0] || !formRows[i][0].toString().trim()) { formRow = i + 2; break; }
+            }
 
             await sheets.spreadsheets.values.update({
               spreadsheetId: sheetId,
@@ -475,11 +479,15 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
               ]] },
             });
 
-            // CRM_Operativo — buscar última fila
-            const crmData = await sheets.spreadsheets.values.get({
-              spreadsheetId: sheetId, range: "'CRM_Operativo'!A:A",
+            // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
+            const crmClientes = await sheets.spreadsheets.values.get({
+              spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
             });
-            const crmRow = (crmData.data.values?.length || 3) + 1;
+            const crmVals = crmClientes.data.values || [];
+            let crmRow = crmVals.length + 4;
+            for (let i = 0; i < crmVals.length; i++) {
+              if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
+            }
 
             await sheets.spreadsheets.values.update({
               spreadsheetId: sheetId,
