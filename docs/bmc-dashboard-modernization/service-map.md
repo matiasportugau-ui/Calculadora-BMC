@@ -43,6 +43,27 @@
 
 ---
 
+## 2b. Mercado Libre API (server/index.js) — añadido 2026-03-24
+
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| /auth/ml/start | GET | Inicia OAuth ML |
+| /auth/ml/callback | GET | Callback OAuth ML |
+| /auth/ml/status | GET | Estado token ML (ok, userId, expiresAt) |
+| /ml/users/me | GET | Perfil del vendedor autenticado |
+| /ml/users/:id | GET | Perfil de cualquier usuario ML por ID (nickname, etc.) |
+| /ml/listings | GET | Publicaciones del vendedor (?status=active\|inactive, ?limit, ?offset) |
+| /ml/items/:id | GET | Detalle de un ítem ML |
+| /ml/items/:id | PATCH | Actualizar campos de un ítem ML (PUT interno) |
+| /ml/items/:id/description | POST | Crear o actualizar descripción (fallback PUT automático si ya existe) |
+| /ml/questions | GET | Preguntas (?status=UNANSWERED, ?item_id, ?limit) |
+| /ml/questions/:id | GET | Detalle de una pregunta |
+| /ml/questions/:id/answer | POST | Responder una pregunta ML |
+| /ml/orders | GET | Órdenes del vendedor |
+| /ml/orders/:id | GET | Detalle de una orden |
+
+---
+
 ## 3. Puertos y comandos
 
 | Puerto | Comando | Rol |

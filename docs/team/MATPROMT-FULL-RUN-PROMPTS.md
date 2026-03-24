@@ -272,6 +272,38 @@
 
 ---
 
+## Bundle — RUN 2026-03-24 / run53 (consolidación PANELSIM + ML OAuth + gate tooling + Calc KB)
+
+- **Resumen:** **Invoque full team** **run 53** — 21 roles §2 (SIM y SIM-REV incorporados); PANELSIM infra completa (scripts sesión/email/arranque); ML OAuth (skill transversal `bmc-mercadolibre-api`); gate tooling (gate:local, pre-deploy); Calc KB §4–§7; `npm audit` **0**; tests **119 passed**; paso 5h SIM-REV activo.
+
+- **Bundle completo (prompts por rol):** [`matprompt/MATPROMT-RUN-2026-03-24-run53.md`](./matprompt/MATPROMT-RUN-2026-03-24-run53.md)
+- **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-24-run53.md`](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-24-run53.md)
+- **Reporter:** [`reports/REPORT-SOLUTION-CODING-2026-03-24-run53.md`](./reports/REPORT-SOLUTION-CODING-2026-03-24-run53.md)
+- **SIM-REV (5h):** [`panelsim/reports/SIM-REV-REVIEW-2026-03-24-run53.md`](./panelsim/reports/SIM-REV-REVIEW-2026-03-24-run53.md)
+- **Judge:** [`judge/JUDGE-REPORT-RUN-2026-03-24-run53.md`](./judge/JUDGE-REPORT-RUN-2026-03-24-run53.md)
+- **Repo Sync:** [`reports/REPO-SYNC-REPORT-2026-03-24-run53.md`](./reports/REPO-SYNC-REPORT-2026-03-24-run53.md)
+
+### DELTA — (run53)
+- **Disparador opcional:** Avance real en ML OAuth, E2E o Pista 3 → agentes afectados actualizan PROJECT-STATE; MATPROMT emite DELTA si cambia prioridad del run 54.
+
+---
+
+## Bundle — RUN 2026-03-24 / run54 (full team + Invocación PANELSIM)
+
+- **Resumen:** **Invoque full team** **run 54** — objetivo **SIM/PANELSIM**; CI `npm run gate:local` (**119 passed**, 1 warning ESLint); cierre con **`npm run panelsim:session`** e informe [`panelsim/reports/PANELSIM-SESSION-STATUS-2026-03-24T04-21-27Z.md`](./panelsim/reports/PANELSIM-SESSION-STATUS-2026-03-24T04-21-27Z.md) (Sheets OK, correo OK, API health 200, MATRIZ 200, **`/auth/ml/status` ok** en local).
+
+- **Bundle completo (prompts por rol + delta vs run53):** [`matprompt/MATPROMT-RUN-2026-03-24-run54.md`](./matprompt/MATPROMT-RUN-2026-03-24-run54.md)
+- **Parallel/Serial:** [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-24-run54.md`](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-24-run54.md)
+- **Reporter:** [`reports/REPORT-SOLUTION-CODING-2026-03-24-run54.md`](./reports/REPORT-SOLUTION-CODING-2026-03-24-run54.md)
+- **SIM-REV (5h):** [`panelsim/reports/SIM-REV-REVIEW-2026-03-24-run54.md`](./panelsim/reports/SIM-REV-REVIEW-2026-03-24-run54.md)
+- **Judge:** [`judge/JUDGE-REPORT-RUN-2026-03-24-run54.md`](./judge/JUDGE-REPORT-RUN-2026-03-24-run54.md)
+- **Repo Sync:** [`reports/REPO-SYNC-REPORT-2026-03-24-run54.md`](./reports/REPO-SYNC-REPORT-2026-03-24-run54.md)
+
+### DELTA — (run54)
+- **Disparador:** Invocación PANELSIM post-paso 9 — evidencia en `PANELSIM-SESSION-STATUS-*.md`; ML OAuth local verificado.
+
+---
+
 ## Bundle — RUN 2026-03-22 / run52 (cierre R3–R5 + agenda Pista 3 / E2E / Repo Sync)
 
 - **Resumen:** **Invoque full team** **run 52** — artefactos **R3** (MATPROMT), **R4** (Parallel/Serial), **R5** (Judge) tras pre-run R1–R2; **`main`** ya en **origin** con deps run36; **`npm audit`:** **0**; tests **119 passed**.
@@ -291,6 +323,8 @@
 
 | Fecha | Run | Ubicación del bundle |
 |-------|-----|----------------------|
+| 2026-03-24 | run54 (full team + Invocación PANELSIM) | [`matprompt/MATPROMT-RUN-2026-03-24-run54.md`](./matprompt/MATPROMT-RUN-2026-03-24-run54.md) |
+| 2026-03-24 | run53 (PANELSIM + ML OAuth + gate tooling + Calc KB) | [`matprompt/MATPROMT-RUN-2026-03-24-run53.md`](./matprompt/MATPROMT-RUN-2026-03-24-run53.md) |
 | 2026-03-22 | run52 (R3–R5 cierre + agenda operativa) | [`matprompt/MATPROMT-RUN-2026-03-22-run52.md`](./matprompt/MATPROMT-RUN-2026-03-22-run52.md) |
 | 2026-03-21 | run51 (hub Sheets + itinerante) | [`matprompt/MATPROMT-RUN-2026-03-21-run51.md`](./matprompt/MATPROMT-RUN-2026-03-21-run51.md) |
 | 2026-03-20 | roadmap 32–39 | [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md) — plan vivo; bundles por run se añaden al ejecutar cada uno |

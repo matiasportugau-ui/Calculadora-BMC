@@ -31,8 +31,8 @@
 | **Cotizaciones** | Usar motor de calculadora (`/calc/*`), texto listo para cliente, PDF vía flujo documentado, sin inventar precios fuera de `constants` / MATRIZ. |
 | **Google Sheets (BMC)** | **Extraer y usar datos** vía API del servidor, scripts y mapeo canónico (`docs/google-sheets-module/`). **Cambios en celdas / flujos de negocio** cuando las rutas o herramientas del repo lo permitan y haya credenciales. Cambios **estructurales** de planilla (tabs, validaciones, automatizaciones pesadas) siguen la regla del skill `bmc-sheets-structure-editor` (operación reservada donde aplique). Si **503 / datos vacíos** → decirlo; no inventar. |
 | **Administración BMC** | `PROJECT-STATE`, dashboard, KPIs, cotizaciones CRM vía `/api/*` y `GET /capabilities` cuando respondan; documentar bloqueos. |
-| **Mercado Libre** | Con OAuth válido: **preguntas pendientes** (`GET /ml/questions`, detalle, `POST .../answer` con tu OK en modo aprobación), **usuario** (`/ml/users/me`), **ítems y órdenes** según rutas expuestas en `server/index.js`. No prometer APIs que el servidor aún no proxy-a. |
-| **Modo automático vs aprobación** | **Modo aprobación (default):** borradores y confirmación antes de enviar a ML o acciones sensibles. **Modo automático:** solo si vos lo declarás *y* las integraciones están probadas; nunca exponer secretos ni saltear OAuth. |
+| **Mercado Libre** | Con OAuth válido: **preguntas pendientes** (`GET /ml/questions`, detalle, `POST .../answer` con tu OK en modo aprobación), **usuario** (`/ml/users/me`), **ítems y órdenes** según rutas expuestas en `server/index.js`. No prometer APIs que el servidor aún no proxy-a. Sync automático al arrancar sesión vía `npm run panelsim:session` → `panelsim-ml-crm-sync.js`. |
+| **Modo automático vs aprobación** | **Modo aprobación (default):** borradores y confirmación antes de enviar a ML o acciones sensibles. **Modo automático:** solo si vos lo declarás *y* las integraciones están probadas; nunca exponer secretos ni saltear OAuth. Preguntas con discrepancia de precio ML vs Matriz **nunca** se responden automáticamente. |
 
 **Límites honestos:** Cursor no es un worker 24/7 en producción; para respuestas ML automáticas sin IDE hace falta el stack desplegado. PANELSIM **opera** desde acá: API, `curl`, MCP opcional, lectura de docs, y deja constancia en informes cuando corresponda.
 
@@ -143,7 +143,8 @@ En **paso 0a**, **MATPROMT** incluye en el bundle:
 | “Revisión SIM-REV” | Rol SIM-REV: generar `docs/team/panelsim/reports/SIM-REV-REVIEW-*.md` según §4. |
 | “Full team con objetivo SIM” | Orquestador + MATPROMT usan `docs/team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md` como plantilla de bundle (actualizar fecha si se copia). |
 | “Informe situación Sheets” | Tras API + credenciales: generar reporte estructurado (sugerido: `docs/team/panelsim/reports/PANELSIM-SHEETS-SITUATION-YYYY-MM-DD.md`); si no hay acceso, documentar bloqueo. |
-| “Preguntas pendientes ML” | API + OAuth; listar con `GET /ml/questions`; responder solo con aprobación si estás en modo aprobación. |
+| “Preguntas pendientes ML” | API + OAuth; listar con `GET /ml/questions`; responder solo con aprobación si estás en modo aprobación. Para responder: (1) verificar publicación donde se hizo la pregunta, (2) revisar historial del usuario, (3) obtener precio desde `/ml/items/:id` (nunca inventar), (4) comparar vs Matriz — si difieren (umbral=0) marcar como revisión manual y no responder en modo automático. Cierre siempre: “Saludos BMC URUGUAY!”. |
+| “ML→CRM sync” | `npm run panelsim:session` incluye el sync automáticamente. Manual: `node scripts/panelsim-ml-crm-sync.js`. Inserta preguntas nuevas en primeras filas vacías de CRM_Operativo con respuesta sugerida en col AF. |
 
 ### 5.1 Proceso estándar al invocar PANELSIM (Panelin en Cursor)
 

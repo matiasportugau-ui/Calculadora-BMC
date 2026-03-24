@@ -165,12 +165,60 @@ app.get("/ml/users/me", asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
+app.get("/ml/users/:id", asyncHandler(async (req, res) => {
+  const payload = await ml.requestWithRetries({
+    method: "GET",
+    path: `/users/${req.params.id}`,
+  });
+  res.json(payload);
+}));
+
+app.get("/ml/listings", asyncHandler(async (req, res) => {
+  const { status = "active", limit = 50, offset = 0 } = req.query;
+  const sellerId = await ml.resolveSellerId();
+  const payload = await ml.requestWithRetries({
+    method: "GET",
+    path: `/users/${sellerId}/items/search?status=${status}&limit=${limit}&offset=${offset}`,
+  });
+  res.json(payload);
+}));
+
 app.get("/ml/items/:id", asyncHandler(async (req, res) => {
   const payload = await ml.requestWithRetries({
     method: "GET",
     path: `/items/${req.params.id}`,
   });
   res.json(payload);
+}));
+
+app.patch("/ml/items/:id", asyncHandler(async (req, res) => {
+  const payload = await ml.requestWithRetries({
+    method: "PUT",
+    path: `/items/${req.params.id}`,
+    body: req.body,
+  });
+  res.json(payload);
+}));
+
+app.post("/ml/items/:id/description", asyncHandler(async (req, res) => {
+  const { text } = req.body;
+  try {
+    const payload = await ml.requestWithRetries({
+      method: "POST",
+      path: `/items/${req.params.id}/description`,
+      body: { plain_text: text },
+    });
+    res.json(payload);
+  } catch (e) {
+    if (e.payload?.message?.includes("already has a description")) {
+      const payload = await ml.requestWithRetries({
+        method: "PUT",
+        path: `/items/${req.params.id}/description`,
+        body: { plain_text: text },
+      });
+      res.json(payload);
+    } else throw e;
+  }
 }));
 
 app.get("/ml/questions", asyncHandler(async (req, res) => {

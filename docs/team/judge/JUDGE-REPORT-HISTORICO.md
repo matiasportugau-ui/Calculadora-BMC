@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-22 (run52 full team + Judge run52)
+**Última actualización:** 2026-03-24 (run54 full team + PANELSIM + Judge run54)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -30,6 +30,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | Judge | 5.0 | 2 | → | 2026-03-16 |
 | Parallel/Serial | 5.0 | 2 | → | 2026-03-16 |
 | Repo Sync | 4.9 | 2 | → | 2026-03-16 |
+| SIM | 4.0 | 1 | — | 2026-03-24 |
+| SIM-REV | 4.0 | 1 | — | 2026-03-24 |
 
 **Promedio global Run 6:** 4.78/5
 **Promedio global Run 7:** 4.93/5 (18 agentes; Sheets Structure N/A este run)
@@ -51,6 +53,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 51 (2026-03-21):** ~4.45/5 (18 roles con nota; hub Sheets + itinerante 37–50 + audit branch; ver [`JUDGE-REPORT-RUN-2026-03-21-run51.md`](./JUDGE-REPORT-RUN-2026-03-21-run51.md)).
 
 **Promedio global Run 52 (2026-03-22):** ~4.4/5 (18 roles con nota; cierre R3–R5 + agenda Pista 3/E2E/Repo Sync; ver [`JUDGE-REPORT-RUN-2026-03-22-run52.md`](./JUDGE-REPORT-RUN-2026-03-22-run52.md)).
+
+**Promedio global Run 54 (2026-03-24):** ~4.50/5 (20 roles con nota; full team + Invocación PANELSIM; ver [`JUDGE-REPORT-RUN-2026-03-24-run54.md`](./JUDGE-REPORT-RUN-2026-03-24-run54.md)).
 
 ---
 
@@ -128,6 +132,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-19 | Full team run 31 — post-autopilot + CI | 18/19 (Judge N/A) | ~4.55 | [JUDGE-REPORT-RUN-2026-03-19-run31.md](./JUDGE-REPORT-RUN-2026-03-19-run31.md) |
 | 2026-03-21 | Full team run 51 — hub Sheets + itinerante | 18/19 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-21-run51.md](./JUDGE-REPORT-RUN-2026-03-21-run51.md) |
 | 2026-03-22 | Full team run 52 — cierre R3–R5 | 18/19 (Judge N/A) | ~4.4 | [JUDGE-REPORT-RUN-2026-03-22-run52.md](./JUDGE-REPORT-RUN-2026-03-22-run52.md) |
+| 2026-03-24 | Full team run 53 — PANELSIM + ML OAuth + gate tooling + Calc KB | 20/21 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-24-run53.md](./JUDGE-REPORT-RUN-2026-03-24-run53.md) |
+| 2026-03-24 | Full team run 54 + Invocación PANELSIM | 20/21 (Judge N/A) | ~4.50 | [JUDGE-REPORT-RUN-2026-03-24-run54.md](./JUDGE-REPORT-RUN-2026-03-24-run54.md) |
 
 ---
 

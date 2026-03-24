@@ -58,7 +58,7 @@ STATUS_JSON=""
 EMAIL_EXIT=0
 if [[ "$SKIP_EMAIL" -eq 0 ]]; then
   set +e
-  bash "$REPO_ROOT/scripts/panelsim-email-ready.sh" "${EMAIL_ARGS[@]}" >"$EMAIL_LOG" 2>&1
+  bash "$REPO_ROOT/scripts/panelsim-email-ready.sh" ${EMAIL_ARGS[@]+"${EMAIL_ARGS[@]}"} >"$EMAIL_LOG" 2>&1
   EMAIL_EXIT=$?
   set -e
   if [[ "$EMAIL_EXIT" -eq 0 ]]; then
@@ -116,6 +116,21 @@ if [[ "$HEALTH_CODE" == "200" ]] && command -v curl >/dev/null 2>&1; then
   if [[ -z "$MATRIZ_CODE" ]]; then MATRIZ_CODE="000"; fi
 fi
 
+# ── ML → CRM sync ────────────────────────────────────────────────────────────
+ML_CRM_LOG="$(mktemp)"
+ML_CRM_STATUS="omitido (API no disponible)"
+if [[ "$HEALTH_CODE" == "200" ]] && command -v node >/dev/null 2>&1; then
+  set +e
+  node "$REPO_ROOT/scripts/panelsim-ml-crm-sync.js" >"$ML_CRM_LOG" 2>&1
+  ML_CRM_EXIT=$?
+  set -e
+  if [[ "$ML_CRM_EXIT" -eq 0 ]]; then
+    ML_CRM_STATUS="ok"
+  else
+    ML_CRM_STATUS="fallo (exit $ML_CRM_EXIT)"
+  fi
+fi
+
 {
   echo "# PANELSIM — Estado de sesión (full run)"
   echo ""
@@ -130,6 +145,7 @@ fi
   echo "| Correo IMAP + reporte (panelsim-email-ready) | $EMAIL_STATUS |"
   echo "| API local ($API_BASE) | HTTP health: **$HEALTH_CODE** — $API_NOTE |"
   echo "| MATRIZ vía API | GET /api/actualizar-precios-calculadora → **$MATRIZ_CODE** |"
+  echo "| ML → CRM sync (preguntas pendientes) | $ML_CRM_STATUS |"
   echo "| UI Vite (:5173) | No se arranca en este script; usá \`npm run dev\` o \`npm run dev:full\` si necesitás la calculadora en navegador. |"
   echo ""
   echo "## 1. Planillas y credenciales"
@@ -199,7 +215,17 @@ console.log(JSON.stringify(pick, null, 2));
   fi
   echo '```'
   echo ""
-  echo "## 4. Próximos pasos sugeridos"
+  echo "## 4. ML → CRM sync"
+  echo ""
+  echo '```text'
+  if [[ -s "$ML_CRM_LOG" ]]; then
+    cat "$ML_CRM_LOG"
+  else
+    echo "(sin salida)"
+  fi
+  echo '```'
+  echo ""
+  echo "## 5. Próximos pasos sugeridos"
   echo ""
   echo "- **Calculadora en el navegador:** \`npm run dev\` (puerto 5173 típico) o \`npm run dev:full\` (API+Vite si preferís un solo comando y no usás el API ya levantado)."
   echo "- **OAuth ML:** si \`/auth/ml/status\` indica sin token, abrí \`/auth/ml/start\` según \`docs/ML-OAUTH-SETUP.md\`."

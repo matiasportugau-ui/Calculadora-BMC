@@ -110,8 +110,11 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 | `GET /capabilities` | Manifiesto para agentes (calc + dashboard + punteros) |
 | `GET /health` | `ok`, tokens ML, credenciales Sheets |
 | `GET /auth/ml/start`, `GET /auth/ml/callback`, `GET /auth/ml/status` | OAuth Mercado Libre |
-| `GET /ml/users/me`, `GET /ml/questions`, `GET /ml/questions/:id`, `POST /ml/questions/:id/answer` | Preguntas/respuestas ML (**modo aprobación** antes de POST) |
-| `GET /ml/items/:id`, `GET /ml/orders`, `GET /ml/orders/:id` | Catálogo/órdenes ML |
+| `GET /ml/users/me`, `GET /ml/users/:id` | Perfil vendedor / nickname comprador |
+| `GET /ml/questions`, `GET /ml/questions/:id`, `POST /ml/questions/:id/answer` | Preguntas/respuestas ML (**modo aprobación** antes de POST) |
+| `GET /ml/items/:id`, `PATCH /ml/items/:id`, `POST /ml/items/:id/description` | Ítem ML — detalle, actualizar, descripción (fallback PUT automático si ya existe) |
+| `GET /ml/listings` | Publicaciones del vendedor (`?status=active\|inactive`, `?limit`, `?offset`) |
+| `GET /ml/orders`, `GET /ml/orders/:id` | Órdenes ML |
 | `POST /webhooks/ml`, `GET /webhooks/ml/events` | Webhooks ML (dev/diagnóstico) |
 | `/calc/*` | Cotización, PDF, `gpt-entry-point`, catálogo — ver `server/routes/calc.js` |
 | `/api/*` | Dashboard BMC — ver `server/routes/bmcDashboard.js` |
@@ -121,6 +124,17 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 
 **OAuth Mercado Libre (configuración completa):** [docs/ML-OAUTH-SETUP.md](../../../ML-OAUTH-SETUP.md) — checklist portal, `.env`, localhost/ngrok, Cloud Run, GCS, troubleshooting. Verificación: `npm run ml:verify` (con API arriba).
 
+**ML→CRM sync (preguntas pendientes):** `node scripts/panelsim-ml-crm-sync.js` (o incluido en `npm run panelsim:session`). Inserta preguntas UNANSWERED en primeras filas vacías de CRM_Operativo; genera respuesta sugerida en col AF; compara precio ML vs Matriz (threshold=0): si difiere → Estado="Pendiente revisión precio", sin respuesta automática.
+
+**Reglas de respuesta ML (canónicas):**
+1. Verificar publicación donde llegó la pregunta (techo vs fachada vs accesorio).
+2. Revisar historial del usuario en el ítem.
+3. Obtener precio siempre desde `/ml/items/:id` — nunca inventar.
+4. Si precio ML ≠ Matriz (cualquier diferencia) → marcar revisión manual, no responder en modo automático.
+5. Respuesta condicional si faltan datos: dar info orientativa condicionada, pedir los datos faltantes.
+6. Cierre siempre: **"Saludos BMC URUGUAY!"**
+7. Prohibiciones: no datos de contacto, no links externos, no otras plataformas, no precios distintos al publicado.
+
 **Semántica de error (Sheets):** `503` = Sheets no disponible; `200` + datos vacíos = sin filas; ver `AGENTS.md` raíz.
 
 ---
@@ -129,6 +143,7 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 
 | Comando | Cuándo |
 |---------|--------|
+| `npm run panelsim:session` | **Sesión PANELSIM completa:** planillas + correo + API (intenta levantar si no responde) + **ML→CRM sync** (preguntas pendientes → CRM_Operativo con respuesta sugerida col AF + verificación precio Matriz). Genera `docs/team/panelsim/reports/PANELSIM-SESSION-STATUS-*.md`. |
 | `npm run panelsim:env` | **PANELSIM — entorno planillas:** verifica `.env`, `GOOGLE_APPLICATION_CREDENTIALS`, IDs `BMC_*` (incl. MATRIZ por default), correo service account para compartir workbooks en Drive; prueba opcional `GET /api/actualizar-precios-calculadora` si la API ya corre |
 | `npm run env:ensure` | Crea `.env` desde `.env.example` solo si no existe |
 | `npm run start:api` | API en puerto configurado (típ. 3001) |

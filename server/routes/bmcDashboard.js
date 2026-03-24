@@ -876,61 +876,92 @@ function findColIndex(headers, ...patterns) {
   return -1;
 }
 
+// ─── MATRIZ column mapping (approved by Matias per-tab) ─────────────────────
+// Only tabs listed here are queried. Add new supplier tabs after Matias approves.
+const MATRIZ_TAB_COLUMNS = {
+  BROMYROS: {
+    sku: 3,          // Col D — SKU code
+    descripcion: 4,  // Col E — Producto (familia, medidas, largos min/max)
+    costo: 5,        // Col F — Costo m2 U$S (valor directo, no dividir)
+    ventaLocal: 11,  // Col L — Precio Venta Local (valor directo, usar siempre para cotizar)
+    ventaIvaInc: 12, // Col M — Venta Local IVA incluido (informativo)
+    web: 13,         // Col N — E-Commerce (existe pero NO usar por ahora)
+  },
+  // Add more tabs here after mapping approval:
+  // "R y C Tornillos": { sku: ?, descripcion: ?, costo: ?, ventaLocal: ?, ... },
+};
+
 async function buildPlanillaDesdeMatriz(matrizSheetId) {
   const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: authClient });
-  const sheetName = await getFirstSheetName(matrizSheetId);
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: matrizSheetId,
-    range: `'${sheetName}'!A1:Z500`,
-  });
-  const allRows = res.data.values || [];
-  if (allRows.length === 0) return { csv: "\uFEFFpath,label,categoria,costo,venta_bmc_local,venta_web,unidad\n", count: 0 };
 
-  const headerRow = allRows[0] || [];
-  const skuIdx = findColIndex(headerRow, /sku|código|codigo/i);
-  const costoIdx = findColIndex(headerRow, /^costo[s]?$/i, /costo\s*\(/i);
-  const ventaIdx = findColIndex(headerRow, /venta_bmc|venta\s*consumidor|venta\s*directa|^venta\s*$/i);
-  const webIdx = findColIndex(headerRow, /venta_web|venta\s*web|^web\s*$/i);
-  const skuCol = skuIdx >= 0 ? skuIdx : 3;
-  const costoCol = costoIdx >= 0 ? costoIdx : 6;
-  const ventaCol = ventaIdx >= 0 ? ventaIdx : 11;
-  const webCol = webIdx >= 0 ? webIdx : 12;
+  const approvedTabs = Object.keys(MATRIZ_TAB_COLUMNS);
+  if (approvedTabs.length === 0) {
+    return { csv: "\uFEFFpath,descripcion,categoria,costo,venta_local,venta_local_iva_inc,unidad,tab\n", count: 0 };
+  }
 
-  const dataRows = allRows.slice(1);
   const csvRows = [];
-  const header = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_web", "unidad"];
+  const header = ["path", "descripcion", "categoria", "costo", "venta_local", "venta_local_iva_inc", "unidad", "tab"];
   csvRows.push(header.join(","));
   let count = 0;
+
   const parseNum = (v) => {
     if (v == null || v === "") return null;
     const s = String(v).trim().replace(/\./g, "").replace(",", ".");
     const n = parseFloat(s);
     return isNaN(n) ? null : n;
   };
-  for (const row of dataRows) {
-    const skuRaw = row[skuCol];
-    const costoRaw = row[costoCol];
-    const ventaRaw = row[ventaCol];
-    const webRaw = row[webCol];
-    const path = getPathForMatrizSku(skuRaw);
-    if (!path) continue;
-    const costoConIva = parseNum(costoRaw);
-    const ventaConIva = parseNum(ventaRaw);
-    const webConIva = parseNum(webRaw);
-    const costo = costoConIva != null ? +(costoConIva / IVA_MULT).toFixed(2) : "";
-    const venta = ventaConIva != null ? +(ventaConIva / IVA_MULT).toFixed(2) : "";
-    const web = webConIva != null ? +(webConIva / IVA_MULT).toFixed(2) : venta;
-    const label = path.split(".").slice(-2).join(" ").replace(/_/g, " ") || path;
-    const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo" : path.startsWith("PANELS_PARED") ? "Paneles Pared" : path.startsWith("PERFIL_") ? "Perfilería Techo" : path.startsWith("SELLADORES") ? "Selladores" : path.startsWith("FIJACIONES") ? "Fijaciones" : path.startsWith("SERVICIOS") ? "Servicios" : "Otros";
-    const unidad = path.includes("esp.") ? "m²" : "unid";
-    const ventaBmc = venta || web;
-    const esc = (s) => (String(s).includes(",") || String(s).includes('"') ? `"${String(s).replace(/"/g, '""')}"` : s);
-    csvRows.push([path, esc(label), categoria, costo, ventaBmc, web, unidad].join(","));
-    count++;
+  const esc = (s) => {
+    const str = String(s);
+    return str.includes(",") || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  for (const tabName of approvedTabs) {
+    const cols = MATRIZ_TAB_COLUMNS[tabName];
+    let allRows;
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: matrizSheetId,
+        range: `'${tabName}'!A1:Z500`,
+      });
+      allRows = res.data.values || [];
+    } catch (e) {
+      continue; // tab missing or unreadable — skip
+    }
+    if (allRows.length < 2) continue;
+
+    const dataRows = allRows.slice(1);
+    for (const row of dataRows) {
+      const skuRaw = row[cols.sku];
+      const path = getPathForMatrizSku(skuRaw);
+      if (!path) continue;
+
+      const descripcion = row[cols.descripcion] || "";
+      const costoConIva = parseNum(row[cols.costo]);
+      const ventaLocal = parseNum(row[cols.ventaLocal]);
+      const ventaIvaInc = parseNum(row[cols.ventaIvaInc]);
+
+      // Col F y Col L: valores directos de la planilla, no dividir
+      const costo = costoConIva != null ? +costoConIva.toFixed(2) : "";
+      const venta = ventaLocal != null ? +ventaLocal.toFixed(2) : "";
+      const ventaInc = ventaIvaInc != null ? +ventaIvaInc.toFixed(2) : "";
+
+      const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo"
+        : path.startsWith("PANELS_PARED") ? "Paneles Pared"
+        : path.startsWith("PERFIL_") ? "Perfilería Techo"
+        : path.startsWith("SELLADORES") ? "Selladores"
+        : path.startsWith("FIJACIONES") ? "Fijaciones"
+        : path.startsWith("SERVICIOS") ? "Servicios"
+        : "Otros";
+      const unidad = path.includes("esp.") ? "m²" : "unid";
+
+      csvRows.push([path, esc(descripcion), categoria, costo, venta, ventaInc, unidad, tabName].join(","));
+      count++;
+    }
   }
+
   return { csv: "\uFEFF" + csvRows.join("\n"), count };
 }
 
