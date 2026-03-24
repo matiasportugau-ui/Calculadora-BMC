@@ -12,8 +12,8 @@
 1. Que exista una **matriz de conexiones** verificada (repo + API + docs + opcional MCP), incluyendo rutas **ML** (`/ml/questions`, OAuth) e **Integrations** donde aplique.
 2. Que cada rol §2 **entregue o confirme** los artefactos que SIM/PANELSIM lee (sin drift nuevo).
 3. Que **MATPROMT** emita un **Handoff a SIM/PANELSIM** al final del bundle: lista de paths/URLs vigentes + recordatorio de modo aprobación por defecto para respuestas ML.
-4. Que **SIM-REV** tenga criterio claro para el informe `docs/team/reports/SIM-REV-REVIEW-YYYY-MM-DD.md`.
-5. *(Opcional post-run)* Que el usuario pueda generar **informe situación Sheets** (`PANELSIM-SHEETS-SITUATION-*.md`) si credenciales y API lo permiten.
+4. Que **SIM-REV** tenga criterio claro para el informe `docs/team/panelsim/reports/SIM-REV-REVIEW-YYYY-MM-DD.md`.
+5. *(Opcional post-run)* Que el usuario pueda generar **informe situación Sheets** (`docs/team/panelsim/reports/PANELSIM-SHEETS-SITUATION-*.md`) si credenciales y API lo permiten.
 
 ---
 
@@ -33,7 +33,7 @@
 | **Security** | `.env`, CORS, tokens — sin secretos en chat SIM. |
 | **Reporter** | Si hay plan de implementación, mencionar impacto en checklist SIM. |
 | **SIM** (implícito) | No es paso separado: es el consumidor del Handoff en Cursor. |
-| **SIM-REV** | Ejecutar revisión §4 de AGENT-SIMULATOR-SIM.md → reporte en `reports/`. |
+| **SIM-REV** | Ejecutar revisión §4 de AGENT-SIMULATOR-SIM.md → reporte en `docs/team/panelsim/reports/`. |
 | **Judge** | Puede incorporar calidad del Handoff a SIM como criterio opcional del run. |
 
 ---

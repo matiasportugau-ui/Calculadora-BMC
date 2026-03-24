@@ -4,6 +4,8 @@
 
 **When to open it:** Start of a work block, end of a session, or whenever you feel disoriented.
 
+**Prioridad operativa (rolling):** La prioridad del día o la semana debe alinearse con **`docs/team/PROJECT-STATE.md` → Cambios recientes** (correo, E2E, Go-live, tooling). No sustituye el roadmap de runs en `PROMPT-FOR-EQUIPO-COMPLETO.md`; evita que un solo bloque «Próximos prompts run N» opaque pendientes operativos recientes.
+
 ---
 
 ## 1. Current session (edit each time you sit down)

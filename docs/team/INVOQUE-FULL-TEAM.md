@@ -22,7 +22,7 @@
 1. **Carga el skill** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 2. **Lee** `docs/team/PROJECT-STATE.md`, `docs/team/PROJECT-TEAM-FULL-COVERAGE.md`, **`docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`** y **`docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`**
 3. **Invoca al Orquestador** (`.cursor/agents/bmc-dashboard-team-orchestrator.md`)
-4. **Ejecuta** todos los pasos 0 → 0b → 1 → … → 8 → **9** (ciclo de mejoras)
+4. **Ejecuta** todos los pasos 0 → **0a (MATPROMT)** → 0b → 1 → … → 8 → **9** (ciclo de mejoras)
 5. **Incluye** a **todos los roles** de la tabla canónica `PROJECT-TEAM-FULL-COVERAGE.md` §2 (N = número de filas vigentes) y **considera** las **skills transversales** §2.2 en paso 0
 6. **Paso 9:** Ejecuta los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO; actualiza el backlog y la sección "Próximos prompts" para que el **siguiente** "Equipo completo" continúe hasta que todos los agentes estén completamente desarrollados
 
@@ -54,7 +54,7 @@
 | 5e | Billing | Errores, duplicados, cierre |
 | 5f | Audit/Debug | Auditoría, logs |
 | 5g | Calc | 5173, BOM, Drive, PDF |
-| 5h | SIM-REV | *Opcional si objetivo SIM:* `reports/SIM-REV-REVIEW-*.md` — ver `AGENT-SIMULATOR-SIM.md` |
+| 5h | SIM-REV | *Opcional si objetivo SIM:* `panelsim/reports/SIM-REV-REVIEW-*.md` — ver `panelsim/AGENT-SIMULATOR-SIM.md` |
 | 6 | Judge | JUDGE-REPORT-RUN, JUDGE-REPORT-HISTORICO |
 | 7 | Repo Sync | Sincroniza bmc-dashboard-2.0 y bmc-development-team |
 | 8 | Orchestrator | Actualizar PROJECT-STATE |

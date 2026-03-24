@@ -2,11 +2,19 @@
 
 Documentación de agentes especializados disponibles en el repositorio.
 
+**Comandos npm (lint, test, build, `gate:local`, `pre-deploy`, etc.):** ver [`AGENTS.md`](../AGENTS.md) en la raíz del repositorio.
+
 ---
 
 ## SIM / PANELSIM y SIM-REV (Agente Simulador en Cursor)
 
 **Doc:** [team/panelsim/AGENT-SIMULATOR-SIM.md](./team/panelsim/AGENT-SIMULATOR-SIM.md) — **PANELSIM** = agente comercial/operativo BMC en Cursor (cotizaciones + admin + Sheets + ML como el operador). **KB índice de todo el proyecto:** [team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md](./team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md). Hub: [team/panelsim/README.md](./team/panelsim/README.md). **Skill correo / bandeja IMAP:** [../.cursor/skills/panelsim-email-inbox/SKILL.md](../.cursor/skills/panelsim-email-inbox/SKILL.md) (`BMC_EMAIL_INBOX_REPO` opcional en `.env`). SIM-REV = revisor vs backlog. Agente Cursor: `.cursor/agents/sim-reviewer-agent.md`. Plantilla MATPROMT: [team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md](./team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md).
+
+---
+
+## BMC Calculadora — criterios de cotización
+
+**Criterios persistentes (au, N vs N+1 paneles, líneas de presupuesto):** [team/knowledge/Calc.md](./team/knowledge/Calc.md). **Skill:** [../.cursor/skills/bmc-calculadora-specialist/SKILL.md](../.cursor/skills/bmc-calculadora-specialist/SKILL.md). **Rule:** `.cursor/rules/calculator-modifications.mdc`.
 
 ---
 
@@ -125,4 +133,3 @@ Documentación de agentes especializados disponibles en el repositorio.
 - [SKILL.md](../.cursor/skills/bmc-parallel-serial-agent/SKILL.md)
 - [reference.md](../.cursor/skills/bmc-parallel-serial-agent/reference.md)
 - JUDGE-REPORT-HISTORICO.md (scores), dependencies.md (dependencias)
-

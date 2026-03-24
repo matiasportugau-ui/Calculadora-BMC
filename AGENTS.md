@@ -11,15 +11,26 @@ Lee este archivo antes de cualquier tarea.
 |---------|---------------|
 | `npm run lint` | Después de editar cualquier archivo en `src/` |
 | `npm test` | Después de cambios en lógica de negocio o helpers |
+| `npm run gate:local` | Antes de PR: `lint` + `test` (sin servidor) |
+| `npm run gate:local:full` | Antes de commit con cambios en `src/`: `lint` + `test` + `build` |
 | `npm run test:contracts` | Requiere servidor corriendo (`npm run start:api`); valida contrato API (`/api/*`, `/calc/*`, `GET /capabilities`) |
 | `npm run mcp:panelin` | Servidor MCP (stdio) proxy HTTP — requiere API corriendo; `BMC_API_BASE` opcional |
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
-| `npm run pre-deploy` | Checklist completo pre-deploy |
+| `npm run env:ensure` | Crea `.env` desde `.env.example` solo si no existe |
+| `npm run ml:local` | **OAuth ML local:** ngrok (HTTPS) + API :3001 en un solo comando; ver `docs/ML-OAUTH-SETUP.md` |
+| `npm run ml:local:api` | Solo API :3001 (sin ngrok) |
+| `npm run ml:verify` | Con API arriba: comprueba `/health` y OAuth ML (`/auth/ml/start?mode=json`); ver `docs/ML-OAUTH-SETUP.md` |
+| `npm run pre-deploy` | Checklist pre-deploy: health, contratos (requiere API), `docs/team/PROJECT-STATE.md` pendientes; paso 2 carga `.env` si existe |
+| `npm run verify:full-team-artifacts -- --suffix YYYY-MM-DD-runN` | Tras un full team run: comprueba archivo MATPROMT o mención en `MATPROMT-FULL-RUN-PROMPTS.md` |
+
+**Skill (Cursor):** Mercado Libre + arranque de la API en un solo flujo para agentes — [`.cursor/skills/bmc-mercadolibre-api/SKILL.md`](.cursor/skills/bmc-mercadolibre-api/SKILL.md) (incluye `npm run start:api`, `ml:local`, `.env`, `ml:verify`, rutas `/auth/ml/*` y `/ml/*`).
 
 **Loops de validación:**
-1. Editar código → `npm run lint` → corregir errores → `npm test` → commit
+
+1. Editar código → `npm run gate:local` (o `lint` → `test`) → commit; con cambios en `src/` usar `npm run gate:local:full` antes de commit
 2. Cambiar rutas API → `npm run start:api` en background → `npm run test:contracts`
+3. Pre-deploy (`npm run pre-deploy`) requiere API; revisa pendientes en `docs/team/PROJECT-STATE.md` (paso 4 del script)
 
 ---
 
@@ -50,6 +61,12 @@ docs/
 
 ---
 
+## Calculadora — criterios de cotización
+
+Cotización asistida y despiece de techo/pared: **criterios persistentes** en [`docs/team/knowledge/Calc.md`](docs/team/knowledge/Calc.md) (ancho útil `au`, opciones N vs N+1 paneles sin forzar `ceil` sin consulta, líneas con cantidad / largo / m² / precio). Skill: [`.cursor/skills/bmc-calculadora-specialist/SKILL.md`](.cursor/skills/bmc-calculadora-specialist/SKILL.md).
+
+---
+
 ## Convenciones de código
 
 - **Módulos:** ES modules (`import`/`export`). No usar `require()`.
@@ -75,6 +92,7 @@ Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico
 En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 
 Al terminar una tarea:
+
 - Actualizar `docs/team/PROJECT-STATE.md` (sección "Cambios recientes" y "Pendientes").
 - Si el cambio afecta a otros agentes, consultar tabla de propagación en `docs/team/PROJECT-TEAM-FULL-COVERAGE.md §4`.
 

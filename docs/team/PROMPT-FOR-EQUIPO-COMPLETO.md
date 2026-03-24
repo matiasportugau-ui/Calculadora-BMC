@@ -4,11 +4,15 @@
 
 **Roadmap de runs pendientes (32→39) + regla de revisión pre-run:** [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md). Ante hallazgos o cambios de prioridad, **revisar el plan** con MATPROMT antes de ejecutar el siguiente run numerado.
 
+### Prioridad operativa actual (2026-03-23)
+
+Antes de ejecutar solo el **siguiente run numerado** (p. ej. run 53), leer **`docs/team/PROJECT-STATE.md` → Cambios recientes**. Allí puede figurar **correo / bandeja** (`.env` en repo `conexion-cuentas-email-agentes-bmc`, `panelsim-update`) como prioridad inmediata frente a E2E Cloud Run o subpasos de Go-live. El **foco de sesión** breve está en [`SESSION-WORKSPACE-CRM.md`](./SESSION-WORKSPACE-CRM.md).
+
 ---
 
 ## Instrucción para el Orquestador (cada run)
 
-1. **Leer** `docs/team/PROJECT-STATE.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`, este archivo y (cuando aplique) `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md`. **Sheets / sync:** `docs/google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md` (quién accede a qué datos y por qué API). **Agente Simulador (SIM):** si el objetivo del run incluye que el asistente en Cursor quede con conexiones y docs al día, leer [`docs/team/AGENT-SIMULATOR-SIM.md`](./AGENT-SIMULATOR-SIM.md) y usar la plantilla [`matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md`](./matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md) como insumo para el bundle MATPROMT (Handoff a SIM + paso opcional 5h SIM-REV).
+1. **Leer** `docs/team/PROJECT-STATE.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`, este archivo y (cuando aplique) `docs/team/reports/REPORT-STUDY-IMPROVEMENTS-2026-03-18.md`. **Sheets / sync:** `docs/google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md` (quién accede a qué datos y por qué API). **Agente Simulador (SIM):** si el objetivo del run incluye que el asistente en Cursor quede con conexiones y docs al día, leer [`docs/team/panelsim/AGENT-SIMULATOR-SIM.md`](./panelsim/AGENT-SIMULATOR-SIM.md) y usar la plantilla [`docs/team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md`](./panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md) como insumo para el bundle MATPROMT (Handoff a SIM + paso opcional 5h SIM-REV).
 2. **MATPROMT (paso 0a):** Invocar rol **MATPROMT** / skill `matprompt` para generar el **bundle de prompts orientadores** por cada miembro §2 (objetivo, lecturas, entregables, criterios, anti-patrones, handoff). Salida: `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si aparece tarea nueva o cambio de prioridad, MATPROMT emite **DELTA** solo para roles afectados.
 3. **Ejecutar** pasos 0 → **0a** → 0b → 1 → 2 → … → 8 como siempre (full team run).
 4. **Paso 9 — Ciclo de mejoras:** Ejecutar en este run los **Próximos prompts** listados abajo. Cada prompt se asigna al rol correspondiente; ese rol ejecuta la tarea y entrega el artefacto. El Orquestador verifica y actualiza `IMPROVEMENT-BACKLOG-BY-AGENT.md` (marcar ✓). Opcional: MATPROMT puede sintetizar **prompts mejorados** para el siguiente ciclo a partir de gaps detectados.
@@ -51,6 +55,7 @@
 **Run 2026-03-18 run 15:** Estado vigente; Study improvements aplicadas.
 
 **Run 2026-03-16 run7:** Ejecutados todos los ítems automatizables de la agenda:
+
 - ✓ [Contract/Audit] kpi-report verificado en código: bmcDashboard.js L1130, montado en /api. 404 = restart servidor.
 - ✓ [Reporter] REPORT-SOLUTION-CODING-run7.md generado.
 - ✓ [Reporter] GUIA-RAPIDA-VENDEDORES.md creada (actualizada por linter).
@@ -72,6 +77,7 @@
 **Run32+ (histórico — agenda tras run 31):** Detalle por run (32–39), dependencias y revisión pre-run en el roadmap.
 
 Resumen ejecutivo (cerrado documental 2026-03-20 salvo trabajo humano/decisión merge):
+
 1. ~~**[Repo / Security]**~~ — ✓ **2026-03-20:** `.gitignore` ignora `Calculadora-BMC/`, `OmniCRM-Sync/`.
 2. ~~**[Repo Sync]**~~ — ✓ **2026-03-20:** **PR #33** → `main`; **Run 38** cubierto en informe drift / repos hermanos.
 3. ~~**[Run 32]**~~ — ✓ **2026-03-20:** Full team sync ejecutado; contratos documentados (test:contracts con API up cuando corresponda); tabla AUTOPILOT según evidencia.
@@ -87,6 +93,7 @@ Resumen ejecutivo (cerrado documental 2026-03-20 salvo trabajo humano/decisión 
 **Todos los 19 agentes están completamente desarrollados.**
 
 **Run 2026-03-16 (Go-live & Hardening — Run 6):** Todos los 7 ítems de la agenda activa ejecutados:
+
 1. ✓ [Repo Sync] Skip documentado; recordatorio en PROJECT-STATE y REPO-SYNC-SETUP.md vigente.
 2. ✓ [Audit/Debug] npm audit analizado: 7 vulns (5 low, 2 moderate). Plan: `npm audit fix` para low; `npm audit fix --force` (vite@8 breaking) con aprobación Matias.
 3. ✓ [Sheets Structure / Mapping] Instrucciones tabs manuales documentadas en AUTOMATIONS-BY-WORKBOOK.md con checklists detallados. Pendiente ejecución por Matias.

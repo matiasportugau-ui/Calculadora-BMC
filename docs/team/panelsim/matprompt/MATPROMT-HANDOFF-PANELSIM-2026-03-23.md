@@ -12,7 +12,7 @@
 |-----------|--------|
 | `docs/team/PROJECT-STATE.md` | Fuente de estado; ver Cambios 2026-03-23 (PANELSIM). |
 | `docs/team/SESSION-WORKSPACE-CRM.md` | Cockpit sesión; actualizar fecha al usar. |
-| `docs/team/AGENT-SIMULATOR-SIM.md` | Visión PANELSIM, §0.1 arranque, modos aprobación/automático. |
+| `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` | Visión PANELSIM, §0.1 arranque, modos aprobación/automático. |
 | `docs/google-sheets-module/README.md` + `planilla-inventory.md` | Inventario 5 workbooks + tabs runtime. |
 
 ---
@@ -52,4 +52,4 @@
 ## 4. Próximo paso sugerido
 
 1. Matias: abrir OAuth ML si se necesitan **consultas pendientes** desde API.
-2. Opcional: **SIM-REV** tras cambios grandes → `docs/team/reports/SIM-REV-REVIEW-YYYY-MM-DD.md`.
+2. Opcional: **SIM-REV** tras cambios grandes → `docs/team/panelsim/reports/SIM-REV-REVIEW-YYYY-MM-DD.md`.
