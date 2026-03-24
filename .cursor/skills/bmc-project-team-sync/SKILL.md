@@ -24,7 +24,7 @@ Skill for **synchronizing project state** across all areas. Ensures agents read 
 
 ## Core Protocol
 
-1. **Read** `docs/team/PROJECT-STATE.md` — Cambios recientes, Pendientes, Estado por área. En **full team run**, tras paso 0, asegurar **paso 0a MATPROMT** (`matprompt`): bundle de prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-*.md`.
+1. **Read** `docs/team/PROJECT-STATE.md` — Cambios recientes, Pendientes, Estado por área. Si el usuario pide foco de sesión o “qué sigue hoy”: también `docs/team/SESSION-WORKSPACE-CRM.md`. En **full team run**, tras paso 0, asegurar **paso 0a MATPROMT** (`matprompt`): bundle de prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-*.md`.
 2. **Resolve pendientes** — If any agent is listed in Pendientes, invoke that agent or document the handoff.
 3. **Run propagation** — If a change was made, notify affected agents per [team/PROJECT-TEAM-FULL-COVERAGE.md](../../docs/team/PROJECT-TEAM-FULL-COVERAGE.md) §4.
 4. **Update PROJECT-STATE** — Add to Cambios recientes; clear or update Pendientes.
@@ -63,6 +63,7 @@ Skill for **synchronizing project state** across all areas. Ensures agents read 
 | Doc | Path | Purpose |
 |-----|------|---------|
 | Project state | `docs/team/PROJECT-STATE.md` | Single source of truth; read before work, update after changes |
+| Session CRM | `docs/team/SESSION-WORKSPACE-CRM.md` | Short-term focus, rolling wins, next actions, agent auto-start block |
 | Full coverage | `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` | Areas, roles, propagation table, sync points |
 | Prompt for run | `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md` | Input/prompts por run; ciclo de mejoras hasta agentes desarrollados |
 | Backlog by agent | `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` | Estado por agente (KB, reference, examples, SKILL ref) |

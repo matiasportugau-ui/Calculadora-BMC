@@ -33,10 +33,15 @@
     "go-live": "./scripts/go-live-automation.sh",
     "pre-deploy": "./scripts/pre-deploy-check.sh",
     "gate:local": "npm run lint && npm test",
-    "gate:local:full": "npm run lint && npm run test && npm run build",
-    "verify:full-team-artifacts": "node scripts/verify-full-team-artifacts.mjs",
+    "gate:local:full": "npm run lint && npm test && npm run build",
+    "check": "npm run gate:local",
     "lint": "eslint src/",
-    "team:hub": "npx --yes serve docs -l 4710"
+    "team:hub": "npx --yes serve docs -l 4710",
+    "open:email-env": "bash scripts/open-email-inbox-env.sh",
+    "env:ensure": "bash scripts/ensure-env.sh",
+    "panelsim:env": "bash scripts/ensure-panelsim-sheets-env.sh",
+    "panelsim:email-ready": "bash scripts/panelsim-email-ready.sh",
+    "panelsim:session": "bash scripts/panelsim-full-session.sh"
   },
   "dependencies": {
     "@google-cloud/storage": "^5.18.3",

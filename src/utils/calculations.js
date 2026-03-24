@@ -67,6 +67,12 @@ export function calcPanelesTecho(panel, espesor, largo, ancho) {
   };
 }
 
+/**
+ * Autoportancia vs largo de fabricación:
+ * - maxSpan (`esp.ap`): vano máximo entre apoyos (m). `ok` y `apoyos` se basan solo en esto.
+ * - largoMinOK / largoMaxOK: si `largo` entra en el rango comercial panel.lmin–panel.lmax (fabricación).
+ *   No usar lmin/lmax como límite estructural de vano; eso es `ap`.
+ */
 export function calcAutoportancia(panel, espesor, largo) {
   const espData = panel.esp[espesor];
   if (!espData || espData.ap == null) {

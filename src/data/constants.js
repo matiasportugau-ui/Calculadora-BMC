@@ -39,6 +39,14 @@ export function setListaPrecios(lista) { LISTA_ACTIVA = lista; }
 
 // ── §3 PANEL DATA ────────────────────────────────────────────────────────────
 // Todos los precios SIN IVA. IVA se aplica UNA VEZ al final.
+//
+// Semántica por panel / espesor (NO intercambiar conceptos):
+// - au: ancho útil del panel (m) para armar cantidad de paños y m².
+// - lmin, lmax (nivel panel): rango de LARGO COMERCIAL / FABRICACIÓN del paquete (m).
+//   No son autoportancia; no miden “cuánto puede volar” la chapa entre apoyos.
+// - ap (dentro de esp.<mm>): autoportancia = vano máximo (m) entre líneas de apoyo
+//   para ese espesor. Si el largo de cubierta supera ap, hacen falta más apoyos
+//   (ver calcAutoportancia en calculations.js). No reemplaza a lmin/lmax.
 
 export const PANELS_TECHO = {
   ISODEC_EPS: {

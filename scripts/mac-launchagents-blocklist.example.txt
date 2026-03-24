@@ -1,0 +1,40 @@
+# Copiá a tu home y ejecutá el script desde el repo:
+#   cp scripts/mac-launchagents-blocklist.example.txt ~/mac-launchagents-blocklist.txt
+#   DRY_RUN=1 ./scripts/mac-launchagents-unload-blocklist.sh ~/mac-launchagents-blocklist.txt
+#   ARCHIVE=1 ./scripts/mac-launchagents-unload-blocklist.sh ~/mac-launchagents-blocklist.txt
+#
+# Revertir (mover plist de vuelta y volver a cargar):
+#   DRY_RUN=1 ./scripts/mac-launchagents-restore-from-archive.sh ~/mac-launchagents-blocklist.txt
+#   ./scripts/mac-launchagents-restore-from-archive.sh ~/mac-launchagents-blocklist.txt
+#   # o todo lo archivado: ./scripts/mac-launchagents-restore-from-archive.sh --all
+#
+# Un nombre de archivo .plist por línea (solo el basename). Líneas vacías y líneas que empiezan con # se ignoran.
+#
+# Esta copia del ejemplo está en modo "preset recomendado" (seguridad + menos procesos en background):
+# las líneas SIN # abajo son las que el script va a intentar descargar/archivar.
+# Si no querés tocar alguno, agregale # al inicio de esa línea.
+
+# --- Preset recomendado (activo): descargar de launchd ---
+
+com.bittorrent.uTorrent.plist
+com.user.autopilot.monitor.plist
+com.mercado.auto.plist
+com.vmc.lacanplus.daily.plist
+mega.mac.megaupdater.plist
+com.openai.atlas.update-helper.plist
+com.epicgames.launcher.plist
+com.tsbgaming.thesandboxlauncher.plist
+com.valvesoftware.steamclean.plist
+
+# --- Opcional: descomentá solo si aplica (más ahorro RAM / menos I/O programado) ---
+
+# Base de datos locales (solo si NO las usás todo el día; después: brew services start …)
+# homebrew.mxcl.postgresql@14.plist
+# homebrew.mxcl.mongodb-community.plist
+
+# Dropbox: plists de update a menudo vacíos o recreados por la app; archivar o borrar a mano también sirve
+# com.dropbox.dropboxmacupdate.agent.plist
+# com.dropbox.dropboxmacupdate.xpcservice.plist
+
+# Limpieza de disco programada (seguís pudiendo correr el .sh a mano cuando quieras)
+# com.bmc.drive-cleanup.plist

@@ -41,6 +41,8 @@ Do not implement mapping without a written plan and proposal (or explicit user a
 - **Dashboard interface map:** Section → UI blocks → data source (API route, sheet). Location: e.g. `docs/bmc-dashboard-modernization/` or extend DASHBOARD-VISUAL-MAP.
 - **Cross-reference:** Table or matrix: Planilla/template ↔ Dashboard section/component ↔ API route. So we know "where each one is."
 
+**Canonical files (do not fork):** update the existing hub at `docs/google-sheets-module/README.md` and keep `MAPPER-PRECISO-PLANILLAS-CODIGO.md` (code truth), `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md` (product access), and `VARIABLES-Y-MAPEO-UNO-A-UNO.md` in sync when the mapping changes — do not add parallel “mapper v2” docs without deprecating the old ones.
+
 ## Workflow
 
 1. **Before working:** Read `docs/team/knowledge/Mapping.md` if it exists (convenciones, handoffs). Read `docs/team/PROJECT-STATE.md` if it exists (changes, pendientes).

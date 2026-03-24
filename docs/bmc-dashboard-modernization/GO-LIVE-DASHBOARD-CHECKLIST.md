@@ -45,7 +45,7 @@
 |---|-----------|---------|--------|
 | 4.1 | API en 3001 | `npm run start:api` | ☑ Verificado 2026-03-16 |
 | 4.2 | Vite/Calculadora en 5173 | `npm run dev` | ☐ |
-| 4.3 | Dashboard en /finanzas | http://localhost:3001/finanzas | ☑ |
+| 4.3 | Dashboard en /finanzas | <http://localhost:3001/finanzas> | ☑ |
 | 4.4 | GET /health → ok, hasSheets | `curl http://localhost:3001/health` | ☑ hasSheets: true |
 
 ---

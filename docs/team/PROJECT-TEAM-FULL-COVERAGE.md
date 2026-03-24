@@ -66,8 +66,8 @@
 | **Judge** | bmc-team-judge | Evaluación y ranqueo | Evalúa forma de trabajo y desempeño; ranqueo por agente; reporte por run y promedio histórico; criterios individuales por agente; evolución continua |
 | **Parallel/Serial** | bmc-parallel-serial-agent | Estrategia de ejecución | Evalúa según mejores desempeños en áreas y tareas; sabe qué procesos ejecutar en paralelo vs serie; prevé mejor combinación de agentes según scores y contexto; muy orientado a objetivos |
 | **Repo Sync** | bmc-repo-sync-agent | Repos | Mantiene actualizados bmc-dashboard-2.0 (desarrollo y funcionamiento del dashboard) y bmc-development-team; tras cada corrida evalúa qué actualizar y sincroniza |
-| **SIM** | bmc-project-team-sync, bmc-calculadora-specialist; doc [`AGENT-SIMULATOR-SIM.md`](./AGENT-SIMULATOR-SIM.md) | Cursor / asistencia | Agente Simulador (**PANELSIM** = mismo rol): cotizaciones + administración BMC, ML pendientes vía API, modo aprobación/automático; checklist de conexiones (estado, API, Sheets hub, `/capabilities`, hub) |
-| **SIM-REV** | bmc-implementation-plan-reporter, bmc-team-judge; doc [`AGENT-SIMULATOR-SIM.md`](./AGENT-SIMULATOR-SIM.md) §4 | Validación / backlog | Revisa trabajo hecho con SIM vs mejoras propuestas (`IMPROVEMENT-BACKLOG-BY-AGENT`, `PROMPT-FOR-EQUIPO-COMPLETO`); entrega `reports/SIM-REV-REVIEW-*.md`; no sustituye al Judge |
+| **SIM** | bmc-project-team-sync, bmc-calculadora-specialist; doc [`panelsim/AGENT-SIMULATOR-SIM.md`](./panelsim/AGENT-SIMULATOR-SIM.md) | Cursor / asistencia | Agente Simulador (**PANELSIM** = mismo rol): cotizaciones + administración BMC, ML pendientes vía API, modo aprobación/automático; checklist de conexiones (estado, API, Sheets hub, `/capabilities`, hub) |
+| **SIM-REV** | bmc-implementation-plan-reporter, bmc-team-judge; doc [`panelsim/AGENT-SIMULATOR-SIM.md`](./panelsim/AGENT-SIMULATOR-SIM.md) §4 | Validación / backlog | Revisa trabajo hecho con SIM vs mejoras propuestas (`IMPROVEMENT-BACKLOG-BY-AGENT`, `PROMPT-FOR-EQUIPO-COMPLETO`); entrega `panelsim/reports/SIM-REV-REVIEW-*.md`; no sustituye al Judge |
 
 ### 2.1 Conteo canónico e “Invoque full team”
 
@@ -83,6 +83,7 @@ Son **modos o protocolos compartidos** por el equipo; **no sustituyen** una fila
 | **AI Interactive Team** | `.cursor/skills/ai-interactive-team/SKILL.md` | Diálogo entre agentes, escalación, acuerdos cuando hay varios criterios. |
 | **Chat equipo (interactivo)** | `.cursor/skills/chat-equipo-interactivo/SKILL.md` | *Cuando exista en el repo:* comunicación dialógica con Matias dentro del run; complementa batch sin reemplazar pasos 1–8. |
 | **Project Team Sync** | `.cursor/skills/bmc-project-team-sync/SKILL.md` | Carga al invocar full team; define orden y actualización de PROJECT-STATE. |
+| **BMC Mercado Libre API** | `.cursor/skills/bmc-mercadolibre-api/SKILL.md` | Arranque de la API (`start:api`, `ml:local`, `env:ensure`), OAuth ML (UY), ngrok/HTTPS, `ml:verify`, rutas `/auth/ml/*` y `/ml/*`. Aplica cuando el run toque integración ML, preguntas/órdenes o `server/index.js` / `mercadoLibreClient.js`. |
 
 *(Añadir aquí toda skill transversal nueva; al dar de alta una skill que deba correr en cada full team, actualizar esta subtabla en el mismo PR.)*
 

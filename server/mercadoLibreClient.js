@@ -39,14 +39,16 @@ export const createMercadoLibreClient = ({ config, tokenStore, logger }) => {
   };
 
   const saveOAuthPayload = async (payload) => {
+    const existing = await tokenStore.read();
     const expiresIn = Number(payload.expires_in || 0);
     const expiresAt = Date.now() + expiresIn * 1000;
+    // Refresh responses often omit user_id / refresh_token; keep prior values
     const next = {
       access_token: payload.access_token,
-      token_type: payload.token_type,
-      user_id: payload.user_id,
-      scope: payload.scope,
-      refresh_token: payload.refresh_token,
+      token_type: payload.token_type ?? existing?.token_type,
+      user_id: payload.user_id ?? existing?.user_id,
+      scope: payload.scope ?? existing?.scope,
+      refresh_token: payload.refresh_token ?? existing?.refresh_token,
       expires_in: expiresIn,
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
@@ -180,10 +182,51 @@ export const createMercadoLibreClient = ({ config, tokenStore, logger }) => {
 
   const getStoredTokens = async () => tokenStore.read();
 
+  /** user_id from token file, or JWT payload, or GET /users/me (then persisted) */
+  const sellerIdFromStoredOrJwt = (tokens) => {
+    if (!tokens) return null;
+    if (tokens.user_id != null && tokens.user_id !== "") return String(tokens.user_id);
+    const at = tokens.access_token;
+    if (typeof at !== "string" || at.split(".").length < 2) return null;
+    try {
+      const payload = JSON.parse(Buffer.from(at.split(".")[1], "base64url").toString("utf8"));
+      if (payload.uid != null) return String(payload.uid);
+      if (payload.user_id != null) return String(payload.user_id);
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const resolveSellerId = async () => {
+    const tokens = await tokenStore.read();
+    const fromStore = sellerIdFromStoredOrJwt(tokens);
+    if (fromStore) return fromStore;
+    if (!tokens?.access_token) return null;
+    try {
+      const me = await requestWithRetries({ method: "GET", path: "/users/me" });
+      const id = me?.id;
+      if (id == null) return null;
+      const latest = await tokenStore.read();
+      if (latest) {
+        await tokenStore.write({
+          ...latest,
+          user_id: id,
+          updated_at: new Date().toISOString(),
+        });
+      }
+      return String(id);
+    } catch (error) {
+      logger.warn({ err: error }, "resolveSellerId: /users/me failed");
+      return null;
+    }
+  };
+
   return {
     buildAuthUrl,
     exchangeCodeForTokens,
     getStoredTokens,
     requestWithRetries,
+    resolveSellerId,
   };
 };

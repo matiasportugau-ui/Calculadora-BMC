@@ -19,6 +19,8 @@ export const config = {
   mlClientSecret: process.env.ML_CLIENT_SECRET || "",
   mlAuthBase: process.env.ML_AUTH_BASE || "https://auth.mercadolibre.com.uy",
   mlApiBase: process.env.ML_API_BASE || "https://api.mercadolibre.com",
+  /** Sitio ML (preguntas / búsquedas). UY = MLU. Ver https://api.mercadolibre.com/sites */
+  mlSiteId: process.env.ML_SITE_ID || "MLU",
   mlRedirectUriDev:
     process.env.ML_REDIRECT_URI_DEV || "http://localhost:3001/auth/ml/callback",
   mlRedirectUriProd:

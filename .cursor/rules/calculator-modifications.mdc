@@ -16,7 +16,10 @@ When the user wants to **modify the calculator** (variables, logic, prices, desi
 
 ## Load skill first
 
-Read and follow: `.cursor/skills/bmc-calculadora-specialist/SKILL.md`
+Read and follow:
+
+1. **`docs/team/knowledge/Calc.md`** — criterios de cotización canónicos (ancho `au`, no forzar panel extra sin consulta, líneas de presupuesto con cantidad/largo/m²/PU).
+2. **`.cursor/skills/bmc-calculadora-specialist/SKILL.md`** — detalle técnico (autoportancia vs fabricación, reglas de paneles en ancho).
 
 ## Key files
 

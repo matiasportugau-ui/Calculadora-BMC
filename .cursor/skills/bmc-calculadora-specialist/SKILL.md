@@ -52,6 +52,39 @@ Especialista en la **Calculadora Panelin** (puerto 5173): cotizador de paneles, 
 - Listas: web, venta
 - IVA, factor pendiente, largo real
 
+### Paneles: autoportancia vs largo de fabricación (obligatorio)
+
+**Nunca confundir** estos campos en `src/data/constants.js` ni al explicar cotizaciones:
+
+| Campo | Significado |
+|-------|-------------|
+| `esp.<mm>.ap` | **Autoportancia:** vano máximo (m) entre **líneas de apoyo**. Si el largo de cubierta supera `ap`, el motor calcula más apoyos (`calcAutoportancia`). |
+| `lmin`, `lmax` (en el objeto panel) | **Largo comercial / fabricación:** rango válido del **largo del paquete** (m), no el límite estructural entre apoyos. |
+| `au` | Ancho útil (m) para armar paños y m². |
+
+Referencia de implementación: `calcAutoportancia` en `src/utils/calculations.js` (comentario JSDoc en la función).
+
+### Cantidad de paneles en ancho: no sumar un panel “solo” (obligatorio para agentes)
+
+El motor puede usar `ceil(ancho / au)` en `calcPanelesTecho` para cubrir todo el ancho; **en cotización asistida con el usuario humano**, no **asumir** automáticamente el caso que agrega un panel más sin avisar.
+
+1. Con el **`au`** de la familia elegida (ej. ISODEC PIR **1,12 m**), calcular y **mostrar**:
+   - **Ancho cubrible con N paneles:** `N × au` (definir **N** según lo que se evalúe: típicamente `floor(ancho_pedido / au)` para “sin subir de panel”, y comparar con `ceil` como opción explícita).
+   - **Alternativa:** ancho cubrible con **N+1** paneles: `(N+1) × au`.
+2. Si el ancho a cubrir **no** es múltiplo exacto de `au`, **consultar** al usuario (o al cliente vía Matias): ¿**un panel más** (más superficie y costo) o **quedarse con N paneles** y menor ancho cubierto (u otro criterio de obra: solape, remate, etc.)?
+3. En el **presupuesto** conviene **cantidad de paneles** por zona, **largo**, **superficie de chapa** y **USD/m²** por línea; no presentar solo un m² agregado sin despiece.
+
+**No** decidir solo un panel extra por redondeo hacia arriba sin esa explicación y decisión explícita.
+
+### IVA y marca en presupuestos de terceros (obligatorio)
+
+- **IVA:** no **asumir** con/sin IVA en documentos ajenos si no está **explícito** o confirmado; **consultar** (ver `docs/team/knowledge/Calc.md` §4).
+- **Marca / fabricante:** no **asumir**; si no figura en el documento, **desconocido** y **consultar** si aplica (§5).
+
+### Trazabilidad en cada presupuesto (obligatorio)
+
+Al entregar un presupuesto o tabla de números, incluir sección **Fuentes de datos**: para cada precio, `au`, cantidad, fórmula o parámetro, enlazar o citar **archivo + líneas** (código) o **hoja + celda/columna** (planilla según docs), o declarar **dato del cliente**. Ver `docs/team/knowledge/Calc.md` §7.
+
 ---
 
 ## Workflow

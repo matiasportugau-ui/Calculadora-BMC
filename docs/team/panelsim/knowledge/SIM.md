@@ -1,13 +1,13 @@
-# Knowledge — SIM / PANELSIM (Agente Simulador en Cursor)
+# Knowledge — SIM / PANELSIM (atajo)
 
-**Rol:** **Agente comercial/operativo BMC** en Cursor (no “el developer”): también invocable como **PANELSIM**. Usa el repo como el operador: cotizaciones, `/api/*`, Sheets (extraer/operar datos vía API y mapeo canónico; estructura tab según skill Sheets), ML (`/ml/questions`, etc.) con **modo aprobación** por defecto en envíos, informes Sheets cuando haya credenciales.
+**Fuente única de identidad y reglas:** [`../AGENT-SIMULATOR-SIM.md`](../AGENT-SIMULATOR-SIM.md) (§0–§2). **SIM** = **PANELSIM** (mismo rol).
 
-**KB completa del proyecto (dominios, §2, rutas HTTP, comandos):** [`PANELSIM-FULL-PROJECT-KB.md`](./PANELSIM-FULL-PROJECT-KB.md) — complemento navegable de [`AGENT-SIMULATOR-SIM.md`](../AGENT-SIMULATOR-SIM.md).
+**Índice amplio del repo** (dominios, §2, rutas, skills): [`PANELSIM-FULL-PROJECT-KB.md`](./PANELSIM-FULL-PROJECT-KB.md).
 
-**Antes de trabajar:** Leer [`../AGENT-SIMULATOR-SIM.md`](../AGENT-SIMULATOR-SIM.md) (§0 visión PANELSIM, §0.1 arranque, §2 matriz), `docs/team/SESSION-WORKSPACE-CRM.md` §5, y **para alcance total** el KB anterior.
+**Antes de trabajar:** `AGENT-SIMULATOR-SIM.md` §0.1 → `SESSION-WORKSPACE-CRM.md` §5 → `PROJECT-STATE.md`; usar el KB solo cuando haga falta buscar por tema. **Planillas + MATRIZ (precios):** `npm run panelsim:env` en la raíz de Calculadora-BMC, luego `npm run start:api` y rutas `/api/*` (ver canónico §0.1 paso 3).
 
-**Salidas típicas:** Cotizaciones vía API o código; texto listo para cliente; links a PDF; listados de preguntas ML; borradores de respuesta; reportes `PANELSIM-SHEETS-SITUATION-*.md` cuando aplique; nunca inventar sheet IDs ni secretos.
+**Salidas / límites:** Ver canónico §0 (nunca inventar sheet IDs ni secretos; ML modo aprobación por defecto).
 
 **Handoffs:** Consume artefactos de Mapping, Calc, Contract, GPT/Cloud, Integrations; no sustituye esos roles.
 
-**Correo (repo aparte):** Si el workspace incluye el repo `conexion-cuentas-email-agentes-bmc`, para “actualizame sobre mis correos” el agente debe ejecutar ahí `npm run panelsim-update`, luego leer `data/reports/PANELSIM-ULTIMO-REPORTE.md`. Prompt y prerequisitos: en ese repo, `docs/PANELSIM-EMAIL-PROMPT.md`.
+**Correo (repo aparte):** Skill **`.cursor/skills/panelsim-email-inbox/`** — procedimiento completo (ruta vía workspace, carpeta hermana de Calculadora-BMC, o `BMC_EMAIL_INBOX_REPO` en `.env` raíz). Luego `npm run panelsim-update` en ese repo y leer `data/reports/PANELSIM-ULTIMO-REPORTE.md`. Duplicado: `conexion-cuentas-email-agentes-bmc/docs/PANELSIM-EMAIL-PROMPT.md`.

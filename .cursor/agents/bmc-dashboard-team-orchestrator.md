@@ -50,10 +50,10 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 | **Judge** | `bmc-team-judge` | Evaluación, ranqueo, reporte por run, promedio histórico. |
 | **Parallel/Serial** | `bmc-parallel-serial-agent` | Estrategia paralelo vs serie; mejor combinación según scores. |
 | **Repo Sync** | `bmc-repo-sync-agent` | Mantiene actualizados bmc-dashboard-2.0 y bmc-development-team; tras cada corrida evalúa y sincroniza. |
-| **SIM** | `bmc-project-team-sync`, `bmc-calculadora-specialist`; doc `docs/team/AGENT-SIMULATOR-SIM.md` | Checklist Cursor: estado, API, Sheets hub, `/capabilities` — asistente único sin drift. |
-| **SIM-REV** | `bmc-implementation-plan-reporter`, `bmc-team-judge`; doc `docs/team/AGENT-SIMULATOR-SIM.md` §4 | Informe `reports/SIM-REV-REVIEW-*.md`: trabajo con SIM vs backlog y mejoras propuestas. |
+| **SIM** | `bmc-project-team-sync`, `bmc-calculadora-specialist`; doc `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` | Checklist Cursor: estado, API, Sheets hub, `/capabilities` — asistente único sin drift. |
+| **SIM-REV** | `bmc-implementation-plan-reporter`, `bmc-team-judge`; doc `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §4 | Informe `docs/team/panelsim/reports/SIM-REV-REVIEW-*.md`: trabajo con SIM vs backlog y mejoras propuestas. |
 
-**Supporting:** `docs/google-sheets-module/README.md`, `docs/bmc-dashboard-modernization/PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md`, `docs/team/AGENT-SIMULATOR-SIM.md`.
+**Supporting:** `docs/google-sheets-module/README.md`, `docs/bmc-dashboard-modernization/PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md`, `docs/team/panelsim/AGENT-SIMULATOR-SIM.md`.
 
 ---
 
@@ -81,7 +81,7 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 | 5e | Billing | `billing-error-review` | Billing status (errores, duplicados, cierre). |
 | 5f | Audit/Debug | `bmc-dashboard-audit-runner`, `cloudrun-diagnostics-reporter` | Audit report, logs, diagnóstico. |
 | 5g | Calc | `bmc-calculadora-specialist` | Calc status (5173, BOM, Drive, PDF). |
-| 5h | **SIM-REV** | `sim-reviewer-agent` (ver `docs/team/AGENT-SIMULATOR-SIM.md`) | *Opcional si el run tiene objetivo SIM:* `docs/team/reports/SIM-REV-REVIEW-YYYY-MM-DD.md` — contraste backlog vs trabajo con SIM. |
+| 5h | **SIM-REV** | `sim-reviewer-agent` (ver `docs/team/panelsim/AGENT-SIMULATOR-SIM.md`) | *Opcional si el run tiene objetivo SIM:* `docs/team/panelsim/reports/SIM-REV-REVIEW-YYYY-MM-DD.md` — contraste backlog vs trabajo con SIM. |
 | 6 | Judge | `bmc-team-judge` | `JUDGE-REPORT-RUN-YYYY-MM-DD.md`, `JUDGE-REPORT-HISTORICO.md`. |
 | 7 | Repo Sync | `bmc-repo-sync-agent` | Sincroniza bmc-dashboard-2.0 y bmc-development-team; evalúa qué actualizar tras la corrida. |
 | 8 | Orchestrator | — | Update `PROJECT-STATE.md` (Cambios recientes, Pendientes). |
@@ -89,9 +89,9 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 
 **Orden de ejecución:** 0 → **0a (MATPROMT)** → 0b → 1 → 2 → [2b si aplica] → 3 → 3b → 3c → 4 → 4b → 5 → 5b → 5c → 5d → 5e → 5f → 5g → [5h si objetivo SIM] → 6 → 7 → 8 → 9.
 
-**Pasos opcionales según contexto:** 2b (Sheets Structure), 4b (Integrations si no hay cambios ML/Shopify), 5c (GPT/Cloud si no hay cambios OpenAPI), 5e (Billing si no hay cambios facturación), 5g (Calc si no hay cambios Calculadora), **5h (SIM-REV)** cuando el objetivo del run incluye asistencia al Agente Simulador en Cursor (ver `matprompt/MATPROMT-RUN-THEME-SIM-*.md`). El Orquestador decide según pendientes y alcance.
+**Pasos opcionales según contexto:** 2b (Sheets Structure), 4b (Integrations si no hay cambios ML/Shopify), 5c (GPT/Cloud si no hay cambios OpenAPI), 5e (Billing si no hay cambios facturación), 5g (Calc si no hay cambios Calculadora), **5h (SIM-REV)** cuando el objetivo del run incluye asistencia al Agente Simulador en Cursor (ver `docs/team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-*.md`). El Orquestador decide según pendientes y alcance.
 
-**Objetivo SIM en paso 0:** Declarar si el run alimenta al asistente Cursor (SIM). MATPROMT (0a) debe incluir subsecciones “Para SIM” y un **Handoff a SIM** al cierre del bundle (`AGENT-SIMULATOR-SIM.md`).
+**Objetivo SIM en paso 0:** Declarar si el run alimenta al asistente Cursor (SIM). MATPROMT (0a) debe incluir subsecciones “Para SIM” y un **Handoff a SIM** al cierre del bundle (`docs/team/panelsim/AGENT-SIMULATOR-SIM.md`).
 
 ---
 

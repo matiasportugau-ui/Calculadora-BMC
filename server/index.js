@@ -174,11 +174,51 @@ app.get("/ml/items/:id", asyncHandler(async (req, res) => {
 }));
 
 app.get("/ml/questions", asyncHandler(async (req, res) => {
-  const path = req.query.id ? `/questions/${req.query.id}` : "/questions/search";
+  if (req.query.id) {
+    const payload = await ml.requestWithRetries({
+      method: "GET",
+      path: `/questions/${req.query.id}`,
+    });
+    return res.json(payload);
+  }
+  // Solo parámetros que ML acepta en /questions/search (evita invalid_query_string por query basura)
+  const allowedKeys = new Set([
+    "seller_id",
+    "item",
+    "item_id",
+    "api_version",
+    "site_id",
+    "offset",
+    "limit",
+    "status",
+  ]);
+  const query = {};
+  for (const [k, v] of Object.entries(req.query)) {
+    if (allowedKeys.has(k) && v != null && String(v) !== "") {
+      query[k] = v;
+    }
+  }
+  if (!query.seller_id) {
+    const sellerId = await ml.resolveSellerId();
+    if (sellerId) query.seller_id = sellerId;
+  }
+  if (!query.seller_id) {
+    return res.status(400).json({
+      ok: false,
+      error:
+        "Missing seller_id: complete OAuth (/auth/ml/start) or pass ?seller_id=… so /questions/search is valid.",
+    });
+  }
+  if (query.api_version == null || query.api_version === "") {
+    query.api_version = "4";
+  }
+  if (query.site_id == null || query.site_id === "") {
+    query.site_id = config.mlSiteId;
+  }
   const payload = await ml.requestWithRetries({
     method: "GET",
-    path,
-    query: req.query.id ? undefined : req.query,
+    path: "/questions/search",
+    query,
   });
   res.json(payload);
 }));
@@ -207,11 +247,37 @@ app.post("/ml/questions/:id/answer", asyncHandler(async (req, res) => {
 }));
 
 app.get("/ml/orders", asyncHandler(async (req, res) => {
-  const path = req.query.id ? `/orders/${req.query.id}` : "/orders/search";
+  if (req.query.id) {
+    const payload = await ml.requestWithRetries({
+      method: "GET",
+      path: `/orders/${req.query.id}`,
+    });
+    return res.json(payload);
+  }
+  const allowedKeys = new Set([
+    "seller",
+    "seller.id",
+    "offset",
+    "limit",
+    "order.status",
+    "sort",
+    "tags",
+  ]);
+  const query = {};
+  for (const [k, v] of Object.entries(req.query)) {
+    if (allowedKeys.has(k) && v != null && String(v) !== "") {
+      query[k] = v;
+    }
+  }
+  const sellerId = await ml.resolveSellerId();
+  // ML documenta /orders/search?seller=ID; marketplace a veces usa seller.id — alinear caller con el vendedor del token
+  if (!query.seller && !query["seller.id"] && sellerId) {
+    query.seller = sellerId;
+  }
   const payload = await ml.requestWithRetries({
     method: "GET",
-    path,
-    query: req.query.id ? undefined : req.query,
+    path: "/orders/search",
+    query,
   });
   res.json(payload);
 }));

@@ -46,11 +46,13 @@ npm install
 cp .env.example .env
 cp config/accounts.example.json config/accounts.json
 cp config/classification.example.json config/classification.json
+cp config/reports.example.json config/reports.json
 ```
 
 - Completar **`config/accounts.json`**: `host`, `port`, `user`, `passwordEnv` por casilla; `daysBack` (default 30).
 - Completar **`.env`**: una variable por cada `passwordEnv` (contraseñas de aplicación IMAP).
 - Ajustar **`config/classification.json`** cuando quieras reglas de categorías.
+- Opcional: **`config/reports.json`** — título, secciones del Markdown, límites de detalle y orden de tablas (ver README del repo de correo).
 
 **Nunca** commitear `.env` ni datos bajo `data/`.
 
@@ -58,11 +60,29 @@ cp config/classification.example.json config/classification.json
 
 ## Comando único que debe ejecutar el agente (sync)
 
-Desde la raíz `EMAIL_REPO`:
+Si el usuario quiere **sesión completa** (planillas + correo + API + informe por áreas), desde la **raíz de Calculadora-BMC**:
 
 ```bash
-npm run panelsim-update
+npm run panelsim:session
 ```
+
+(Ver `AGENTS.md` y `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §5.1 — opción A.)
+
+**Solo bandeja de correo** (sin tocar el resto): desde la **raíz de Calculadora-BMC**:
+
+```bash
+npm run panelsim:email-ready
+```
+
+Resuelve `EMAIL_REPO` igual que `scripts/resolve-email-inbox-repo.sh` / `BMC_EMAIL_INBOX_REPO`, instala dependencias del repo de correo si hace falta, y ejecuta `panelsim-update`.
+
+Ventana opcional (ej. últimos 5 días):
+
+```bash
+npm run panelsim:email-ready -- --days 5
+```
+
+**Alternativa** (si ya estás en `EMAIL_REPO`): `npm run panelsim-update` (mismos flags `--days`).
 
 Equivale a: fetch IMAP + clasificar + generar reporte.
 
@@ -71,7 +91,7 @@ Equivale a: fetch IMAP + clasificar + generar reporte.
 | Archivo (relativo a `EMAIL_REPO`) | Uso |
 |-------------------------------------|-----|
 | `data/reports/PANELSIM-ULTIMO-REPORTE.md` | **Principal:** resumen legible por categoría |
-| `data/reports/PANELSIM-STATUS.json` | Conteos `byCategory`, fechas, rutas absolutas |
+| `data/reports/PANELSIM-STATUS.json` | Conteos `byCategory` y `byAccount`, **`syncHealth`** por casilla (`ok` / `auth_error` / `network` / …), fechas, rutas absolutas |
 | (opcional) línea stdout `PANELSIM_EMAIL_RESULT:{...}` | Mismo resumen en JSON |
 
 No cargar en el chat el **`data/snapshot-latest.json` completo** salvo petición explícita (es grande).

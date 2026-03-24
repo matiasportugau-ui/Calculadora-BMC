@@ -136,6 +136,23 @@ report "- Dashboard standalone: http://localhost:3849"
 report "- Finanzas: http://localhost:5173 → tab Finanzas"
 report "- ngrok inspector: http://127.0.0.1:4040"
 
+# --- 10. Host (disco + LaunchAgents) ---
+section "Host — disco y LaunchAgents (macOS)"
+report "**Espacio en disco:**"
+FREE_GB=$(df -g / 2>/dev/null | awk 'NR==2 {print $4}' || df / 2>/dev/null | awk 'NR==2 {print int($4/1024/1024)}')
+report "Libre en /: ${FREE_GB:-?} GB"
+report "Limpieza programada: scripts/drive-cleanup-automated.sh (si THRESHOLD_GB; docs/DRIVE-CLEANUP-AUTOMATED.md)"
+report ""
+report "**LaunchAgents** (\`audit-launchagents-matias.sh\` — nuevo/regenerado/descripciones):"
+report ""
+if [[ -x "$REPO_ROOT/scripts/audit-launchagents-matias.sh" ]]; then
+  "$REPO_ROOT/scripts/audit-launchagents-matias.sh" 2>/dev/null >> "$OUTPUT_FILE" || report "(audit falló o no disponible)"
+  report ""
+  report "Manifest: scripts/launchagents-manifest.md | Plan: docs/plans/auditoria-launchagents-macos.md"
+else
+  report "scripts/audit-launchagents-matias.sh no encontrado o no ejecutable"
+fi
+
 # --- Estado Actual + Fixes ---
 section "Estado Actual + Fixes"
 report "Resumen: revisar secciones anteriores. Recomendaciones:"

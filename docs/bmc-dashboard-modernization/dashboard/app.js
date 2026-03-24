@@ -136,6 +136,12 @@
     return json.data || [];
   }
 
+  async function fetchCalendarioVencimientos() {
+    const res = await fetch(API_BASE + '/api/calendario-vencimientos');
+    const json = await readJsonResponse(res, 'Error al cargar calendario de vencimientos');
+    return { headers: json.headers || [], data: json.data || [] };
+  }
+
   async function fetchStockEcommerce() {
     const res = await fetch(API_BASE + '/api/stock-ecommerce');
     const json = await readJsonResponse(res, 'Error al cargar stock');
@@ -568,7 +574,21 @@
     }).join('');
   }
 
-  function renderCalendario(snapshot, message) {
+  function cellDisplay(row, header) {
+    const val = row[header];
+    if (val == null || val === '') return '-';
+    const s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s) || /^\d{1,2}[\/\-]\d{1,2}/.test(s)) {
+      const d = parseDate(s);
+      return d ? formatDate(s) : s;
+    }
+    if (/^(MONTO|MONEDA|MONEDA_|monto|Importe)/i.test(header) && !Number.isNaN(Number(s.replace(/\./g, '').replace(',', '.')))) {
+      return formatMoney(s, row.MONEDA || '$');
+    }
+    return s;
+  }
+
+  function renderCalendarioVencimientosSheet(headers, rows, message) {
     const thead = byId('theadCalendario');
     const tbody = byId('tbodyCalendario');
     const desc = byId('calendarioDescription');
@@ -581,31 +601,27 @@
       return;
     }
 
-    const calendar = snapshot.calendar || [];
-    const currencies = getCurrencyKeys(snapshot);
+    const h = Array.isArray(headers) && headers.length ? headers : [];
+    const r = Array.isArray(rows) ? rows : [];
 
-    if (!calendar.length) {
+    if (!h.length || !r.length) {
       thead.innerHTML = '';
-      tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay vencimientos cargados en el calendario.</td></tr>';
-      if (desc) desc.textContent = 'No hay fechas con vencimientos. Los datos provienen de Pagos_Pendientes.';
+      setTableMessage('tbodyCalendario', 10, 'No hay datos en la hoja Calendario de Vencimientos.');
+      if (desc) desc.textContent = 'Datos de la hoja compartida. Solo lectura.';
       return;
     }
 
-    const thCells = ['<th>Fecha</th>'].concat(currencies.map(function (c) {
-      return '<th>' + escapeHtml(c) + '</th>';
-    }));
-    thead.innerHTML = '<tr>' + thCells.join('') + '</tr>';
+    thead.innerHTML = '<tr>' + h.map(function (header) {
+      return '<th>' + escapeHtml(header) + '</th>';
+    }).join('') + '</tr>';
 
-    tbody.innerHTML = calendar.map(function (point) {
-      const cells = ['<td>' + escapeHtml(formatDate(point.date)) + '</td>'];
-      currencies.forEach(function (curr) {
-        const val = (point.byCurrency && point.byCurrency[curr]) ?? point[curr] ?? 0;
-        cells.push('<td>' + escapeHtml(formatMoney(val, curr)) + '</td>');
-      });
-      return '<tr>' + cells.join('') + '</tr>';
+    tbody.innerHTML = r.map(function (row) {
+      return '<tr>' + h.map(function (header) {
+        return '<td>' + escapeHtml(cellDisplay(row, header)) + '</td>';
+      }).join('') + '</tr>';
     }).join('');
 
-    if (desc) desc.textContent = calendar.length + ' fechas con vencimientos. Solo lectura.';
+    if (desc) desc.textContent = r.length + ' registro(s) de la hoja Calendario de Vencimientos. Solo lectura.';
   }
 
   function renderMetas(rows, message, isLoading) {
@@ -920,7 +936,6 @@
     setFinancialKpis(null, '');
     renderTrendPlaceholder(message);
     setTableMessage('tbodyBreakdown', 5, message);
-    renderCalendario(emptyFinancialSnapshot(), message);
     renderMetas([], 'Datos financieros no disponibles.');
   }
 
@@ -932,7 +947,6 @@
       setFinancialKpis(null, '');
       renderTrendPlaceholder('No hay vencimientos cargados.');
       setTableMessage('tbodyBreakdown', 5, 'No hay pagos pendientes cargados.');
-      renderCalendario(snapshot, 'No hay vencimientos cargados.');
       renderMetas(snapshot.metas || []);
       return;
     }
@@ -945,7 +959,6 @@
     setFinancialKpis(snapshot.byCurrency[currentCurrency], currentCurrency);
     renderTrend(snapshot);
     renderBreakdown(snapshot);
-    renderCalendario(snapshot);
     renderMetas(snapshot.metas || []);
   }
 
@@ -984,6 +997,7 @@
     setSectionLoading('sectionBreakdown', true);
     setSectionLoading('sectionEntregas', true);
     setSectionLoading('sectionAudit', true);
+    setSectionLoading('calendario-vencimientos', true);
     renderKpiReport(null, 'Cargando...', true);
     setFinancialKpis(null, '');
     renderTrendPlaceholder('Cargando tendencia...', true);
@@ -1012,6 +1026,7 @@
       fetchKpiFinanciero(),
       fetchProximasEntregas(),
       fetchAudit(),
+      fetchCalendarioVencimientos(),
       fetchVentas(),
       fetchStockEcommerce(),
       fetchStockKpi(),
@@ -1021,9 +1036,10 @@
     const kpiResult = results[1];
     const entregasResult = results[2];
     const auditResult = results[3];
-    const ventasResult = results[4];
-    const stockResult = results[5];
-    const stockKpiResult = results[6];
+    const calendarioResult = results[4];
+    const ventasResult = results[5];
+    const stockResult = results[6];
+    const stockKpiResult = results[7];
 
     if (kpiReportResult.status === 'fulfilled' && kpiReportResult.value && kpiReportResult.value.ok) {
       renderKpiReport(kpiReportResult.value);
@@ -1079,6 +1095,21 @@
         : 'No se pudo cargar el audit log.');
     }
 
+    if (calendarioResult.status === 'fulfilled' && calendarioResult.value) {
+      renderCalendarioVencimientosSheet(
+        calendarioResult.value.headers,
+        calendarioResult.value.data
+      );
+    } else {
+      renderCalendarioVencimientosSheet(
+        [],
+        [],
+        calendarioResult.reason && calendarioResult.reason.message
+          ? calendarioResult.reason.message
+          : 'Calendario de vencimientos no disponible (revisar hoja compartida con la cuenta de servicio).'
+      );
+    }
+
     if (ventasResult.status === 'fulfilled') {
       ventasData = ventasResult.value || [];
       renderVentas(ventasData);
@@ -1118,6 +1149,7 @@
     setSectionLoading('sectionBreakdown', false);
     setSectionLoading('sectionEntregas', false);
     setSectionLoading('sectionAudit', false);
+    setSectionLoading('calendario-vencimientos', false);
 
     buildNotifications(financialSnapshot, ventasData, stockKpi);
 

@@ -20,6 +20,7 @@ Inventario runtime de tabs, columnas y rutas API. Ver [SHEETS-MAPPING-5-WORKBOOK
 | BMC_MATRIZ_SHEET_ID | 1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ | MATRIZ de COSTOS y VENTAS 2026 | actualizar-precios-calculadora |
 
 **MATRIZ de COSTOS y VENTAS:** La misma planilla alimenta costos y precios de venta. Columnas buscadas por nombre (flexible):
+
 - **SKU / Código** — para mapear a path calculadora
 - **Costo / Costos** — costo unitario (con IVA; se convierte a sin IVA)
 - **Venta BMC / Venta consumidor / Venta directa** — precio venta directa
@@ -171,7 +172,7 @@ Ver planilla-map.md §2 para columnas completas y diff vs blueprint.
 | /api/coordinacion-logistica | Idem | — |
 | /api/kpi-financiero | Pagos_Pendientes, Metas_Ventas | — |
 | /api/pagos-pendientes | Pagos_Pendientes (o BMC_PAGOS_SHEET_ID) | — |
-| /api/pagos | — | POST: crea fila en Pendientes_ + AUDIT_LOG |
+| /api/pagos | — | POST: crea fila en Pendientes_+ AUDIT_LOG |
 | /api/pagos/:id | — | PATCH: actualiza ESTADO_PAGO, FECHA_COBRO + AUDIT_LOG |
 | /api/metas-ventas | Metas_Ventas | — |
 | /api/audit | AUDIT_LOG | — |

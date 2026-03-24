@@ -11,26 +11,26 @@ Lee este archivo antes de cualquier tarea.
 |---------|---------------|
 | `npm run lint` | Después de editar cualquier archivo en `src/` |
 | `npm test` | Después de cambios en lógica de negocio o helpers |
-| `npm run gate:local` | Antes de PR: `lint` + `test` (sin servidor) |
-| `npm run gate:local:full` | Antes de commit con cambios en `src/`: `lint` + `test` + `build` |
+| `npm run gate:local` | Una pasada local: `lint` → `test` (antes de PR) |
+| `npm run gate:local:full` | `lint` → `test` → `build` (antes de commit con cambios en `src/`) |
+| `npm run check` | Igual que `npm run gate:local` |
 | `npm run test:contracts` | Requiere servidor corriendo (`npm run start:api`); valida contrato API (`/api/*`, `/calc/*`, `GET /capabilities`) |
 | `npm run mcp:panelin` | Servidor MCP (stdio) proxy HTTP — requiere API corriendo; `BMC_API_BASE` opcional |
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
-| `npm run env:ensure` | Crea `.env` desde `.env.example` solo si no existe |
-| `npm run ml:local` | **OAuth ML local:** ngrok (HTTPS) + API :3001 en un solo comando; ver `docs/ML-OAUTH-SETUP.md` |
-| `npm run ml:local:api` | Solo API :3001 (sin ngrok) |
+| `npm run panelsim:session` | **PANELSIM sesión completa:** `panelsim:env` + `panelsim:email-ready` + intento de API en background + informe `docs/team/panelsim/reports/PANELSIM-SESSION-STATUS-*.md`. Opciones: `-- --days N`, `--no-start-api`, `--skip-email`, `--skip-sheets`. Ver `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §5.1 |
+| `npm run panelsim:env` | Chequeo credenciales Google + IDs de planillas (MATRIZ); `scripts/ensure-panelsim-sheets-env.sh` |
+| `npm run panelsim:email-ready` | Sync IMAP + reporte en repo hermano; `scripts/panelsim-email-ready.sh` |
+| `npm run env:ensure` | Crea `.env` desde `.env.example` si falta (`scripts/ensure-env.sh`) |
+| `npm run open:email-env` | Abre `.env` del repo de correo en el editor |
 | `npm run ml:verify` | Con API arriba: comprueba `/health` y OAuth ML (`/auth/ml/start?mode=json`); ver `docs/ML-OAUTH-SETUP.md` |
-| `npm run pre-deploy` | Checklist pre-deploy: health, contratos (requiere API), `docs/team/PROJECT-STATE.md` pendientes; paso 2 carga `.env` si existe |
-| `npm run verify:full-team-artifacts -- --suffix YYYY-MM-DD-runN` | Tras un full team run: comprueba archivo MATPROMT o mención en `MATPROMT-FULL-RUN-PROMPTS.md` |
-
-**Skill (Cursor):** Mercado Libre + arranque de la API en un solo flujo para agentes — [`.cursor/skills/bmc-mercadolibre-api/SKILL.md`](.cursor/skills/bmc-mercadolibre-api/SKILL.md) (incluye `npm run start:api`, `ml:local`, `.env`, `ml:verify`, rutas `/auth/ml/*` y `/ml/*`).
+| `npm run pre-deploy` | Checklist pre-deploy: health, contratos (API en 3001 o `BMC_API_BASE`), **paso 2** carga `.env` para comprobar `BMC_SHEET_ID` / `GOOGLE_APPLICATION_CREDENTIALS`, **paso 4** cuenta ítems abiertos `- [ ]` en `docs/team/PROJECT-STATE.md` (canónico; `docs/PROJECT-STATE.md` es solo redirección) |
 
 **Loops de validación:**
 
-1. Editar código → `npm run gate:local` (o `lint` → `test`) → commit; con cambios en `src/` usar `npm run gate:local:full` antes de commit
-2. Cambiar rutas API → `npm run start:api` en background → `npm run test:contracts`
-3. Pre-deploy (`npm run pre-deploy`) requiere API; revisa pendientes en `docs/team/PROJECT-STATE.md` (paso 4 del script)
+1. Orden recomendado antes de commit en `src/`: **`lint` → `test` → `build`** (`npm run gate:local:full`).
+2. Editar código → `npm run lint` → corregir errores → `npm test` → commit (o `npm run gate:local`).
+3. Cambiar rutas API → `npm run start:api` en background → `npm run test:contracts`
 
 ---
 
@@ -58,12 +58,6 @@ docs/
   agents/                   # Definiciones de agentes del equipo
   skills/                   # Skills por rol
 ```
-
----
-
-## Calculadora — criterios de cotización
-
-Cotización asistida y despiece de techo/pared: **criterios persistentes** en [`docs/team/knowledge/Calc.md`](docs/team/knowledge/Calc.md) (ancho útil `au`, opciones N vs N+1 paneles sin forzar `ceil` sin consulta, líneas con cantidad / largo / m² / precio). Skill: [`.cursor/skills/bmc-calculadora-specialist/SKILL.md`](.cursor/skills/bmc-calculadora-specialist/SKILL.md).
 
 ---
 

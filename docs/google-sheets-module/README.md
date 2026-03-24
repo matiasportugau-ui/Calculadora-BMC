@@ -2,6 +2,8 @@
 
 Single entry point for all **Google Sheets–related** functionality: mapping, structure editing, API usage, automation, and workflow.
 
+**Stack canónico (2026):** no duplicar reglas de mapeo fuera de aquí salvo skills; el **código fuente** de columnas/pestañas está en [MAPPER-PRECISO-PLANILLAS-CODIGO.md](MAPPER-PRECISO-PLANILLAS-CODIGO.md); el **acceso por producto** (dashboard, GPT, OmniCRM) en [SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md](SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md).
+
 **Entorno actual:** El dashboard apunta al workbook `1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg` con esquema **CRM_Operativo**. Para trabajo nuevo en series financieras: no asumir que **Pagos_Pendientes** ni **Metas_Ventas** están listos; verificar en el planilla map antes de implementar. Ver [PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md § Dato clave](../bmc-dashboard-modernization/PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md).
 
 ---
@@ -20,6 +22,9 @@ Single entry point for all **Google Sheets–related** functionality: mapping, s
 | **Sheet architecture (10/10)** | [SHEET-ARCHITECTURE-BLUEPRINT-V2.md](../bmc-dashboard-modernization/SHEET-ARCHITECTURE-BLUEPRINT-V2.md) | Parametros, CRM_Operativo, Motor_IA, Dashboard, Data_Base; dropdowns; Apps Script; Panel Agente AI sidebar. |
 | **Planilla inventory (live)** | [planilla-inventory.md](planilla-inventory.md) | Inventario runtime: tabs, estado (active/conditional), API por tab. |
 | **Planilla map (actual vs blueprint)** | [planilla-map.md](planilla-map.md) | Diff: tabs, columnas CRM_Operativo, Parametros, dropdowns; checklist implementación §8. |
+| **Variables extraíbles + mapeo 1:1** | [VARIABLES-Y-MAPEO-UNO-A-UNO.md](VARIABLES-Y-MAPEO-UNO-A-UNO.md) | Lista por workbook/tab, campo canónico, consumidor API/UI/OmniCRM; plantilla de verificación fila a fila. |
+| **Mapeo preciso (código)** | [MAPPER-PRECISO-PLANILLAS-CODIGO.md](MAPPER-PRECISO-PLANILLAS-CODIGO.md) | Fuente única desde `server/config.js` + `bmcDashboard.js`: env, pestaña, fila de header, columnas y sinónimos `findKey`. |
+| **Sync full team (quién accede a qué)** | [SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md](SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md) | Dashboard, API, Calculadora, GPT, OmniCRM: rutas y planillas para mantener todo alineado. |
 
 ---
 
@@ -42,9 +47,17 @@ Single entry point for all **Google Sheets–related** functionality: mapping, s
 
 ```
 docs/google-sheets-module/
-├── README.md              ← you are here (module index)
-└── reference/
-    └── README.md          ← links to mapping + structure-editor reference docs
+├── README.md                         ← module index (you are here)
+├── MAPPER-PRECISO-PLANILLAS-CODIGO.md   ← columnas/pestañas según server (fuente runtime)
+├── SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md  ← dashboard / API / Calc / GPT / OmniCRM
+├── VARIABLES-Y-MAPEO-UNO-A-UNO.md       ← variables extraíbles + checklist 1:1
+├── planilla-inventory.md
+├── planilla-map.md
+├── SHEETS-MAPPING-5-WORKBOOKS.md
+├── (otros: MAPPING-VALIDATION*, MATRIZ*, …)
+├── reference/
+│   └── README.md                     ← skills reference + enlaces a los docs de arriba
+└── …
 ```
 
 Skills and backend stay in `.cursor/skills/` and `server/`; this folder is the **documentation hub** for the Google Sheets module.

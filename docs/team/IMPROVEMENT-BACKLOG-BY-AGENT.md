@@ -42,8 +42,8 @@ Por agente deben cumplirse:
 | Parallel/Serial | ✓ | ✓ | ⬜ | ✓ | Desarrollado |
 | Repo Sync | ✓ | ⬜ | ⬜ | ✓ | Desarrollado |
 | Sheets Structure | ✓ | ✓ | ✓ | ✓ | Desarrollado |
-| SIM | ✓ | doc AGENT-SIMULATOR-SIM | N/A | ⬜ | En desarrollo (protocolo Cursor) |
-| SIM-REV | ✓ | doc AGENT-SIMULATOR-SIM | N/A | ⬜ | En desarrollo (informes SIM-REV-REVIEW) |
+| SIM | ✓ | doc `panelsim/AGENT-SIMULATOR-SIM.md` | N/A | ⬜ | En desarrollo (protocolo Cursor) |
+| SIM-REV | ✓ | doc `panelsim/AGENT-SIMULATOR-SIM.md` | N/A | ⬜ | En desarrollo (`panelsim/reports/SIM-REV-REVIEW-*.md`) |
 
 **Leyenda:** ✓ hecho | ⬜ pendiente | — N/A o ya cubierto por agent .md
 

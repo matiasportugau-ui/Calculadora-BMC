@@ -32,6 +32,16 @@ Produce a mapping document that includes:
 
 Use the **Admin Sheet (CRM_Operativo)** example in [reference.md](reference.md) as the canonical template. Adapt names and columns to the target workbook.
 
+## Canonical repo docs (always align with code)
+
+Before proposing column/tab names, read:
+
+- `docs/google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md` — **runtime** mapping from `server/routes/bmcDashboard.js`
+- `docs/google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md` — which surface calls which API
+- `docs/google-sheets-module/planilla-inventory.md` — workbook inventory
+
+Do not invent alternate “official” mapping paths outside these files unless the user explicitly wants a new doc.
+
 ## Workflow
 
 1. **Before working:** Read `docs/team/PROJECT-STATE.md` (cambios recientes, pendientes).

@@ -20,6 +20,7 @@ Read and follow: `.cursor/skills/bmc-project-team-sync/SKILL.md`
 - **PROJECT-STATE.md** — `docs/team/PROJECT-STATE.md` (read before work, update after changes)
 - **PROJECT-TEAM-FULL-COVERAGE.md** — `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` (protocol, propagation table)
 - **INVOQUE-FULL-TEAM.md** — `docs/team/INVOQUE-FULL-TEAM.md` (invocación unificada)
+- **Google Sheets (hub)** — `docs/google-sheets-module/README.md` (mapeo, variables, sync equipo; no bifurcar en otros docs)
 
 ## Triggers
 

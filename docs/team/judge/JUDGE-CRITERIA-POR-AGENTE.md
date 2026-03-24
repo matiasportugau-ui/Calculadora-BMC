@@ -240,7 +240,7 @@
 
 | Criterio | Entregable / Cómo juzgar |
 |----------|---------------------------|
-| **Checklist** | Uso de `AGENT-SIMULATOR-SIM.md` + `SESSION-WORKSPACE-CRM.md` auto-start; no inventa IDs de sheet ni secretos |
+| **Checklist** | Uso de `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` + `SESSION-WORKSPACE-CRM.md` auto-start; no inventa IDs de sheet ni secretos |
 | **Conexiones** | Citas correctas a `/capabilities`, `calc`, hub Sheets; si API no está, lo declara |
 | **Handoff** | Consume artefactos de Mapping/Calc/Contract; no contradice `AGENTS.md` |
 
@@ -252,7 +252,7 @@
 
 | Criterio | Entregable / Cómo juzgar |
 |----------|---------------------------|
-| **Informe** | `docs/team/reports/SIM-REV-REVIEW-YYYY-MM-DD.md` con secciones definidas en `AGENT-SIMULATOR-SIM.md` §4 |
+| **Informe** | `docs/team/panelsim/reports/SIM-REV-REVIEW-YYYY-MM-DD.md` con secciones definidas en `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §4 |
 | **Contraste** | Mejoras en backlog vs estado real; riesgos contrato/Sheets/GPT mencionados |
 | **Límites** | No duplica Judge; puede referenciar hallazgos para el reporte del Judge |
 

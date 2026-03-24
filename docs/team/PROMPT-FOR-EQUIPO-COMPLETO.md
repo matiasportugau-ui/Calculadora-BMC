@@ -4,9 +4,9 @@
 
 **Roadmap de runs pendientes (32→39) + regla de revisión pre-run:** [`reports/RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md). Ante hallazgos o cambios de prioridad, **revisar el plan** con MATPROMT antes de ejecutar el siguiente run numerado.
 
-### Prioridad operativa actual (2026-03-23)
+### Prioridad operativa actual (2026-03-24)
 
-Antes de ejecutar solo el **siguiente run numerado** (p. ej. run 53), leer **`docs/team/PROJECT-STATE.md` → Cambios recientes**. Allí puede figurar **correo / bandeja** (`.env` en repo `conexion-cuentas-email-agentes-bmc`, `panelsim-update`) como prioridad inmediata frente a E2E Cloud Run o subpasos de Go-live. El **foco de sesión** breve está en [`SESSION-WORKSPACE-CRM.md`](./SESSION-WORKSPACE-CRM.md).
+Antes de ejecutar solo el **siguiente run numerado** (p. ej. run 53), leer **`docs/team/PROJECT-STATE.md` → Cambios recientes**. Allí puede figurar **correo / bandeja** (`.env` en repo `conexion-cuentas-email-agentes-bmc`, `panelsim-update`) como prioridad inmediata frente a E2E Cloud Run o subpasos de Go-live. El **foco de sesión** breve está en [`SESSION-WORKSPACE-CRM.md`](./SESSION-WORKSPACE-CRM.md). **Verificación local rápida:** `npm run gate:local` o `npm run gate:local:full`; con API arriba, `npm run pre-deploy` (lee `.env` y cuenta pendientes en `docs/team/PROJECT-STATE.md`).
 
 ---
 
