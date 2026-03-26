@@ -42,7 +42,8 @@
     "panelsim:env": "bash scripts/ensure-panelsim-sheets-env.sh",
     "panelsim:email-ready": "bash scripts/panelsim-email-ready.sh",
     "panelsim:session": "bash scripts/panelsim-full-session.sh",
-    "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs"
+    "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs",
+    "smoke:prod": "node scripts/smoke-prod-api.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
