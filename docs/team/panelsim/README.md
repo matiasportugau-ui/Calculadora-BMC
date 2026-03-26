@@ -8,7 +8,9 @@ Todo lo que sigue al **Agente Simulador (SIM)** y **PANELSIM** (mismo rol), más
 |------|-----------|
 | [`AGENT-SIMULATOR-SIM.md`](./AGENT-SIMULATOR-SIM.md) | **Canónico:** identidad, límites, matriz de conexiones, SIM-REV, invocaciones (**§5.1 proceso al invocar PANELSIM**). **Empezar aquí.** |
 | [`PANELSIM-ARRANQUE-CAPACIDADES.md`](./PANELSIM-ARRANQUE-CAPACIDADES.md) | Informe: qué queda activo automáticamente al abrir Cursor y qué no (API, correo, Sheets, ML). |
-| [`knowledge/`](./knowledge/) | Atajo `SIM.md`, índice completo `PANELSIM-FULL-PROJECT-KB.md`, `SIM-REV.md`. |
+| [`knowledge/`](./knowledge/) | Atajo `SIM.md`, índice completo `PANELSIM-FULL-PROJECT-KB.md`, `PANELSIM-DIALOGUE-AND-CRITERIA.md`, `SIM-REV.md`. |
+| [`biblioteca-tecnica-productos/README.md`](./biblioteca-tecnica-productos/README.md) | Índice del material técnico-comercial (flyers/fichas); assets enlazados desde `PDF Productos /`. |
+| [`CRM-OPERATIVO-COCKPIT.md`](./CRM-OPERATIVO-COCKPIT.md) | **Cockpit CRM** — columnas AG–AK (link presupuesto, aprobación envío), qué escribe ML/WA/email; `server/lib/crmOperativoLayout.js`. |
 | [`matprompt/`](./matprompt/) | Plantillas MATPROMT (tema SIM, handoff PANELSIM). |
 | [`reports/`](./reports/) | Informes de situación Sheets, run KB, y futuros `SIM-REV-REVIEW-*.md`. |
 | OAuth Mercado Libre | [`docs/ML-OAUTH-SETUP.md`](../../ML-OAUTH-SETUP.md) — checklist portal, `.env`, `npm run ml:verify`, Cloud Run (`npm run ml:cloud-run`), GCS. |

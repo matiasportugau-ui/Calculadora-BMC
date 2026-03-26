@@ -9,7 +9,18 @@ Estructura de documentación del equipo, organizada según decisión del equipo.
 ```
 docs/team/
 ├── README.md                    ← Este índice
+├── orientation/                 Hub de programa: arquitectura, cronograma, JSON maestro, npm run program:status
+│   ├── README.md
+│   ├── PROGRAM-ARCHITECTURE.md
+│   ├── CHRONOGRAM-TEMPLATE.md
+│   ├── ASYNC-RUNBOOK-UNATTENDED.md   Runbook asíncrono (H0/A/H)
+│   ├── EXECUTION-PLAN-MASTER.md      Plan maestro paso a paso + dónde encontrar cada recurso
+│   └── programs/bmc-panelin-master.json
 ├── SESSION-WORKSPACE-CRM.md     Cockpit por sesión: foco, logros recientes, próximos pasos, auto-start agente
+├── PROJECT-SCHEDULE.md          Cronograma + rutina: npm run project:compass; enlaces al JSON maestro y follow-ups
+├── PROCEDIMIENTO-CANALES-WA-ML-CORREO.md  Checklist WhatsApp → ML → Correo; npm run channels:onboarding
+├── HUMAN-GATES-ONE-BY-ONE.md        Intervención humana: URL + menú + “listo cuando” (cm-0, cm-1, cm-2)
+├── GCLOUD-SHEETS-CREDENTIALS-SIMPLE.md  Sheets en Cloud Run: service account → Secret Manager → mount → GOOGLE_APPLICATION_CREDENTIALS (pasos simples)
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
@@ -50,6 +61,9 @@ docs/team/
 | Documento | Descripción |
 |-----------|-------------|
 | [PROJECT-STATE.md](./PROJECT-STATE.md) | Estado del proyecto; cambios recientes; pendientes; cómo usar |
+| [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) | Seguimiento unificado: `npm run project:compass` (fase, tareas, follow-ups); rutina |
+| [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) | Orden fijo WA → ML → Correo: checklist, comandos, `npm run channels:onboarding` |
+| [orientation/README.md](./orientation/README.md) | Programa maestro multi-área: JSON, fases, `npm run program:status` |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
 | [panelsim/README.md](./panelsim/README.md) | SIM / PANELSIM: hub; proceso al invocar (`panelsim:env`, `start:api`) en canónico §5.1 |

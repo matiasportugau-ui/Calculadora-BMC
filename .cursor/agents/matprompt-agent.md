@@ -51,6 +51,8 @@ Incluir siempre cabecera:
 - Mantener coherencia con **AGENTS.md** y semantic errors (503 Sheets, etc.).
 - Si un rol está **N/A** este run, documentarlo en el bundle para que el Judge no penalice omisión.
 
+**Micro-framework (paso 0a):** Ver skill `matprompt` — **power prompt** opcional si el objetivo es vago; **preguntas de desambiguación** para Matias/Orquestador; **restricciones** por rol (formato, límites, fuentes `docs/…`); **partir** tareas grandes en pasos. Alineado a buenas prácticas tipo *Gemini for Google Workspace* (Persona / Task / Context / Format).
+
 ---
 
 ## Invocation

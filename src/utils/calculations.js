@@ -43,7 +43,12 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
   const { PERFIL_TECHO } = getPricing();
   const byTipo = PERFIL_TECHO[tipo];
   if (!byTipo) return null;
-  const byFam = byTipo[familiaP];
+  /** Isoroof Colonial: misma perfilería ISOROOF 3G excepto cumbrera (2,2 m colonial bajo cumbrera.ISOROOF_COLONIAL). */
+  let fam = familiaP;
+  if (fam === "ISOROOF_COLONIAL" && tipo !== "cumbrera") {
+    fam = "ISOROOF";
+  }
+  const byFam = byTipo[fam];
   if (!byFam) return null;
   if (byFam[espesor]) return { ...byFam[espesor] };
   if (byFam._all) return { ...byFam._all };
@@ -86,14 +91,21 @@ export function calcAutoportancia(panel, espesor, largo) {
   return { ok, apoyos, maxSpan, largoMinOK, largoMaxOK };
 }
 
-export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, ptsMetal, ptsMadera) {
+export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, ptsMetal, ptsMadera, opts = {}) {
   const { FIJACIONES } = getPricing();
   let puntosFijacion, pMetal, pH, pMadera;
+  const overridePts = opts.overridePuntosFijacion;
   if (tipoEst === "combinada") {
     pH = Math.max(0, Math.floor(ptsHorm || 0));
     pMetal = Math.max(0, Math.floor(ptsMetal || 0));
     pMadera = Math.max(0, Math.floor(ptsMadera || 0));
     puntosFijacion = pH + pMetal + pMadera;
+  } else if (overridePts != null && overridePts > 0) {
+    puntosFijacion = Math.round(overridePts);
+    if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
+    else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
+    else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
+    else { pH = Math.min(ptsHorm || 0, puntosFijacion); pMetal = puntosFijacion - pH; pMadera = 0; }
   } else {
     const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
     puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / espPerim));
@@ -259,6 +271,108 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   return { items, total: +total.toFixed(2) };
 }
 
+/**
+ * BOM comercial ISODEC PIR (alineado a presupuestos manuales típicos):
+ * 2 goteros frontales + 6 babetas empotrar 3 m + T1 según ML de perfilería.
+ * No usa bordes perimetrales (goteros/babetas por lado).
+ */
+export function calcPerfileriaTechoComercial(familiaP, espesor) {
+  const items = [];
+  const gf = resolveSKU_techo("gotero_frontal", familiaP, espesor);
+  const bb = resolveSKU_techo("babeta_empotrar", familiaP, espesor);
+  if (!gf || !bb) return { items: [], total: 0, totalML: 0 };
+  const { FIJACIONES } = getPricing();
+  const cantG = 2;
+  const cantB = 6;
+  const puG = p(gf);
+  const puB = p(bb);
+  items.push({
+    label: "Gotero frontal (BOM comercial)",
+    sku: gf.sku,
+    tipo: "gotero_frontal",
+    cant: cantG,
+    unidad: "unid",
+    pu: puG,
+    costo: gf.costo ?? 0,
+    total: +(cantG * puG).toFixed(2),
+    ml: +(cantG * gf.largo).toFixed(2),
+    largoBarra: gf.largo,
+  });
+  items.push({
+    label: "Babeta empotrar (BOM comercial)",
+    sku: bb.sku,
+    tipo: "babeta_empotrar",
+    cant: cantB,
+    unidad: "unid",
+    pu: puB,
+    costo: bb.costo ?? 0,
+    total: +(cantB * puB).toFixed(2),
+    ml: +(cantB * bb.largo).toFixed(2),
+    largoBarra: bb.largo,
+  });
+  const totalML = cantG * gf.largo + cantB * bb.largo;
+  const espFijMl = getDimensioningParam("PERFILERIA.espaciado_fijacion_ml", 0.30);
+  const fijPerf = Math.ceil(totalML / espFijMl);
+  const puT1 = p(FIJACIONES.tornillo_t1);
+  const coT1 = FIJACIONES.tornillo_t1?.costo ?? 0;
+  items.push({
+    label: `${FIJACIONES.tornillo_t1.label} (perfilería comercial)`,
+    sku: "tornillo_t1",
+    tipo: "fijacion_perfileria",
+    cant: fijPerf,
+    unidad: "unid",
+    pu: puT1,
+    costo: coT1,
+    total: +(fijPerf * puT1).toFixed(2),
+  });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2), totalML: +totalML.toFixed(2) };
+}
+
+/**
+ * Kit selladores comercial: silicona + membrana + espuma PU (cantidades por dimensionamiento).
+ */
+export function calcSelladoresTechoComercial() {
+  const { SELLADORES } = getPricing();
+  const c = (x) => (x?.costo ?? 0);
+  const nSil = getDimensioningParam("SELLADORES_TECHO.comercial_siliconas", 4);
+  const nMem = getDimensioningParam("SELLADORES_TECHO.comercial_membranas", 2);
+  const nEsp = getDimensioningParam("SELLADORES_TECHO.comercial_espumas", 4);
+  const items = [];
+  const puSi = p(SELLADORES.silicona);
+  items.push({
+    label: `${SELLADORES.silicona.label} (kit comercial)`,
+    sku: "silicona",
+    cant: nSil,
+    unidad: "unid",
+    pu: puSi,
+    costo: c(SELLADORES.silicona),
+    total: +(nSil * puSi).toFixed(2),
+  });
+  const puMe = p(SELLADORES.membrana);
+  items.push({
+    label: `${SELLADORES.membrana.label} (kit comercial)`,
+    sku: "membrana",
+    cant: nMem,
+    unidad: "unid",
+    pu: puMe,
+    costo: c(SELLADORES.membrana),
+    total: +(nMem * puMe).toFixed(2),
+  });
+  const puEs = p(SELLADORES.espuma_pu);
+  items.push({
+    label: `${SELLADORES.espuma_pu.label} (kit comercial)`,
+    sku: "espuma_pu",
+    cant: nEsp,
+    unidad: "unid",
+    pu: puEs,
+    costo: c(SELLADORES.espuma_pu),
+    total: +(nEsp * puEs).toFixed(2),
+  });
+  const total = items.reduce((s, i) => s + i.total, 0);
+  return { items, total: +total.toFixed(2) };
+}
+
 export function calcTotalesSinIVA(allItems) {
   const ivaRate = getIVA();
   const sumSinIVA = allItems.reduce((s, i) => s + (i.total || 0), 0);
@@ -294,23 +408,40 @@ export function calcTechoCompleto(inputs) {
   }
   const autoportancia = calcAutoportancia(panel, espesor, largo);
   if (!autoportancia.ok) warnings.push(`Largo ${largo}m excede autoportancia máx ${autoportancia.maxSpan}m. Requiere ${autoportancia.apoyos} apoyos.`);
+
+  const bomComercial = opciones?.bomComercial === true && familia === "ISODEC_PIR" && panel.sist === "varilla_tuerca";
+  if (bomComercial) {
+    warnings.push("BOM comercial ISODEC PIR: 2 goteros + 6 babetas + kit selladores + puntos fijación fijos (ajustable en dimensionamiento). Ignora bordes perimetrales para accesorios.");
+  }
+
   let fijaciones;
   if (panel.sist === "varilla_tuerca") {
-    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largoReal, tipoEst || "metal", ptsHorm || 0, ptsMetal || 0, ptsMadera || 0);
+    const ptsComercial = bomComercial ? getDimensioningParam("FIJACIONES_VARILLA.puntos_comercial_default", 22) : null;
+    const fijOpts = ptsComercial != null ? { overridePuntosFijacion: ptsComercial } : {};
+    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largoReal, tipoEst || "metal", ptsHorm || 0, ptsMetal || 0, ptsMadera || 0, fijOpts);
   } else {
     fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
   }
-  const perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largoReal, paneles.anchoTotal, panel.fam, espesor, opciones || {});
+
+  let perfileria;
+  if (bomComercial) {
+    perfileria = calcPerfileriaTechoComercial(panel.fam, espesor);
+  } else {
+    perfileria = calcPerfileriaTecho(borders || { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, paneles.cantPaneles, largoReal, paneles.anchoTotal, panel.fam, espesor, opciones || {});
+  }
+
   let selladores = { items: [], total: 0 };
   if (!opciones || opciones.inclSell !== false) {
-    selladores = calcSelladoresTecho(paneles.cantPaneles, {
-      panel,
-      borders: borders || {},
-      anchoTotal: paneles.anchoTotal,
-      largoReal,
-      familiaP: panel.fam,
-      espesor,
-    });
+    selladores = bomComercial
+      ? calcSelladoresTechoComercial()
+      : calcSelladoresTecho(paneles.cantPaneles, {
+          panel,
+          borders: borders || {},
+          anchoTotal: paneles.anchoTotal,
+          largoReal,
+          familiaP: panel.fam,
+          espesor,
+        });
   }
   const costoM2 = espData.costo ?? 0;
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaTotal, unidad: "m²", pu: paneles.precioM2, costo: costoM2, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: largoReal };

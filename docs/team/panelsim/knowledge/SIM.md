@@ -4,6 +4,8 @@
 
 **Índice amplio del repo** (dominios, §2, rutas, skills): [`PANELSIM-FULL-PROJECT-KB.md`](./PANELSIM-FULL-PROJECT-KB.md).
 
+**Diálogo comercial + guardrails (destilado GPT → repo):** [`PANELSIM-DIALOGUE-AND-CRITERIA.md`](./PANELSIM-DIALOGUE-AND-CRITERIA.md). **Biblioteca técnica de productos (índice):** [`../biblioteca-tecnica-productos/README.md`](../biblioteca-tecnica-productos/README.md).
+
 **Antes de trabajar:** `AGENT-SIMULATOR-SIM.md` §0.1 → `SESSION-WORKSPACE-CRM.md` §5 → `PROJECT-STATE.md`; usar el KB solo cuando haga falta buscar por tema. **Planillas + MATRIZ (precios):** `npm run panelsim:env` en la raíz de Calculadora-BMC, luego `npm run start:api` y rutas `/api/*` (ver canónico §0.1 paso 3).
 
 **Salidas / límites:** Ver canónico §0 (nunca inventar sheet IDs ni secretos; ML modo aprobación por defecto).

@@ -57,6 +57,25 @@ Primero: SESSION-WORKSPACE-CRM + PROJECT-STATE; si vas a verificar precios contr
 No envíes respuestas ML sin mi OK si estoy en modo aprobación.
 ```
 
+**Paste de invocación — estudio e incorporación a la KB** (sesión para leer biblioteca + criterios y proponer cambios en docs):
+
+```text
+Sos PANELSIM: agente comercial y operativo BMC en Cursor — no desarrollador. Seguí `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §0 y §2.
+Modo: [aprobación | automático].
+Objetivo: estudiar `docs/team/panelsim/biblioteca-tecnica-productos/README.md` (y el árbol de assets enlazado), `docs/team/panelsim/knowledge/PANELSIM-DIALOGUE-AND-CRITERIA.md`, y contrastar con `PANELSIM-FULL-PROJECT-KB.md` + `docs/google-sheets-module/`. Proponé incorporaciones concretas a archivos Markdown del repo (sin inventar precios: siempre MATRIZ/API/`/calc`).
+Primero: `SESSION-WORKSPACE-CRM.md` + `PROJECT-STATE.md`. Si vas a citar números: `npm run panelsim:env` y API con datos reales.
+No envíes respuestas ML ni acciones sensibles sin mi OK en modo aprobación.
+```
+
+### 0.2 API local vs producción (sesión seria)
+
+| Modo | Base URL | Comandos típicos |
+|------|----------|------------------|
+| **Local** | `http://127.0.0.1:3001` (u otra en `.env`) | `npm run start:api`, `npm run panelsim:env`, `npm run test:contracts` |
+| **Producción (Cloud Run)** | `BMC_API_BASE` o `SMOKE_BASE_URL` — ver default en `scripts/smoke-prod-api.mjs` | `npm run smoke:prod`, `BMC_API_BASE=https://… npm run ml:sim-batch`, MCP `npm run mcp:panelin` con `BMC_API_BASE` |
+
+**Reglas:** misma semántica de rutas (`/health`, `/capabilities`, `/ml/*`, `/api/*`); no asumir OAuth ML válido en prod sin `GET /auth/ml/status`. Para cotizaciones verificables contra MATRIZ suele ser más seguro **local + credenciales**; usar prod para smoke, IA CRM, o ML cuando el token esté configurado.
+
 ---
 
 ## 1. Qué es SIM / PANELSIM (no es un proceso aparte)
@@ -150,7 +169,7 @@ En **paso 0a**, **MATPROMT** incluye en el bundle:
 
 Cuando **invocás PANELSIM** (nuevo chat o “modo SIM”), el agente debe tratar esto como **parte fija del arranque** si la sesión va a tocar **cotizaciones con precios verificables**, **dashboard `/api/*`** o **MATRIZ**:
 
-**Opción A — todo en uno (recomendada para sesión amplia):** desde la raíz de Calculadora-BMC, **`npm run panelsim:session`**. Ejecuta en cadena: `panelsim:env` (planillas), `panelsim:email-ready` (IMAP + reportes), intenta levantar la API en segundo plano si no responde en `:3001` (salvo `--no-start-api`), y escribe un informe **`docs/team/panelsim/reports/PANELSIM-SESSION-STATUS-*.md`** con estado por área (Sheets, correo, API, ML, Vite). Flags útiles: `-- --days N`, `--skip-email`, `--skip-sheets`, `--no-start-api`. Detalle: `scripts/panelsim-full-session.sh`.
+**Opción A — todo en uno (recomendada para sesión amplia):** desde la raíz de Calculadora-BMC, **`npm run panelsim:session`**. Por defecto ejecuta en cadena: **`npm run env:ensure`**, `panelsim:env` (planillas), `panelsim:email-ready` (IMAP + reportes), intenta levantar la API en segundo plano si no responde en `:3001` (salvo `--no-start-api`), **`ml:verify`** si la API está en 200, **`project:compass`**, **`channels:automated`** (smoke a prod + JSON + `humanGate` cm-0/1/2), sync **ML → CRM** (`panelsim-ml-crm-sync.js`), e informe **`docs/team/panelsim/reports/PANELSIM-SESSION-STATUS-*.md`**. Flags: `-- --quick` (solo lo “clásico”: planillas/correo/API/sync ML→CRM, sin compass ni smoke prod ni env-ensure inicial), `-- --days N`, `--skip-email`, `--skip-sheets`, `--no-start-api`, `--skip-channels`, `--skip-compass`, `--skip-ml-verify`, `--skip-env-ensure`. Detalle: `scripts/panelsim-full-session.sh`.
 
 **Opción B — pasos manuales (equivalente cuando no usás la opción A):**
 

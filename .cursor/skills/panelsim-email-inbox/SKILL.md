@@ -96,6 +96,17 @@ Equivale a: fetch IMAP + clasificar + generar reporte.
 
 No cargar en el chat el **`data/snapshot-latest.json` completo** salvo petición explícita (es grande).
 
+### Bridge a CRM (repo Calculadora-BMC)
+
+Con snapshot ya generado y la API BMC arriba (`npm run start:api` o `BMC_API_BASE` apuntando a Cloud Run), se puede enviar correos **clasificados como ventas** a `POST /api/crm/ingest-email` vía:
+
+```bash
+cd /ruta/Calculadora-BMC
+npm run email:ingest-snapshot -- --dry-run --limit 5
+```
+
+Dedupe en `.email-ingest/` (gitignored). Ver `AGENTS.md` (`email:ingest-snapshot`) y `server/lib/emailSnapshotIngest.js`.
+
 ---
 
 ## Respuesta al usuario (formato)

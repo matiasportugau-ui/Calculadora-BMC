@@ -9,11 +9,13 @@ import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
+import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
+import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -90,7 +92,14 @@ app.get("/capabilities", (req, res) => {
 });
 
 app.get("/health", asyncHandler(async (req, res) => {
-  const tokens = await ml.getStoredTokens();
+  let tokens = null;
+  let mlTokenStoreOk = true;
+  try {
+    tokens = await ml.getStoredTokens();
+  } catch (err) {
+    mlTokenStoreOk = false;
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, "health: ML token store read failed");
+  }
   const missing = missingConfig();
   const credsPath =
     config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
@@ -103,6 +112,7 @@ app.get("/health", asyncHandler(async (req, res) => {
     ok: true,
     appEnv: config.appEnv,
     hasTokens: Boolean(tokens?.access_token),
+    mlTokenStoreOk,
     hasSheets,
     missingConfig: missing,
   });
@@ -145,7 +155,13 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
 }));
 
 app.get("/auth/ml/status", asyncHandler(async (req, res) => {
-  const tokens = await ml.getStoredTokens();
+  let tokens;
+  try {
+    tokens = await ml.getStoredTokens();
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, "auth/ml/status: token store read failed");
+    return res.status(503).json({ ok: false, message: "Token store unavailable" });
+  }
   if (!tokens?.access_token) {
     return res.status(404).json({ ok: false, message: "No token stored yet" });
   }
@@ -404,6 +420,139 @@ app.get("/webhooks/whatsapp", (req, res) => {
 });
 
 // POST — mensajes entrantes
+// ── Procesar conversación WA completa → CRM + Form responses ──
+async function processWaConversation(chatId, conv) {
+  const dialogo = conv.messages
+    .map(m => `${m.ts.slice(11,16)} - ${m.from}: ${m.text}`)
+    .join("\n");
+
+  console.log(`[WA] Processing conversation for ${chatId} (${conv.messages.length} msgs)`);
+
+  try {
+    const parseResp = await fetch(`http://localhost:${config.port}/api/crm/parse-conversation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dialogo }),
+    });
+    const parsed = await parseResp.json();
+
+    if (parsed.ok && parsed.data) {
+      const d = parsed.data;
+      const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+      if (config.bmcSheetId && credsPath) {
+        const { google } = await import("googleapis");
+        const auth = new google.auth.GoogleAuth({
+          keyFile: credsPath,
+          scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+        });
+        const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
+        const sheetId = config.bmcSheetId;
+        const now = new Date().toISOString();
+
+        // Form responses 1 — primera fila con col C (Cliente) vacía
+        const formClientes = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetId, range: "'Form responses 1'!C2:C200",
+        });
+        const formRows = formClientes.data.values || [];
+        let formRow = formRows.length + 2;
+        for (let i = 0; i < formRows.length; i++) {
+          if (!formRows[i][0] || !formRows[i][0].toString().trim()) { formRow = i + 2; break; }
+        }
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'Form responses 1'!A${formRow}:P${formRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[
+            now, now, d.cliente || "", d.telefono || chatId,
+            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "", d.categoria || "",
+            d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
+            d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
+            d.probabilidad_cierre || "", dialogo,
+          ]] },
+        });
+
+        // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
+        const crmClientes = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
+        });
+        const crmVals = crmClientes.data.values || [];
+        let crmRow = crmVals.length + 4;
+        for (let i = 0; i < crmVals.length; i++) {
+          if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
+        }
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[
+            now, d.cliente || "", d.telefono || chatId,
+            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "",
+            d.categoria || "", "", "Pendiente", d.vendedor || "",
+          ]] },
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
+        });
+
+        // Generar respuesta IA para col AF
+        const aiResp = await fetch(`http://localhost:${config.port}/api/crm/suggest-response`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            consulta: d.resumen_pedido, origen: "WA-Auto",
+            cliente: d.cliente, observaciones: d.observaciones,
+          }),
+        });
+        const ai = await aiResp.json();
+        if (ai.ok && ai.respuesta) {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
+          });
+        }
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: rangeAHAK(crmRow),
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [defaultTailAHAK()] },
+        });
+
+        console.log(`[WA] ✓ Conversation processed → CRM row ${crmRow}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
+      }
+    }
+  } catch (err) {
+    console.error(`[WA] ✗ parse-conversation failed for ${chatId}:`, err.message);
+  }
+
+  waConversations.delete(chatId);
+}
+
+// ── Auto-trigger: procesar conversaciones inactivas (5 min sin mensajes) ──
+const WA_INACTIVITY_MS = 5 * 60 * 1000; // 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [chatId, conv] of waConversations.entries()) {
+    if (now - conv.lastUpdate >= WA_INACTIVITY_MS && conv.messages.length > 0) {
+      console.log(`[WA] Auto-trigger: ${chatId} inactive for 5min (${conv.messages.length} msgs)`);
+      processWaConversation(chatId, conv);
+    }
+  }
+}, 60 * 1000); // revisar cada 1 minuto
+
 app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   res.status(200).json({ ok: true }); // responder rápido a Meta
 
@@ -425,125 +574,19 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
     conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
     conv.lastUpdate = Date.now();
 
-    req.log.info({ chatId, contactName, msgCount: conv.messages.length }, "WA message received");
+    console.log(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
 
-    // 🚀 = trigger — procesar conversación completa
+    // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
     if (text.includes("🚀")) {
-      req.log.info({ chatId }, "WA 🚀 trigger detected — parsing conversation");
-
-      const dialogo = conv.messages
-        .map(m => `${m.ts.slice(11,16)} - ${m.from}: ${m.text}`)
-        .join("\n");
-
-      try {
-        const parseResp = await fetch(`http://localhost:${config.port}/api/crm/parse-conversation`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dialogo }),
-        });
-        const parsed = await parseResp.json();
-
-        if (parsed.ok && parsed.data) {
-          const d = parsed.data;
-          const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-          if (config.bmcSheetId && credsPath) {
-            const { google } = await import("googleapis");
-            const auth = new google.auth.GoogleAuth({
-              keyFile: credsPath,
-              scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-            });
-            const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
-            const sheetId = config.bmcSheetId;
-            const now = new Date().toISOString();
-
-            // Form responses 1 — primera fila con col C (Cliente) vacía
-            const formClientes = await sheets.spreadsheets.values.get({
-              spreadsheetId: sheetId, range: "'Form responses 1'!C2:C200",
-            });
-            const formRows = formClientes.data.values || [];
-            let formRow = formRows.length + 2;
-            for (let i = 0; i < formRows.length; i++) {
-              if (!formRows[i][0] || !formRows[i][0].toString().trim()) { formRow = i + 2; break; }
-            }
-
-            await sheets.spreadsheets.values.update({
-              spreadsheetId: sheetId,
-              range: `'Form responses 1'!A${formRow}:P${formRow}`,
-              valueInputOption: "USER_ENTERED",
-              requestBody: { values: [[
-                now, now, d.cliente || "", d.telefono || contactName,
-                d.ubicacion || "", "WA", d.resumen_pedido || "", d.categoria || "",
-                d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
-                d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
-                d.probabilidad_cierre || "", dialogo,
-              ]] },
-            });
-
-            // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
-            const crmClientes = await sheets.spreadsheets.values.get({
-              spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
-            });
-            const crmVals = crmClientes.data.values || [];
-            let crmRow = crmVals.length + 4;
-            for (let i = 0; i < crmVals.length; i++) {
-              if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
-            }
-
-            await sheets.spreadsheets.values.update({
-              spreadsheetId: sheetId,
-              range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
-              valueInputOption: "USER_ENTERED",
-              requestBody: { values: [[
-                now, d.cliente || "", d.telefono || contactName,
-                d.ubicacion || "", "WA", d.resumen_pedido || "",
-                d.categoria || "", "", "Pendiente", d.vendedor || "",
-              ]] },
-            });
-            await sheets.spreadsheets.values.update({
-              spreadsheetId: sheetId,
-              range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
-              valueInputOption: "USER_ENTERED",
-              requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
-            });
-            await sheets.spreadsheets.values.update({
-              spreadsheetId: sheetId,
-              range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
-              valueInputOption: "USER_ENTERED",
-              requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
-            });
-
-            // Generar respuesta IA para col AF
-            const aiResp = await fetch(`http://localhost:${config.port}/api/crm/suggest-response`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                consulta: d.resumen_pedido, origen: "WA",
-                cliente: d.cliente, observaciones: d.observaciones,
-              }),
-            });
-            const ai = await aiResp.json();
-            if (ai.ok && ai.respuesta) {
-              await sheets.spreadsheets.values.update({
-                spreadsheetId: sheetId,
-                range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
-                valueInputOption: "USER_ENTERED",
-                requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
-              });
-            }
-
-            req.log.info({ chatId, crmRow, formRow, provider: ai.provider }, "WA conversation processed → CRM + Form");
-          }
-        }
-      } catch (err) {
-        req.log.error({ err, chatId }, "WA parse-conversation failed");
-      }
-
-      waConversations.delete(chatId);
+      console.log(`[WA] 🚀 manual trigger for ${chatId}`);
+      processWaConversation(chatId, conv);
     }
   }
 }));
 
 app.use("/calc", calcRouter);
+// Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
+app.use("/api", createFollowupsRouter());
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)

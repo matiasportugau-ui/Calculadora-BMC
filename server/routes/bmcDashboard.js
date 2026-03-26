@@ -8,6 +8,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import { google } from "googleapis";
+import {
+  defaultTailAGAK_Email,
+  rangeAGAK,
+  CRM_TAB,
+  FIRST_DATA_ROW,
+  Col,
+} from "../lib/crmOperativoLayout.js";
+import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
+import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -1658,6 +1667,142 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     res.status(503).json({ ok: false, error: "All providers failed", details: errors });
   });
 
+  // ── ingest-email: parsea email + escribe en CRM_Operativo ──
+  router.post("/crm/ingest-email", async (req, res) => {
+    const { asunto, cuerpo, remitente, messageId } = req.body || {};
+    if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
+
+    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const apiKeys = { claude: config.anthropicApiKey, openai: config.openaiApiKey, grok: config.grokApiKey, gemini: config.geminiApiKey };
+
+    const systemPrompt = `Sos un extractor de datos de emails de consulta/cotización para BMC Uruguay (paneles de aislamiento térmico). Analizás el email y extraés datos estructurados en JSON.
+
+Reglas:
+- Extraé el nombre del cliente del email (firma, saludo, o campo remitente)
+- Extraé teléfono solo si aparece explícito en el texto o firma
+- Categoría: Accesorios, Paneles techo, Paneles pared, Proyecto completo, Ferretería, Repuestos, Servicio/instalación, Otro
+- Urgencia: Hoy, 24h, Esta semana, Este mes, Sin urgencia
+- tipo_cliente: Particular, Empresa, Arquitecto, Constructor, Distribuidor, Instalador, Cliente existente, Sin clasificar
+- probabilidad_cierre: Alta (quiere comprar ya), Media (interesado, comparando), Baja (solo consulta)
+- validar_stock: Si (entrega inmediata/urgente), No (sin urgencia de entrega)
+- cotizacion_formal: Si (pide presupuesto/cotización explícitamente), No
+- El resumen_pedido debe ser conciso: qué necesita, medidas si las dio, uso
+- ubicacion: extraé si mencionan ciudad, departamento, zona, dirección de obra
+- observaciones: contexto relevante que no entra en otros campos
+
+Respondé SOLO JSON válido, sin markdown ni explicación.`;
+
+    const userMsg = `Extraé los datos de este email de consulta:\n\nDe: ${remitente || "desconocido"}\nAsunto: ${asunto || "sin asunto"}\n\n${cuerpo}`;
+    const jsonSchema = `{\n  "cliente": "", "telefono": "", "ubicacion": "", "email_remitente": "",\n  "resumen_pedido": "", "categoria": "", "urgencia": "",\n  "tipo_cliente": "", "cotizacion_formal": "", "validar_stock": "",\n  "probabilidad_cierre": "", "observaciones": ""\n}`;
+
+    let parsed = null;
+    let provider = null;
+    const errors = [];
+    for (const p of RANKING) {
+      const apiKey = apiKeys[p];
+      if (!apiKey) { errors.push(`${p}: no key`); continue; }
+      try {
+        let raw = "";
+        if (p === "claude") {
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          const anthropic = new Anthropic({ apiKey });
+          const msg = await anthropic.messages.create({
+            model: "claude-haiku-4-5-20251001", max_tokens: 500, system: systemPrompt,
+            messages: [{ role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` }],
+          });
+          raw = msg.content[0]?.text || "";
+        } else if (p === "openai" || p === "grok") {
+          const { default: OpenAI } = await import("openai");
+          const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
+          const completion = await client.chat.completions.create({
+            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini", max_tokens: 500,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `${userMsg}\n\nFormato esperado:\n${jsonSchema}` },
+            ],
+          });
+          raw = completion.choices[0]?.message?.content || "";
+        } else if (p === "gemini") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genai = new GoogleGenerativeAI(apiKey);
+          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}\n\nFormato esperado:\n${jsonSchema}`);
+          raw = result.response.text() || "";
+        }
+        const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        parsed = JSON.parse(cleaned);
+        provider = p;
+        break;
+      } catch (e) {
+        errors.push(`${p}: ${e.message?.slice(0, 80)}`);
+      }
+    }
+
+    if (!parsed) {
+      return res.status(503).json({ ok: false, error: "All providers failed", details: errors });
+    }
+
+    const d = parsed;
+    let crmRow = null;
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    if (config.bmcSheetId && credsPath) {
+      try {
+        const { google } = await import("googleapis");
+        const auth = new google.auth.GoogleAuth({
+          keyFile: credsPath,
+          scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+        });
+        const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
+        const sheetId = config.bmcSheetId;
+        const now = new Date().toISOString();
+
+        // CRM_Operativo — primera fila con col C vacía a partir de fila 4
+        const crmClientes = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
+        });
+        const crmVals = crmClientes.data.values || [];
+        crmRow = crmVals.length + 4;
+        for (let i = 0; i < crmVals.length; i++) {
+          if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
+        }
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[
+            now, d.cliente || "", d.telefono || d.email_remitente || remitente || "",
+            d.ubicacion || "", "Email-Auto", d.resumen_pedido || "",
+            d.categoria || "", "", "Pendiente", "",
+          ]] },
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: rangeAGAK(crmRow),
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [defaultTailAGAK_Email()] },
+        });
+        console.log(`[Email] ✓ Ingested → CRM row ${crmRow}, provider: ${provider}, messageId: ${messageId || "?"}`);
+      } catch (e) {
+        console.error(`[Email] ✗ Sheets write failed:`, e.message);
+      }
+    }
+
+    res.json({ ok: true, data: d, provider, crmRow, messageId: messageId || null });
+  });
+
   router.post("/crm/parse-conversation", async (req, res) => {
     const { dialogo } = req.body || {};
     if (!dialogo) return res.status(400).json({ ok: false, error: "Missing dialogo" });
@@ -1731,6 +1876,192 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
       }
     }
     res.status(503).json({ ok: false, error: "All providers failed", details: errors });
+  });
+
+  // ── CRM cockpit (columnas AG–AK) — requiere API_AUTH_TOKEN ─────────────────
+  function requireCrmCockpitAuth(req, res, next) {
+    const token = config.apiAuthToken;
+    if (!token) {
+      return res.status(503).json({
+        ok: false,
+        error: "API_AUTH_TOKEN not configured — cockpit mutations disabled",
+      });
+    }
+    const auth = String(req.headers.authorization || "");
+    const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
+    if (bearer === token || xKey === token) return next();
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  async function getCrmSheetsWrite() {
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    if (!sheetId || !credsPath) throw new Error("Sheets not configured");
+    const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+    if (!fs.existsSync(resolved)) throw new Error("Credentials file not found");
+    const auth = new google.auth.GoogleAuth({
+      keyFile: resolved,
+      scopes: [SCOPE_WRITE],
+    });
+    return google.sheets({ version: "v4", auth: await auth.getClient() });
+  }
+
+  router.get("/crm/cockpit/row/:rowNum", requireCrmCockpitAuth, async (req, res) => {
+    const rowNum = Number(req.params.rowNum);
+    if (!rowNum || rowNum < FIRST_DATA_ROW) {
+      return res.status(400).json({ ok: false, error: `row must be >= ${FIRST_DATA_ROW}` });
+    }
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const r = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!A${rowNum}:AK${rowNum}`,
+      });
+      const parsed = parseCrmRowAtoAK(r.data.values || []);
+      return res.json({ ok: true, row: rowNum, parsed });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/crm/cockpit/quote-link", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    const url = String(req.body?.url || "").trim();
+    if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row (>= ${FIRST_DATA_ROW})` });
+    if (!url) return res.status(400).json({ ok: false, error: "Missing url" });
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const sheets = await getCrmSheetsWrite();
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!${Col.LINK_PRESUPUESTO}${row}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [[url]] },
+      });
+      return res.json({ ok: true, row, column: Col.LINK_PRESUPUESTO });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/crm/cockpit/approval", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    const approved = req.body?.approved;
+    if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
+    if (typeof approved !== "boolean") return res.status(400).json({ ok: false, error: "Missing approved (boolean)" });
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const val = approved ? "Sí" : "No";
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!${Col.APROBADO_ENVIAR}${row}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [[val]] },
+      });
+      return res.json({ ok: true, row, aprobadoEnviar: val });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/crm/cockpit/mark-sent", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    const sentAt = String(req.body?.sentAt || "").trim() || new Date().toISOString();
+    if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const sheets = await getCrmSheetsWrite();
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [[sentAt]] },
+      });
+      return res.json({ ok: true, row, enviadoEl: sentAt });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/crm/cockpit/send-approved", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const r = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!A${row}:AK${row}`,
+      });
+      const parsed = parseCrmRowAtoAK(r.data.values || []);
+      if (isSi(parsed.bloquearAuto)) {
+        return res.status(400).json({ ok: false, error: "Bloquear auto is Sí — row locked" });
+      }
+      if (!isSi(parsed.aprobadoEnviar)) {
+        return res.status(400).json({ ok: false, error: "Aprobado enviar must be Sí" });
+      }
+      if (String(parsed.enviadoEl || "").trim()) {
+        return res.status(400).json({ ok: false, error: "Already marked sent (Enviado el)" });
+      }
+      const text = String(parsed.respuestaSugerida || parsed.consulta || "").trim();
+      if (!text) return res.status(400).json({ ok: false, error: "No text (AF/G empty)" });
+
+      const origen = String(parsed.origen || "");
+      const qid = extractMlQuestionId(parsed.observaciones);
+      const base = String(config.publicBaseUrl || `http://127.0.0.1:${config.port}`).replace(/\/$/, "");
+
+      if (qid && (/ML/i.test(origen) || /Q:\d+/.test(parsed.observaciones))) {
+        const fr = await fetch(`${base}/ml/questions/${qid}/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const data = await fr.json().catch(() => ({}));
+        if (!fr.ok) {
+          return res.status(502).json({ ok: false, error: "ML answer failed", status: fr.status, details: data });
+        }
+        const sentAt = new Date().toISOString();
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[sentAt]] },
+        });
+        return res.json({ ok: true, channel: "ml", questionId: qid, sentAt, ml: data });
+      }
+
+      if (/WA/i.test(origen) || /WhatsApp/i.test(origen)) {
+        if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
+          return res.status(503).json({ ok: false, error: "WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID not set" });
+        }
+        const to = parsed.telefono;
+        if (!to) return res.status(400).json({ ok: false, error: "Missing phone (column D)" });
+        const wa = await sendWhatsAppText({
+          to,
+          text,
+          accessToken: config.whatsappAccessToken,
+          phoneNumberId: config.whatsappPhoneNumberId,
+        });
+        const sentAt = new Date().toISOString();
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[sentAt]] },
+        });
+        return res.json({ ok: true, channel: "whatsapp", sentAt, wa });
+      }
+
+      return res.status(400).json({
+        ok: false,
+        error: "Unsupported origen for send-approved (need ML + Q:id in W, or WA in F)",
+        origen,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
   });
 
   return router;

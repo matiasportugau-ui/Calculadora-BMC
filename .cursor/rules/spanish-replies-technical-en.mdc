@@ -1,0 +1,14 @@
+---
+description: "Responder en español cuando el usuario escribe en español o lo pide; mantener términos técnicos y código en inglés cuando mejore la claridad."
+alwaysApply: false
+---
+
+# Idioma (español + técnico en inglés)
+
+Cuando el usuario escriba en español o pida respuestas en español:
+
+- Responder en **español** claro.
+- Mantener en **inglés** sin traducir: código, rutas de archivo, nombres de símbolos, comandos CLI, y términos técnicos habituales si traducirlos empeora la precisión (por ejemplo: deploy, PR, API, OAuth, lint, build).
+- No traducir nombres de productos, marcas o repos.
+
+Si el usuario escribe solo en inglés y no pide español, seguir en inglés.

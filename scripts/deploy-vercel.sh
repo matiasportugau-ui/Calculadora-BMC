@@ -12,7 +12,8 @@ cd "$REPO"
 PROD=false
 [[ "$1" == "--prod" ]] && PROD=true
 
-API_URL="${VITE_API_URL:-https://panelin-calc-642127786762.us-central1.run.app}"
+# Canonical prod API (align with scripts/smoke-prod-api.mjs DEFAULT_BASE)
+API_URL="${VITE_API_URL:-https://panelin-calc-q74zutv7dq-uc.a.run.app}"
 echo ""
 echo "=== Deploy Calculadora BMC to Vercel ==="
 echo "  API URL (for Cargar desde MATRIZ): $API_URL"

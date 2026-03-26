@@ -108,6 +108,8 @@ Si el backend está en Cloud Run (`*.run.app`), las variables `ML_CLIENT_ID` y `
    ```bash
    npm run ml:cloud-run
    ```
+   El script `./run_ml_cloud_run_setup.sh` también sincroniza, **si están en `.env`**: `WEBHOOK_VERIFY_TOKEN`, `BMC_SHEET_ID`, y opcionalmente `API_AUTH_TOKEN` / `API_KEY` (cockpit y `suggest-response`). Así el **webhook** `POST /webhooks/ml` puede validar el token y el **ML→CRM** tiene `BMC_SHEET_ID` en Cloud Run.
+
    Si el servicio tiene otro nombre (ej. `panelin-calc-642127786762`):
    ```bash
    ./run_ml_cloud_run_setup.sh panelin-calc-642127786762

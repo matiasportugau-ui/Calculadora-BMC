@@ -17,6 +17,7 @@ export function getDimensioningParam(path, defaultValue) {
 /** Schema base: factores de fórmula (no dependen de paneles) */
 const FORMULA_FACTORS = [
   { path: "FIJACIONES_VARILLA.espaciado_perimetro", label: "Espaciado perímetro fijación varilla (m)", default: 2.5, formula: "puntos = (cantP*apoyos)*2 + (largo*2/valor)", unidad: "m", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.puntos_comercial_default", label: "Puntos fijación (BOM comercial ISODEC PIR)", default: 22, formula: "override cuando opciones.bomComercial", unidad: "unid", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_VARILLA.varillas_por_punto", label: "Varillas por punto de fijación", default: 4, formula: "varillas = ceil(puntos/valor)", unidad: "unid", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_CABALETE.factor_largo", label: "Factor largo caballete (m)", default: 2.9, formula: "caballetes por tramo = largo/valor + 1", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_CABALETE.factor_ancho", label: "Factor ancho caballete (m)", default: 0.3, formula: "caballetes perim = (largo*2)/valor", unidad: "m", categoria: "Fijaciones Techo" },
@@ -24,6 +25,9 @@ const FORMULA_FACTORS = [
   { path: "PERFILERIA.soporte_canalon_ml_por_apoyo", label: "ML soporte canalón por apoyo", default: 0.30, formula: "mlSoportes = (cantP+1)*valor", unidad: "m", categoria: "Perfilería" },
   { path: "PERFILERIA.canalon_empalme_silicona_ml", label: "Silicona empalme canalón (m)", default: 0.6, formula: "ml por empalme × 2 cordones", unidad: "m", categoria: "Perfilería" },
   { path: "SELLADORES_TECHO.silicona_ml_por_unid", label: "Silicona techo: ml por unidad", default: 10.27, formula: "siliconas = ceil(mlSilicona/valor)", unidad: "ml", categoria: "Selladores Techo" },
+  { path: "SELLADORES_TECHO.comercial_siliconas", label: "Kit comercial: cantidad siliconas", default: 4, formula: "BOM comercial ISODEC PIR", unidad: "unid", categoria: "Selladores Techo" },
+  { path: "SELLADORES_TECHO.comercial_membranas", label: "Kit comercial: rollos membrana", default: 2, formula: "BOM comercial ISODEC PIR", unidad: "unid", categoria: "Selladores Techo" },
+  { path: "SELLADORES_TECHO.comercial_espumas", label: "Kit comercial: espumas PU", default: 4, formula: "BOM comercial ISODEC PIR", unidad: "unid", categoria: "Selladores Techo" },
   { path: "SELLADORES_TECHO.cinta_paneles_por_rollo", label: "Cinta techo: paneles por rollo", default: 10, formula: "cintas = ceil(cantP/valor)", unidad: "paneles", categoria: "Selladores Techo" },
   { path: "FIJACIONES_PARED.anclaje_espaciado", label: "Espaciado anclajes pared (m)", default: 0.30, formula: "anclajes = ceil(anchoTotal/valor)", unidad: "m", categoria: "Fijaciones Pared" },
   { path: "FIJACIONES_PARED.tornillo_t2_por_m2", label: "Tornillos T2 por m² pared", default: 5.5, formula: "tornillos = ceil(areaNeta*valor)", unidad: "unid/m²", categoria: "Fijaciones Pared" },

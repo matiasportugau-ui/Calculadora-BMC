@@ -1,0 +1,282 @@
+{
+  "fetchedAt": "2026-03-24T19:13:08.159Z",
+  "apiBase": "http://127.0.0.1:3001",
+  "questionsTotalReported": 484,
+  "ordersTotalReported": 22,
+  "questionsAgg": {
+    "count": 484,
+    "byStatus": {
+      "ANSWERED": 475,
+      "BANNED": 8,
+      "UNANSWERED": 1
+    },
+    "answered": 475,
+    "withBuyerText": 476,
+    "dateFirst": "2025-08-19T13:58:02.691Z",
+    "dateLast": "2026-03-24T18:01:23.055Z"
+  },
+  "ordersAgg": {
+    "count": 22,
+    "byStatus": {
+      "paid": 21,
+      "cancelled": 1
+    },
+    "fulfilledCount": 20,
+    "withShippingId": 8
+  },
+  "questionSamples": [
+    {
+      "id": 13406604590,
+      "status": "ANSWERED",
+      "item_id": "MLU467582115",
+      "date_created": "2025-08-19T09:58:02.691078764-04:00",
+      "buyer_text": "Hola buen día , quisiera saber el costo para techo de 2 aguas , medidas : largo 3,60 x ancho 8m gracias",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13406851180,
+      "status": "ANSWERED",
+      "item_id": "MLU451512193",
+      "date_created": "2025-08-19T14:07:43.866829332-04:00",
+      "buyer_text": "Vuenastarde cusnto salen lachapa cadauna de 7 m grasia",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13406980012,
+      "status": "ANSWERED",
+      "item_id": "MLU467582115",
+      "date_created": "2025-08-19T16:24:18.432283899-04:00",
+      "buyer_text": "Buenas tardes , serían 2 en esas medidas",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13406427993,
+      "status": "ANSWERED",
+      "item_id": "MLU758577874",
+      "date_created": "2025-08-19T17:36:08.840710853-04:00",
+      "buyer_text": "Hola quiero armar un furgón refrigerante. Será qué viene material esquinero etc para unir esas chapas isopanel de 5cm ?",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13407116795,
+      "status": "ANSWERED",
+      "item_id": "MLU758577874",
+      "date_created": "2025-08-20T14:14:40.199146801-04:00",
+      "buyer_text": "A qué bueno será que me pasa un presupuesto del material cuando pueda sin apuro el proyecto es de 3mts x 1.60. alto:1.80",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13506727486,
+      "status": "ANSWERED",
+      "item_id": "MLU671650378",
+      "date_created": "2026-01-16T13:59:38.026903106-04:00",
+      "buyer_text": "Me gustaría que me pasara presupuesto para enviarme 3 de 3,5 metros y 30 mm a Treinta y tres. Gracias",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13506067191,
+      "status": "ANSWERED",
+      "item_id": "MLU653523003",
+      "date_created": "2026-01-16T14:22:20.304193978-04:00",
+      "buyer_text": "Que tal ,sobresale si ,quizás unos 10 o 15cm ,te puedo confirmar bien mañana cuánto exactamente",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13506744688,
+      "status": "ANSWERED",
+      "item_id": "MLU653523003",
+      "date_created": "2026-01-16T14:26:23.102479702-04:00",
+      "buyer_text": "Muchas gracias",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13506772710,
+      "status": "ANSWERED",
+      "item_id": "MLU445615830",
+      "date_created": "2026-01-16T14:59:42.501070549-04:00",
+      "buyer_text": "Ok es así ...2 paredes 3.5 restándole a una los 2.2 de construcción ya hecha ,,alero de 20cm está bien....Y pingamosle altura de 2.5 a 2.3 . Y una aventura de 1 por 1.2 en una de las paredes de 3 metros. Con esto como ejemplo ya tendría una buena idea de costos. Muchas gracias",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13506871818,
+      "status": "ANSWERED",
+      "item_id": "MLU467582410",
+      "date_created": "2026-01-16T17:31:25.439032484-04:00",
+      "buyer_text": "Hola recién veo el mensaje, es para hacer una continuación pero más como cámara de calor le digo yo, no requiere frío, chapas más finas me vendrían mejor porque me imagino abarata costos. Y está adentro de un galpón. Lo que yo quiero es cerrar ermetico como está la cámara.",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13549292847,
+      "status": "ANSWERED",
+      "item_id": "MLU445615830",
+      "date_created": "2026-03-23T17:12:02.766778858-04:00",
+      "buyer_text": "Perdón no preste atención. Es para techo",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13549310351,
+      "status": "ANSWERED",
+      "item_id": "MLU757318280",
+      "date_created": "2026-03-23T17:37:41.139442272-04:00",
+      "buyer_text": "Hola necesito cubrir 24m2 lineales cuánto es ?",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13550321100,
+      "status": "ANSWERED",
+      "item_id": "MLU445615830",
+      "date_created": "2026-03-24T07:25:38.314687534-04:00",
+      "buyer_text": "Sería para .nueva palmira .colonia",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13549728569,
+      "status": "ANSWERED",
+      "item_id": "MLU757318280",
+      "date_created": "2026-03-24T11:14:12.396167688-04:00",
+      "buyer_text": "Haces envíos a ciudad de la costa ?",
+      "has_seller_answer": true
+    },
+    {
+      "id": 13550595916,
+      "status": "UNANSWERED",
+      "item_id": "MLU445615830",
+      "date_created": "2026-03-24T14:01:23.055925674-04:00",
+      "buyer_text": "Graciassss",
+      "has_seller_answer": false
+    }
+  ],
+  "orderSamples": [
+    {
+      "id": 2000015644217084,
+      "status": "paid",
+      "fulfilled": null,
+      "date_created": "2026-03-21T11:21:35.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "BICCAFLORENCIA",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000015239145716,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-02-21T17:08:26.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "FEMAR18",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000015226698734,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-02-20T16:08:50.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "NESTORTOZZI",
+      "tags": [
+        "paid",
+        "delivered"
+      ]
+    },
+    {
+      "id": 2000015168140782,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-02-16T11:46:18.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "OCHAN2928",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000014875571540,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-01-26T17:05:27.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "MARIAFERNANDAMUTUBERRIA",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000014830730180,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-01-22T22:45:12.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "MIMA60",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000014723449778,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-01-15T08:32:55.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "PEPA6132875",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000014670419142,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-01-11T17:26:08.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "ROCA5850458",
+      "tags": [
+        "d2c",
+        "pack_order",
+        "paid",
+        "one_shot",
+        "delivered"
+      ]
+    },
+    {
+      "id": 2000014630403470,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2026-01-08T14:49:07.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "FIMA5913757",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    },
+    {
+      "id": 2000014354284832,
+      "status": "paid",
+      "fulfilled": true,
+      "date_created": "2025-12-17T11:55:28.000-04:00",
+      "currency_id": "UYU",
+      "buyer_nickname": "MANANTIALES MAQUINAR",
+      "tags": [
+        "no_shipping",
+        "paid",
+        "not_delivered"
+      ]
+    }
+  ]
+}

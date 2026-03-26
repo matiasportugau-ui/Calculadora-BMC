@@ -51,6 +51,7 @@ import FloorPlanEditor from "./FloorPlanEditor.jsx";
 import RoofPreview from "./RoofPreview.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -153,11 +154,11 @@ function SegmentedControl({ value, onChange, options = [], disabledIds = [] }) {
   );
 }
 
-function Toggle({ label, value, onChange }) {
+function Toggle({ label, value, onChange, disabled = false }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: FONT }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: FONT, opacity: disabled ? 0.5 : 1 }}>
       <span style={{ fontSize: 13, fontWeight: 500, color: C.tp }}>{label}</span>
-      <button onClick={() => onChange(!value)} style={{ width: 40, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: value ? C.primary : C.border, position: "relative", transition: TR, flexShrink: 0 }}>
+      <button type="button" disabled={disabled} onClick={() => !disabled && onChange(!value)} style={{ width: 40, height: 24, borderRadius: 12, border: "none", cursor: disabled ? "not-allowed" : "pointer", background: value ? C.primary : C.border, position: "relative", transition: TR, flexShrink: 0 }}>
         <span style={{ position: "absolute", top: 2, left: value ? 18 : 2, width: 20, height: 20, borderRadius: "50%", background: C.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: TR }} />
       </button>
     </div>
@@ -814,7 +815,7 @@ const TECHO_INITIAL_VENDEDOR = {
   tipoAguas: "", tipoEst: "", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
   borders: { frente: "", fondo: "", latIzq: "", latDer: "" },
   inclAccesorios: true,
-  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false },
 };
 
 const ESTRUCTURA_OPTIONS = [
@@ -1367,7 +1368,7 @@ export default function PanelinCalculadoraV3() {
     setScenario("solo_techo");
     setLP(modoVendedor ? "" : getListaDefault());
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "calcular_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true } });
+    setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "calcular_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setTechoAnchoModo("metros");
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
@@ -1457,11 +1458,10 @@ export default function PanelinCalculadoraV3() {
   const [gptLoading, setGptLoading] = useState(false);
 
   const fetchGptQuotations = useCallback(async () => {
-    const apiUrl = import.meta.env?.VITE_API_URL;
-    if (!apiUrl) return;
+    const apiUrl = getCalcApiBase();
     setGptLoading(true);
     try {
-      const resp = await fetch(`${apiUrl.replace(/\/$/, "")}/calc/cotizaciones`);
+      const resp = await fetch(`${apiUrl}/calc/cotizaciones`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       if (data.ok) setGptQuotations(data.cotizaciones || []);
@@ -1977,6 +1977,15 @@ export default function PanelinCalculadoraV3() {
                   {stepId === "selladores" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       <Toggle label="¿Consideramos selladores?" value={techo.opciones?.inclSell !== false} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } }))} />
+                      <Toggle
+                        label="BOM comercial ISODEC PIR (2 goteros + 6 babetas + kit selladores + 22 pts fijación)"
+                        value={techo.opciones?.bomComercial === true}
+                        onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, bomComercial: v } }))}
+                        disabled={techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas"}
+                      />
+                      {(techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas") && (
+                        <div style={{ fontSize: 11, color: C.ts, opacity: 0.85 }}>Solo familia ISODEC PIR y techo una agua. En dos aguas el kit se duplicaría por faldón.</div>
+                      )}
                       <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                         <div style={{ fontWeight: 600, color: C.tp, marginBottom: 6 }}>Uso de selladores</div>
                         <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -2626,7 +2635,7 @@ export default function PanelinCalculadoraV3() {
           {/* Condiciones */}
           {groups.length > 0 && <div style={{ ...sectionS, fontSize: 12, color: C.ts, lineHeight: 1.6 }}>
             <div style={{ fontWeight: 700, marginBottom: 4, color: C.tp }}>Condiciones comerciales:</div>
-            <div>Entrega: 10 a 15 días hábiles. Seña: 60%, saldo contra entrega. Validez: 10 días. Precios en USD.</div>
+            <div>Fabricación y entrega: 10 a 45 días (depende producción). Seña 60% al confirmar; saldo 40% previo a retiro de fábrica. Validez: 10 días. Precios en USD.</div>
             <div style={{ marginTop: 12, fontWeight: 700, color: C.tp }}>Datos bancarios:</div>
             <div>Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}

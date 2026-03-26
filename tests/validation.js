@@ -8,6 +8,20 @@ import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED } from "../src/data/constants.js";
+import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
+import { buildProgramSnapshot } from "../scripts/program-status.mjs";
+import {
+  cuerpoFromMessage,
+  messageToIngestBody,
+  remitenteFromFrom,
+  selectMessagesForIngest,
+  stableMessageKey,
+} from "../server/lib/emailSnapshotIngest.js";
+import {
+  parseCsvNumber,
+  findVentaColumnIndex,
+  getDuplicatePathReport,
+} from "../src/utils/csvPricingImport.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -403,6 +417,37 @@ assert(
   ">=1"
 );
 
+// --- BOM comercial ISODEC PIR (2+6+kit selladores + puntos fijos) ---
+const techoComercial = calcTechoCompleto({
+  familia: "ISODEC_PIR",
+  espesor: 80,
+  largo: 7.1,
+  ancho: 3.36,
+  tipoEst: "metal",
+  borders: { frente: "gotero_frontal", fondo: "babeta_empotrar", latIzq: "babeta_empotrar", latDer: "babeta_empotrar" },
+  opciones: { bomComercial: true, inclSell: true },
+  color: "Blanco",
+});
+assert("calcTechoCompleto BOM comercial: no error", !techoComercial.error, techoComercial.error, undefined);
+assert(
+  "calcTechoCompleto BOM comercial: aviso en warnings",
+  Array.isArray(techoComercial.warnings) && techoComercial.warnings.some((w) => String(w).includes("BOM comercial")),
+  techoComercial.warnings,
+  "includes BOM comercial"
+);
+assert(
+  "calcTechoCompleto BOM comercial: líneas kit selladores",
+  techoComercial.allItems.some((i) => String(i.label || "").includes("(kit comercial)")),
+  techoComercial.allItems.map((i) => i.label).join(" | "),
+  "kit comercial"
+);
+assert(
+  "calcTechoCompleto BOM comercial: gotero comercial",
+  techoComercial.allItems.some((i) => String(i.label || "").includes("Gotero frontal (BOM comercial)")),
+  true,
+  true
+);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 15: Pendiente Engine
 // ═══════════════════════════════════════════════════════════════════════════
@@ -579,6 +624,119 @@ assert(
   deserP.techo.zonas[0].preview?.slopeMark,
   "along_largo_pos",
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 20: followUpStore — due list & date helpers
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 20: followUpStore ═══");
+
+const past = new Date("2020-01-01T00:00:00.000Z").toISOString();
+const future = new Date("2035-01-01T00:00:00.000Z").toISOString();
+const itemsSample = [
+  { status: "open", nextFollowUpAt: past },
+  { status: "open", nextFollowUpAt: future },
+  { status: "open", nextFollowUpAt: null },
+  { status: "done", nextFollowUpAt: past },
+];
+const due = listDueItems(itemsSample, new Date("2025-06-01T12:00:00.000Z"));
+assert("listDueItems: open + past due", due.length === 2, due.length, 2);
+assert("parseDueInput ISO", parseDueInput("2026-03-01")?.startsWith("2026-03-01"), true, true);
+assert("parseDays(7) returns string", typeof parseDays(7) === "string", typeof parseDays(7), "string");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 21: program-status snapshot — progress weighted by estHours
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 21: buildProgramSnapshot ═══");
+
+const miniProg = {
+  programId: "test",
+  title: "Test",
+  updatedAt: "2026-01-01",
+  currentPhaseId: "p1",
+  phases: [{ id: "p1", name: "P", order: 1, status: "active" }],
+  streams: [
+    {
+      id: "s",
+      name: "Stream",
+      tasks: [
+        { id: "a", status: "done", estHours: 2 },
+        { id: "b", status: "todo", estHours: 8 },
+      ],
+    },
+  ],
+};
+const snap = buildProgramSnapshot(miniProg);
+assert(
+  "buildProgramSnapshot: pctWeighted 20% (2h/10h)",
+  snap.progress.pctWeighted === 20,
+  snap.progress.pctWeighted,
+  20,
+);
+assert("buildProgramSnapshot: pct by count 50%", snap.progress.pct === 50, snap.progress.pct, 50);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 22: email snapshot ingest helpers
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 22: emailSnapshotIngest ═══");
+
+assert(
+  "remitenteFromFrom formats name + address",
+  remitenteFromFrom([{ name: "A", address: "a@b.com" }]) === "A <a@b.com>",
+  remitenteFromFrom([{ name: "A", address: "a@b.com" }]),
+  "A <a@b.com>",
+);
+
+const snapMini = {
+  messages: [
+    { category: "ventas", uid: 1, accountId: "x", subject: "Hola", text: "cotización de paneles 12345", from: [{ address: "c@d.com" }] },
+    { category: "otros", uid: 2, text: "spam spam spam spam spam" },
+  ],
+};
+const picked = selectMessagesForIngest(snapMini, { category: "ventas", limit: 10, processed: new Set() });
+assert("selectMessagesForIngest: ventas only", picked.length === 1, picked.length, 1);
+
+const body = messageToIngestBody(snapMini.messages[0]);
+assert("messageToIngestBody has cuerpo", body.cuerpo.includes("cotización"), body.cuerpo, "contains");
+
+assert(
+  "stableMessageKey uses accountId:uid fallback",
+  stableMessageKey({ accountId: "bmc-ventas", uid: 99 }) === "bmc-ventas:99",
+  stableMessageKey({ accountId: "bmc-ventas", uid: 99 }),
+  "bmc-ventas:99",
+);
+
+assert(
+  "cuerpoFromMessage prefers text over html",
+  cuerpoFromMessage({ text: "hello", html: "<b>x</b>" }) === "hello",
+  cuerpoFromMessage({ text: "hello", html: "<b>x</b>" }),
+  "hello",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 23: CSV pricing import (MATRIZ / editor)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 23: CSV pricing import ═══");
+
+assert("parseCsvNumber 42,99", parseCsvNumber("42,99") === 42.99, parseCsvNumber("42,99"), 42.99);
+assert("parseCsvNumber 1.025,50 (miles+coma)", parseCsvNumber("1.025,50") === 1025.5, parseCsvNumber("1.025,50"), 1025.5);
+assert("parseCsvNumber 1025.50 (punto decimal)", parseCsvNumber("1025.50") === 1025.5, parseCsvNumber("1025.50"), 1025.5);
+assert("parseCsvNumber 42.99", parseCsvNumber("42.99") === 42.99, parseCsvNumber("42.99"), 42.99);
+assert("parseCsvNumber vacío → null", parseCsvNumber("") === null, parseCsvNumber(""), null);
+assert("parseCsvNumber null → null", parseCsvNumber(null) === null, parseCsvNumber(null), null);
+
+const hdrMatriz = "path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,unidad,tab".split(",");
+const hdrEditor = "path,label,categoria,costo,venta_bmc_local,venta_web,unidad".split(",");
+assert("findVentaColumnIndex MATRIZ", findVentaColumnIndex(hdrMatriz) === 4, findVentaColumnIndex(hdrMatriz), 4);
+assert("findVentaColumnIndex editor", findVentaColumnIndex(hdrEditor) === 4, findVentaColumnIndex(hdrEditor), 4);
+
+const dupLines = [
+  "path,costo,venta_local",
+  "A.B,1,2",
+  "A.B,3,4",
+  "C.D,1,1",
+];
+const dups = getDuplicatePathReport(dupLines, 0);
+assert("getDuplicatePathReport one dup", dups.length === 1 && dups[0].path === "A.B" && dups[0].count === 2, JSON.stringify(dups), "1 dup A.B");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

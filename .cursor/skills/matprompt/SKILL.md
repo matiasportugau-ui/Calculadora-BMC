@@ -39,7 +39,15 @@ description: >
    - Referenciar rutas de repo **concretas** (`docs/…`, `server/…`, `src/…`) cuando aplique.  
    - No inventar sheet IDs ni secretos; usar `config` / `process.env` / placeholders.
 
-4. **Output canónico**  
+4. **Micro-framework (Workspace-style; obligatorio en preflight y en cada bundle)**  
+   Inspiración: guías tipo *Gemini for Google Workspace* — **Persona · Task · Context · Format**; tareas con **verbo explícito**; prompts demasiado cortos suelen fallar (en producto, los mejores suelen llevar **~21 palabras con contexto**; aquí los bundles son más largos pero el principio es el mismo: **no sub-especificar**).
+
+   - **Power prompt (opcional):** Si el objetivo del usuario u Orquestador es una sola frase ambigua, añadir al inicio del bundle (o del delta) una línea: *«Make this a power prompt: [texto del usuario]»* — es decir, una **reformulación canónica** con task + contexto mínimo antes de que los roles ejecuten.  
+   - **Desambiguación:** Incluir subsección **«Preguntas para Matias / Orquestador»** cuando falte alcance, prioridad o fuente de verdad — mismo espíritu que *What questions do you have for me that would help you provide the best output?* Cerrar respuestas antes de pasos caros.  
+   - **Restricciones:** Por rol, donde aplique, fijar **formato** (tabla, bullets máx., secciones), **tono** (formal, técnico, memo), y **fuentes obligatorias** / *grounding* (equivalente a `@file` en Workspace: *solo* `docs/team/…`, `planilla-inventory`, `MAPPER-PRECISO`, etc.).  
+   - **Una tarea por prompt pesado:** Si un rol debe hacer varias cosas grandes, **partir** en bullets o pasos secuenciales (*break it up*), no un solo párrafo indigesto.
+
+5. **Output canónico**  
    - **Bundle completo:** sección nueva en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o archivo `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md` (según convención del run).  
    - **Delta:** mismo doc, subsección «RUN … — DELTA (fecha)».
 
@@ -55,10 +63,13 @@ Para cada rol §2 que participe:
 - **Objetivo del rol en este run:**
 - **Leer antes de actuar:**
 - **Hacer (máx. 5 bullets):**
+- **Restricciones (formato / tono / fuentes obligatorias):** (si aplica; si no, «N/A»)
 - **Entregables:**
 - **No hacer (anti-patrones):**
 - **Handoff a:** (otros roles / Matias)
 ```
+
+**Cabecera del bundle (una vez por run):** cuando el objetivo sea ambiguo, incluir **Power prompt** (reformulación canónica del objetivo) y/o **Preguntas para Matias / Orquestador** (lista breve) antes de las subsecciones por rol.
 
 ---
 

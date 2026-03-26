@@ -21,6 +21,14 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 
 **Parallel/Serial Agent:** Consultar `bmc-parallel-serial-agent` antes o durante el run para decidir qué ejecutar en paralelo vs serie y la mejor combinación de agentes según scores (JUDGE-REPORT-HISTORICO) y contexto.
 
+**Prompting micro-framework (paso 0a — MATPROMT):** Alineado a buenas prácticas tipo *Gemini for Google Workspace* (Persona / Task / Context / Format; prompts con suficiente contexto, no solo &lt;9 palabras). En cada full team run, **MATPROMT** aplica en el bundle:
+
+1. **Power prompt (opcional):** Si el objetivo del usuario llega vago, el bundle puede incluir una línea *«Reescribe como power prompt: …»* para fijar verbo de tarea + contexto mínimo antes de que los roles ejecuten.
+2. **Desambiguación:** Una subsección **«Preguntas abiertas para Matias / Orquestador»** (o *What questions do you have for me?*) cuando falte alcance, prioridad o fuente canónica — cerrar antes de pasos costosos (Mapping, código).
+3. **Restricciones explícitas:** Checklist por rol: **formato de salida** (Markdown, tabla, lista), **límites** (bullets máx., longitud), **fuentes obligatorias** (`docs/…`, `planilla-inventory`, `PROJECT-STATE`) — equivalente a *grounding* con `@file` en Workspace.
+
+Detalle operativo: skill `matprompt` (`.cursor/skills/matprompt/SKILL.md`).
+
 ---
 
 ## Team composition (roles)
@@ -64,7 +72,7 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 | Step | Role | Skill(s) | Handoff |
 |------|------|----------|---------|
 | 0 | Orchestrator | — | Read `PROJECT-STATE.md`, `PROMPT-FOR-EQUIPO-COMPLETO.md`, `IMPROVEMENT-BACKLOG-BY-AGENT.md`; re-count §2 y revisar **§2.2** (skills transversales); resolver pendientes. |
-| 0a | **MATPROMT** | `matprompt` | Emitir **bundle de prompts orientadores** por rol §2 para este run (objetivo, lecturas, entregables, criterios, anti-patrones, handoff). Escribir en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si hay tarea nueva o cambio de prioridad, emitir **MATPROMT-DELTA** para roles afectados. Coordinar con Orchestrator y Parallel/Serial si el orden de ejecución cambia. |
+| 0a | **MATPROMT** | `matprompt` | Emitir **bundle de prompts orientadores** por rol §2 (objetivo, lecturas, entregables, criterios, anti-patrones, handoff) **+ micro-framework:** power prompt opcional, preguntas de desambiguación para Matias/Orquestador, restricciones de formato/fuentes por rol. Escribir en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si hay tarea nueva o cambio de prioridad, emitir **MATPROMT-DELTA** para roles afectados. Coordinar con Orchestrator y Parallel/Serial si el orden de ejecución cambia. |
 | 0b | Parallel/Serial | `bmc-parallel-serial-agent` | Plan de ejecución (paralelo vs serie, clones). Puede usar el bundle MATPROMT como insumo de dependencias entre roles. |
 | 1 | Orchestrator | — | Plan & proposal confirmado (`PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md`). |
 | 2 | Mapping | `bmc-planilla-dashboard-mapper`, `google-sheets-mapping-agent` | Planilla map, DASHBOARD-INTERFACE-MAP, cross-reference. |

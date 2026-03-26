@@ -8,6 +8,12 @@ import { C, FONT } from "../data/constants.js";
 import { calcFactorPendiente } from "../utils/calculations.js";
 
 const GAP_M = 0.25;
+/** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
+const VIEWBOX_SLACK_M = 2.8;
+/** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
+const DRAG_SENSITIVITY = 0.52;
+/** Alineación fina al soltar (m); 0 = desactivado. */
+const SNAP_ON_RELEASE_M = 0.05;
 const SLOPE_MARKS = ["off", "along_largo_pos", "along_largo_neg"];
 
 function effAnchoM(z, is2A) {
@@ -32,6 +38,21 @@ function clientToSvg(svgEl, cx, cy) {
   if (!m) return { x: 0, y: 0 };
   const p = pt.matrixTransform(m.inverse());
   return { x: p.x, y: p.y };
+}
+
+function clampZonaTopLeft(x, y, w, h, vm) {
+  if (!vm) return { x, y };
+  const { vbX, vbY, vbW, vbH, margin } = vm;
+  const x1 = vbX + margin;
+  const y1 = vbY + margin;
+  const x2 = vbX + vbW - margin - w;
+  const y2 = vbY + vbH - margin - h;
+  if (x2 < x1) return { x: vbX + (vbW - w) / 2, y: vbY + (vbH - h) / 2 };
+  if (y2 < y1) return { x: vbX + (vbW - w) / 2, y: vbY + (vbH - h) / 2 };
+  return {
+    x: Math.min(Math.max(x, x1), x2),
+    y: Math.min(Math.max(y, y1), y2),
+  };
 }
 
 function PanelGrid({ x0, y0, w, h, au, stroke, strokeW }) {
@@ -106,9 +127,20 @@ export default function RoofPreview({
     const raw = zonas.map((z, gi) => ({ z, gi })).filter(({ z }) => z?.largo > 0 && z?.ancho > 0);
     let ax = 0;
     const autoPos = {};
+    let autoMinX = Infinity;
+    let autoMinY = Infinity;
+    let autoMaxX = -Infinity;
+    let autoMaxY = -Infinity;
     for (const { z, gi } of raw) {
       const w = effAnchoM(z, is2A);
-      autoPos[gi] = { x: ax, y: 0 };
+      const h = z.largo;
+      const x = ax;
+      const y = 0;
+      autoPos[gi] = { x, y };
+      autoMinX = Math.min(autoMinX, x);
+      autoMinY = Math.min(autoMinY, y);
+      autoMaxX = Math.max(autoMaxX, x + w);
+      autoMaxY = Math.max(autoMaxY, y + h);
       ax += w + GAP_M;
     }
     const entries = raw.map(({ z, gi }) => {
@@ -119,29 +151,37 @@ export default function RoofPreview({
         p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : autoPos[gi];
       return { gi, z, x: pos.x, y: pos.y, w, h };
     });
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
+    let curMinX = autoMinX;
+    let curMinY = autoMinY;
+    let curMaxX = autoMaxX;
+    let curMaxY = autoMaxY;
     for (const r of entries) {
-      minX = Math.min(minX, r.x);
-      minY = Math.min(minY, r.y);
-      maxX = Math.max(maxX, r.x + r.w);
-      maxY = Math.max(maxY, r.y + r.h);
+      curMinX = Math.min(curMinX, r.x);
+      curMinY = Math.min(curMinY, r.y);
+      curMaxX = Math.max(curMaxX, r.x + r.w);
+      curMaxY = Math.max(curMaxY, r.y + r.h);
     }
     const pad = 0.45;
+    const slack = VIEWBOX_SLACK_M;
     const totalArea = raw.reduce((s, { z }) => s + z.largo * z.ancho, 0);
     if (!entries.length) {
-      return { entries: [], viewBox: "0 0 10 6", totalArea: 0 };
+      return {
+        entries: [],
+        viewBox: "0 0 10 6",
+        totalArea: 0,
+        viewMetrics: null,
+      };
     }
-    const vbW = maxX - minX + 2 * pad;
-    const vbH = maxY - minY + 2 * pad;
-    const vbX = minX - pad;
-    const vbY = minY - pad;
+    const vbW = curMaxX - curMinX + 2 * (pad + slack);
+    const vbH = curMaxY - curMinY + 2 * (pad + slack);
+    const vbX = curMinX - pad - slack;
+    const vbY = curMinY - pad - slack;
+    const margin = pad * 0.35;
     return {
       entries,
       viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
       totalArea,
+      viewMetrics: { vbX, vbY, vbW, vbH, margin },
     };
   }, [zonas, tipoAguas]);
 
@@ -170,8 +210,12 @@ export default function RoofPreview({
       dragRef.current = {
         gi,
         pointerId: e.pointerId,
-        grabX: p.x - rect.x,
-        grabY: p.y - rect.y,
+        pointerStartX: p.x,
+        pointerStartY: p.y,
+        rectStartX: rect.x,
+        rectStartY: rect.y,
+        rectW: rect.w,
+        rectH: rect.h,
         clientSX: e.clientX,
         clientSY: e.clientY,
         moved: false,
@@ -190,9 +234,13 @@ export default function RoofPreview({
       const svg = svgRef.current;
       if (!svg) return;
       const p = clientToSvg(svg, e.clientX, e.clientY);
-      onZonaPreviewChange?.(d.gi, { x: p.x - d.grabX, y: p.y - d.grabY });
+      const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
+      const rawY = d.rectStartY + (p.y - d.pointerStartY) * DRAG_SENSITIVITY;
+      const vm = layout.viewMetrics;
+      const { x, y } = clampZonaTopLeft(rawX, rawY, d.rectW, d.rectH, vm);
+      onZonaPreviewChange?.(d.gi, { x, y });
     },
-    [onZonaPreviewChange],
+    [onZonaPreviewChange, layout.viewMetrics],
   );
 
   const handlePointerUp = useCallback(
@@ -204,6 +252,18 @@ export default function RoofPreview({
         svg?.releasePointerCapture(e.pointerId);
       } catch {
         /* ignore */
+      }
+      if (d.moved && SNAP_ON_RELEASE_M > 0 && onZonaPreviewChange) {
+        const z = zonas[d.gi];
+        const px = z?.preview;
+        if (px && Number.isFinite(px.x) && Number.isFinite(px.y)) {
+          const sx = Math.round(px.x / SNAP_ON_RELEASE_M) * SNAP_ON_RELEASE_M;
+          const sy = Math.round(px.y / SNAP_ON_RELEASE_M) * SNAP_ON_RELEASE_M;
+          const { x, y } = clampZonaTopLeft(sx, sy, d.rectW, d.rectH, layout.viewMetrics);
+          if (Math.abs(x - px.x) > 1e-6 || Math.abs(y - px.y) > 1e-6) {
+            onZonaPreviewChange(d.gi, { x, y });
+          }
+        }
       }
       if (e.pointerType === "touch" && !d.moved) {
         const now = Date.now();
@@ -219,7 +279,7 @@ export default function RoofPreview({
       }
       dragRef.current = null;
     },
-    [cycleSlope],
+    [cycleSlope, onZonaPreviewChange, zonas, layout.viewMetrics],
   );
 
   const handleLostCapture = useCallback(() => {
@@ -297,16 +357,30 @@ export default function RoofPreview({
             Ingrese dimensiones
           </div>
         ) : (
-          <svg
-            ref={svgRef}
-            viewBox={layout.viewBox}
-            width="100%"
-            style={{ maxWidth: 280, height: "auto", flexShrink: 0, cursor: onZonaPreviewChange ? "default" : undefined }}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handleLostCapture}
-            onLostPointerCapture={handleLostCapture}
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 280,
+              height: 200,
+              flexShrink: 0,
+              alignSelf: "flex-start",
+            }}
           >
+            <svg
+              ref={svgRef}
+              viewBox={layout.viewBox}
+              width="100%"
+              height="100%"
+              preserveAspectRatio="xMidYMid meet"
+              style={{
+                display: "block",
+                cursor: onZonaPreviewChange ? "default" : undefined,
+              }}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handleLostCapture}
+              onLostPointerCapture={handleLostCapture}
+            >
             {layout.entries.map((r) => {
               const sm = r.z.preview?.slopeMark;
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
@@ -365,7 +439,8 @@ export default function RoofPreview({
                 </g>
               );
             })}
-          </svg>
+            </svg>
+          </div>
         )}
         <div style={{ minWidth: 0, flex: "1 1 160px" }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>

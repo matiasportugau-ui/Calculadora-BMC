@@ -19,6 +19,13 @@ import {
   getPricingOverrides,
 } from "../utils/pricingOverrides.js";
 import { C, FONT } from "../data/constants.js";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
+import {
+  findVentaColumnIndex,
+  parseCsvNumber,
+  splitCsvCells,
+  getDuplicatePathReport,
+} from "../utils/csvPricingImport.js";
 
 export default function PricingEditor({ onSave }) {
   const [items, setItems] = useState(() => getPricingItemsFlat());
@@ -35,7 +42,7 @@ export default function PricingEditor({ onSave }) {
   const handleCargarDesdeMatriz = async () => {
     setCargandoMatriz(true);
     setImportMsg(null);
-    const base = (import.meta.env?.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
+    const base = getCalcApiBase();
     try {
       const res = await fetch(`${base}/api/actualizar-precios-calculadora`);
       const text = await res.text();
@@ -51,40 +58,41 @@ export default function PricingEditor({ onSave }) {
       const cols = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
       const pathIdx = cols.findIndex((c) => c.toLowerCase() === "path");
       const costoIdx = cols.findIndex((c) => /costo/i.test(c));
-      const ventaIdx = cols.findIndex((c) => /venta_bmc_local|venta_bmc/i.test(c) || (c.toLowerCase() === "venta" && !/web/i.test(c)));
+      const ventaIdx = findVentaColumnIndex(cols);
       const webIdx = cols.findIndex((c) => /venta_web/i.test(c) || (c.toLowerCase() === "web"));
       if (pathIdx < 0) {
         setImportMsg("La MATRIZ no tiene columna 'path'.");
         return;
       }
-      const parseVal = (s) => {
-        const v = parseFloat(String(s).replace(/["\s]/g, "").replace(",", "."));
-        return isNaN(v) || v < 0 ? null : +(v.toFixed(2));
-      };
       const updates = {};
       let count = 0;
       for (let i = 1; i < lines.length; i++) {
-        const row = lines[i];
-        const cells = row.match(/("(?:[^"]|"")*"|[^,]*)/g)?.map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"').trim()) || row.split(",");
+        const cells = splitCsvCells(lines[i]);
         const path = cells[pathIdx]?.trim();
         if (!path) continue;
         if (costoIdx >= 0 && cells[costoIdx]) {
-          const v = parseVal(cells[costoIdx]);
+          const v = parseCsvNumber(cells[costoIdx]);
           if (v != null) { updates[`${path}.costo`] = v; count++; }
         }
         if (ventaIdx >= 0 && cells[ventaIdx]) {
-          const v = parseVal(cells[ventaIdx]);
+          const v = parseCsvNumber(cells[ventaIdx]);
           if (v != null) { updates[`${path}.venta`] = v; count++; }
         }
         if (webIdx >= 0 && cells[webIdx]) {
-          const v = parseVal(cells[webIdx]);
+          const v = parseCsvNumber(cells[webIdx]);
           if (v != null) { updates[`${path}.web`] = v; count++; }
         }
+      }
+      const dupReport = getDuplicatePathReport(lines, pathIdx);
+      let msg = `Cargados ${count} valores desde MATRIZ (costo + venta).`;
+      if (dupReport.length) {
+        const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
+        msg += ` Atención: ${dupReport.length} path(s) duplicado(s) — prevalece la última fila: ${preview}${dupReport.length > 5 ? "…" : ""}`;
       }
       setPricingOverridesBulk(updates);
       invalidatePricingCache();
       refresh();
-      setImportMsg(`Cargados ${count} valores desde MATRIZ (costo + venta).`);
+      setImportMsg(msg);
       onSave?.();
     } catch (err) {
       setImportMsg("Error: " + (err.message || "no se pudo cargar la MATRIZ"));
@@ -198,40 +206,41 @@ export default function PricingEditor({ onSave }) {
         const cols = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
         const pathIdx = cols.findIndex((c) => c.toLowerCase() === "path");
         const costoIdx = cols.findIndex((c) => /costo/i.test(c));
-        const ventaIdx = cols.findIndex((c) => /venta_bmc_local|venta_bmc/i.test(c) || (c.toLowerCase() === "venta" && !/web/i.test(c)));
+        const ventaIdx = findVentaColumnIndex(cols);
         const webIdx = cols.findIndex((c) => /venta_web/i.test(c) || (c.toLowerCase() === "web"));
         if (pathIdx < 0) {
           setImportMsg("La planilla debe tener columna 'path'.");
           return;
         }
-        const parseVal = (s) => {
-          const v = parseFloat(String(s).replace(/["\s]/g, ""));
-          return isNaN(v) || v < 0 ? null : +(v.toFixed(2));
-        };
         const updates = {};
         let count = 0;
         for (let i = 1; i < lines.length; i++) {
-          const row = lines[i];
-          const cells = row.match(/("(?:[^"]|"")*"|[^,]*)/g)?.map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"').trim()) || row.split(",");
+          const cells = splitCsvCells(lines[i]);
           const path = cells[pathIdx]?.trim();
           if (!path) continue;
           if (costoIdx >= 0 && cells[costoIdx]) {
-            const v = parseVal(cells[costoIdx]);
+            const v = parseCsvNumber(cells[costoIdx]);
             if (v != null) { updates[`${path}.costo`] = v; count++; }
           }
           if (ventaIdx >= 0 && cells[ventaIdx]) {
-            const v = parseVal(cells[ventaIdx]);
+            const v = parseCsvNumber(cells[ventaIdx]);
             if (v != null) { updates[`${path}.venta`] = v; count++; }
           }
           if (webIdx >= 0 && cells[webIdx]) {
-            const v = parseVal(cells[webIdx]);
+            const v = parseCsvNumber(cells[webIdx]);
             if (v != null) { updates[`${path}.web`] = v; count++; }
           }
+        }
+        const dupReport = getDuplicatePathReport(lines, pathIdx);
+        let msg = `Importados ${count} valores correctamente.`;
+        if (dupReport.length) {
+          const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
+          msg += ` Atención: ${dupReport.length} path(s) duplicado(s) — prevalece la última fila: ${preview}${dupReport.length > 5 ? "…" : ""}`;
         }
         setPricingOverridesBulk(updates);
         invalidatePricingCache();
         refresh();
-        setImportMsg(`Importados ${count} valores correctamente.`);
+        setImportMsg(msg);
         onSave?.();
         if (fileInputRef.current) fileInputRef.current.value = "";
       } catch (err) {
@@ -295,7 +304,7 @@ export default function PricingEditor({ onSave }) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <a
-          href={`${(import.meta.env?.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "")}/api/actualizar-precios-calculadora`}
+          href={`${getCalcApiBase()}/api/actualizar-precios-calculadora`}
           download="bmc-precios-matriz.csv"
           target="_blank"
           rel="noopener noreferrer"

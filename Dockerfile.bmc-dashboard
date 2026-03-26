@@ -18,7 +18,9 @@ RUN npm ci --ignore-scripts --legacy-peer-deps
 COPY index.html vite.config.js ./
 COPY src/ ./src/
 COPY scripts/ ./scripts/
-ENV VITE_BASE=/calculadora/
+# Same Cloud Run URL serves SPA (/calculadora) and API (/api): browser uses origin (see src/utils/calcApiBase.js)
+ENV VITE_BASE=/calculadora/ \
+    VITE_SAME_ORIGIN_API=1
 RUN npm run build
 
 FROM node:20-alpine AS runtime

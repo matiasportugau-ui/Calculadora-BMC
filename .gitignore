@@ -44,3 +44,19 @@ yarn-error.log*
 # Nested copies / other projects accidentally created inside this repo (never commit)
 Calculadora-BMC/
 OmniCRM-Sync/
+
+# Mercado Libre — exportaciones de corpus (pueden contener datos de terceros; regenerar con npm run ml:corpus-export)
+docs/team/panelsim/reports/ml-corpus/exports/
+
+# Follow-up tracker (local JSON; opcional FOLLOWUP_STORE_PATH)
+.followup/
+
+# Email snapshot ingest dedupe (npm run email:ingest-snapshot)
+.email-ingest/
+
+# channels:automated --write
+.channels/
+
+# Catálogo local de fichas PDF (no versionar)
+PDF Productos /
+PDF Productos/

@@ -65,7 +65,7 @@ export function resetConfig() {
   _config = null;
   try {
     localStorage.removeItem(STORAGE_KEY);
-  } catch (_) {
+  } catch {
     // ignore
   }
   return { ...DEFAULTS };

@@ -90,10 +90,10 @@ export const COMPANY = {
 };
 
 export const QUOTE_TERMS = [
-  { text: "Entrega de 10 a 15 días, dependemos de producción.", bold: true },
+  { text: "Fabricación y entrega de 10 a 45 días, dependemos de producción.", bold: true },
   { text: "Oferta válida por 10 días a partir de la fecha.", bold: true, highlight: true },
   { text: "Seña del 60% (al confirmar). Saldo del 40% (previo a retiro de fábrica).", bold: true, highlight: true },
-  { text: "Con tarjeta de crédito y en cuotas, sería en $ y a través de Mercado Pago con un recargo de 8% (comisión MP)." },
+  { text: "Con tarjeta de crédito y en cuotas, sería en $ y a través de Mercado Pago con un recargo de 11,9% (comisión MP)." },
   { text: "Retiro sin cargo en Planta Industrial de Bromyros S.A. (Colonia Nicolich, Can.)." },
   { text: "NO INCLUYE MONTAJE.", bold: true, highlight: true },
   { text: "El traslado no incluye descarga, se requieren 2 peones mínimo." },

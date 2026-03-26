@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-27 (GCS ML tokens IAM + capabilities snapshot)
+**Última actualización:** 2026-03-26 (docs calculadora — README + checklist QA navegador)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-26 (Calculadora — documentación de uso + QA navegador):** Nuevos [`docs/calculadora/README.md`](../calculadora/README.md) (URLs prod/dev, escenarios, modos Cliente/Vendedor, BOM/PDF/WA/Drive/Config/MATRIZ, punteros a código) y [`docs/calculadora/BROWSER-QA-CHECKLIST.md`](../calculadora/BROWSER-QA-CHECKLIST.md) (checklist A–N para prueba manual o Browser). Verificación vía `curl` en la sesión de documentación: `GET /calculadora/` **200** y `GET /health` con **`ok: true`** en `https://panelin-calc-q74zutv7dq-uc.a.run.app`; MCP Browser no disponible en ese entorno. **Afecta a:** Calc, QA, Matias.
 
 **2026-03-26 (Calculadora — avisos, margen interno, hojas Cliente/Costeo, costo flete):** [`PanelinCalculadoraV3.jsx`](../../src/components/PanelinCalculadoraV3.jsx): bloque **Avisos** (alertas no bloquean cotizar/imprimir; hoja cliente sin datos internos; Costeo solo administración); **Margen estimado (interno)** y aviso si hay flete vendido sin costo cargado; campo **Costo flete (interno, USD s/IVA)** junto al flete en **Presupuesto libre → Servicios** y en **Opciones** de escenarios guiados; botones **Hoja visual Cliente** y **Costeo** abren vistas listas para **imprimir por separado** (`generateClientVisualHTML` / `generateCosteoHTML`). Costeo y margen apoyados en [`bomCosting.js`](../../src/utils/bomCosting.js). **`npm run lint`** (sin errores en `src/` editado) y **`npm run build`** OK. **Afecta a:** Calc, comercial.
 

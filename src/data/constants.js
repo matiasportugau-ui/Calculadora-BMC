@@ -96,6 +96,20 @@ export const PANELS_TECHO = {
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
   },
+  /**
+   * Isoroof Colonial — producto distinto a FOIL 3G: terminación exterior simil teja, interior blanco.
+   * Cumbrera asociada: PERFIL_TECHO.cumbrera.ISOROOF_COLONIAL (2,2 m). MATRIZ: SKU panel ISOCOL40 (aliases IAGRO40COL / IAGCOL40).
+   */
+  ISOROOF_COLONIAL: {
+    label: "Isoroof Colonial", sub: "Teja exterior · interior blanco", tipo: "techo",
+    au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF_COLONIAL",
+    esp: {
+      40: { venta: 62.07, web: 75.72, costo: 53.97, ap: 3.0 },
+    },
+    col: ["Simil teja / Blanco"],
+    colNotes: { _all: "Línea colonial Bromyros — no mezclar precios con FOIL 3G estándar." },
+    colMax: {},
+  },
   ISOROOF_PLUS: {
     label: "ISOROOF PLUS 3G", sub: "Techos Premium", tipo: "techo",
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
@@ -132,6 +146,19 @@ export const PANELS_PARED = {
       100: { venta: 58.90, web: 71.71, costo: 52.94, ap: null },
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
+  },
+  /** Pared: filas MATRIZ “ISODEC EPS” con precio distinto a ISOPANEL — SKU dedicados (ISDEC1xxP). No confundir con PANELS_TECHO.ISODEC_EPS */
+  ISODEC_EPS_PARED: {
+    label: "ISODEC EPS (pared)", sub: "Fachadas — lista ISODEC", tipo: "pared",
+    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISODEC",
+    esp: {
+      100: { venta: 39.03, web: 47.62, costo: 32.84, ap: null },
+      150: { venta: 43.90, web: 53.56, costo: 36.94, ap: null },
+      200: { venta: 49.23, web: 60.06, costo: 41.42, ap: null },
+      250: { venta: 54.10, web: 66.00, costo: 45.52, ap: null },
+    },
+    col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
+    nota50: "Sin 50 mm en esta familia — usar ISOPANEL EPS 50 mm.",
   },
 };
 
@@ -235,6 +262,7 @@ export const PERFIL_TECHO = {
   gotero_lateral: {
     ISOROOF: {
       30: { sku: "GL30", venta: 21.83, web: 26.63, costo: 19.65, largo: 3.0 },
+      40: { sku: "GL40", venta: 22.68, web: 27.67, costo: 18.90, largo: 3.0 },
       50: { sku: "GL50", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.0 },
       80: { sku: "GL80", venta: 25.31, web: 30.88, costo: 22.78, largo: 3.0 },
     },
@@ -265,7 +293,8 @@ export const PERFIL_TECHO = {
       80: { sku: "GFSUP80", venta: 30.84, web: 35.98, costo: 27.76, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50: { sku: "GSDECAM50", venta: 27.32, web: 31.88, costo: 24.59, largo: 3.03 },
+      30: { sku: "GSDECAM30", venta: 31.66, web: 38.62, costo: 26.38, largo: 3.03 },
+      50: { sku: "GSDECAM50", venta: 27.32, web: 33.34, costo: 22.77, largo: 3.03 },
       80: { sku: "GSDECAM80", venta: 29.94, web: 34.93, costo: 26.95, largo: 3.03 },
     },
   },
@@ -282,7 +311,10 @@ export const PERFIL_TECHO = {
   cumbrera: {
     ISODEC:     { _all: { sku: "6847", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 } },
     ISODEC_PIR: { _all: { sku: "6847", venta: 23.57, web: 28.75, costo: 21.21, largo: 3.03 } },
-    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 97.86, web: 119.39, costo: 88.07, largo: 2.20 } },
+    /** Cumbrera Roof 3G estándar 3 m — MATRIZ SKU CUMROOF3M */
+    ISOROOF:    { _all: { sku: "CUMROOF3M", venta: 35.22, web: 42.97, costo: 29.35, largo: 3.03 } },
+    /** Misma familia comercial que panel Isoroof Colonial — 2,2 m (2 piezas). MATRIZ: CUMROOFCOL / CUMCOL22 */
+    ISOROOF_COLONIAL: { _all: { sku: "CUMROOFCOL", venta: 97.86, web: 119.39, costo: 88.07, largo: 2.20 } },
   },
   canalon: {
     ISOROOF: {
@@ -356,10 +388,10 @@ export const SERVICIOS = {
 // ── §4 UI CONFIGURATION ──────────────────────────────────────────────────────
 
 export const SCENARIOS_DEF = [
-  { id: "solo_techo", label: "Solo Techo", icon: "🏠", description: "Cubierta con ISODEC o ISOROOF", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS"], hasTecho: true, hasPared: false },
-  { id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true },
-  { id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: true, hasPared: true },
-  { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOPANEL_EPS","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
+  { id: "solo_techo", label: "Solo Techo", icon: "🏠", description: "Cubierta con ISODEC o ISOROOF", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS"], hasTecho: true, hasPared: false },
+  { id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos", familias: ["ISOPANEL_EPS","ISODEC_EPS_PARED","ISOWALL_PIR"], hasTecho: false, hasPared: true },
+  { id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo", familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOPANEL_EPS","ISODEC_EPS_PARED","ISOWALL_PIR"], hasTecho: true, hasPared: true },
+  { id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío", familias: ["ISOPANEL_EPS","ISODEC_EPS_PARED","ISOWALL_PIR"], hasTecho: false, hasPared: true, isCamara: true },
   { id: "presupuesto_libre", label: "Presupuesto libre", icon: "📋", description: "Líneas manuales desde catálogo herrajes y anclajes", familias: [], hasTecho: false, hasPared: false, isLibre: true },
 ];
 
@@ -380,14 +412,14 @@ export const OBRA_PRESETS = ["Vivienda","Barbacoa","Depósito comercial","Galpó
 export const BORDER_OPTIONS = {
   frente: [
     { id: "gotero_frontal", label: "Gotero simple", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "gotero_frontal", label: "Gotero frontal", familias: ["ISOROOF"] },
-    { id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF"] },
+    { id: "gotero_frontal", label: "Gotero frontal", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
+    { id: "gotero_frontal_greca", label: "Gotero greca", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "canalon", label: "Canalón" },
     { id: "none", label: "Sin perfil" },
   ],
   fondo: [
     { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"], descripcion: "Cuando techo volado" },
-    { id: "gotero_frontal", label: "Gotero frontal Superior", familias: ["ISOROOF"], descripcion: "Frente superior ISOROOF" },
+    { id: "gotero_frontal", label: "Gotero frontal Superior", familias: ["ISOROOF", "ISOROOF_COLONIAL"], descripcion: "Frente superior ISOROOF" },
     { id: "babeta_adosar", label: "Babeta de adosar Superior", descripcion: "Encuentros con muros. Colocación atornillada" },
     { id: "babeta_empotrar", label: "Babeta de empotrar Superior", descripcion: "Encuentros con muros. Babeta embutida en muro" },
     { id: "cumbrera", label: "Cumbrera", descripcion: "2 Aguas — cumbrera central" },
@@ -395,24 +427,24 @@ export const BORDER_OPTIONS = {
   ],
   latIzq: [
     { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF"] },
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "none", label: "Sin perfil" },
   ],
   latDer: [
     { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF"] },
+    { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF"] },
+    { id: "gotero_lateral_camara", label: "Gotero Lateral de Cámara", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF"] },
+    { id: "babeta_empotrar", label: "Babeta Lateral de empotrar", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISODEC", "ISODEC_PIR"] },
-    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF"] },
+    { id: "babeta_adosar", label: "Babeta lateral de adosar", familias: ["ISOROOF", "ISOROOF_COLONIAL"] },
     { id: "none", label: "Sin perfil" },
   ],
 };

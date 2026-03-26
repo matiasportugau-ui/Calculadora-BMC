@@ -13,9 +13,9 @@
 | Field | Value |
 |--------|--------|
 | **Date** | 2026-03-24 |
-| **Focus (one line)** | Full team sync pasada 2: gate OK (119); 0/0 vs origin; WIP — `bmcDashboard` suggest-response, deps `package.json`, ML/CRM, Dockerfile — commit cuando cierres |
-| **Energy / time box** | *e.g. 90 min / full day* |
-| **Definition of “done” for today** | *one measurable outcome* |
+| **Focus (one line)** | Run 55: WA Cloud API webhook live (chatbo2), auto-trigger 5min, parse-email endpoint, Apps Script v2, email ingest pipeline design |
+| **Energy / time box** | Full day |
+| **Definition of “done” for today** | WA webhook receiving + auto-processing messages; email ingest bridge script ready; all deployed to Cloud Run |
 
 ---
 
@@ -23,7 +23,8 @@
 
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
-- *Example: Hub Sheets docs unified under `docs/google-sheets-module/README.md` (mapper, sync map, variables 1:1).*
+- 2026-03-24: **Sincronización completa equipo** — skill `bmc-project-team-sync`: `PROJECT-STATE` entrada nueva (CI **119** + 1 warning ESLint; git **0/0** vs `origin`; WIP listado); siguiente run numerado **55** en PROMPT; no reemplaza Invoque full team 0→9 + MATPROMT.
+- 2026-03-24: **Run 55** — WA Cloud API webhook live (`chatbo2`, Phone ID `857133467479731`); auto-trigger 5min inactivity (no más 🚀); `POST /api/crm/parse-email` endpoint; Apps Script v2 (row fix + batch + lock); Cloud Run rev `panelin-calc-00031-4r2`; email ingest pipeline diseñado (6 cuentas IMAP, clasificación "ventas" → CRM).
 - 2026-03-24: **Full team sync** — `PROJECT-STATE`: «verificación CI + árbol git» (última pasada) + entrada previa «full update + verify»; gate **119** (1 ESLint warning opcional `calculatorConfig.js`); git **0/0** vs `origin`; WIP: `bmcDashboard` suggest-response, `package.json`/lock, `.env.example`, ML/CRM, Dockerfile, team docs.
 - 2026-03-23: **PANELSIM** — Handoff [`panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md`](./panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md); informe [`panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md`](./panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md) (API local: CRM 297 filas; ML OAuth pendiente).
 - 2026-03-21: PROMPT «Próximos prompts» alineado con roadmap 32→39 (34–39 ✓ documental) y siguiente ciclo **run 52**; agenda manual sigue en `PROMPT-FOR-EQUIPO-COMPLETO.md`.
@@ -63,7 +64,8 @@ Copy-paste into a new chat when you want the model **fully oriented** without re
 Before coding: read in order:
 1) docs/team/SESSION-WORKSPACE-CRM.md (sections 1–4)
 2) docs/team/PROJECT-STATE.md (Cambios recientes + Pendientes)
-3) Task-specific file if any (issue, plan, or PROMPT-FOR-EQUIPO-COMPLETO.md)
+3) npm run project:compass — fase, %, próximos pasos + follow-ups vencidos (índice: docs/team/PROJECT-SCHEDULE.md)
+4) Task-specific file if any (issue, plan, or PROMPT-FOR-EQUIPO-COMPLETO.md)
 
 PANELSIM / cotizaciones con precios reales (Sheets + MATRIZ):
 - npm run panelsim:env   — verifica .env, GOOGLE_APPLICATION_CREDENTIALS, IDs BMC_* (incl. MATRIZ por default), correo service account para compartir en Drive
@@ -84,6 +86,9 @@ Rules:
 | Need | File |
 |------|------|
 | **Visual hub** (links + copy prompts / commands) | [WORKSPACE-CRM-HUB.html](./WORKSPACE-CRM-HUB.html) |
+| **Cronograma + rutina + seguimiento unificado** | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) — `npm run project:compass` (alias `npm run schedule`) |
+| **WhatsApp → ML → Correo (checklist)** | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) — `npm run channels:onboarding` |
+| **Programa maestro (JSON)** | [orientation/README.md](./orientation/README.md) — `npm run program:status` |
 | Repo-wide state, pendientes, cambios | [PROJECT-STATE.md](./PROJECT-STATE.md) |
 | Full team run input + próximos prompts | [PROMPT-FOR-EQUIPO-COMPLETO.md](./PROMPT-FOR-EQUIPO-COMPLETO.md) |
 | Agent backlog / KB maturity | [IMPROVEMENT-BACKLOG-BY-AGENT.md](./IMPROVEMENT-BACKLOG-BY-AGENT.md) |

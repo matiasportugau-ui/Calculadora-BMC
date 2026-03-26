@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "programId": "bmc-panelin-master",
+  "title": "BMC / Panelin — programa maestro (multi-área)",
+  "updatedAt": "2026-03-26",
+  "owner": "Matias",
+  "horizonWeeks": 24,
+  "notes": "Orden de magnitud. Actualizar weekly. currentPhaseId y status de tareas al cerrar trabajo.",
+  "currentPhaseId": "p2",
+  "phases": [
+    {
+      "id": "p1",
+      "name": "Fundaciones (repo, API, Sheets, CI)",
+      "order": 1,
+      "status": "done",
+      "estWeeks": "2-6",
+      "summary": "Calculadora + API + dashboard Finanzas + credenciales + gate local.",
+      "exitCriteria": [
+        "npm run gate:local sin errores",
+        "GET /capabilities y GET /health coherentes",
+        "Planillas BMC compartidas con service account"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "Operación comercial integrada (CRM, ML, canales)",
+      "order": 2,
+      "status": "active",
+      "estWeeks": "6-16",
+      "summary": "PANELSIM, ML OAuth, CRM_Operativo, sugerencias IA, WhatsApp/email hacia CRM.",
+      "exitCriteria": [
+        "Flujo ML→CRM estable o gobernado",
+        "Webhook WA + parse conversación/email con camino claro a Sheets",
+        "E2E smoke en prod para rutas críticas /api y /ml"
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Escala, riesgos y cumplimiento",
+      "order": 3,
+      "status": "planned",
+      "estWeeks": "8-24",
+      "summary": "Hardening Cloud Run, alertas, fiscal mensual DGI, marketing/ads si aplica, menos deuda técnica.",
+      "exitCriteria": [
+        "pre-deploy y contratos verdes en release",
+        "Rutina fiscal/documental con responsable y fechas",
+        "Backlog crítico de seguridad/dependencias cerrado o aceptado"
+      ]
+    }
+  ],
+  "convergencePoints": [
+    {
+      "id": "cp-deploy",
+      "name": "Cada revisión Cloud Run / release",
+      "refs": ["npm run pre-deploy", "npm run test:contracts"]
+    },
+    {
+      "id": "cp-full-team",
+      "name": "Full team run (Invoque full team)",
+      "refs": ["docs/team/INVOQUE-FULL-TEAM.md", "docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md"]
+    },
+    {
+      "id": "cp-weekly-ceo",
+      "name": "Revisión semanal CEO (15 min)",
+      "refs": ["npm run channels:automated", "npm run project:compass", "npm run smoke:prod", "docs/team/SESSION-WORKSPACE-CRM.md"]
+    }
+  ],
+  "streams": [
+    {
+      "id": "product_calc",
+      "name": "Producto / Calculadora / MATRIZ",
+      "tasks": [
+        {
+          "id": "pc-1",
+          "title": "Gate local + build limpio antes de releases frecuentes",
+          "status": "done",
+          "phaseHint": "p1",
+          "estHours": 2,
+          "refs": ["npm run gate:local:full"]
+        },
+        {
+          "id": "pc-2",
+          "title": "SKUs MATRIZ col.D vs placeholders calculadora — cierre o reglas",
+          "status": "todo",
+          "phaseHint": "p2",
+          "estHours": 8,
+          "dependsOn": [],
+          "refs": ["docs/team/reports/REPORT-RUN37-MATRIZ-SKUS-2026-03-20.md"]
+        }
+      ]
+    },
+    {
+      "id": "crm_ml",
+      "name": "CRM / ML / WhatsApp / correo",
+      "tasks": [
+        {
+          "id": "cm-0",
+          "title": "E2E WhatsApp → fila CRM visible en planilla (Cloud Run)",
+          "status": "doing",
+          "phaseHint": "p2",
+          "estHours": 2,
+          "dependsOn": [],
+          "refs": ["docs/team/PROJECT-SCHEDULE.md", "docs/team/WHATSAPP-META-E2E.md", "server/index.js"]
+        },
+        {
+          "id": "cm-1",
+          "title": "ML OAuth y tokens en prod (GCS) verificados",
+          "status": "doing",
+          "phaseHint": "p2",
+          "estHours": 4,
+          "refs": ["docs/ML-OAUTH-SETUP.md", "npm run ml:verify"]
+        },
+        {
+          "id": "cm-2",
+          "title": "Bridge email ingest (snapshot ventas → ingest-email → CRM)",
+          "status": "doing",
+          "phaseHint": "p2",
+          "estHours": 12,
+          "dependsOn": [],
+          "refs": [
+            "docs/team/PROJECT-STATE.md",
+            "npm run email:ingest-snapshot",
+            "scripts/email-snapshot-ingest.mjs",
+            "server/lib/emailSnapshotIngest.js"
+          ]
+        },
+        {
+          "id": "cm-3",
+          "title": "E2E smoke prod: /health, /capabilities, /api/crm/suggest-response (sample)",
+          "status": "done",
+          "phaseHint": "p2",
+          "estHours": 8,
+          "dependsOn": [],
+          "refs": ["docs/team/E2E-VALIDATION-CHECKLIST.md", "npm run smoke:prod", "scripts/smoke-prod-api.mjs"]
+        }
+      ]
+    },
+    {
+      "id": "infra",
+      "name": "Infra / Cloud Run / seguridad",
+      "tasks": [
+        {
+          "id": "in-1",
+          "title": "PUBLIC_BASE_URL + APP_ENV en producción alineados a URL pública",
+          "status": "done",
+          "phaseHint": "p2",
+          "estHours": 2,
+          "refs": ["server/config.js", "npm run smoke:prod", "scripts/smoke-prod-api.mjs"]
+        },
+        {
+          "id": "in-2",
+          "title": "Rotación/revisión de API keys si hubo exposición (checklist Security)",
+          "status": "todo",
+          "phaseHint": "p3",
+          "estHours": 4,
+          "refs": ["docs/team/PROJECT-STATE.md"]
+        }
+      ]
+    },
+    {
+      "id": "fiscal",
+      "name": "Fiscal / DGI / proceso mensual",
+      "tasks": [
+        {
+          "id": "fi-1",
+          "title": "Carpeta expediente + próximos hitos con contador/abogado",
+          "status": "todo",
+          "phaseHint": "p3",
+          "estHours": 8,
+          "refs": ["docs/team/fiscal/DGI-DEFENSA-EQUIPO-Y-SISTEMA-METALOG.md"]
+        }
+      ]
+    },
+    {
+      "id": "orientation",
+      "name": "Orientación y seguimiento de programa (meta)",
+      "tasks": [
+        {
+          "id": "or-1",
+          "title": "Hub orientation + programa JSON + npm run program:status",
+          "status": "done",
+          "phaseHint": "p2",
+          "estHours": 4,
+          "refs": ["docs/team/orientation/README.md"]
+        },
+        {
+          "id": "or-2",
+          "title": "Ritual semanal: npm run channels:automated o project:compass + JSON + SESSION",
+          "status": "done",
+          "phaseHint": "p2",
+          "estHours": 1,
+          "dependsOn": ["or-1"],
+          "refs": [
+            "docs/team/SESSION-WORKSPACE-CRM.md",
+            "docs/team/PROJECT-SCHEDULE.md",
+            "docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md",
+            "npm run channels:automated",
+            ".github/workflows/ci.yml"
+          ]
+        }
+      ]
+    }
+  ]
+}

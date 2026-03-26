@@ -8,6 +8,8 @@
 
 import { google } from "googleapis";
 import { setListaPrecios, PANELS_TECHO, PANELS_PARED, p } from "../src/data/constants.js";
+import { defaultTailAGAK_ML } from "./lib/crmOperativoLayout.js";
+import { analyzeQuotationGaps, formatGapsForOperator } from "./ml-quotation-gaps.js";
 
 const SHEET_TAB  = "CRM_Operativo";
 const HEADER_ROW = 3;
@@ -39,7 +41,7 @@ export function autoCategoria(itemTitle = "", questionText = "") {
 
 // ── Matriz local (sin HTTP — usa datos de src/utils/calculations.js) ─────
 
-function buildMatrizInfome() {
+export function buildMatrizInforme() {
   setListaPrecios("web");
   const paneles_techo = {};
   for (const [id, panel] of Object.entries(PANELS_TECHO)) {
@@ -102,6 +104,10 @@ export function findMatrizPrice(itemTitle = "", informe) {
 
 export function generateResponse(q, item, nickname, hasPriceMismatch) {
   if (hasPriceMismatch) return "";
+  const gaps = analyzeQuotationGaps(q, item);
+  if (gaps.missingPoints.length > 0) {
+    return formatGapsForOperator(nickname, gaps);
+  }
   const text      = (q.text || "").toLowerCase();
   const itemTitle = (item?.title || "").toLowerCase();
   const priceML   = item?.price;
@@ -125,8 +131,6 @@ export function generateResponse(q, item, nickname, hasPriceMismatch) {
     const colorText = color ? `en color ${color}` : "en los colores indicados en la publicación";
     return `Hola ${firstName}! Esta publicación viene ${colorText}. Si necesitás otra variante escribinos por acá y te confirmamos disponibilidad. ${CLOSE}`;
   }
-  if (isShipping)
-    return `Hola ${firstName}! Realizamos envíos a todo el país. Indicanos la ciudad de entrega y la cantidad que necesitás para cotizarte el traslado. ${CLOSE}`;
   if (productoEquivocado) {
     const tipoNecesita  = isTechoQ ? "techo" : "fachada";
     const tipoPublicado = pubEsTecho ? "techo" : "fachada";
@@ -136,6 +140,8 @@ export function generateResponse(q, item, nickname, hasPriceMismatch) {
   }
   if ((hasDims || hasM2) && priceML)
     return `Hola ${firstName}! El precio publicado es de USD ${priceML}/m². Con las medidas que indicás te armamos el presupuesto completo — confirmanos largo y ancho si querés el detalle. ${CLOSE}`;
+  if (isShipping)
+    return `Hola ${firstName}! Realizamos envíos a todo el país. Indicanos la ciudad de entrega y la cantidad que necesitás para cotizarte el traslado. ${CLOSE}`;
   if (isPriceQ && priceML)
     return `Hola ${firstName}! El precio es de USD ${priceML}/m² IVA inc. Si nos indicás las medidas (largo × ancho) te calculamos la cantidad exacta y el total. ${CLOSE}`;
   return `Hola ${firstName}! Con gusto te ayudamos. ¿Podés darnos más detalles sobre lo que necesitás (medidas, cantidad, uso)? ${CLOSE}`;
@@ -161,7 +167,7 @@ async function createSheetsClient(credsPath) {
 export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger = console }) {
   // 1. Matriz local
   let informe = null;
-  try { informe = buildMatrizInfome(); } catch { /* sin Matriz */ }
+  try { informe = buildMatrizInforme(); } catch { /* sin Matriz */ }
 
   // 2. Preguntas sin responder
   const sellerId = await ml.resolveSellerId();
@@ -249,18 +255,19 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
     const obsBase           = `Q:${q.id} | ${formatDateTime(q.date_created)} | ${q.item_id} ${itemTitle}`;
     const obs               = priceAlert ? `${obsBase} | ${priceAlert}` : obsBase;
 
+    const rowCore = [
+      formatDate(q.date_created), nickname, "", "", "ML", q.text,
+      autoCategoria(itemTitle, q.text), "Alta", estado, "PANELSIM",
+      "Responder ML", today(), "Nuevo", "No", "No", "", "", "Hoy", "No", "",
+      "ML", obs, formatDate(q.date_created), "", "", "", "Sí", "", "", "SI",
+      respuestaSugerida,
+    ];
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: `'${SHEET_TAB}'!B${rowNum}:AF${rowNum}`,
+      range: `'${SHEET_TAB}'!B${rowNum}:AK${rowNum}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[
-          formatDate(q.date_created), nickname, "", "", "ML", q.text,
-          autoCategoria(itemTitle, q.text), "Alta", estado, "PANELSIM",
-          "Responder ML", today(), "Nuevo", "No", "No", "", "", "Hoy", "No", "",
-          "ML", obs, formatDate(q.date_created), "", "", "", "Sí", "", "", "SI",
-          respuestaSugerida,
-        ]],
+        values: [[...rowCore, ...defaultTailAGAK_ML()]],
       },
     });
 

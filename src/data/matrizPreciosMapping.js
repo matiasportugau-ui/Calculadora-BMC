@@ -1,6 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // matrizPreciosMapping.js — Mapeo SKU MATRIZ → path calculadora
 // MATRIZ de COSTOS y VENTAS 2026 — misma planilla para costos y precios de venta
+//
+// Operativo col D (evitar path duplicado en CSV):
+// - Isoroof Colonial 40 mm (simil teja / int. blanco) → ISOCOL40 (aliases IAGRO40COL / IAGCOL40); no FOIL 3G.
+// - Cumbrera colonial 2,2 m (misma familia) → CUMROOFCOL o CUMCOL22 → cumbrera.ISOROOF_COLONIAL (no CUMROOF3M).
+// - Gotero sup. cámara 30 mm → GSDECAM30; 50 mm → GSDECAM50.
+// - Gotero lateral 40 mm → GL40; 50 mm → GL50.
+// - Pared “ISODEC EPS” lista Bromyros → ISDEC100P … ISDEC250P (ISOPANEL queda ISDxxxEPS).
+// - Isowall 80 mm → SKU IW80 en col D (tres filas con mismo path = error de planilla).
+//
 // Columnas (búsqueda por nombre en bmcDashboard.buildPlanillaDesdeMatriz):
 //   - Costo/Costos (fallback col G) — con IVA → sin IVA / 1.22
 //   - Venta BMC/consumidor (fallback col L) — con IVA → sin IVA / 1.22
@@ -19,6 +28,10 @@ export function normalizeSku(sku) {
 export const MATRIZ_SKU_TO_PATH = {
   // Paneles techo ISOROOF
   IAGRO30: "PANELS_TECHO.ISOROOF_FOIL.esp.30",
+  /** Isoroof Colonial 40 mm — SKU canónico en MATRIZ; aliases históricos IAGRO40COL / IAGCOL40 */
+  ISOCOL40: "PANELS_TECHO.ISOROOF_COLONIAL.esp.40",
+  IAGRO40COL: "PANELS_TECHO.ISOROOF_COLONIAL.esp.40",
+  IAGCOL40: "PANELS_TECHO.ISOROOF_COLONIAL.esp.40",
   IAGRO50: "PANELS_TECHO.ISOROOF_FOIL.esp.50",
   IROOF30: "PANELS_TECHO.ISOROOF_3G.esp.30",
   IROOF40: "PANELS_TECHO.ISOROOF_3G.esp.40",
@@ -43,6 +56,11 @@ export const MATRIZ_SKU_TO_PATH = {
   ISD150EPS: "PANELS_PARED.ISOPANEL_EPS.esp.150",
   ISD200EPS: "PANELS_PARED.ISOPANEL_EPS.esp.200",
   ISD250EPS: "PANELS_PARED.ISOPANEL_EPS.esp.250",
+  /** Pared ISODEC EPS (precio lista distinta a ISOPANEL) — usar col D en MATRIZ */
+  ISDEC100P: "PANELS_PARED.ISODEC_EPS_PARED.esp.100",
+  ISDEC150P: "PANELS_PARED.ISODEC_EPS_PARED.esp.150",
+  ISDEC200P: "PANELS_PARED.ISODEC_EPS_PARED.esp.200",
+  ISDEC250P: "PANELS_PARED.ISODEC_EPS_PARED.esp.250",
   IW50: "PANELS_PARED.ISOWALL_PIR.esp.50",
   IW80: "PANELS_PARED.ISOWALL_PIR.esp.80",
   IW100: "PANELS_PARED.ISOWALL_PIR.esp.100",
@@ -54,11 +72,11 @@ export const MATRIZ_SKU_TO_PATH = {
   GFSUP30: "PERFIL_TECHO.gotero_superior.ISOROOF.30",
   GFSUP50: "PERFIL_TECHO.gotero_superior.ISOROOF.50",
   GFSUP80: "PERFIL_TECHO.gotero_superior.ISOROOF.80",
-  GSDECAM30: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.50",
+  GSDECAM30: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.30",
   GSDECAM50: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.50",
   GSDECAM80: "PERFIL_TECHO.gotero_superior.ISODEC_PIR.80",
   GL30: "PERFIL_TECHO.gotero_lateral.ISOROOF.30",
-  GL40: "PERFIL_TECHO.gotero_lateral.ISOROOF.50",
+  GL40: "PERFIL_TECHO.gotero_lateral.ISOROOF.40",
   GL50: "PERFIL_TECHO.gotero_lateral.ISOROOF.50",
   GL80: "PERFIL_TECHO.gotero_lateral.ISOROOF.80",
   GLDCAM50: "PERFIL_TECHO.gotero_lateral_camara.ISOROOF.50",
@@ -69,6 +87,9 @@ export const MATRIZ_SKU_TO_PATH = {
   BBAS3G: "PERFIL_TECHO.babeta_adosar.ISOROOF._all",
   BBESUP: "PERFIL_TECHO.babeta_empotrar.ISOROOF._all",
   CUMROOF3M: "PERFIL_TECHO.cumbrera.ISOROOF._all",
+  /** Cumbrera colonial 2,2 m — misma familia que panel Isoroof Colonial */
+  CUMROOFCOL: "PERFIL_TECHO.cumbrera.ISOROOF_COLONIAL._all",
+  CUMCOL22: "PERFIL_TECHO.cumbrera.ISOROOF_COLONIAL._all",
   CD30: "PERFIL_TECHO.canalon.ISOROOF.30",
   CD50: "PERFIL_TECHO.canalon.ISOROOF.50",
   CD80: "PERFIL_TECHO.canalon.ISOROOF.80",

@@ -1,0 +1,24 @@
+---
+description: "Human gates BMC — tareas cm-0/1/2, OAuth, Meta: no inventar éxito; playbook paso a paso y evidencia antes de marcar done."
+alwaysApply: false
+---
+
+# Human gates — BMC / Panelin (agentes)
+
+Aplica cuando el trabajo toque **WhatsApp (Meta)**, **Mercado Libre OAuth**, **ingest de correo**, o tareas **cm-0**, **cm-1**, **cm-2** del programa maestro.
+
+## Reglas
+
+1. **No marcar** `cm-0`, `cm-1` ni `cm-2` como `done` en `docs/team/orientation/programs/bmc-panelin-master.json` sin **evidencia** alineada al doc canónico: [`docs/team/HUMAN-GATES-ONE-BY-ONE.md`](docs/team/HUMAN-GATES-ONE-BY-ONE.md) (sección **Listo cuando** de cada bloque).
+
+2. **Leyenda** [H0] / [H] / [A]: [`docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md`](docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md). **Intervención humana** no es fallo; es paso definido.
+
+3. **Orden automático primero:** sugerir `npm run channels:automated` (o leer `.channels/last-pipeline.json` si existe) y leer `humanGate.firstBlockingTask` antes de pedir pasos manuales genéricos.
+
+4. **Instrucciones al usuario:** una intervención = **una URL** + **opción/menú** + **qué esperar**; copiar estructura del playbook, no inventar pantallas de Meta/ML.
+
+5. **Navegador:** si el usuario usa Cursor browser MCP, puede abrir las URLs del playbook; **login, 2FA y “Allow”** siguen siendo humanos.
+
+6. **Secretos:** nunca en chat; solo nombres de variables (`WHATSAPP_VERIFY_TOKEN`, `ML_CLIENT_ID`, etc.) y referencia a Cloud Run / `.env`.
+
+7. Tras cambios que afecten al equipo, actualizar **`docs/team/PROJECT-STATE.md`** (Cambios recientes) según convención del repo.

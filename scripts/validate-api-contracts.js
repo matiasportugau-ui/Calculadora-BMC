@@ -94,6 +94,13 @@ function checkCapabilities(data) {
   return { ok: true };
 }
 
+function checkFollowups(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
+  if (!Array.isArray(data.items)) return { ok: false, msg: "items must be array" };
+  if (typeof data.count !== "number") return { ok: false, msg: "count must be number" };
+  return { ok: true };
+}
+
 async function main() {
   console.log(`\nBMC API Contract Validator — ${BASE}\n`);
   let passed = 0;
@@ -104,6 +111,12 @@ async function main() {
       name: "GET /capabilities",
       path: "/capabilities",
       check: checkCapabilities,
+      allow503: false,
+    },
+    {
+      name: "GET /api/followups",
+      path: "/api/followups",
+      check: checkFollowups,
       allow503: false,
     },
     {

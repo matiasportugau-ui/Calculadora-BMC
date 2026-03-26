@@ -4,7 +4,7 @@
 
 **Audiencia:** Cualquier chat en modo SIM / PANELSIM; revisores SIM-REV; MATPROMT al armar bundles “objetivo SIM”.
 
-**Última revisión:** 2026-03-23 (full team run — KB + handoff SIM).
+**Última revisión:** 2026-03-26 (diálogo + biblioteca técnica productos — `PANELSIM-DIALOGUE-AND-CRITERIA.md`, `biblioteca-tecnica-productos/README.md`, `AGENT-SIMULATOR-SIM.md` §0.2).
 
 ---
 
@@ -18,6 +18,8 @@
 | [`PROJECT-TEAM-FULL-COVERAGE.md`](../../PROJECT-TEAM-FULL-COVERAGE.md) | Tabla canónica de roles §2, propagación §4, áreas §1. |
 | [`PROJECT-STATE.md`](../../PROJECT-STATE.md) | Estado vivo, pendientes, cambios recientes. |
 | [`SESSION-WORKSPACE-CRM.md`](../../SESSION-WORKSPACE-CRM.md) | Foco de sesión, auto-start §5. |
+| [`PANELSIM-DIALOGUE-AND-CRITERIA.md`](./PANELSIM-DIALOGUE-AND-CRITERIA.md) | **Destilado GPT → repo:** tono, datos antes de cotizar, guardrails, mapeo a MATRIZ/API (no JSON GPT como precio). |
+| [`../biblioteca-tecnica-productos/README.md`](../biblioteca-tecnica-productos/README.md) | **Índice** material técnico-comercial (flyers/fichas); ruta canónica a assets bajo `PDF Productos /`. |
 
 **Orden de lectura sugerido (primer arranque):** `AGENT-SIMULATOR-SIM.md` §0–§2 → `SESSION-WORKSPACE-CRM.md` §5 → `PROJECT-STATE.md` → **este KB** (búsqueda por tema) → hub Sheets si hay que citar columnas/tabs.
 
@@ -41,11 +43,12 @@
 | **Dashboard UI** | Finanzas, operaciones, KPIs, entregas, ventas, stock | `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md`, `dashboard/` (HTML/JS/CSS en modernization) |
 | **Calculadora** | Cotizador React, BOM, PDF, WhatsApp, presupuesto libre | `src/`, `server/routes/calc.js`, `GET /capabilities` |
 | **Infraestructura** | Puertos, Cloud Run, Vercel, ngrok, Netuy | `server/index.js`, `PROJECT-STATE` §Infra, skills `networks-development-agent`, `bmc-dashboard-netuy-hosting` |
-| **Integraciones** | Mercado Libre, Shopify, Drive | `server/index.js` (`/ml/*`, `/auth/ml/*`, `/webhooks/*`), `server/routes/shopify.js` |
+| **Integraciones** | Mercado Libre, Shopify, Drive | `server/index.js` (`/ml/*`, `/auth/ml/*`, `/webhooks/*`), `server/routes/shopify.js`; **voz y reglas ML:** [`ML-RESPUESTAS-KB-BMC.md`](./ML-RESPUESTAS-KB-BMC.md); **sistema entrenamiento + corpus:** [`ML-TRAINING-SYSTEM.md`](./ML-TRAINING-SYSTEM.md) |
 | **GPT / Panelin** | OpenAPI, acciones GPT, drift con Cloud | `docs/openapi-calc.yaml` (y variantes en repo), skills `panelin-gpt-cloud-system`, `openai-gpt-builder-integration` |
 | **Fiscal / billing / audit** | DGI, facturación, auditorías | skills `bmc-dgi-impositivo`, `billing-error-review`, `bmc-dashboard-audit-runner`, `cloudrun-diagnostics-reporter` |
 | **Equipo / proceso** | Judge, Reporter, MATPROMT, Repo Sync | `docs/team/judge/`, `docs/team/reports/`, `IMPROVEMENT-BACKLOG-BY-AGENT.md` |
 | **Correo / bandeja (repo aparte)** | Multi-cuenta IMAP, sync, clasificación, reportes | Skill **`.cursor/skills/panelsim-email-inbox/`**; repo `conexion-cuentas-email-agentes-bmc`; opcional `BMC_EMAIL_INBOX_REPO` en `.env` |
+| **Comercial (diálogo) y biblioteca de producto** | Tono BMC, recolección de datos, material gráfico por proveedor/línea | [`PANELSIM-DIALOGUE-AND-CRITERIA.md`](./PANELSIM-DIALOGUE-AND-CRITERIA.md), [`../biblioteca-tecnica-productos/README.md`](../biblioteca-tecnica-productos/README.md). **Precios:** solo MATRIZ/API/calculadora, no desde PNG/JPG sin validación. |
 
 ---
 
@@ -111,7 +114,7 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 | `GET /health` | `ok`, tokens ML, credenciales Sheets |
 | `GET /auth/ml/start`, `GET /auth/ml/callback`, `GET /auth/ml/status` | OAuth Mercado Libre |
 | `GET /ml/users/me`, `GET /ml/users/:id` | Perfil vendedor / nickname comprador |
-| `GET /ml/questions`, `GET /ml/questions/:id`, `POST /ml/questions/:id/answer` | Preguntas/respuestas ML (**modo aprobación** antes de POST) |
+| `GET /ml/questions`, `GET /ml/questions/:id`, `POST /ml/questions/:id/answer` | Preguntas/respuestas ML (**modo aprobación** antes de POST). Guía de estilo y checklist: [`ML-RESPUESTAS-KB-BMC.md`](./ML-RESPUESTAS-KB-BMC.md) |
 | `GET /ml/items/:id`, `PATCH /ml/items/:id`, `POST /ml/items/:id/description` | Ítem ML — detalle, actualizar, descripción (fallback PUT automático si ya existe) |
 | `GET /ml/listings` | Publicaciones del vendedor (`?status=active\|inactive`, `?limit`, `?offset`) |
 | `GET /ml/orders`, `GET /ml/orders/:id` | Órdenes ML |
@@ -124,7 +127,9 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 
 **OAuth Mercado Libre (configuración completa):** [docs/ML-OAUTH-SETUP.md](../../../ML-OAUTH-SETUP.md) — checklist portal, `.env`, localhost/ngrok, Cloud Run, GCS, troubleshooting. Verificación: `npm run ml:verify` (con API arriba).
 
-**ML→CRM sync (preguntas pendientes):** `node scripts/panelsim-ml-crm-sync.js` (o incluido en `npm run panelsim:session`). Inserta preguntas UNANSWERED en primeras filas vacías de CRM_Operativo; genera respuesta sugerida en col AF; compara precio ML vs Matriz (threshold=0): si difiere → Estado="Pendiente revisión precio", sin respuesta automática.
+**ML→CRM sync (preguntas pendientes):** `node scripts/panelsim-ml-crm-sync.js` (o incluido en `npm run panelsim:session`). Inserta preguntas UNANSWERED en primeras filas vacías de CRM_Operativo; genera respuesta sugerida en col AF; escribe **AG–AK** con defaults del cockpit; compara precio ML vs Matriz (threshold=0): si difiere → Estado="Pendiente revisión precio", sin respuesta automática.
+
+**CRM cockpit (columnas AG–AK):** arquitectura operador — link presupuesto, aprobación envío, bloqueo auto. Documento canónico: [`CRM-OPERATIVO-COCKPIT.md`](../CRM-OPERATIVO-COCKPIT.md); constantes: `server/lib/crmOperativoLayout.js`. **API (con `API_AUTH_TOKEN`):** `GET /api/crm/cockpit/row/:row`, `POST /api/crm/cockpit/quote-link`, `approval`, `mark-sent`, `send-approved` — ver tabla en el doc cockpit.
 
 **Reglas de respuesta ML (canónicas):**
 1. Verificar publicación donde llegó la pregunta (techo vs fachada vs accesorio).
@@ -157,6 +162,7 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 | `npm run pre-deploy` | Checklist pre-deploy |
 | `npm run ml:verify` | Chequeo `/health` + `/auth/ml/start?mode=json` (API arriba; ver [ML-OAUTH-SETUP.md](../../../ML-OAUTH-SETUP.md)) |
 | `npm run ml:cloud-run` | Sincronizar vars ML / OAuth a Cloud Run ([ML-OAUTH-SETUP.md](../../../ML-OAUTH-SETUP.md) §6–8) |
+| `npm run smoke:prod` | Smoke contra API desplegada (`BMC_API_BASE` / `SMOKE_BASE_URL`); ver `scripts/smoke-prod-api.mjs`. Sesión “seria” en prod antes de asumir despliegue sano. |
 
 ---
 
@@ -171,6 +177,8 @@ PANELSIM opera con API levantada (`npm run start:api`). Resumen:
 | Changelog producto | `docs/CHANGELOG.md` (si aplica) |
 | Invocación equipo | `INVOQUE-FULL-TEAM.md`, `PROMPT-FOR-EQUIPO-COMPLETO.md` |
 | OAuth / ML (`/auth/ml/*`, `/ml/*`) | [`docs/ML-OAUTH-SETUP.md`](../../../ML-OAUTH-SETUP.md), `npm run ml:verify`, `npm run ml:cloud-run` |
+| Diálogo + criterios comerciales (PANELSIM) | [`PANELSIM-DIALOGUE-AND-CRITERIA.md`](./PANELSIM-DIALOGUE-AND-CRITERIA.md) |
+| Biblioteca técnica de productos (índice) | [`../biblioteca-tecnica-productos/README.md`](../biblioteca-tecnica-productos/README.md) |
 
 ---
 

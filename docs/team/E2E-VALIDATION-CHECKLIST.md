@@ -17,6 +17,16 @@ Completar antes de presentar el dashboard a usuarios finales. Marcar con ✓ cua
 
 Ejemplo: `curl -sS -o /dev/null -w "%{http_code}" "https://…/health"` o `/api/kpi-report` (esperar 200 o 503 según config).
 
+### Smoke automatizado (repo)
+
+Desde la raíz del repo (sin levantar API local):
+
+```bash
+npm run smoke:prod
+```
+
+Comprueba `GET /health` (200 + `{ ok: true }`), `GET /capabilities` (200), `GET /auth/ml/status` (200 si hay token ML, **404** si aún no hay OAuth — ambos aceptables). Base URL: variable `BMC_API_BASE` o `SMOKE_BASE_URL`, o por defecto la Cloud Run del checklist. Salida JSON: `npm run smoke:prod -- --json`. Script: [`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs). En CI (push/PR a `main`): el job **`channels_pipeline`** en [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) ejecuta el pipeline ampliado (`channels:automated`: smoke + programa + humanGate).
+
 ### Resultados smoke — 2026-03-20 (curl, red pública)
 
 Base **Cloud Run:** `https://panelin-calc-642127786762.us-central1.run.app`
