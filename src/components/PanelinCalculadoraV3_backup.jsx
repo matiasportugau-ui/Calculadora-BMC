@@ -9,7 +9,8 @@ import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
-  Download, Save, Archive, Cloud, Settings
+  Download, Save, Archive, Cloud, Settings,
+  Table, LayoutTemplate, CircleDollarSign
 } from "lucide-react";
 
 import {
@@ -37,8 +38,15 @@ import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
   exportLogsAsJSON, exportSingleBudget,
 } from "../utils/budgetLog.js";
-import { serializeProject, deserializeProject } from "../utils/projectFile.js";
-import { htmlToPdfBlob } from "../utils/pdfGenerator.js";
+import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
+import { htmlToPdfBlob, downloadPdf } from "../utils/pdfGenerator.js";
+import { buildCostingReport } from "../utils/bomCosting.js";
+import { capturePdfSnapshotTargets } from "../utils/captureDomToPng.js";
+import {
+  generateClientVisualHTML, generateCosteoHTML, openPrintWindow,
+  buildPdfAppendixPayload,
+} from "../utils/quotationViews.js";
+import { buildGoogleSheetReportTsv } from "../utils/sheetExport.js";
 import {
   initGoogleAuth, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
@@ -845,6 +853,8 @@ export default function PanelinCalculadoraV3() {
   const [techoAnchoModo, _setTechoAnchoModo] = useState("metros"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, _setFlete] = useState(() => getFleteDefault());
+  /** Costo interno del flete (USD s/IVA); opcional — afecta margen y hoja Costeo. */
+  const [fleteCosto, setFleteCosto] = useState("");
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [overrides, _setOverrides] = useState({});
@@ -888,6 +898,10 @@ export default function PanelinCalculadoraV3() {
   const dimensionesRef = useRef(null);
   const bordesRef = useRef(null);
   const opcionesRef = useRef(null);
+
+  // PDF snapshot capture refs
+  const pdfCaptureSummaryRef = useRef(null);
+  const pdfCaptureTotalsRef = useRef(null);
 
   const scrollToSection = useCallback((sectionKey) => {
     const refs = { panel: panelRef, dimensiones: dimensionesRef, bordes: bordesRef, opciones: opcionesRef };
@@ -1257,6 +1271,97 @@ export default function PanelinCalculadoraV3() {
 
   // ── Helpers ──
   const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
+
+  const fleteCostoNum = useMemo(() => {
+    const t = String(fleteCosto ?? "").trim().replace(",", ".");
+    const n = parseFloat(t);
+    return isFinite(n) && n >= 0 ? n : null;
+  }, [fleteCosto]);
+
+  const costingCtx = useMemo(() => ({
+    lista: listaPrecios,
+    fletePrecioVenta: flete > 0 ? flete : null,
+    fleteCostUsd: fleteCostoNum,
+  }), [listaPrecios, flete, fleteCostoNum]);
+
+  const handleClienteVisual = useCallback(() => {
+    if (!groups.length) return;
+    const html = generateClientVisualHTML({
+      client: proyecto, project: proyecto, scenario,
+      panel: panelInfo,
+      groups: groups.map(g => ({ title: g.title, items: g.items })),
+      totals: grandTotal,
+      appendix: null,
+      snapshotImages: {},
+    });
+    openPrintWindow(html);
+  }, [groups, proyecto, scenario, panelInfo, grandTotal]);
+
+  const handleCosteo = useCallback(() => {
+    if (!groups.length) return;
+    const allItems = groups.flatMap(g => g.items);
+    const report = buildCostingReport(allItems, costingCtx);
+    const listaLabel = listaPrecios === "venta" ? "BMC directo" : "Web";
+    const html = generateCosteoHTML({ client: proyecto, project: proyecto, listaLabel, report });
+    openPrintWindow(html);
+  }, [groups, proyecto, listaPrecios, costingCtx]);
+
+  const handleCopyTSV = useCallback(() => {
+    if (!groups.length) return;
+    const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+    const vis_ = VIS[scenario] || VIS.solo_techo;
+    const kpiPaneles = results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null;
+    const kpiArea = results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null;
+    const kpiApoyos = results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null;
+    const kpiFij = results?.fijaciones?.puntosFijacion ?? null;
+    const panelLine = `${panelInfo.label}${panelInfo.espesor ? " " + panelInfo.espesor + "mm" : ""}${panelInfo.color ? " · " + panelInfo.color : ""}`;
+    const tsv = buildGoogleSheetReportTsv({
+      proyecto, scenario, scenarioLabel: scenarioDef_?.label || scenario,
+      vis: vis_, techo, pared, camara,
+      kpiArea, kpiPaneles, kpiApoyos, kpiFij,
+      results, panelLine, grandTotal,
+      presupuestoLibre: scenarioDef_?.isLibre || false,
+    });
+    navigator.clipboard.writeText(tsv).then(() => showToast("TSV copiado — pegá en Google Sheets"));
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast]);
+
+  const handlePdfEnriquecido = useCallback(async () => {
+    if (!groups.length) return;
+    showToast("Generando PDF…");
+    try {
+      const snapshotImages = await capturePdfSnapshotTargets({
+        summaryEl: pdfCaptureSummaryRef.current,
+        totalsEl: pdfCaptureTotalsRef.current,
+        bordersEl: bordesRef.current,
+      });
+      const vis_ = VIS[scenario] || VIS.solo_techo;
+      const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+      const kpiPaneles = results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null;
+      const kpiArea = results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null;
+      const kpiApoyos = results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null;
+      const kpiFij = results?.fijaciones?.puntosFijacion ?? null;
+      const appendix = buildPdfAppendixPayload({
+        scenario, scenarioDef: scenarioDef_, vis: vis_,
+        techo, pared, camara, results, grandTotal,
+        kpiArea, kpiPaneles, kpiApoyos, kpiFij,
+        PANELS_TECHO, PANELS_PARED,
+      });
+      const html = generateClientVisualHTML({
+        client: proyecto, project: proyecto, scenario,
+        panel: panelInfo,
+        groups: groups.map(g => ({ title: g.title, items: g.items })),
+        totals: grandTotal,
+        appendix,
+        snapshotImages,
+      });
+      const pdfBlob = await htmlToPdfBlob(html);
+      const fname = pdfFileName({ proyecto, scenario, listaPrecios });
+      downloadPdf(pdfBlob, fname);
+      showToast("PDF descargado");
+    } catch (err) {
+      showToast("Error al generar PDF: " + (err?.message || err));
+    }
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast]);
 
   // Build panel info for output (supports combined scenarios)
   const panelInfo = useMemo(() => {
@@ -1998,7 +2103,13 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "flete" && (
-                    <StepperInput label="Flete (USD)" value={flete} onChange={v => setFlete(v)} min={0} max={2000} step={50} unit="USD" decimals={0} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <StepperInput label="Flete (USD)" value={flete} onChange={v => setFlete(v)} min={0} max={2000} step={50} unit="USD" decimals={0} />
+                      <div>
+                        <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>
+                        <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
+                      </div>
+                    </div>
                   )}
                   {stepId === "proyecto" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2174,6 +2285,10 @@ export default function PanelinCalculadoraV3() {
             <LibreAccordionBar title="Servicios" open={libreAcc.servicios} onToggle={() => toggleLibreAcc("servicios")}>
               <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
               <div style={{ fontSize: 12, color: C.ts, marginTop: 8 }}>Se suma al presupuesto como servicio con el importe indicado.</div>
+              <div style={{ marginTop: 8 }}>
+                <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>
+                <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
+              </div>
             </LibreAccordionBar>
 
             <LibreAccordionBar title="Extraordinarios" open={libreAcc.extraordinarios} onToggle={() => toggleLibreAcc("extraordinarios")}>
@@ -2494,8 +2609,12 @@ export default function PanelinCalculadoraV3() {
               {vis.canalGot && <Toggle label="Gotero superior" value={techo.opciones.inclGotSup} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclGotSup: v } }))} />}
               <Toggle label="Selladores" value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.opciones.inclSell : pared.inclSell} onChange={v => { setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } })); uP("inclSell", v); }} />
               {vis.p5852 && <Toggle label="Perfil 5852 aluminio" value={pared.incl5852} onChange={v => uP("incl5852", v)} />}
-              <div style={{ marginTop: 8 }}>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
                 <StepperInput label="Flete (USD s/IVA)" value={flete} onChange={setFlete} min={0} max={2000} step={10} unit="USD" decimals={0} />
+                <div>
+                  <div style={labelS}>Costo interno flete (USD s/IVA, opcional)</div>
+                  <input style={inputS} value={fleteCosto} onChange={e => setFleteCosto(e.target.value)} placeholder="—" inputMode="decimal" />
+                </div>
               </div>
             </div>
           </div>
@@ -2550,7 +2669,7 @@ export default function PanelinCalculadoraV3() {
         {/* RIGHT PANEL */}
         <div className="bmc-right-panel" style={{ overflowY: "auto", paddingLeft: 8 }}>
           {/* KPI Row */}
-          {results && !results.error && !scenarioDef?.isLibre && <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          {results && !results.error && !scenarioDef?.isLibre && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
             <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
@@ -2617,7 +2736,7 @@ export default function PanelinCalculadoraV3() {
           )}
 
           {/* Totals */}
-          {groups.length > 0 && <div style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
+          {groups.length > 0 && <div ref={pdfCaptureTotalsRef} style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ fontSize: 14, opacity: 0.7 }}>Subtotal s/IVA</span>
               <span style={{ fontSize: 16, fontWeight: 600, ...TN }}>USD {fmtPrice(grandTotal.subtotalSinIVA)}</span>
@@ -2641,11 +2760,15 @@ export default function PanelinCalculadoraV3() {
           </div>}
 
           {/* Action buttons — desktop only */}
-          {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-            <button onClick={handleCopyWA} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
-            <button onClick={handlePrint} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
-            <button onClick={handleInternalReport} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
-            <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ flex: 1, padding: "12px 16px", borderRadius: 12, border: "none", background: "#4285F4", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Cloud size={16} />Drive</button>
+          {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <button onClick={handleCopyWA} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
+            <button onClick={handlePrint} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
+            <button onClick={handleInternalReport} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
+            <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#4285F4", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Cloud size={16} />Drive</button>
+            <button onClick={handleClienteVisual} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: "none", background: "#0ea5e9", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><LayoutTemplate size={16} />Hoja Cliente</button>
+            <button onClick={handleCosteo} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><CircleDollarSign size={16} />Costeo</button>
+            <button onClick={handleCopyTSV} style={{ flex: 1, minWidth: 110, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Table size={16} />TSV Sheets</button>
+            <button onClick={handlePdfEnriquecido} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Download size={16} />PDF+</button>
           </div>}
 
           {/* Transparency Panel */}

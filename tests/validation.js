@@ -3,11 +3,11 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre } from "../src/utils/calculations.js";
+import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre, calcPerfileriaTechoComercial, calcFijacionesVarilla } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
-import { PERFIL_TECHO, PERFIL_PARED } from "../src/data/constants.js";
+import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
 import { buildProgramSnapshot } from "../scripts/program-status.mjs";
 import {
@@ -737,6 +737,109 @@ const dupLines = [
 ];
 const dups = getDuplicatePathReport(dupLines, 0);
 assert("getDuplicatePathReport one dup", dups.length === 1 && dups[0].path === "A.B" && dups[0].count === 2, JSON.stringify(dups), "1 dup A.B");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 24: Nuevos productos — ISOROOF_COLONIAL, ISODEC_EPS_PARED, perfilería
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 24: ISOROOF_COLONIAL / ISODEC_EPS_PARED / perfilería / overridePts ═══");
+
+// 24.1 ISOROOF_COLONIAL panel exists in constants with 40mm esp
+assert(
+  "PANELS_TECHO ISOROOF_COLONIAL esp[40] exists",
+  PANELS_TECHO.ISOROOF_COLONIAL != null && PANELS_TECHO.ISOROOF_COLONIAL.esp?.[40] != null,
+  !!PANELS_TECHO.ISOROOF_COLONIAL?.esp?.[40],
+  true,
+);
+
+// 24.2 ISOROOF_COLONIAL has expected pricing fields
+assert(
+  "PANELS_TECHO ISOROOF_COLONIAL esp[40] has venta price",
+  typeof PANELS_TECHO.ISOROOF_COLONIAL.esp[40].venta === "number" && PANELS_TECHO.ISOROOF_COLONIAL.esp[40].venta > 0,
+  PANELS_TECHO.ISOROOF_COLONIAL.esp[40].venta,
+  ">0",
+);
+
+// 24.3 ISODEC_EPS_PARED panel exists
+assert(
+  "PANELS_PARED ISODEC_EPS_PARED exists",
+  PANELS_PARED.ISODEC_EPS_PARED != null,
+  !!PANELS_PARED.ISODEC_EPS_PARED,
+  true,
+);
+
+// 24.4 calcTechoCompleto with ISOROOF_COLONIAL
+{
+  const r = calcTechoCompleto({
+    familia: "ISOROOF_COLONIAL", espesor: 40,
+    ancho: 10, largo: 5, pendiente: 5,
+    tipoEst: "caballete",
+  });
+  assert(
+    "calcTechoCompleto ISOROOF_COLONIAL → cantPaneles > 0",
+    r?.paneles?.cantPaneles > 0,
+    r?.paneles?.cantPaneles,
+    ">0",
+  );
+  assert(
+    "calcTechoCompleto ISOROOF_COLONIAL → no error",
+    !r?.error,
+    r?.error ?? "none",
+    "none",
+  );
+}
+
+// 24.5 calcParedCompleto with ISODEC_EPS_PARED
+{
+  const r = calcParedCompleto({ familia: "ISODEC_EPS_PARED", espesor: 100, alto: 3, perimetro: 30, tipoEst: "metal" });
+  assert(
+    "calcParedCompleto ISODEC_EPS_PARED → cantPaneles > 0",
+    r?.paneles?.cantPaneles > 0,
+    r?.paneles?.cantPaneles,
+    ">0",
+  );
+}
+
+// 24.6 calcPerfileriaTechoComercial ISODEC_PIR 80mm (60mm not in catalog)
+{
+  const r = calcPerfileriaTechoComercial("ISODEC_PIR", 80);
+  assert(
+    "calcPerfileriaTechoComercial ISODEC_PIR 80mm → has items",
+    Array.isArray(r.items) && r.items.length > 0,
+    r.items.length,
+    ">0",
+  );
+  assert(
+    "calcPerfileriaTechoComercial ISODEC_PIR 80mm → total > 0",
+    r.total > 0,
+    r.total,
+    ">0",
+  );
+}
+
+// 24.7 calcFijacionesVarilla with overridePuntosFijacion
+{
+  const r = calcFijacionesVarilla(10, 2, 20, "metal", 0, 0, 0, { overridePuntosFijacion: 50 });
+  assert(
+    "calcFijacionesVarilla overridePuntosFijacion=50 → puntosFijacion===50",
+    r?.puntosFijacion === 50,
+    r?.puntosFijacion,
+    50,
+  );
+  assert(
+    "calcFijacionesVarilla overridePuntosFijacion=50 → items length > 0",
+    r?.items?.length > 0,
+    r?.items?.length,
+    ">0",
+  );
+}
+
+// 24.8 ISOROOF_COLONIAL cumbrera in PERFIL_TECHO
+assert(
+  "PERFIL_TECHO.cumbrera.ISOROOF_COLONIAL exists",
+  PERFIL_TECHO.cumbrera?.ISOROOF_COLONIAL != null,
+  !!PERFIL_TECHO.cumbrera?.ISOROOF_COLONIAL,
+  true,
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
