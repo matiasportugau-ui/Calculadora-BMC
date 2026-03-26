@@ -1,6 +1,7 @@
 /**
  * Single manifest for AI agents: calculator (/calc/*) + dashboard (/api/*) + UI entry points.
  * Served at GET /capabilities; static snapshot: docs/api/AGENT-CAPABILITIES.json
+ * Regenerate snapshot: npm run capabilities:snapshot
  */
 import { GPT_ACTIONS } from "./gptActions.js";
 

@@ -41,7 +41,8 @@
     "env:ensure": "bash scripts/ensure-env.sh",
     "panelsim:env": "bash scripts/ensure-panelsim-sheets-env.sh",
     "panelsim:email-ready": "bash scripts/panelsim-email-ready.sh",
-    "panelsim:session": "bash scripts/panelsim-full-session.sh"
+    "panelsim:session": "bash scripts/panelsim-full-session.sh",
+    "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

@@ -2,15 +2,15 @@
   "ok": true,
   "schema_version": "1",
   "description": "Single index for AI agents: Calculator GPT Actions + BMC Dashboard API + UI entry points.",
-  "public_base_url": "http://localhost:3001",
+  "public_base_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app",
   "calculator": {
     "prefix": "/calc",
     "canonical": {
-      "gpt_entry_point": "http://localhost:3001/calc/gpt-entry-point",
-      "openapi_yaml": "http://localhost:3001/calc/openapi",
-      "informe": "http://localhost:3001/calc/informe",
-      "catalogo": "http://localhost:3001/calc/catalogo",
-      "escenarios": "http://localhost:3001/calc/escenarios"
+      "gpt_entry_point": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/gpt-entry-point",
+      "openapi_yaml": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/openapi",
+      "informe": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/informe",
+      "catalogo": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/catalogo",
+      "escenarios": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/escenarios"
     },
     "actions": [
       {
@@ -19,7 +19,7 @@
         "path": "/calc/informe",
         "summary": "Informe completo con precios, reglas de asesoría y fórmulas.",
         "whenToUse": "Llamar al INICIO de sesión para cargar contexto completo. Devuelve catálogo, matriz de precios, fijaciones, selladores, reglas de asesoría y fórmulas de cálculo.",
-        "url": "http://localhost:3001/calc/informe"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/informe"
       },
       {
         "operationId": "obtener_catalogo",
@@ -27,7 +27,7 @@
         "path": "/calc/catalogo",
         "summary": "Catálogo de paneles, espesores, colores y opciones.",
         "whenToUse": "Para conocer familias válidas, espesores, colores y precios antes de cotizar. Guía la conversación con el usuario.",
-        "url": "http://localhost:3001/calc/catalogo"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/catalogo"
       },
       {
         "operationId": "obtener_escenarios",
@@ -35,7 +35,7 @@
         "path": "/calc/escenarios",
         "summary": "Escenarios disponibles con campos requeridos y opcionales.",
         "whenToUse": "Para saber qué datos pedir según el tipo de proyecto (solo techo, fachada, techo+fachada, cámara frigorífica).",
-        "url": "http://localhost:3001/calc/escenarios"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/escenarios"
       },
       {
         "operationId": "calcular_presupuesto_libre",
@@ -43,7 +43,7 @@
         "path": "/calc/cotizar/presupuesto-libre",
         "summary": "Calcula presupuesto libre (líneas manuales por catálogo).",
         "whenToUse": "Cuando el cliente pide partidas sueltas (paneles por m², perfilería por barra, tornillería, selladores, flete manual, extraordinarios) sin cotización techo/pared automática.",
-        "url": "http://localhost:3001/calc/cotizar/presupuesto-libre"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/cotizar/presupuesto-libre"
       },
       {
         "operationId": "calcular_cotizacion",
@@ -51,7 +51,7 @@
         "path": "/calc/cotizar",
         "summary": "Calcula cotización completa con BOM, precios y textos.",
         "whenToUse": "Cuando el usuario tiene dimensiones y opciones definidas. Devuelve resumen, BOM, texto WhatsApp y texto resumen.",
-        "url": "http://localhost:3001/calc/cotizar"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/cotizar"
       },
       {
         "operationId": "generar_cotizacion_pdf",
@@ -59,7 +59,7 @@
         "path": "/calc/cotizar/pdf",
         "summary": "Genera PDF profesional y devuelve link para compartir.",
         "whenToUse": "Cuando el cliente quiere la cotización en PDF. Incluir objeto cliente (nombre, teléfono, dirección). Link expira en 24h.",
-        "url": "http://localhost:3001/calc/cotizar/pdf"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/cotizar/pdf"
       },
       {
         "operationId": "listar_cotizaciones_generadas",
@@ -67,7 +67,7 @@
         "path": "/calc/cotizaciones",
         "summary": "Lista cotizaciones PDF generadas en la sesión.",
         "whenToUse": "Para consultar historial de cotizaciones generadas (código, cliente, total, link PDF).",
-        "url": "http://localhost:3001/calc/cotizaciones"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/cotizaciones"
       },
       {
         "operationId": "ver_pdf_cotizacion",
@@ -75,7 +75,7 @@
         "path": "/calc/pdf/{id}",
         "summary": "Abre la cotización HTML (imprimir como PDF).",
         "whenToUse": "URL devuelta por generar_cotizacion_pdf. Compartir con el cliente. Expira en 24h.",
-        "url": "http://localhost:3001/calc/pdf/{id}"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calc/pdf/{id}"
       }
     ]
   },
@@ -86,126 +86,168 @@
         "method": "GET",
         "path": "/api/cotizaciones",
         "summary": "Listado cotizaciones (Sheets)",
-        "url": "http://localhost:3001/api/cotizaciones"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/cotizaciones"
       },
       {
         "method": "POST",
         "path": "/api/cotizaciones",
         "summary": "Crear/actualizar cotización (según implementación)",
-        "url": "http://localhost:3001/api/cotizaciones"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/cotizaciones"
       },
       {
         "method": "GET",
         "path": "/api/proximas-entregas",
         "summary": "Próximas entregas",
-        "url": "http://localhost:3001/api/proximas-entregas"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/proximas-entregas"
       },
       {
         "method": "GET",
         "path": "/api/coordinacion-logistica",
         "summary": "Coordinación logística",
-        "url": "http://localhost:3001/api/coordinacion-logistica"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/coordinacion-logistica"
       },
       {
         "method": "GET",
         "path": "/api/audit",
         "summary": "Audit de datos",
-        "url": "http://localhost:3001/api/audit"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/audit"
       },
       {
         "method": "GET",
         "path": "/api/pagos-pendientes",
         "summary": "Pagos pendientes",
-        "url": "http://localhost:3001/api/pagos-pendientes"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/pagos-pendientes"
       },
       {
         "method": "GET",
         "path": "/api/metas-ventas",
         "summary": "Metas de ventas",
-        "url": "http://localhost:3001/api/metas-ventas"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/metas-ventas"
       },
       {
         "method": "GET",
         "path": "/api/calendario-vencimientos",
         "summary": "Calendario vencimientos",
-        "url": "http://localhost:3001/api/calendario-vencimientos"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/calendario-vencimientos"
       },
       {
         "method": "GET",
         "path": "/api/ventas",
         "summary": "Ventas",
-        "url": "http://localhost:3001/api/ventas"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/ventas"
       },
       {
         "method": "GET",
         "path": "/api/ventas/tabs",
         "summary": "Tabs ventas",
-        "url": "http://localhost:3001/api/ventas/tabs"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/ventas/tabs"
       },
       {
         "method": "GET",
         "path": "/api/stock-ecommerce",
         "summary": "Stock e-commerce",
-        "url": "http://localhost:3001/api/stock-ecommerce"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/stock-ecommerce"
       },
       {
         "method": "GET",
         "path": "/api/stock-kpi",
         "summary": "KPI stock",
-        "url": "http://localhost:3001/api/stock-kpi"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/stock-kpi"
       },
       {
         "method": "GET",
         "path": "/api/kpi-financiero",
         "summary": "KPI financiero",
-        "url": "http://localhost:3001/api/kpi-financiero"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/kpi-financiero"
       },
       {
         "method": "GET",
         "path": "/api/stock/history",
         "summary": "Historial stock",
-        "url": "http://localhost:3001/api/stock/history"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/stock/history"
       },
       {
         "method": "GET",
         "path": "/api/kpi-report",
         "summary": "Reporte KPI operativo",
-        "url": "http://localhost:3001/api/kpi-report"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/kpi-report"
       },
       {
         "method": "POST",
         "path": "/api/pagos",
         "summary": "Pagos",
-        "url": "http://localhost:3001/api/pagos"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/pagos"
       },
       {
         "method": "POST",
         "path": "/api/ventas",
         "summary": "POST ventas",
-        "url": "http://localhost:3001/api/ventas"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/ventas"
       },
       {
         "method": "POST",
         "path": "/api/marcar-entregado",
         "summary": "Marcar entregado",
-        "url": "http://localhost:3001/api/marcar-entregado"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/marcar-entregado"
       },
       {
         "method": "GET",
         "path": "/api/actualizar-precios-calculadora",
         "summary": "Sincronizar precios hacia calculadora",
-        "url": "http://localhost:3001/api/actualizar-precios-calculadora"
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/actualizar-precios-calculadora"
+      },
+      {
+        "method": "GET",
+        "path": "/api/followups",
+        "summary": "Listado follow-ups (recordatorios / seguimiento)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups"
+      },
+      {
+        "method": "POST",
+        "path": "/api/followups",
+        "summary": "Crear follow-up",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups"
+      },
+      {
+        "method": "GET",
+        "path": "/api/followups/:id",
+        "summary": "Detalle follow-up",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id"
+      },
+      {
+        "method": "PATCH",
+        "path": "/api/followups/:id",
+        "summary": "Actualizar / nota / estado",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id"
+      },
+      {
+        "method": "POST",
+        "path": "/api/followups/:id/done",
+        "summary": "Marcar hecho",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id/done"
+      },
+      {
+        "method": "POST",
+        "path": "/api/followups/:id/snooze",
+        "summary": "Posponer seguimiento",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id/snooze"
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/followups/:id",
+        "summary": "Eliminar follow-up",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id"
       }
     ]
   },
   "ui": {
-    "finanzas_spa": "http://localhost:3001/finanzas",
-    "calculadora_spa": "http://localhost:3001/calculadora",
+    "finanzas_spa": "https://panelin-calc-q74zutv7dq-uc.a.run.app/finanzas",
+    "calculadora_spa": "https://panelin-calc-q74zutv7dq-uc.a.run.app/calculadora",
     "notes": "SPA routes require browser or static deploy; see docs/AGENT-UI-VS-API.md"
   },
   "discovery": {
-    "capabilities_url": "http://localhost:3001/capabilities",
-    "health_url": "http://localhost:3001/health",
+    "capabilities_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/capabilities",
+    "health_url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/health",
     "docs": {
       "agent_ui_vs_api": "docs/AGENT-UI-VS-API.md",
       "static_capabilities_json": "docs/api/AGENT-CAPABILITIES.json",
