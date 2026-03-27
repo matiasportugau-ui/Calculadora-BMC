@@ -12,8 +12,8 @@
 
 | Field | Value |
 |--------|--------|
-| **Date** | 2026-03-24 |
-| **Focus (one line)** | Run 55: WA Cloud API webhook live (chatbo2), auto-trigger 5min, parse-email endpoint, Apps Script v2, email ingest pipeline design |
+| **Date** | 2026-03-27 |
+| **Focus (one line)** | Sync equipo: `program:status` / `project:compass` operativos; run 55 formal pendiente (MATPROMT 0a); gates humanos cm-0/1/2 |
 | **Energy / time box** | Full day |
 | **Definition of “done” for today** | WA webhook receiving + auto-processing messages; email ingest bridge script ready; all deployed to Cloud Run |
 
@@ -23,6 +23,7 @@
 
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
+- 2026-03-27: **Sync + compass** — `package.json`: scripts `program:status`, `project:compass`, `followup`, `channels:*`, `email:ingest-snapshot`, `matriz:reconcile` alineados a `AGENTS.md`; `npm run gate:local` **165 passed**; `main` limpio vs `origin`. Run **55** sigue abierto en `PROMPT-FOR-EQUIPO-COMPLETO.md` hasta cierre formal con Orquestador/MATPROMT.
 - 2026-03-24: **Sincronización completa equipo** — skill `bmc-project-team-sync`: `PROJECT-STATE` entrada nueva (CI **119** + 1 warning ESLint; git **0/0** vs `origin`; WIP listado); siguiente run numerado **55** en PROMPT; no reemplaza Invoque full team 0→9 + MATPROMT.
 - 2026-03-24: **Run 55** — WA Cloud API webhook live (`chatbo2`, Phone ID `857133467479731`); auto-trigger 5min inactivity (no más 🚀); `POST /api/crm/parse-email` endpoint; Apps Script v2 (row fix + batch + lock); Cloud Run rev `panelin-calc-00031-4r2`; email ingest pipeline diseñado (6 cuentas IMAP, clasificación "ventas" → CRM).
 - 2026-03-24: **Full team sync** — `PROJECT-STATE`: «verificación CI + árbol git» (última pasada) + entrada previa «full update + verify»; gate **119** (1 ESLint warning opcional `calculatorConfig.js`); git **0/0** vs `origin`; WIP: `bmcDashboard` suggest-response, `package.json`/lock, `.env.example`, ML/CRM, Dockerfile, team docs.

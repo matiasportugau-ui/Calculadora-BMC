@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-27 (API — caché TTL lecturas ventas / tabs Sheets)
+**Última actualización:** 2026-03-27 (Sync equipo — compass + scripts npm + gate local)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-27 (Project team sync — compass + alineación `package.json`):** Pasada **bmc-project-team-sync** (lectura `PROJECT-STATE`, `PROMPT-FOR-EQUIPO-COMPLETO` → **run 55** sigue listado en «Próximos prompts»; `PROJECT-TEAM-FULL-COVERAGE` §2.2 transversales). Restaurados en [`package.json`](../../package.json) los scripts referenciados en [`AGENTS.md`](../../AGENTS.md): `followup`, `program:status`, `project:compass`, `schedule`, `channels:onboarding`, `channels:automated`, `email:ingest-snapshot`, `matriz:reconcile`. **`npm run gate:local`:** **165 passed**; **Git:** `main` **up to date** con `origin/main`, working tree **clean** (HEAD `412e2f1`). **`node scripts/program-status.mjs`:** fase **p2** activa, ~**31%** esfuerzo / ~**45%** tareas; próximos: E2E WA→CRM, ML OAuth/GCS, bridge email ingest, rotación keys, SKUs MATRIZ. Este paso **no** sustituye **Invoque full team** 0→9 + MATPROMT 0a ni cierra run 55. **Afecta a:** todos §2 (comandos de seguimiento); Orquestador al planificar run formal.
 
 **2026-03-27 (API — reintentos Sheets 429/cuota):** [`server/routes/bmcDashboard.js`](../../server/routes/bmcDashboard.js): **`withSheetsReadRetry`** (backoff exponencial + jitter) en **`values.get`** (`getSheetData`), **`spreadsheets.get`** (`getFirstSheetName`, **`getSheetNames`**), **`values.batchGet`** (ventas). Env opcional **`BMC_SHEETS_READ_MAX_RETRIES`** (default **5**, `1` = sin reintentos), **`BMC_SHEETS_READ_RETRY_BASE_MS`** (default **500**). [`.env.example`](../../.env.example). **`npm test`** OK. **Afecta a:** cuota/ráfagas, dashboard Finanzas.
 

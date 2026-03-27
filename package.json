@@ -44,7 +44,15 @@
     "panelsim:session": "bash scripts/panelsim-full-session.sh",
     "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs",
     "smoke:prod": "node scripts/smoke-prod-api.mjs",
-    "matriz:rename-headers": "node scripts/matriz-rename-bromyros-headers.mjs"
+    "matriz:rename-headers": "node scripts/matriz-rename-bromyros-headers.mjs",
+    "followup": "node scripts/followup.mjs",
+    "program:status": "node scripts/program-status.mjs",
+    "project:compass": "node scripts/project-compass.mjs",
+    "schedule": "npm run project:compass",
+    "channels:onboarding": "node scripts/channels-onboarding.mjs",
+    "channels:automated": "node scripts/channels-automated-pipeline.mjs",
+    "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
+    "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
