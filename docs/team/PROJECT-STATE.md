@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-27 (Sync equipo — compass + scripts npm + gate local)
+**Última actualización:** 2026-03-27 (Full team review — sync + informe; no run 0→9)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-27 (Full team review — sync + reporte lectura §2/§4):** Ejecutado workflow **bmc-project-team-sync** (revisión documental; **no** sustituye **Invoque full team** 0→9 ni **MATPROMT 0a** ni cierra **run 55**). Lectura: este archivo, [`PROJECT-TEAM-FULL-COVERAGE.md`](./PROJECT-TEAM-FULL-COVERAGE.md) **§2 / §4** (propagación), [`PROMPT-FOR-EQUIPO-COMPLETO.md`](./PROMPT-FOR-EQUIPO-COMPLETO.md) (**run 55** sigue «en progreso» — bridge email, min-instances, token WA, commit/push). **`npm run gate:local`:** **165 passed** (lint `src/` + tests). **`npm run project:compass`:** fase **p2**, ~**31%** esfuerzo / ~**45%** tareas; follow-ups: ninguno vencido. **Git:** `main` alineado con `origin/main`, working tree **clean** (verificación local). **Propagación (cambios API Sheets recientes):** **Networks** — redeploy Cloud Run para caché ventas / `batchGet` / reintentos 429; **Contract** — `test:contracts` tras deploy si se tocan rutas; **Design** — si la UI hace polling agresivo a `/api/ventas` o `/api/kpi-report`, preferir `?tab=` o menor frecuencia; **Dependencies** — reflejar menos lecturas Sheets en mapa mental del servicio. **Afecta a:** todos §2 como lectura; Orquestador al planificar run formal o cierre run 55.
 
 **2026-03-27 (Project team sync — compass + alineación `package.json`):** Pasada **bmc-project-team-sync** (lectura `PROJECT-STATE`, `PROMPT-FOR-EQUIPO-COMPLETO` → **run 55** sigue listado en «Próximos prompts»; `PROJECT-TEAM-FULL-COVERAGE` §2.2 transversales). Restaurados en [`package.json`](../../package.json) los scripts referenciados en [`AGENTS.md`](../../AGENTS.md): `followup`, `program:status`, `project:compass`, `schedule`, `channels:onboarding`, `channels:automated`, `email:ingest-snapshot`, `matriz:reconcile`. **`npm run gate:local`:** **165 passed**; **Git:** `main` **up to date** con `origin/main`, working tree **clean** (HEAD `412e2f1`). **`node scripts/program-status.mjs`:** fase **p2** activa, ~**31%** esfuerzo / ~**45%** tareas; próximos: E2E WA→CRM, ML OAuth/GCS, bridge email ingest, rotación keys, SKUs MATRIZ. Este paso **no** sustituye **Invoque full team** 0→9 + MATPROMT 0a ni cierra run 55. **Afecta a:** todos §2 (comandos de seguimiento); Orquestador al planificar run formal.
 
