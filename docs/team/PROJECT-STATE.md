@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-27 (Plan PROJECT-STATE — prod smoke/E2E + run 55 operador)
+**Última actualización:** 2026-03-27 (Invoque full team run 55 — 0→9 + Judge + PROMPT paso 9)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-27 (Invoque full team — run 55, secuencia 0→9):** Ejecutada la secuencia canónica **Invoque full team** (plan 0→9; no se edita el `.plan.md` del usuario). **0a** [`matprompt/MATPROMT-RUN-2026-03-27-run55.md`](./matprompt/MATPROMT-RUN-2026-03-27-run55.md); **0b** [`parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-27-run55.md`](./parallel-serial/PARALLEL-SERIAL-PLAN-2026-03-27-run55.md); **5→5g** [`reports/REPORT-SOLUTION-CODING-2026-03-27-run55.md`](./reports/REPORT-SOLUTION-CODING-2026-03-27-run55.md); **5h** [`panelsim/reports/SIM-REV-REVIEW-2026-03-27-run55.md`](./panelsim/reports/SIM-REV-REVIEW-2026-03-27-run55.md) (delta, sin `panelsim:session` obligatorio); **6** [`judge/JUDGE-REPORT-RUN-2026-03-27-run55.md`](./judge/JUDGE-REPORT-RUN-2026-03-27-run55.md) + [`judge/JUDGE-REPORT-HISTORICO.md`](./judge/JUDGE-REPORT-HISTORICO.md); **7** [`reports/REPO-SYNC-REPORT-2026-03-27-run55.md`](./reports/REPO-SYNC-REPORT-2026-03-27-run55.md); **8–9** [`PROMPT-FOR-EQUIPO-COMPLETO.md`](./PROMPT-FOR-EQUIPO-COMPLETO.md) + [`IMPROVEMENT-BACKLOG-BY-AGENT.md`](./IMPROVEMENT-BACKLOG-BY-AGENT.md) + índice [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md). **2b Sheets Structure:** N/A. **Pendientes humanos run 55** siguen abiertos hasta evidencia: gates **cm-0 / cm-1 / cm-2**, **503** `GET /api/cotizaciones` prod, **duplicados `path` MATRIZ**, push/sync repos — [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md). **verify-ci:** `npm run gate:local` **165 passed**; `npm run smoke:prod` **OK** (health, capabilities, MATRIZ CSV, suggest-response; detalle en `REPORT-SOLUTION-CODING-2026-03-27-run55.md` §4). **`test:contracts`** no re-ejecutado (sin cambios de rutas en este diff). **Afecta a:** todos §2; Orquestador al operar checklist.
 
 **2026-03-27 (Plan pasos PROJECT-STATE — ejecución repo):** Implementación del plan «Pasos desde PROJECT-STATE» (sin editar el `.plan.md`). **`npm run gate:local:full`** OK. **`npm run smoke:prod`** OK (`https://panelin-calc-q74zutv7dq-uc.a.run.app`). Curls: **`/api/kpi-report` → 200**; **`/api/cotizaciones` → 503** (revisar config/tabs CRM); **`/calculadora/`**, **`/finanzas/` → 200**. **MATRIZ:** `curl …/api/actualizar-precios-calculadora | node scripts/reconcile-matriz-csv.mjs - --json` → duplicados de `path` en CSV prod (`ok: false`). Nuevo [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md). [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md) y [`planilla-inventory.md`](../google-sheets-module/planilla-inventory.md) (nota **MONTO**). **Run 55** abierto para pasos humanos; PROMPT con subestado. **Afecta a:** Networks, Integraciones, Mapping, PANELSIM.
 
