@@ -79,6 +79,8 @@ Ver planilla-map.md §2 para columnas completas y diff vs blueprint.
 | FECHA_VENCIMIENTO | — | FECHA / PLAZO | date | KPI, trend, breakdown, estado |
 | ESTADO_PAGO | — | ESTADO | string | Filtro pendiente |
 
+**Nota (2026-03-27):** Para saldo pendiente y agregados de “cuánto falta pagar”, la columna **MONTO** es la referencia operativa. **PRECIO_VENTA** (D) e **COSTO_COMPRA** (E) aportan contexto de venta/costo; no reemplazan a **MONTO** en KPIs de saldo salvo decisión explícita de negocio documentada en código.
+
 ### Metas_Ventas (si existe)
 
 | Campo | Tipo | Uso |

@@ -22,7 +22,11 @@ Antes de ejecutar solo el **siguiente run numerado** (p. ej. run 55), leer **`do
 
 ## Próximos prompts (ejecutar en este run)
 
-**Run 2026-03-24 / run 55 (WhatsApp Cloud API + auto-trigger + parse-email + email ingest):** En progreso. WA webhook live (chatbo2, Phone ID 857133467479731), auto-trigger 5min inactividad, `POST /api/crm/parse-email`, Apps Script v2 con row fix + batch + lock, Cloud Run rev panelin-calc-00031-4r2. Email ingest pipeline: 6 cuentas IMAP en repo hermano con clasificación "ventas" → bridge a `/api/crm/parse-email` → CRM pendiente. **Pendientes run 55:** (1) email bridge script, (2) min-instances Cloud Run, (3) WA token permanente (actual es temporal 24h), (4) git commit + push, (5) gate:local verify.
+**Run 2026-03-24 / run 55 (WhatsApp Cloud API + auto-trigger + parse-email + email ingest):** En progreso. WA webhook live (chatbo2, Phone ID 857133467479731), auto-trigger 5min inactividad, `POST /api/crm/parse-email`, Apps Script v2 con row fix + batch + lock. Email: bridge **repo** = `npm run email:ingest-snapshot` ([`scripts/email-snapshot-ingest.mjs`](../../scripts/email-snapshot-ingest.mjs)); operador **cm-2** + evidencia en CRM.
+
+**Subestado 2026-03-27 (plan PROJECT-STATE, máquina):** `npm run gate:local:full` OK; `npm run smoke:prod` OK; prod `GET /api/kpi-report` **200**; SPAs `/calculadora/`, `/finanzas/` **200**; `GET /api/cotizaciones` **503** en verificación (revisar sheets). Reconciliación MATRIZ: duplicados de `path` en CSV prod — limpiar planilla o regla import. Checklist humano: [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md).
+
+**Pendientes run 55 (humano / infra):** (1) E2E WA → fila CRM visible + **cm-0** si falla, (2) token WA permanente, (3) **min-instances** Cloud Run si aplica, (4) ML OAuth + GCS **cm-1**, (5) primera **ingest** correo real controlada **cm-2**, (6) rotación keys si hubo exposición. Cierre formal run 55: **Invoque full team** + MATPROMT 0a cuando haya evidencia.
 
 **2026-03-24 (PANELSIM — sesión ML operativa, sin número de run):** ✓ Ejecutado. Capacidades ML canonizadas: `panelsim-ml-crm-sync.js` (sync preguntas→CRM con respuesta sugerida y verificación precio vs Matriz, threshold=0), 4 endpoints ML nuevos en `server/index.js`, col AF "Respuesta Sugerida" en CRM_Operativo. Reglas ML persistidas en memory `feedback_ml_responses.md` y `AGENT-SIMULATOR-SIM.md` §5. Pendiente Matias: MLU754872768 desvincular catálogo manualmente. `PROJECT-STATE.md` actualizado.
 

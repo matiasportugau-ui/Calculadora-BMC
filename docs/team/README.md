@@ -20,6 +20,7 @@ docs/team/
 ├── PROJECT-SCHEDULE.md          Cronograma + rutina: npm run project:compass; enlaces al JSON maestro y follow-ups
 ├── PROCEDIMIENTO-CANALES-WA-ML-CORREO.md  Checklist WhatsApp → ML → Correo; npm run channels:onboarding
 ├── HUMAN-GATES-ONE-BY-ONE.md        Intervención humana: URL + menú + “listo cuando” (cm-0, cm-1, cm-2)
+├── RUN55-OPERATOR-CHECKLIST.md   Run 55: WA / ML / correo — pasos operador + enlaces a gates y CLI ingest
 ├── GCLOUD-SHEETS-CREDENTIALS-SIMPLE.md  Sheets en Cloud Run: service account → Secret Manager → mount → GOOGLE_APPLICATION_CREDENTIALS (pasos simples)
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo

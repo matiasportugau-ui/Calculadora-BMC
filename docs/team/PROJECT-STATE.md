@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-27 (Full team review — sync + informe; no run 0→9)
+**Última actualización:** 2026-03-27 (Plan PROJECT-STATE — prod smoke/E2E + run 55 operador)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-27 (Plan pasos PROJECT-STATE — ejecución repo):** Implementación del plan «Pasos desde PROJECT-STATE» (sin editar el `.plan.md`). **`npm run gate:local:full`** OK. **`npm run smoke:prod`** OK (`https://panelin-calc-q74zutv7dq-uc.a.run.app`). Curls: **`/api/kpi-report` → 200**; **`/api/cotizaciones` → 503** (revisar config/tabs CRM); **`/calculadora/`**, **`/finanzas/` → 200**. **MATRIZ:** `curl …/api/actualizar-precios-calculadora | node scripts/reconcile-matriz-csv.mjs - --json` → duplicados de `path` en CSV prod (`ok: false`). Nuevo [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md). [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md) y [`planilla-inventory.md`](../google-sheets-module/planilla-inventory.md) (nota **MONTO**). **Run 55** abierto para pasos humanos; PROMPT con subestado. **Afecta a:** Networks, Integraciones, Mapping, PANELSIM.
 
 **2026-03-27 (Full team review — sync + reporte lectura §2/§4):** Ejecutado workflow **bmc-project-team-sync** (revisión documental; **no** sustituye **Invoque full team** 0→9 ni **MATPROMT 0a** ni cierra **run 55**). Lectura: este archivo, [`PROJECT-TEAM-FULL-COVERAGE.md`](./PROJECT-TEAM-FULL-COVERAGE.md) **§2 / §4** (propagación), [`PROMPT-FOR-EQUIPO-COMPLETO.md`](./PROMPT-FOR-EQUIPO-COMPLETO.md) (**run 55** sigue «en progreso» — bridge email, min-instances, token WA, commit/push). **`npm run gate:local`:** **165 passed** (lint `src/` + tests). **`npm run project:compass`:** fase **p2**, ~**31%** esfuerzo / ~**45%** tareas; follow-ups: ninguno vencido. **Git:** `main` alineado con `origin/main`, working tree **clean** (verificación local). **Propagación (cambios API Sheets recientes):** **Networks** — redeploy Cloud Run para caché ventas / `batchGet` / reintentos 429; **Contract** — `test:contracts` tras deploy si se tocan rutas; **Design** — si la UI hace polling agresivo a `/api/ventas` o `/api/kpi-report`, preferir `?tab=` o menor frecuencia; **Dependencies** — reflejar menos lecturas Sheets en mapa mental del servicio. **Afecta a:** todos §2 como lectura; Orquestador al planificar run formal o cierre run 55.
 
@@ -407,13 +409,13 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 - [x] **Guía usuarios:** docs/GUIA-RAPIDA-DASHBOARD-BMC.md existe
 - [x] **Phase 1 (GET):** Iteración 23 tabs Ventas (getAllVentasData, Promise.allSettled); GET /api/ventas?proveedor=; GET /api/ventas?tab=; GET /api/ventas/tabs; GET /api/calendario-vencimientos?month=2026-03 → tab "MARZO 2026". Pendiente: GET /api/stock/history (EXISTENCIAS_Y_PEDIDOS, Egresos)
 - [x] **Phase 2 (PUSH):** Implementado 2026-03-16. POST /api/cotizaciones, PATCH /api/cotizaciones/:id, POST /api/pagos, PATCH /api/pagos/:id, POST /api/ventas, PATCH /api/stock/:codigo; append AUDIT_LOG. Pendiente manual: crear tabs CONTACTOS, Ventas_Consolidado, SHOPIFY_SYNC_AT, PAGADO; configurar triggers.
-- [x] **Planilla-inventory:** Tab Pagos corregida (Pendientes_); nuevos endpoints documentados. Pendiente: documentar columna MONTO autoritativa (D/E) en Pagos
+- [x] **Planilla-inventory:** Tab Pagos corregida (Pendientes_); nuevos endpoints documentados. **2026-03-27:** nota **MONTO** vs D/E en [`planilla-inventory.md`](../google-sheets-module/planilla-inventory.md) (tabla Pagos_Pendientes).
 - [x] **Repo Sync:** BMC_DASHBOARD_2_REPO y BMC_DEVELOPMENT_TEAM_REPO configurados en .env ✓
 - [x] **npm audit / merge run36:** **2026-03-21:** merge **`run36-audit-force`** → **`main`** y **`git push origin main`**; **`npm audit`:** **0** (vite 8, lockfile). Ver [REPORT-RUN36-AUDIT-FORCE-2026-03-20.md](./reports/REPORT-RUN36-AUDIT-FORCE-2026-03-20.md).
-- [ ] **kpi-report runtime:** Verificar **producción** cuando aplique (200 o 503). **Local 2026-03-24:** `npm run pre-deploy` + `scripts/validate-api-contracts.js` — GET `/api/kpi-report` OK con API en :3001. Ruta en código: `bmcDashboard.js`, montada en `/api`; 404 en runtime = reiniciar servidor.
+- [x] **kpi-report runtime:** **2026-03-27:** prod `https://panelin-calc-q74zutv7dq-uc.a.run.app/api/kpi-report` → **200** (ver [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md)). Local 2026-03-24: `pre-deploy` + contratos — OK en :3001. Ruta en `bmcDashboard.js` montada en `/api`; 404 en runtime = reiniciar servidor.
 - [x] **Guía vendedores:** docs/GUIA-RAPIDA-VENDEDORES.md creada 2026-03-18 (Reporter, paso 9).
 - [x] **Deploy producción:** Cloud Run panelin-calc — deploy completado. Ver service-map.md §5 Deploy flow.
-- [ ] **E2E validation:** Ejecutar checklist docs/team/E2E-VALIDATION-CHECKLIST.md con URL Cloud Run (post-deploy). Creado 2026-03-18.
+- [ ] **E2E validation:** Smoke + curls críticos documentados **2026-03-27** en [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md) (health, kpi-report, cotizaciones, SPAs). Pendiente: filas D1.x **UI manual** (marcar entregado, campana, PDF Drive, Shopify) y cierre ✓ en tabla checklist cuando se ejecuten.
 
 ---
 

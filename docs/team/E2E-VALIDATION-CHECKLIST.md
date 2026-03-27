@@ -2,7 +2,7 @@
 
 **Owner:** Audit/Debug + Matias  
 **Referencia:** IMPLEMENTATION-PLAN-POST-GO-LIVE.md §D1  
-**Última actualización:** 2026-03-20 (run34 smoke post-Sheets)
+**Última actualización:** 2026-03-27 (plan PROJECT-STATE — smoke + curls prod)
 
 Completar antes de presentar el dashboard a usuarios finales. Marcar con ✓ cuando se verifique.
 
@@ -56,6 +56,24 @@ Base **Cloud Run:** `https://panelin-calc-642127786762.us-central1.run.app`
 | **Vercel** | `/`, `/calculadora/` | 200 | SPAs OK |
 
 *Run34 (handoff itinerante): re-validación post-run33; APIs 503 coherente; Vercel 200; Cloud Run SPAs 404 — anotar para Networks si se requiere calculadora/finanzas en Cloud Run.*
+
+### Resultados — 2026-03-27 (plan ejecución, curls red pública)
+
+Base **Cloud Run (canónica smoke):** `https://panelin-calc-q74zutv7dq-uc.a.run.app`
+
+| Ruta | HTTP | Nota |
+|------|------|------|
+| `/health` | 200 | Servicio vivo |
+| `/api/kpi-report` | 200 | Sheets/credenciales operativos en prod (antes 503 en run34) |
+| `/api/cotizaciones` | 503 | Workbook/tabs o permisos no disponibles para este endpoint en el deploy verificado — revisar `BMC_SHEET_ID` / tabs CRM vs expectativa |
+| `/calculadora/` | 200 | SPA calculadora |
+| `/finanzas/` | 200 | Dashboard finanzas |
+
+**Smoke `npm run smoke:prod` (misma base):** OK — `/health`, `/capabilities`, `public_base_url` alineado, `GET /api/actualizar-precios-calculadora` (CSV MATRIZ), `/auth/ml/status` 404 sin token ML, `POST /api/crm/suggest-response` 200.
+
+**Reconciliación MATRIZ (duplicados `path` en CSV prod):** `curl -sS BASE/api/actualizar-precios-calculadora | node scripts/reconcile-matriz-csv.mjs - --json` → `ok: false`, `duplicatePathCount` > 0 (limpiar filas duplicadas en planilla BROMYROS o acordar regla de import). El `-` es obligatorio para leer desde stdin.
+
+**Operador run 55 / gates:** [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md).
 
 ---
 

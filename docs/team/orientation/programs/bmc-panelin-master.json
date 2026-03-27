@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "programId": "bmc-panelin-master",
   "title": "BMC / Panelin — programa maestro (multi-área)",
-  "updatedAt": "2026-03-26",
+  "updatedAt": "2026-03-27",
   "owner": "Matias",
   "horizonWeeks": 24,
   "notes": "Orden de magnitud. Actualizar weekly. currentPhaseId y status de tareas al cerrar trabajo.",

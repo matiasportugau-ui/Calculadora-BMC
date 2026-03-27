@@ -4,7 +4,7 @@
  *
  * Uso:
  *   node scripts/reconcile-matriz-csv.mjs ruta/al/archivo.csv
- *   curl -s "$API/api/actualizar-precios-calculadora" | node scripts/reconcile-matriz-csv.mjs
+ *   curl -s "$API/api/actualizar-precios-calculadora" | node scripts/reconcile-matriz-csv.mjs -
  *   npm run matriz:reconcile -- /path/to/bmc-precios-matriz.csv
  *
  * Flags:
@@ -19,7 +19,13 @@ import { getDuplicatePathReport, splitCsvCells } from "../src/utils/csvPricingIm
 function readInput(argv) {
   const args = argv.filter((a) => !a.startsWith("--"));
   const file = args[0];
-  if (!file || file === "-") {
+  if (!file) {
+    throw new Error(
+      "Falta archivo CSV o `-` para stdin. Ejemplos: npm run matriz:reconcile -- ./precios.csv --json ; " +
+        "curl -s BASE/api/actualizar-precios-calculadora | node scripts/reconcile-matriz-csv.mjs - --json"
+    );
+  }
+  if (file === "-") {
     return fs.readFileSync(0, "utf8");
   }
   const resolved = path.isAbsolute(file) ? file : path.join(process.cwd(), file);

@@ -2,6 +2,8 @@
 
 **Estado 2026-03-20:** ✅ **Todos los roles §2 desarrollados** (incl. **MATPROMT**). Solo mantenimiento: actualizar knowledge cuando cambie el dominio; completar reference.md y examples.md donde falten.
 
+**Nota 2026-03-27:** Run **55** — avance automático documentado en [`PROJECT-STATE.md`](./PROJECT-STATE.md) y [`PROMPT-FOR-EQUIPO-COMPLETO.md`](./PROMPT-FOR-EQUIPO-COMPLETO.md); cierre del run numerado sigue sujeto a evidencia humana (WA/ML/ingest) y **Invoque full team** formal si aplica.
+
 **Propósito:** Cada agente se considera **completamente desarrollado** cuando cumple todos los criterios de su fila. Cada run del Equipo completo ejecuta los **prompts** pendientes (ver `PROMPT-FOR-EQUIPO-COMPLETO.md`) y actualiza este backlog. Se repite hasta que todos estén ✓.
 
 ---
