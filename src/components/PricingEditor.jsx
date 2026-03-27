@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { Search, Percent, RotateCcw, Download, Upload, RefreshCw, CloudUpload } from "lucide-react";
+import { Search, Percent, RotateCcw, Download, Upload, RefreshCw, UploadCloud } from "lucide-react";
 import {
   getPricingItemsFlat,
   getValueAtPath,
@@ -538,7 +538,7 @@ export default function PricingEditor({ onSave }) {
                 gap: 6,
               }}
             >
-              <CloudUpload size={14} />
+              <UploadCloud size={14} />
               Escribir en MATRIZ
             </button>
           </div>

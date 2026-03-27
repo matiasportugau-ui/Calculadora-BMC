@@ -66,6 +66,54 @@ function invalidateVentasSheetsReadCache(sheetId) {
   }
 }
 
+function sheetsReadRetryMaxAttempts() {
+  const n = Number(process.env.BMC_SHEETS_READ_MAX_RETRIES);
+  if (!Number.isFinite(n) || n < 1) return 5;
+  return Math.min(12, Math.floor(n));
+}
+
+function sheetsReadRetryBaseMs() {
+  const n = Number(process.env.BMC_SHEETS_READ_RETRY_BASE_MS);
+  if (!Number.isFinite(n) || n < 0) return 500;
+  return Math.min(8_000, Math.floor(n));
+}
+
+function isSheetsRateOrQuotaError(err) {
+  const status = err?.response?.status;
+  const code = err?.code;
+  const msg = String(err?.message || err?.errors?.[0]?.message || "").toLowerCase();
+  if (status === 429 || code === 429) return true;
+  if (status === 403 && (msg.includes("quota") || msg.includes("rate"))) return true;
+  if (msg.includes("quota exceeded") || msg.includes("quota limit")) return true;
+  if (msg.includes("user rate limit") || msg.includes("rate limit exceeded")) return true;
+  return false;
+}
+
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Retry Sheets reads on 429 / quota (exponential backoff + jitter). `BMC_SHEETS_READ_MAX_RETRIES=1` disables retries. */
+async function withSheetsReadRetry(_label, fn) {
+  const maxAttempts = sheetsReadRetryMaxAttempts();
+  const baseMs = sheetsReadRetryBaseMs();
+  if (maxAttempts <= 1) return fn();
+
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (!isSheetsRateOrQuotaError(e) || attempt === maxAttempts) throw e;
+      const exp = Math.min(25_000, baseMs * 2 ** (attempt - 1));
+      const jitter = Math.floor(Math.random() * (baseMs + 120));
+      await sleepMs(exp + jitter);
+    }
+  }
+  throw lastErr;
+}
+
 function getStartOfWeek(d) {
   const date = new Date(d);
   const day = date.getDay();
@@ -214,7 +262,9 @@ async function getFirstSheetName(sheetId) {
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: authClient });
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const meta = await withSheetsReadRetry("spreadsheets.get", () =>
+    sheets.spreadsheets.get({ spreadsheetId: sheetId })
+  );
   const first = meta.data.sheets?.[0]?.properties?.title;
   return first || "Hoja 1";
 }
@@ -229,7 +279,9 @@ async function getSheetNames(sheetId) {
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: authClient });
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const meta = await withSheetsReadRetry("spreadsheets.get", () =>
+    sheets.spreadsheets.get({ spreadsheetId: sheetId })
+  );
   const names = (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
   sheetsCacheSet(cacheKey, names, SHEETS_TAB_NAMES_TTL_MS);
   return [...names];
@@ -337,10 +389,12 @@ async function getSheetData(sheetId, sheetName, useWrite = false, options = {}) 
     headerRowOffset > 0
       ? `'${sheetName}'!A${headerRowOffset + 1}:ZZ`
       : `'${sheetName}'`;
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetId,
-    range,
-  });
+  const res = await withSheetsReadRetry("values.get", () =>
+    sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range,
+    })
+  );
   const rows = res.data.values || [];
   if (rows.length === 0) return { headers: [], rows: [] };
   const headers = rows[0];
@@ -567,10 +621,12 @@ async function fetchVentasRowsAllTabsBatched(sheetId, tabNames) {
     const chunk = tabNames.slice(i, i + CHUNK);
     const ranges = chunk.map(ventasTabRangeA1);
     try {
-      const res = await sheets.spreadsheets.values.batchGet({
-        spreadsheetId: sheetId,
-        ranges,
-      });
+      const res = await withSheetsReadRetry("values.batchGet", () =>
+        sheets.spreadsheets.values.batchGet({
+          spreadsheetId: sheetId,
+          ranges,
+        })
+      );
       const vrs = res.data.valueRanges || [];
       for (let j = 0; j < chunk.length; j++) {
         const tabName = chunk[j];
