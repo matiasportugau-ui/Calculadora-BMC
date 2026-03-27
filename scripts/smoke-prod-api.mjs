@@ -98,7 +98,12 @@ function matrizCsvOk({ status, contentType, text }) {
   const ct = String(contentType).toLowerCase();
   if (!ct.includes("csv") && !ct.includes("text/plain")) return false;
   const firstDataLine = text.split(/\r?\n/).find((line) => line.trim().length > 0) || "";
-  return firstDataLine.includes("path") && firstDataLine.includes("descripcion");
+  return (
+    firstDataLine.includes("path") &&
+    firstDataLine.includes("descripcion") &&
+    firstDataLine.includes("venta_web") &&
+    firstDataLine.includes("venta_web_iva_inc")
+  );
 }
 
 async function main() {

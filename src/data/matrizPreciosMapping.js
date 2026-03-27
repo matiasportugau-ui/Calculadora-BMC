@@ -10,10 +10,8 @@
 // - Pared “ISODEC EPS” lista Bromyros → ISDEC100P … ISDEC250P (ISOPANEL queda ISDxxxEPS).
 // - Isowall 80 mm → SKU IW80 en col D (tres filas con mismo path = error de planilla).
 //
-// Columnas (búsqueda por nombre en bmcDashboard.buildPlanillaDesdeMatriz):
-//   - Costo/Costos (fallback col G) — con IVA → sin IVA / 1.22
-//   - Venta BMC/consumidor (fallback col L) — con IVA → sin IVA / 1.22
-//   - Venta Web (fallback col M) — con IVA → sin IVA / 1.22
+// MATRIZ_TAB_COLUMNS.BROMYROS (ver MATRIZ-PRECIOS-CALCULADORA.md):
+//   F, L, T = tal cual; M = consumidor c/IVA tal cual; **U** = venta web c/IVA tal cual (solo CSV `venta_web_iva_inc`, sin push).
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Normaliza SKU para match (uppercase, sin espacios, guiones opcionales) */

@@ -43,7 +43,8 @@
     "panelsim:email-ready": "bash scripts/panelsim-email-ready.sh",
     "panelsim:session": "bash scripts/panelsim-full-session.sh",
     "capabilities:snapshot": "node scripts/capabilities-snapshot.mjs",
-    "smoke:prod": "node scripts/smoke-prod-api.mjs"
+    "smoke:prod": "node scripts/smoke-prod-api.mjs",
+    "matriz:rename-headers": "node scripts/matriz-rename-bromyros-headers.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

@@ -7,8 +7,15 @@
  */
 const BASE = process.env.BMC_API_BASE || "http://localhost:3001";
 
-async function fetchJson(path, options) {
-  const res = await fetch(`${BASE}${path}`, options);
+async function fetchJson(path, options = {}) {
+  const { method, body, headers: extraHeaders, ...rest } = options;
+  const headers = { ...(extraHeaders || {}) };
+  const opts = { method: method || "GET", headers, ...rest };
+  if (body != null) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+    opts.body = typeof body === "string" ? body : JSON.stringify(body);
+  }
+  const res = await fetch(`${BASE}${path}`, opts);
   const data = await res.json().catch(() => null);
   return { status: res.status, data };
 }
@@ -101,6 +108,12 @@ function checkFollowups(data) {
   return { ok: true };
 }
 
+function checkPanelsimEmailSummary(data) {
+  if (!data || typeof data !== "object") return { ok: false, msg: "not an object" };
+  if (typeof data.ok !== "boolean") return { ok: false, msg: "ok must be boolean" };
+  return { ok: true };
+}
+
 async function main() {
   console.log(`\nBMC API Contract Validator — ${BASE}\n`);
   let passed = 0;
@@ -167,6 +180,38 @@ async function main() {
       allow404: true, // route exists; 404 = server not restarted after deploy
     },
   ];
+
+  const apiToken = process.env.API_AUTH_TOKEN || process.env.API_KEY;
+  if (apiToken) {
+    const name = "GET /api/email/panelsim-summary (auth)";
+    try {
+      const { status, data } = await fetchJson("/api/email/panelsim-summary", {
+        headers: { Authorization: `Bearer ${apiToken}` },
+      });
+      if (status === 503 && data?.error?.includes?.("API_AUTH_TOKEN")) {
+        console.log(`  ⚠️  ${name} — 503 cockpit auth not configured on server`);
+        passed++;
+      } else if (status !== 200) {
+        console.log(`  ❌ ${name} — HTTP ${status}`);
+        failed++;
+      } else {
+        const result = checkPanelsimEmailSummary(data);
+        if (result.ok) {
+          console.log(`  ✅ ${name}`);
+          passed++;
+        } else {
+          console.log(`  ❌ ${name} — ${result.msg}`);
+          failed++;
+        }
+      }
+    } catch (err) {
+      console.log(`  ❌ ${name} — ${err.message}`);
+      failed++;
+    }
+  } else {
+    console.log("  ⚠️  GET /api/email/panelsim-summary — skip (set API_AUTH_TOKEN for contract check)");
+    passed++;
+  }
 
   for (const { name, path, check, allow503, allow404, method, body } of checks) {
     try {

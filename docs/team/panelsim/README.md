@@ -11,6 +11,8 @@ Todo lo que sigue al **Agente Simulador (SIM)** y **PANELSIM** (mismo rol), más
 | [`knowledge/`](./knowledge/) | Atajo `SIM.md`, índice completo `PANELSIM-FULL-PROJECT-KB.md`, `PANELSIM-DIALOGUE-AND-CRITERIA.md`, `SIM-REV.md`. |
 | [`biblioteca-tecnica-productos/README.md`](./biblioteca-tecnica-productos/README.md) | Índice del material técnico-comercial (flyers/fichas); assets enlazados desde `PDF Productos /`. |
 | [`CRM-OPERATIVO-COCKPIT.md`](./CRM-OPERATIVO-COCKPIT.md) | **Cockpit CRM** — columnas AG–AK (link presupuesto, aprobación envío), qué escribe ML/WA/email; `server/lib/crmOperativoLayout.js`. |
+| [`EMAIL-GPT-THUNDERBIRD-WORKFLOW.md`](./EMAIL-GPT-THUNDERBIRD-WORKFLOW.md) | **Correo + GPT + Thunderbird (mismo IMAP):** `GET /api/email/panelsim-summary`, `POST /api/email/draft-outbound`, ingest CRM, fase 2 control IMAP pendiente. |
+| [`GPT-EMAIL-AGENT-BUILDER.md`](./GPT-EMAIL-AGENT-BUILDER.md) | **Custom GPT solo correo:** instrucciones + starters; OpenAPI mínimo [`openapi-email-gpt.yaml`](../../openapi-email-gpt.yaml) (2 Actions, sin calculadora). |
 | [`matprompt/`](./matprompt/) | Plantillas MATPROMT (tema SIM, handoff PANELSIM). |
 | [`reports/`](./reports/) | Informes de situación Sheets, run KB, y futuros `SIM-REV-REVIEW-*.md`. |
 | OAuth Mercado Libre | [`docs/ML-OAUTH-SETUP.md`](../../ML-OAUTH-SETUP.md) — checklist portal, `.env`, `npm run ml:verify`, Cloud Run (`npm run ml:cloud-run`), GCS. |

@@ -107,6 +107,15 @@ npm run email:ingest-snapshot -- --dry-run --limit 5
 
 Dedupe en `.email-ingest/` (gitignored). Ver `AGENTS.md` (`email:ingest-snapshot`) y `server/lib/emailSnapshotIngest.js`.
 
+### Resumen PANELSIM vía API (GPT / Thunderbird mismo IMAP)
+
+Con la API BMC local (o host que tenga acceso al disco del repo IMAP) y **`API_AUTH_TOKEN`** configurado:
+
+- **`GET /api/email/panelsim-summary`** — Header `Authorization: Bearer <API_AUTH_TOKEN>`. Devuelve JSON con `status` (PANELSIM-STATUS), `reportPreview` (Markdown del último reporte, truncable con `?reportMaxChars=`), y `workflow` (comandos sugeridos). **No** sustituye leer el `.md` en el repo si la API no ve el filesystem (p. ej. Cloud Run sin volumen).
+- **`POST /api/email/draft-outbound`** — Borrador asunto/cuerpo para **proveedor** o **cliente**; **no envía** correo (copiar a Thunderbird).
+
+Doc: [`docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md`](../../../docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md).
+
 ---
 
 ## Respuesta al usuario (formato)

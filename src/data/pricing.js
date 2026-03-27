@@ -53,7 +53,7 @@ export function getPricingItemsFlat() {
   for (const [famId, panel] of Object.entries(pricing.PANELS_TECHO || {})) {
     if (!panel.esp) continue;
     for (const [esp, data] of Object.entries(panel.esp)) {
-      if (data.venta != null) items.push({ path: `PANELS_TECHO.${famId}.esp.${esp}`, label: `${panel.label} ${esp}mm`, venta: data.venta, web: data.web, costo: data.costo, unidad: "m²", categoria: "Paneles Techo" });
+      if (data.venta != null) items.push({ path: `PANELS_TECHO.${famId}.esp.${esp}`, label: `${panel.label} ${esp}mm`, venta: data.venta, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, unidad: "m²", categoria: "Paneles Techo" });
     }
   }
 
@@ -61,18 +61,18 @@ export function getPricingItemsFlat() {
   for (const [famId, panel] of Object.entries(pricing.PANELS_PARED || {})) {
     if (!panel.esp) continue;
     for (const [esp, data] of Object.entries(panel.esp)) {
-      if (data.venta != null) items.push({ path: `PANELS_PARED.${famId}.esp.${esp}`, label: `${panel.label} ${esp}mm`, venta: data.venta, web: data.web, costo: data.costo, unidad: "m²", categoria: "Paneles Pared" });
+      if (data.venta != null) items.push({ path: `PANELS_PARED.${famId}.esp.${esp}`, label: `${panel.label} ${esp}mm`, venta: data.venta, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, unidad: "m²", categoria: "Paneles Pared" });
     }
   }
 
   // Fijaciones
   for (const [id, data] of Object.entries(pricing.FIJACIONES || {})) {
-    if (data.venta != null) items.push({ path: `FIJACIONES.${id}`, label: data.label, venta: data.venta, web: data.web, costo: data.costo, unidad: data.unidad || "unid", categoria: "Fijaciones" });
+    if (data.venta != null) items.push({ path: `FIJACIONES.${id}`, label: data.label, venta: data.venta, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, unidad: data.unidad || "unid", categoria: "Fijaciones" });
   }
 
   // Selladores
   for (const [id, data] of Object.entries(pricing.SELLADORES || {})) {
-    if (data.venta != null) items.push({ path: `SELLADORES.${id}`, label: data.label, venta: data.venta, web: data.web, costo: data.costo, unidad: data.unidad || "unid", categoria: "Selladores" });
+    if (data.venta != null) items.push({ path: `SELLADORES.${id}`, label: data.label, venta: data.venta, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, unidad: data.unidad || "unid", categoria: "Selladores" });
   }
 
   // Perfil techo (anidado)
@@ -80,11 +80,11 @@ export function getPricingItemsFlat() {
     for (const [fam, byEsp] of Object.entries(byFam)) {
       if (byEsp._all) {
         const d = byEsp._all;
-        items.push({ path: `PERFIL_TECHO.${tipo}.${fam}._all`, label: `${tipo} (${fam})`, venta: d.venta, web: d.web, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Techo" });
+        items.push({ path: `PERFIL_TECHO.${tipo}.${fam}._all`, label: `${tipo} (${fam})`, venta: d.venta, web: d.web, webIvaInc: d.webIvaInc, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Techo" });
       } else {
         for (const [esp, d] of Object.entries(byEsp)) {
           if (d && typeof d === "object" && (d.venta != null || d.web != null))
-            items.push({ path: `PERFIL_TECHO.${tipo}.${fam}.${esp}`, label: `${tipo} ${fam} ${esp}mm`, venta: d.venta, web: d.web, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Techo" });
+            items.push({ path: `PERFIL_TECHO.${tipo}.${fam}.${esp}`, label: `${tipo} ${fam} ${esp}mm`, venta: d.venta, web: d.web, webIvaInc: d.webIvaInc, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Techo" });
         }
       }
     }
@@ -94,14 +94,14 @@ export function getPricingItemsFlat() {
   for (const [tipo, byFam] of Object.entries(pricing.PERFIL_PARED || {})) {
     for (const [fam, byEsp] of Object.entries(byFam)) {
       if (fam === "_all" && byEsp && (byEsp.venta != null || byEsp.web != null)) {
-        items.push({ path: `PERFIL_PARED.${tipo}._all`, label: byEsp.label || tipo, venta: byEsp.venta, web: byEsp.web, costo: byEsp.costo, sku: byEsp.sku, unidad: "unid", categoria: "Perfilería Pared" });
+        items.push({ path: `PERFIL_PARED.${tipo}._all`, label: byEsp.label || tipo, venta: byEsp.venta, web: byEsp.web, webIvaInc: byEsp.webIvaInc, costo: byEsp.costo, sku: byEsp.sku, unidad: "unid", categoria: "Perfilería Pared" });
       } else if (byEsp._all) {
         const d = byEsp._all;
-        items.push({ path: `PERFIL_PARED.${tipo}.${fam}._all`, label: d.label || `${tipo} (${fam})`, venta: d.venta, web: d.web, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Pared" });
+        items.push({ path: `PERFIL_PARED.${tipo}.${fam}._all`, label: d.label || `${tipo} (${fam})`, venta: d.venta, web: d.web, webIvaInc: d.webIvaInc, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Pared" });
       } else {
         for (const [esp, d] of Object.entries(byEsp)) {
           if (esp !== "_all" && d && typeof d === "object" && (d.venta != null || d.web != null))
-            items.push({ path: `PERFIL_PARED.${tipo}.${fam}.${esp}`, label: `${tipo} ${fam} ${esp}mm`, venta: d.venta, web: d.web, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Pared" });
+            items.push({ path: `PERFIL_PARED.${tipo}.${fam}.${esp}`, label: `${tipo} ${fam} ${esp}mm`, venta: d.venta, web: d.web, webIvaInc: d.webIvaInc, costo: d.costo, sku: d.sku, unidad: "unid", categoria: "Perfilería Pared" });
         }
       }
     }
@@ -109,12 +109,12 @@ export function getPricingItemsFlat() {
 
   // Servicios
   for (const [id, data] of Object.entries(pricing.SERVICIOS || {})) {
-    if (data.venta != null) items.push({ path: `SERVICIOS.${id}`, label: data.label, venta: data.venta, web: data.web, costo: data.costo, unidad: data.unidad || "servicio", categoria: "Servicios" });
+    if (data.venta != null) items.push({ path: `SERVICIOS.${id}`, label: data.label, venta: data.venta, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, unidad: data.unidad || "servicio", categoria: "Servicios" });
   }
 
   // Herramientas (presupuesto libre / MATRIZ)
   for (const [id, data] of Object.entries(pricing.HERRAMIENTAS || {})) {
-    if (data.venta != null) items.push({ path: `HERRAMIENTAS.${id}`, label: data.label, venta: data.venta, web: data.web, costo: data.costo, unidad: data.unidad || "unid", categoria: "Herramientas" });
+    if (data.venta != null) items.push({ path: `HERRAMIENTAS.${id}`, label: data.label, venta: data.venta, web: data.web, webIvaInc: data.webIvaInc, costo: data.costo, unidad: data.unidad || "unid", categoria: "Herramientas" });
   }
 
   return items;

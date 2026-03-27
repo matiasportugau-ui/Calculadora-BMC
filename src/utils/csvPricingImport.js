@@ -13,6 +13,16 @@ export function findVentaColumnIndex(headers) {
   });
 }
 
+/** `venta_web` exacta — no confundir con `venta_web_iva_inc`. */
+export function findVentaWebColumnIndex(headers) {
+  return headers.findIndex((c) => String(c || "").trim().toLowerCase() === "venta_web");
+}
+
+/** Referencia MATRIZ col U → CSV `venta_web_iva_inc`. */
+export function findVentaWebIvaIncColumnIndex(headers) {
+  return headers.findIndex((c) => String(c || "").trim().toLowerCase() === "venta_web_iva_inc");
+}
+
 /**
  * Parseo numérico para celdas CSV (USD).
  * - Con coma decimal (UY/Europa): quita puntos miles luego coma → punto (`1.025,50` → 1025.5).

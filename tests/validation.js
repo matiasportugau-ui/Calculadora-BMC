@@ -20,8 +20,13 @@ import {
 import {
   parseCsvNumber,
   findVentaColumnIndex,
+  findVentaWebColumnIndex,
+  findVentaWebIvaIncColumnIndex,
   getDuplicatePathReport,
 } from "../src/utils/csvPricingImport.js";
+import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
+import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
+import { colLetterToIndex, colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -713,6 +718,29 @@ assert(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SUITE 22b: Sheet column letters ↔ index (MATRIZ COL("T") helper)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 22b: sheetColumnLetters ═══");
+
+assert("colLetterToIndex A", colLetterToIndex("A") === 0, colLetterToIndex("A"), 0);
+assert("colLetterToIndex T", colLetterToIndex("T") === 19, colLetterToIndex("T"), 19);
+assert("colLetterToIndex U", colLetterToIndex("U") === 20, colLetterToIndex("U"), 20);
+assert("colLetterToIndex Z", colLetterToIndex("Z") === 25, colLetterToIndex("Z"), 25);
+assert("colLetterToIndex AA", colLetterToIndex("AA") === 26, colLetterToIndex("AA"), 26);
+assert(
+  "colIndexToLetter round-trip T",
+  colIndexToLetter(colLetterToIndex("T")) === "T",
+  colIndexToLetter(colLetterToIndex("T")),
+  "T",
+);
+assert(
+  "colIndexToLetter round-trip AA",
+  colIndexToLetter(colLetterToIndex("AA")) === "AA",
+  colIndexToLetter(colLetterToIndex("AA")),
+  "AA",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUITE 23: CSV pricing import (MATRIZ / editor)
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 23: CSV pricing import ═══");
@@ -724,10 +752,15 @@ assert("parseCsvNumber 42.99", parseCsvNumber("42.99") === 42.99, parseCsvNumber
 assert("parseCsvNumber vacío → null", parseCsvNumber("") === null, parseCsvNumber(""), null);
 assert("parseCsvNumber null → null", parseCsvNumber(null) === null, parseCsvNumber(null), null);
 
-const hdrMatriz = "path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,unidad,tab".split(",");
+const hdrMatriz =
+  "path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab".split(",");
 const hdrEditor = "path,label,categoria,costo,venta_bmc_local,venta_web,unidad".split(",");
 assert("findVentaColumnIndex MATRIZ", findVentaColumnIndex(hdrMatriz) === 4, findVentaColumnIndex(hdrMatriz), 4);
 assert("findVentaColumnIndex editor", findVentaColumnIndex(hdrEditor) === 4, findVentaColumnIndex(hdrEditor), 4);
+
+const hdrWebCols = "path,costo,venta_local,venta_web,venta_web_iva_inc,tab".split(",");
+assert("findVentaWebColumnIndex exact", findVentaWebColumnIndex(hdrWebCols) === 3, findVentaWebColumnIndex(hdrWebCols), 3);
+assert("findVentaWebIvaIncColumnIndex", findVentaWebIvaIncColumnIndex(hdrWebCols) === 4, findVentaWebIvaIncColumnIndex(hdrWebCols), 4);
 
 const dupLines = [
   "path,costo,venta_local",
@@ -840,6 +873,33 @@ assert(
   !!PERFIL_TECHO.cumbrera?.ISOROOF_COLONIAL,
   true,
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 25: PANELSIM repo resolve + summary reader (Thunderbird / GPT bridge)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 25: emailInboxRepo + panelsimSummaryReader ═══");
+
+assert(
+  "resolveEmailInboxRepoRoot explicit wins",
+  resolveEmailInboxRepoRoot({ cwd: "/tmp/calc", bmcEmailInboxRepo: "/mail/repo" }) === "/mail/repo",
+  resolveEmailInboxRepoRoot({ cwd: "/tmp/calc", bmcEmailInboxRepo: "/mail/repo" }),
+  "/mail/repo",
+);
+
+const fakeSibling = resolveEmailInboxRepoRoot({ cwd: "/tmp/Calculadora-BMC", bmcEmailInboxRepo: "" });
+assert(
+  "resolveEmailInboxRepoRoot sibling path shape",
+  fakeSibling.endsWith("conexion-cuentas-email-agentes-bmc"),
+  fakeSibling,
+  "ends with repo name",
+);
+
+const missing = readPanelsimEmailSummary({
+  cwd: "/tmp/nope-calculadora-xyz",
+  bmcEmailInboxRepo: "/tmp/this-inbox-repo-does-not-exist-12345",
+  reportMaxChars: 100,
+});
+assert("readPanelsimEmailSummary missing repo → ok false", missing.ok === false, missing.ok, false);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

@@ -1,0 +1,105 @@
+openapi: 3.1.0
+info:
+  title: BMC Email Agent — API mínima
+  version: 1.0.0
+  description: |
+    Solo correo: resumen PANELSIM (último sync IMAP clasificado) y borrador saliente sin envío.
+    No incluye calculadora, ML, WhatsApp ni Finanzas.
+
+    **Servidor:** la URL debe apuntar a una instancia donde la API lea el repo
+    `conexion-cuentas-email-agentes-bmc` en disco (`BMC_EMAIL_INBOX_REPO` o carpeta hermana).
+    Cloud Run estándar sin volumen suele devolver `email_repo_missing`.
+
+servers:
+  - url: https://REPLACE_WITH_YOUR_API_HOST
+    description: Ej. https://xxx.ngrok-free.app o http://localhost:3001 (solo si OpenAI alcanza tu red)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/email/panelsim-summary:
+    get:
+      operationId: obtener_resumen_bandeja
+      summary: Resumen actual de correo (PANELSIM)
+      description: |
+        Obtiene `PANELSIM-STATUS.json` y el texto del último `PANELSIM-ULTIMO-REPORTE.md`.
+        Si `ok` es false o `artifactsMissing` es true, indicá al usuario que ejecute
+        `npm run panelsim:email-ready` en la máquina donde está el repo de correo.
+        No inventes conteos: usá solo lo que devuelve la API.
+      parameters:
+        - name: reportMaxChars
+          in: query
+          description: Máximo de caracteres del Markdown del reporte (default interno ~24000).
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 100000
+      responses:
+        "200":
+          description: Cuerpo JSON con ok, emailRepo, status, reportPreview, workflow, etc.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Token inválido o ausente
+        "503":
+          description: API_AUTH_TOKEN no configurado en el servidor
+
+  /api/email/draft-outbound:
+    post:
+      operationId: generar_borrador_email
+      summary: Borrador asunto + cuerpo (no envía)
+      description: |
+        Genera texto para copiar en Thunderbird u otro cliente. No envía correo.
+        role=proveedor para mails a proveedores; role=cliente para respuestas comerciales breves.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hechos
+              properties:
+                role:
+                  type: string
+                  enum: [proveedor, cliente]
+                  default: proveedor
+                hechos:
+                  type: string
+                  description: Contexto fiel (qué pasó, qué se pide). Mínimo ~3 caracteres.
+                tono:
+                  type: string
+                  description: Ej. breve y profesional, formal
+                asunto_contexto:
+                  type: string
+                  description: Asunto sugerido o hilo (opcional)
+      responses:
+        "200":
+          description: ok, asunto, cuerpo, provider
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  asunto: { type: string }
+                  cuerpo: { type: string }
+                  provider: { type: string }
+                  role: { type: string }
+        "400":
+          description: Falta hechos u error de validación
+        "401":
+          description: No autorizado
+        "503":
+          description: Sin API_AUTH_TOKEN o todos los proveedores IA fallaron
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API_AUTH_TOKEN

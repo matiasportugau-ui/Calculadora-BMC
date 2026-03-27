@@ -39,13 +39,17 @@ export const config = {
   maxRetries: Number(process.env.ML_HTTP_MAX_RETRIES || 3),
   requestTimeoutMs: Number(process.env.ML_HTTP_TIMEOUT_MS || 15000),
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
+  /** Repo hermano IMAP / PANELSIM (opcional; default = carpeta hermana) */
+  bmcEmailInboxRepo: process.env.BMC_EMAIL_INBOX_REPO || "",
   // BMC Finanzas dashboard (Google Sheets)
   bmcSheetId: process.env.BMC_SHEET_ID || "",
   bmcPagosSheetId: process.env.BMC_PAGOS_SHEET_ID || "",
   bmcCalendarioSheetId: process.env.BMC_CALENDARIO_SHEET_ID || "",
   bmcVentasSheetId: process.env.BMC_VENTAS_SHEET_ID || "",
   bmcStockSheetId: process.env.BMC_STOCK_SHEET_ID || "",
-  bmcMatrizSheetId: process.env.BMC_MATRIZ_SHEET_ID || "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+  /** MATRIZ de COSTOS y VENTAS 2026 — workbook canónico (Google Sheets nativo). */
+  bmcMatrizSheetId:
+    process.env.BMC_MATRIZ_SHEET_ID || "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
   googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   bmcSheetSchema: process.env.BMC_SHEET_SCHEMA || "Master_Cotizaciones",
   // AI providers — suggest-response endpoint

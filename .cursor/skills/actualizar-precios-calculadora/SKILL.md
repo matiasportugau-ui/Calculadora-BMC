@@ -2,15 +2,15 @@
 name: actualizar-precios-calculadora
 description: >
   Actualiza los precios de la Calculadora BMC desde la MATRIZ de COSTOS y VENTAS 2026.
-  Lee col G (costo) y col L (venta) de la planilla Google, mapea SKUs a paths de la calculadora,
-  genera CSV para "Importar planilla modificada". Use cuando el usuario pida: actualizar precios
+  Lee BROMYROS: F/L/T tal cual; M ref. c/IVA tal cual; **col U** = venta web **c/IVA** → CSV `venta_web_iva_inc` (tal cual; sin push);
+  genera CSV (path, costo, venta_local, venta_web, …). Use cuando el usuario pida: actualizar precios
   calculadora, sincronizar precios desde MATRIZ, levantar precios de la planilla,
   /actualizar-precios-calculadora, o consultar precios desde la matriz.
 ---
 
 # Actualizar Precios Calculadora desde MATRIZ
 
-Sincroniza precios de la [MATRIZ de COSTOS y VENTAS 2026](https://docs.google.com/spreadsheets/d/1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ/edit?gid=1520466943) con la planilla editable de la Calculadora.
+Sincroniza precios de la [MATRIZ de COSTOS y VENTAS 2026](https://docs.google.com/spreadsheets/d/1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo/edit) con la planilla editable de la Calculadora.
 
 ## Flujo
 
@@ -21,16 +21,18 @@ Sincroniza precios de la [MATRIZ de COSTOS y VENTAS 2026](https://docs.google.co
 
 ## Requisitos
 
-- `BMC_MATRIZ_SHEET_ID` en `.env` (default: 1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ)
+- `BMC_MATRIZ_SHEET_ID` en `.env` (default en código: `1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo`)
 - `GOOGLE_APPLICATION_CREDENTIALS` apuntando al service account
 - MATRIZ compartida con el service account como **Lector**
 
-## Mapeo
+## Mapeo (pestaña **BROMYROS** — `server/routes/bmcDashboard.js` `MATRIZ_TAB_COLUMNS`)
 
-- **Col D:** SKU (IAGRO30, IROOF30, GFS30, etc.)
-- **Col G:** Costo compra (con IVA) → se divide por 1.22
-- **Col L:** Venta consumidor (con IVA) → se divide por 1.22
-- **Col M:** Venta web (con IVA) → se divide por 1.22
+- **Col D:** SKU (IAGRO30, IROOF30, ISDEC100, etc.)
+- **Col F** (`Costo m² USD ex IVA`): **sin IVA** en el número — leer/escribir **tal cual** la celda (nunca ÷ ni × 1,22).
+- **Col L** (venta local ex IVA): **tal cual** la celda.
+- **Col M** (referencia **c/IVA**): el número **ya incluye IVA** — **tal cual** la celda (nunca convertir).
+- **Col T**: venta web lista → CSV `venta_web` y push, **tal cual**.
+- **Col U** (`Venta web USD c/IVA`): → CSV `venta_web_iva_inc` **tal cual** (solo export; no push).
 
 Ver `src/data/matrizPreciosMapping.js` para extender el mapeo SKU → path.
 

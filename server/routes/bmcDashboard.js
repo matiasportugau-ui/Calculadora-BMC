@@ -17,9 +17,54 @@ import {
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
+import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
+import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
+
+/** In-memory TTL cache to reduce Sheets read bursts (per-user quota). 0 = disabled. */
+function parseSheetsCacheTtlMs(envVal, defaultMs) {
+  const n = Number(envVal);
+  if (!Number.isFinite(n)) return defaultMs;
+  return Math.max(0, Math.floor(n));
+}
+
+const SHEETS_TAB_NAMES_TTL_MS = parseSheetsCacheTtlMs(
+  process.env.BMC_SHEETS_TAB_NAMES_TTL_MS,
+  120_000,
+);
+const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
+  process.env.BMC_SHEETS_VENTAS_MERGE_TTL_MS,
+  90_000,
+);
+
+const sheetsReadCache = new Map();
+
+function sheetsCacheGet(key) {
+  const e = sheetsReadCache.get(key);
+  if (!e) return undefined;
+  if (Date.now() > e.exp) {
+    sheetsReadCache.delete(key);
+    return undefined;
+  }
+  return e.val;
+}
+
+function sheetsCacheSet(key, val, ttlMs) {
+  if (!ttlMs || ttlMs <= 0) return;
+  sheetsReadCache.set(key, { val, exp: Date.now() + ttlMs });
+}
+
+/** After ventas writes, drop tab-name + merged ventas entries for this workbook. */
+function invalidateVentasSheetsReadCache(sheetId) {
+  if (!sheetId) return;
+  sheetsReadCache.delete(`tabNames:${sheetId}`);
+  const prefix = `ventasAll:${sheetId}:`;
+  for (const k of sheetsReadCache.keys()) {
+    if (k.startsWith(prefix)) sheetsReadCache.delete(k);
+  }
+}
 
 function getStartOfWeek(d) {
   const date = new Date(d);
@@ -175,11 +220,19 @@ async function getFirstSheetName(sheetId) {
 }
 
 async function getSheetNames(sheetId) {
+  if (!sheetId) return [];
+  const cacheKey = `tabNames:${sheetId}`;
+  if (SHEETS_TAB_NAMES_TTL_MS > 0) {
+    const hit = sheetsCacheGet(cacheKey);
+    if (hit) return [...hit];
+  }
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
   const authClient = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
-  return (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+  const names = (meta.data.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+  sheetsCacheSet(cacheKey, names, SHEETS_TAB_NAMES_TTL_MS);
+  return [...names];
 }
 
 function findKey(obj, ...candidates) {
@@ -474,27 +527,94 @@ function monthParamToTabName(month) {
   return mes && year ? `${mes} ${year}` : null;
 }
 
-async function getAllVentasData(sheetId, proveedorFilter) {
-  const tabNames = await getSheetNames(sheetId);
-  const results = await Promise.allSettled(
-    tabNames.map(async (tabName) => {
-      try {
-        const { rows: rawRows } = await getSheetData(sheetId, tabName, false, { headerRowOffset: 1 });
+/** A1 range for ventas tab: headers row 2, data from row 3 (matches getSheetData headerRowOffset: 1). */
+function ventasTabRangeA1(tabName) {
+  const safe = String(tabName).replace(/'/g, "''");
+  return `'${safe}'!A2:ZZ`;
+}
+
+/**
+ * One batchGet per chunk instead of N values.get — fewer Sheets read quota units on cache miss.
+ * Falls back to per-tab getSheetData if a batch fails (e.g. bad tab name / range).
+ */
+async function fetchVentasRowsAllTabsBatched(sheetId, tabNames) {
+  if (!tabNames.length) return [];
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+
+  const CHUNK = 40;
+  const merged = [];
+
+  async function fallbackPerTab(chunk) {
+    const results = await Promise.allSettled(
+      chunk.map(async (tabName) => {
+        try {
+          const { rows: rawRows } = await getSheetData(sheetId, tabName, false, { headerRowOffset: 1 });
+          const filtered = rawRows.filter((r) =>
+            findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA")
+          );
+          return filtered.map((r) => mapVentas2026ToCanonical(r, tabName));
+        } catch {
+          return [];
+        }
+      })
+    );
+    return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  }
+
+  for (let i = 0; i < tabNames.length; i += CHUNK) {
+    const chunk = tabNames.slice(i, i + CHUNK);
+    const ranges = chunk.map(ventasTabRangeA1);
+    try {
+      const res = await sheets.spreadsheets.values.batchGet({
+        spreadsheetId: sheetId,
+        ranges,
+      });
+      const vrs = res.data.valueRanges || [];
+      for (let j = 0; j < chunk.length; j++) {
+        const tabName = chunk[j];
+        const values = vrs[j]?.values;
+        if (!values || values.length < 2) continue;
+        const headers = values[0];
+        const dataRows = values.slice(1);
+        const rawRows = dataRows.map((row) => {
+          const obj = {};
+          headers.forEach((h, idx) => {
+            obj[h] = row[idx] ?? "";
+          });
+          return obj;
+        });
         const filtered = rawRows.filter((r) =>
           findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA")
         );
-        return filtered.map((r) => mapVentas2026ToCanonical(r, tabName));
-      } catch (_e) {
-        return [];
+        merged.push(...filtered.map((r) => mapVentas2026ToCanonical(r, tabName)));
       }
-    })
-  );
-  const allRows = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
-  if (proveedorFilter) {
-    const pf = String(proveedorFilter).toLowerCase();
-    return allRows.filter((r) => String(r.PROVEEDOR || "").toLowerCase().includes(pf));
+    } catch {
+      merged.push(...(await fallbackPerTab(chunk)));
+    }
   }
-  return allRows;
+
+  return merged;
+}
+
+async function getAllVentasData(sheetId, proveedorFilter) {
+  if (!sheetId) return [];
+  const provKey = String(proveedorFilter ?? "").trim().toLowerCase();
+  const mergeKey = `ventasAll:${sheetId}:${provKey}`;
+  if (SHEETS_VENTAS_MERGE_TTL_MS > 0) {
+    const hit = sheetsCacheGet(mergeKey);
+    if (hit) return structuredClone(hit);
+  }
+
+  const tabNames = await getSheetNames(sheetId);
+  const allRows = await fetchVentasRowsAllTabsBatched(sheetId, tabNames);
+  const out = proveedorFilter
+    ? allRows.filter((r) => String(r.PROVEEDOR || "").toLowerCase().includes(String(proveedorFilter).toLowerCase()))
+    : allRows;
+
+  sheetsCacheSet(mergeKey, out, SHEETS_VENTAS_MERGE_TTL_MS);
+  return structuredClone(out);
 }
 
 async function getOptionalSheetRows(sheetId, sheetName) {
@@ -515,17 +635,7 @@ function getCotizacionesSheetOpts(schema) {
 }
 
 // ─── Write helpers ────────────────────────────────────────────────────────
-
-function colIndexToLetter(index) {
-  let letter = "";
-  let n = index + 1;
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    letter = String.fromCharCode(65 + rem) + letter;
-    n = Math.floor((n - 1) / 26);
-  }
-  return letter;
-}
+// colIndexToLetter / colLetterToIndex: ../lib/sheetColumnLetters.js
 
 async function appendAuditLog(sheets, sheetId, action, rowId, oldVal, newVal, sheetName) {
   const now = new Date().toISOString();
@@ -806,6 +916,8 @@ async function handleCreateVenta(ventasSheetId, body) {
     requestBody: { values: [row] },
   });
 
+  invalidateVentasSheetsReadCache(ventasSheetId);
+
   return { ok: true, row: body, tab: targetTab };
 }
 
@@ -871,10 +983,8 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
 }
 
 // ─── MATRIZ precios → planilla calculadora ──────────────────────────────────
-// MATRIZ de COSTOS y VENTAS: extrae costo, venta_bmc y venta_web de la misma planilla.
+// MATRIZ: F, L, M, T = **tal cual** la celda (sin ÷ ni × IVA). F/L/T ex IVA en lista; M referencia c/IVA tal cual.
 // Columnas buscadas por nombre: costo/costos, venta/venta_bmc, venta_web/web. Fallback índices fijos.
-
-const IVA_MULT = 1.22;
 
 function findColIndex(headers, ...patterns) {
   for (const p of patterns) {
@@ -886,18 +996,27 @@ function findColIndex(headers, ...patterns) {
 }
 
 // ─── MATRIZ column mapping (approved by Matias per-tab) ─────────────────────
+// Use `COL("L")` so the source of truth matches Google Sheets headers (avoids off-by-one on raw indices).
+const COL = (letter) => colLetterToIndex(letter);
+
 // Only tabs listed here are queried. Add new supplier tabs after Matias approves.
 const MATRIZ_TAB_COLUMNS = {
   BROMYROS: {
-    sku: 3,          // Col D — SKU code
-    descripcion: 4,  // Col E — Producto (familia, medidas, largos min/max)
-    costo: 5,        // Col F — Costo m2 U$S (valor directo, no dividir)
-    ventaLocal: 11,  // Col L — Precio Venta Local (valor directo, usar siempre para cotizar)
-    ventaIvaInc: 12, // Col M — Venta Local IVA incluido (informativo)
-    web: 13,         // Col N — E-Commerce (existe pero NO usar por ahora)
+    sku: COL("D"),
+    descripcion: COL("E"),
+    // F — Costo m² USD ex IVA: **tal cual** celda.
+    costo: COL("F"),
+    // L — venta local: **tal cual** celda.
+    ventaLocal: COL("L"),
+    // M — ref. consumidor c/IVA: CSV `venta_local_iva_inc` **tal cual**.
+    ventaIvaInc: COL("M"),
+    // T — Venta web USD ex IVA: CSV `venta_web`, push `.web` **tal cual**.
+    web: COL("T"),
+    // U — Venta web USD c/IVA: CSV `venta_web_iva_inc` **tal cual** (solo lectura; no push).
+    webIvaInc: COL("U"),
   },
   // Add more tabs here after mapping approval:
-  // "R y C Tornillos": { sku: ?, descripcion: ?, costo: ?, ventaLocal: ?, ... },
+  // "R y C Tornillos": { sku: COL("D"), ... },
 };
 
 async function buildPlanillaDesdeMatriz(matrizSheetId) {
@@ -908,11 +1027,22 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 
   const approvedTabs = Object.keys(MATRIZ_TAB_COLUMNS);
   if (approvedTabs.length === 0) {
-    return { csv: "\uFEFFpath,descripcion,categoria,costo,venta_local,venta_local_iva_inc,unidad,tab\n", count: 0 };
+    return { csv: "\uFEFFpath,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab\n", count: 0 };
   }
 
   const csvRows = [];
-  const header = ["path", "descripcion", "categoria", "costo", "venta_local", "venta_local_iva_inc", "unidad", "tab"];
+  const header = [
+    "path",
+    "descripcion",
+    "categoria",
+    "costo",
+    "venta_local",
+    "venta_local_iva_inc",
+    "venta_web",
+    "venta_web_iva_inc",
+    "unidad",
+    "tab",
+  ];
   csvRows.push(header.join(","));
   let count = 0;
 
@@ -948,14 +1078,20 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       if (!path) continue;
 
       const descripcion = row[cols.descripcion] || "";
-      const costoConIva = parseNum(row[cols.costo]);
-      const ventaLocal = parseNum(row[cols.ventaLocal]);
-      const ventaIvaInc = parseNum(row[cols.ventaIvaInc]);
+      const costoRaw = parseNum(row[cols.costo]);
+      const ventaLocalRaw = parseNum(row[cols.ventaLocal]);
+      const ventaIvaIncRaw = parseNum(row[cols.ventaIvaInc]);
+      const webRaw = parseNum(row[cols.web]);
+      const webIvaIncRaw =
+        cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
 
-      // Col F y Col L: valores directos de la planilla, no dividir
-      const costo = costoConIva != null ? +costoConIva.toFixed(2) : "";
-      const venta = ventaLocal != null ? +ventaLocal.toFixed(2) : "";
-      const ventaInc = ventaIvaInc != null ? +ventaIvaInc.toFixed(2) : "";
+      // F, L, M, T, U (web c/IVA): copiar número de planilla sin transformar (nunca ÷ ni × IVA_MULT).
+      const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
+      const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
+      const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
+      const ventaWeb = webRaw != null ? +webRaw.toFixed(2) : "";
+      const ventaWebIvaInc =
+        webIvaIncRaw != null ? +webIvaIncRaw.toFixed(2) : "";
 
       const categoria = path.startsWith("PANELS_TECHO") ? "Paneles Techo"
         : path.startsWith("PANELS_PARED") ? "Paneles Pared"
@@ -966,12 +1102,151 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
         : "Otros";
       const unidad = path.includes("esp.") ? "m²" : "unid";
 
-      csvRows.push([path, esc(descripcion), categoria, costo, venta, ventaInc, unidad, tabName].join(","));
+      csvRows.push(
+        [path, esc(descripcion), categoria, costo, venta, ventaInc, ventaWeb, ventaWebIvaInc, unidad, tabName].join(","),
+      );
       count++;
     }
   }
 
   return { csv: "\uFEFF" + csvRows.join("\n"), count };
+}
+
+/**
+ * Aplica overrides de la calculadora (keys `path.costo|venta|web`) a filas MATRIZ
+ * cuyo SKU (col D) mapea a `path` en `matrizPreciosMapping.js`.
+ * Overrides `.costo` / `.venta` / `.web` (USD s/IVA) → celdas **F**, **L**, **T** **tal cual** (sin ×/÷ IVA). No escribe **M**.
+ * Requiere scope escritura Sheets y rol Editor en el workbook MATRIZ.
+ */
+async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, dryRun) {
+  const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
+  const resolved = path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath);
+  if (!fs.existsSync(resolved)) throw new Error("Credenciales Google no encontradas");
+
+  const byPath = new Map();
+  for (const [fullKey, val] of Object.entries(overrides || {})) {
+    const m = String(fullKey).match(/^(.+)\.(costo|venta|web)$/);
+    if (!m) continue;
+    if (val === null || val === "") continue;
+    const num = typeof val === "number" ? val : parseFloat(String(val).replace(",", "."));
+    if (Number.isNaN(num) || num < 0) continue;
+    const basePath = m[1];
+    const field = m[2];
+    if (!byPath.has(basePath)) byPath.set(basePath, {});
+    byPath.get(basePath)[field] = +num.toFixed(2);
+  }
+
+  if (byPath.size === 0) {
+    return {
+      ok: true,
+      dryRun: Boolean(dryRun),
+      updated: 0,
+      planned: [],
+      skippedPaths: [],
+      message: "No hay overrides con formato path.costo, path.venta o path.web",
+    };
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    keyFile: resolved,
+    scopes: [SCOPE_WRITE],
+  });
+  const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
+
+  const planned = [];
+  const matchedPaths = new Set();
+
+  for (const tabName of Object.keys(MATRIZ_TAB_COLUMNS)) {
+    const colSpec = MATRIZ_TAB_COLUMNS[tabName];
+    let allRows;
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: matrizSheetId,
+        range: `'${tabName}'!A1:Z500`,
+      });
+      allRows = res.data.values || [];
+    } catch {
+      continue;
+    }
+    if (allRows.length < 2) continue;
+    const dataRows = allRows.slice(1);
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const skuRaw = row[colSpec.sku];
+      const calcPath = getPathForMatrizSku(skuRaw);
+      if (!calcPath || !byPath.has(calcPath)) continue;
+      matchedPaths.add(calcPath);
+      const changes = byPath.get(calcPath);
+      const sheetRowNum = i + 2;
+      const cells = {};
+      if (changes.costo != null) {
+        cells[colIndexToLetter(colSpec.costo)] = +(+changes.costo).toFixed(2);
+      }
+      if (changes.venta != null) {
+        cells[colIndexToLetter(colSpec.ventaLocal)] = +(+changes.venta).toFixed(2);
+      }
+      if (changes.web != null) {
+        cells[colIndexToLetter(colSpec.web)] = +(+changes.web).toFixed(2);
+      }
+      if (Object.keys(cells).length === 0) continue;
+      planned.push({
+        tab: tabName,
+        row: sheetRowNum,
+        sku: String(skuRaw || "").trim(),
+        path: calcPath,
+        cells,
+      });
+    }
+  }
+
+  const skippedPaths = [...byPath.keys()].filter((p) => !matchedPaths.has(p));
+
+  if (dryRun) {
+    return {
+      ok: true,
+      dryRun: true,
+      updated: 0,
+      planned,
+      skippedPaths,
+      tabs: Object.keys(MATRIZ_TAB_COLUMNS),
+    };
+  }
+
+  const data = [];
+  for (const p of planned) {
+    for (const [letter, value] of Object.entries(p.cells)) {
+      data.push({
+        range: `'${p.tab}'!${letter}${p.row}`,
+        values: [[value]],
+      });
+    }
+  }
+
+  if (data.length === 0) {
+    return {
+      ok: true,
+      dryRun: false,
+      updated: 0,
+      planned: [],
+      skippedPaths: [...byPath.keys()],
+      message: "Ninguna fila MATRIZ coincide con los paths de los overrides (revisá SKU col D o pestañas en MATRIZ_TAB_COLUMNS)",
+    };
+  }
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: matrizSheetId,
+    requestBody: { valueInputOption: "USER_ENTERED", data },
+  });
+
+  return {
+    ok: true,
+    dryRun: false,
+    updated: data.length,
+    rowsTouched: planned.length,
+    planned,
+    skippedPaths,
+  };
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────
@@ -1893,6 +2168,130 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     if (bearer === token || xKey === token) return next();
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
+
+  /** Overrides calculadora → celdas MATRIZ (BROMYROS u otras pestañas aprobadas). Mismo auth que CRM cockpit. */
+  router.post("/matriz/push-pricing-overrides", requireCrmCockpitAuth, async (req, res) => {
+    const matrizId = config.bmcMatrizSheetId;
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    if (!matrizId || !credsPath) {
+      return res.status(503).json({
+        ok: false,
+        error: "MATRIZ sheet no configurado (BMC_MATRIZ_SHEET_ID, GOOGLE_APPLICATION_CREDENTIALS)",
+      });
+    }
+    const overrides = req.body?.overrides;
+    if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Body debe incluir overrides: objeto { "PANELS_TECHO....costo": number, ... }',
+      });
+    }
+    const dryRun = Boolean(req.body?.dryRun);
+    try {
+      const result = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /** PANELSIM / Thunderbird — lee STATUS + reporte MD del repo IMAP (auth = CRM cockpit). */
+  router.get("/email/panelsim-summary", requireCrmCockpitAuth, (req, res) => {
+    try {
+      const rawMax = req.query.reportMaxChars;
+      const n = rawMax != null ? Number(rawMax) : NaN;
+      const reportMaxChars = Number.isFinite(n) && n > 0 ? n : undefined;
+      const result = readPanelsimEmailSummary({
+        cwd: process.cwd(),
+        bmcEmailInboxRepo: config.bmcEmailInboxRepo || undefined,
+        reportMaxChars,
+      });
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message || String(e) });
+    }
+  });
+
+  /**
+   * Borrador saliente (proveedor/cliente) para probar en chat y pegar en Thunderbird.
+   * No envía correo. Auth = CRM cockpit.
+   */
+  router.post("/email/draft-outbound", requireCrmCockpitAuth, async (req, res) => {
+    const { role, hechos, tono, asunto_contexto } = req.body || {};
+    if (!hechos || String(hechos).trim().length < 3) {
+      return res.status(400).json({ ok: false, error: "Missing hechos (context for the email)" });
+    }
+    const r = String(role || "proveedor").toLowerCase();
+    const systemPrompt =
+      r === "cliente"
+        ? `Sos redactor de emails comerciales para BMC Uruguay (paneles de aislamiento térmico). Generás un borrador breve en español rioplatense. No inventás precios, plazos ni compromisos que no estén en los hechos. Cerrá con "Saludos, BMC Uruguay".`
+        : `Sos redactor de emails hacia proveedores para BMC Uruguay. Pedís aclaraciones, confirmás recepción o coordinás según los hechos. No inventás montos. Español rioplatense profesional.`;
+
+    const userMsg = `Tono: ${tono || "breve y profesional"}
+Asunto sugerido (opcional): ${asunto_contexto || "—"}
+Hechos y pedido del usuario:
+${hechos}
+
+Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
+{"asunto":"","cuerpo":""}`;
+
+    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const apiKeys = {
+      claude: config.anthropicApiKey,
+      openai: config.openaiApiKey,
+      grok: config.grokApiKey,
+      gemini: config.geminiApiKey,
+    };
+    const errors = [];
+    for (const p of RANKING) {
+      const apiKey = apiKeys[p];
+      if (!apiKey) {
+        errors.push(`${p}: no key`);
+        continue;
+      }
+      try {
+        let raw = "";
+        if (p === "claude") {
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          const anthropic = new Anthropic({ apiKey });
+          const msg = await anthropic.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 600,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userMsg }],
+          });
+          raw = msg.content[0]?.text || "";
+        } else if (p === "openai" || p === "grok") {
+          const { default: OpenAI } = await import("openai");
+          const client = new OpenAI(p === "grok" ? { apiKey, baseURL: "https://api.x.ai/v1" } : { apiKey });
+          const completion = await client.chat.completions.create({
+            model: p === "grok" ? "grok-3-mini" : "gpt-4o-mini",
+            max_tokens: 600,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMsg },
+            ],
+          });
+          raw = completion.choices[0]?.message?.content || "";
+        } else if (p === "gemini") {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genai = new GoogleGenerativeAI(apiKey);
+          const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const result = await model.generateContent(`${systemPrompt}\n\n${userMsg}`);
+          raw = result.response.text() || "";
+        }
+        const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        const asunto = String(parsed.asunto || "").slice(0, 500);
+        const cuerpo = String(parsed.cuerpo || "");
+        if (!cuerpo) throw new Error("empty cuerpo");
+        return res.json({ ok: true, asunto, cuerpo, provider: p, role: r });
+      } catch (e) {
+        errors.push(`${p}: ${e.message?.slice(0, 120)}`);
+      }
+    }
+    return res.status(503).json({ ok: false, error: "All providers failed", details: errors });
+  });
 
   async function getCrmSheetsWrite() {
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";

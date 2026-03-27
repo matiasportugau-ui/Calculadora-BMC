@@ -3,8 +3,8 @@
 // Edición individual y en masa
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useRef } from "react";
-import { Search, Percent, RotateCcw, Download, Upload, RefreshCw } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { Search, Percent, RotateCcw, Download, Upload, RefreshCw, CloudUpload } from "lucide-react";
 import {
   getPricingItemsFlat,
   getValueAtPath,
@@ -22,10 +22,14 @@ import { C, FONT } from "../data/constants.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import {
   findVentaColumnIndex,
+  findVentaWebColumnIndex,
+  findVentaWebIvaIncColumnIndex,
   parseCsvNumber,
   splitCsvCells,
   getDuplicatePathReport,
 } from "../utils/csvPricingImport.js";
+
+const MATRIZ_PUSH_TOKEN_KEY = "bmc_matriz_push_token";
 
 export default function PricingEditor({ onSave }) {
   const [items, setItems] = useState(() => getPricingItemsFlat());
@@ -37,7 +41,95 @@ export default function PricingEditor({ onSave }) {
   const [importMsg, setImportMsg] = useState(null);
   const [cargandoMatriz, setCargandoMatriz] = useState(false);
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [pushMsg, setPushMsg] = useState(null);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushToken, setPushToken] = useState(() => {
+    try {
+      return sessionStorage.getItem(MATRIZ_PUSH_TOKEN_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const env = typeof import.meta !== "undefined" ? import.meta.env?.VITE_BMC_API_AUTH_TOKEN : "";
+    try {
+      if (env && !sessionStorage.getItem(MATRIZ_PUSH_TOKEN_KEY)) {
+        setPushToken(String(env));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const persistPushToken = (t) => {
+    setPushToken(t);
+    try {
+      sessionStorage.setItem(MATRIZ_PUSH_TOKEN_KEY, t);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleMatrizPush = async (dryRun) => {
+    const overrides = getPricingOverrides();
+    const keys = Object.keys(overrides);
+    if (keys.length === 0) {
+      setPushMsg("No hay overrides guardados: editá celdas o importá CSV primero.");
+      return;
+    }
+    const envTok = typeof import.meta !== "undefined" ? import.meta.env?.VITE_BMC_API_AUTH_TOKEN : "";
+    const token = String(pushToken || envTok || "").trim();
+    if (!token) {
+      setPushMsg(
+        "Falta token: pegá API_AUTH_TOKEN del servidor (mismo que CRM cockpit) o usá VITE_BMC_API_AUTH_TOKEN solo en build interno."
+      );
+      return;
+    }
+    setPushLoading(true);
+    setPushMsg(null);
+    const base = getCalcApiBase();
+    try {
+      const res = await fetch(`${base}/api/matriz/push-pricing-overrides`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ overrides, dryRun }),
+      });
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+      if (!res.ok) {
+        setPushMsg("Error: " + (data.error || res.statusText));
+        return;
+      }
+      const plannedCount = Array.isArray(data.planned) ? data.planned.length : 0;
+      const skipped = data.skippedPaths || [];
+      if (data.dryRun) {
+        let msg = `Simulación: ${plannedCount} fila(s) MATRIZ coinciden; ${skipped.length} path(s) sin fila en pestañas configuradas.`;
+        if (skipped.length) {
+          msg += " Sin fila: " + skipped.slice(0, 10).join(", ") + (skipped.length > 10 ? "…" : "");
+        }
+        setPushMsg(msg);
+        return;
+      }
+      let msg = `MATRIZ actualizada: ${data.updated ?? 0} celda(s); ${skipped.length} path(s) sin fila.`;
+      if (skipped.length) {
+        msg += " Sin fila: " + skipped.slice(0, 10).join(", ") + (skipped.length > 10 ? "…" : "");
+      }
+      setPushMsg(msg);
+    } catch (err) {
+      setPushMsg("Error de red: " + (err.message || String(err)));
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   const handleCargarDesdeMatriz = async () => {
     setCargandoMatriz(true);
@@ -59,7 +151,8 @@ export default function PricingEditor({ onSave }) {
       const pathIdx = cols.findIndex((c) => c.toLowerCase() === "path");
       const costoIdx = cols.findIndex((c) => /costo/i.test(c));
       const ventaIdx = findVentaColumnIndex(cols);
-      const webIdx = cols.findIndex((c) => /venta_web/i.test(c) || (c.toLowerCase() === "web"));
+      const webIdx = findVentaWebColumnIndex(cols);
+      const webIvaIdx = findVentaWebIvaIncColumnIndex(cols);
       if (pathIdx < 0) {
         setImportMsg("La MATRIZ no tiene columna 'path'.");
         return;
@@ -82,9 +175,13 @@ export default function PricingEditor({ onSave }) {
           const v = parseCsvNumber(cells[webIdx]);
           if (v != null) { updates[`${path}.web`] = v; count++; }
         }
+        if (webIvaIdx >= 0 && cells[webIvaIdx]) {
+          const v = parseCsvNumber(cells[webIvaIdx]);
+          if (v != null) { updates[`${path}.webIvaInc`] = v; count++; }
+        }
       }
       const dupReport = getDuplicatePathReport(lines, pathIdx);
-      let msg = `Cargados ${count} valores desde MATRIZ (costo + venta).`;
+      let msg = `Cargados ${count} valores desde MATRIZ (costo, venta, web, web c/IVA si hay columna).`;
       if (dupReport.length) {
         const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
         msg += ` Atención: ${dupReport.length} path(s) duplicado(s) — prevalece la última fila: ${preview}${dupReport.length > 5 ? "…" : ""}`;
@@ -170,7 +267,7 @@ export default function PricingEditor({ onSave }) {
   };
 
   const handleDownloadPlanilla = () => {
-    const headers = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_web", "unidad"];
+    const headers = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_web", "venta_web_iva_inc", "unidad"];
     const rows = items.map((i) => [
       i.path,
       (i.label || "").replace(/"/g, '""'),
@@ -178,6 +275,7 @@ export default function PricingEditor({ onSave }) {
       i.costo != null ? String(i.costo) : "",
       i.venta != null ? String(i.venta) : "",
       i.web != null ? String(i.web) : "",
+      i.webIvaInc != null ? String(i.webIvaInc) : "",
       (i.unidad || "").replace(/"/g, '""'),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => (c.includes(",") || c.includes('"') ? `"${c}"` : c)).join(","))].join("\n");
@@ -207,7 +305,10 @@ export default function PricingEditor({ onSave }) {
         const pathIdx = cols.findIndex((c) => c.toLowerCase() === "path");
         const costoIdx = cols.findIndex((c) => /costo/i.test(c));
         const ventaIdx = findVentaColumnIndex(cols);
-        const webIdx = cols.findIndex((c) => /venta_web/i.test(c) || (c.toLowerCase() === "web"));
+        const webIdxExact = findVentaWebColumnIndex(cols);
+        const webIdx =
+          webIdxExact >= 0 ? webIdxExact : cols.findIndex((c) => String(c || "").trim().toLowerCase() === "web");
+        const webIvaIdx = findVentaWebIvaIncColumnIndex(cols);
         if (pathIdx < 0) {
           setImportMsg("La planilla debe tener columna 'path'.");
           return;
@@ -229,6 +330,10 @@ export default function PricingEditor({ onSave }) {
           if (webIdx >= 0 && cells[webIdx]) {
             const v = parseCsvNumber(cells[webIdx]);
             if (v != null) { updates[`${path}.web`] = v; count++; }
+          }
+          if (webIvaIdx >= 0 && cells[webIvaIdx]) {
+            const v = parseCsvNumber(cells[webIvaIdx]);
+            if (v != null) { updates[`${path}.webIvaInc`] = v; count++; }
           }
         }
         const dupReport = getDuplicatePathReport(lines, pathIdx);
@@ -268,9 +373,15 @@ export default function PricingEditor({ onSave }) {
         <strong>Editar costos y precios de venta</strong>
         <p style={{ margin: "6px 0 0 0" }}>Clic en cualquier celda para editar. Aplica a todos los productos y servicios.</p>
         <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
-          <li><strong>Costo</strong> — Costo unitario (USD s/IVA)</li>
-          <li><strong>Precio Venta BMC (Local)</strong> — Lista venta directa</li>
-          <li><strong>Precio Venta Web</strong> — Lista web</li>
+          <li>
+            <strong>Costo / venta / web</strong> — <strong>USD sin IVA</strong> (el total del presupuesto suma IVA una sola vez al final).
+          </li>
+          <li>
+            <strong>MATRIZ — tal cual la celda:</strong> <strong>F</strong> (costo ex IVA) y <strong>L</strong> (venta local ex IVA) se leen y escriben <strong>sin</strong> multiplicar ni dividir por 1,22. <strong>M</strong> ya es precio <strong>con IVA incluido</strong>: mismo criterio, valor <strong>idéntico</strong> al de la planilla.
+          </li>
+          <li>
+            <strong>MATRIZ col. T / U:</strong> <strong>T</strong> = venta web USD ex IVA (motor y push). <strong>U</strong> = venta web USD c/IVA — se importa a la columna <strong>Web c/IVA</strong> como referencia (no entra en el cálculo del presupuesto). Push a Sheets solo escribe F/L/T.
+          </li>
         </ul>
       </div>
 
@@ -296,10 +407,10 @@ export default function PricingEditor({ onSave }) {
             gap: 8,
             opacity: cargandoMatriz ? 0.7 : 1,
           }}
-          title="Cargar costo y precio de venta desde la matriz de costos y ventas"
+          title="Cargar desde MATRIZ: costo, venta local, venta web (T) y ref. web c/IVA (U) si viene en el CSV"
         >
           <RefreshCw size={16} />
-          {cargandoMatriz ? "Cargando..." : "Cargar desde MATRIZ (costo + venta)"}
+          {cargandoMatriz ? "Cargando..." : "Cargar desde MATRIZ"}
         </button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -365,6 +476,76 @@ export default function PricingEditor({ onSave }) {
         </div>
         </div>
         {importMsg && <span style={{ fontSize: 12, color: importMsg.includes("Error") ? C.danger : C.primary, display: "block", marginTop: 8 }}>{importMsg}</span>}
+
+        <div style={{ marginTop: 16, padding: 12, borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.tp, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Sincronizar overrides → MATRIZ (Google Sheets)
+          </div>
+          <div style={{ fontSize: 11, color: C.ts, marginBottom: 8, lineHeight: 1.45 }}>
+            Usa el mismo <code style={{ fontSize: 10 }}>API_AUTH_TOKEN</code> que el CRM cockpit. Primero <strong>simular</strong>, luego escribir.
+            Solo actualiza filas cuyo SKU (col D) está en el mapeo y en pestañas configuradas en el servidor (p. ej. BROMYROS).
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <input
+              type="password"
+              autoComplete="off"
+              placeholder="API_AUTH_TOKEN (se guarda en esta sesión del navegador)"
+              value={pushToken}
+              onChange={(e) => persistPushToken(e.target.value)}
+              style={{
+                flex: "1 1 220px",
+                minWidth: 200,
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: `1px solid ${C.border}`,
+                fontSize: 12,
+              }}
+            />
+            <button
+              type="button"
+              disabled={pushLoading}
+              onClick={() => handleMatrizPush(true)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `1px solid ${C.border}`,
+                background: C.surface,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: pushLoading ? "wait" : "pointer",
+              }}
+            >
+              Simular envío
+            </button>
+            <button
+              type="button"
+              disabled={pushLoading}
+              onClick={() => {
+                if (!confirm("¿Escribir en la MATRIZ los valores de overrides actuales? Esto modifica la planilla en Google.")) return;
+                handleMatrizPush(false);
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `1px solid ${C.primary}`,
+                background: C.primarySoft,
+                color: C.primary,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: pushLoading ? "wait" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <CloudUpload size={14} />
+              Escribir en MATRIZ
+            </button>
+          </div>
+          {pushMsg && (
+            <span style={{ fontSize: 12, color: /^(Error|Falta token)/i.test(pushMsg) ? C.danger : C.primary, display: "block" }}>{pushMsg}</span>
+          )}
+        </div>
       </div>
 
       {/* Buscador */}
@@ -401,6 +582,7 @@ export default function PricingEditor({ onSave }) {
                 <option value="costo">Costo</option>
                 <option value="venta">Precio Venta BMC (Local)</option>
                 <option value="web">Precio Venta Web</option>
+                <option value="webIvaInc">Web c/IVA (ref.)</option>
               </select>
             </div>
             <div>
@@ -451,6 +633,7 @@ export default function PricingEditor({ onSave }) {
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Costo unitario USD s/IVA">Costo</th>
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC">Venta BMC</th>
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web">Venta Web</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Referencia MATRIZ col U (USD c/IVA); no suma al total">Web c/IVA</th>
               <th style={{ padding: "12px 10px", textAlign: "center", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad</th>
             </tr>
           </thead>
@@ -472,7 +655,7 @@ export default function PricingEditor({ onSave }) {
                     <span style={{ fontWeight: 500 }}>{row.label}</span>
                     <div style={{ fontSize: 10, color: C.ts }}>{row.categoria}</div>
                   </td>
-                  {["costo", "venta", "web"].map((field) => {
+                  {["costo", "venta", "web", "webIvaInc"].map((field) => {
                     const val = row[field];
                     const key = `${row.path}.${field}`;
                     const isEditing = editing === key;

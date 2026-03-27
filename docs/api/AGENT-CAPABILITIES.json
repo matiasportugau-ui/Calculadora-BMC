@@ -197,46 +197,22 @@
         "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/actualizar-precios-calculadora"
       },
       {
-        "method": "GET",
-        "path": "/api/followups",
-        "summary": "Listado follow-ups (recordatorios / seguimiento)",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups"
-      },
-      {
         "method": "POST",
-        "path": "/api/followups",
-        "summary": "Crear follow-up",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups"
+        "path": "/api/matriz/push-pricing-overrides",
+        "summary": "Overrides → MATRIZ BROMYROS (F/L/T tal cual s/IVA; auth token)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/matriz/push-pricing-overrides"
       },
       {
         "method": "GET",
-        "path": "/api/followups/:id",
-        "summary": "Detalle follow-up",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id"
-      },
-      {
-        "method": "PATCH",
-        "path": "/api/followups/:id",
-        "summary": "Actualizar / nota / estado",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id"
+        "path": "/api/email/panelsim-summary",
+        "summary": "PANELSIM: STATUS.json + reporte MD del repo IMAP (Bearer API_AUTH_TOKEN)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/email/panelsim-summary"
       },
       {
         "method": "POST",
-        "path": "/api/followups/:id/done",
-        "summary": "Marcar hecho",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id/done"
-      },
-      {
-        "method": "POST",
-        "path": "/api/followups/:id/snooze",
-        "summary": "Posponer seguimiento",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id/snooze"
-      },
-      {
-        "method": "DELETE",
-        "path": "/api/followups/:id",
-        "summary": "Eliminar follow-up",
-        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/followups/:id"
+        "path": "/api/email/draft-outbound",
+        "summary": "Borrador email proveedor/cliente (no envía; misma auth que cockpit)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/email/draft-outbound"
       }
     ]
   },
