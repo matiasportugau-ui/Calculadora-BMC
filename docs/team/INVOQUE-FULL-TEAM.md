@@ -38,8 +38,8 @@
 | Paso | Rol | Acción |
 |------|-----|--------|
 | 0 | Orchestrator | Leer PROJECT-STATE, PROMPT, BACKLOG; revisar **§2.2** (skills transversales); **Run Scope Gate** (objetivo + matriz Profundo/Ligero/N/A — `RUN-SCOPE-GATE.md`); resolver pendientes |
-| 0a | **MATPROMT** | Bundle de prompts por rol §2 (`matprompt`); delta prompts si hay tareas nuevas en el run |
-| 0b | Parallel/Serial | Plan de ejecución (paralelo vs serie); puede usar el bundle MATPROMT |
+| 0a | **MATPROMT** | Bundle de prompts por rol §2 (`matprompt`); cabecera **Run Scope Matrix** (`RUN-SCOPE-GATE.md`); Handoff a SIM si aplica; delta prompts si hay tareas nuevas en el run |
+| 0b | Parallel/Serial | Plan de ejecución (paralelo vs serie) **alineado a la matriz**; puede usar el bundle MATPROMT |
 | 1 | Orchestrator | Plan & proposal confirmado |
 | 2 | Mapping | Planilla map, DASHBOARD-INTERFACE-MAP |
 | 2b | Sheets Structure | *Condicional:* cambios estructurales (Matias only) |
@@ -67,6 +67,8 @@
 ## Miembros del equipo (N = §2 + §2.2)
 
 Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` **§2** (roles) y **§2.2** (skills transversales) para la lista canónica. **Alta de nuevos agentes:** §2.3 del mismo documento.
+
+**SIM / PANELSIM:** figura en §2 pero **no** tiene número de paso 0–9 en la tabla de arriba: el full team lo cubre vía **Handoff a SIM** en el bundle MATPROMT (0a) y lecturas de estado; la ejecución operativa es el **chat Cursor** según [`panelsim/AGENT-SIMULATOR-SIM.md`](./panelsim/AGENT-SIMULATOR-SIM.md).
 
 ---
 

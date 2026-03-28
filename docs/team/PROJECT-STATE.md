@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-28 (Telegram Scout — protocolo por run)
+**Última actualización:** 2026-03-28 (Telegram Scout; revisión workflow full team)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 
 **2026-03-28 (Telegram Scout — descubrimiento + decisiones por run):** Agente [`.cursor/agents/bmc-telegram-architecture-scout.md`](../../.cursor/agents/bmc-telegram-architecture-scout.md) y skill [`.cursor/skills/bmc-telegram-architecture-scout/SKILL.md`](../../.cursor/skills/bmc-telegram-architecture-scout/SKILL.md): en **cada run** — leer `docs/team/telegram/WATCHLIST.md`, **búsqueda web** de grupos/canales públicos nuevos alineados al foco, **escaneo** solo con export/pegado/Bot API autorizado, salidas `TELEGRAM-RUN-SCAN-*` y memo **`TELEGRAM-RUN-DECISIONS-*`** (implementar / piloto / diferir / rechazar). Lista canónica nueva: [`telegram/WATCHLIST.md`](./telegram/WATCHLIST.md). **Afecta a:** quien invoque el scout; Networks/Integraciones si se automatiza Bot API.
+
+**2026-03-28 (Revisión config full team — coherencia agentes):** Auditoría de flujo **Invoque full team**: alineación **INVOQUE-FULL-TEAM** ↔ Orquestador (pasos 0a/0b, **7b**, **Run Scope Matrix**). **Mapa de invocación** en [`.cursor/agents/bmc-dashboard-team-orchestrator.md`](../../.cursor/agents/bmc-dashboard-team-orchestrator.md): filas explícitas para **MATPROMT (0a)**, **SIM-REV (5h)** y **SIM** (sin paso lineal; handoff 0a + `panelsim/AGENT-SIMULATOR-SIM.md`). Texto “Full run” del orquestador incluye **7** → **7b** → **8** → **9**. `npm run project:compass` OK (fase p2). **Afecta a:** Orquestador, MATPROMT, lectura de INVOQUE.
 
 **2026-03-28 (Run Scope Gate — full team orientado y ahorro):** Nuevo protocolo [`RUN-SCOPE-GATE.md`](./RUN-SCOPE-GATE.md): **Orquestador (0)**, **MATPROMT (0a)** y **Parallel/Serial (0b)** fijan objetivo del run y **matriz Profundo / Ligero / N/A** por rol §2 (sin eliminar roles; se evita trabajo profundo innecesario). Actualizados [`.cursor/agents/bmc-dashboard-team-orchestrator.md`](../../.cursor/agents/bmc-dashboard-team-orchestrator.md), [`INVOQUE-FULL-TEAM.md`](./INVOQUE-FULL-TEAM.md), [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md) (plantilla bundle), skills [`matprompt`](../../.cursor/skills/matprompt/SKILL.md) y [`bmc-parallel-serial-agent`](../../.cursor/skills/bmc-parallel-serial-agent/SKILL.md). **Afecta a:** Orquestador, MATPROMT, Parallel/Serial, Judge (N/A acordado no se penaliza como “falta de informe”).
 

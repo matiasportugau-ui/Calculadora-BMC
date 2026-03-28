@@ -111,7 +111,7 @@ Detalle operativo: skill `matprompt` (`.cursor/skills/matprompt/SKILL.md`).
 
 **As orchestrator (you):**
 
-- **Full run:** Execute steps 0 → **0a (MATPROMT)** → 0b → 1 → … → 8 → **9**. En **paso 0** leer `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` y **revisar `PROJECT-TEAM-FULL-COVERAGE.md` §2.2** (skills transversales; marcar aplicables o N/A). En **paso 0a** invocar **MATPROMT** (`matprompt`) para generar el bundle de prompts por rol; durante el run, **re-consultar MATPROMT** ante tareas nuevas para delta prompts. En paso 9 ejecutar los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO y actualizar backlog y prompt para el siguiente run. Se invocan **todos los roles** de **§2** (N = filas actuales de la tabla; ver §2.1). Pasos opcionales (2b, 4b, 5c, 5e, 5g) según contexto. **Alta de nuevos roles:** §2.3.
+- **Full run:** Execute steps 0 → **0a (MATPROMT)** → 0b → 1 → … → 6 → **7 (Repo Sync)** → **7b (Docs & Repos Organizer)** → **8** → **9**. En **paso 0** leer `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`, `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`, aplicar **Run Scope Gate** (`docs/team/RUN-SCOPE-GATE.md`) y **revisar `PROJECT-TEAM-FULL-COVERAGE.md` §2.2** (skills transversales; marcar aplicables o N/A). En **paso 0a** invocar **MATPROMT** (`matprompt`) para generar el bundle (incl. **Run Scope Matrix**). Durante el run, **re-consultar MATPROMT** ante tareas nuevas para delta prompts. En paso 9 ejecutar los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO y actualizar backlog y prompt para el siguiente run. Se invocan **todos los roles** de **§2** (N = filas actuales de la tabla; ver §2.1); **SIM** no es paso secuencial del batch (ver mapa). Pasos opcionales (2b, 4b, 5c, 5e, 5g, 5h, 7b N/A) según contexto. **Alta de nuevos roles:** §2.3.
 - **Partial run:** User says e.g. "only mapping" → steps 1, 2. "Only design" → step 4 (with existing map). "Only report" → step 5. "Mapping + dependencies" → steps 1, 2, 3.
 - **Single role:** User names a role (e.g. "Design") → run only that skill with context from plan or existing docs.
 
@@ -130,7 +130,8 @@ Cuando "Run the BMC Dashboard team" se ejecuta, cada miembro de §2 se invoca as
 | Member | Step | Invoked when |
 |--------|------|--------------|
 | Orchestrator | 0, 1, 8 | Siempre |
-| Parallel/Serial | 0b | Siempre (plan de ejecución) |
+| **MATPROMT** | **0a** | Siempre (bundle por rol §2 + **Run Scope Matrix**; delta si hay cambio mid-run) |
+| Parallel/Serial | 0b | Siempre (plan de ejecución; respeta matriz Profundo/Ligero/N/A) |
 | Mapping | 2 | Siempre |
 | Sheets Structure | 2b | Conditional: cambios estructurales en sheets |
 | Dependencies | 3 | Siempre |
@@ -145,11 +146,13 @@ Cuando "Run the BMC Dashboard team" se ejecuta, cada miembro de §2 se invoca as
 | Billing | 5e | Siempre (o skip si no hay cambios facturación) |
 | Audit/Debug | 5f | Siempre |
 | Calc | 5g | Siempre (o skip si no hay cambios Calculadora) |
+| **SIM-REV** | **5h** | Opcional: objetivo SIM / PANELSIM (`panelsim/reports/SIM-REV-REVIEW-*.md`) |
 | Judge | 6 | Siempre |
 | Repo Sync | 7 | Siempre (tras Judge; sync bmc-dashboard-2.0 y bmc-development-team) |
 | Docs & Repos Organizer | 7b | Siempre (pasada breve; N/A explícito si no hubo cambios documentales) |
 | Orchestrator | 8 | Siempre (Update PROJECT-STATE) |
 | Orchestrator + roles | 9 | Siempre (Ciclo de mejoras: ejecutar prompts de PROMPT-FOR-EQUIPO-COMPLETO; actualizar backlog y prompt) |
+| **SIM** (PANELSIM) | *no step* | **No** es paso lineal 1–7b: se alimenta del **Handoff a SIM** en el bundle MATPROMT (0a) y de `PROJECT-STATE`; sesión Cursor según `docs/team/panelsim/AGENT-SIMULATOR-SIM.md`. En full team: incluir subsección SIM en 0a cuando el run tenga objetivo asistente. |
 
 ---
 
