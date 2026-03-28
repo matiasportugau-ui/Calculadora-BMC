@@ -150,3 +150,24 @@ Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapp
 - [SKILL.md](../.cursor/skills/bmc-repo-sync-agent/SKILL.md)
 - [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) §2
 - [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md)
+
+---
+
+## BMC Docs & Repos Organizer
+
+**Skill:** `.cursor/skills/bmc-docs-and-repos-organizer/`  
+**Agente Cursor:** `.cursor/agents/bmc-docs-and-repos-organizer.md`
+
+**Rol:** Ordenar documentación y carpetas bajo `docs/`, detectar huecos u obsoletos, mantener READMEs e índices, y entregar handoff a Repo Sync. Paso **7b** del Orquestador (full team). No sustituye Mapping ni Contract.
+
+**Cuándo usar:**
+
+- Tras un full team run o un bloque grande de cambios en `docs/`
+- Cuando se pide: índice, README faltante, enlaces rotos, PR solo-docs, higiene de rutas
+
+**Referencias:**
+
+- [SKILL.md](../.cursor/skills/bmc-docs-and-repos-organizer/SKILL.md)
+- [knowledge/DocsOrganizer.md](./knowledge/DocsOrganizer.md)
+- [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) §2 y §4
+- [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md)

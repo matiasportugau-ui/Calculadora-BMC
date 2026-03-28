@@ -17,6 +17,8 @@ This agent is **transformed into a Team** by the orchestrator. The orchestrator 
 
 **Regla obligatoria:** Al ejecutar "Equipo completo" / "Full team run", incluir SIEMPRE a todos los roles de `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` **§2** (N = filas actuales; §2.1). En **paso 0**, revisar también **§2.2** (skills transversales) y marcar aplicables o N/A. La tabla §2 es la fuente de verdad para miembros numerados; **alta obligatoria §2.3** al crear un rol nuevo.
 
+**Run Scope Gate (orientación y ahorro):** Antes de gastar tokens en pasos profundos, el Orquestador (paso **0**), **MATPROMT** (0a) y **Parallel/Serial** (0b) aplican [`docs/team/RUN-SCOPE-GATE.md`](../../docs/team/RUN-SCOPE-GATE.md): **objetivo del run** + **Run Scope Matrix** (por rol: Profundo / Ligero / N/A con justificación). Ningún rol §2 se elimina del run; los modos **Ligero** y **N/A** implican cierre breve explícito, no informes largos ficticios. Parallel/Serial ordena y paraleliza respetando esa matriz.
+
 **Clonación:** Para paralelizar, puede invocarse un clon: `Mapping+1`, `Design+1`, etc. Cada clon comparte el skill del rol base; el sufijo +N se incrementa cada vez que se crea un nuevo clon.
 
 **Parallel/Serial Agent:** Consultar `bmc-parallel-serial-agent` antes o durante el run para decidir qué ejecutar en paralelo vs serie y la mejor combinación de agentes según scores (JUDGE-REPORT-HISTORICO) y contexto.
@@ -58,6 +60,7 @@ Detalle operativo: skill `matprompt` (`.cursor/skills/matprompt/SKILL.md`).
 | **Judge** | `bmc-team-judge` | Evaluación, ranqueo, reporte por run, promedio histórico. |
 | **Parallel/Serial** | `bmc-parallel-serial-agent` | Estrategia paralelo vs serie; mejor combinación según scores. |
 | **Repo Sync** | `bmc-repo-sync-agent` | Mantiene actualizados bmc-dashboard-2.0 y bmc-development-team; tras cada corrida evalúa y sincroniza. |
+| **Docs & Repos Organizer** | `bmc-docs-and-repos-organizer` | Índices en `docs/`, READMEs, detección de huecos/obsoletos; handoff documental a Repo Sync; GitHub (ramas/PR) para cambios solo-docs. |
 | **SIM** | `bmc-project-team-sync`, `bmc-calculadora-specialist`; doc `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` | Checklist Cursor: estado, API, Sheets hub, `/capabilities` — asistente único sin drift. |
 | **SIM-REV** | `bmc-implementation-plan-reporter`, `bmc-team-judge`; doc `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` §4 | Informe `docs/team/panelsim/reports/SIM-REV-REVIEW-*.md`: trabajo con SIM vs backlog y mejoras propuestas. |
 
@@ -71,9 +74,9 @@ Detalle operativo: skill `matprompt` (`.cursor/skills/matprompt/SKILL.md`).
 
 | Step | Role | Skill(s) | Handoff |
 |------|------|----------|---------|
-| 0 | Orchestrator | — | Read `PROJECT-STATE.md`, `PROMPT-FOR-EQUIPO-COMPLETO.md`, `IMPROVEMENT-BACKLOG-BY-AGENT.md`; re-count §2 y revisar **§2.2** (skills transversales); resolver pendientes. |
-| 0a | **MATPROMT** | `matprompt` | Emitir **bundle de prompts orientadores** por rol §2 (objetivo, lecturas, entregables, criterios, anti-patrones, handoff) **+ micro-framework:** power prompt opcional, preguntas de desambiguación para Matias/Orquestador, restricciones de formato/fuentes por rol. Escribir en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si hay tarea nueva o cambio de prioridad, emitir **MATPROMT-DELTA** para roles afectados. Coordinar con Orchestrator y Parallel/Serial si el orden de ejecución cambia. |
-| 0b | Parallel/Serial | `bmc-parallel-serial-agent` | Plan de ejecución (paralelo vs serie, clones). Puede usar el bundle MATPROMT como insumo de dependencias entre roles. |
+| 0 | Orchestrator | — | Read `PROJECT-STATE.md`, `PROMPT-FOR-EQUIPO-COMPLETO.md`, `IMPROVEMENT-BACKLOG-BY-AGENT.md`; re-count §2 y revisar **§2.2** (skills transversales); **Run Scope Gate:** objetivo del run + borrador de matriz Profundo/Ligero/N/A por rol (`docs/team/RUN-SCOPE-GATE.md`); resolver pendientes. |
+| 0a | **MATPROMT** | `matprompt` | Emitir **bundle de prompts orientadores** por rol §2 (objetivo, lecturas, entregables, criterios, anti-patrones, handoff) **incluyendo cabecera «Run Scope Matrix»** alineada al paso 0 (`RUN-SCOPE-GATE.md`). **+ micro-framework:** power prompt opcional, preguntas de desambiguación para Matias/Orquestador, restricciones de formato/fuentes por rol. Escribir en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-YYYY-MM-DD-runN.md`. **Durante el run:** si hay tarea nueva o cambio de prioridad, emitir **MATPROMT-DELTA** para roles afectados. Coordinar con Orchestrator y Parallel/Serial si el orden de ejecución cambia. |
+| 0b | Parallel/Serial | `bmc-parallel-serial-agent` | Plan de ejecución (paralelo vs serie, clones) **que respeta la Run Scope Matrix** (no planificar pasadas profundas para roles marcados Ligero/N/A). Puede usar el bundle MATPROMT como insumo de dependencias entre roles. |
 | 1 | Orchestrator | — | Plan & proposal confirmado (`PLAN-PROPOSAL-PLANILLA-DASHBOARD-MAPPING.md`). |
 | 2 | Mapping | `bmc-planilla-dashboard-mapper`, `google-sheets-mapping-agent` | Planilla map, DASHBOARD-INTERFACE-MAP, cross-reference. |
 | 2b | Sheets Structure | `bmc-sheets-structure-editor` | *Conditional:* solo si hay cambios estructurales en sheets (tabs, dropdowns). Matias only. |
@@ -92,12 +95,13 @@ Detalle operativo: skill `matprompt` (`.cursor/skills/matprompt/SKILL.md`).
 | 5h | **SIM-REV** | `sim-reviewer-agent` (ver `docs/team/panelsim/AGENT-SIMULATOR-SIM.md`) | *Opcional si el run tiene objetivo SIM:* `docs/team/panelsim/reports/SIM-REV-REVIEW-YYYY-MM-DD.md` — contraste backlog vs trabajo con SIM. |
 | 6 | Judge | `bmc-team-judge` | `JUDGE-REPORT-RUN-YYYY-MM-DD.md`, `JUDGE-REPORT-HISTORICO.md`. |
 | 7 | Repo Sync | `bmc-repo-sync-agent` | Sincroniza bmc-dashboard-2.0 y bmc-development-team; evalúa qué actualizar tras la corrida. |
+| 7b | **Docs & Repos Organizer** | `bmc-docs-and-repos-organizer` | Tras Repo Sync (o en paralelo si Parallel/Serial lo permite y no hay conflicto de archivos): enlazar nuevos reportes en hubs, READMEs mínimos, enlaces rotos; handoff explícito de rutas tocadas para espejo en repos hermanos. Puede declararse **N/A** solo si el run no generó ni modificó documentación ni rutas citadas. |
 | 8 | Orchestrator | — | Update `PROJECT-STATE.md` (Cambios recientes, Pendientes). |
 | 9 | Orchestrator + roles asignados | — | **Ciclo de mejoras:** Ejecutar los "Próximos prompts" de `PROMPT-FOR-EQUIPO-COMPLETO.md`; cada rol hace su tarea; actualizar `IMPROVEMENT-BACKLOG-BY-AGENT.md` (✓) y la sección "Próximos prompts" para el siguiente run. |
 
-**Orden de ejecución:** 0 → **0a (MATPROMT)** → 0b → 1 → 2 → [2b si aplica] → 3 → 3b → 3c → 4 → 4b → 5 → 5b → 5c → 5d → 5e → 5f → 5g → [5h si objetivo SIM] → 6 → 7 → 8 → 9.
+**Orden de ejecución:** 0 → **0a (MATPROMT)** → 0b → 1 → 2 → [2b si aplica] → 3 → 3b → 3c → 4 → 4b → 5 → 5b → 5c → 5d → 5e → 5f → 5g → [5h si objetivo SIM] → 6 → 7 → **7b** → 8 → 9.
 
-**Pasos opcionales según contexto:** 2b (Sheets Structure), 4b (Integrations si no hay cambios ML/Shopify), 5c (GPT/Cloud si no hay cambios OpenAPI), 5e (Billing si no hay cambios facturación), 5g (Calc si no hay cambios Calculadora), **5h (SIM-REV)** cuando el objetivo del run incluye asistencia al Agente Simulador en Cursor (ver `docs/team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-*.md`). El Orquestador decide según pendientes y alcance.
+**Pasos opcionales según contexto:** 2b (Sheets Structure), 4b (Integrations si no hay cambios ML/Shopify), 5c (GPT/Cloud si no hay cambios OpenAPI), 5e (Billing si no hay cambios facturación), 5g (Calc si no hay cambios Calculadora), **5h (SIM-REV)** cuando el objetivo del run incluye asistencia al Agente Simulador en Cursor (ver `docs/team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-*.md`), **7b (Docs & Repos Organizer)** acortado a N/A si no hubo delta en `docs/` ni nuevas rutas en artefactos del run. El Orquestador decide según pendientes y alcance.
 
 **Objetivo SIM en paso 0:** Declarar si el run alimenta al asistente Cursor (SIM). MATPROMT (0a) debe incluir subsecciones “Para SIM” y un **Handoff a SIM** al cierre del bundle (`docs/team/panelsim/AGENT-SIMULATOR-SIM.md`).
 
@@ -143,6 +147,7 @@ Cuando "Run the BMC Dashboard team" se ejecuta, cada miembro de §2 se invoca as
 | Calc | 5g | Siempre (o skip si no hay cambios Calculadora) |
 | Judge | 6 | Siempre |
 | Repo Sync | 7 | Siempre (tras Judge; sync bmc-dashboard-2.0 y bmc-development-team) |
+| Docs & Repos Organizer | 7b | Siempre (pasada breve; N/A explícito si no hubo cambios documentales) |
 | Orchestrator | 8 | Siempre (Update PROJECT-STATE) |
 | Orchestrator + roles | 9 | Siempre (Ciclo de mejoras: ejecutar prompts de PROMPT-FOR-EQUIPO-COMPLETO; actualizar backlog y prompt) |
 
@@ -173,6 +178,7 @@ Cuando "Run the BMC Dashboard team" se ejecuta, cada miembro de §2 se invoca as
 | Security, GPT/Cloud, Fiscal, Billing, Audit, Calc | Reporter, Orchestrator | Status reports |
 | Judge | Orchestrator, Repo Sync | `JUDGE-REPORT-RUN-YYYY-MM-DD.md`, `JUDGE-REPORT-HISTORICO.md` |
 | Repo Sync | bmc-dashboard-2.0, bmc-development-team | Código dashboard, artefactos equipo |
+| Docs & Repos Organizer | Repo Sync, Orchestrator | Lista de paths/docs a espejar; índices y READMEs; propuesta de línea PROJECT-STATE si el usuario autoriza |
 | Parallel/Serial | Orchestrator | `PARALLEL-SERIAL-PLAN-YYYY-MM-DD.md` o plan de ejecución |
 
 ---

@@ -21,10 +21,11 @@
 
 1. **Carga el skill** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 2. **Lee** `docs/team/PROJECT-STATE.md`, `docs/team/PROJECT-TEAM-FULL-COVERAGE.md`, **`docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`** y **`docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md`**
-3. **Invoca al Orquestador** (`.cursor/agents/bmc-dashboard-team-orchestrator.md`)
-4. **Ejecuta** todos los pasos 0 → **0a (MATPROMT)** → 0b → 1 → … → 8 → **9** (ciclo de mejoras)
-5. **Incluye** a **todos los roles** de la tabla canónica `PROJECT-TEAM-FULL-COVERAGE.md` §2 (N = número de filas vigentes) y **considera** las **skills transversales** §2.2 en paso 0
-6. **Paso 9:** Ejecuta los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO; actualiza el backlog y la sección "Próximos prompts" para que el **siguiente** "Equipo completo" continúe hasta que todos los agentes estén completamente desarrollados
+3. **Run Scope Gate (orientación y ahorro):** seguir [`RUN-SCOPE-GATE.md`](./RUN-SCOPE-GATE.md) — el Orquestador (paso 0), MATPROMT (0a) y Parallel/Serial (0b) fijan **objetivo** y **matriz Profundo / Ligero / N/A** por rol §2; no se “saltan” roles, se evita trabajo profundo innecesario.
+4. **Invoca al Orquestador** (`.cursor/agents/bmc-dashboard-team-orchestrator.md`)
+5. **Ejecuta** todos los pasos 0 → **0a (MATPROMT)** → 0b → 1 → … → 7 → **7b (Docs & Repos Organizer)** → 8 → **9** (ciclo de mejoras)
+6. **Incluye** a **todos los roles** de la tabla canónica `PROJECT-TEAM-FULL-COVERAGE.md` §2 (N = número de filas vigentes) y **considera** las **skills transversales** §2.2 en paso 0
+7. **Paso 9:** Ejecuta los "Próximos prompts" del PROMPT-FOR-EQUIPO-COMPLETO; actualiza el backlog y la sección "Próximos prompts" para que el **siguiente** "Equipo completo" continúe hasta que todos los agentes estén completamente desarrollados
 
 **Secuencia autopilot (runs 24–30):** Para encadenar varios full team sin perder el hilo operativo, usar el paquete en [`reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md`](./reports/AUTOPILOT-FULL-TEAM-RUNS-24-30.md) + bundle [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md) («AUTOPILOT Runs 24–30»).
 
@@ -36,7 +37,7 @@
 
 | Paso | Rol | Acción |
 |------|-----|--------|
-| 0 | Orchestrator | Leer PROJECT-STATE, PROMPT, BACKLOG; revisar **§2.2** (skills transversales); resolver pendientes |
+| 0 | Orchestrator | Leer PROJECT-STATE, PROMPT, BACKLOG; revisar **§2.2** (skills transversales); **Run Scope Gate** (objetivo + matriz Profundo/Ligero/N/A — `RUN-SCOPE-GATE.md`); resolver pendientes |
 | 0a | **MATPROMT** | Bundle de prompts por rol §2 (`matprompt`); delta prompts si hay tareas nuevas en el run |
 | 0b | Parallel/Serial | Plan de ejecución (paralelo vs serie); puede usar el bundle MATPROMT |
 | 1 | Orchestrator | Plan & proposal confirmado |
@@ -57,6 +58,7 @@
 | 5h | SIM-REV | *Opcional si objetivo SIM:* `panelsim/reports/SIM-REV-REVIEW-*.md` — ver `panelsim/AGENT-SIMULATOR-SIM.md` |
 | 6 | Judge | JUDGE-REPORT-RUN, JUDGE-REPORT-HISTORICO |
 | 7 | Repo Sync | Sincroniza bmc-dashboard-2.0 y bmc-development-team |
+| 7b | Docs & Repos Organizer | Índices, READMEs, enlaces; handoff a Repo Sync; N/A si no hubo delta documental |
 | 8 | Orchestrator | Actualizar PROJECT-STATE |
 | 9 | Orchestrator + roles | Ciclo de mejoras: ejecutar Próximos prompts; actualizar IMPROVEMENT-BACKLOG y PROMPT-FOR-EQUIPO-COMPLETO para el siguiente run |
 

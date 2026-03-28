@@ -35,14 +35,15 @@ El **Parallel/Serial Agent** evalúa según los mejores desempeños en distintas
 ## Workflow
 
 1. **Leer** `docs/team/PROJECT-STATE.md` (objetivo, pendientes, plan vigente).
-2. **Leer** `docs/bmc-team-judge/JUDGE-REPORT-HISTORICO.md` (scores por agente, tendencias).
-3. **Leer** `docs/bmc-dashboard-modernization/dependencies.md` y `service-map.md` (dependencias entre tareas).
-4. **Analizar** contexto: qué tareas hay; qué agentes; qué handoffs; qué áreas son independientes.
-5. **Producir** plan de ejecución:
+2. **Leer** `docs/team/RUN-SCOPE-GATE.md` y la **Run Scope Matrix** del bundle MATPROMT (paso 0a) o el borrador del Orquestador (paso 0). **No planificar pasadas profundas** para roles marcados **Ligero** o **N/A**; solo orden/handoff mínimo.
+3. **Leer** `docs/team/judge/JUDGE-REPORT-HISTORICO.md` (scores por agente, tendencias).
+4. **Leer** `docs/bmc-dashboard-modernization/dependencies.md` y `service-map.md` (dependencias entre tareas).
+5. **Analizar** contexto: qué tareas hay; qué agentes; qué handoffs; qué áreas son independientes; qué roles van en **Profundo** vs cierre corto.
+6. **Producir** plan de ejecución:
    - Tareas en **paralelo** (sin dependencias entre sí; pueden correr Mapping+1 y Design+1 a la vez si no se bloquean).
    - Tareas en **serie** (una depende de la otra; Mapping → Dependencies → Design).
    - Mejor combinación de agentes (incluyendo clones si aplica).
-6. **Entregar** al Orquestador: `PARALLEL-SERIAL-PLAN.md` o handoff directo.
+7. **Entregar** al Orquestador: `PARALLEL-SERIAL-PLAN-*.md` o handoff directo — incluir **copia o referencia** de la Run Scope Matrix y lista de roles **sin herramientas pesadas** acordada.
 
 ---
 
@@ -50,7 +51,7 @@ El **Parallel/Serial Agent** evalúa según los mejores desempeños en distintas
 
 | Archivo | Ubicación | Contenido |
 |---------|-----------|-----------|
-| Plan de ejecución | `docs/team/parallel-serial/PARALLEL-SERIAL-PLAN-YYYY-MM-DD.md` | Qué en paralelo, qué en serie, combinación de agentes, justificación según scores y contexto |
+| Plan de ejecución | `docs/team/parallel-serial/PARALLEL-SERIAL-PLAN-YYYY-MM-DD.md` | Qué en paralelo, qué en serie, combinación de agentes; **referencia o copia de Run Scope Matrix** (`RUN-SCOPE-GATE.md`); roles sin herramientas pesadas; justificación según scores y contexto |
 
 ---
 

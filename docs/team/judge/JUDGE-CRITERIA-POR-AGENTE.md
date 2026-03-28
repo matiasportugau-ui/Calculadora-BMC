@@ -236,6 +236,19 @@
 
 ---
 
+## Docs & Repos Organizer (bmc-docs-and-repos-organizer)
+
+| Criterio | Entregable / Cómo juzgar |
+|----------|---------------------------|
+| **Índice / hubs** | Nuevos reportes o carpetas enlazados desde README u hub canónico (`docs/team/`, `docs/google-sheets-module/`, etc.) |
+| **Gaps** | Enlaces rotos, docs huérfanos o duplicados canónico vs copia vieja identificados con acción mínima propuesta |
+| **Límites** | No inventa contrato API ni schema Sheets; escala a Mapping/Contract si la verdad de negocio falta |
+| **Handoff** | Lista clara para Repo Sync (paths a espejar); no edita `PROJECT-STATE.md` sin pedido explícito del usuario |
+
+**Áreas de ranqueo:** Descubribilidad (1–5), Precisión de hallazgos (1–5), Respeto de límites (1–5).
+
+---
+
 ## SIM (Agente Simulador — Cursor)
 
 | Criterio | Entregable / Cómo juzgar |

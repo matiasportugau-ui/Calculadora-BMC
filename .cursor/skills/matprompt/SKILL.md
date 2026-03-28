@@ -29,7 +29,8 @@ description: >
 1. **Preflight (planificación)**  
    - Leer: `docs/team/PROJECT-STATE.md`, `docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md`, agenda del run, objetivos explícitos del usuario.  
    - Leer tabla de roles §2 en `PROJECT-TEAM-FULL-COVERAGE.md` (N dinámico).  
-   - Producir **por cada rol activo en el run**: *objetivo*, *lecturas obligatorias*, *entregables*, *criterios de aceptación*, *anti-patrones*, *handoff esperado*.
+   - Aplicar **Run Scope Gate:** `docs/team/RUN-SCOPE-GATE.md` — incorporar en el bundle la cabecera **«Run Scope Matrix»** (Profundo / Ligero / N/A por rol + justificación) alineada al borrador del Orquestador (paso 0). Para **Ligero** y **N/A**, los prompts deben exigir **solo** cierre breve, no auditorías completas.  
+   - Producir **por cada rol §2**: *objetivo*, *lecturas obligatorias*, *entregables*, *criterios de aceptación*, *anti-patrones*, *handoff esperado* (acotados al modo de la matriz).
 
 2. **Durante el run (re-planificación ligera)**  
    - Si entra una **tarea nueva** o cambia el **orden de prioridad**: emitir **MATPROMT-DELTA** (solo roles tocados) — no reescribir todo el bundle salvo que el Orquestador lo pida.

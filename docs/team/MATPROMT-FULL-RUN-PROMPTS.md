@@ -9,7 +9,7 @@
 ## Cómo usar
 
 1. **Orquestador — paso 0a:** Tras leer estado y PROMPT, invocar MATPROMT para rellenar la sección **«Bundle — RUN …»** de abajo (o crear archivo en `matprompt/`).
-2. **Cada agente:** Antes de su paso (2–7), leer **solo su subsección** del bundle + handoffs de roles previos.
+2. **Cada agente:** Antes de su paso (2–7b), leer **solo su subsección** del bundle + handoffs de roles previos.
 3. **Tarea nueva en mitad del run:** MATPROMT añade **«DELTA — fecha»** con prompts solo para roles afectados.
 
 ---
@@ -19,9 +19,10 @@
 ```markdown
 ## Bundle — RUN YYYY-MM-DD / runN
 
+- **Run Scope Matrix:** (obligatorio — plantilla en [`RUN-SCOPE-GATE.md`](./RUN-SCOPE-GATE.md)) tabla §2 con modo **Profundo / Ligero / N/A** y una línea de justificación por rol; lista de roles **sin herramientas pesadas** si aplica.
 - **Resumen ejecutivo (3–5 líneas):**
 - **Objetivos del usuario / agenda:**
-- **Roles N/A este run:** (y por qué)
+- **Roles N/A / Ligero este run:** (cruzado con la matriz; N/A = cierre mínimo, no informe largo)
 - **Orden o notas de Parallel/Serial:**
 
 ### Orchestrator — Prompt orientador
@@ -44,7 +45,7 @@
 - **Handoff a:**
 
 ### Design — Prompt orientador
-… (repetir para cada rol §2 que participe: Sheets Structure, Networks, Dependencies, Integrations, GPT/Cloud, Fiscal, Billing, Audit/Debug, Reporter, Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync)
+… (repetir para cada rol §2 que participe: Sheets Structure, Networks, Dependencies, Integrations, GPT/Cloud, Fiscal, Billing, Audit/Debug, Reporter, Contract, Calc, Security, Judge, Parallel/Serial, Repo Sync, Docs & Repos Organizer, SIM, SIM-REV)
 
 ### DELTA — (solo si aplica)
 - **Disparador:** (tarea nueva / cambio de prioridad)

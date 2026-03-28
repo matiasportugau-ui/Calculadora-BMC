@@ -36,6 +36,7 @@
 | **Facturación / Billing** | Revisión de errores, duplicados, cierre mensual | billing-error-review |
 | **Audit / Debug** | Auditoría dashboard, logs, diagnóstico | bmc-dashboard-audit-runner, cloudrun-diagnostics |
 | **Reporting** | Planes para Solution/Coding, handoffs | bmc-implementation-plan-reporter |
+| **Documentación / índice** | Estructura `docs/`, READMEs, enlaces rotos, handoff a Repo Sync | bmc-docs-and-repos-organizer |
 
 ---
 
@@ -66,6 +67,7 @@
 | **Judge** | bmc-team-judge | Evaluación y ranqueo | Evalúa forma de trabajo y desempeño; ranqueo por agente; reporte por run y promedio histórico; criterios individuales por agente; evolución continua |
 | **Parallel/Serial** | bmc-parallel-serial-agent | Estrategia de ejecución | Evalúa según mejores desempeños en áreas y tareas; sabe qué procesos ejecutar en paralelo vs serie; prevé mejor combinación de agentes según scores y contexto; muy orientado a objetivos |
 | **Repo Sync** | bmc-repo-sync-agent | Repos | Mantiene actualizados bmc-dashboard-2.0 (desarrollo y funcionamiento del dashboard) y bmc-development-team; tras cada corrida evalúa qué actualizar y sincroniza |
+| **Docs & Repos Organizer** | bmc-docs-and-repos-organizer | Documentación, Repos | Ordena carpetas y documentación en el repo; detecta huecos u obsoletos; mantiene índices en `docs/` y READMEs; guía flujos GitHub para cambios documentales; handoff a Repo Sync y Orquestador (sin inventar contrato API ni schema Sheets) |
 | **SIM** | bmc-project-team-sync, bmc-calculadora-specialist; doc [`panelsim/AGENT-SIMULATOR-SIM.md`](./panelsim/AGENT-SIMULATOR-SIM.md) | Cursor / asistencia | Agente Simulador (**PANELSIM** = mismo rol): cotizaciones + administración BMC, ML pendientes vía API, modo aprobación/automático; checklist de conexiones (estado, API, Sheets hub, `/capabilities`, hub) |
 | **SIM-REV** | bmc-implementation-plan-reporter, bmc-team-judge; doc [`panelsim/AGENT-SIMULATOR-SIM.md`](./panelsim/AGENT-SIMULATOR-SIM.md) §4 | Validación / backlog | Revisa trabajo hecho con SIM vs mejoras propuestas (`IMPROVEMENT-BACKLOG-BY-AGENT`, `PROMPT-FOR-EQUIPO-COMPLETO`); entrega `panelsim/reports/SIM-REV-REVIEW-*.md`; no sustituye al Judge |
 
@@ -172,6 +174,8 @@ Cuando cambia **X**, los agentes en **Y** deben ser notificados o leer el estado
 | **Plan de ejecución paralelo/serie** | Parallel/Serial → Orquestador (PARALLEL-SERIAL-PLAN); usa scores del Judge, dependencies |
 | **Cambio en Dashboard o artefactos equipo** | Repo Sync → sync a bmc-dashboard-2.0 y bmc-development-team |
 | **Repo Sync actualiza repos** | Repo Sync → reportar al Orquestador; actualizar PROJECT-STATE si aplica |
+| **Nueva doc, índice o README** | Docs & Repos Organizer → hubs (`docs/**/README.md`), AGENTS.md si aplica; Repo Sync si hay espejo en repos hermanos; Orquestador si hace falta línea en PROJECT-STATE |
+| **Reestructura de carpetas en docs/** | Docs & Repos Organizer → Mapping/Contract si el cambio afecta referencias en código o contrato; Judge si el run evalúa calidad documental |
 
 ---
 

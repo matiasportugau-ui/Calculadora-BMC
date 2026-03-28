@@ -127,3 +127,18 @@ Documentación de agentes especializados disponibles en el repositorio.
 - [SKILL.md](../.cursor/skills/bmc-parallel-serial-agent/SKILL.md)
 - [reference.md](../.cursor/skills/bmc-parallel-serial-agent/reference.md)
 - JUDGE-REPORT-HISTORICO.md (scores), dependencies.md (dependencias)
+
+---
+
+## BMC Docs & Repos Organizer
+
+**Skill:** `.cursor/skills/bmc-docs-and-repos-organizer/`  
+**Agente Cursor:** `.cursor/agents/bmc-docs-and-repos-organizer.md`
+
+**Rol:** Índices y READMEs bajo `docs/`, detección de documentación faltante u obsoleta, handoff a Repo Sync. Paso **7b** del full team (Orquestador).
+
+**Referencias:**
+
+- [SKILL.md](../.cursor/skills/bmc-docs-and-repos-organizer/SKILL.md)
+- [DocsOrganizer.md](./team/knowledge/DocsOrganizer.md)
+- [team/AGENTS.md](./team/AGENTS.md) — índice ampliado de agentes

@@ -34,6 +34,7 @@ docs/team/
 │   └── SOLUCIONES-UNO-POR-UNO-2026-03-20.md   ← pistas 1–8, una activa
 ├── fiscal/                      Supervisión y ranking de criticidad
 │   └── FISCAL-PROTOCOL-STATE-RANKING.md
+├── knowledge/                   KB por rol (Orchestrator, Mapping, …, DocsOrganizer)
 ├── judge/                       Evaluación y ranqueo
 │   ├── JUDGE-CRITERIA-POR-AGENTE.md
 │   └── JUDGE-REPORT-HISTORICO.md
@@ -67,8 +68,10 @@ docs/team/
 | [orientation/README.md](./orientation/README.md) | Programa maestro multi-área: JSON, fases, `npm run program:status` |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
+| [RUN-SCOPE-GATE.md](./RUN-SCOPE-GATE.md) | **Run Scope Gate:** objetivo del run + matriz Profundo/Ligero/N/A por rol (ahorro sin borrar §2) |
 | [panelsim/README.md](./panelsim/README.md) | SIM / PANELSIM: hub; proceso al invocar (`panelsim:env`, `start:api`) en canónico §5.1 |
-| [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync) |
+| [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync, Docs Organizer) |
+| [knowledge/DocsOrganizer.md](./knowledge/DocsOrganizer.md) | KB del rol §2 Docs & Repos Organizer (índices, READMEs, handoff Repo Sync) |
 | [interactions/](./interactions/) | Instancias de interacción equipo (ej. análisis cruzado de documentos externos) |
 
 ---
@@ -80,6 +83,7 @@ docs/team/
 | **Fiscal** | [fiscal/FISCAL-PROTOCOL-STATE-RANKING.md](./fiscal/FISCAL-PROTOCOL-STATE-RANKING.md) |
 | **Judge** | [judge/JUDGE-CRITERIA-POR-AGENTE.md](./judge/JUDGE-CRITERIA-POR-AGENTE.md), [judge/JUDGE-REPORT-HISTORICO.md](./judge/JUDGE-REPORT-HISTORICO.md) |
 | **Parallel/Serial** | [parallel-serial/](./parallel-serial/) — planes de ejecución |
+| **Docs & Repos Organizer** | [knowledge/DocsOrganizer.md](./knowledge/DocsOrganizer.md); skill `bmc-docs-and-repos-organizer` (paso 7b) |
 | **Orquestador** | PROJECT-TEAM-FULL-COVERAGE §5.4; bmc-dashboard-team-orchestrator |
 
 ---
