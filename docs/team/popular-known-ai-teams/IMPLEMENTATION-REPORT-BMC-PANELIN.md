@@ -97,7 +97,13 @@ Esto es **semánticamente cercano** a: **supervisor + pool de especialistas + ha
 
 ---
 
-## 7. Tabla rápida “¿dónde mirar en el repo?”
+## 7. Cuadro comparativo multidimensional (industria + BMC)
+
+Ver documento dedicado: [`COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md`](./COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md) (12 dimensiones, veredicto de ejecución saludable).
+
+---
+
+## 8. Tabla rápida “¿dónde mirar en el repo?”
 
 | Necesidad | Ruta |
 |-----------|------|
@@ -109,6 +115,6 @@ Esto es **semánticamente cercano** a: **supervisor + pool de especialistas + ha
 
 ---
 
-## 8. Descargo
+## 9. Descargo
 
 Este informe es **interno** y **no** certifica compatibilidad con productos de terceros. Las marcas (OpenAI, Microsoft, Google, AWS, LangChain, CrewAI) pertenecen a sus titulares.

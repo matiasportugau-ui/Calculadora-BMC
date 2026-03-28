@@ -11,9 +11,9 @@
 ## 1. Current session (edit each time you sit down)
 
 | Field | Value |
-|--------|--------|
+| ----- | ----- |
 | **Date** | 2026-03-28 |
-| **Focus (one line)** | Run Scope Gate + RUN-MODES-AND-TRIGGERS activos; Telegram Scout; Docs & Repos Organizer integrado §2; pendientes humanos run 55 (cm-0/1/2, 503 cotizaciones, duplicados MATRIZ) |
+| **Focus (one line)** | Run Scope Gate + RUN-MODES-AND-TRIGGERS activos; Telegram Scout; Docs & Repos Organizer integrado §2; pendientes humanos run 55 (cm-0/1/2); `/api/cotizaciones` ✅ + MATRIZ dups ✅ cerrados 2026-03-28 |
 | **Energy / time box** | — |
 | **Definition of “done” for today** | Definir próximo run (R1/R2/R3/R4); avanzar al menos un pendiente humano de `RUN55-OPERATOR-CHECKLIST.md` |
 
@@ -22,7 +22,7 @@
 Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md).
 
 | ✓ | Ítem |
-|---|------|
+| --- | ---- |
 | ☐ | **Objetivo central del run** en 1–3 frases (¿qué cierra o avanza este ciclo?) |
 | ☐ | **Definition of Done** del objetivo (condiciones medibles; human gates si aplica) |
 | ☐ | **Run Scope Matrix** planeada (Profundo / Ligero / N/A por rol §2) |
@@ -36,7 +36,7 @@ Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITIO
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
 - 2026-03-28: **Run Scope Gate + RUN-MODES-AND-TRIGGERS** — Protocolos R1–R4 documentados; `RUN-SCOPE-GATE.md` con matriz Profundo/Ligero/N/A; **Docs & Repos Organizer** incorporado a §2 (paso 7b); **Telegram Scout** agente + `telegram/WATCHLIST.md`; orquestador alineado pasos 7→7b→8→9; coherencia INVOQUE↔Orquestador verificada.
-- 2026-03-27: **Plan PROJECT-STATE ejecutado (repo)** — `gate:local:full`, `smoke:prod` OK; curls prod (kpi-report 200, cotizaciones 503, calculadora/finanzas 200); MATRIZ reconcile duplicados documentados; nuevos `RUN55-OPERATOR-CHECKLIST.md`, E2E §2026-03-27, nota MONTO en planilla-inventory; PROMPT run 55 con subestado. Run 55 **no cerrado** (pasos humanos pendientes).
+- 2026-03-27: **Plan PROJECT-STATE ejecutado (repo)** — `gate:local:full`, `smoke:prod` OK; curls prod (kpi-report 200, cotizaciones 503, calculadora/finanzas 200); MATRIZ reconcile duplicados documentados; nuevos `RUN55-OPERATOR-CHECKLIST.md`, E2E §2026-03-27, nota MONTO en planilla-inventory; PROMPT run 55 con subestado. Run 55 **no ![1774690058304](image/SESSION-WORKSPACE-CRM/1774690058304.png)![1774690435011](image/SESSION-WORKSPACE-CRM/1774690435011.png)cerrado** (pasos humanos pendientes).
 - 2026-03-27: **Sync + compass** — `package.json`: scripts `program:status`, `project:compass`, `followup`, `channels:*`, `email:ingest-snapshot`, `matriz:reconcile` alineados a `AGENTS.md`; `npm run gate:local` **165 passed**; `main` limpio vs `origin`. Run **55** sigue abierto en `PROMPT-FOR-EQUIPO-COMPLETO.md` hasta cierre formal con Orquestador/MATPROMT.
 - 2026-03-24: **Sincronización completa equipo** — skill `bmc-project-team-sync`: `PROJECT-STATE` entrada nueva (CI **119** + 1 warning ESLint; git **0/0** vs `origin`; WIP listado); siguiente run numerado **55** en PROMPT; no reemplaza Invoque full team 0→9 + MATPROMT.
 - 2026-03-24: **Run 55** — WA Cloud API webhook live (`chatbo2`, Phone ID `857133467479731`); auto-trigger 5min inactivity (no más 🚀); `POST /api/crm/parse-email` endpoint; Apps Script v2 (row fix + batch + lock); Cloud Run rev `panelin-calc-00031-4r2`; email ingest pipeline diseñado (6 cuentas IMAP, clasificación "ventas" → CRM).
@@ -52,11 +52,12 @@ Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITIO
 Use short names. Drag mentally: only **one** “Doing” if you want less chaos.
 
 | Stream | Status | Owner | Next physical action |
-|--------|--------|-------|----------------------|
+| ------ | ------ | ----- | -------------------- |
+| ~~503 `/api/cotizaciones`~~ | ✅ CERRADO 2026-03-28 | agent | `BMC_SHEET_SCHEMA=CRM_Operativo` → rev `00041-t8x` → 200/297 filas |
+| ~~MATRIZ dups (7 paths)~~ | ✅ CERRADO 2026-03-28 | Matias + agent | SKUs planilla + mapping corregidos → deploy `00042-2mn` → `ok: true` 48 paths |
 | Sheets / Pista 3 (tabs, triggers) | Waiting / Doing | Matias | Manual in Sheets — see `plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md` |
-| Repo / Dependabot | Backlog | Matias | Opcional: GitHub Security / Dependabot vs `npm audit` local 0 tras merge run36 (`PROJECT-STATE` Cambios 2026-03-21) |
 | E2E / prod smoke | Backlog | Matias + agent | `E2E-VALIDATION-CHECKLIST.md` — Cloud Run / Vercel |
-| Calculadora / MATRIZ SKUs | Backlog | agent | Confirm placeholders vs planilla col.D — `REPORT-RUN37-MATRIZ-SKUS-2026-03-20.md` |
+| Repo / Dependabot | Backlog | Matias | Opcional: GitHub Security / Dependabot vs `npm audit` local 0 |
 
 ---
 
@@ -75,7 +76,7 @@ Use short names. Drag mentally: only **one** “Doing” if you want less chaos.
 
 Copy-paste into a new chat when you want the model **fully oriented** without re-explaining:
 
-```
+```text
 Before coding: read in order:
 1) docs/team/SESSION-WORKSPACE-CRM.md (sections 1–4)
 2) docs/team/PROJECT-STATE.md (Cambios recientes + Pendientes)
@@ -99,7 +100,7 @@ Rules:
 ## 6. Canonical links (do not duplicate content here)
 
 | Need | File |
-|------|------|
+| ---- | ---- |
 | **Visual hub** (links + copy prompts / commands) | [WORKSPACE-CRM-HUB.html](./WORKSPACE-CRM-HUB.html) |
 | **Cronograma + rutina + seguimiento unificado** | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) — `npm run project:compass` (alias `npm run schedule`) |
 | **WhatsApp → ML → Correo (checklist)** | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) — `npm run channels:onboarding` |
@@ -118,7 +119,7 @@ Rules:
 ## 7. Optional: session log (one line per day)
 
 | Date | Outcome in one line |
-|------|---------------------|
+| ---- | ------------------- |
 | 2026-03-28 | Run Scope Gate (R1–R4), RUN-MODES-AND-TRIGGERS, Docs & Repos Organizer §2, Telegram Scout. |
 | 2026-03-27 | Run 55 formal; gates humanos cm-0/1/2 pendientes; smoke prod OK; MATRIZ duplicados documentados. |
 | 2026-03-21 | Added SESSION-WORKSPACE-CRM.md; seeded from PROJECT-STATE. |

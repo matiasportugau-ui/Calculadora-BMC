@@ -1,5 +1,6 @@
 {
   "version": "0.2",
+  "words": ["cerrado"],
   "overrides": [
     {
       "filename": "**/.cursor/skills/bmc-dgi-impositivo/**/*.py",

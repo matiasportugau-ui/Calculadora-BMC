@@ -71,7 +71,7 @@ docs/team/
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
 | [RUN-SCOPE-GATE.md](./RUN-SCOPE-GATE.md) | **Run Scope Gate:** objetivo del run + matriz Profundo/Ligero/N/A por rol (ahorro sin borrar §2) |
 | [FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md) | **Definición canónica:** Full Team Run = objetivo central + loop + evaluación autónoma + docs + próximas tareas pré-evaluadas |
-| [popular-known-ai-teams/](./popular-known-ai-teams/) | KB industria: equipos/frameworks multi-agente + [informe de implementación BMC](./popular-known-ai-teams/IMPLEMENTATION-REPORT-BMC-PANELIN.md) |
+| [popular-known-ai-teams/](./popular-known-ai-teams/) | KB industria + [cuadro comparativo 12×7](./popular-known-ai-teams/COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md) + [informe BMC](./popular-known-ai-teams/IMPLEMENTATION-REPORT-BMC-PANELIN.md) |
 | [RUN-MODES-AND-TRIGGERS.md](./RUN-MODES-AND-TRIGGERS.md) | R1–R4, triggers, mejores prácticas §7, plantillas de comunicación |
 | [panelsim/README.md](./panelsim/README.md) | SIM / PANELSIM: hub; proceso al invocar (`panelsim:env`, `start:api`) en canónico §5.1 |
 | [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync, Docs Organizer) |

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-28 (popular-known-ai-teams KB + informe BMC)
+**Última actualización:** 2026-03-28 (MATRIZ duplicados resueltos + deploy 00042)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-28 (MATRIZ — duplicados resueltos + mapping corregido + deploy):** Planilla BROMYROS col.D: 7 paths duplicados eliminados. Cambios en SKUs: `IAGRO30` fila 14 → `ICR040` (Isoroof COLONIAL 40mm); `CUMROOF3M` fila 58 → `CUMROOF3C` (Cumbrera COLONIAL 2,2m); `IW50` fila 62 → `IW80` (Isowall 80mm PIR); filas 63-64 sin SKU (fuera de mapeo); ISOPANEL EPS Fachada → `ISP50/100/150/200/250EPSF`; ISODEC EPS (techo) mantiene `ISD100/150/200/250EPS`. [`src/data/matrizPreciosMapping.js`](../../src/data/matrizPreciosMapping.js): `ICR040` + `CUMROOF3C` agregados; `ISPxxxEPSF` → `PANELS_PARED.ISOPANEL_EPS`; `ISDxxxEPS` corregido a **techo** (`PANELS_TECHO.ISODEC_EPS`). Deploy: revisión **`panelin-calc-00042-2mn`**. Verificado: `npm run matriz:reconcile` → **`ok: true`, 48 paths únicos, 0 duplicados**. **Afecta a:** Calc (precios MATRIZ), Mapping, prod.
+
+**2026-03-28 (`/api/cotizaciones` 503 → fix prod):** `BMC_SHEET_SCHEMA` no estaba seteada en Cloud Run → defaulteaba a `Master_Cotizaciones` (tab inexistente en la planilla). Fix: `--update-env-vars BMC_SHEET_SCHEMA=CRM_Operativo` → revisión **`panelin-calc-00041-t8x`**. Verificado: `GET /api/cotizaciones` → **200** con **297 filas** del CRM_Operativo. Duplicados `path` MATRIZ identificados (7 paths): `ISOROOF_FOIL.30`, `cumbrera.ISOROOF._all`, `ISOWALL_PIR.50`, `ISOPANEL_EPS.100/150/200/250` — pendiente edición manual planilla BROMYROS col.D. **Afecta a:** Networks (env var prod), Mapping (duplicados MATRIZ), RUN55-OPERATOR-CHECKLIST ítem 7 cerrado.
+
+**2026-03-28 (Cuadro comparativo BMC vs industria — 12 dimensiones):** [`popular-known-ai-teams/COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md`](./popular-known-ai-teams/COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md): tabla maestra **BMC vs Swarm/SDK, CrewAI, AutoGen, LangGraph, ADK, Bedrock** en orquestación, catálogo de roles, preflight, estado, handoffs, evaluación, human loop, integración real, coste/profundidad, autonomía, auditoría, portabilidad; profundización §2 por sistema; **veredicto** “corremos ok” con criterios y riesgos de mala ejecución. Enlace desde [`popular-known-ai-teams/README.md`](./popular-known-ai-teams/README.md). **Afecta a:** decisión estratégica equipo; no cambia código.
 
 **2026-03-28 (KB industria — Popular Known AI Teams):** Carpeta [`popular-known-ai-teams/`](./popular-known-ai-teams/README.md): subdocs **OpenAI Swarm/Agents SDK**, **CrewAI**, **Microsoft AutoGen**, **LangGraph supervisor**, **Google ADK**, **Amazon Bedrock multi-agent**; informe [`IMPLEMENTATION-REPORT-BMC-PANELIN.md`](./popular-known-ai-teams/IMPLEMENTATION-REPORT-BMC-PANELIN.md) (mapa de equivalencias, fortalezas, brechas vs autonomía literal, recomendaciones P0–P3). Índice [`docs/team/README.md`](./README.md). **Afecta a:** Orquestador, estrategia de equipo; no cambia código de runtime.
 

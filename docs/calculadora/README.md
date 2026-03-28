@@ -18,8 +18,9 @@ Documentación orientada a **usuarios comerciales** y a **QA / deploy**. Para cr
 
 ## 2. Componente en código (importante para soporte)
 
-- La app principal (`src/App.jsx`) monta **`PanelinCalculadoraV3_backup.jsx`** como calculadora canónica.
-- Existe una variante monolítica **`PanelinCalculadoraV3.jsx`** con funciones extra de documentación interna (p. ej. vistas **Cliente / Costeo**, avisos de margen) descritas en [`docs/team/PROJECT-STATE.md`](../team/PROJECT-STATE.md). No es la que carga `App.jsx` hasta que se cambie el import.
+- **`src/App.jsx`** importa solo **`src/components/PanelinCalculadoraV3_backup.jsx`** — es la **calculadora canónica** en prod (Drive, historial, Config, Hoja Cliente / Costeo, PDF enriquecido, etc.). El nombre `*_backup` es histórico: tras la unificación, acá vive el código **más completo y actual**.
+- El monolito **`src/components/PanelinCalculadoraV3.jsx`** fue **eliminado** a propósito (unificación); la lógica nueva pasó al backup. Queda **`PanelinCalculadoraV3_legacy_inline.jsx`** solo como referencia / legado, **no** lo usa `App.jsx`.
+- **`src/PanelinCalculadoraV3.jsx`** es un re-export fino (por si algún enlace o herramienta apunta al path antiguo); el entry real de la SPA sigue siendo `App.jsx` → `PanelinCalculadoraV3_backup.jsx`.
 
 ---
 

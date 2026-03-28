@@ -1269,6 +1269,18 @@ export default function PanelinCalculadoraV3() {
     return calcTotalesSinIVA(allItems);
   }, [groups]);
 
+  // Build panel info for output (supports combined scenarios) — must be before handlers that reference it (TDZ)
+  const panelInfo = useMemo(() => {
+    if (isCombined) {
+      const parts = [];
+      if (techoPanelData && techo.espesor) parts.push(`Techo: ${techoPanelData.label} ${techo.espesor}mm ${techo.color}`);
+      if (paredPanelData && pared.espesor) parts.push(`Pared: ${paredPanelData.label} ${pared.espesor}mm ${pared.color}`);
+      return { label: parts.join(" + "), espesor: "", color: "", au: techoPanelData?.au || null };
+    }
+    if (scenarioDef?.hasTecho) return { label: techoPanelData?.label || "", espesor: techo.espesor, color: techo.color, au: techoPanelData?.au || null };
+    return { label: paredPanelData?.label || "", espesor: pared.espesor, color: pared.color, au: paredPanelData?.au || null };
+  }, [isCombined, scenarioDef, techoPanelData, paredPanelData, techo, pared]);
+
   // ── Helpers ──
   const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
 
@@ -1362,18 +1374,6 @@ export default function PanelinCalculadoraV3() {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast]);
-
-  // Build panel info for output (supports combined scenarios)
-  const panelInfo = useMemo(() => {
-    if (isCombined) {
-      const parts = [];
-      if (techoPanelData && techo.espesor) parts.push(`Techo: ${techoPanelData.label} ${techo.espesor}mm ${techo.color}`);
-      if (paredPanelData && pared.espesor) parts.push(`Pared: ${paredPanelData.label} ${pared.espesor}mm ${pared.color}`);
-      return { label: parts.join(" + "), espesor: "", color: "", au: techoPanelData?.au || null };
-    }
-    if (scenarioDef?.hasTecho) return { label: techoPanelData?.label || "", espesor: techo.espesor, color: techo.color, au: techoPanelData?.au || null };
-    return { label: paredPanelData?.label || "", espesor: pared.espesor, color: pared.color, au: paredPanelData?.au || null };
-  }, [isCombined, scenarioDef, techoPanelData, paredPanelData, techo, pared]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({

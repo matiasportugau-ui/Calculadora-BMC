@@ -34,6 +34,22 @@
 - `npm run smoke:prod` (health, capabilities, MATRIZ CSV, suggest-response).
 - Tabla actualizada: [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md) (sección 2026-03-27).
 
+## 7. ✅ `GET /api/cotizaciones` → 503 prod — CERRADO 2026-03-28
+
+- **Causa:** `BMC_SHEET_SCHEMA` no estaba seteada en Cloud Run → defaulteaba a `Master_Cotizaciones` (tab inexistente).
+- **Fix:** `gcloud run services update panelin-calc --update-env-vars BMC_SHEET_SCHEMA=CRM_Operativo` → revisión `panelin-calc-00041-t8x`.
+- **Verificado:** `GET /api/cotizaciones` → **200**, 297 filas del CRM_Operativo.
+
+## 8. Duplicados `path` en MATRIZ CSV — pendiente Matias
+
+- 7 paths duplicados en planilla BROMYROS (identificados 2026-03-28):
+  - `PANELS_TECHO.ISOROOF_FOIL.esp.30`
+  - `PERFIL_TECHO.cumbrera.ISOROOF._all`
+  - `PANELS_PARED.ISOWALL_PIR.esp.50`
+  - `PANELS_PARED.ISOPANEL_EPS.esp.100` / `.150` / `.200` / `.250`
+- **Acción:** Editar planilla BROMYROS col.D — eliminar o corregir SKUs duplicados.
+- **Verificar después:** `curl …/api/actualizar-precios-calculadora | node scripts/reconcile-matriz-csv.mjs - --json` → debe dar `ok: true`.
+
 ---
 
 Al cerrar ítems humanos, actualizar [`PROJECT-STATE.md`](./PROJECT-STATE.md) **Cambios recientes** y el bloque run 55 en **PROMPT-FOR-EQUIPO-COMPLETO.md**.

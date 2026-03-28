@@ -6,6 +6,8 @@
 
 **Informe de alineación con este repo:** [`IMPLEMENTATION-REPORT-BMC-PANELIN.md`](./IMPLEMENTATION-REPORT-BMC-PANELIN.md)
 
+**Cuadro comparativo preciso (12 dimensiones × 7 enfoques + veredicto “¿corremos ok?”):** [`COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md`](./COMPARATIVE-MATRIX-BMC-VS-INDUSTRY.md)
+
 ---
 
 ## Índice de equipos / frameworks documentados
