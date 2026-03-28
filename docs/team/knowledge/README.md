@@ -18,6 +18,8 @@ Cada archivo en esta carpeta es la **base de conocimiento** de un rol: entradas/
 - `Orchestrator.md` — Orquestador
 - `Contract.md` — Contrato
 - `Calc.md` — Calc
+- `CALCULATOR-ENGINE-MATH-SPEC.md` — Motor matemático: fórmulas, variables, decisiones (`calculations.js`)
+- `MATRIZ-CALCULADORA.md` — MATRIZ Sheets → SKU→path → CSV → calculadora (expertise precios)
 - `Security.md` — Seguridad
 - `Judge.md` — Juez
 - `ParallelSerial.md` — Paralelo

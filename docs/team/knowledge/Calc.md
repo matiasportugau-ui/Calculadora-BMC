@@ -7,6 +7,8 @@ Rol: Calculadora Specialist. Skill: `bmc-calculadora-specialist`.
 ## Entradas (leer antes de trabajar)
 
 - `docs/team/PROJECT-STATE.md` — cambios recientes, pendientes.
+- `docs/team/knowledge/MATRIZ-CALCULADORA.md` — **MATRIZ → SKU→path → CSV → precios en UI** (obligatorio si tocás precios o planilla BROMYROS).
+- `docs/team/knowledge/CALCULATOR-ENGINE-MATH-SPEC.md` — **fórmulas y variables del motor** (techo, pared, IVA, merge); úsalo para cambios de lógica o auditoría matemática.
 - `docs/google-sheets-module/planilla-inventory.md` — Master_Cotizaciones, CRM_Operativo.
 - `src/utils/calculations.js`, `helpers.js`, constants — lógica de cálculo.
 - Si existe: `tests/validation.js`.
@@ -106,6 +108,7 @@ Ver `docs/team/CALCULATOR-REAL-TIME-CONTROL-PLAN.md` para el plan completo.
 
 ## Referencias
 
+- MATRIZ y paths: `docs/team/knowledge/MATRIZ-CALCULADORA.md`
 - Criterios del Juez: `docs/team/judge/JUDGE-CRITERIA-POR-AGENTE.md` (sección Calc)
 - Propagación: `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §4
 - Skill: `.cursor/skills/bmc-calculadora-specialist/SKILL.md`

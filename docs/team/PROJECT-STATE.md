@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-28 (MATRIZ duplicados resueltos + deploy 00042)
+**Última actualización:** 2026-03-28 (KB MATRIZ ↔ calculadora)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-28 (KB Calc — especificación matemática del motor):** Nuevo [`docs/team/knowledge/CALCULATOR-ENGINE-MATH-SPEC.md`](./knowledge/CALCULATOR-ENGINE-MATH-SPEC.md): glosario de variables alineado al código, diagrama de decisión (techo), fórmulas por bloque (pendiente, paneles, autoportancia, fijaciones, perfilería, selladores, BOM comercial, IVA, multi-zona, pared, presupuesto libre), bloque *prompt* para agentes, checklist de modificación. Enlaces desde [`knowledge/README.md`](./knowledge/README.md) y [`Calc.md`](./knowledge/Calc.md). **Afecta a:** Calc, quien audite o modifique `calculations.js`.
+
+**2026-03-28 (KB equipo — MATRIZ ↔ calculadora):** Nuevo [`docs/team/knowledge/MATRIZ-CALCULADORA.md`](./knowledge/MATRIZ-CALCULADORA.md): objetivo de negocio y técnico, cadena Sheets → `matrizPreciosMapping.js` → CSV → UI, tabla techo vs ISOPANEL vs ISODEC pared, archivos responsables, APIs, checklist. Índice [`docs/team/knowledge/README.md`](./knowledge/README.md) y [`Calc.md`](./knowledge/Calc.md) actualizados. **Afecta a:** Calc, Mapping, cualquier agente que edite precios o SKUs.
+
+**2026-03-28 (Full team — MATPROMT run56 + informe modificaciones y evaluación de información):** **Paso 0a** [`matprompt/MATPROMT-RUN-2026-03-28-run56.md`](./matprompt/MATPROMT-RUN-2026-03-28-run56.md): bundle con **Run Scope Matrix** (Profundo/Ligero/N/A por rol §2), **power prompt**, prompts orientadores por rol, preguntas de cierre para Matias/Orquestador. Informe [`reports/REPORT-FULL-TEAM-MODIFICATIONS-2026-03-28-run56.md`](./reports/REPORT-FULL-TEAM-MODIFICATIONS-2026-03-28-run56.md): delta técnico/documental, **mejoras** (proceso full team, cierres prod recientes), **riesgos de pérdida o dilución** (duplicación SESSION/STATE/PROMPT, WIP git sin commit, gates humanos). Guía canónica actualizada: [`MATPROMT-FULL-RUN-PROMPTS.md`](./MATPROMT-FULL-RUN-PROMPTS.md) — «Bundle — RUN 2026-03-28 / run56». **No** sustituye por sí solo la ejecución de pasos 1–8 por cada agente ni evidencia en cm-0/1/2. **Afecta a:** todos §2; Orquestador al planificar **run57**; MATPROMT.
 
 **2026-03-28 (MATRIZ — duplicados resueltos + mapping corregido + deploy):** Planilla BROMYROS col.D: 7 paths duplicados eliminados. Cambios en SKUs: `IAGRO30` fila 14 → `ICR040` (Isoroof COLONIAL 40mm); `CUMROOF3M` fila 58 → `CUMROOF3C` (Cumbrera COLONIAL 2,2m); `IW50` fila 62 → `IW80` (Isowall 80mm PIR); filas 63-64 sin SKU (fuera de mapeo); ISOPANEL EPS Fachada → `ISP50/100/150/200/250EPSF`; ISODEC EPS (techo) mantiene `ISD100/150/200/250EPS`. [`src/data/matrizPreciosMapping.js`](../../src/data/matrizPreciosMapping.js): `ICR040` + `CUMROOF3C` agregados; `ISPxxxEPSF` → `PANELS_PARED.ISOPANEL_EPS`; `ISDxxxEPS` corregido a **techo** (`PANELS_TECHO.ISODEC_EPS`). Deploy: revisión **`panelin-calc-00042-2mn`**. Verificado: `npm run matriz:reconcile` → **`ok: true`, 48 paths únicos, 0 duplicados**. **Afecta a:** Calc (precios MATRIZ), Mapping, prod.
 

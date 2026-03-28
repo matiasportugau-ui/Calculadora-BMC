@@ -4,30 +4,34 @@
 
 **When to open it:** Start of a work block, end of a session, or whenever you feel disoriented.
 
-**Prioridad operativa (rolling):** La prioridad del día o la semana debe alinearse con **`docs/team/PROJECT-STATE.md` → Cambios recientes** (correo, E2E, Go-live, tooling). No sustituye el roadmap de runs en `PROMPT-FOR-EQUIPO-COMPLETO.md`; evita que un solo bloque «Próximos prompts run N» opaque pendientes operativos recientes.
+**Prioridad operativa (rolling):** La prioridad del día o la semana debe alinearse con `**docs/team/PROJECT-STATE.md` → Cambios recientes** (correo, E2E, Go-live, tooling). No sustituye el roadmap de runs en `PROMPT-FOR-EQUIPO-COMPLETO.md`; evita que un solo bloque «Próximos prompts run N» opaque pendientes operativos recientes.
 
 ---
 
 ## 1. Current session (edit each time you sit down)
 
-| Field | Value |
-| ----- | ----- |
-| **Date** | 2026-03-28 |
-| **Focus (one line)** | Run Scope Gate + RUN-MODES-AND-TRIGGERS activos; Telegram Scout; Docs & Repos Organizer integrado §2; pendientes humanos run 55 (cm-0/1/2); `/api/cotizaciones` ✅ + MATRIZ dups ✅ cerrados 2026-03-28 |
-| **Energy / time box** | — |
-| **Definition of “done” for today** | Definir próximo run (R1/R2/R3/R4); avanzar al menos un pendiente humano de `RUN55-OPERATOR-CHECKLIST.md` |
+
+| Field                              | Value                                                                                                                                                                                                                                                                            |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Date**                           | 2026-03-28                                                                                                                                                                                                                                                                       |
+| **Focus (one line)**               | **MATPROMT run56** entregado (bundle + informe modificaciones / evaluación información); Run Scope Gate + RUN-MODES-AND-TRIGGERS; Telegram Scout; Docs & Repos Organizer §2; gates **cm-0/1/2** abiertos hasta evidencia; prod: cotizaciones + MATRIZ alineados STATE 2026-03-28 |
+| **Energy / time box**              | —                                                                                                                                                                                                                                                                                |
+| **Definition of “done” for today** | Opcional: cerrar **run56** con Judge/REPORT por rol; o planear **run57** (gates + WIP git + E2E)                                                                                                                                                                                 |
+
 
 ### 1.1 Full Team Run — checklist rápido (antes de “Invoque full team”)
 
-Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md).
+Definición canónica: `[FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md)`.
 
-| ✓ | Ítem |
-| --- | ---- |
-| ☐ | **Objetivo central del run** en 1–3 frases (¿qué cierra o avanza este ciclo?) |
-| ☐ | **Definition of Done** del objetivo (condiciones medibles; human gates si aplica) |
-| ☐ | **Run Scope Matrix** planeada (Profundo / Ligero / N/A por rol §2) |
-| ☐ | **PROMPT + BACKLOG** leídos; paso 9 previsto (próximos prompts para la *siguiente* iteración) |
-| ☐ | Tras el run: **Judge** + **PROJECT-STATE** + **7b docs** + actualización PROMPT/backlog |
+
+| ✓   | Ítem                                                                                          |
+| --- | --------------------------------------------------------------------------------------------- |
+| ☐   | **Objetivo central del run** en 1–3 frases (¿qué cierra o avanza este ciclo?)                 |
+| ☐   | **Definition of Done** del objetivo (condiciones medibles; human gates si aplica)             |
+| ☐   | **Run Scope Matrix** planeada (Profundo / Ligero / N/A por rol §2)                            |
+| ☐   | **PROMPT + BACKLOG** leídos; paso 9 previsto (próximos prompts para la *siguiente* iteración) |
+| ☐   | Tras el run: **Judge** + **PROJECT-STATE** + **7b docs** + actualización PROMPT/backlog       |
+
 
 ---
 
@@ -35,15 +39,16 @@ Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITIO
 
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
+- 2026-03-28: **MATPROMT run56** — `[matprompt/MATPROMT-RUN-2026-03-28-run56.md](matprompt/MATPROMT-RUN-2026-03-28-run56.md)` (prompts por rol §2 + Run Scope Matrix); informe `[reports/REPORT-FULL-TEAM-MODIFICATIONS-2026-03-28-run56.md](reports/REPORT-FULL-TEAM-MODIFICATIONS-2026-03-28-run56.md)` (modificaciones + mejoras vs riesgo pérdida de información); `[MATPROMT-FULL-RUN-PROMPTS.md](MATPROMT-FULL-RUN-PROMPTS.md)` actualizado.
 - 2026-03-28: **Run Scope Gate + RUN-MODES-AND-TRIGGERS** — Protocolos R1–R4 documentados; `RUN-SCOPE-GATE.md` con matriz Profundo/Ligero/N/A; **Docs & Repos Organizer** incorporado a §2 (paso 7b); **Telegram Scout** agente + `telegram/WATCHLIST.md`; orquestador alineado pasos 7→7b→8→9; coherencia INVOQUE↔Orquestador verificada.
-- 2026-03-27: **Plan PROJECT-STATE ejecutado (repo)** — `gate:local:full`, `smoke:prod` OK; curls prod (kpi-report 200, cotizaciones 503, calculadora/finanzas 200); MATRIZ reconcile duplicados documentados; nuevos `RUN55-OPERATOR-CHECKLIST.md`, E2E §2026-03-27, nota MONTO en planilla-inventory; PROMPT run 55 con subestado. Run 55 **no ![1774690058304](image/SESSION-WORKSPACE-CRM/1774690058304.png)![1774690435011](image/SESSION-WORKSPACE-CRM/1774690435011.png)cerrado** (pasos humanos pendientes).
+- 2026-03-27: **Plan PROJECT-STATE ejecutado (repo)** — `gate:local:full`, `smoke:prod` OK; curls prod (kpi-report 200, cotizaciones 503, calculadora/finanzas 200); MATRIZ reconcile duplicados documentados; nuevos `RUN55-OPERATOR-CHECKLIST.md`, E2E §2026-03-27, nota MONTO en planilla-inventory; PROMPT run 55 con subestado. Run 55 **no 17746900583041774690435011cerrado** (pasos humanos pendientes).
 - 2026-03-27: **Sync + compass** — `package.json`: scripts `program:status`, `project:compass`, `followup`, `channels:*`, `email:ingest-snapshot`, `matriz:reconcile` alineados a `AGENTS.md`; `npm run gate:local` **165 passed**; `main` limpio vs `origin`. Run **55** sigue abierto en `PROMPT-FOR-EQUIPO-COMPLETO.md` hasta cierre formal con Orquestador/MATPROMT.
 - 2026-03-24: **Sincronización completa equipo** — skill `bmc-project-team-sync`: `PROJECT-STATE` entrada nueva (CI **119** + 1 warning ESLint; git **0/0** vs `origin`; WIP listado); siguiente run numerado **55** en PROMPT; no reemplaza Invoque full team 0→9 + MATPROMT.
 - 2026-03-24: **Run 55** — WA Cloud API webhook live (`chatbo2`, Phone ID `857133467479731`); auto-trigger 5min inactivity (no más 🚀); `POST /api/crm/parse-email` endpoint; Apps Script v2 (row fix + batch + lock); Cloud Run rev `panelin-calc-00031-4r2`; email ingest pipeline diseñado (6 cuentas IMAP, clasificación "ventas" → CRM).
 - 2026-03-24: **Full team sync** — `PROJECT-STATE`: «verificación CI + árbol git» (última pasada) + entrada previa «full update + verify»; gate **119** (1 ESLint warning opcional `calculatorConfig.js`); git **0/0** vs `origin`; WIP: `bmcDashboard` suggest-response, `package.json`/lock, `.env.example`, ML/CRM, Dockerfile, team docs.
-- 2026-03-23: **PANELSIM** — Handoff [`panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md`](./panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md); informe [`panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md`](./panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md) (API local: CRM 297 filas; ML OAuth pendiente).
+- 2026-03-23: **PANELSIM** — Handoff `[panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md](./panelsim/matprompt/MATPROMT-HANDOFF-PANELSIM-2026-03-23.md)`; informe `[panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md](./panelsim/reports/PANELSIM-SHEETS-SITUATION-2026-03-23.md)` (API local: CRM 297 filas; ML OAuth pendiente).
 - 2026-03-21: PROMPT «Próximos prompts» alineado con roadmap 32→39 (34–39 ✓ documental) y siguiente ciclo **run 52**; agenda manual sigue en `PROMPT-FOR-EQUIPO-COMPLETO.md`.
-- 2026-03-21: Merge **`run36-audit-force`** → **`main`** + push (ver `PROJECT-STATE`); workstreams cockpit actualizados (sin merge pendiente en audit).
+- 2026-03-21: Merge `**run36-audit-force`** → `**main**` + push (ver `PROJECT-STATE`); workstreams cockpit actualizados (sin merge pendiente en audit).
 
 ---
 
@@ -51,13 +56,15 @@ Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITIO
 
 Use short names. Drag mentally: only **one** “Doing” if you want less chaos.
 
-| Stream | Status | Owner | Next physical action |
-| ------ | ------ | ----- | -------------------- |
-| ~~503 `/api/cotizaciones`~~ | ✅ CERRADO 2026-03-28 | agent | `BMC_SHEET_SCHEMA=CRM_Operativo` → rev `00041-t8x` → 200/297 filas |
-| ~~MATRIZ dups (7 paths)~~ | ✅ CERRADO 2026-03-28 | Matias + agent | SKUs planilla + mapping corregidos → deploy `00042-2mn` → `ok: true` 48 paths |
-| Sheets / Pista 3 (tabs, triggers) | Waiting / Doing | Matias | Manual in Sheets — see `plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md` |
-| E2E / prod smoke | Backlog | Matias + agent | `E2E-VALIDATION-CHECKLIST.md` — Cloud Run / Vercel |
-| Repo / Dependabot | Backlog | Matias | Opcional: GitHub Security / Dependabot vs `npm audit` local 0 |
+
+| Stream                            | Status               | Owner          | Next physical action                                                          |
+| --------------------------------- | -------------------- | -------------- | ----------------------------------------------------------------------------- |
+| ~~503 `/api/cotizaciones`~~       | ✅ CERRADO 2026-03-28 | agent          | `BMC_SHEET_SCHEMA=CRM_Operativo` → rev `00041-t8x` → 200/297 filas            |
+| ~~MATRIZ dups (7 paths)~~         | ✅ CERRADO 2026-03-28 | Matias + agent | SKUs planilla + mapping corregidos → deploy `00042-2mn` → `ok: true` 48 paths |
+| Sheets / Pista 3 (tabs, triggers) | Waiting / Doing      | Matias         | Manual in Sheets — see `plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md`           |
+| E2E / prod smoke                  | Backlog              | Matias + agent | `E2E-VALIDATION-CHECKLIST.md` — Cloud Run / Vercel                            |
+| Repo / Dependabot                 | Backlog              | Matias         | Opcional: GitHub Security / Dependabot vs `npm audit` local 0                 |
+
 
 ---
 
@@ -99,27 +106,33 @@ Rules:
 
 ## 6. Canonical links (do not duplicate content here)
 
-| Need | File |
-| ---- | ---- |
-| **Visual hub** (links + copy prompts / commands) | [WORKSPACE-CRM-HUB.html](./WORKSPACE-CRM-HUB.html) |
-| **Cronograma + rutina + seguimiento unificado** | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) — `npm run project:compass` (alias `npm run schedule`) |
-| **WhatsApp → ML → Correo (checklist)** | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) — `npm run channels:onboarding` |
-| **Programa maestro (JSON)** | [orientation/README.md](./orientation/README.md) — `npm run program:status` |
-| Repo-wide state, pendientes, cambios | [PROJECT-STATE.md](./PROJECT-STATE.md) |
-| Full team run input + próximos prompts | [PROMPT-FOR-EQUIPO-COMPLETO.md](./PROMPT-FOR-EQUIPO-COMPLETO.md) |
-| Agent backlog / KB maturity | [IMPROVEMENT-BACKLOG-BY-AGENT.md](./IMPROVEMENT-BACKLOG-BY-AGENT.md) |
-| Invoking the team | [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md) |
-| Full Team Run (definición + loop + iteración) | [FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md) |
-| Run modes (R1–R4) + triggers + cómo encargar | [RUN-MODES-AND-TRIGGERS.md](./RUN-MODES-AND-TRIGGERS.md), [RUN-SCOPE-GATE.md](./RUN-SCOPE-GATE.md) |
-| Roadmap runs | [reports/RUN-ROADMAP-FORWARD-2026.md](./reports/RUN-ROADMAP-FORWARD-2026.md) |
-| Pistas 1–8 | [plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md) |
+
+| Need                                             | File                                                                                                             |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| **Visual hub** (links + copy prompts / commands) | [WORKSPACE-CRM-HUB.html](./WORKSPACE-CRM-HUB.html)                                                               |
+| **Cronograma + rutina + seguimiento unificado**  | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) — `npm run project:compass` (alias `npm run schedule`)              |
+| **WhatsApp → ML → Correo (checklist)**           | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) — `npm run channels:onboarding` |
+| **Programa maestro (JSON)**                      | [orientation/README.md](./orientation/README.md) — `npm run program:status`                                      |
+| Repo-wide state, pendientes, cambios             | [PROJECT-STATE.md](./PROJECT-STATE.md)                                                                           |
+| Full team run input + próximos prompts           | [PROMPT-FOR-EQUIPO-COMPLETO.md](./PROMPT-FOR-EQUIPO-COMPLETO.md)                                                 |
+| Agent backlog / KB maturity                      | [IMPROVEMENT-BACKLOG-BY-AGENT.md](./IMPROVEMENT-BACKLOG-BY-AGENT.md)                                             |
+| Invoking the team                                | [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md)                                                                   |
+| Full Team Run (definición + loop + iteración)    | [FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md)                                                     |
+| Run modes (R1–R4) + triggers + cómo encargar     | [RUN-MODES-AND-TRIGGERS.md](./RUN-MODES-AND-TRIGGERS.md), [RUN-SCOPE-GATE.md](./RUN-SCOPE-GATE.md)               |
+| Roadmap runs                                     | [reports/RUN-ROADMAP-FORWARD-2026.md](./reports/RUN-ROADMAP-FORWARD-2026.md)                                     |
+| Pistas 1–8                                       | [plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md)                       |
+
 
 ---
 
 ## 7. Optional: session log (one line per day)
 
-| Date | Outcome in one line |
-| ---- | ------------------- |
-| 2026-03-28 | Run Scope Gate (R1–R4), RUN-MODES-AND-TRIGGERS, Docs & Repos Organizer §2, Telegram Scout. |
+
+| Date       | Outcome in one line                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------ |
+| 2026-03-28 | Run Scope Gate (R1–R4), RUN-MODES-AND-TRIGGERS, Docs & Repos Organizer §2, Telegram Scout.       |
 | 2026-03-27 | Run 55 formal; gates humanos cm-0/1/2 pendientes; smoke prod OK; MATRIZ duplicados documentados. |
-| 2026-03-21 | Added SESSION-WORKSPACE-CRM.md; seeded from PROJECT-STATE. |
+| 2026-03-21 | Added SESSION-WORKSPACE-CRM.md; seeded from PROJECT-STATE.                                       |
+
+
+can you run for me 

@@ -305,6 +305,21 @@
 
 ---
 
+## Bundle — RUN 2026-03-28 / run56 (informe modificaciones + evaluación mejoras / pérdida de información)
+
+- **Resumen:** **MATPROMT 0a** — modo **R2** (sync documental + síntesis); **objetivo central:** informe actualizado de modificaciones del repo/estado + evaluación de **mejoras** vs **riesgos de dilución/pérdida de información** (duplicación SESSION/STATE/PROMPT, WIP sin commit). Post–STATE 2026-03-28: **503 `/api/cotizaciones`** y **duplicados MATRIZ** descritos como **cerrados** en prod; gates humanos **cm-0 / cm-1 / cm-2** siguen según [`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md).
+
+- **Bundle completo (prompts por rol + Run Scope Matrix):** [`matprompt/MATPROMT-RUN-2026-03-28-run56.md`](./matprompt/MATPROMT-RUN-2026-03-28-run56.md)
+- **Informe consolidado:** [`reports/REPORT-FULL-TEAM-MODIFICATIONS-2026-03-28-run56.md`](./reports/REPORT-FULL-TEAM-MODIFICATIONS-2026-03-28-run56.md)
+- **Parallel/Serial:** serie documental (plan dedicado opcional en run57 si hace falta)
+- **Reporter / Judge / Repo Sync:** opcionales en esta pasada — completar si Orquestador ejecuta **0→9** completo para run56
+
+### DELTA — (run56)
+- **Disparador:** Pedido de usuario: full team orquestado + prompts profesionales + reporte de modificaciones y evaluación.
+- **Roles afectados:** todos §2 con matriz Profundo/Ligero/N/A en el bundle.
+
+---
+
 ## Bundle — RUN 2026-03-24 / run54 (full team + Invocación PANELSIM)
 
 - **Resumen:** **Invoque full team** **run 54** — objetivo **SIM/PANELSIM**; CI `npm run gate:local` (**119 passed**, 1 warning ESLint); cierre con **`npm run panelsim:session`** e informe [`panelsim/reports/PANELSIM-SESSION-STATUS-2026-03-24T04-21-27Z.md`](./panelsim/reports/PANELSIM-SESSION-STATUS-2026-03-24T04-21-27Z.md) (Sheets OK, correo OK, API health 200, MATRIZ 200, **`/auth/ml/status` ok** en local).
@@ -340,6 +355,7 @@
 
 | Fecha | Run | Ubicación del bundle |
 |-------|-----|----------------------|
+| 2026-03-28 | run56 (informe modificaciones + evaluación información) | [`matprompt/MATPROMT-RUN-2026-03-28-run56.md`](./matprompt/MATPROMT-RUN-2026-03-28-run56.md) |
 | 2026-03-27 | run55 (full team 0→9 + agenda operador) | [`matprompt/MATPROMT-RUN-2026-03-27-run55.md`](./matprompt/MATPROMT-RUN-2026-03-27-run55.md) |
 | 2026-03-24 | run54 (full team + Invocación PANELSIM) | [`matprompt/MATPROMT-RUN-2026-03-24-run54.md`](./matprompt/MATPROMT-RUN-2026-03-24-run54.md) |
 | 2026-03-24 | run53 (PANELSIM + ML OAuth + gate tooling + Calc KB) | [`matprompt/MATPROMT-RUN-2026-03-24-run53.md`](./matprompt/MATPROMT-RUN-2026-03-24-run53.md) |
