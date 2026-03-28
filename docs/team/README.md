@@ -25,6 +25,7 @@ docs/team/
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
+├── popular-known-ai-teams/     KB: arquitecturas multi-agente reconocidas (CrewAI, AutoGen, LangGraph, ADK, …) + informe vs BMC
 ├── panelsim/                    SIM / PANELSIM + SIM-REV: canónico, invocación §5.1 (panelsim:env + start:api), knowledge, matprompt, reports
 ├── AGENT-SIMULATOR-SIM.md       Stub → panelsim/AGENT-SIMULATOR-SIM.md
 ├── AGENTS.md                    Lista de agentes y skills
@@ -69,6 +70,9 @@ docs/team/
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |
 | [RUN-SCOPE-GATE.md](./RUN-SCOPE-GATE.md) | **Run Scope Gate:** objetivo del run + matriz Profundo/Ligero/N/A por rol (ahorro sin borrar §2) |
+| [FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md) | **Definición canónica:** Full Team Run = objetivo central + loop + evaluación autónoma + docs + próximas tareas pré-evaluadas |
+| [popular-known-ai-teams/](./popular-known-ai-teams/) | KB industria: equipos/frameworks multi-agente + [informe de implementación BMC](./popular-known-ai-teams/IMPLEMENTATION-REPORT-BMC-PANELIN.md) |
+| [RUN-MODES-AND-TRIGGERS.md](./RUN-MODES-AND-TRIGGERS.md) | R1–R4, triggers, mejores prácticas §7, plantillas de comunicación |
 | [panelsim/README.md](./panelsim/README.md) | SIM / PANELSIM: hub; proceso al invocar (`panelsim:env`, `start:api`) en canónico §5.1 |
 | [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync, Docs Organizer) |
 | [knowledge/DocsOrganizer.md](./knowledge/DocsOrganizer.md) | KB del rol §2 Docs & Repos Organizer (índices, READMEs, handoff Repo Sync) |

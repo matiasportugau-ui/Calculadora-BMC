@@ -75,6 +75,8 @@
 
 - **N (tamaño del equipo):** es **el número de filas de rol** en la tabla de arriba (§2), **sin contar** encabezados. No usar un número fijo en documentación viva (p. ej. “19”): el Orquestador y los agentes deben leer **esta tabla** en cada run.
 - **Regla de invocación:** `"Invoque full team"` / `"Equipo completo"` debe cubrir **todas las filas §2** y **todas las skills transversales §2.2** aplicables al contexto del run. Ningún rol añadido a §2 puede quedar fuera por olvido.
+- **Semántica honesta:** *Full team* = **cobertura §2** (cada rol con decisión Profundo / Ligero / N/A), no «todos los agentes al máximo». Ver [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md) y [`RUN-SCOPE-GATE.md`](./RUN-SCOPE-GATE.md).
+- **Ciclo completo (objetivo, evaluación, docs, iteración):** [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md) — definición vigente del *Full Team Run* (Judge, paso 9, DoD, bucle hasta cerrar trabajo).
 
 ### 2.2 Skills transversales (siempre consideradas en el full team)
 

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-28 (Telegram Scout; revisión workflow full team)
+**Última actualización:** 2026-03-28 (popular-known-ai-teams KB + informe BMC)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-28 (KB industria — Popular Known AI Teams):** Carpeta [`popular-known-ai-teams/`](./popular-known-ai-teams/README.md): subdocs **OpenAI Swarm/Agents SDK**, **CrewAI**, **Microsoft AutoGen**, **LangGraph supervisor**, **Google ADK**, **Amazon Bedrock multi-agent**; informe [`IMPLEMENTATION-REPORT-BMC-PANELIN.md`](./popular-known-ai-teams/IMPLEMENTATION-REPORT-BMC-PANELIN.md) (mapa de equivalencias, fortalezas, brechas vs autonomía literal, recomendaciones P0–P3). Índice [`docs/team/README.md`](./README.md). **Afecta a:** Orquestador, estrategia de equipo; no cambia código de runtime.
+
+**2026-03-28 (FULL-TEAM-RUN-DEFINITION — redefinición ciclo Full Team):** Nuevo canónico [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md): Full Team Run = **objetivo central** + cobertura §2 con matriz + **pipeline 0→9** + **evaluación autónoma** (Judge + `JUDGE-CRITERIA-POR-AGENTE`) + **documentación** (7b + STATE) + **próximas tareas pré-evaluadas** (paso 9, PROMPT, backlog, compass/program) + **iteración hasta DoD** / human gates. Enlazado desde [`INVOQUE-FULL-TEAM.md`](./INVOQUE-FULL-TEAM.md), [`RUN-SCOPE-GATE.md`](./RUN-SCOPE-GATE.md), [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md), [`PROJECT-TEAM-FULL-COVERAGE.md`](./PROJECT-TEAM-FULL-COVERAGE.md) §2.1, [`SESSION-WORKSPACE-CRM.md`](./SESSION-WORKSPACE-CRM.md) §1.1, orquestador. **Próximo run:** usar plantilla §8 del doc al abrir R1. **Afecta a:** todos §2; Orquestador/MATPROMT.
+
+**2026-03-28 (RUN-MODES — mejores prácticas §7):** [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md) §7–§7.5: preflight (R1–R4, objetivo, matriz), DAG/parallel, riesgo en N/A, Judge/paso 9/STATE, docs vs código, anti-patrones. Skill [`bmc-project-team-sync`](../../.cursor/skills/bmc-project-team-sync/SKILL.md) enlaza RUN-SCOPE + RUN-MODES. **Afecta a:** quien invoque full team o sync.
+
+**2026-03-28 (RUN-MODES-AND-TRIGGERS — investigación equipo y RUNs):** Nuevo [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md): aclara que *full team* = **cobertura §2** (Profundo/Ligero/N/A), no carga uniforme; tipos **R1–R4** (full coverage, sync doc, slice, un rol); tabla **siempre vs trigger**; checklist de evaluación de tarea; **plantillas** para comunicar a agentes. [`PROJECT-TEAM-FULL-COVERAGE.md`](./PROJECT-TEAM-FULL-COVERAGE.md) §2.1 enlaza semántica honesta. **Afecta a:** Orquestador, Matias al elegir modo de run.
 
 **2026-03-28 (Telegram Scout — descubrimiento + decisiones por run):** Agente [`.cursor/agents/bmc-telegram-architecture-scout.md`](../../.cursor/agents/bmc-telegram-architecture-scout.md) y skill [`.cursor/skills/bmc-telegram-architecture-scout/SKILL.md`](../../.cursor/skills/bmc-telegram-architecture-scout/SKILL.md): en **cada run** — leer `docs/team/telegram/WATCHLIST.md`, **búsqueda web** de grupos/canales públicos nuevos alineados al foco, **escaneo** solo con export/pegado/Bot API autorizado, salidas `TELEGRAM-RUN-SCAN-*` y memo **`TELEGRAM-RUN-DECISIONS-*`** (implementar / piloto / diferir / rechazar). Lista canónica nueva: [`telegram/WATCHLIST.md`](./telegram/WATCHLIST.md). **Afecta a:** quien invoque el scout; Networks/Integraciones si se automatiza Bot API.
 

@@ -24,7 +24,7 @@ Skill for **synchronizing project state** across all areas. Ensures agents read 
 
 ## Core Protocol
 
-1. **Read** `docs/team/PROJECT-STATE.md` — Cambios recientes, Pendientes, Estado por área. Si el usuario pide foco de sesión o “qué sigue hoy”: también `docs/team/SESSION-WORKSPACE-CRM.md`. En **full team run**, tras paso 0, asegurar **paso 0a MATPROMT** (`matprompt`): bundle de prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-*.md`.
+1. **Read** `docs/team/PROJECT-STATE.md` — Cambios recientes, Pendientes, Estado por área. Si el usuario pide foco de sesión o “qué sigue hoy”: también `docs/team/SESSION-WORKSPACE-CRM.md`. En **full team run**, tras paso 0, asegurar **paso 0a MATPROMT** (`matprompt`): bundle de prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` o `docs/team/matprompt/MATPROMT-RUN-*.md`. **Orientación y ahorro:** `docs/team/RUN-SCOPE-GATE.md` (matriz Profundo/Ligero/N/A) y **modos de run R1–R4:** `docs/team/RUN-MODES-AND-TRIGGERS.md`.
 2. **Resolve pendientes** — If any agent is listed in Pendientes, invoke that agent or document the handoff.
 3. **Run propagation** — If a change was made, notify affected agents per [team/PROJECT-TEAM-FULL-COVERAGE.md](../../docs/team/PROJECT-TEAM-FULL-COVERAGE.md) §4.
 4. **Update PROJECT-STATE** — Add to Cambios recientes; clear or update Pendientes.
@@ -69,6 +69,9 @@ Skill for **synchronizing project state** across all areas. Ensures agents read 
 | Backlog by agent | `docs/team/IMPROVEMENT-BACKLOG-BY-AGENT.md` | Estado por agente (KB, reference, examples, SKILL ref) |
 | AI Interactive Team | `ai-interactive-team` | Collaboration protocol when agents need to agree |
 | Orchestrator | `bmc-dashboard-team-orchestrator` | Full run order, handoffs, step 9 |
+| Full Team Run (definición ciclo) | `docs/team/FULL-TEAM-RUN-DEFINITION.md` | Objetivo central, Judge, docs, paso 9, iteración hasta DoD |
+| Run modes & best practices | `docs/team/RUN-MODES-AND-TRIGGERS.md` | R1–R4, triggers, mejores prácticas |
+| Run Scope Gate | `docs/team/RUN-SCOPE-GATE.md` | Matriz de profundidad por rol |
 
 ---
 

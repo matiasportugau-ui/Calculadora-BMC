@@ -12,10 +12,22 @@
 
 | Field | Value |
 |--------|--------|
-| **Date** | 2026-03-27 |
-| **Focus (one line)** | Sync equipo: `program:status` / `project:compass` operativos; run 55 formal pendiente (MATPROMT 0a); gates humanos cm-0/1/2 |
-| **Energy / time box** | Full day |
-| **Definition of “done” for today** | Checklist [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md): pasos humanos cm-0/1/2 según prioridad; prod ya verificado smoke + curls (ver `E2E-VALIDATION-CHECKLIST.md` 2026-03-27) |
+| **Date** | 2026-03-28 |
+| **Focus (one line)** | Run Scope Gate + RUN-MODES-AND-TRIGGERS activos; Telegram Scout; Docs & Repos Organizer integrado §2; pendientes humanos run 55 (cm-0/1/2, 503 cotizaciones, duplicados MATRIZ) |
+| **Energy / time box** | — |
+| **Definition of “done” for today** | Definir próximo run (R1/R2/R3/R4); avanzar al menos un pendiente humano de `RUN55-OPERATOR-CHECKLIST.md` |
+
+### 1.1 Full Team Run — checklist rápido (antes de “Invoque full team”)
+
+Definición canónica: [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md).
+
+| ✓ | Ítem |
+|---|------|
+| ☐ | **Objetivo central del run** en 1–3 frases (¿qué cierra o avanza este ciclo?) |
+| ☐ | **Definition of Done** del objetivo (condiciones medibles; human gates si aplica) |
+| ☐ | **Run Scope Matrix** planeada (Profundo / Ligero / N/A por rol §2) |
+| ☐ | **PROMPT + BACKLOG** leídos; paso 9 previsto (próximos prompts para la *siguiente* iteración) |
+| ☐ | Tras el run: **Judge** + **PROJECT-STATE** + **7b docs** + actualización PROMPT/backlog |
 
 ---
 
@@ -23,6 +35,7 @@
 
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
+- 2026-03-28: **Run Scope Gate + RUN-MODES-AND-TRIGGERS** — Protocolos R1–R4 documentados; `RUN-SCOPE-GATE.md` con matriz Profundo/Ligero/N/A; **Docs & Repos Organizer** incorporado a §2 (paso 7b); **Telegram Scout** agente + `telegram/WATCHLIST.md`; orquestador alineado pasos 7→7b→8→9; coherencia INVOQUE↔Orquestador verificada.
 - 2026-03-27: **Plan PROJECT-STATE ejecutado (repo)** — `gate:local:full`, `smoke:prod` OK; curls prod (kpi-report 200, cotizaciones 503, calculadora/finanzas 200); MATRIZ reconcile duplicados documentados; nuevos `RUN55-OPERATOR-CHECKLIST.md`, E2E §2026-03-27, nota MONTO en planilla-inventory; PROMPT run 55 con subestado. Run 55 **no cerrado** (pasos humanos pendientes).
 - 2026-03-27: **Sync + compass** — `package.json`: scripts `program:status`, `project:compass`, `followup`, `channels:*`, `email:ingest-snapshot`, `matriz:reconcile` alineados a `AGENTS.md`; `npm run gate:local` **165 passed**; `main` limpio vs `origin`. Run **55** sigue abierto en `PROMPT-FOR-EQUIPO-COMPLETO.md` hasta cierre formal con Orquestador/MATPROMT.
 - 2026-03-24: **Sincronización completa equipo** — skill `bmc-project-team-sync`: `PROJECT-STATE` entrada nueva (CI **119** + 1 warning ESLint; git **0/0** vs `origin`; WIP listado); siguiente run numerado **55** en PROMPT; no reemplaza Invoque full team 0→9 + MATPROMT.
@@ -95,6 +108,8 @@ Rules:
 | Full team run input + próximos prompts | [PROMPT-FOR-EQUIPO-COMPLETO.md](./PROMPT-FOR-EQUIPO-COMPLETO.md) |
 | Agent backlog / KB maturity | [IMPROVEMENT-BACKLOG-BY-AGENT.md](./IMPROVEMENT-BACKLOG-BY-AGENT.md) |
 | Invoking the team | [INVOQUE-FULL-TEAM.md](./INVOQUE-FULL-TEAM.md) |
+| Full Team Run (definición + loop + iteración) | [FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md) |
+| Run modes (R1–R4) + triggers + cómo encargar | [RUN-MODES-AND-TRIGGERS.md](./RUN-MODES-AND-TRIGGERS.md), [RUN-SCOPE-GATE.md](./RUN-SCOPE-GATE.md) |
 | Roadmap runs | [reports/RUN-ROADMAP-FORWARD-2026.md](./reports/RUN-ROADMAP-FORWARD-2026.md) |
 | Pistas 1–8 | [plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md](./plans/SOLUCIONES-UNO-POR-UNO-2026-03-20.md) |
 
@@ -104,4 +119,6 @@ Rules:
 
 | Date | Outcome in one line |
 |------|---------------------|
+| 2026-03-28 | Run Scope Gate (R1–R4), RUN-MODES-AND-TRIGGERS, Docs & Repos Organizer §2, Telegram Scout. |
+| 2026-03-27 | Run 55 formal; gates humanos cm-0/1/2 pendientes; smoke prod OK; MATRIZ duplicados documentados. |
 | 2026-03-21 | Added SESSION-WORKSPACE-CRM.md; seeded from PROJECT-STATE. |

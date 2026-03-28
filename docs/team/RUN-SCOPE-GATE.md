@@ -4,6 +4,8 @@
 
 **No sustituye:** La tabla canónica de roles en `PROJECT-TEAM-FULL-COVERAGE.md` §2. En un full team, **ningún rol se borra del run**; lo que se evita es ejecutar **pasos profundos innecesarios**.
 
+**Definición canónica del ciclo Full Team:** [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md). **Modos y prácticas:** [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md) (R1–R4, triggers, plantillas).
+
 ---
 
 ## Roles responsables (quién decide qué tanto correr cada agente)
@@ -72,6 +74,7 @@ El Orquestador puede rellenar un **borrador** en paso 0; MATPROMT lo **congela**
 
 ## Referencias
 
+- `docs/team/RUN-MODES-AND-TRIGGERS.md`
 - `docs/team/INVOQUE-FULL-TEAM.md`
 - `.cursor/agents/bmc-dashboard-team-orchestrator.md`
 - `.cursor/skills/matprompt/SKILL.md`

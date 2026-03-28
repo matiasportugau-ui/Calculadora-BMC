@@ -2,6 +2,8 @@
 
 **Propósito:** Unificar la invocación del equipo completo en una sola frase: **"Invoque full team"**.
 
+**Definición canónica del Full Team Run** (objetivo central, loop, evaluación autónoma, documentación, próximas tareas pré-evaluadas, iteración hasta DoD): [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md).
+
 ---
 
 ## Frases que activan el full team
@@ -74,6 +76,8 @@ Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE
 
 ## Referencias
 
+- **Definición canónica Full Team Run (ciclo, evaluación, iteración):** [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md)
+- **Modos de run y triggers (siempre vs ocasional):** [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md)
 - **Orquestador:** `.cursor/agents/bmc-dashboard-team-orchestrator.md`
 - **Skill sync:** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 - **Rule:** `.cursor/rules/bmc-project-team-sync.mdc` (triggers incl. "Invoque full team")

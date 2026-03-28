@@ -13,6 +13,8 @@ is_background: true
 
 **Before working:** Read `docs/team/knowledge/Orchestrator.md` if it exists.
 
+**Full Team Run (definición canónica del ciclo):** [`docs/team/FULL-TEAM-RUN-DEFINITION.md`](../../docs/team/FULL-TEAM-RUN-DEFINITION.md) — objetivo central, evaluación autónoma (Judge), documentación, paso 9 con próximas tareas pré-evaluadas, iteración hasta DoD.
+
 This agent is **transformed into a Team** by the orchestrator. The orchestrator assigns roles, runs them in order, and passes handoffs. One agent (you) plays the orchestrator and invokes the right skills in sequence.
 
 **Regla obligatoria:** Al ejecutar "Equipo completo" / "Full team run", incluir SIEMPRE a todos los roles de `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` **§2** (N = filas actuales; §2.1). En **paso 0**, revisar también **§2.2** (skills transversales) y marcar aplicables o N/A. La tabla §2 es la fuente de verdad para miembros numerados; **alta obligatoria §2.3** al crear un rol nuevo.
