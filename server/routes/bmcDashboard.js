@@ -1165,6 +1165,25 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
     }
   }
 
+  // ── Normalize: ISODEC_EPS techo venta_local = ISOPANEL_EPS pared venta_local
+  // BMC pricing policy: same price for techo and pared at same espesor.
+  // The planilla may have different values due to data entry — fix at CSV export.
+  // Columns: 0=path, 1=desc, 2=cat, 3=costo, 4=venta_local, 5=venta_local_iva_inc, 6=venta_web, 7=venta_web_iva_inc
+  const rowByPath = new Map();
+  for (let i = 1; i < csvRows.length; i++) {
+    const parts = csvRows[i].split(",");
+    rowByPath.set(parts[0], { idx: i, parts });
+  }
+  for (const esp of [50, 100, 150, 200, 250]) {
+    const paredEntry = rowByPath.get(`PANELS_PARED.ISOPANEL_EPS.esp.${esp}`);
+    const techoEntry = rowByPath.get(`PANELS_TECHO.ISODEC_EPS.esp.${esp}`);
+    if (paredEntry && techoEntry && paredEntry.parts[4] !== techoEntry.parts[4]) {
+      techoEntry.parts[4] = paredEntry.parts[4]; // venta_local
+      techoEntry.parts[5] = paredEntry.parts[5]; // venta_local_iva_inc
+      csvRows[techoEntry.idx] = techoEntry.parts.join(",");
+    }
+  }
+
   return { csv: "\uFEFF" + csvRows.join("\n"), count };
 }
 
