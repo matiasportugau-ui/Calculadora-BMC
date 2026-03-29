@@ -24,6 +24,10 @@ import {
   findVentaWebIvaIncColumnIndex,
   getDuplicatePathReport,
 } from "../src/utils/csvPricingImport.js";
+import {
+  normalizeIsodecEpsVentaLocalCsvRows,
+  splitCsvRowSafe,
+} from "../server/lib/matrizCsvNormalization.js";
 import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
 import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
 import { colLetterToIndex, colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
@@ -770,6 +774,45 @@ const dupLines = [
 ];
 const dups = getDuplicatePathReport(dupLines, 0);
 assert("getDuplicatePathReport one dup", dups.length === 1 && dups[0].path === "A.B" && dups[0].count === 2, JSON.stringify(dups), "1 dup A.B");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 23b: MATRIZ CSV normalization (ISODEC_EPS techo vs ISOPANEL_EPS pared)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 23b: matrizCsvNormalization ═══");
+
+const csvRowsNorm = [
+  "path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab",
+  'PANELS_PARED.ISOPANEL_EPS.esp.100,"Pared ""EPS"" 100, blanca",Paneles Pared,30,3777,4607.94,3900,4758,m²,BROMYROS',
+  'PANELS_TECHO.ISODEC_EPS.esp.100,"Techo ""EPS"" 100, blanca",Paneles Techo,31,3903,4761.66,4100,5002,m²,BROMYROS',
+  "PANELS_TECHO.ISODEC_EPS.esp.150,Techo 150,Paneles Techo,35,4248,5182.56,4500,5490,m²,BROMYROS",
+  "PANELS_PARED.ISOPANEL_EPS.esp.150,Pared 150,Paneles Pared,35,4248,5182.56,4400,5368,m²,BROMYROS",
+];
+const beforeSameRow = csvRowsNorm[3];
+const sameRef = normalizeIsodecEpsVentaLocalCsvRows(csvRowsNorm);
+assert(
+  "normalizeIsodecEpsVentaLocalCsvRows returns same array reference",
+  sameRef === csvRowsNorm,
+  sameRef === csvRowsNorm,
+  true,
+);
+
+const pared100 = splitCsvRowSafe(csvRowsNorm[1]);
+const techo100 = splitCsvRowSafe(csvRowsNorm[2]);
+assert("normalize copies venta_local from pared to techo", techo100[4] === pared100[4], techo100[4], pared100[4]);
+assert("normalize copies venta_local_iva_inc from pared to techo", techo100[5] === pared100[5], techo100[5], pared100[5]);
+assert("normalize keeps venta_web untouched", techo100[6] === "4100", techo100[6], "4100");
+assert("normalize keeps venta_web_iva_inc untouched", techo100[7] === "5002", techo100[7], "5002");
+assert(
+  "normalize preserves quoted description with comma",
+  techo100[1] === 'Techo "EPS" 100, blanca',
+  techo100[1],
+  'Techo "EPS" 100, blanca',
+);
+assert("normalize skips rows already aligned", csvRowsNorm[3] === beforeSameRow, csvRowsNorm[3], beforeSameRow);
+
+const splitQuoted = splitCsvRowSafe('A,"B, C","D ""Q"""');
+assert("splitCsvRowSafe handles comma in quoted cell", splitQuoted[1] === "B, C", splitQuoted[1], "B, C");
+assert("splitCsvRowSafe handles escaped quotes", splitQuoted[2] === 'D "Q"', splitQuoted[2], 'D "Q"');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 24: Nuevos productos — ISOROOF_COLONIAL, ISODEC_EPS_PARED, perfilería
