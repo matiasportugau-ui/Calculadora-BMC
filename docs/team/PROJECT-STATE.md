@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-28 (KB MATRIZ ↔ calculadora)
+**Última actualización:** 2026-03-29 (test coverage MATRIZ EPS)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-29 (Test coverage automation — regresión MATRIZ ISODEC/ISOPANEL):** Cobertura nueva para el fix de normalización de precios EPS en export CSV de MATRIZ. Se extrae helper testeable [`server/lib/matrizCsvNormalization.js`](../../server/lib/matrizCsvNormalization.js) y `buildPlanillaDesdeMatriz` en [`server/routes/bmcDashboard.js`](../../server/routes/bmcDashboard.js) lo usa sin cambiar comportamiento. Tests agregados en [`tests/validation.js`](../../tests/validation.js) (SUITE **23b**): verifica copia de `venta_local` y `venta_local_iva_inc` desde `PANELS_PARED.ISOPANEL_EPS.esp.X` a `PANELS_TECHO.ISODEC_EPS.esp.X`, no tocar `venta_web*`, robustez con descripciones CSV comilladas con coma, y parseo de comillas escapadas. `npm test` OK (**174 passed**). **Afecta a:** Contract/Calc/MATRIZ (riesgo de drift de precios en export).
 
 **2026-03-28 (KB Calc — especificación matemática del motor):** Nuevo [`docs/team/knowledge/CALCULATOR-ENGINE-MATH-SPEC.md`](./knowledge/CALCULATOR-ENGINE-MATH-SPEC.md): glosario de variables alineado al código, diagrama de decisión (techo), fórmulas por bloque (pendiente, paneles, autoportancia, fijaciones, perfilería, selladores, BOM comercial, IVA, multi-zona, pared, presupuesto libre), bloque *prompt* para agentes, checklist de modificación. Enlaces desde [`knowledge/README.md`](./knowledge/README.md) y [`Calc.md`](./knowledge/Calc.md). **Afecta a:** Calc, quien audite o modifique `calculations.js`.
 
