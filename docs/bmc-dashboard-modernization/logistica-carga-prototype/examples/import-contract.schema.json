@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bmc.example/logistica/import-proximas-row.schema.json",
+  "title": "Fila importable desde GET /api/proximas-entregas",
+  "description": "Campos canónicos del router BMC; filas CRM mapeadas en servidor.",
+  "type": "object",
+  "properties": {
+    "COTIZACION_ID": { "type": "string" },
+    "ID": { "type": "string" },
+    "CLIENTE_NOMBRE": { "type": "string" },
+    "Cliente": { "type": "string" },
+    "TELEFONO": { "type": "string" },
+    "Teléfono": { "type": "string" },
+    "DIRECCION": { "type": "string" },
+    "Ubicación / Dirección": { "type": "string" },
+    "ZONA": { "type": "string" },
+    "LINK_UBICACION": { "type": "string", "format": "uri" },
+    "FECHA_ENTREGA": { "type": "string" }
+  },
+  "additionalProperties": true
+}

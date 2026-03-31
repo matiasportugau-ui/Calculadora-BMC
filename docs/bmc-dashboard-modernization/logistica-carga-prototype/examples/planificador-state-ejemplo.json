@@ -1,0 +1,33 @@
+{
+  "info": {
+    "numero": "ENV-260330-001",
+    "fecha": "2026-03-30",
+    "transportista": "Transportes BMC",
+    "patente": "ABC 1234",
+    "notas": "Llegar antes de 16:00"
+  },
+  "truckL": 8,
+  "stops": [
+    {
+      "id": "s1",
+      "orden": 1,
+      "cliente": "Obra Norte SA",
+      "telefono": "+598 94 111 222",
+      "direccion": "Ruta 39 km 45",
+      "zona": "San Carlos",
+      "linkUbicacion": "",
+      "cotizacionId": "COT-1001",
+      "color": "#2563EB",
+      "paneles": [
+        {
+          "id": "p1",
+          "tipo": "ISODEC",
+          "espesor": 100,
+          "longitud": 6,
+          "cantidad": 4
+        }
+      ],
+      "accesorios": [{ "id": "a1", "descr": "Perfil U", "cantidad": 2 }]
+    }
+  ]
+}

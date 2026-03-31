@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BMC — Logística de carga (prototipo)</title>
+  <link rel="stylesheet" href="./prototype.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="hero np">
+      <div class="hero-text">
+        <h1>BMC Uruguay — Logística de carga</h1>
+        <p class="hero-sub">Prototipo paralelo · Guía operativa (no certificación estructural)</p>
+      </div>
+      <div class="hero-meta" id="heroMeta"></div>
+    </header>
+
+    <div id="warnings"></div>
+
+    <div class="toolbar np">
+      <div class="tabs" id="tabs"></div>
+      <div class="toolbar-right">
+        <label class="truck-label">Camión
+          <select id="truckL"></select>
+        </label>
+        <button type="button" class="btn btn-wa" id="btnWhatsApp">WhatsApp</button>
+      </div>
+    </div>
+
+    <details class="rules np" id="rulesPanel">
+      <summary>Reglas BMC y leyenda de diagramas</summary>
+      <div class="rules-body" id="rulesBody"></div>
+    </details>
+
+    <main id="main"></main>
+  </div>
+
+  <script type="module" src="./prototype.app.js"></script>
+</body>
+</html>

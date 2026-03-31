@@ -27,6 +27,11 @@ import {
 import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
 import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
 import { colLetterToIndex, colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
+import {
+  parseAccesorioLine,
+  parseLogisticaFromAdjuntoText,
+  parsePanelLineHeuristic,
+} from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -900,6 +905,50 @@ const missing = readPanelsimEmailSummary({
   reportMaxChars: 100,
 });
 assert("readPanelsimEmailSummary missing repo → ok false", missing.ok === false, missing.ok, false);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 26: logística prototipo — parseo texto adjunto (paneles / accesorios)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 26: adjuntoLineParse (logística prototipo) ═══");
+
+const ph1 = parsePanelLineHeuristic("ISODEC EPS 100mm largo 6m cant 12");
+assert(
+  "parsePanelLineHeuristic ISODEC 100 6m 12",
+  ph1 && ph1.tipo === "ISODEC" && ph1.espesor === 100 && ph1.longitud === 6 && ph1.cantidad === 12,
+  ph1,
+  "ISODEC 100 6 12",
+);
+
+const ph2 = parsePanelLineHeuristic("12 x ISOPANEL 150 mm 7 m");
+assert(
+  "parsePanelLineHeuristic qty first",
+  ph2 && ph2.tipo === "ISOPANEL" && ph2.espesor === 150 && ph2.longitud === 7 && ph2.cantidad === 12,
+  ph2,
+  "ISOPANEL 150 7 12",
+);
+
+const acc1 = parseAccesorioLine("Perfil U galvanizado - 24");
+assert(
+  "parseAccesorioLine guión cantidad",
+  acc1 && acc1.cantidad === 24 && acc1.descr.includes("Perfil"),
+  acc1,
+  "Perfil 24",
+);
+
+const tsv = "Producto\tEspesor mm\tLargo m\tCantidad\nISODEC 100\t100\t6\t8\nTornillo\t\t\t100";
+const bom = parseLogisticaFromAdjuntoText(tsv);
+assert(
+  "parseLogisticaFromAdjuntoText TSV panel row",
+  bom.paneles.length === 1 && bom.paneles[0].cantidad === 8 && bom.paneles[0].tipo === "ISODEC",
+  bom.paneles.length,
+  1,
+);
+assert(
+  "parseLogisticaFromAdjuntoText TSV acc row",
+  bom.accesorios.length >= 1 && bom.accesorios.some((a) => a.descr.toLowerCase().includes("tornillo") && a.cantidad === 100),
+  bom.accesorios,
+  "tornillo 100",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

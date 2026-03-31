@@ -1,0 +1,20 @@
+[
+  {
+    "COTIZACION_ID": "COT-1001",
+    "CLIENTE_NOMBRE": "Obra Norte SA",
+    "TELEFONO": "+598 94 111 222",
+    "DIRECCION": "Ruta 39 km 45",
+    "ZONA": "San Carlos",
+    "LINK_UBICACION": "",
+    "FECHA_ENTREGA": "2026-03-31"
+  },
+  {
+    "COTIZACION_ID": "COT-1002",
+    "CLIENTE_NOMBRE": "Depósito Sur",
+    "TELEFONO": "+598 99 333 444",
+    "DIRECCION": "Av. Argentina 1200",
+    "ZONA": "Maldonado",
+    "LINK_UBICACION": "https://www.google.com/maps/search/?api=1&query=Maldonado",
+    "FECHA_ENTREGA": "2026-04-01"
+  }
+]
