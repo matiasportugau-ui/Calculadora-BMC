@@ -1561,7 +1561,9 @@ function buildTransportistaWhatsAppMessage() {
       lines.push("📋 *Material:*");
       s.paneles.forEach((p) => {
         const cant = Math.max(1, Number(p.cantidad) || 1);
-        lines.push(`  • ${panelProductLabel(p)} — ${formatLargoUY(p.longitud)} m — *${cant} ud*`);
+        const largoTxt = formatLargoUY(p.longitud);
+        const largoConUnidad = largoTxt === "—" ? "—" : `${largoTxt} m`;
+        lines.push(`  • ${panelProductLabel(p)} — ${largoConUnidad} — *${cant} ud*`);
       });
     }
 
@@ -1595,8 +1597,11 @@ function showToast(text, type = "") {
   const el = document.createElement("div");
   el.className = `toast${type ? ` toast--${type}` : ""}`;
   el.textContent = text;
+  el.setAttribute("role", "status");
+  el.setAttribute("aria-live", "polite");
+  el.setAttribute("aria-atomic", "true");
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 2600);
+  el.addEventListener("animationend", () => el.remove(), { once: true });
 }
 
 function copyWhatsAppToClipboard() {
