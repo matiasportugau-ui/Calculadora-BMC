@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-28 (full team sync asistente)
+**Última actualización:** 2026-03-30 (skill local-browser-live-preview)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-30 (Skill — vista previa navegador local en vivo):** Nueva skill [`.cursor/skills/local-browser-live-preview/SKILL.md`](../../.cursor/skills/local-browser-live-preview/SKILL.md): flujo **archivo → servidor local → `localhost`** con **Simple Browser** en Cursor; tabla Vite HMR vs estático con **`live-server`** (auto-reload) vs **`serve`** (refresh manual); ejemplo carpeta prototipo logística; enlaces a `panelin-live-editor`, `live-jsx-dev`, `browser-agent-orchestration`. **Afecta a:** quien edite HTML/CSS/JS o Vite y quiera ver cambios al guardar.
 
 **2026-03-31 (Logística carga — menú Cliente planilla):** Toolbar **Cliente (planilla)** en [`index.html`](../bmc-dashboard-modernization/logistica-carga-prototype/index.html) + [`lib/clienteFromSheet.js`](../bmc-dashboard-modernization/logistica-carga-prototype/lib/clienteFromSheet.js): nombres únicos desde `cliente` / `rawSheet`, resaltado de parada + scroll; borrador incluye `highlightStopId` / `pickedClienteLabel`. Tests **SUITE 28**. README prototipo. **Afecta a:** operadores logística.
 
