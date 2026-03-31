@@ -18,6 +18,7 @@ import {
   stopFromProximaRow,
 } from "./lib/cargoEngine.js";
 import { parseLogisticaFromAdjuntoText } from "./lib/adjuntoLineParse.js";
+import { describePanelPackages, describeTruckPlacementOneStop } from "./lib/logisticaPackageInsight.js";
 import { extractTextFromPdfArrayBuffer } from "./lib/pdfTextExtract.js";
 import {
   SHEET_PASTE_PRESETS,
@@ -511,6 +512,7 @@ function renderAdjuntoTextExtract(stop) {
       <button type="button" class="btn btn-secondary btn-sm" data-parse-adjunto="${esc(stop.id)}" data-parse-mode="append">Añadir desde texto</button>
       <button type="button" class="btn btn-muted btn-sm" data-parse-adjunto="${esc(stop.id)}" data-parse-mode="replace">Reemplazar listas</button>
     </div>
+    ${renderNotasScrapeRow(stop)}
   </div>`;
 }
 
@@ -623,6 +625,45 @@ async function handleAdjuntoPdfFile(input) {
   );
 }
 
+function notasBlobFromStop(stop) {
+  const raw = stop.rawSheet || {};
+  return [raw.NOTAS, raw["Consulta / Pedido"], raw.notas, raw.Consulta].filter(Boolean).join("\n").trim();
+}
+
+function renderNotasScrapeRow(stop) {
+  if (!notasBlobFromStop(stop)) return "";
+  return `<div class="row-flex" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center">
+      <span class="paste-hint" style="margin:0">Hay NOTAS / pedido en la fila de planilla.</span>
+      <button type="button" class="btn btn-muted btn-sm" data-parse-notas="${esc(stop.id)}">Extraer paneles desde NOTAS (añadir)</button>
+    </div>`;
+}
+
+function renderSheetRawBlock(stop) {
+  const raw = stop.rawSheet;
+  if (!raw || typeof raw !== "object") return "";
+  const keys = Object.keys(raw).filter((k) => String(raw[k] ?? "").trim() !== "");
+  if (keys.length === 0) return "";
+  keys.sort((a, b) => a.localeCompare(b));
+  const rows = keys
+    .map((k) => `<tr><th>${esc(k)}</th><td style="word-break:break-word">${esc(String(raw[k]))}</td></tr>`)
+    .join("");
+  return `<details class="raw-sheet np" style="margin-top:10px"><summary>Planilla: todos los campos (${keys.length})</summary><div style="max-height:260px;overflow:auto;margin-top:6px"><table class="paste-preview-table">${rows}</table></div><p class="paste-hint">Copia del objeto que vino del JSON (API o export). Sirve para auditar columnas extra.</p></details>`;
+}
+
+function renderPaquetesInterpretacion(stop) {
+  if (!stop.paneles?.length) return "";
+  const pkgRows = describePanelPackages(stop);
+  const plac = describeTruckPlacementOneStop(stop, state.truckL);
+  const list = pkgRows
+    .map((r) => `<li><strong>${esc(r.label)}</strong> → ${esc(String(r.pkgCount))} paquete(s): ${esc(r.detail)}</li>`)
+    .join("");
+  const warn =
+    plac.warns?.length > 0
+      ? `<ul class="paste-warn" style="margin:8px 0 0 18px">${plac.warns.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
+      : "";
+  return `<details class="pkg-brain np" style="margin-top:10px"><summary>Paquetes de carga (motor BMC — MAX_P + colocación en 1 camión)</summary><ul style="margin:8px 0 0 18px;font-size:12px;line-height:1.45">${list}</ul>${warn}<p class="paste-hint">Cada paquete respeta el máximo de paneles por espesor; la colocación es guía (filas A/B, 1,5 m).</p></details>`;
+}
+
 function renderPastePreviewBox(result) {
   const f = result.fields || {};
   const rows = [
@@ -696,8 +737,8 @@ function renderForm() {
   const cargo = getCargo();
   const importBlock = `
     <div class="card card-highlight">
-      <strong>Importar JSON</strong> (próximas entregas o estado guardado — ver README)
-      <textarea class="inp import-area" id="importJson" placeholder='Pegar JSON: [ { "COTIZACION_ID": "…", "CLIENTE_NOMBRE": "…" } ]'></textarea>
+      <strong>Importar JSON</strong> (próximas entregas, <code>GET /api/cotizaciones</code> o estado guardado — ver README)
+      <textarea class="inp import-area" id="importJson" placeholder='Pegá un array de filas o { "data": [...] }. Cada objeto puede traer todas las columnas CRM: se guardan en «Planilla: todos los campos» y se infieren links PDF/Drive/mapa en cualquier celda.'></textarea>
       <div class="row-flex" style="margin-top:8px">
         <button type="button" class="btn btn-primary" id="btnImportAppend">Añadir paradas desde filas API</button>
         <button type="button" class="btn btn-muted" id="btnImportReplace">Reemplazar plan completo</button>
@@ -844,11 +885,13 @@ function renderForm() {
           <button type="button" class="btn btn-primary btn-sm" data-add-panel="${esc(stop.id)}">+ Panel</button>
         </div>
         ${placement}
+        ${renderPaquetesInterpretacion(stop)}
         <div>
           <div style="font-size:11px;font-weight:700;margin-bottom:5px;color:#374151">Accesorios</div>
           ${accs}
           <button type="button" class="btn btn-muted btn-sm" data-add-acc="${esc(stop.id)}">+ Accesorio</button>
         </div>
+        ${renderSheetRawBlock(stop)}
       </div>`;
     })
     .join("");
@@ -1247,6 +1290,28 @@ function ensureMainDelegation() {
       }
       return;
     }
+    const parseNotas = t.closest("[data-parse-notas]");
+    if (parseNotas) {
+      const sid = parseNotas.getAttribute("data-parse-notas");
+      const s = findStop(sid || "");
+      if (!s) return;
+      const blob = notasBlobFromStop(s);
+      if (!blob) {
+        alert("No hay NOTAS / Consulta / Pedido en la fila importada.");
+        return;
+      }
+      s._adjuntoPasteDraft = blob;
+      const { paneles, accesorios, warnings } = parseLogisticaFromAdjuntoText(blob);
+      if (!paneles.length && !accesorios.length) {
+        alert((warnings && warnings[0]) || "No se detectaron paneles ni accesorios en NOTAS.");
+        renderAll();
+        return;
+      }
+      mergeParsedIntoStop(s, paneles, accesorios, "append");
+      renderAll();
+      alert(`Desde NOTAS: +${paneles.length} panel(es), +${accesorios.length} accesorio(s).`);
+      return;
+    }
     if (t.closest("#btnSaveDraft")) {
       try {
         localStorage.setItem(
@@ -1346,6 +1411,7 @@ function applyFullState(data) {
     paneles: Array.isArray(s.paneles) ? s.paneles : [],
     accesorios: Array.isArray(s.accesorios) ? s.accesorios : [],
     _adjuntoPasteDraft: s._adjuntoPasteDraft || "",
+    rawSheet: s.rawSheet && typeof s.rawSheet === "object" ? s.rawSheet : {},
   }));
   renumberStops();
 }

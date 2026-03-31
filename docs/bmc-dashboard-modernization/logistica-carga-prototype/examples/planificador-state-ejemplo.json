@@ -16,7 +16,13 @@
       "direccion": "Ruta 39 km 45",
       "zona": "San Carlos",
       "linkUbicacion": "",
+      "linkAdjunto": "",
       "cotizacionId": "COT-1001",
+      "rawSheet": {
+        "ID": "COT-1001",
+        "Cliente": "Obra Norte SA",
+        "Consulta / Pedido": "Ej.: líneas de producto pegadas desde CRM"
+      },
       "color": "#2563EB",
       "paneles": [
         {

@@ -103,6 +103,18 @@ Mismo shape que cada elemento de `{ ok: true, data: [...] }` de `GET /api/proxim
 
 Ver sección *Persistencia* y archivo [`examples/planificador-state-ejemplo.json`](./examples/planificador-state-ejemplo.json).
 
+### D) Fila completa desde `GET /api/cotizaciones` (todas las columnas CRM)
+
+Podés pegar **un objeto o un array** tal como devuelve la API del dashboard (cada fila incluye columnas originales del tab **CRM_Operativo** más alias canónicos, porque el servidor hace `{ ...fila, ...mapeo }`).
+
+- Al importar, el prototipo guarda **`rawSheet`**: copia de ese objeto y la muestra en **«Planilla: todos los campos»** (tabla ordenada por nombre de columna).
+- Si **`LINK_COTIZACION` / `LINK_UBICACION`** vienen vacíos pero hay un enlace de **Drive / PDF** o de **mapa** en **cualquier celda** (NOTAS, Observaciones, etc.), el motor intenta rellenar **Link adjunto** y **Link ubicación** (`inferLinkAdjuntoFromRow` / `inferLinkMapFromRow` en [`lib/cargoEngine.js`](./lib/cargoEngine.js)).
+- Botón **«Extraer paneles desde NOTAS (añadir)»**: corre el mismo parser de texto sobre `NOTAS` / `Consulta / Pedido` si hay texto con líneas de panel.
+
+### Paquetes de carga (interpretación)
+
+Con paneles cargados (manual, PDF, NOTAS o pegado), el bloque **«Paquetes de carga (motor BMC)»** explica, por cada línea de panel, **cuántos paquetes** genera la regla `MAX_P` y una **colocación simplificada** en un camión de largo `truckL` (`describePanelPackages` / `placeCargo` vía [`lib/logisticaPackageInsight.js`](./lib/logisticaPackageInsight.js)). No sustituye criterio humano ni peso legal.
+
 ### Esquema informal (fila mínima para parada)
 
 | Campo | Tipo | Requerido |
@@ -214,7 +226,8 @@ La pestaña **Remito** incluye la misma información en la tarjeta **Vista trans
 
 | Archivo | Rol |
 |---------|-----|
-| `lib/cargoEngine.js` | Constantes, `buildPkgs`, `placeCargo`, helpers mapa/parada |
+| `lib/cargoEngine.js` | Constantes, `buildPkgs`, `placeCargo`, `stopFromProximaRow` + `rawSheet`, inferencia URLs |
+| `lib/logisticaPackageInsight.js` | Texto explicativo de paquetes MAX_P y colocación 1 camión |
 | `lib/sheetPaste.js` | Parser TSV / pegado de fila, presets de columnas, Drive thumbnail |
 | `lib/adjuntoLineParse.js` | Texto pegado desde PDF/cotización → paneles + accesorios |
 | `lib/pdfTextExtract.js` | Lectura de capa de texto de un PDF local (PDF.js vía CDN) |

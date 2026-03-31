@@ -32,6 +32,14 @@ import {
   parseLogisticaFromAdjuntoText,
   parsePanelLineHeuristic,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
+import {
+  COLORS as LOG_COLORS,
+  collectUrlsFromRow,
+  inferLinkAdjuntoFromRow,
+  inferLinkMapFromRow,
+  resetDefaultCargoIds as resetLogisticaIds,
+  stopFromProximaRow,
+} from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/cargoEngine.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -948,6 +956,49 @@ assert(
   bom.accesorios.length >= 1 && bom.accesorios.some((a) => a.descr.toLowerCase().includes("tornillo") && a.cantidad === 100),
   bom.accesorios,
   "tornillo 100",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 27: logística prototipo — fila planilla completa + inferencia URLs
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 27: cargoEngine sheet row snapshot + URL infer ═══");
+
+const rowUrls = {
+  Cliente: "X",
+  NOTAS: "ver https://drive.google.com/file/d/abc123/view y mapa https://maps.app.goo.gl/xyz",
+};
+const urls = collectUrlsFromRow(rowUrls);
+assert("collectUrlsFromRow finds two https", urls.length >= 2, urls.length, ">=2");
+assert(
+  "inferLinkMapFromRow picks maps.app",
+  inferLinkMapFromRow(rowUrls).includes("maps.app"),
+  inferLinkMapFromRow(rowUrls),
+  "maps",
+);
+assert(
+  "inferLinkAdjuntoFromRow picks drive",
+  inferLinkAdjuntoFromRow(rowUrls).includes("drive.google.com"),
+  inferLinkAdjuntoFromRow(rowUrls),
+  "drive",
+);
+
+resetLogisticaIds();
+const stopFull = stopFromProximaRow(
+  {
+    ID: "P-99",
+    Cliente: "ACME",
+    NOTAS: "ISODEC 100mm 6m 8",
+    Observaciones: "https://drive.google.com/file/d/zz/view",
+  },
+  1,
+  LOG_COLORS
+);
+assert("stopFromProximaRow keeps rawSheet keys", stopFull.rawSheet && stopFull.rawSheet.ID === "P-99", stopFull.rawSheet?.ID, "P-99");
+assert(
+  "stopFromProximaRow infers linkAdjunto from any cell",
+  String(stopFull.linkAdjunto).includes("drive.google.com"),
+  stopFull.linkAdjunto,
+  "drive",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

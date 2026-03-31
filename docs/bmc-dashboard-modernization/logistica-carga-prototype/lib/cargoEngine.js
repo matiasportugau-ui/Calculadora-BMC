@@ -75,6 +75,77 @@ export function mapsUrlFromStop(direccion, zona, linkUbicacion) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
 
+const ROW_URL_RE = /https?:\/\/[^\s"'<>]+/gi;
+
+function trimUrlTail(u) {
+  return String(u || "")
+    .trim()
+    .replace(/[,;.)'"]+$/g, "");
+}
+
+/**
+ * Copia superficial de una fila de planilla / API (objeto plano).
+ * @param {Record<string, unknown>} row
+ * @returns {Record<string, unknown>}
+ */
+export function snapshotSheetRow(row) {
+  if (!row || typeof row !== "object") return {};
+  try {
+    if (typeof structuredClone === "function") return /** @type {Record<string, unknown>} */ (structuredClone(row));
+  } catch {
+    /* fall through */
+  }
+  try {
+    return JSON.parse(JSON.stringify(row));
+  } catch {
+    return { ...row };
+  }
+}
+
+/**
+ * URLs http(s) encontradas en cualquier celda de la fila.
+ * @param {Record<string, unknown>} row
+ * @returns {string[]}
+ */
+export function collectUrlsFromRow(row) {
+  const found = [];
+  if (!row || typeof row !== "object") return found;
+  for (const v of Object.values(row)) {
+    const s = String(v ?? "");
+    let m;
+    const re = new RegExp(ROW_URL_RE.source, "gi");
+    while ((m = re.exec(s))) found.push(trimUrlTail(m[0]));
+  }
+  return [...new Set(found)];
+}
+
+/**
+ * Primer enlace que parezca mapa (Google / Waze / goo.gl maps).
+ * @param {Record<string, unknown>} row
+ */
+export function inferLinkMapFromRow(row) {
+  for (const u of collectUrlsFromRow(row)) {
+    if (/google\.com\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|waze\.com/i.test(u)) return u;
+  }
+  return "";
+}
+
+/**
+ * Primer enlace útil como adjunto (Drive / Docs / PDF), excluyendo mapas.
+ * @param {Record<string, unknown>} row
+ */
+export function inferLinkAdjuntoFromRow(row) {
+  for (const u of collectUrlsFromRow(row)) {
+    if (/google\.com\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|waze\.com/i.test(u)) continue;
+    if (/drive\.google\.com|docs\.google\.com|\.pdf(\?|$)/i.test(u)) return u;
+  }
+  for (const u of collectUrlsFromRow(row)) {
+    if (/google\.com\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|waze\.com/i.test(u)) continue;
+    return u;
+  }
+  return "";
+}
+
 /**
  * Regla: pedidos distintos no se combinan; se generan paquetes más chicos si hace falta.
  * @param {{ id: string, orden: number, cliente?: string, color?: string }} stop
@@ -200,6 +271,9 @@ export function mkAcc(uid = defaultUid) {
  */
 export function stopFromProximaRow(row, orden, colors = COLORS, uid = defaultUid) {
   const i = orden - 1;
+  const linkAdjunto =
+    String(row.LINK_COTIZACION ?? row.LINK_ADJUNTO ?? "").trim() || inferLinkAdjuntoFromRow(row);
+  const linkUbicacion = String(row.LINK_UBICACION ?? "").trim() || inferLinkMapFromRow(row);
   return {
     id: uid(),
     orden,
@@ -207,11 +281,13 @@ export function stopFromProximaRow(row, orden, colors = COLORS, uid = defaultUid
     telefono: String(row.TELEFONO ?? row["Teléfono"] ?? "").trim(),
     direccion: String(row.DIRECCION ?? row["Ubicación / Dirección"] ?? "").trim(),
     zona: String(row.ZONA ?? "").trim(),
-    linkUbicacion: String(row.LINK_UBICACION ?? "").trim(),
-    linkAdjunto: String(row.LINK_COTIZACION ?? row.LINK_ADJUNTO ?? "").trim(),
+    linkUbicacion,
+    linkAdjunto,
     cotizacionId: String(row.COTIZACION_ID ?? row.ID ?? "").trim(),
     color: colors[i % colors.length],
     paneles: [],
     accesorios: [],
+    /** Snapshot de todas las columnas devueltas por la API / pegado JSON (CRM + canónicos). */
+    rawSheet: snapshotSheetRow(row),
   };
 }
