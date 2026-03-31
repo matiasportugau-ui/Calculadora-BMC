@@ -33,6 +33,11 @@ import {
   parsePanelLineHeuristic,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 import {
+  collectClienteNamesFromStop,
+  findFirstStopByClienteLabel,
+  uniqueClientesFromStops,
+} from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/clienteFromSheet.js";
+import {
   COLORS as LOG_COLORS,
   collectUrlsFromRow,
   inferLinkAdjuntoFromRow,
@@ -1000,6 +1005,24 @@ assert(
   stopFull.linkAdjunto,
   "drive",
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 28: logística — dropdown clientes desde planilla
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 28: clienteFromSheet (picker) ═══");
+
+const stA = { cliente: "", rawSheet: { Cliente: "  Obras   Sur  " } };
+const stB = { cliente: "Obras Sur", rawSheet: {} };
+assert(
+  "collectClienteNamesFromStop uses rawSheet Cliente",
+  collectClienteNamesFromStop(stA).some((x) => x.includes("Obras")),
+  collectClienteNamesFromStop(stA),
+  "Obras",
+);
+const uni = uniqueClientesFromStops([stA, stB]);
+assert("uniqueClientesFromStops dedupes normalized", uni.length === 1, uni.length, 1);
+const hit = findFirstStopByClienteLabel([stB, stA], "obras sur");
+assert("findFirstStopByClienteLabel case-insensitive", hit === stB || hit === stA, hit, "one of stops");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

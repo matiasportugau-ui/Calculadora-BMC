@@ -17,6 +17,10 @@ Abre la raíz del sitio, por ejemplo `http://localhost:3456/` (carga `index.html
 
 `prototype.html` solo redirige a `index.html` por compatibilidad con enlaces viejos.
 
+### Cliente (planilla) — menú desplegable
+
+En la barra superior, **Cliente (planilla)** lista **nombres únicos** detectados en las paradas: campo **Cliente** y columnas típicas del CRM en **`rawSheet`** (`Cliente`, `CLIENTE_NOMBRE`, etc.). Tras **importar JSON** desde la API o completar clientes a mano, elegí un nombre para **resaltar** la primera parada que coincida (sin distinguir mayúsculas / tildes) y **desplazar** la vista hasta esa tarjeta. **— Elegir cliente —** limpia el resaltado. La selección y el resaltado se guardan en el borrador local (`highlightStopId`, `pickedClienteLabel`). Lógica en [`lib/clienteFromSheet.js`](./lib/clienteFromSheet.js).
+
 ## Reglas BMC (negocio + copy para operadores)
 
 1. **Dos filas paralelas** de paneles (ancho útil del camión / ancho de fila). Etiquetas **Fila A / Fila B**.
@@ -231,6 +235,7 @@ La pestaña **Remito** incluye la misma información en la tarjeta **Vista trans
 | `lib/sheetPaste.js` | Parser TSV / pegado de fila, presets de columnas, Drive thumbnail |
 | `lib/adjuntoLineParse.js` | Texto pegado desde PDF/cotización → paneles + accesorios |
 | `lib/pdfTextExtract.js` | Lectura de capa de texto de un PDF local (PDF.js vía CDN) |
+| `lib/clienteFromSheet.js` | Nombres únicos de cliente para el menú «Cliente (planilla)» |
 | `index.html` | Shell + pestañas (entrada principal) |
 | `prototype.css` | Estilos |
 | `prototype.app.js` | Estado, SVG, remito, import JSON |

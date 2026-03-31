@@ -18,6 +18,12 @@ import {
   stopFromProximaRow,
 } from "./lib/cargoEngine.js";
 import { parseLogisticaFromAdjuntoText } from "./lib/adjuntoLineParse.js";
+import {
+  collectClienteNamesFromStop,
+  findFirstStopByClienteLabel,
+  normClienteKey,
+  uniqueClientesFromStops,
+} from "./lib/clienteFromSheet.js";
 import { describePanelPackages, describeTruckPlacementOneStop } from "./lib/logisticaPackageInsight.js";
 import { extractTextFromPdfArrayBuffer } from "./lib/pdfTextExtract.js";
 import {
@@ -86,12 +92,15 @@ function defaultInfo() {
   };
 }
 
-/** @type {{ view: string, truckL: number, info: Record<string,string>, stops: any[] }} */
+/** @type {{ view: string, truckL: number, info: Record<string,string>, stops: any[], highlightStopId: string | null, pickedClienteLabel: string, scrollToStopOnce: string | null }} */
 let state = {
   view: "form",
   truckL: 8,
   info: defaultInfo(),
   stops: [],
+  highlightStopId: null,
+  pickedClienteLabel: "",
+  scrollToStopOnce: null,
 };
 
 function renumberStops() {
@@ -108,6 +117,9 @@ function initState() {
   state.truckL = 8;
   state.stops = [mkStop(1)];
   state.view = "form";
+  state.highlightStopId = null;
+  state.pickedClienteLabel = "";
+  state.scrollToStopOnce = null;
 }
 
 function getCargo() {
@@ -186,6 +198,62 @@ function renderTruckSelect() {
   sel.innerHTML = TRUCK_LEN_OPTS.map(
     (l) => `<option value="${l}"${l === state.truckL ? " selected" : ""}>${l} m</option>`
   ).join("");
+}
+
+function escPickerValue(label) {
+  return encodeURIComponent(label);
+}
+
+function decodePickerValue(enc) {
+  if (!enc) return "";
+  try {
+    return decodeURIComponent(enc);
+  } catch {
+    return enc;
+  }
+}
+
+function queryStopCardEl(sid) {
+  const v = String(sid).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return document.querySelector(`[data-stop-card="${v}"]`);
+}
+
+function renderClientePlanillaPicker() {
+  const sel = document.getElementById("clientePlanillaPicker");
+  if (!sel) return;
+  const names = uniqueClientesFromStops(state.stops);
+  if (state.highlightStopId && !state.stops.some((s) => s.id === state.highlightStopId)) {
+    state.highlightStopId = null;
+  }
+  sel.innerHTML = "";
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = names.length ? "— Elegir cliente —" : "— Importá filas desde la planilla —";
+  sel.appendChild(opt0);
+  for (const n of names) {
+    const o = document.createElement("option");
+    o.value = escPickerValue(n);
+    o.textContent = n;
+    sel.appendChild(o);
+  }
+  let pick = state.pickedClienteLabel || "";
+  if (pick && !names.some((x) => normClienteKey(x) === normClienteKey(pick))) {
+    pick = "";
+    state.pickedClienteLabel = "";
+    state.highlightStopId = null;
+  }
+  if (pick) {
+    const match = names.find((x) => normClienteKey(x) === normClienteKey(pick));
+    if (match) sel.value = escPickerValue(match);
+    else sel.value = "";
+  } else if (state.highlightStopId) {
+    const hs = state.stops.find((s) => s.id === state.highlightStopId);
+    const first = hs ? collectClienteNamesFromStop(hs)[0] : "";
+    const match = first && names.find((x) => normClienteKey(x) === normClienteKey(first));
+    sel.value = match ? escPickerValue(match) : "";
+  } else {
+    sel.value = "";
+  }
 }
 
 function isoBoxSvg(x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha) {
@@ -849,7 +917,8 @@ function renderForm() {
         )
         .join("");
 
-      return `<div class="card stop-card" style="border-left:4px solid ${esc(stop.color)}">
+      const hi = state.highlightStopId === stop.id ? " stop-card--highlight" : "";
+      return `<div class="card stop-card${hi}" data-stop-card="${esc(stop.id)}" style="border-left:4px solid ${esc(stop.color)}">
         <div class="stop-head" style="border-bottom-color:${esc(stop.color)}33">
           <strong style="color:${esc(stop.color)};font-size:1rem">Parada ${stop.orden}</strong>
           <div class="row-flex">
@@ -1099,6 +1168,7 @@ function ensureMainDelegation() {
       if (s) s[sf] = t.value;
       renderHero();
       renderWarnings();
+      if (sf === "cliente") renderClientePlanillaPicker();
       return;
     }
     const pf = t.getAttribute("data-panel-field");
@@ -1316,7 +1386,13 @@ function ensureMainDelegation() {
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ info: state.info, truckL: state.truckL, stops: state.stops })
+          JSON.stringify({
+            info: state.info,
+            truckL: state.truckL,
+            stops: state.stops,
+            highlightStopId: state.highlightStopId,
+            pickedClienteLabel: state.pickedClienteLabel,
+          })
         );
         alert("Borrador guardado.");
       } catch (err) {
@@ -1414,6 +1490,9 @@ function applyFullState(data) {
     rawSheet: s.rawSheet && typeof s.rawSheet === "object" ? s.rawSheet : {},
   }));
   renumberStops();
+  state.highlightStopId = data.highlightStopId != null ? data.highlightStopId : null;
+  state.pickedClienteLabel = data.pickedClienteLabel != null ? String(data.pickedClienteLabel) : "";
+  state.scrollToStopOnce = null;
 }
 
 /** Texto de ubicación legible (dirección + zona), estilo remito/chat. */
@@ -1533,9 +1612,18 @@ function renderAll() {
   if (rulesBody) rulesBody.innerHTML = renderRulesBody();
   renderTabs();
   renderTruckSelect();
+  renderClientePlanillaPicker();
   renderHero();
   renderWarnings();
   renderMain();
+  if (state.view === "form" && state.scrollToStopOnce) {
+    const sid = state.scrollToStopOnce;
+    state.scrollToStopOnce = null;
+    requestAnimationFrame(() => {
+      const el = queryStopCardEl(sid);
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
 }
 
 document.getElementById("tabs")?.addEventListener("click", (e) => {
@@ -1550,6 +1638,22 @@ document.getElementById("truckL")?.addEventListener("change", (e) => {
   renderHero();
   renderWarnings();
   renderMain();
+});
+
+document.getElementById("clientePlanillaPicker")?.addEventListener("change", (e) => {
+  const t = e.target;
+  if (!(t instanceof HTMLSelectElement)) return;
+  const label = decodePickerValue(t.value);
+  state.pickedClienteLabel = label;
+  if (!label) {
+    state.highlightStopId = null;
+    state.scrollToStopOnce = null;
+  } else {
+    const hit = findFirstStopByClienteLabel(state.stops, label);
+    state.highlightStopId = hit ? hit.id : null;
+    state.scrollToStopOnce = hit ? hit.id : null;
+  }
+  renderAll();
 });
 
 document.getElementById("btnWhatsApp")?.addEventListener("click", sendWhatsApp);

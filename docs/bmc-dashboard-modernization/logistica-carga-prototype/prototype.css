@@ -74,6 +74,24 @@ body {
   gap: 10px;
 }
 
+.cliente-toolbar-label {
+  margin: 0;
+  align-self: center;
+}
+
+.cliente-planilla-select {
+  min-width: 160px;
+  max-width: min(280px, 42vw);
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  height: auto;
+}
+
+.stop-card--highlight {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.55);
+  scroll-margin-top: 72px;
+}
+
 .truck-label {
   font-size: 0.8rem;
   color: #374151;
