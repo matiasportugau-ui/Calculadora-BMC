@@ -1008,28 +1008,29 @@ function renderRemito() {
           <tbody>${transportRows.join("")}</tbody></table>`
           : `<p class="transport-empty">Sin líneas de producto (agregar paneles o accesorios).</p>`;
 
+      const totalPanelsStop = stop.paneles.reduce((t, p) => t + Math.max(1, Number(p.cantidad) || 1), 0);
       const transportCard = `<div class="transport-card">
-        <div class="transport-card-title">Vista transportista (sin precios)</div>
-        <div class="transport-client-block">
-          <div><span class="transport-lbl">Cliente</span><strong>${esc(stop.cliente || "—")}</strong></div>
-          <div><span class="transport-lbl">Dirección</span><span>${esc(ubicacionLine)}</span></div>
-          <div><span class="transport-lbl">Tel/cel</span><span>${esc(stop.telefono || "—")}</span></div>
+        <div class="transport-card-title">
+          <span>Parada ${stop.orden} — Vista transportista</span>
+          ${totalPanelsStop > 0 ? `<span class="transport-badge">${totalPanelsStop} panel${totalPanelsStop > 1 ? "es" : ""}</span>` : ""}
         </div>
-        ${transportTable}
-        <div class="transport-footer">
-          <div><span class="transport-lbl">Pedido Nº</span><strong>${esc(stop.cotizacionId || "—")}</strong></div>
-          <div><span class="transport-lbl">Ubicación</span><span>${esc(ubicacionLine)}</span></div>
-          <div><span class="transport-lbl">Mapa</span>${
-            mapUrl
-              ? `<a href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">${esc(mapUrl)}</a>`
-              : `<span class="transport-missing">Completar dirección o link de ubicación</span>`
-          }</div>
-          <div><span class="transport-lbl">Contacto</span><span>${esc(stop.telefono || "—")}</span></div>
-          <div><span class="transport-lbl">Adjunto (PDF / foto)</span>${
-            stop.linkAdjunto
-              ? `<a href="${esc(stop.linkAdjunto)}" target="_blank" rel="noopener noreferrer">${esc(stop.linkAdjunto)}</a>`
-              : `<span class="transport-missing">—</span>`
-          }</div>
+        <div class="transport-card-body">
+          <div class="transport-client-block">
+            <div><span class="transport-lbl">Cliente</span><strong>${esc(stop.cliente || "—")}</strong></div>
+            <div><span class="transport-lbl">Tel / Cel</span><strong>${esc(stop.telefono || "—")}</strong></div>
+            <div class="transport-field-full"><span class="transport-lbl">Dirección</span><span>${esc(ubicacionLine)}</span></div>
+          </div>
+          ${transportTable}
+          <div class="transport-logistics">
+            <div><span class="transport-lbl">Pedido Nº</span><strong>${esc(stop.cotizacionId || "—")}</strong></div>
+            <div><span class="transport-lbl">Contacto</span><span>${esc(stop.telefono || "—")}</span></div>
+            <div class="transport-field-full"><span class="transport-lbl">Mapa / Ubicación</span>${
+              mapUrl
+                ? `<a href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">${esc(mapUrl)}</a>`
+                : `<span class="transport-missing">Completar dirección o link de ubicación</span>`
+            }</div>
+            ${stop.linkAdjunto ? `<div class="transport-field-full"><span class="transport-lbl">Cotización / PDF / Foto</span><a href="${esc(stop.linkAdjunto)}" target="_blank" rel="noopener noreferrer">${esc(stop.linkAdjunto)}</a></div>` : ""}
+          </div>
         </div>
       </div>`;
 
@@ -1067,8 +1068,10 @@ function renderRemito() {
 
   return `
     <div class="remito-actions np">
-      <button type="button" class="btn btn-success" id="btnPrint">Imprimir</button>
+      <button type="button" class="btn btn-success" id="btnPrint">Imprimir / PDF</button>
+      <div class="remito-action-sep"></div>
       <button type="button" class="btn btn-wa" id="btnWaRemito">WhatsApp</button>
+      <button type="button" class="btn btn-copy" id="btnCopyMsg">Copiar mensaje</button>
     </div>
     <div class="remito-doc">
       <div class="remito-header">
@@ -1420,6 +1423,10 @@ function ensureMainDelegation() {
     }
     if (t.closest("#btnWaRemito")) {
       sendWhatsApp();
+      return;
+    }
+    if (t.closest("#btnCopyMsg")) {
+      copyWhatsAppToClipboard();
     }
   });
 }
@@ -1538,56 +1545,39 @@ function buildTransportistaWhatsAppMessage() {
   const stopBlocks = state.stops.map((s) => {
     const mapUrl = mapsUrlFromStop(s.direccion, s.zona, s.linkUbicacion);
     const ubicacion = formatUbicacionLine(s);
+    const totalPanels = s.paneles.reduce((t, p) => t + Math.max(1, Number(p.cantidad) || 1), 0);
 
     const lines = [
       "━━━━━━━━━━━━━━━━",
-      `*PARADA ${s.orden}*`,
+      `*PARADA ${s.orden}*${totalPanels > 0 ? ` (${totalPanels} paneles)` : ""}`,
       "",
       `*Cliente:* ${s.cliente || "—"}`,
       `*Dirección:* ${ubicacion}`,
       `*Tel/cel:* ${s.telefono || "—"}`,
-      "",
     ];
 
     if (s.paneles.length > 0) {
-      lines.push("📋 *Paneles aislantes*");
-      lines.push("Producto — Largos (m) — Cant.");
+      lines.push("");
+      lines.push("📋 *Material:*");
       s.paneles.forEach((p) => {
         const cant = Math.max(1, Number(p.cantidad) || 1);
-        lines.push(`• ${panelProductLabel(p)} — ${formatLargoUY(p.longitud)} — *${cant}*`);
-      });
-      lines.push("");
-    }
-
-    if (s.accesorios.length > 0) {
-      const accs = s.accesorios.filter((a) => String(a.descr || "").trim());
-      if (accs.length > 0) {
-        lines.push("🔩 *Accesorios* (sin largo en planilla → indicar en descripción si aplica)");
-        accs.forEach((a) => {
-          const c = Math.max(1, Number(a.cantidad) || 1);
-          lines.push(`• ${String(a.descr).trim()} — *${c}*`);
-        });
-        lines.push("");
-      }
-    }
-
-    lines.push("📍 *Datos logísticos*");
-    lines.push(`*Pedido Nº:* ${s.cotizacionId || "—"}`);
-    lines.push(`*Ubicación:* ${ubicacion}`);
-    lines.push(mapUrl ? `🗺 *Mapa:* ${mapUrl}` : "🗺 *Mapa:* (completar link o dirección)");
-    lines.push(`*Contacto:* ${s.telefono || "—"}`);
-    if (String(s.linkAdjunto || "").trim()) {
-      lines.push(`📎 *Cotización / PDF / foto:* ${String(s.linkAdjunto).trim()}`);
-    }
-
-    const pkgs = s.paneles.flatMap((p) => buildPkgs(s, p));
-    if (pkgs.length > 0) {
-      lines.push("");
-      lines.push("_Referencia carga (paquetes):_");
-      pkgs.forEach((pk) => {
-        lines.push(`  · ${pk.n}× ${pk.tipo} ${pk.esp}mm / ${formatLargoUY(pk.len)} m`);
+        lines.push(`  • ${panelProductLabel(p)} — ${formatLargoUY(p.longitud)} m — *${cant} ud*`);
       });
     }
+
+    const accs = (s.accesorios || []).filter((a) => String(a.descr || "").trim());
+    if (accs.length > 0) {
+      lines.push("");
+      lines.push("🔩 *Accesorios:*");
+      accs.forEach((a) => {
+        const c = Math.max(1, Number(a.cantidad) || 1);
+        lines.push(`  • ${String(a.descr).trim()} — *${c}*`);
+      });
+    }
+
+    lines.push("");
+    if (mapUrl) lines.push(`📍 ${mapUrl}`);
+    if (s.cotizacionId) lines.push(`*Pedido:* ${s.cotizacionId}`);
 
     return lines.join("\n");
   });
@@ -1599,6 +1589,41 @@ function buildTransportistaWhatsAppMessage() {
   ].join("\n");
 
   return `${header}\n${stopBlocks.join("\n\n")}${footer}`;
+}
+
+function showToast(text, type = "") {
+  const el = document.createElement("div");
+  el.className = `toast${type ? ` toast--${type}` : ""}`;
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+function copyWhatsAppToClipboard() {
+  const msg = buildTransportistaWhatsAppMessage();
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(msg).then(
+      () => showToast("Mensaje copiado al portapapeles", "success"),
+      () => fallbackCopy(msg)
+    );
+  } else {
+    fallbackCopy(msg);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.cssText = "position:fixed;left:-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    showToast("Mensaje copiado al portapapeles", "success");
+  } catch {
+    showToast("No se pudo copiar — copialo manualmente", "warn");
+  }
+  ta.remove();
 }
 
 function sendWhatsApp() {
