@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { parseLogisticaFromAdjuntoText } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/pdfTextExtract.js";
 import { MAX_H, MANUAL_LAYOUT_VERSION, panelStableKey, accessoryStableKey } from "../utils/bmcLogisticaCargo.js";
@@ -21,6 +21,8 @@ const SH_ID = "1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA";
 const SH_GID = "926747636";
 const STORAGE_KEY = "bmc-logistica-online-v2";
 const STORAGE_KEY_LEGACY = "bmc-logistica-online-v1";
+
+const LogisticaCargoScene3d = lazy(() => import("./logistica/LogisticaCargoScene3d.jsx"));
 const DEFAULT_ACC_W = 0.3;
 const DEFAULT_ACC_H = 0.2;
 const DEFAULT_ACC_FOAM_MM = 50;
@@ -991,9 +993,10 @@ function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1 }) {
 function DiagramPanel({ cargo, truckL }) {
   const { placed, rowH, maxLen, minX, stopUnloadOrder, strategy, stacksByRow } = cargo;
   const shiftX = -minX;
+  const totalLen = maxLen - minX;
+  const [diagramView, setDiagramView] = useState("svg");
   const OX = 60;
   const OY = 85;
-  const totalLen = maxLen - minX;
   const viewW = Math.max(420, OX + (totalLen * C30 + TRUCK_W * C30) * ISX + 80);
   const viewH = 240;
   const sorted = [...placed].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
@@ -1021,12 +1024,33 @@ function DiagramPanel({ cargo, truckL }) {
         gap: 12,
       }}
     >
-      <div>
-        <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>Vista 3D Isométrica</h3>
-        <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>Puerta trasera a la izquierda · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+          <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>{diagramView === "webgl" ? "Explorar carga (WebGL)" : "Vista isométrica (SVG)"}</h3>
+          <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>Puerta trasera a la izquierda · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}</p>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          <Btn small outline onClick={() => setDiagramView("svg")} style={diagramView === "svg" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+            Isométrica
+          </Btn>
+          <Btn small outline onClick={() => setDiagramView("webgl")} style={diagramView === "webgl" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
+            Explorar 3D
+          </Btn>
+        </div>
       </div>
 
       <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, overflow: "hidden", width: "100%", maxWidth: "100%", minWidth: 0 }}>
+        {diagramView === "webgl" ? (
+          <Suspense
+            fallback={
+              <div style={{ height: 280, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.55)", fontSize: 13 }}>
+                Cargando vista 3D…
+              </div>
+            }
+          >
+            <LogisticaCargoScene3d placed={placed} shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
+          </Suspense>
+        ) : (
         <svg width="100%" height="auto" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
           {maxLen > truckL ? (
             <polygon points={fp([tf(shiftX + truckL, 0, 0), tf(shiftX + maxLen, 0, 0), tf(shiftX + maxLen, TRUCK_W, 0), tf(shiftX + truckL, TRUCK_W, 0)])} fill="rgba(255,159,10,.12)" stroke="#ff9f0a" strokeWidth={1} strokeDasharray="4,3" />
@@ -1101,6 +1125,7 @@ function DiagramPanel({ cargo, truckL }) {
             );
           })}
         </svg>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

@@ -38,4 +38,10 @@ export default [
       ],
     },
   },
+  {
+    files: ["src/components/logistica/**/*.jsx"],
+    rules: {
+      "react/no-unknown-property": "off",
+    },
+  },
 ];

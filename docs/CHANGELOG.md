@@ -1,5 +1,12 @@
 # 📝 Changelog — Panelin Calculadora BMC
 
+## [3.1.5] — 2026-03-31
+
+### Logística — vista 3D (WebGL) y versión deploy
+- **Dependencias:** `three`, `@react-three/fiber@8`, `@react-three/drei@9` (React 18).
+- **UI:** [`BmcLogisticaApp.jsx`](../src/components/BmcLogisticaApp.jsx) panel diagrama: toggle **Isométrica (SVG)** / **Explorar 3D**; chunk async [`LogisticaCargoScene3d.jsx`](../src/components/logistica/LogisticaCargoScene3d.jsx) — mismo `cargo.placed` que el motor, OrbitControls, selección por clic y detalle; `onPointerMissed` deselecciona.
+- **Tooling:** [`eslint.config.js`](../eslint.config.js) — `react/no-unknown-property` desactivado en `src/components/logistica/**`.
+
 ## [3.1.2] — 2026-03-19
 
 ### Equipo — Roadmap runs 32–39 + AUTOPILOT 24–25 ✓ (2026-03-20)

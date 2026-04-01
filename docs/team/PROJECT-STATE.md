@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-31 (release v3.1.4 — Wolfboard, logística, parseo bultos)
+**Última actualización:** 2026-03-31 (release v3.1.5 — logística vista 3D WebGL + selección bultos)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-31 (Release v3.1.5 — deploy):** [`package.json`](../../package.json) **3.1.5**; `npm run gate:local:full` OK. Incluye: vista **Explorar 3D** (Three.js + R3F + Drei, lazy chunk), selección de bultos y tarjeta de detalle; ESLint override `logistica/**`. Push a **`main`** → Vercel / CI; **Cloud Run** (`panelin-calc`): rebuild/redeploy imagen desde este commit (ver checklist deploy).
+
+**2026-03-31 (Logística — vista 3D WebGL opcional):** Dependencias **`three`**, **`@react-three/fiber@8`**, **`@react-three/drei@9`** (compatibles con React 18). [`src/components/logistica/LogisticaCargoScene3d.jsx`](../../src/components/logistica/LogisticaCargoScene3d.jsx): mismo `cargo.placed` que el SVG, piso/saliente, guías **`MAX_H`**, **OrbitControls**; **clic en bulto** → selección + resaltado emisivo, tarjeta con etiqueta / fila / medidas / pila, **Cerrar** y **`onPointerMissed`** en vacío deseleccionan; si el `id` deja de existir en `placed`, limpia. [`BmcLogisticaApp.jsx`](../../src/components/BmcLogisticaApp.jsx) **`DiagramPanel`**: toggle **Isométrica** / **Explorar 3D** con `React.lazy` + `Suspense`. [`eslint.config.js`](../../eslint.config.js): `react/no-unknown-property` off en `src/components/logistica/**`. **`npm run gate:local:full`** OK.
 
 **2026-03-31 (Release v3.1.4 — sync y deploy):** [`package.json`](../../package.json) **3.1.4**; `npm run gate:local:full` OK. Incluye: Wolfboard hub + React Router + rutas `/`, `/hub`, `/calculadora`, `/logistica`; logística 3 vistas + cabina; vistas sin scroll horizontal; `parseQtyCell` / columnas Bultos en [`adjuntoLineParse.js`](../bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js); ajustes calculadora StepperInput. Push a **`main`** → Vercel / pipelines según repo. **Cloud Run** (`panelin-calc`): redeploy de imagen si el proyecto usa build desde este commit (ver checklist deploy).
 
