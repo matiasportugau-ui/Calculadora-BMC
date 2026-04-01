@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-31 (logística util vista cama + export JSON plan)
+**Última actualización:** 2026-04-01 (project team sync — lectura estado)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-01 (Project team sync — bmc-project-team-sync):** Ejecutado workflow **Sync** ([skill](../../.cursor/skills/bmc-project-team-sync/SKILL.md)): lectura [`PROJECT-STATE.md`](./PROJECT-STATE.md) (Cambios recientes, Pendientes, Estado por área, Plan vigente) y [`SESSION-WORKSPACE-CRM.md`](./SESSION-WORKSPACE-CRM.md) §1 (foco 2026-04-01: logística v3.1.3 + routing + deploy). Sin re-auditoría línea a línea de `planilla-inventory.md` / `DASHBOARD-INTERFACE-MAP.md` / `IA.md` en esta pasada. **Pendientes vigentes:** Go-live checklist parcial; **E2E** — filas D1.x UI manual en [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md). **No** sustituye **Invoque full team** 0→9 ni **MATPROMT 0a** ni cierre **run55/run57**. **Propagación:** sin cambio de código en esta pasada; roles §2 — lectura de estado únicamente. **Próximo paso sugerido:** `npm run project:compass` y una acción concreta desde SESSION §3 o §4.
 
 **2026-03-31 (Logística — util vista cama + export JSON):** Nuevo [`src/utils/bmcLogisticaBedView.js`](../../src/utils/bmcLogisticaBedView.js): `mirrorBedXForView`, `mirrorStackForView`, `bedViewExtents`, `computeLogisticaKpis`, `buildLogisticaPlanExportPayload` (schema v1 `bmc-logistica-plan`). Refactor desde [`BmcLogisticaApp.jsx`](../../src/components/BmcLogisticaApp.jsx); **`DiagramPanel`**: botón **Exportar plan (JSON)** (descarga; nombre incluye remito). Tests **SUITE 31** en [`tests/validation.js`](../../tests/validation.js). `npm run lint` + `npm test` + `npm run build` OK.
 
