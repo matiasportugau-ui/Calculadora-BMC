@@ -10,10 +10,13 @@ npm-debug.log
 public
 tests
 # docs excluded except dashboard (Dockerfile needs docs/bmc-dashboard-modernization/dashboard)
+# and logistica-carga-prototype/lib (Vite imports from BmcLogisticaApp)
 docs/*
 !docs/bmc-dashboard-modernization
 docs/bmc-dashboard-modernization/*
 !docs/bmc-dashboard-modernization/dashboard
+!docs/bmc-dashboard-modernization/logistica-carga-prototype
+!docs/bmc-dashboard-modernization/logistica-carga-prototype/lib
 *.md
 !package.json
 !package-lock.json
