@@ -134,17 +134,65 @@ function CustomSelect({ label, value, options = [], onChange, showBadge, advance
   );
 }
 
+function parseNumInput(raw) {
+  if (raw == null) return null;
+  const t = String(raw).trim().replace(/\s/g, "").replace(",", ".");
+  if (t === "" || t === "-" || t === "." || t === "-.") return null;
+  const v = parseFloat(t);
+  return Number.isFinite(v) ? v : null;
+}
+
+function formatNumDisplay(n, decimals) {
+  if (!Number.isFinite(n)) return "";
+  if (decimals === 0) return String(Math.round(n));
+  return n.toFixed(decimals).replace(".", ",");
+}
+
 function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, unit = "", decimals = 2 }) {
-  const bump = (dir) => { const next = parseFloat((value + dir * step).toFixed(decimals)); if (next >= min && next <= max) onChange(next); };
+  const [draft, setDraft] = useState(null);
+  const num = Number(value);
+
+  const commit = (raw) => {
+    let p = parseNumInput(raw);
+    if (p == null) p = min;
+    let x = Math.min(max, Math.max(min, p));
+    if (decimals === 0) x = Math.round(x);
+    else x = parseFloat(x.toFixed(decimals));
+    onChange(x);
+  };
+
+  const bump = (dir) => {
+    setDraft(null);
+    const base = Number.isFinite(num) ? num : min;
+    const next = parseFloat((base + dir * step).toFixed(decimals));
+    if (next < min || next > max) return;
+    onChange(decimals === 0 ? Math.round(next) : parseFloat(next.toFixed(decimals)));
+  };
+
   const btnS = (dis) => ({ width: 36, height: 36, borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.4 : 1, transition: TR, flexShrink: 0 });
+  const show = draft !== null ? draft : formatNumDisplay(num, decimals);
+  const effective = Number.isFinite(num) ? num : min;
+
   return (
     <div style={{ fontFamily: FONT }}>
       {label && <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "nowrap" }}>
-        <button style={btnS(value <= min)} onClick={() => bump(-1)}><Minus size={16} color={C.tp} /></button>
-        <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value) || 0)} onBlur={e => { const v = parseFloat(e.target.value); onChange(isNaN(v) ? min : Math.min(max, Math.max(min, v))); }}
-          style={{ width: "100%", minWidth: 0, flex: 1, textAlign: "center", borderRadius: 10, border: `1.5px solid ${C.border}`, padding: "8px 10px", fontSize: 15, fontWeight: 600, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }} />
-        <button style={btnS(value >= max)} onClick={() => bump(1)}><Plus size={16} color={C.tp} /></button>
+        <button type="button" style={btnS(effective <= min)} onClick={() => bump(-1)}><Minus size={16} color={C.tp} /></button>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          value={show}
+          onFocus={() => setDraft(formatNumDisplay(num, decimals))}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            const d = draft;
+            setDraft(null);
+            commit(d);
+          }}
+          style={{ width: "100%", minWidth: 0, flex: 1, textAlign: "center", borderRadius: 10, border: `1.5px solid ${C.border}`, padding: "8px 10px", fontSize: 15, fontWeight: 600, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }}
+        />
+        <button type="button" style={btnS(effective >= max)} onClick={() => bump(1)}><Plus size={16} color={C.tp} /></button>
         {unit && <span style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginLeft: 4, minWidth: 24 }}>{unit}</span>}
       </div>
     </div>
@@ -2039,11 +2087,11 @@ export default function PanelinCalculadoraV3() {
                             )}
                           </div>
                           <div style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
-                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.5} unit="m" />
+                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} unit="m" decimals={2} />
                             {techoAnchoModo === "paneles" && techoPanelData ? (
-                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={99} step={1} unit="pan." decimals={0} />
+                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} />
                             ) : (
-                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.5} unit="m" />
+                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} unit="m" decimals={2} />
                             )}
                           </div>
                         </div>
@@ -2458,7 +2506,7 @@ export default function PanelinCalculadoraV3() {
             {techo.zonas.map((zona, idx) => (
               <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: isPhone ? "wrap" : "nowrap", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
                 <div style={{ flex: 1 }}>
-                  <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.5} unit="m" />
+                  <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.01} unit="m" decimals={2} />
                 </div>
                 <div style={{ flex: 1 }}>
                   {techoAnchoModo === "paneles" && techoPanelData ? (
@@ -2479,8 +2527,9 @@ export default function PanelinCalculadoraV3() {
                       onChange={v => updateZona(idx, "ancho", v)}
                       min={1}
                       max={20}
-                      step={0.5}
+                      step={0.01}
                       unit="m"
+                      decimals={2}
                     />
                   )}
                 </div>

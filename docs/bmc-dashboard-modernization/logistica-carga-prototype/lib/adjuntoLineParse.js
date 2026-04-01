@@ -40,6 +40,35 @@ function snapEsp(x) {
 }
 
 /**
+ * Entero de cantidad desde celda de planilla (uds / bultos / número suelto).
+ * @param {string|number|null|undefined} raw
+ * @returns {number|null}
+ */
+export function parseQtyCell(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const m1 = s.match(/\b(\d{1,5})\s*(?:uds?\.?|unidades?|bultos?|planchas?|paneles?|piezas?|pzas?|und\.?|u\.)\b/i);
+  if (m1) return Math.min(99999, Math.max(1, parseInt(m1[1], 10)));
+  const m2 = s.match(/(?:^|[\s:;,-])(\d{1,5})\s*$/);
+  if (m2) return Math.min(99999, Math.max(1, parseInt(m2[1], 10)));
+  const digits = s.replace(/[^\d]/g, "");
+  if (digits.length >= 1 && digits.length <= 5) {
+    const n = parseInt(digits, 10);
+    if (Number.isFinite(n) && n >= 1) return Math.min(99999, n);
+  }
+  return null;
+}
+
+/** Cantidad al final de celda producto: "… 12 uds" / "… 8 bultos". */
+function extractTrailQtyFromProductCell(text) {
+  const s = String(text || "").trim();
+  if (!s) return null;
+  const m = s.match(/\b(\d{1,5})\s*(?:uds?\.?|unidades?|bultos?|planchas?|paneles?|piezas?)\s*$/i);
+  if (m) return Math.min(99999, Math.max(1, parseInt(m[1], 10)));
+  return null;
+}
+
+/**
  * @param {string} text
  * @returns {string}
  */
@@ -99,9 +128,15 @@ export function parsePanelLineHeuristic(line) {
 
   let cantidad = qtyLead != null ? qtyLead : 1;
   const xm = raw.match(/[x×]\s*(\d+)\b/i);
-  if (qtyLead == null && xm) cantidad = Math.max(1, parseInt(xm[1], 10));
-  else if (qtyLead == null) {
-    const uds = raw.match(/\b(\d+)\s*(?:uds?\.?|unidades?|planchas?|paneles?)\b/i);
+  const qtyExplicit =
+    raw.match(/\b(?:cant\.?|cantidad|qty|bultos?)\s*[:=]\s*(\d{1,5})\b/i) ||
+    raw.match(/\b(\d{1,5})\s*(?:bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?)\b/i);
+  if (qtyLead == null && qtyExplicit) {
+    cantidad = Math.max(1, parseInt(qtyExplicit[1], 10));
+  } else if (qtyLead == null && xm) {
+    cantidad = Math.max(1, parseInt(xm[1], 10));
+  } else if (qtyLead == null) {
+    const uds = raw.match(/\b(\d+)\s*(?:uds?\.?|unidades?|planchas?|paneles?|bultos?|piezas?)\b/i);
     if (uds) cantidad = Math.max(1, parseInt(uds[1], 10));
     else {
       const tailInts = nums.filter((n) => {
@@ -140,7 +175,14 @@ function mapHeaderIndices(headers) {
     if (/^tipo$/.test(n) || n === "familia") idx.tipoCol = i;
     if (n.includes("espesor") || n === "esp") idx.espesor = i;
     if (n.includes("largo") || n.includes("longitud") || n === "l m" || n === "largo m") idx.largo = i;
-    if (n.includes("cant") || n === "qty" || n === "cantidad" || n.includes("unid")) idx.cantidad = i;
+    if (
+      idx.cantidad == null &&
+      (/^(cant\.?|cantidad|qty|bultos?|uds\.?|unidades?|planchas?|paneles?|piezas?|pzas?|#)$/.test(n) ||
+        /^(n|nº|num|numero)\s*\.?\s*(bultos|uds|unidades|planchas|paneles|piezas)/i.test(n) ||
+        (/\b(cant|qty|bultos?|uds)\b/i.test(n) && !/fabric|direccion|observ|ubicacion|cliente/i.test(n)))
+    ) {
+      idx.cantidad = i;
+    }
   });
   return idx;
 }
@@ -179,14 +221,19 @@ export function parseLogisticaFromAdjuntoText(text) {
         if (tipo && isTipoValid(tipo)) {
           const espN = parseFloat(String(espRaw).replace(",", "."));
           const largoN = parseFloat(String(largoRaw).replace(",", "."));
-          const cantN = parseInt(String(cantRaw).replace(/\D/g, "") || "1", 10);
+          let cantN = parseQtyCell(cantRaw);
+          if (cantN == null) cantN = extractTrailQtyFromProductCell(String(prodCell || ""));
+          if (cantN == null && prodCell) {
+            const ph0 = parsePanelLineHeuristic(String(prodCell).replace(/\t/g, " ").trim());
+            if (ph0 && ph0.tipo === tipo) cantN = ph0.cantidad;
+          }
           const espesor = Number.isFinite(espN) ? snapEsp(espN) : null;
           if (espesor != null && ESP_SET.has(espesor)) {
             paneles.push({
               tipo,
               espesor,
               longitud: Number.isFinite(largoN) ? snapLen(largoN) : 6,
-              cantidad: Math.max(1, Number.isFinite(cantN) ? cantN : 1),
+              cantidad: Math.max(1, cantN != null ? cantN : 1),
             });
             continue;
           }
@@ -200,9 +247,9 @@ export function parseLogisticaFromAdjuntoText(text) {
         let acc = parseAccesorioLine(line);
         if (!acc && hmap.cantidad != null) {
           const descr = String(prodCell || "").trim();
-          const cantN = parseInt(String(cantRaw).replace(/\D/g, "") || "", 10);
-          if (descr.length >= 2 && Number.isFinite(cantN) && cantN >= 1 && !extractTipoFromLine(descr)) {
-            acc = { descr, cantidad: Math.min(99999, cantN) };
+          const cantAcc = parseQtyCell(cantRaw);
+          if (descr.length >= 2 && cantAcc != null && cantAcc >= 1 && !extractTipoFromLine(descr)) {
+            acc = { descr, cantidad: Math.min(99999, cantAcc) };
           }
         }
         if (acc) accesorios.push(acc);

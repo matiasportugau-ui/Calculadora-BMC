@@ -1030,6 +1030,59 @@ async function handleCreateVenta(ventasSheetId, body) {
   return { ok: true, row: body, tab: targetTab };
 }
 
+function formatIsoDateToDdMmYyyy(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? "").trim());
+  if (!m) return String(iso ?? "").trim();
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+async function getSheetTabTitleByGid(spreadsheetId, gid) {
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const meta = await withSheetsReadRetry("spreadsheets.get", () =>
+    sheets.spreadsheets.get({ spreadsheetId })
+  );
+  const gidNum = Number(gid);
+  if (!Number.isFinite(gidNum)) return null;
+  const sh = (meta.data.sheets || []).find((s) => s.properties?.sheetId === gidNum);
+  return sh?.properties?.title || null;
+}
+
+async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
+  const gid = body?.gid;
+  const row1Based = Number(body?.row1Based);
+  const fechaEntrega = body?.fechaEntrega;
+
+  if (!ventasSheetId) throw new Error("Ventas sheet no configurado (BMC_VENTAS_SHEET_ID)");
+  if (gid == null || String(gid).trim() === "") throw new Error("Missing gid (pestaña)");
+  if (!Number.isFinite(row1Based) || row1Based < 2) throw new Error("row1Based inválido (mín. 2)");
+
+  const tabTitle = await getSheetTabTitleByGid(ventasSheetId, gid);
+  if (!tabTitle) throw new Error("No se encontró la pestaña para ese gid");
+
+  const value =
+    fechaEntrega === "" || fechaEntrega === null || fechaEntrega === undefined
+      ? ""
+      : formatIsoDateToDdMmYyyy(fechaEntrega);
+
+  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
+  const authClient = await auth.getClient();
+  const sheets = google.sheets({ version: "v4", auth: authClient });
+  const safeTab = String(tabTitle).replace(/'/g, "''");
+  const range = `'${safeTab}'!G${row1Based}`;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: ventasSheetId,
+    range,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[value]] },
+  });
+
+  invalidateVentasSheetsReadCache(ventasSheetId);
+  return { ok: true, range, value };
+}
+
 async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
   const authClient = await auth.getClient();
@@ -2331,6 +2384,17 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     if (bearer === token || xKey === token) return next();
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
+
+  /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
+  router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitAuth, async (req, res) => {
+    if (!checkVentasAvailable(config)) return noConfig(res);
+    try {
+      const result = await handleVentasLogisticaFechaEntrega(config.bmcVentasSheetId, req.body || {});
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message || String(e) });
+    }
+  });
 
   /** Overrides calculadora → celdas MATRIZ (BROMYROS u otras pestañas aprobadas). Mismo auth que CRM cockpit. */
   router.post("/matriz/push-pricing-overrides", requireCrmCockpitAuth, async (req, res) => {

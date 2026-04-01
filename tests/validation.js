@@ -33,6 +33,7 @@ import {
   parseAccesorioLine,
   parseLogisticaFromAdjuntoText,
   parsePanelLineHeuristic,
+  parseQtyCell,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 import {
   extractStopFieldsFromPaste,
@@ -56,6 +57,7 @@ import {
   estimateRouteLoadPhysical,
   kgPerM2ForEspesor,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/loadCharacteristics.js";
+import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../src/utils/ventasPedidoRetiroParse.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -974,6 +976,26 @@ assert(
   "ISOPANEL 150 7 12",
 );
 
+const phBultos = parsePanelLineHeuristic("ISODEC EPS 100mm largo 6m bultos 24");
+assert(
+  "parsePanelLineHeuristic bultos keyword",
+  phBultos && phBultos.cantidad === 24 && phBultos.tipo === "ISODEC",
+  phBultos,
+  "bultos 24",
+);
+
+assert("parseQtyCell 12 uds", parseQtyCell("12 uds") === 12, parseQtyCell("12 uds"), 12);
+assert("parseQtyCell trim number", parseQtyCell(" 8 ") === 8, parseQtyCell(" 8 "), 8);
+
+const tsvBultos = "Producto\tEspesor mm\tLargo m\tBultos\nISODEC 100\t100\t6\t15";
+const bomB = parseLogisticaFromAdjuntoText(tsvBultos);
+assert(
+  "parseLogisticaFromAdjuntoText TSV header Bultos",
+  bomB.paneles.length === 1 && bomB.paneles[0].cantidad === 15,
+  bomB.paneles[0],
+  "cant 15",
+);
+
 const acc1 = parseAccesorioLine("Perfil U galvanizado - 24");
 assert(
   "parseAccesorioLine guión cantidad",
@@ -1102,6 +1124,54 @@ const route = estimateRouteLoadPhysical([
   },
 ]);
 assert("estimateRouteLoadPhysical aggregates", route.m2 > 0 && route.estWeightKg > 100, route.m2, ">0");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 30: Ventas — N° Pedido / N° Retiro desde texto libre
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 30: ventasPedidoRetiroParse ═══");
+
+const s1 =
+  "Pago 100% / N° Pedido 1342836 / N° Retiro 53733 / Prod 4/03";
+const p1 = parsePedidoRetiroFromFreeText(s1);
+assert("parsePedidoRetiroFromFreeText pedido+retiro", p1.orderId === "1342836" && p1.pickupId === "53733", p1, "1342836/53733");
+
+const p2 = parsePedidoRetiroFromFreeText("Nº Pedido 1342926 / N° Retiro xxxx");
+assert("parsePedidoRetiroFromFreeText Nº variant", p2.orderId === "1342926" && p2.pickupId === "xxxx", p2, "1342926/xxxx");
+
+const p3 = parsePedidoRetiroFromFreeText("sin tokens");
+assert("parsePedidoRetiroFromFreeText empty when no match", p3.orderId === "" && p3.pickupId === "", p3, "empty");
+
+const cPipe = parsePedidoFromColumnC("xxxxxx | 1342836");
+assert(
+  "parsePedidoFromColumnC pipe toma último tramo como pedido",
+  cPipe.source === "pipe" && cPipe.orderId === "1342836",
+  cPipe,
+  "1342836",
+);
+
+const cSingle = parsePedidoFromColumnC("Nº 1342926");
+assert("parsePedidoFromColumnC solo pedido", cSingle.source === "single" && cSingle.orderId === "1342926", cSingle, "1342926");
+
+const f1 = parsePickupIdFromColumnF("Pago 100% / N° Pedido 1342836 / N° Retiro 53733 / Prod");
+assert("parsePickupIdFromColumnF último N° Retiro en F", f1 === "53733", f1, "53733");
+
+const f2 = parsePickupIdFromColumnF("notas | N° Retiro 99999");
+assert("parsePickupIdFromColumnF último campo con |", f2 === "99999", f2, "99999");
+
+const cellsDual = Array.from({ length: 16 }, (_, i) => `C${i}`);
+cellsDual[2] = "1342836";
+cellsDual[5] = "x / N° Retiro 53733 / fin";
+cellsDual[6] = "Cliente X";
+cellsDual[7] = "Calle 1";
+cellsDual[9] = "https://dropbox.com/fake.pdf";
+cellsDual[14] = "099";
+const pasteDual = extractStopFieldsFromPaste(cellsDual.join("\t"), "ventas20Coordinaciones");
+assert(
+  "extractStopFieldsFromPaste C=pedido F=retiro",
+  pasteDual.fields.cotizacionId === "1342836" && pasteDual.fields.pickupId === "53733",
+  pasteDual.fields,
+  "1342836/53733",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

@@ -1,3 +1,5 @@
+import { parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../../../../src/utils/ventasPedidoRetiroParse.js";
+
 /**
  * Parser de filas copiadas desde Google Sheets / Excel (TSV).
  * Sin llamadas de red: la "foto" es vista previa vía <img> (Drive thumbnail o URL directa).
@@ -7,11 +9,11 @@
 
 /**
  * Presets por índice (fila de **datos** sin encabezados, o 2ª fila si la 1ª es título).
- * Planilla **2.0 - Ventas** típica: A=º, B=Vendedor, C=ID pedido, … G=Nombre, H=Dirección, I=Encargo, J=CARPETA (PDF), … O≈Contacto.
+ * Planilla **2.0 - Ventas** típica: A=º, B=Vendedor, **C = ID / Nº Pedido**, **F = … + Nº Retiro (último campo)**, … G=Nombre, H=Dirección, I=Encargo, J=CARPETA (PDF), … O≈Contacto.
  */
 export const SHEET_PASTE_PRESETS = {
   ventas20Coordinaciones: {
-    label: "2.0 Ventas (recomendado: C=pedido, G=cliente, H=dir, J=CARPETA, O≈tel)",
+    label: "2.0 Ventas (C=pedido; F=Nº Retiro; G=cliente; H=dir; J=CARPETA; O≈tel)",
     byIndex: {
       cotizacionId: 2,
       cliente: 6,
@@ -23,7 +25,7 @@ export const SHEET_PASTE_PRESETS = {
     },
   },
   ventas20CoordinacionesMapaK: {
-    label: "2.0 Ventas + link mapa en col. K (índice 10)",
+    label: "2.0 Ventas + mapa K (C/F como arriba; G/H/J; K=mapa)",
     byIndex: {
       cotizacionId: 2,
       cliente: 6,
@@ -417,6 +419,15 @@ export function extractStopFieldsFromPaste(text, presetKey) {
       fields.linkAdjunto = fields.linkAdjunto || guess;
     }
   }
+
+  const rawC =
+    dataCells.length > 2 ? String(dataCells[2] ?? "").trim() : String(fields.cotizacionId ?? "").trim();
+  const pedC = parsePedidoFromColumnC(rawC);
+  if (pedC.orderId) fields.cotizacionId = pedC.orderId;
+
+  const rawF = dataCells.length > 5 ? String(dataCells[5] ?? "").trim() : "";
+  const pickupF = parsePickupIdFromColumnF(rawF);
+  if (pickupF) fields.pickupId = pickupF;
 
   let rawSheetRow = {};
   if (mode === "header" && rows.length >= 2) {

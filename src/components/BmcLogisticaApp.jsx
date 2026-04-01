@@ -2,9 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { parseLogisticaFromAdjuntoText } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
 import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/pdfTextExtract.js";
 import { MAX_H, MANUAL_LAYOUT_VERSION, panelStableKey, accessoryStableKey } from "../utils/bmcLogisticaCargo.js";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../utils/ventasPedidoRetiroParse.js";
 
 const TRUCK_W = 2.4;
 const ROW_W = 1.2;
+/** Largo esquemático de cabina (solo dibujo orientativo, no afecta el motor de carga). */
+const CAB_LEN_M = 2.4;
+/** Altura cabina en vista lateral (m; escala vertical = SVZ px/m, mismo eje que paquetes). */
+const CAB_HEIGHT_M = 1.5;
 const MAX_OVH = 2.0;
 const MAX_P = { 40: 12, 50: 10, 60: 10, 80: 8, 100: 8, 150: 6, 200: 4, 250: 3 };
 const COLORS = ["#0071e3", "#34c759", "#ff9f0a", "#ff3b30", "#af52de", "#ff375f", "#5ac8fa", "#ff6b00"];
@@ -117,6 +123,36 @@ function Btn({
   return <button type="button" onClick={onClick} disabled={disabled} style={s}>{children}</button>;
 }
 
+/** Cabina esquemática — vista superior (solo orientación). */
+function TruckCabTopSvg({ x, y, w, h, stroke, fill }) {
+  const hood = w * 0.26;
+  return (
+    <g>
+      <rect x={x + hood} y={y} width={w - hood} height={h} fill={fill} stroke={stroke} strokeWidth={1.5} rx={2} />
+      <polygon points={`${x},${y + h * 0.14} ${x + hood},${y} ${x + hood},${y + h} ${x},${y + h * 0.86}`} fill={fill} stroke={stroke} strokeWidth={1.2} />
+      <polygon points={`${x + hood * 0.32},${y + h * 0.26} ${x + hood * 0.88},${y + h * 0.16} ${x + hood * 0.85},${y + h * 0.54} ${x + hood * 0.22},${y + h * 0.6}`} fill="rgba(100,160,255,.22)" stroke={stroke} strokeWidth={0.8} />
+      <text x={x + w / 2} y={y + h + 11} textAnchor="middle" fontSize={7} fill={T.muted}>Cabina</text>
+    </g>
+  );
+}
+
+/** Cabina esquemática — vista lateral (perfil; groundY = suelo; altura ≈ CAB_HEIGHT_M en escala svz px/m). */
+function TruckCabSideSvg({ x, cabW, groundY, stroke, fill, showLabel = true, svz }) {
+  const cabH_px = CAB_HEIGHT_M * svz;
+  const cabBot = groundY;
+  const cabTop = cabBot - cabH_px;
+  const windshield = cabW * 0.24;
+  const ch = cabBot - cabTop;
+  return (
+    <g>
+      <rect x={x + windshield} y={cabTop} width={cabW - windshield} height={ch} fill={fill} stroke={stroke} strokeWidth={1.5} rx={2} />
+      <polygon points={`${x},${cabTop + ch * 0.18} ${x + windshield},${cabTop} ${x + windshield},${cabBot} ${x},${cabBot - ch * 0.04}`} fill={fill} stroke={stroke} strokeWidth={1.2} />
+      <polygon points={`${x + windshield * 0.32},${cabTop + ch * 0.22} ${x + windshield * 0.9},${cabTop + ch * 0.1} ${x + windshield * 0.85},${cabTop + ch * 0.52} ${x + windshield * 0.18},${cabTop + ch * 0.55}`} fill="rgba(100,160,255,.2)" stroke={stroke} strokeWidth={0.8} />
+      {showLabel ? <text x={x + cabW / 2} y={cabTop - 3} textAnchor="middle" fontSize={7} fill={T.muted}>Cabina</text> : null}
+    </g>
+  );
+}
+
 let _id = 0;
 const uid = () => String(++_id);
 const ph = (e, n) => +(0.1 + n * (e / 1000) + Math.max(0, n - 1) * 0.02).toFixed(4);
@@ -173,6 +209,11 @@ const mkStop = (i) => ({
   zona: "",
   contactoRecepcion: "",
   horarioEntrega: "",
+  /** YYYY-MM-DD; sincroniza a columna G de la planilla Ventas si hay fila vinculada */
+  fechaEntrega: "",
+  /** Fila 1-based en la pestaña Ventas (CSV gviz: fila datos = índice + 2) */
+  ventasSheetRow1Based: null,
+  ventasTabGid: "",
   pdfLink: "",
   mapLink: "",
   rawSheetText: "",
@@ -318,7 +359,7 @@ function buildSheetFallbackText(headers, row) {
     const line = `${header}: ${value}`;
     all.push(line);
     if (
-      /pedido|consulta|detalle|descripcion|producto|observ|nota|item|panel|accesorio|obra|material/.test(h) &&
+      /pedido|consulta|detalle|descripcion|producto|observ|nota|item|panel|accesorio|obra|material|bulto|unidad|encargo|resumen|lista|linea|cant\.|cantidad|qty/.test(h) &&
       !/cliente|direccion|telefono|celular|pdf|adjunto|archivo|mail/.test(h)
     ) {
       preferred.push(line);
@@ -342,6 +383,20 @@ function buildHeaderIndexMap(headers) {
     if (/direccion|^dir$|domicilio/.test(n) && map.dir == null) map.dir = i;
     if (/telefono|celular|^tel$/.test(n) && map.tel == null) map.tel = i;
     if (/pdf|adjunto|archivo|link/.test(n) && map.pdf == null) map.pdf = i;
+    /** Columna típica G: "Fecha De Entrega" (prioridad sobre otras celdas con "fecha" + "entrega"). */
+    if (/fecha\s*de\s*entrega/i.test(n) && map.fechaDeEntregaG == null) map.fechaDeEntregaG = i;
+    /** Otras columnas p. ej. F "FECHA ENTREGA" (texto largo) — no la G de fecha cliente. */
+    if (/fecha.*entrega|fecha entrega/i.test(n) && map.fechaEntrega == null && map.fechaDeEntregaG !== i) {
+      map.fechaEntrega = i;
+    }
+    if (
+      /estado|gral|fact\.|pu \d+ y pu|entregas pendientes/i.test(n) &&
+      map.estadoText == null &&
+      !/^fecha/i.test(n) &&
+      !/facturacion|datos fact/i.test(n)
+    ) {
+      map.estadoText = i;
+    }
   });
   return map;
 }
@@ -352,19 +407,65 @@ function getVentasCell(map, row, key, legacyIdx) {
   return String(row[idx] || "").trim();
 }
 
-function mapVentasRow(headers, row) {
+/** Columna C (índice 2): solo ID / Nº Pedido. */
+function getVentasColumnC(row) {
+  if (!row || row.length <= 2) return "";
+  return String(row[2] ?? "").trim();
+}
+
+/** Columna F (índice 5): último campo Nº Retiro (texto libre). */
+function getVentasColumnF(row) {
+  if (!row || row.length <= 5) return "";
+  return String(row[5] ?? "").trim();
+}
+
+/** Columna G — encabezado "Fecha De Entrega" (índice legacy 6 si A=0). */
+function getVentasFechaDeEntregaCell(H, row) {
+  return getVentasCell(H, row, "fechaDeEntregaG", 6);
+}
+
+/** Convierte DD/MM/YYYY (celda) → YYYY-MM-DD para input type=date. */
+function parsePlanillaFechaGToIso(cell) {
+  const t = String(cell ?? "").trim();
+  if (!t) return "";
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (m2) return t;
+  return "";
+}
+
+function mapVentasRow(headers, row, sheetRow1Based) {
   const H = buildHeaderIndexMap(headers);
+  const fromC = parsePedidoFromColumnC(getVentasColumnC(row));
+  let orderId = fromC.orderId || "";
+  if (fromC.source === "empty") {
+    orderId = getVentasCell(H, row, "orderId", null) || "";
+  }
+
+  let pickupId = parsePickupIdFromColumnF(getVentasColumnF(row));
+  if (!pickupId) pickupId = getVentasCell(H, row, "pickupId", null) || "";
+
+  const estadoText = getVentasCell(H, row, "estadoText", 4) || "";
+  const fechaEntregaText = getVentasCell(H, row, "fechaEntrega", 5) || "";
+  const parsedIds = parsePedidoRetiroFromFreeText([estadoText, fechaEntregaText].filter(Boolean).join("\n"));
+  if (!String(orderId).trim() && parsedIds.orderId) orderId = parsedIds.orderId;
+  if (!String(pickupId).trim() && parsedIds.pickupId) pickupId = parsedIds.pickupId;
+
   return {
     nombre: getVentasCell(H, row, "nombre", 7) || getVentasCell(H, row, "cliente", 7) || "",
     dir: getVentasCell(H, row, "dir", 8),
     pdf: getVentasCell(H, row, "pdf", 9),
     tel: getVentasCell(H, row, "tel", 14),
-    orderId: getVentasCell(H, row, "orderId", null) || "",
+    orderId,
     cotizacionId: getVentasCell(H, row, "cotizacionId", null) || "",
-    pickupId: getVentasCell(H, row, "pickupId", null) || "",
+    pickupId,
     zona: getVentasCell(H, row, "zona", null) || "",
     recepcionContacto: getVentasCell(H, row, "recepcionContacto", null) || "",
     rawSheetText: buildSheetFallbackText(headers, row),
+    fechaEntrega: parsePlanillaFechaGToIso(getVentasFechaDeEntregaCell(H, row)),
+    ventasSheetRow1Based: sheetRow1Based ?? null,
+    ventasTabGid: SH_GID,
   };
 }
 
@@ -925,8 +1026,8 @@ function DiagramPanel({ cargo, truckL }) {
         <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>Puerta trasera a la izquierda · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}</p>
       </div>
 
-      <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, overflowX: "auto" }}>
-        <svg width="100%" viewBox={`0 -8 ${viewW} ${viewH}`} style={{ minWidth: viewW, display: "block" }}>
+      <div style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10, overflow: "hidden", width: "100%", maxWidth: "100%", minWidth: 0 }}>
+        <svg width="100%" height="auto" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
           {maxLen > truckL ? (
             <polygon points={fp([tf(shiftX + truckL, 0, 0), tf(shiftX + maxLen, 0, 0), tf(shiftX + maxLen, TRUCK_W, 0), tf(shiftX + truckL, TRUCK_W, 0)])} fill="rgba(255,159,10,.12)" stroke="#ff9f0a" strokeWidth={1} strokeDasharray="4,3" />
           ) : null}
@@ -1290,6 +1391,40 @@ export default function BmcLogisticaApp() {
   const addStop = () => setStops((p) => [...p, mkStop(p.length)]);
   const rmStop = (id) => setStops((p) => p.filter((s) => s.id !== id).map((s, i) => ({ ...s, orden: i + 1, color: COLORS[i % 8] })));
   const updStop = (id, k, v) => setStops((p) => p.map((s) => (s.id === id ? { ...s, [k]: v } : s)));
+  async function pushVentasFechaEntrega(stop) {
+    const row = stop.ventasSheetRow1Based;
+    const gid = stop.ventasTabGid || SH_GID;
+    const iso = stop.fechaEntrega;
+    if (row == null || row < 2) return;
+    const token = typeof import.meta !== "undefined" ? import.meta.env?.VITE_BMC_API_AUTH_TOKEN : "";
+    if (!token) {
+      setAutoLoadMsg(
+        "Planilla: falta VITE_BMC_API_AUTH_TOKEN en el build para escribir en Google Sheets (mismo valor que API_AUTH_TOKEN del servidor)."
+      );
+      return;
+    }
+    const base = getCalcApiBase();
+    try {
+      const res = await fetch(`${base}/api/ventas/logistica-fecha-entrega`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ gid: String(gid), row1Based: row, fechaEntrega: iso || "" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+      setAutoLoadMsg(`Planilla Ventas: fecha guardada (fila ${row}, columna G).`);
+    } catch (e) {
+      setAutoLoadMsg(`Planilla Ventas: error al guardar fecha — ${e.message}`);
+    }
+  }
+  function onFechaEntregaChange(stopId, iso) {
+    setStops((p) => {
+      const next = p.map((s) => (s.id === stopId ? { ...s, fechaEntrega: iso } : s));
+      const snap = next.find((s) => s.id === stopId);
+      if (snap) queueMicrotask(() => pushVentasFechaEntrega(snap));
+      return next;
+    });
+  }
   const updStopCheck = (id, key, value) => setStops((p) => p.map((s) => (s.id === id ? { ...s, checks: { ...s.checks, [key]: value } } : s)));
   const addPanel = (sid) => setStops((p) => p.map((s) => (s.id === sid ? { ...s, paneles: [...s.paneles, mkPanel()] } : s)));
   const rmPanel = (sid, pid) => setStops((p) => p.map((s) => (s.id === sid ? { ...s, paneles: s.paneles.filter((x) => x.id !== pid) } : s)));
@@ -1385,8 +1520,9 @@ export default function BmcLogisticaApp() {
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
       const found = dataRows
-        .filter((r) => normalizeText(r[7] || "").includes(q))
-        .map((r) => mapVentasRow(headers, r));
+        .map((r, i) => ({ r, sheetRow: i + 2 }))
+        .filter(({ r }) => normalizeText(r[7] || "").includes(q))
+        .map(({ r, sheetRow }) => mapVentasRow(headers, r, sheetRow));
       if (!found.length) setShErr(`Sin resultados para "${search}"`);
       else setResults(found);
     } catch (e) {
@@ -1405,7 +1541,7 @@ export default function BmcLogisticaApp() {
       const headers = rows[0] || [];
       const dataRows = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim()));
       setVentasCache({ headers, rows: dataRows });
-      const found = dataRows.map((r) => mapVentasRow(headers, r));
+      const found = dataRows.map((r, i) => mapVentasRow(headers, r, i + 2));
       if (!found.length) setShErr("No hay filas con datos en esta pestaña.");
       else {
         setResults(found);
@@ -1432,6 +1568,9 @@ export default function BmcLogisticaApp() {
       cotizacionId: r.cotizacionId || r.orderId || "",
       zona: r.zona || "",
       contactoRecepcion: r.recepcionContacto || "",
+      fechaEntrega: r.fechaEntrega || "",
+      ventasSheetRow1Based: r.ventasSheetRow1Based ?? null,
+      ventasTabGid: r.ventasTabGid || SH_GID,
       checks: {
         ...mkStop(0).checks,
         datosOk: Boolean(r.nombre && r.dir && r.tel),
@@ -1645,27 +1784,33 @@ export default function BmcLogisticaApp() {
       {view === "carga" ? (
         <div>
           <DiagramPanel stops={stops} cargo={cargo} truckL={truckL} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-            <div style={{ ...css.card, padding: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}>
+            <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
               <div style={{ ...css.sectionTitle, marginBottom: 8 }}>🔭 Vista Superior</div>
               {(() => {
                 const TPX = 50;
                 const TPY = 70;
                 const minX = cargo.minX;
                 const totalLen = cargo.maxLen - minX;
-                const tvW = Math.max(320, totalLen * TPX + 100);
+                const cabW = CAB_LEN_M * TPX;
+                const bedLeft = 40 + (-minX) * TPX;
+                const cabLeft = bedLeft - cabW;
+                const shiftX = cabLeft < 14 ? 14 - cabLeft : 0;
+                const tvW = Math.max(320, totalLen * TPX + cabW + 100 + shiftX);
                 const tvH = TRUCK_W * TPY + 60;
+                const sx = (x) => x + shiftX;
                 return (
-                  <div style={{ overflowX: "auto" }}>
-                    <svg width="100%" viewBox={`0 0 ${tvW} ${tvH}`} style={{ minWidth: tvW, display: "block" }}>
-                      <rect x={40 + (-minX) * TPX} y={10} width={truckL * TPX} height={TRUCK_W * TPY} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
-                      {cargo.maxLen > truckL ? <rect x={40 + (truckL - minX) * TPX} y={10} width={(cargo.maxLen - truckL) * TPX} height={TRUCK_W * TPY} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
-                      <line x1={40} y1={10 + ROW_W * TPY} x2={40 + totalLen * TPX} y2={10 + ROW_W * TPY} stroke={T.primary} strokeWidth={1} strokeDasharray="4,3" />
+                  <div style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+                    <svg width="100%" height="auto" viewBox={`0 0 ${tvW} ${tvH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+                      <TruckCabTopSvg x={sx(cabLeft)} y={10} w={cabW} h={TRUCK_W * TPY} stroke={T.primary} fill={T.surfaceAlt} />
+                      <rect x={sx(bedLeft)} y={10} width={truckL * TPX} height={TRUCK_W * TPY} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
+                      {cargo.maxLen > truckL ? <rect x={sx(40 + (truckL - minX) * TPX)} y={10} width={(cargo.maxLen - truckL) * TPX} height={TRUCK_W * TPY} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
+                      <line x1={sx(40)} y1={10 + ROW_W * TPY} x2={sx(40 + totalLen * TPX)} y2={10 + ROW_W * TPY} stroke={T.primary} strokeWidth={1} strokeDasharray="4,3" />
                       {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
                         const pw = pkg.len * TPX;
                         const ph2 = ROW_W * TPY;
                         const py2 = 10 + pkg.row * ROW_W * TPY;
-                        const px2 = 40 + (pkg.xStart - minX) * TPX;
+                        const px2 = sx(40 + (pkg.xStart - minX) * TPX);
                         return (
                           <g key={pkg.id}>
                             <rect x={px2} y={py2 + 1} width={pw - 1} height={ph2 - 2} fill={pkg.ov ? T.danger : pkg.sCol} opacity={0.8} rx={2} />
@@ -1673,50 +1818,122 @@ export default function BmcLogisticaApp() {
                           </g>
                         );
                       })}
-                      <text x={40 + (-minX) * TPX} y={8} textAnchor="middle" fontSize={9} fill={T.primary} fontWeight="bold">🚪</text>
-                      <text x={40 + ((truckL - minX) * TPX) / 2} y={tvH - 4} textAnchor="middle" fontSize={8} fill={T.muted}>↔ {truckL}m carrocería</text>
-                      <text x={34} y={10 + ROW_W * TPY / 2 + 3} textAnchor="end" fontSize={8} fill={T.muted}>A</text>
-                      <text x={34} y={10 + ROW_W * TPY + ROW_W * TPY / 2 + 3} textAnchor="end" fontSize={8} fill={T.muted}>B</text>
+                      <text x={sx(bedLeft)} y={8} textAnchor="middle" fontSize={9} fill={T.primary} fontWeight="bold">🚪</text>
+                      <text x={sx(bedLeft) + (truckL * TPX) / 2} y={tvH - 4} textAnchor="middle" fontSize={8} fill={T.muted}>↔ {truckL}m carrocería</text>
+                      <text x={sx(34)} y={10 + ROW_W * TPY / 2 + 3} textAnchor="end" fontSize={8} fill={T.muted}>A</text>
+                      <text x={sx(34)} y={10 + ROW_W * TPY + ROW_W * TPY / 2 + 3} textAnchor="end" fontSize={8} fill={T.muted}>B</text>
                     </svg>
                   </div>
                 );
               })()}
             </div>
-            <div style={{ ...css.card, padding: 14 }}>
-              <div style={{ ...css.sectionTitle, marginBottom: 8 }}>📏 Vista Lateral</div>
+            <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
+              <div style={{ ...css.sectionTitle, marginBottom: 8 }}>📏 Vista lateral izq. (desde cabina)</div>
               {(() => {
                 const SVX = 50;
                 const SVZ = 90;
                 const minX = cargo.minX;
                 const totalLen = cargo.maxLen - minX;
-                const svW = Math.max(320, totalLen * SVX + 100);
+                const cabW = CAB_LEN_M * SVX;
+                const bedLeft = 40 + (-minX) * SVX;
+                const cabLeft = bedLeft - cabW;
+                const shiftX = cabLeft < 14 ? 14 - cabLeft : 0;
+                const sx = (x) => x + shiftX;
+                const svW = Math.max(320, totalLen * SVX + cabW + 120 + shiftX);
                 const svH = MAX_H * SVZ + 60;
+                const groundY = svH - 10;
+                const rowOp = (row) => (row === 0 ? 0.9 : 0.45);
                 return (
-                  <div style={{ overflowX: "auto" }}>
-                    <svg width="100%" viewBox={`0 0 ${svW} ${svH + 20}`} style={{ minWidth: svW, display: "block" }}>
-                      <line x1={40} y1={svH - 10} x2={40 + totalLen * SVX + 20} y2={svH - 10} stroke={T.text} strokeWidth={2} />
-                      <rect x={40 + (-minX) * SVX} y={10} width={truckL * SVX} height={svH - 20} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
-                      {cargo.maxLen > truckL ? <rect x={40 + (truckL - minX) * SVX} y={10} width={(cargo.maxLen - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
-                      <line x1={35} y1={svH - 10 - MAX_H * SVZ} x2={40 + totalLen * SVX + 10} y2={svH - 10 - MAX_H * SVZ} stroke={T.danger} strokeWidth={1.2} strokeDasharray="5,3" />
-                      <text x={32} y={svH - 10 - MAX_H * SVZ + 3} textAnchor="end" fontSize={8} fill={T.danger} fontWeight="bold">{`${MAX_H}m`}</text>
+                  <div style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+                    <svg width="100%" height="auto" viewBox={`0 0 ${svW} ${svH + 20}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+                      <line x1={sx(40)} y1={groundY} x2={sx(40 + totalLen * SVX + 20)} y2={groundY} stroke={T.text} strokeWidth={2} />
+                      <TruckCabSideSvg x={sx(cabLeft)} cabW={cabW} groundY={groundY} svz={SVZ} stroke={T.primary} fill={T.surfaceAlt} />
+                      <rect x={sx(bedLeft)} y={10} width={truckL * SVX} height={svH - 20} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
+                      {cargo.maxLen > truckL ? <rect x={sx(40 + (truckL - minX) * SVX)} y={10} width={(cargo.maxLen - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
+                      <line x1={sx(35)} y1={groundY - MAX_H * SVZ} x2={sx(40 + totalLen * SVX + 10)} y2={groundY - MAX_H * SVZ} stroke={T.danger} strokeWidth={1.2} strokeDasharray="5,3" />
+                      <text x={sx(32)} y={groundY - MAX_H * SVZ + 3} textAnchor="end" fontSize={8} fill={T.danger} fontWeight="bold">{`${MAX_H}m`}</text>
                       {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
-                        const bx = 40 + (pkg.xStart - minX) * SVX;
-                        const by = svH - 10 - pkg.zBase * SVZ - pkg.h * SVZ;
+                        const bx = sx(40 + (pkg.xStart - minX) * SVX);
+                        const by = groundY - pkg.zBase * SVZ - pkg.h * SVZ;
                         const bw = pkg.len * SVX;
                         const bh = pkg.h * SVZ;
                         return (
                           <g key={pkg.id}>
-                            <rect x={bx} y={by} width={bw - 1} height={Math.max(bh - 1, 2)} fill={pkg.ov ? T.danger : pkg.sCol} opacity={pkg.row === 0 ? 0.9 : 0.45} rx={1} />
+                            <rect x={bx} y={by} width={bw - 1} height={Math.max(bh - 1, 2)} fill={pkg.ov ? T.danger : pkg.sCol} opacity={rowOp(pkg.row)} rx={1} />
                             {bh > 12 && bw > 40 ? <text x={bx + bw / 2} y={by + bh / 2 + 3} textAnchor="middle" fontSize={7} fill="white" fontWeight="bold">{pkg.kind === "accessory" ? `P${pkg.sOrd} ACC` : `P${pkg.sOrd}`}</text> : null}
                           </g>
                         );
                       })}
                       {Array.from({ length: Math.floor(MAX_H / 0.5) + 1 }, (_, i) => i * 0.5).map((m) => {
-                        const py = svH - 10 - m * SVZ;
+                        const py = groundY - m * SVZ;
                         return (
                           <g key={m}>
-                            <line x1={36} y1={py} x2={40} y2={py} stroke={T.muted} strokeWidth={1} />
-                            <text x={34} y={py + 3} textAnchor="end" fontSize={7} fill={T.muted}>{m}m</text>
+                            <line x1={sx(36)} y1={py} x2={sx(40)} y2={py} stroke={T.muted} strokeWidth={1} />
+                            <text x={sx(34)} y={py + 3} textAnchor="end" fontSize={7} fill={T.muted}>{m}m</text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                );
+              })()}
+            </div>
+            <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
+              <div style={{ ...css.sectionTitle, marginBottom: 8 }}>📐 Vista lateral der.</div>
+              {(() => {
+                const SVX = 50;
+                const SVZ = 90;
+                const minX = cargo.minX;
+                const totalLen = cargo.maxLen - minX;
+                const cabW = CAB_LEN_M * SVX;
+                const bedLeft = 40 + (-minX) * SVX;
+                const cabLeft = bedLeft - cabW;
+                const shiftX = cabLeft < 14 ? 14 - cabLeft : 0;
+                const sx = (x) => x + shiftX;
+                const svW = Math.max(320, totalLen * SVX + cabW + 120 + shiftX);
+                const svH = MAX_H * SVZ + 60;
+                const groundY = svH - 10;
+                const rowOp = (row) => (row === 1 ? 0.9 : 0.45);
+                const leftEdge = sx(cabLeft);
+                const rightEdge = sx(40 + totalLen * SVX + 20);
+                const mirrorT = leftEdge + rightEdge;
+                const cabTopLabel = groundY - CAB_HEIGHT_M * SVZ;
+                return (
+                  <div style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+                    <svg width="100%" height="auto" viewBox={`0 0 ${svW} ${svH + 20}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+                      <g transform={`translate(${mirrorT},0) scale(-1,1)`}>
+                        <line x1={sx(40)} y1={groundY} x2={rightEdge} y2={groundY} stroke={T.text} strokeWidth={2} />
+                        <TruckCabSideSvg x={sx(cabLeft)} cabW={cabW} groundY={groundY} svz={SVZ} stroke={T.primary} fill={T.surfaceAlt} showLabel={false} />
+                        <rect x={sx(bedLeft)} y={10} width={truckL * SVX} height={svH - 20} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
+                        {cargo.maxLen > truckL ? <rect x={sx(40 + (truckL - minX) * SVX)} y={10} width={(cargo.maxLen - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
+                        <line x1={sx(35)} y1={groundY - MAX_H * SVZ} x2={sx(40 + totalLen * SVX + 10)} y2={groundY - MAX_H * SVZ} stroke={T.danger} strokeWidth={1.2} strokeDasharray="5,3" />
+                        {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
+                          const bx = sx(40 + (pkg.xStart - minX) * SVX);
+                          const by = groundY - pkg.zBase * SVZ - pkg.h * SVZ;
+                          const bw = pkg.len * SVX;
+                          const bh = pkg.h * SVZ;
+                          return (
+                            <rect key={pkg.id} x={bx} y={by} width={bw - 1} height={Math.max(bh - 1, 2)} fill={pkg.ov ? T.danger : pkg.sCol} opacity={rowOp(pkg.row)} rx={1} />
+                          );
+                        })}
+                      </g>
+                      <text x={mirrorT - (sx(cabLeft) + cabW / 2)} y={cabTopLabel - 3} textAnchor="middle" fontSize={7} fill={T.muted}>Cabina</text>
+                      {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
+                        const bx = sx(40 + (pkg.xStart - minX) * SVX);
+                        const by = groundY - pkg.zBase * SVZ - pkg.h * SVZ;
+                        const bw = pkg.len * SVX;
+                        const bh = pkg.h * SVZ;
+                        const cx = mirrorT - (bx + bw / 2);
+                        const label = pkg.kind === "accessory" ? `P${pkg.sOrd} ACC` : `P${pkg.sOrd}`;
+                        return bh > 12 && bw > 40 ? <text key={`t-${pkg.id}`} x={cx} y={by + bh / 2 + 3} textAnchor="middle" fontSize={7} fill="white" fontWeight="bold">{label}</text> : null;
+                      })}
+                      <text x={mirrorT - sx(32)} y={groundY - MAX_H * SVZ + 3} textAnchor="start" fontSize={8} fill={T.danger} fontWeight="bold">{`${MAX_H}m`}</text>
+                      {Array.from({ length: Math.floor(MAX_H / 0.5) + 1 }, (_, i) => i * 0.5).map((m) => {
+                        const py = groundY - m * SVZ;
+                        return (
+                          <g key={m}>
+                            <line x1={mirrorT - sx(40)} y1={py} x2={mirrorT - sx(36)} y2={py} stroke={T.muted} strokeWidth={1} />
+                            <text x={mirrorT - sx(34)} y={py + 3} textAnchor="end" fontSize={7} fill={T.muted}>{m}m</text>
                           </g>
                         );
                       })}
@@ -1933,6 +2150,22 @@ export default function BmcLogisticaApp() {
                     <div><label style={css.lbl}>Zona</label><input style={css.inp} value={stop.zona || ""} onChange={(e) => updStop(stop.id, "zona", e.target.value)} placeholder="Barrio / zona" /></div>
                     <div><label style={css.lbl}>Recepción (contacto)</label><input style={css.inp} value={stop.contactoRecepcion || ""} onChange={(e) => updStop(stop.id, "contactoRecepcion", e.target.value)} placeholder="Nombre receptor" /></div>
                     <div><label style={css.lbl}>Horario</label><input style={css.inp} value={stop.horarioEntrega || ""} onChange={(e) => updStop(stop.id, "horarioEntrega", e.target.value)} placeholder="Ej. 08:00-12:00" /></div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 220px) 1fr", gap: 8, marginBottom: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={css.lbl}>Fecha De Entrega</label>
+                      <input
+                        style={css.inp}
+                        type="date"
+                        value={/^\d{4}-\d{2}-\d{2}$/.test(String(stop.fechaEntrega || "").trim()) ? stop.fechaEntrega : ""}
+                        onChange={(e) => onFechaEntregaChange(stop.id, e.target.value)}
+                      />
+                    </div>
+                    <div style={{ fontSize: 11, color: T.muted, paddingBottom: 8, lineHeight: 1.35 }}>
+                      {stop.ventasSheetRow1Based
+                        ? `Se guarda en la planilla Ventas (columna «Fecha De Entrega», G), fila ${stop.ventasSheetRow1Based}, formato dd/mm/aaaa. Requiere API y token.`
+                        : "Para escribir en la planilla, agregá la parada desde Buscar / Cargar actuales (fila vinculada)."}
+                    </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div><label style={css.lbl}>Link PDF pedido</label><input style={css.inp} value={stop.pdfLink || ""} onChange={(e) => updStop(stop.id, "pdfLink", e.target.value)} placeholder="https://drive.google.com/..." /></div>
