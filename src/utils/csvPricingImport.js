@@ -3,7 +3,7 @@
 // Usado por PricingEditor y scripts de verificación (Node + Vite).
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Columna de venta: MATRIZ API (`venta_local`) o export editor (`venta_bmc_local` / `venta_bmc` / `venta`). No mapea `venta_local_iva_inc`. */
+/** Columna de venta: MATRIZ API (`venta_local`) o export editor (`venta_bmc_local` / `venta_bmc` / `venta`). Para M ver `findVentaLocalIvaIncColumnIndex`. */
 export function findVentaColumnIndex(headers) {
   return headers.findIndex((c) => {
     const cl = String(c || "").trim().toLowerCase();
@@ -21,6 +21,11 @@ export function findVentaWebColumnIndex(headers) {
 /** Referencia MATRIZ col U → CSV `venta_web_iva_inc`. */
 export function findVentaWebIvaIncColumnIndex(headers) {
   return headers.findIndex((c) => String(c || "").trim().toLowerCase() === "venta_web_iva_inc");
+}
+
+/** Referencia MATRIZ col M → CSV `venta_local_iva_inc` (consumidor c/IVA, tal cual planilla). */
+export function findVentaLocalIvaIncColumnIndex(headers) {
+  return headers.findIndex((c) => String(c || "").trim().toLowerCase() === "venta_local_iva_inc");
 }
 
 /**

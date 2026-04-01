@@ -22,6 +22,7 @@ import {
   findVentaColumnIndex,
   findVentaWebColumnIndex,
   findVentaWebIvaIncColumnIndex,
+  findVentaLocalIvaIncColumnIndex,
   getDuplicatePathReport,
   getDuplicatePathReportFromRows,
   parseCsvRows,
@@ -799,6 +800,12 @@ assert("findVentaColumnIndex editor", findVentaColumnIndex(hdrEditor) === 4, fin
 const hdrWebCols = "path,costo,venta_local,venta_web,venta_web_iva_inc,tab".split(",");
 assert("findVentaWebColumnIndex exact", findVentaWebColumnIndex(hdrWebCols) === 3, findVentaWebColumnIndex(hdrWebCols), 3);
 assert("findVentaWebIvaIncColumnIndex", findVentaWebIvaIncColumnIndex(hdrWebCols) === 4, findVentaWebIvaIncColumnIndex(hdrWebCols), 4);
+assert(
+  "findVentaLocalIvaIncColumnIndex",
+  findVentaLocalIvaIncColumnIndex(hdrMatriz) === 5,
+  findVentaLocalIvaIncColumnIndex(hdrMatriz),
+  5
+);
 
 const csvWithQuotedCommaAndNewline = [
   "path,descripcion,costo,venta_local,venta_web,venta_web_iva_inc",

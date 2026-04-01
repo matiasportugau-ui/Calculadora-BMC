@@ -24,6 +24,7 @@ import {
   findVentaColumnIndex,
   findVentaWebColumnIndex,
   findVentaWebIvaIncColumnIndex,
+  findVentaLocalIvaIncColumnIndex,
   parseCsvNumber,
   parseCsvRows,
   getDuplicatePathReportFromRows,
@@ -157,6 +158,7 @@ export default function PricingEditor({ onSave }) {
       const costoIdx = cols.findIndex((c) => /costo/i.test(c));
       const ventaIdx = findVentaColumnIndex(cols);
       const webIdx = findVentaWebColumnIndex(cols);
+      const ventaIvaIdx = findVentaLocalIvaIncColumnIndex(cols);
       const webIvaIdx = findVentaWebIvaIncColumnIndex(cols);
       if (pathIdx < 0) {
         setImportMsg("La MATRIZ no tiene columna 'path'.");
@@ -176,15 +178,25 @@ export default function PricingEditor({ onSave }) {
           const v = parseCsvNumber(cells[ventaIdx]);
           if (v != null) { updates[`${path}.venta`] = v; count++; }
         }
+        if (ventaIvaIdx >= 0 && cells[ventaIvaIdx]) {
+          const v = parseCsvNumber(cells[ventaIvaIdx]);
+          if (v != null) { updates[`${path}.ventaIvaInc`] = v; count++; }
+        }
         if (webIdx >= 0 && cells[webIdx]) {
           const v = parseCsvNumber(cells[webIdx]);
           if (v != null) { updates[`${path}.web`] = v; count++; }
         }
+        if (webIvaIdx >= 0 && cells[webIvaIdx]) {
+          const v = parseCsvNumber(cells[webIvaIdx]);
+          if (v != null) { updates[`${path}.webIvaInc`] = v; count++; }
+        }
       }
       const dupReport = getDuplicatePathReportFromRows(rows, pathIdx);
-      let msg = `Cargados ${count} valores desde MATRIZ (costo ex IVA, venta BMC ex IVA, venta web ex IVA).`;
-      if (webIvaIdx >= 0) {
-        msg += " Web c/IVA se recalcula en la UI desde Web ex IVA.";
+      let msg = `Cargados ${count} valores desde MATRIZ (F/L/T + columnas M/U cuando vienen en el CSV).`;
+      if (ventaIvaIdx < 0 && webIvaIdx < 0) {
+        msg += " Sin M/U en CSV: Venta BMC c/IVA y Web c/IVA = ex IVA × 1,22.";
+      } else {
+        msg += " Referencias c/IVA: M y U de la planilla cuando están en el archivo; si falta una celda, se usa ex IVA × 1,22.";
       }
       if (dupReport.length) {
         const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
@@ -215,13 +227,27 @@ export default function PricingEditor({ onSave }) {
 
   const displayRows = useMemo(
     () =>
-      filtered.map((item) => ({
-        ...item,
-        ventaIvaInc:
-          item.venta != null ? +((Number(item.venta) || 0) * IVA_MULT).toFixed(2) : null,
-        webIvaInc:
-          item.web != null ? +((Number(item.web) || 0) * IVA_MULT).toFixed(2) : null,
-      })),
+      filtered.map((item) => {
+        const ventaEx = item.venta != null ? Number(item.venta) : null;
+        const webEx = item.web != null ? Number(item.web) : null;
+        const ventaIvaExplicit = item.ventaIvaInc != null && !Number.isNaN(Number(item.ventaIvaInc)) ? +Number(item.ventaIvaInc).toFixed(2) : null;
+        const webIvaExplicit = item.webIvaInc != null && !Number.isNaN(Number(item.webIvaInc)) ? +Number(item.webIvaInc).toFixed(2) : null;
+        return {
+          ...item,
+          ventaIvaInc:
+            ventaIvaExplicit != null
+              ? ventaIvaExplicit
+              : ventaEx != null
+                ? +((ventaEx || 0) * IVA_MULT).toFixed(2)
+                : null,
+          webIvaInc:
+            webIvaExplicit != null
+              ? webIvaExplicit
+              : webEx != null
+                ? +((webEx || 0) * IVA_MULT).toFixed(2)
+                : null,
+        };
+      }),
     [filtered]
   );
 
@@ -239,6 +265,8 @@ export default function PricingEditor({ onSave }) {
       if (isNaN(num) || num < 0) return;
       setPricingOverride(fullPath, num);
     }
+    if (field === "venta") setPricingOverride(`${path}.ventaIvaInc`, null);
+    if (field === "web") setPricingOverride(`${path}.webIvaInc`, null);
     refresh();
     setEditing(null);
     onSave?.();
@@ -251,6 +279,10 @@ export default function PricingEditor({ onSave }) {
     const pricing = getPricing();
     const getCurrent = (fullPath) => getValueAtPath(pricing, fullPath);
     applyBulkPercent(paths, bulkField, pct, getCurrent);
+    for (const p of paths) {
+      if (bulkField === "venta") setPricingOverride(`${p}.ventaIvaInc`, null);
+      if (bulkField === "web") setPricingOverride(`${p}.webIvaInc`, null);
+    }
     invalidatePricingCache();
     refresh();
     setItems(getPricingItemsFlat());
@@ -283,17 +315,32 @@ export default function PricingEditor({ onSave }) {
   };
 
   const handleDownloadPlanilla = () => {
-    const headers = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_web", "venta_web_iva_inc", "unidad"];
-    const rows = items.map((i) => [
-      i.path,
-      (i.label || "").replace(/"/g, '""'),
-      (i.categoria || "").replace(/"/g, '""'),
-      i.costo != null ? String(i.costo) : "",
-      i.venta != null ? String(i.venta) : "",
-      i.web != null ? String(i.web) : "",
-      i.web != null ? String(+((Number(i.web) || 0) * IVA_MULT).toFixed(2)) : "",
-      (i.unidad || "").replace(/"/g, '""'),
-    ]);
+    const headers = ["path", "label", "categoria", "costo", "venta_bmc_local", "venta_local_iva_inc", "venta_web", "venta_web_iva_inc", "unidad"];
+    const rows = items.map((i) => {
+      const ventaIvaOut =
+        i.ventaIvaInc != null && !Number.isNaN(Number(i.ventaIvaInc))
+          ? String(+Number(i.ventaIvaInc).toFixed(2))
+          : i.venta != null
+            ? String(+((Number(i.venta) || 0) * IVA_MULT).toFixed(2))
+            : "";
+      const webIvaOut =
+        i.webIvaInc != null && !Number.isNaN(Number(i.webIvaInc))
+          ? String(+Number(i.webIvaInc).toFixed(2))
+          : i.web != null
+            ? String(+((Number(i.web) || 0) * IVA_MULT).toFixed(2))
+            : "";
+      return [
+        i.path,
+        (i.label || "").replace(/"/g, '""'),
+        (i.categoria || "").replace(/"/g, '""'),
+        i.costo != null ? String(i.costo) : "",
+        i.venta != null ? String(i.venta) : "",
+        ventaIvaOut,
+        i.web != null ? String(i.web) : "",
+        webIvaOut,
+        (i.unidad || "").replace(/"/g, '""'),
+      ];
+    });
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => (c.includes(",") || c.includes('"') ? `"${c}"` : c)).join(","))].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -324,6 +371,7 @@ export default function PricingEditor({ onSave }) {
         const webIdxExact = findVentaWebColumnIndex(cols);
         const webIdx =
           webIdxExact >= 0 ? webIdxExact : cols.findIndex((c) => String(c || "").trim().toLowerCase() === "web");
+        const ventaIvaIdx = findVentaLocalIvaIncColumnIndex(cols);
         const webIvaIdx = findVentaWebIvaIncColumnIndex(cols);
         if (pathIdx < 0) {
           setImportMsg("La planilla debe tener columna 'path'.");
@@ -343,15 +391,25 @@ export default function PricingEditor({ onSave }) {
             const v = parseCsvNumber(cells[ventaIdx]);
             if (v != null) { updates[`${path}.venta`] = v; count++; }
           }
+          if (ventaIvaIdx >= 0 && cells[ventaIvaIdx]) {
+            const v = parseCsvNumber(cells[ventaIvaIdx]);
+            if (v != null) { updates[`${path}.ventaIvaInc`] = v; count++; }
+          }
           if (webIdx >= 0 && cells[webIdx]) {
             const v = parseCsvNumber(cells[webIdx]);
             if (v != null) { updates[`${path}.web`] = v; count++; }
           }
+          if (webIvaIdx >= 0 && cells[webIvaIdx]) {
+            const v = parseCsvNumber(cells[webIvaIdx]);
+            if (v != null) { updates[`${path}.webIvaInc`] = v; count++; }
+          }
         }
         const dupReport = getDuplicatePathReportFromRows(rows, pathIdx);
         let msg = `Importados ${count} valores correctamente.`;
-        if (webIvaIdx >= 0) {
-          msg += " Web c/IVA se recalcula desde Web ex IVA.";
+        if (ventaIvaIdx < 0 && webIvaIdx < 0) {
+          msg += " Sin columnas M/U: c/IVA = ex IVA × 1,22.";
+        } else {
+          msg += " M/U de planilla cuando vienen en el archivo.";
         }
         if (dupReport.length) {
           const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
@@ -392,10 +450,10 @@ export default function PricingEditor({ onSave }) {
             <strong>Costo / Venta BMC / Venta Web</strong> — <strong>USD sin IVA</strong> (el total del presupuesto suma IVA una sola vez al final).
           </li>
           <li>
-            <strong>Derivados c/IVA:</strong> <strong>Venta BMC c/IVA</strong> y <strong>Web c/IVA</strong> se calculan en esta UI como <strong>ex IVA × 1,22</strong>.
+            <strong>Derivados c/IVA:</strong> si cargaste desde MATRIZ o CSV con columnas <code>venta_local_iva_inc</code> (M) y <code>venta_web_iva_inc</code> (U), esas celdas son la referencia <strong>tal cual planilla</strong>. Si no vienen, la UI usa <strong>ex IVA × 1,22</strong>.
           </li>
           <li>
-            <strong>MATRIZ — columnas operativas:</strong> <strong>F</strong> = costo ex IVA, <strong>L</strong> = Venta BMC ex IVA, <strong>T</strong> = Venta Web ex IVA. La UI calcula automáticamente las columnas c/IVA.
+            <strong>MATRIZ:</strong> <strong>F</strong> costo ex IVA, <strong>L</strong> venta BMC ex IVA, <strong>M</strong> ref. consumidor c/IVA, <strong>T</strong> web ex IVA, <strong>U</strong> web c/IVA. Al pulsar &quot;Cargar desde MATRIZ&quot; se importan F/L/T y, si existen en el CSV, M y U.
           </li>
         </ul>
       </div>
@@ -422,7 +480,7 @@ export default function PricingEditor({ onSave }) {
             gap: 8,
             opacity: cargandoMatriz ? 0.7 : 1,
           }}
-          title="Cargar desde MATRIZ: costo ex IVA, venta BMC ex IVA y venta web ex IVA"
+          title="Cargar desde MATRIZ: F/L/T y referencias M/U cuando vienen en el CSV del servidor"
         >
           <RefreshCw size={16} />
           {cargandoMatriz ? "Cargando..." : "Cargar desde MATRIZ"}
@@ -646,9 +704,9 @@ export default function PricingEditor({ onSave }) {
               <th style={{ padding: "12px 10px", textAlign: "left", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Ítem</th>
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Costo unitario USD s/IVA">Costo</th>
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC USD s/IVA">Venta BMC ex IVA</th>
-              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC USD c/IVA">Venta BMC c/IVA</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Col M MATRIZ si se cargó; si no, Venta BMC ex IVA × 1,22">Venta BMC c/IVA</th>
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web USD s/IVA">Venta Web ex IVA</th>
-              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web USD c/IVA calculado desde Web ex IVA">Web c/IVA</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Col U MATRIZ si se cargó; si no, Web ex IVA × 1,22">Web c/IVA</th>
               <th style={{ padding: "12px 10px", textAlign: "center", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad</th>
             </tr>
           </thead>

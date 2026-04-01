@@ -65,3 +65,4 @@ PDF Productos/
 
 # Bundles locales de export (no versionar)
 bmc-logistica-transport-bundle.zip
+.env*.local
