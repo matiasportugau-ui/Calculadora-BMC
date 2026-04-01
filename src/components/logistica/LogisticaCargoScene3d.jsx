@@ -132,8 +132,9 @@ function SceneContent({ placed, shiftX, truckL, maxLen, totalLen, selectedId, on
 }
 
 /**
- * Vista WebGL del mismo layout que `placeCargo` / SVG isométrico.
- * Eje X = largo del camión, Z = ancho (filas), Y = altura.
+ * Vista WebGL del mismo layout que el SVG (coordenadas ya espejadas en el padre).
+ * Cabina a la izquierda (X bajo), cola a la derecha; saliente hacia X > truckL.
+ * Eje Z = ancho (filas), Y = altura.
  *
  * @param {{ placed: object[], shiftX: number, truckL: number, maxLen: number, totalLen: number }} props
  */

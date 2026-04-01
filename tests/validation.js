@@ -58,6 +58,13 @@ import {
   kgPerM2ForEspesor,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/loadCharacteristics.js";
 import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../src/utils/ventasPedidoRetiroParse.js";
+import {
+  LOGISTICA_PLAN_EXPORT_SCHEMA_VERSION,
+  bedViewExtents,
+  buildLogisticaPlanExportPayload,
+  computeLogisticaKpis,
+  mirrorBedXForView,
+} from "../src/utils/bmcLogisticaBedView.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -1172,6 +1179,58 @@ assert(
   pasteDual.fields,
   "1342836/53733",
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 31: Logística — vista cama (espejo) + export JSON plan
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 31: bmcLogisticaBedView ═══");
+
+const truckLView = 10;
+const pkgEngine = { xStart: -2, xEnd: 8, len: 10, id: "x" };
+const mirrored = mirrorBedXForView(pkgEngine, truckLView);
+assert("mirrorBedXForView maps engine to view axis", mirrored.xStart === 2 && mirrored.xEnd === 12, mirrored, "2..12");
+
+const ext = bedViewExtents([pkgEngine], truckLView);
+assert("bedViewExtents minXV maxXV saliente", ext.minXV === 0 && ext.maxXV === 12, ext, "0..12");
+
+const cargoKpiStub = {
+  placed: [
+    {
+      ...pkgEngine,
+      sId: "s1",
+      sOrd: 1,
+      n: 1,
+      h: 0.5,
+      row: 0,
+      zBase: 0,
+      stackId: "S1",
+      kind: "panel",
+      ov: false,
+    },
+  ],
+  rowH: [0.5, 0.3],
+  stacksByRow: [[{ id: "S1" }]],
+  warns: [],
+  minX: -2,
+  maxX: 8,
+  maxLen: 10,
+  strategy: "balanced",
+  layoutMode: "auto",
+  manualLayoutVersion: 1,
+  stopUnloadOrder: [],
+};
+const kpis = computeLogisticaKpis(cargoKpiStub, truckLView);
+assert("computeLogisticaKpis salienteM ~2m", Math.abs(kpis.salienteM - 2) < 0.001, kpis.salienteM, 2);
+
+const exportPayload = buildLogisticaPlanExportPayload({ truckL: truckLView, cargo: cargoKpiStub, remitoNumero: "R-TEST" });
+assert(
+  "buildLogisticaPlanExportPayload schema + kind",
+  exportPayload.schemaVersion === LOGISTICA_PLAN_EXPORT_SCHEMA_VERSION && exportPayload.kind === "bmc-logistica-plan",
+  exportPayload.schemaVersion,
+  LOGISTICA_PLAN_EXPORT_SCHEMA_VERSION,
+);
+assert("buildLogisticaPlanExportPayload remitoNumero", exportPayload.remitoNumero === "R-TEST", exportPayload.remitoNumero, "R-TEST");
+assert("buildLogisticaPlanExportPayload kpis.view maxXV", exportPayload.kpis.maxXV === 12, exportPayload.kpis.maxXV, 12);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

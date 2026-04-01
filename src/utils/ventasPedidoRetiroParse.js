@@ -1,6 +1,9 @@
 /**
- * Extrae "N° Pedido" y "N° Retiro" desde texto libre (p. ej. columna ESTADO en 2.0 Ventas).
- * Patrones típicos: "N° Pedido 1342836 / N° Retiro 53733", "Nº Pedido ...", variantes de símbolo °/º.
+ * Extrae "N° Pedido" y "N° Retiro" desde texto libre.
+ * En Ventas 2.0 la **columna F** suele titularse `FECHA ENTREGA` pero el contenido es un **resumen de estado**
+ * (segmentos separados por `/`), no la fecha de entrega coordinada (esa va en **columna G**).
+ * El **Nº Retiro** aparece ahí tras el mail a fábrica pidiendo retiro post análisis de carga.
+ * Patrones típicos: "N° Pedido 1342836 / N° Retiro 53733", "Nº Pedido ...", variantes °/º.
  */
 
 const RE_PEDIDO = /n[°º]?\s*pedido\s*[:\s]*([^\s/]+)/i;
@@ -41,8 +44,7 @@ export function parsePedidoFromColumnC(text) {
 }
 
 /**
- * Columna **F**: texto donde el **Nº Retiro** va como último campo (p. ej. al final o tras `|`).
- * Toma la **última** coincidencia de `N° Retiro …` en la celda; si no hay, intenta el último segmento `|`.
+ * Columna **F** (resumen estado, separadores `/` o `|`): localizar **Nº Retiro** (última coincidencia en la celda).
  * @returns {string}
  */
 export function parsePickupIdFromColumnF(text) {

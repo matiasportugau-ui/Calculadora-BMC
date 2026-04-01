@@ -4,9 +4,11 @@ import { extractTextFromPdfArrayBuffer } from "../../docs/bmc-dashboard-moderniz
 import { MAX_H, MANUAL_LAYOUT_VERSION, panelStableKey, accessoryStableKey } from "../utils/bmcLogisticaCargo.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { parsePedidoRetiroFromFreeText, parsePedidoFromColumnC, parsePickupIdFromColumnF } from "../utils/ventasPedidoRetiroParse.js";
+import { bedViewExtents, mirrorStackForView, buildLogisticaPlanExportPayload } from "../utils/bmcLogisticaBedView.js";
 
 const TRUCK_W = 2.4;
 const ROW_W = 1.2;
+
 /** Largo esquemático de cabina (solo dibujo orientativo, no afecta el motor de carga). */
 const CAB_LEN_M = 2.4;
 /** Altura cabina en vista lateral (m; escala vertical = SVZ px/m, mismo eje que paquetes). */
@@ -370,6 +372,13 @@ function buildSheetFallbackText(headers, row) {
   return [...preferred, ...all].join("\n");
 }
 
+/**
+ * Planilla Ventas — columnas F vs G (operativo logístico):
+ * - **F** (título típico `FECHA ENTREGA` u otro): resumen de **estado en texto**; los datos van separados por `/`.
+ *   Ahí vive el **Nº Retiro** (tras mail a fábrica pidiendo retiro, post análisis de carga); en la planilla puede
+ *   mostrarse en **rojo** si está producido o cuándo se producirá (formato Sheets, no se replica en la app).
+ * - **G**: **fecha de entrega** que definís al **coordinar la logística** — lectura/escritura desde esta app (`fechaDeEntregaG` o índice 6).
+ */
 function buildHeaderIndexMap(headers) {
   const map = {};
   if (!Array.isArray(headers)) return map;
@@ -385,9 +394,9 @@ function buildHeaderIndexMap(headers) {
     if (/direccion|^dir$|domicilio/.test(n) && map.dir == null) map.dir = i;
     if (/telefono|celular|^tel$/.test(n) && map.tel == null) map.tel = i;
     if (/pdf|adjunto|archivo|link/.test(n) && map.pdf == null) map.pdf = i;
-    /** Columna típica G: "Fecha De Entrega" (prioridad sobre otras celdas con "fecha" + "entrega"). */
+    /** G: encabezado con "fecha … de … entrega" = fecha coordinada logística (no el resumen F). */
     if (/fecha\s*de\s*entrega/i.test(n) && map.fechaDeEntregaG == null) map.fechaDeEntregaG = i;
-    /** Otras columnas p. ej. F "FECHA ENTREGA" (texto largo) — no la G de fecha cliente. */
+    /** F u otras: "FECHA ENTREGA" / texto estado + Nº Retiro (no confundir con fecha G). */
     if (/fecha.*entrega|fecha entrega/i.test(n) && map.fechaEntrega == null && map.fechaDeEntregaG !== i) {
       map.fechaEntrega = i;
     }
@@ -415,13 +424,13 @@ function getVentasColumnC(row) {
   return String(row[2] ?? "").trim();
 }
 
-/** Columna F (índice 5): último campo Nº Retiro (texto libre). */
+/** Columna F (índice 5): resumen estado (/, Nº Retiro, etc.); no es la fecha G. */
 function getVentasColumnF(row) {
   if (!row || row.length <= 5) return "";
   return String(row[5] ?? "").trim();
 }
 
-/** Columna G — encabezado "Fecha De Entrega" (índice legacy 6 si A=0). */
+/** Columna G (índice legacy 6 si A=0): fecha de entrega coordinada en logística. */
 function getVentasFechaDeEntregaCell(H, row) {
   return getVentasCell(H, row, "fechaDeEntregaG", 6);
 }
@@ -802,6 +811,7 @@ function placeCargo(stops, trL, strategy = "balanced", layoutOptions = {}) {
       rowH: [0, 0],
       warns: [],
       maxLen: trL,
+      maxX: trL,
       rowCursor: [trL, trL],
       minX: 0,
       stacksByRow: [[], []],
@@ -943,7 +953,10 @@ function placeCargo(stops, trL, strategy = "balanced", layoutOptions = {}) {
     placed,
     rowH,
     warns: [...warns],
+    /** Mayor largo de paquete (m); no confundir con extensión en eje X. */
     maxLen: Math.max(...placed.map((p) => p.len), trL),
+    /** Extensión máxima en eje X del layout (borde derecho de carga). */
+    maxX: placed.length ? Math.max(trL, ...placed.map((p) => p.xEnd)) : trL,
     rowCursor,
     minX: Math.min(0, ...placed.map((p) => p.xStart)),
     stacksByRow,
@@ -990,16 +1003,17 @@ function IsoBox({ x, y, z, dx, dy, dz, col, lbl, ox, oy, alpha = 1 }) {
   );
 }
 
-function DiagramPanel({ cargo, truckL }) {
-  const { placed, rowH, maxLen, minX, stopUnloadOrder, strategy, stacksByRow } = cargo;
-  const shiftX = -minX;
-  const totalLen = maxLen - minX;
+function DiagramPanel({ cargo, truckL, remitoNumero }) {
+  const { placed, rowH, stopUnloadOrder, strategy, stacksByRow } = cargo;
+  const { minXV, maxXV, placedView } = bedViewExtents(placed, truckL);
+  const shiftX = -minXV;
+  const totalLen = maxXV - minXV;
   const [diagramView, setDiagramView] = useState("svg");
   const OX = 60;
   const OY = 85;
   const viewW = Math.max(420, OX + (totalLen * C30 + TRUCK_W * C30) * ISX + 80);
   const viewH = 240;
-  const sorted = [...placed].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
+  const sorted = [...placedView].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
   const tf = (x, y, z) => isoP(x, y, z, OX, OY);
   const trLine = (x1, y1, z1, x2, y2, z2, col = "#60A5FA", sw = 1, dash = "") => {
     const a = tf(x1, y1, z1);
@@ -1027,14 +1041,33 @@ function DiagramPanel({ cargo, truckL }) {
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ flex: "1 1 200px", minWidth: 0 }}>
           <h3 style={{ margin: "0 0 4px", fontSize: 15, color: "#fff" }}>{diagramView === "webgl" ? "Explorar carga (WebGL)" : "Vista isométrica (SVG)"}</h3>
-          <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>Puerta trasera a la izquierda · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}</p>
+          <p style={{ margin: 0, color: "rgba(255,255,255,.65)", fontSize: 12 }}>
+            Cabina a la izquierda · cola / carga a la derecha · saliente hacia la cola · estrategia: {DISTRIBUTION_MODES.find((m) => m.id === strategy)?.short || "Auto"}
+          </p>
         </div>
-        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", alignItems: "center" }}>
           <Btn small outline onClick={() => setDiagramView("svg")} style={diagramView === "svg" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
             Isométrica
           </Btn>
           <Btn small outline onClick={() => setDiagramView("webgl")} style={diagramView === "webgl" ? { borderColor: "rgba(255,255,255,.35)", background: "rgba(255,255,255,.12)", color: "#fff" } : { borderColor: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.85)" }}>
             Explorar 3D
+          </Btn>
+          <Btn
+            small
+            outline
+            onClick={() => {
+              const payload = buildLogisticaPlanExportPayload({ truckL, cargo, remitoNumero });
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              const safe = String(remitoNumero || "plan").replace(/[^\w.-]+/g, "_");
+              a.download = `bmc-logistica-${safe}-${Date.now()}.json`;
+              a.click();
+              URL.revokeObjectURL(a.href);
+            }}
+            style={{ borderColor: "rgba(255,255,255,.25)", color: "rgba(255,255,255,.9)" }}
+          >
+            Exportar plan (JSON)
           </Btn>
         </div>
       </div>
@@ -1048,12 +1081,12 @@ function DiagramPanel({ cargo, truckL }) {
               </div>
             }
           >
-            <LogisticaCargoScene3d placed={placed} shiftX={shiftX} truckL={truckL} maxLen={maxLen} totalLen={totalLen} />
+            <LogisticaCargoScene3d placed={placedView} shiftX={shiftX} truckL={truckL} maxLen={maxXV} totalLen={totalLen} />
           </Suspense>
         ) : (
         <svg width="100%" height="auto" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
-          {maxLen > truckL ? (
-            <polygon points={fp([tf(shiftX + truckL, 0, 0), tf(shiftX + maxLen, 0, 0), tf(shiftX + maxLen, TRUCK_W, 0), tf(shiftX + truckL, TRUCK_W, 0)])} fill="rgba(255,159,10,.12)" stroke="#ff9f0a" strokeWidth={1} strokeDasharray="4,3" />
+          {maxXV > truckL ? (
+            <polygon points={fp([tf(shiftX + truckL, 0, 0), tf(shiftX + maxXV, 0, 0), tf(shiftX + maxXV, TRUCK_W, 0), tf(shiftX + truckL, TRUCK_W, 0)])} fill="rgba(255,159,10,.12)" stroke="#ff9f0a" strokeWidth={1} strokeDasharray="4,3" />
           ) : null}
           <polygon points={fp([tf(shiftX, 0, 0), tf(shiftX + truckL, 0, 0), tf(shiftX + truckL, TRUCK_W, 0), tf(shiftX, TRUCK_W, 0)])} fill="#0d2137" stroke="#3B82F6" strokeWidth={1.2} />
           {trLine(shiftX, ROW_W, 0, shiftX + truckL, ROW_W, 0, "rgba(255,255,255,.2)", 0.8, "3,3")}
@@ -1074,8 +1107,9 @@ function DiagramPanel({ cargo, truckL }) {
             />
           ))}
           {stacksByRow.flat().map((stack) => {
-            const p1 = tf(shiftX + stack.xStart, stack.row * ROW_W, 0);
-            const p2 = tf(shiftX + stack.xEnd, stack.row * ROW_W, 0);
+            const sv = mirrorStackForView(stack, truckL);
+            const p1 = tf(shiftX + sv.xStart, stack.row * ROW_W, 0);
+            const p2 = tf(shiftX + sv.xEnd, stack.row * ROW_W, 0);
             return (
               <g key={stack.id}>
                 <line x1={p1.px} y1={p1.py} x2={p2.px} y2={p2.py} stroke="rgba(255,255,255,.22)" strokeWidth={1} strokeDasharray="2,2" />
@@ -1103,18 +1137,28 @@ function DiagramPanel({ cargo, truckL }) {
             return <text x={p.px - 3} y={p.py} textAnchor="end" fontSize={9} fill="#ff3b30" fontWeight="bold">{`${MAX_H}m`}</text>;
           })()}
           {(() => {
-            const p = tf(shiftX, TRUCK_W / 2, -0.1);
-            return <text x={p.px} y={p.py + 13} textAnchor="middle" fontSize={9} fill="#93C5FD" fontWeight="bold">PUERTA</text>;
+            const pCab = tf(shiftX, TRUCK_W / 2, -0.1);
+            const pCola = tf(shiftX + truckL, TRUCK_W / 2, -0.1);
+            return (
+              <>
+                <text x={pCab.px} y={pCab.py + 13} textAnchor="middle" fontSize={8} fill="#93C5FD" fontWeight="bold">
+                  CABINA
+                </text>
+                <text x={pCola.px} y={pCola.py + 13} textAnchor="middle" fontSize={8} fill="#ff9f0a" fontWeight="bold">
+                  COLA
+                </text>
+              </>
+            );
           })()}
-          {maxLen > truckL
+          {maxXV > truckL
             ? (() => {
-                const p = tf(shiftX + (truckL + maxLen) / 2, TRUCK_W + 0.1, 0);
-                return <text x={p.px} y={p.py + 13} textAnchor="middle" fontSize={8} fill="#ff9f0a">↔ {(maxLen - truckL).toFixed(1)}m saliente</text>;
+                const p = tf(shiftX + (truckL + maxXV) / 2, TRUCK_W + 0.1, 0);
+                return <text x={p.px} y={p.py + 13} textAnchor="middle" fontSize={8} fill="#ff9f0a">↔ {(maxXV - truckL).toFixed(1)}m saliente</text>;
               })()
             : null}
           {rowH.map((h, i) => {
-            const x1 = tf(shiftX + maxLen + 0.25, i * ROW_W, 0);
-            const x2 = tf(shiftX + maxLen + 0.25, i * ROW_W, h);
+            const x1 = tf(shiftX + maxXV + 0.25, i * ROW_W, 0);
+            const x2 = tf(shiftX + maxXV + 0.25, i * ROW_W, h);
             const pct = Math.round((h / MAX_H) * 100);
             const col = barCol(pct);
             return (
@@ -1134,7 +1178,7 @@ function DiagramPanel({ cargo, truckL }) {
           ["Fila B", `${(rowH[1] * 100).toFixed(0)} cm / ${(MAX_H * 100).toFixed(0)} cm`, pctB],
           ["Paquetes", `${placed.length} total`, null],
           ["Pilas", `${totalStacks} total`, null],
-          ["Saliente", maxLen > truckL ? `${(maxLen - truckL).toFixed(1)}m / max 2m` : "Sin saliente", null],
+          ["Saliente", maxXV > truckL ? `${(maxXV - truckL).toFixed(1)}m / max 2m` : "Sin saliente", null],
         ].map(([k, v, pct]) => (
           <div key={k} style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, padding: 10 }}>
             <div style={{ color: "rgba(255,255,255,.55)", fontSize: 11, marginBottom: 4 }}>{k}</div>
@@ -1808,17 +1852,17 @@ export default function BmcLogisticaApp() {
 
       {view === "carga" ? (
         <div>
-          <DiagramPanel stops={stops} cargo={cargo} truckL={truckL} />
+          <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} />
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12, width: "100%", maxWidth: "100%", minWidth: 0 }}>
             <div style={{ ...css.card, padding: 14, minWidth: 0, maxWidth: "100%" }}>
               <div style={{ ...css.sectionTitle, marginBottom: 8 }}>🔭 Vista Superior</div>
               {(() => {
                 const TPX = 50;
                 const TPY = 70;
-                const minX = cargo.minX;
-                const totalLen = cargo.maxLen - minX;
+                const { minXV, maxXV, placedView } = bedViewExtents(cargo.placed, truckL);
+                const totalLen = maxXV - minXV;
                 const cabW = CAB_LEN_M * TPX;
-                const bedLeft = 40 + (-minX) * TPX;
+                const bedLeft = 40 + (-minXV) * TPX;
                 const cabLeft = bedLeft - cabW;
                 const shiftX = cabLeft < 14 ? 14 - cabLeft : 0;
                 const tvW = Math.max(320, totalLen * TPX + cabW + 100 + shiftX);
@@ -1829,13 +1873,13 @@ export default function BmcLogisticaApp() {
                     <svg width="100%" height="auto" viewBox={`0 0 ${tvW} ${tvH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
                       <TruckCabTopSvg x={sx(cabLeft)} y={10} w={cabW} h={TRUCK_W * TPY} stroke={T.primary} fill={T.surfaceAlt} />
                       <rect x={sx(bedLeft)} y={10} width={truckL * TPX} height={TRUCK_W * TPY} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
-                      {cargo.maxLen > truckL ? <rect x={sx(40 + (truckL - minX) * TPX)} y={10} width={(cargo.maxLen - truckL) * TPX} height={TRUCK_W * TPY} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
+                      {maxXV > truckL ? <rect x={sx(40 + (truckL - minXV) * TPX)} y={10} width={(maxXV - truckL) * TPX} height={TRUCK_W * TPY} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
                       <line x1={sx(40)} y1={10 + ROW_W * TPY} x2={sx(40 + totalLen * TPX)} y2={10 + ROW_W * TPY} stroke={T.primary} strokeWidth={1} strokeDasharray="4,3" />
-                      {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
+                      {[...placedView].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
                         const pw = pkg.len * TPX;
                         const ph2 = ROW_W * TPY;
                         const py2 = 10 + pkg.row * ROW_W * TPY;
-                        const px2 = sx(40 + (pkg.xStart - minX) * TPX);
+                        const px2 = sx(40 + (pkg.xStart - minXV) * TPX);
                         return (
                           <g key={pkg.id}>
                             <rect x={px2} y={py2 + 1} width={pw - 1} height={ph2 - 2} fill={pkg.ov ? T.danger : pkg.sCol} opacity={0.8} rx={2} />
@@ -1843,7 +1887,12 @@ export default function BmcLogisticaApp() {
                           </g>
                         );
                       })}
-                      <text x={sx(bedLeft)} y={8} textAnchor="middle" fontSize={9} fill={T.primary} fontWeight="bold">🚪</text>
+                      <text x={sx(bedLeft)} y={8} textAnchor="middle" fontSize={8} fill={T.primary} fontWeight="bold">
+                        Cab.
+                      </text>
+                      <text x={sx(bedLeft + truckL * TPX)} y={8} textAnchor="middle" fontSize={8} fill={T.warning} fontWeight="bold">
+                        Cola
+                      </text>
                       <text x={sx(bedLeft) + (truckL * TPX) / 2} y={tvH - 4} textAnchor="middle" fontSize={8} fill={T.muted}>↔ {truckL}m carrocería</text>
                       <text x={sx(34)} y={10 + ROW_W * TPY / 2 + 3} textAnchor="end" fontSize={8} fill={T.muted}>A</text>
                       <text x={sx(34)} y={10 + ROW_W * TPY + ROW_W * TPY / 2 + 3} textAnchor="end" fontSize={8} fill={T.muted}>B</text>
@@ -1857,10 +1906,10 @@ export default function BmcLogisticaApp() {
               {(() => {
                 const SVX = 50;
                 const SVZ = 90;
-                const minX = cargo.minX;
-                const totalLen = cargo.maxLen - minX;
+                const { minXV, maxXV, placedView } = bedViewExtents(cargo.placed, truckL);
+                const totalLen = maxXV - minXV;
                 const cabW = CAB_LEN_M * SVX;
-                const bedLeft = 40 + (-minX) * SVX;
+                const bedLeft = 40 + (-minXV) * SVX;
                 const cabLeft = bedLeft - cabW;
                 const shiftX = cabLeft < 14 ? 14 - cabLeft : 0;
                 const sx = (x) => x + shiftX;
@@ -1874,11 +1923,11 @@ export default function BmcLogisticaApp() {
                       <line x1={sx(40)} y1={groundY} x2={sx(40 + totalLen * SVX + 20)} y2={groundY} stroke={T.text} strokeWidth={2} />
                       <TruckCabSideSvg x={sx(cabLeft)} cabW={cabW} groundY={groundY} svz={SVZ} stroke={T.primary} fill={T.surfaceAlt} />
                       <rect x={sx(bedLeft)} y={10} width={truckL * SVX} height={svH - 20} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
-                      {cargo.maxLen > truckL ? <rect x={sx(40 + (truckL - minX) * SVX)} y={10} width={(cargo.maxLen - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
+                      {maxXV > truckL ? <rect x={sx(40 + (truckL - minXV) * SVX)} y={10} width={(maxXV - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
                       <line x1={sx(35)} y1={groundY - MAX_H * SVZ} x2={sx(40 + totalLen * SVX + 10)} y2={groundY - MAX_H * SVZ} stroke={T.danger} strokeWidth={1.2} strokeDasharray="5,3" />
                       <text x={sx(32)} y={groundY - MAX_H * SVZ + 3} textAnchor="end" fontSize={8} fill={T.danger} fontWeight="bold">{`${MAX_H}m`}</text>
-                      {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
-                        const bx = sx(40 + (pkg.xStart - minX) * SVX);
+                      {[...placedView].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
+                        const bx = sx(40 + (pkg.xStart - minXV) * SVX);
                         const by = groundY - pkg.zBase * SVZ - pkg.h * SVZ;
                         const bw = pkg.len * SVX;
                         const bh = pkg.h * SVZ;
@@ -1908,10 +1957,10 @@ export default function BmcLogisticaApp() {
               {(() => {
                 const SVX = 50;
                 const SVZ = 90;
-                const minX = cargo.minX;
-                const totalLen = cargo.maxLen - minX;
+                const { minXV, maxXV, placedView } = bedViewExtents(cargo.placed, truckL);
+                const totalLen = maxXV - minXV;
                 const cabW = CAB_LEN_M * SVX;
-                const bedLeft = 40 + (-minX) * SVX;
+                const bedLeft = 40 + (-minXV) * SVX;
                 const cabLeft = bedLeft - cabW;
                 const shiftX = cabLeft < 14 ? 14 - cabLeft : 0;
                 const sx = (x) => x + shiftX;
@@ -1930,10 +1979,10 @@ export default function BmcLogisticaApp() {
                         <line x1={sx(40)} y1={groundY} x2={rightEdge} y2={groundY} stroke={T.text} strokeWidth={2} />
                         <TruckCabSideSvg x={sx(cabLeft)} cabW={cabW} groundY={groundY} svz={SVZ} stroke={T.primary} fill={T.surfaceAlt} showLabel={false} />
                         <rect x={sx(bedLeft)} y={10} width={truckL * SVX} height={svH - 20} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
-                        {cargo.maxLen > truckL ? <rect x={sx(40 + (truckL - minX) * SVX)} y={10} width={(cargo.maxLen - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
+                        {maxXV > truckL ? <rect x={sx(40 + (truckL - minXV) * SVX)} y={10} width={(maxXV - truckL) * SVX} height={svH - 20} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
                         <line x1={sx(35)} y1={groundY - MAX_H * SVZ} x2={sx(40 + totalLen * SVX + 10)} y2={groundY - MAX_H * SVZ} stroke={T.danger} strokeWidth={1.2} strokeDasharray="5,3" />
-                        {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
-                          const bx = sx(40 + (pkg.xStart - minX) * SVX);
+                        {[...placedView].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
+                          const bx = sx(40 + (pkg.xStart - minXV) * SVX);
                           const by = groundY - pkg.zBase * SVZ - pkg.h * SVZ;
                           const bw = pkg.len * SVX;
                           const bh = pkg.h * SVZ;
@@ -1943,8 +1992,8 @@ export default function BmcLogisticaApp() {
                         })}
                       </g>
                       <text x={mirrorT - (sx(cabLeft) + cabW / 2)} y={cabTopLabel - 3} textAnchor="middle" fontSize={7} fill={T.muted}>Cabina</text>
-                      {[...cargo.placed].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
-                        const bx = sx(40 + (pkg.xStart - minX) * SVX);
+                      {[...placedView].sort((a, b) => b.sOrd - a.sOrd).map((pkg) => {
+                        const bx = sx(40 + (pkg.xStart - minXV) * SVX);
                         const by = groundY - pkg.zBase * SVZ - pkg.h * SVZ;
                         const bw = pkg.len * SVX;
                         const bh = pkg.h * SVZ;
@@ -2322,7 +2371,7 @@ export default function BmcLogisticaApp() {
           </div>
 
           <div style={{ position: "sticky", top: 16, alignSelf: "start" }}>
-            <DiagramPanel stops={stops} cargo={cargo} truckL={truckL} />
+            <DiagramPanel cargo={cargo} truckL={truckL} remitoNumero={info.numero} />
             <div style={{ ...css.card, padding: 16, marginTop: 12 }}>
               <div style={css.sectionTitle}>Variantes sugeridas</div>
               <div style={{ display: "grid", gap: 8 }}>

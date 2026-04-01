@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-03-31 (release v3.1.5 — logística vista 3D WebGL + selección bultos)
+**Última actualización:** 2026-03-31 (logística util vista cama + export JSON plan)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-03-31 (Logística — util vista cama + export JSON):** Nuevo [`src/utils/bmcLogisticaBedView.js`](../../src/utils/bmcLogisticaBedView.js): `mirrorBedXForView`, `mirrorStackForView`, `bedViewExtents`, `computeLogisticaKpis`, `buildLogisticaPlanExportPayload` (schema v1 `bmc-logistica-plan`). Refactor desde [`BmcLogisticaApp.jsx`](../../src/components/BmcLogisticaApp.jsx); **`DiagramPanel`**: botón **Exportar plan (JSON)** (descarga; nombre incluye remito). Tests **SUITE 31** en [`tests/validation.js`](../../tests/validation.js). `npm run lint` + `npm test` + `npm run build` OK.
+
+**2026-03-31 (Logística — orientación cabina/cola en el dibujo):** `bedViewExtents` / mirror en eje X para vista operativa: **cabina izquierda**, **cola derecha**, **saliente** más allá de la cola (`x > truckL`). `cargo.maxX` en `placeCargo` (extensión real en X); saliente y vistas superior/lateral/isométrica/3D usan `placedView` + `maxXV`. Etiquetas **CABINA** / **COLA**; texto guía actualizado. **DiagramPanel**: props sin `stops` no usado. `npm run lint` + `npm test` OK.
 
 **2026-03-31 (Release v3.1.5 — deploy):** [`package.json`](../../package.json) **3.1.5**; `npm run gate:local:full` OK. Incluye: vista **Explorar 3D** (Three.js + R3F + Drei, lazy chunk), selección de bultos y tarjeta de detalle; ESLint override `logistica/**`. Push a **`main`** → Vercel / CI; **Cloud Run** (`panelin-calc`): rebuild/redeploy imagen desde este commit (ver checklist deploy).
 
