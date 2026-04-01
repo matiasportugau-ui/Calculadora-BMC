@@ -17,9 +17,24 @@ Abre la raíz del sitio, por ejemplo `http://localhost:3456/` (carga `index.html
 
 `prototype.html` solo redirige a `index.html` por compatibilidad con enlaces viejos.
 
+### Pegar fila desde planilla (Ctrl+V)
+
+- **Preset por defecto:** `2.0 Ventas (recomendado)` — columnas **C=ID pedido, G=Nombre, H=Dirección, J=CARPETA (PDF), O≈Contacto** cuando copiás **solo la fila de datos** desde *Ventas y Coordinaciones* (incluyendo columnas A–B vacías o con º/WA si corresponde).
+- Si tu export usa otro layout, probá **Legado** en el desplegable.
+- **Dos filas** (encabezados + valores): se detectan títulos como `NOMBRE`, `CARPETA`, `ID. Pedido`, etc.; la vista previa se actualiza al **pegar** o al escribir en el cuadro.
+- Tras **Importar como nueva parada**, la fila queda también en **Planilla: todos los campos** (`rawSheet`) para auditoría y **Extraer desde NOTAS**.
+
 ### Cliente (planilla) — menú desplegable
 
 En la barra superior, **Cliente (planilla)** lista **nombres únicos** detectados en las paradas: campo **Cliente** y columnas típicas del CRM en **`rawSheet`** (`Cliente`, `CLIENTE_NOMBRE`, etc.). Tras **importar JSON** desde la API o completar clientes a mano, elegí un nombre para **resaltar** la primera parada que coincida (sin distinguir mayúsculas / tildes) y **desplazar** la vista hasta esa tarjeta. **— Elegir cliente —** limpia el resaltado. La selección y el resaltado se guardan en el borrador local (`highlightStopId`, `pickedClienteLabel`). Lógica en [`lib/clienteFromSheet.js`](./lib/clienteFromSheet.js).
+
+### Ventas y Coordinaciones (API) + transportista
+
+1. Levantá la API (`npm run start:api` desde la raíz del repo) con `BMC_VENTAS_SHEET_ID` y credenciales Sheets.
+2. En el prototipo, bloque **Ventas y Coordinaciones (API)**: base `http://localhost:3001` (se guarda en `localStorage`), **Cargar listado** → `GET /api/ventas?tab=Ventas%20y%20Coordinaciones&logistica=1`.
+3. Elegí **cliente / pedido** y **Añadir parada desde fila**: se rellenan cliente, teléfono, dirección, zona, mapa, ID pedido y **link CARPETA** (PDF). El texto de **ENCARGO/PEDIDO** queda en `rawSheet` para **Extraer desde NOTAS** si hace falta.
+4. **Características de la carga**: totales estimados de m², m³ y kg (heurística; no sustituye balanza). Detalle por parada en tabla.
+5. **PDF escaneado:** el extractor usa capa de texto; **no hay OCR** en el navegador. Para escaneos, pegá líneas manualmente o usá un OCR externo y luego «Añadir desde texto».
 
 ## Reglas BMC (negocio + copy para operadores)
 

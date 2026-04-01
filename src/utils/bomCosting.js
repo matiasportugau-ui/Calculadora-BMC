@@ -58,15 +58,18 @@ export function resolveBomLineCostUnit(item, ctx) {
 export function buildCostingReport(groups, ctx) {
   const rows = [];
   let sumCostAll = 0;
+  let sumSaleAll = 0;
   let sumSaleForMargin = 0;
   let sumCostForMargin = 0;
   const fleteVenta = Number(ctx?.fleteVentaUsd) || 0;
   const fleteCostOk = typeof ctx?.fleteCostUsd === "number" && !Number.isNaN(ctx.fleteCostUsd) && ctx.fleteCostUsd >= 0;
   const fleteMissingCost = fleteVenta > 0 && !fleteCostOk;
+  const groupMap = new Map();
 
   for (const g of groups || []) {
     for (const it of g.items || []) {
       const sale = Number(it.total) || 0;
+      sumSaleAll += sale;
       const cant = Number(it.cant) || 0;
       const sku = it.sku;
       const isFlete = sku === "FLETE";
@@ -86,6 +89,28 @@ export function buildCostingReport(groups, ctx) {
       if (countForMargin) {
         sumSaleForMargin += sale;
         sumCostForMargin += costTotal;
+      }
+
+      if (!groupMap.has(g.title)) {
+        groupMap.set(g.title, {
+          group: g.title,
+          items: 0,
+          saleTotal: 0,
+          costTotal: 0,
+          marginTotal: 0,
+          knownCostItems: 0,
+          missingCostItems: 0,
+        });
+      }
+      const summary = groupMap.get(g.title);
+      summary.items += 1;
+      summary.saleTotal = +(summary.saleTotal + sale).toFixed(2);
+      if (costTotal != null) {
+        summary.costTotal = +(summary.costTotal + costTotal).toFixed(2);
+        summary.marginTotal = +(summary.marginTotal + (sale - costTotal)).toFixed(2);
+        summary.knownCostItems += 1;
+      } else {
+        summary.missingCostItems += 1;
       }
 
       rows.push({
@@ -108,14 +133,24 @@ export function buildCostingReport(groups, ctx) {
 
   const totalMargin = +(sumSaleForMargin - sumCostForMargin).toFixed(2);
   const totalMarginPct = sumCostForMargin > 0 ? +(((sumSaleForMargin - sumCostForMargin) / sumCostForMargin) * 100).toFixed(1) : null;
+  const byGroup = [...groupMap.values()].map((entry) => ({
+    ...entry,
+    marginPct: entry.costTotal > 0 ? +((entry.marginTotal / entry.costTotal) * 100).toFixed(1) : null,
+  }));
+  const missingCostRows = rows.filter((r) => r.costTotal == null);
+  const coveredSalePct = sumSaleAll > 0 ? +((sumSaleForMargin / sumSaleAll) * 100).toFixed(1) : null;
 
   return {
     rows,
     sumCostAll,
+    sumSaleAll,
     sumSaleForMargin,
     sumCostForMargin,
     totalMargin,
     totalMarginPct,
     fleteMissingCost,
+    byGroup,
+    missingCostRows,
+    coveredSalePct,
   };
 }

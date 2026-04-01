@@ -112,7 +112,7 @@ function AnimNum({ value, style }) {
   return <span key={key} style={{ display: "inline-block", animation: "bmc-fade 120ms ease-in-out", ...TN, ...style }}>{value}</span>;
 }
 
-function CustomSelect({ label, value, options = [], onChange, showBadge }) {
+function CustomSelect({ label, value, options = [], onChange, showBadge, advanceOnChange = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   useEffect(() => { const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
@@ -126,7 +126,7 @@ function CustomSelect({ label, value, options = [], onChange, showBadge }) {
         {open ? <ChevronUp size={16} color={C.primary} /> : <ChevronDown size={16} color={C.ts} />}
       </button>
       {open && <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 50, background: C.surface, borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", overflow: "hidden", maxHeight: 280, overflowY: "auto" }}>
-        {options.map(opt => <div key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", cursor: "pointer", fontSize: 14, background: opt.value === value ? C.primarySoft : "transparent", fontWeight: opt.value === value ? 500 : 400, color: C.tp, transition: TR }}>
+        {options.map(opt => <div key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); if (advanceOnChange) window.setTimeout(() => { window.dispatchEvent(new CustomEvent("bmc-wizard-next")); }, 0); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", cursor: "pointer", fontSize: 14, background: opt.value === value ? C.primarySoft : "transparent", fontWeight: opt.value === value ? 500 : 400, color: C.tp, transition: TR }}>
           <span>{opt.label}</span>{opt.value === value && <Check size={14} color={C.primary} />}
         </div>)}
       </div>}
@@ -140,10 +140,10 @@ function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, u
   return (
     <div style={{ fontFamily: FONT }}>
       {label && <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "nowrap" }}>
         <button style={btnS(value <= min)} onClick={() => bump(-1)}><Minus size={16} color={C.tp} /></button>
         <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value) || 0)} onBlur={e => { const v = parseFloat(e.target.value); onChange(isNaN(v) ? min : Math.min(max, Math.max(min, v))); }}
-          style={{ width: 88, textAlign: "center", borderRadius: 10, border: `1.5px solid ${C.border}`, padding: "8px 10px", fontSize: 15, fontWeight: 600, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }} />
+          style={{ width: "100%", minWidth: 0, flex: 1, textAlign: "center", borderRadius: 10, border: `1.5px solid ${C.border}`, padding: "8px 10px", fontSize: 15, fontWeight: 600, background: C.surface, color: C.tp, outline: "none", boxShadow: SHI, transition: TR, fontFamily: FONT, ...TN }} />
         <button style={btnS(value >= max)} onClick={() => bump(1)}><Plus size={16} color={C.tp} /></button>
         {unit && <span style={{ fontSize: 14, fontWeight: 600, color: C.tp, marginLeft: 4, minWidth: 24 }}>{unit}</span>}
       </div>
@@ -151,12 +151,12 @@ function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, u
   );
 }
 
-function SegmentedControl({ value, onChange, options = [], disabledIds = [] }) {
+function SegmentedControl({ value, onChange, options = [], disabledIds = [], onOptionDoubleClick }) {
   return (
-    <div style={{ display: "inline-flex", background: C.border, borderRadius: 12, padding: 4, gap: 4, fontFamily: FONT, width: "100%" }}>
+    <div style={{ display: "flex", flexWrap: "wrap", background: C.border, borderRadius: 12, padding: 4, gap: 4, fontFamily: FONT, width: "100%" }}>
       {options.map(opt => {
         const isD = disabledIds.includes(opt.id), isA = value === opt.id;
-        return <button key={opt.id} onClick={() => !isD && onChange(opt.id)} style={{ flex: 1, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.4 : 1, transition: TR, fontFamily: FONT, whiteSpace: "nowrap" }}>{opt.label}</button>;
+        return <button key={opt.id} onClick={() => !isD && onChange(opt.id)} onDoubleClick={() => !isD && onOptionDoubleClick?.(opt.id)} style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.4 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal" }}>{opt.label}</button>;
       })}
     </div>
   );
@@ -182,12 +182,12 @@ function KPICard({ label, value, borderColor = C.primary }) {
   );
 }
 
-function ColorChips({ colors = [], value, onChange, notes = {} }) {
+function ColorChips({ colors = [], value, onChange, notes = {}, onColorDoubleClick }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontFamily: FONT }}>
       {colors.map(color => {
         const isS = value === color, hex = COLOR_HEX[color] || "#999";
-        return <button key={color} onClick={() => onChange(color)} title={notes[color] || color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 6px", borderRadius: 20, border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, cursor: "pointer", transition: TR, fontSize: 12, fontWeight: isS ? 600 : 400, color: C.tp }}>
+        return <button key={color} onClick={() => onChange(color)} onDoubleClick={() => onColorDoubleClick?.(color)} title={notes[color] || color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 6px", borderRadius: 20, border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, cursor: "pointer", transition: TR, fontSize: 12, fontWeight: isS ? 600 : 400, color: C.tp }}>
           <span style={{ width: 20, height: 20, borderRadius: "50%", background: hex, flexShrink: 0, border: `1px solid ${color === "Blanco" ? C.border : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
           {color}
         </button>;
@@ -269,14 +269,14 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 14, color: C.brand }}>{collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}{title}</div>
         <span style={{ fontWeight: 700, fontSize: 14, color: C.brand, ...TN }}>${typeof subtotal === "number" ? subtotal.toFixed(2) : subtotal}</span>
       </div>
-      {!collapsed && <div>
-        <div style={{ display: "grid", gridTemplateColumns: cols, background: C.brand, color: "#fff", padding: "10px 12px", boxShadow: "0 2px 4px rgba(0,0,0,0.06)" }}>
+      {!collapsed && <div style={{ overflowX: "auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: cols, minWidth: 860, background: C.brand, color: "#fff", padding: "10px 12px", boxShadow: "0 2px 4px rgba(0,0,0,0.06)" }}>
           {["Descripción", "Cant.", "Unid.", "P.Unit.", "Total", "Costo", "% Margen", "Ganancia", "Acciones"].map((h, i) => <div key={i} style={{ fontSize: 11, fontWeight: 700, padding: "2px 4px", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i > 1 ? "right" : "left" }}>{h}</div>)}
         </div>
         {items.map((item, idx) => {
           const isEditing = editingCell && editingCell.lineId === item.lineId;
           const isHovered = hoveredIdx === idx;
-          return <div key={idx} onMouseEnter={() => setHoveredIdx(idx)} onMouseLeave={() => setHoveredIdx(null)} style={{ display: "grid", gridTemplateColumns: cols, background: item.isOverridden ? C.warningSoft : isHovered ? C.surfaceAlt : idx % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.border}`, alignItems: "center", transition: "background 120ms ease" }}>
+          return <div key={idx} onMouseEnter={() => setHoveredIdx(idx)} onMouseLeave={() => setHoveredIdx(null)} style={{ display: "grid", gridTemplateColumns: cols, minWidth: 860, background: item.isOverridden ? C.warningSoft : isHovered ? C.surfaceAlt : idx % 2 === 0 ? C.surface : C.surfaceAlt, borderBottom: `1px solid ${C.border}`, alignItems: "center", transition: "background 120ms ease" }}>
             <div style={{ padding: "8px 12px", fontSize: 13, color: item.isOverridden ? C.warning : C.tp, fontWeight: item.isOverridden ? 600 : 400 }}>{item.label}</div>
             <div style={{ padding: "4px 8px", fontSize: 13, textAlign: "right", color: C.ts, ...TN }}>
               {isEditing && editingCell.field === "cant"
@@ -320,12 +320,12 @@ function MobileBottomBar({ total, onPrint, onWhatsApp }) {
       boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
       fontFamily: FONT,
     }} className="bmc-mobile-bar">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>TOTAL USD</div>
           <div style={{ fontSize: 24, fontWeight: 800, ...TN }}>${fmtPrice(total)}</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <button onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
           <button onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
         </div>
@@ -358,26 +358,27 @@ function PDFPreviewModal({ html, title, onClose }) {
       iframe.contentWindow.print();
     }
   };
+  const isCompact = typeof window !== "undefined" ? window.innerWidth < 760 : false;
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.6)", animation: "bmc-fade 150ms ease-in-out" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", background: C.dark, color: "#fff", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: isCompact ? "stretch" : "center", flexDirection: isCompact ? "column" : "row", justifyContent: "space-between", gap: 10, padding: isCompact ? "12px 14px" : "10px 20px", background: C.dark, color: "#fff", flexShrink: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{title || "Vista previa de cotización"}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={handlePrint} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={handlePrint} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isCompact ? "1 1 160px" : "0 0 auto" }}>
             <Printer size={14} />Imprimir / PDF
           </button>
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isCompact ? "1 1 120px" : "0 0 auto" }}>
             <X size={14} />Cerrar
           </button>
         </div>
       </div>
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: 20, overflow: "auto" }}>
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: isCompact ? 8 : 20, overflow: "auto" }}>
         <iframe
           id="bmc-pdf-preview-frame"
           src={url}
           style={{
-            width: "210mm",
+            width: isCompact ? "100%" : "210mm",
             maxWidth: "100%",
             height: "100%",
             border: "none",
@@ -424,9 +425,9 @@ function AguaSvg4({ color = "#AEAEB2" }) {
 
 const AGUA_SVGS = { una_agua: AguaSvg1, dos_aguas: AguaSvg2, cuatro_aguas: AguaSvg4 };
 
-function TipoAguasSelector({ value, onChange }) {
+function TipoAguasSelector({ value, onChange, onOptionDoubleClick }) {
   return (
-    <div style={{ display: "flex", gap: 10, fontFamily: FONT }}>
+    <div style={{ display: "flex", gap: 10, fontFamily: FONT, flexWrap: "wrap" }}>
       {TIPO_AGUAS.map(tipo => {
         const isS = value === tipo.id;
         const isDisabled = !tipo.enabled;
@@ -435,6 +436,7 @@ function TipoAguasSelector({ value, onChange }) {
           <button
             key={tipo.id}
             onClick={() => !isDisabled && onChange(tipo.id)}
+            onDoubleClick={() => !isDisabled && onOptionDoubleClick?.(tipo.id)}
             disabled={isDisabled}
             style={{
               flex: 1, padding: "12px 8px", borderRadius: 14, textAlign: "center",
@@ -879,6 +881,7 @@ export default function PanelinCalculadoraV3() {
   const [libreSellQty, setLibreSellQty] = useState({});
   const [libreExtra, setLibreExtra] = useState({ texto: "", precio: "", unidades: "", cantidad: "" });
   const [librePerfilFilter, setLibrePerfilFilter] = useState("");
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1280));
 
   // ── Setters envueltos con log de interacción (solo en dev) ──
   const setLP = useMemo(() => wrapSetter(_setLP, "listaPrecios"), [_setLP]);
@@ -911,6 +914,16 @@ export default function PanelinCalculadoraV3() {
     }
   }, []);
 
+  const advanceWizardStep = useCallback(() => {
+    setWizardStep((s) => (s < WIZARD_STEPS_SOLO_TECHO.length - 1 ? s + 1 : s));
+  }, []);
+
+  useEffect(() => {
+    const handler = () => advanceWizardStep();
+    window.addEventListener("bmc-wizard-next", handler);
+    return () => window.removeEventListener("bmc-wizard-next", handler);
+  }, [advanceWizardStep]);
+
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
 
@@ -923,6 +936,13 @@ export default function PanelinCalculadoraV3() {
   useEffect(() => {
     if (scenario !== "techo_fachada") setUsePlanoTechoFachada(false);
   }, [scenario]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // ── Wizard step validation (Modo Vendedor) ──
   const isWizardStepValid = useCallback((stepId) => {
@@ -976,6 +996,14 @@ export default function PanelinCalculadoraV3() {
 
   const vis = VIS[scenario] || VIS.solo_techo;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
+  const isPhone = viewportWidth < 640;
+  const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
+  const isCompactLayout = viewportWidth < 1024;
+  const twoCol = isPhone ? "1fr" : "1fr 1fr";
+  const threeCol = isPhone ? "1fr" : isTablet ? "1fr 1fr" : "1fr 1fr 1fr";
+  const fourCol = isPhone ? "1fr" : "1fr 1fr";
+  const scenarioGridCols = isPhone ? "1fr" : "1fr 1fr";
+  const compactSectionPadding = isPhone ? 16 : isTablet ? 20 : 24;
 
   // ── Available families for current scenario (separate techo/pared) ──
   const techoFamilyOptions = useMemo(() => {
@@ -1311,8 +1339,7 @@ export default function PanelinCalculadoraV3() {
 
   const handleCosteo = useCallback(() => {
     if (!groups.length) return;
-    const allItems = groups.flatMap(g => g.items);
-    const report = buildCostingReport(allItems, costingCtx);
+    const report = buildCostingReport(groups, costingCtx);
     const listaLabel = listaPrecios === "venta" ? "BMC directo" : "Web";
     const html = generateCosteoHTML({ client: proyecto, project: proyecto, listaLabel, report });
     openPrintWindow(html);
@@ -1711,7 +1738,7 @@ export default function PanelinCalculadoraV3() {
   }, [handleDriveRefresh]);
 
   // ── Section style (card styling) ──
-  const sectionS = { background: C.surface, borderRadius: 16, padding: 24, marginBottom: 16, boxShadow: SHC, overflow: "visible", boxSizing: "border-box", border: `1px solid ${C.border}`, fontFamily: FONT };
+  const sectionS = { background: C.surface, borderRadius: 16, padding: compactSectionPadding, marginBottom: 16, boxShadow: SHC, overflow: "visible", boxSizing: "border-box", border: `1px solid ${C.border}`, fontFamily: FONT };
   const labelS = { fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" };
   const inputS = { width: "100%", padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${C.border}`, fontSize: 14, color: C.tp, outline: "none", fontFamily: FONT, boxShadow: SHI };
 
@@ -1847,15 +1874,15 @@ export default function PanelinCalculadoraV3() {
   return (
     <div style={{ fontFamily: FONT, background: C.bg, minHeight: "100vh" }}>
       {/* HEADER */}
-      <div style={{ background: C.brand, color: "#fff", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 40 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
+      <div style={{ background: C.brand, color: "#fff", padding: isPhone ? "12px 14px" : "16px 24px", display: "flex", alignItems: isCompactLayout ? "stretch" : "center", flexDirection: isCompactLayout ? "column" : "row", justifyContent: "space-between", gap: isCompactLayout ? 10 : 16, position: "sticky", top: 0, zIndex: 40 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ fontSize: isPhone ? 18 : 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.0</div>
           {currentBudgetCode && (
             <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", width: isCompactLayout ? "100%" : "auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
             <button onClick={() => { setModoVendedor(true); setTecho(TECHO_INITIAL_VENDEDOR); setWizardStep(0); setLP(""); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
             <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
@@ -1883,16 +1910,16 @@ export default function PanelinCalculadoraV3() {
 
       <div className="bmc-main-grid" style={{
         display: "grid",
-        gridTemplateColumns: "minmax(360px, 520px) 1fr",
-        gap: 24,
-        padding: 24,
+        gridTemplateColumns: isCompactLayout ? "1fr" : "minmax(360px, 520px) 1fr",
+        gap: isPhone ? 16 : 24,
+        padding: isPhone ? 12 : isTablet ? 16 : 24,
         maxWidth: 1400,
         margin: "0 auto",
-        height: "calc(100vh - 100px)",
-        overflow: "hidden",
+        height: isCompactLayout ? "auto" : "calc(100vh - 100px)",
+        overflow: isCompactLayout ? "visible" : "hidden",
       }}>
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
-        <div className="bmc-left-panel" style={{ overflowY: "auto", paddingLeft: 12, paddingRight: 12 }}>
+        <div className="bmc-left-panel" style={{ overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
             /* ── WIZARD: una variable a la vez ── */
             (() => {
@@ -1931,9 +1958,17 @@ export default function PanelinCalculadoraV3() {
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, marginBottom: 20, overflow: "visible", minWidth: 0 }}>{step?.label}</div>
                   {stepId === "escenario" && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}>
                       {SCENARIOS_DEF.map(sc => (
-                        <div key={sc.id} onClick={() => setScenario(sc.id)} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${scenario === sc.id ? C.primary : C.border}`, background: scenario === sc.id ? C.primarySoft : C.surface, transition: TR, boxShadow: scenario === sc.id ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
+                        <div
+                          key={sc.id}
+                          onClick={() => setScenario(sc.id)}
+                          onDoubleClick={() => {
+                            setScenario(sc.id);
+                            advanceWizardStep();
+                          }}
+                          style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${scenario === sc.id ? C.primary : C.border}`, background: scenario === sc.id ? C.primarySoft : C.surface, transition: TR, boxShadow: scenario === sc.id ? `0 0 0 4px ${C.primarySoft}` : SHC }}
+                        >
                           <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
                           <div style={{ fontSize: 14, fontWeight: 600, color: scenario === sc.id ? C.primary : C.tp }}>{sc.label}</div>
                           <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
@@ -1943,22 +1978,22 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "tipoAguas" && (
-                    <TipoAguasSelector value={techo.tipoAguas} onChange={v => {
+                    <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => advanceWizardStep()} onChange={v => {
                       if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
                       else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
                     }} />
                   )}
                   {stepId === "lista" && (
-                    <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
+                    <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
                   )}
                   {stepId === "familia" && (
-                    <CustomSelect label="Familia panel" value={techo.familia} options={techoFamilyOptions} onChange={setTechoFamilia} />
+                    <CustomSelect label="Familia panel" value={techo.familia} options={techoFamilyOptions} onChange={setTechoFamilia} advanceOnChange />
                   )}
                   {stepId === "espesor" && (
-                    <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge />
+                    <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge advanceOnChange />
                   )}
                   {stepId === "color" && techoPanelData && (
-                    <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} notes={techoPanelData.colNotes || {}} />
+                    <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onColorDoubleClick={() => advanceWizardStep()} notes={techoPanelData.colNotes || {}} />
                   )}
                   {stepId === "dimensiones" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -2144,7 +2179,7 @@ export default function PanelinCalculadoraV3() {
             <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
             <div style={{ marginTop: 16 }}>
               <div style={labelS}>ESCENARIO DE OBRA</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}>
                 {SCENARIOS_DEF.map(sc => {
                   const isS = scenario === sc.id;
                   return <div key={sc.id} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
@@ -2176,7 +2211,7 @@ export default function PanelinCalculadoraV3() {
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 10 }}>
                 <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
                 {proyecto.tipoCliente === "empresa" && <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>}
                 <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
@@ -2295,7 +2330,7 @@ export default function PanelinCalculadoraV3() {
               <div style={{ marginBottom: 10 }}><div style={labelS}>Descripción / texto libre</div>
                 <textarea value={libreExtra.texto} onChange={(e) => setLibreExtra((x) => ({ ...x, texto: e.target.value }))} rows={4} placeholder="Escribí la partida…" style={{ ...inputS, resize: "vertical", minHeight: 88 }} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: threeCol, gap: 10 }}>
                 <div><div style={labelS}>Precio (USD s/IVA, opcional)</div><input style={inputS} value={libreExtra.precio} onChange={(e) => setLibreExtra((x) => ({ ...x, precio: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
                 <div><div style={labelS}>Unidades (opcional)</div><input style={inputS} value={libreExtra.unidades} onChange={(e) => setLibreExtra((x) => ({ ...x, unidades: e.target.value }))} placeholder="ej. unid, m²" /></div>
                 <div><div style={labelS}>Cantidad (opcional)</div><input style={inputS} value={libreExtra.cantidad} onChange={(e) => setLibreExtra((x) => ({ ...x, cantidad: e.target.value }))} placeholder="—" inputMode="decimal" /></div>
@@ -2421,7 +2456,7 @@ export default function PanelinCalculadoraV3() {
               />
             </div>
             {techo.zonas.map((zona, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
+              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: isPhone ? "wrap" : "nowrap", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
                 <div style={{ flex: 1 }}>
                   <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.5} unit="m" />
                 </div>
@@ -2449,7 +2484,7 @@ export default function PanelinCalculadoraV3() {
                     />
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: C.ts, minWidth: 50, textAlign: "right", paddingBottom: 8 }}>
+                <div style={{ fontSize: 11, color: C.ts, minWidth: 50, textAlign: isPhone ? "left" : "right", paddingBottom: 8 }}>
                   {(zona.largo * zona.ancho).toFixed(1)}m²
                 </div>
                 {techo.zonas.length > 1 && (
@@ -2538,11 +2573,11 @@ export default function PanelinCalculadoraV3() {
           {/* Dimensiones Pared */}
           {vis.altoPerim && !(scenario === "techo_fachada" && usePlanoTechoFachada) && <div ref={!vis.largoAncho ? dimensionesRef : null} style={sectionS}>
             <div style={labelS}>DIMENSIONES PARED</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 12 }}>
               <StepperInput label="Alto (m)" value={pared.alto} onChange={v => uP("alto", v)} min={1} max={14} step={0.5} unit="m" />
               <StepperInput label="Perímetro (m)" value={pared.perimetro} onChange={v => uP("perimetro", v)} min={4} max={500} step={1} unit="m" />
             </div>
-            {vis.esquineros && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+            {vis.esquineros && <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 12, marginTop: 12 }}>
               <StepperInput label="Esquinas ext." value={pared.numEsqExt} onChange={v => uP("numEsqExt", v)} min={0} max={20} step={1} decimals={0} />
               <StepperInput label="Esquinas int." value={pared.numEsqInt} onChange={v => uP("numEsqInt", v)} min={0} max={20} step={1} decimals={0} />
             </div>}
@@ -2551,7 +2586,7 @@ export default function PanelinCalculadoraV3() {
           {/* Cámara frigorífica */}
           {vis.camara && <div style={sectionS}>
             <div style={labelS}>DIMENSIONES CÁMARA (internas)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: threeCol, gap: 12 }}>
               <StepperInput label="Largo (m)" value={camara.largo_int} onChange={v => setCamara(c => ({ ...c, largo_int: v }))} min={1} max={30} step={0.5} unit="m" />
               <StepperInput label="Ancho (m)" value={camara.ancho_int} onChange={v => setCamara(c => ({ ...c, ancho_int: v }))} min={1} max={30} step={0.5} unit="m" />
               <StepperInput label="Alto (m)" value={camara.alto_int} onChange={v => setCamara(c => ({ ...c, alto_int: v }))} min={1} max={14} step={0.5} unit="m" />
@@ -2651,12 +2686,12 @@ export default function PanelinCalculadoraV3() {
           {vis.aberturas && <div style={sectionS}>
             <div style={labelS}>ABERTURAS</div>
             {pared.aberturas.map((ab, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, padding: 8, borderRadius: 8, background: C.surfaceAlt }}>
+              <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8, padding: 8, borderRadius: 8, background: C.surfaceAlt }}>
                 <SegmentedControl value={ab.tipo} onChange={v => { const next = [...pared.aberturas]; next[i] = { ...next[i], tipo: v }; uP("aberturas", next); }} options={[{ id: "puerta", label: "Puerta" }, { id: "ventana", label: "Ventana" }]} />
-                <input type="number" placeholder="Ancho" value={ab.ancho} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], ancho: parseFloat(e.target.value) || 0 }; uP("aberturas", next); }} style={{ ...inputS, width: 70, padding: "6px 8px" }} />
+                <input type="number" placeholder="Ancho" value={ab.ancho} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], ancho: parseFloat(e.target.value) || 0 }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 70, padding: "6px 8px" }} />
                 <span style={{ color: C.ts, fontSize: 13 }}>×</span>
-                <input type="number" placeholder="Alto" value={ab.alto} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], alto: parseFloat(e.target.value) || 0 }; uP("aberturas", next); }} style={{ ...inputS, width: 70, padding: "6px 8px" }} />
-                <input type="number" placeholder="Cant" value={ab.cant} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], cant: parseInt(e.target.value) || 1 }; uP("aberturas", next); }} style={{ ...inputS, width: 50, padding: "6px 8px" }} />
+                <input type="number" placeholder="Alto" value={ab.alto} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], alto: parseFloat(e.target.value) || 0 }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 70, padding: "6px 8px" }} />
+                <input type="number" placeholder="Cant" value={ab.cant} onChange={e => { const next = [...pared.aberturas]; next[i] = { ...next[i], cant: parseInt(e.target.value) || 1 }; uP("aberturas", next); }} style={{ ...inputS, width: isPhone ? "100%" : 50, padding: "6px 8px" }} />
                 <button onClick={() => { const next = pared.aberturas.filter((_, j) => j !== i); uP("aberturas", next); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.danger }}><Trash2 size={14} /></button>
               </div>
             ))}
@@ -2667,9 +2702,9 @@ export default function PanelinCalculadoraV3() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="bmc-right-panel" style={{ overflowY: "auto", paddingLeft: 8 }}>
+        <div className="bmc-right-panel" style={{ overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
           {/* KPI Row */}
-          {results && !results.error && !scenarioDef?.isLibre && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          {results && !results.error && !scenarioDef?.isLibre && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
             <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />

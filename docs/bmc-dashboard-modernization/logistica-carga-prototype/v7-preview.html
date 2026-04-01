@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BMC Logistica V7 Preview</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface-alt: #fafafa;
+      --primary: #0071e3;
+      --brand: #1a3a5c;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --border: #e5e5ea;
+      --success: #34c759;
+      --danger: #ff3b30;
+      --shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06);
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-left: 4px solid var(--brand);
+      margin-bottom: 12px;
+    }
+
+    .header h1 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      color: var(--brand);
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metrics {
+      text-align: right;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .warning {
+      background: #ffeceb;
+      border: 1px solid rgba(255,59,48,.25);
+      color: #b42318;
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .tab {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .toolbar .spacer { flex: 1; }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 600;
+      font-size: 13px;
+      color: #fff;
+    }
+
+    .btn-primary { background: var(--primary); }
+    .btn-success { background: var(--success); }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.3fr .9fr;
+      gap: 12px;
+    }
+
+    .stack { display: grid; gap: 12px; }
+
+    .section {
+      padding: 16px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      color: var(--brand);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .search-card {
+      background: #e8f1fb;
+      border-color: #bfdbfe;
+    }
+
+    .row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row.two { grid-template-columns: 1fr 1fr; }
+    .row.three { grid-template-columns: 1fr 1fr 2fr; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .result {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+
+    .result small { color: var(--muted); }
+
+    .stop-card {
+      border-left: 4px solid #0071e3;
+    }
+
+    .stop-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0,113,227,.18);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .chip {
+      font-size: 11px;
+      background: rgba(0,113,227,.08);
+      border: 1px solid rgba(0,113,227,.2);
+      border-radius: 999px;
+      padding: 4px 8px;
+    }
+
+    .mini-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(0,113,227,.06);
+      border: 1px solid rgba(0,113,227,.16);
+      font-size: 12px;
+    }
+
+    .diagram {
+      background: #1a3a5c;
+      color: #fff;
+      padding: 16px;
+      min-height: 620px;
+    }
+
+    .diagram h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .diagram p {
+      margin: 0 0 14px;
+      color: rgba(255,255,255,.72);
+      font-size: 12px;
+    }
+
+    .iso-wrap {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2,1fr);
+    }
+
+    .legend .box {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .summary .item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .summary .k {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .summary .v {
+      font-weight: 700;
+      color: var(--brand);
+      margin-top: 3px;
+    }
+
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr; }
+      .row.two, .row.three { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: 1fr; }
+      .legend { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card header">
+      <div>
+        <h1>BMC Uruguay - Logistica de Carga</h1>
+        <div class="sub">2 filas max · altura 1.5m · saliente 2m · pedidos no se mezclan</div>
+      </div>
+      <div class="metrics">
+        <div><strong>ENV-260331-001</strong> · 2026-03-31</div>
+        <div style="margin-top:4px">28 paneles · 6 pkgs · 2 paradas</div>
+      </div>
+    </div>
+
+    <div class="warning">P2: panel 10m sobresale 2.0m. Revisar secuencia y largo útil del camión.</div>
+
+    <div class="toolbar">
+      <button class="tab active">Formulario</button>
+      <button class="tab">Remito</button>
+      <button class="tab">Diagrama 3D</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary">Camión 8m</button>
+      <button class="btn btn-success">WhatsApp</button>
+    </div>
+
+    <div class="grid">
+      <div class="stack">
+        <div class="card section search-card">
+          <h3 class="section-title">Buscar cliente en Ventas</h3>
+          <div style="display:flex; gap:8px;">
+            <input class="input" value="panel" />
+            <button class="btn btn-primary">Buscar</button>
+          </div>
+          <div class="result">
+            <div>
+              <strong>Cliente Panelin Maldonado</strong><br />
+              <small>Dir: Ruta 39 km 4 · Tel: 099 123 456</small>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-secondary">PDF</button>
+              <button class="btn btn-success">Agregar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card section">
+          <h3 class="section-title">Datos del envio</h3>
+          <div class="row two">
+            <div><label>N° envio</label><input class="input" value="ENV-260331-001" /></div>
+            <div><label>Fecha</label><input class="input" value="2026-03-31" /></div>
+            <div><label>Transportista</label><input class="input" value="Transporte Demo" /></div>
+            <div><label>Patente</label><input class="input" value="SBI 1234" /></div>
+          </div>
+          <div style="margin-top:10px;">
+            <label>Notas</label>
+            <textarea class="input">Acceso por portón lateral. Llamar antes de llegar.</textarea>
+          </div>
+        </div>
+
+        <div class="card section stop-card">
+          <div class="stop-head">
+            <strong style="color:#0071e3;">Parada 1</strong>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-success">Mapa</button>
+              <button class="btn btn-secondary">PDF</button>
+            </div>
+          </div>
+
+          <div class="row three">
+            <div><label>Cliente</label><input class="input" value="Cliente Panelin Maldonado" /></div>
+            <div><label>Telefono</label><input class="input" value="099 123 456" /></div>
+            <div><label>Direccion</label><input class="input" value="Ruta 39 km 4, Maldonado" /></div>
+          </div>
+
+          <div class="row two" style="margin-top:10px;">
+            <div><label>Link PDF pedido</label><input class="input" value="https://drive.google.com/..." /></div>
+            <div><label>Link mapa</label><input class="input" value="https://maps.google.com/..." /></div>
+          </div>
+
+          <div style="margin-top:14px;">
+            <div class="section-title" style="margin-bottom:6px;">Paneles</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <input class="input" style="max-width:160px;" value="ISODEC" />
+              <input class="input" style="max-width:90px;" value="150mm" />
+              <input class="input" style="max-width:80px;" value="8m" />
+              <input class="input" style="max-width:70px;" value="12" />
+              <button class="btn" style="background:#ff3b30;">✕</button>
+            </div>
+            <div class="chips">
+              <span class="chip">Pkg 1: 6p · 112cm</span>
+              <span class="chip">Pkg 2: 6p · 112cm</span>
+            </div>
+          </div>
+
+          <div class="mini-note"><strong>En camion:</strong> Fila A: 6x150/8m, 6x150/8m | Fila B: 4x100/6m</div>
+
+          <div style="margin-top:14px;">
+            <div class="section-title" style="margin-bottom:6px;">Accesorios</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <input class="input" style="flex:1;" value="Perfil U y tornilleria" />
+              <input class="input" style="max-width:70px;" value="2" />
+              <button class="btn" style="background:#ff3b30;">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-success" style="width:100%; padding:12px 16px;">+ Agregar parada</button>
+      </div>
+
+      <div class="card diagram">
+        <h3>Vista 3D Isometrica</h3>
+        <p>Puerta atras a la izquierda. P1 queda mas accesible para descarga.</p>
+
+        <div class="iso-wrap">
+          <svg viewBox="0 0 360 260" width="100%" style="display:block;">
+            <polygon points="60,190 240,140 320,180 140,230" fill="#1E3A5F" stroke="#60A5FA" stroke-width="1.5"/>
+            <polygon points="92,138 272,88 352,128 172,178" fill="#0071E3" opacity=".92"/>
+            <polygon points="92,138 172,178 172,120 92,80" fill="#0b5fb4"/>
+            <polygon points="172,178 352,128 352,70 172,120" fill="#0066c9"/>
+
+            <polygon points="110,104 220,74 270,98 160,128" fill="#34C759"/>
+            <polygon points="110,104 160,128 160,88 110,64" fill="#249447"/>
+            <polygon points="160,128 270,98 270,58 160,88" fill="#2db352"/>
+
+            <line x1="70" y1="96" x2="250" y2="46" stroke="#FF3B30" stroke-dasharray="5,4" />
+            <text x="60" y="98" fill="#FF3B30" font-size="10" font-weight="700">1.5m</text>
+            <text x="65" y="208" fill="#93C5FD" font-size="10" font-weight="700">PUERTA</text>
+          </svg>
+        </div>
+
+        <div class="legend">
+          <div class="box">
+            <strong>Fila A</strong><br />
+            112 cm / 150 cm
+          </div>
+          <div class="box">
+            <strong>Fila B</strong><br />
+            84 cm / 150 cm
+          </div>
+          <div class="box">
+            <strong>Paquetes</strong><br />
+            6 total
+          </div>
+          <div class="box">
+            <strong>Saliente</strong><br />
+            2.0 m / max
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="item"><div class="k">Camión</div><div class="v">8m</div></div>
+      <div class="item"><div class="k">Fila A</div><div class="v">112cm / 150cm</div></div>
+      <div class="item"><div class="k">Fila B</div><div class="v">84cm / 150cm</div></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,8 +1,10 @@
 # Calculadora BMC en Vercel (`calculadora-bmc.vercel.app`)
 
+**Rol respecto a producción canónica:** Vercel es el **frontend alternativo / secundario**. La **producción oficial** del producto está definida como **Cloud Run unificado** (SPA + API mismo origen). Ver [`docs/calculadora/CANONICAL-PRODUCTION.md`](calculadora/CANONICAL-PRODUCTION.md).
+
 **Runbook completo (Cloud Run + calculadora + MATRIZ + checklist):** [`procedimientos/PROCEDIMIENTO-CALCULADORA-Y-API-CLOUD-RUN-COMPLETO.md`](procedimientos/PROCEDIMIENTO-CALCULADORA-Y-API-CLOUD-RUN-COMPLETO.md).
 
-La app en [Vercel](https://calculadora-bmc.vercel.app) es el **frontend** (Vite/React). Los precios desde la MATRIZ y el dashboard viven en la **API** (Cloud Run). Para que todo funcione hay que configurar **ambos lados**.
+La app en [Vercel](https://calculadora-bmc.vercel.app) es el **frontend** (Vite/React) apuntando a la **API** (Cloud Run). Para que todo funcione hay que configurar **ambos lados**; esto implica más coordinación que el despliegue único en Cloud Run.
 
 ## 1. Variables en Vercel (obligatorio para MATRIZ y Drive)
 

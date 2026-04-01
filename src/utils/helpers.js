@@ -129,23 +129,25 @@ function buildPdfHead(title) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="${GOOGLE_FONT_URL}" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 14mm 12mm 22mm 12mm; }
+  @page { size: A4; margin: 11mm 10mm 18mm 10mm; }
   * { box-sizing: border-box; }
   body {
     font-family: ${PDF_FONT};
-    font-size: 10pt;
+    font-size: 9.4pt;
     color: #1D1D1F;
     margin: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  table { border-collapse: collapse; width: 100%; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
   th, td { border: 0.4pt solid #D0D0D0; }
   thead { display: table-header-group; }
   .section { page-break-inside: avoid; }
   .totals-block { page-break-inside: avoid; }
   .terms-block { page-break-inside: avoid; }
   .bank-block { page-break-inside: avoid; }
+  .muted { color: #667085; }
+  .num { font-variant-numeric: tabular-nums; }
   .pdf-footer {
     position: fixed;
     bottom: 0;
@@ -300,7 +302,7 @@ function buildBomTable(data) {
   });
 
   return `
-<table style="font-size:9pt;margin-bottom:12px">
+<table style="font-size:8.6pt;margin-bottom:12px">
   <thead>${thead}</thead>
   <tbody>${tbody}</tbody>
 </table>`;
@@ -310,7 +312,7 @@ function buildTotalsBlock(data) {
   const { totals } = data;
   return `
 <div class="totals-block" style="display:flex;justify-content:flex-end;margin-bottom:14px">
-  <table style="min-width:280px;font-size:10pt;border:none">
+  <table style="width:320px;font-size:10pt;border:none;table-layout:auto">
     <tr><td style="padding:4px 10px;border:none">Subtotal s/IVA</td><td style="text-align:right;padding:4px 10px;border:none;font-variant-numeric:tabular-nums">$${fmtPrice(totals.subtotalSinIVA)}</td></tr>
     <tr><td style="padding:4px 10px;border:none">IVA 22%</td><td style="text-align:right;padding:4px 10px;border:none;font-variant-numeric:tabular-nums">$${fmtPrice(totals.iva)}</td></tr>
     <tr style="border-top:1.5pt solid #1D1D1F">

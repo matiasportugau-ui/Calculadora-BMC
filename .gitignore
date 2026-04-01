@@ -8,8 +8,10 @@ dist/
 build/
 *.local
 
-# IDE
-.vscode/
+# IDE — tracked: `.vscode/settings.json`, `.vscode/extensions.json` (team); rest local
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
@@ -60,3 +62,6 @@ docs/team/panelsim/reports/ml-corpus/exports/
 # Catálogo local de fichas PDF (no versionar)
 PDF Productos /
 PDF Productos/
+
+# Bundles locales de export (no versionar)
+bmc-logistica-transport-bundle.zip

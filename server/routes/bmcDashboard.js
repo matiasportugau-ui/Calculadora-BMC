@@ -298,6 +298,26 @@ function findKey(obj, ...candidates) {
   return "";
 }
 
+/** Primer URL http(s) en un texto (p. ej. link de mapa dentro de DIRECCIÓN). */
+function extractFirstHttpUrl(text) {
+  const m = String(text || "").match(/https?:\/\/[^\s"'<>]+/i);
+  if (!m) return "";
+  return m[0].replace(/[,;.)'"]+$/g, "");
+}
+
+/**
+ * Fila de la pestaña Ventas apta para logística (cliente/pedido real, no separadores de semana).
+ * @param {Record<string, unknown>} r
+ */
+function ventasRowIsLogisticaRow(r) {
+  const id = String(findKey(r, "ID. Pedido", "ID Pedido", "Id. Pedido") || "").trim();
+  const nom = String(findKey(r, "NOMBRE", "Nombre") || "").trim();
+  if (!id && !nom) return false;
+  if (/^semana del\b/i.test(nom)) return false;
+  if (/^origen$/i.test(id)) return false;
+  return true;
+}
+
 function parseNum(val) {
   if (val == null || val === "") return 0;
   const s = String(val).trim();
@@ -343,6 +363,24 @@ function mapVentas2026ToCanonical(row, proveedor = "") {
   const pagoProveedor = findKey(row, "Pago a Proveedor", "Pago a Proveedor");
   const facturado = findKey(row, "FACTURADO", "Facturado");
   const numFactura = findKey(row, "Nº FACTURA", "Nº Factura", "NUM FACTURA");
+  const direccionRaw = findKey(row, "DIRECCIÓN", "Dirección", "DIRECCION");
+  let linkUbicacion = String(
+    findKey(row, "LINK UBICACION", "Link ubicación", "LINK_UBICACION", "MAPS", "Google Maps") || ""
+  ).trim();
+  const urlInDir = extractFirstHttpUrl(direccionRaw);
+  if (!linkUbicacion && urlInDir && /maps\.(google|app)/i.test(urlInDir)) linkUbicacion = urlInDir;
+  let direccion = String(direccionRaw || "").trim();
+  if (urlInDir && direccion.includes(urlInDir)) {
+    direccion = direccion
+      .replace(urlInDir, "")
+      .replace(/\s*-\s*$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  const telefono = findKey(row, "CONTACTO", "Teléfono", "TELEFONO", "Telefono", "TEL");
+  const zona = findKey(row, "ZONA", "Zona");
+  const linkCarpeta = findKey(row, "CARPETA", "Carpeta", "ADJUNTO", "PDF");
+  const pedidoResumen = findKey(row, "ENCARGO", "PEDIDO", "Pedido", "Consulta / Pedido", "CONSULTA / PEDIDO");
   return {
     COTIZACION_ID: idPedido,
     CLIENTE_NOMBRE: nombre,
@@ -354,6 +392,12 @@ function mapVentas2026ToCanonical(row, proveedor = "") {
     FACTURADO: facturado,
     NUM_FACTURA: numFactura,
     PROVEEDOR: proveedor || findKey(row, "PROVEEDOR", "Proveedor"),
+    DIRECCION: direccion,
+    TELEFONO: telefono,
+    ZONA: zona,
+    LINK_UBICACION: linkUbicacion,
+    LINK_CARPETA: linkCarpeta,
+    PEDIDO_RESUMEN: pedidoResumen,
   };
 }
 
@@ -955,6 +999,15 @@ async function handleCreateVenta(ventasSheetId, body) {
     Facturado: body.FACTURADO || "",
     "Nº FACTURA": body.NUM_FACTURA || "",
     "Nº Factura": body.NUM_FACTURA || "",
+    CARPETA: body.LINK_CARPETA || body.linkCarpeta || "",
+    Carpeta: body.LINK_CARPETA || body.linkCarpeta || "",
+    "DIRECCIÓN": body.DIRECCION || "",
+    Dirección: body.DIRECCION || "",
+    DIRECCION: body.DIRECCION || "",
+    CONTACTO: body.TELEFONO || "",
+    Contacto: body.TELEFONO || "",
+    ENCARGO: body.PEDIDO_RESUMEN || "",
+    PEDIDO: body.PEDIDO_RESUMEN || "",
   };
 
   const row = headers.length > 0
@@ -1104,7 +1157,14 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 
   const parseNum = (v) => {
     if (v == null || v === "") return null;
-    const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+    let s = String(v).trim().replace(/\s/g, "");
+    if (!s) return null;
+    // Support both 1.025,50 and 1025.50 without multiplying dot-decimal values by 100.
+    if (s.includes(",") && s.includes(".")) {
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else if (s.includes(",")) {
+      s = s.replace(",", ".");
+    }
     const n = parseFloat(s);
     return isNaN(n) ? null : n;
   };
@@ -1141,7 +1201,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
       const webIvaIncRaw =
         cols.webIvaInc != null ? parseNum(row[cols.webIvaInc]) : null;
 
-      // F, L, M, T, U (web c/IVA): copiar número de planilla sin transformar (nunca ÷ ni × IVA_MULT).
+      // F, L, M, T, U: copiar número de planilla sin transformar.
+      // Regla confirmada: T = venta web ex IVA.
+      // La UI calcula Web c/IVA desde `venta_web`; si U existe, se expone como referencia.
       const costo = costoRaw != null ? +costoRaw.toFixed(2) : "";
       const venta = ventaLocalRaw != null ? +ventaLocalRaw.toFixed(2) : "";
       const ventaInc = ventaIvaIncRaw != null ? +ventaIvaIncRaw.toFixed(2) : "";
@@ -1188,9 +1250,9 @@ async function buildPlanillaDesdeMatriz(matrizSheetId) {
 }
 
 /**
- * Aplica overrides de la calculadora (keys `path.costo|venta|web`) a filas MATRIZ
+ * Aplica overrides de la calculadora (keys `path.costo|venta|web|webIvaInc`) a filas MATRIZ
  * cuyo SKU (col D) mapea a `path` en `matrizPreciosMapping.js`.
- * Overrides `.costo` / `.venta` / `.web` (USD s/IVA) → celdas **F**, **L**, **T** **tal cual** (sin ×/÷ IVA). No escribe **M**.
+ * Overrides `.costo` / `.venta` / `.web` / `.webIvaInc` → celdas **F**, **L**, **T**, **U** **tal cual** (sin ×/÷ IVA). No escribe **M**.
  * Requiere scope escritura Sheets y rol Editor en el workbook MATRIZ.
  */
 async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, dryRun) {
@@ -1200,7 +1262,7 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
 
   const byPath = new Map();
   for (const [fullKey, val] of Object.entries(overrides || {})) {
-    const m = String(fullKey).match(/^(.+)\.(costo|venta|web)$/);
+    const m = String(fullKey).match(/^(.+)\.(costo|venta|web|webIvaInc)$/);
     if (!m) continue;
     if (val === null || val === "") continue;
     const num = typeof val === "number" ? val : parseFloat(String(val).replace(",", "."));
@@ -1218,7 +1280,7 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
       updated: 0,
       planned: [],
       skippedPaths: [],
-      message: "No hay overrides con formato path.costo, path.venta o path.web",
+      message: "No hay overrides con formato path.costo, path.venta, path.web o path.webIvaInc",
     };
   }
 
@@ -1263,6 +1325,9 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
       }
       if (changes.web != null) {
         cells[colIndexToLetter(colSpec.web)] = +(+changes.web).toFixed(2);
+      }
+      if (changes.webIvaInc != null && colSpec.webIvaInc != null) {
+        cells[colIndexToLetter(colSpec.webIvaInc)] = +(+changes.webIvaInc).toFixed(2);
       }
       if (Object.keys(cells).length === 0) continue;
       planned.push({
@@ -1453,18 +1518,41 @@ export default function createBmcDashboardRouter(config) {
     if (!checkVentasAvailable(config)) return noConfig(res);
     try {
       const ventasSheetId = config.bmcVentasSheetId;
-      const headers = ["COTIZACION_ID", "CLIENTE_NOMBRE", "FECHA_ENTREGA", "COSTO", "GANANCIA", "SALDO_CLIENTE", "PAGO_PROVEEDOR", "FACTURADO", "NUM_FACTURA", "PROVEEDOR"];
+      const headers = [
+        "COTIZACION_ID",
+        "CLIENTE_NOMBRE",
+        "FECHA_ENTREGA",
+        "COSTO",
+        "GANANCIA",
+        "SALDO_CLIENTE",
+        "PAGO_PROVEEDOR",
+        "FACTURADO",
+        "NUM_FACTURA",
+        "PROVEEDOR",
+        "DIRECCION",
+        "TELEFONO",
+        "ZONA",
+        "LINK_UBICACION",
+        "LINK_CARPETA",
+        "PEDIDO_RESUMEN",
+      ];
       const tabFilter = req.query.tab;
       const proveedorFilter = req.query.proveedor;
+      const logistica =
+        req.query.logistica === "1" ||
+        req.query.logistica === "true" ||
+        String(req.query.logistica || "").toLowerCase() === "yes";
 
       if (tabFilter) {
         // Read a specific tab by name
         const { rows: rawRows } = await getSheetData(ventasSheetId, tabFilter, false, { headerRowOffset: 1 });
         const filtered = rawRows.filter((r) =>
-          findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA")
+          logistica
+            ? ventasRowIsLogisticaRow(r)
+            : findKey(r, "ID. Pedido", "NOMBRE", "COSTO SIN IVA") || findKey(r, "MONTO SIN IVA")
         );
         const data = filtered.map((r) => mapVentas2026ToCanonical(r, tabFilter));
-        return res.json({ ok: true, headers, data, tab: tabFilter });
+        return res.json({ ok: true, headers, data, tab: tabFilter, logistica: logistica || undefined });
       }
 
       // Iterate all 23 tabs and merge results

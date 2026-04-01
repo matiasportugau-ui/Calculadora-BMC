@@ -2,15 +2,19 @@
 
 Documentación orientada a **usuarios comerciales** y a **QA / deploy**. Para criterios de cotización y trazabilidad de fuentes, ver [`docs/team/knowledge/Calc.md`](../team/knowledge/Calc.md).
 
+**Producción canónica (decisión de arquitectura):** [**Cloud Run unificado** (SPA + API mismo origen)](./CANONICAL-PRODUCTION.md). Vercel es **secundario / alternativo**, no el stack oficial. Lanzamiento y checklists: [`RELEASE-CHECKLIST-CALCULADORA.md`](./RELEASE-CHECKLIST-CALCULADORA.md), [`RELEASE-BRIEF-OFFICIAL.md`](./RELEASE-BRIEF-OFFICIAL.md), gaps pre-launch: [`CALCULADORA-LAUNCH-GAPS.md`](./CALCULADORA-LAUNCH-GAPS.md).
+
 ---
 
 ## 1. Dónde corre la app
 
 | Entorno | URL / comando | Notas |
 |--------|----------------|-------|
-| **Producción (Cloud Run)** | `https://panelin-calc-q74zutv7dq-uc.a.run.app/calculadora/` | Misma base sirve la SPA y la API (`VITE_SAME_ORIGIN_API` en imagen Docker). |
-| **Frontend en Vercel** (si aplica) | Según proyecto Vercel | Requiere `VITE_API_URL` apuntando a la API Cloud Run. Ver [`docs/VERCEL-CALCULADORA-SETUP.md`](../VERCEL-CALCULADORA-SETUP.md). |
+| **Producción canónica (Cloud Run unificado)** | `https://panelin-calc-q74zutv7dq-uc.a.run.app/calculadora/` | **Oficial:** misma base sirve la SPA y la API (`VITE_SAME_ORIGIN_API` en imagen `Dockerfile.bmc-dashboard`). Ver [`CANONICAL-PRODUCTION.md`](./CANONICAL-PRODUCTION.md). |
+| **Frontend en Vercel** (secundario) | Según proyecto Vercel | Alternativa: requiere `VITE_API_URL` → API Cloud Run; más superficie de deploy/OAuth. Ver [`docs/VERCEL-CALCULADORA-SETUP.md`](../VERCEL-CALCULADORA-SETUP.md). |
 | **Desarrollo local** | `npm run dev` (Vite, típ. puerto 5173) + `npm run start:api` (puerto 3001) | La calculadora llama a `http://localhost:3001` salvo `VITE_API_URL`. |
+
+**Logística de carga (BMC):** segunda app en el mismo bundle. Rutas: **`/logistica`** o **`?app=logistica`** (local/Vercel con `VITE_BASE=/`); en **Cloud Run** con `VITE_BASE=/calculadora/`, usar **`/calculadora/logistica`** o **`/calculadora/?app=logistica`** (el servidor sirve `index.html` para subrutas bajo `/calculadora/`). Código: [`src/components/BmcLogisticaApp.jsx`](../../src/components/BmcLogisticaApp.jsx), routing en [`src/App.jsx`](../../src/App.jsx).
 
 **Salud del backend:** `GET /health` en la misma base (JSON con `ok`, Sheets, tokens ML, etc.).
 
@@ -150,6 +154,8 @@ Para una pasada humana o asistente con **Browser**, usar el documento dedicado:
 
 Incluye casillas por escenario, PDF, Drive, Config/MATRIZ y responsive.
 
+**Release oficial (smoke + QA + rollback + Go/No-Go):** [`RELEASE-CHECKLIST-CALCULADORA.md`](./RELEASE-CHECKLIST-CALCULADORA.md). Brief de salida: [`RELEASE-BRIEF-OFFICIAL.md`](./RELEASE-BRIEF-OFFICIAL.md).
+
 ---
 
 ## 15. Referencias de código y tests
@@ -173,4 +179,4 @@ Incluye casillas por escenario, PDF, Drive, Config/MATRIZ y responsive.
 
 ---
 
-*Última revisión documental: 2026-03-26.*
+*Última revisión documental: 2026-03-31 (producción canónica Cloud Run, release checklists).*

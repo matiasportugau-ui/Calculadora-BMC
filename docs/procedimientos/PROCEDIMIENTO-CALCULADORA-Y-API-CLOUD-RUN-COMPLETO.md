@@ -10,9 +10,11 @@ Runbook para dejar **operativo** el stack **API + Finanzas + Calculadora** en **
 
 ## 0. Alcance y decisión de arquitectura
 
+**Producción canónica documentada:** ver también [`docs/calculadora/CANONICAL-PRODUCTION.md`](../calculadora/CANONICAL-PRODUCTION.md) (fuente única para “oficial” vs Vercel secundario).
+
 | Modo | Front calculadora | Base API en el navegador |
 |------|-------------------|---------------------------|
-| **B — Recomendado GCP unificado** | `https://<servicio>.run.app/calculadora/` | Mismo origen (`VITE_SAME_ORIGIN_API=1` en imagen; ver `Dockerfile.bmc-dashboard`) |
+| **B — Recomendado GCP unificado (oficial)** | `https://<servicio>.run.app/calculadora/` | Mismo origen (`VITE_SAME_ORIGIN_API=1` en imagen; ver `Dockerfile.bmc-dashboard`) |
 | **A — Vercel + Cloud Run** | `https://calculadora-bmc.vercel.app` | `VITE_API_URL` apuntando a Cloud Run |
 
 Este procedimiento cubre **B** de punta a punta y al final resume **A** si mantenés Vercel.

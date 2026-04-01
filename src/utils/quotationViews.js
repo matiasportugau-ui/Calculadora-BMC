@@ -270,14 +270,86 @@ export function generateCosteoHTML(data) {
     ? `<div style="margin-top:10px;padding:8px 10px;background:#FFF5E6;border:0.5pt solid #FF9F0A;border-radius:4px;font-size:9pt;color:#6E4B00"><b>Flete:</b> no se ingresó <b>costo de flete</b> (interno). El <b>precio de venta del flete no se incluye</b> en el <b>margen consolidado</b> hasta cargar ese costo. La línea aparece marcada con *.</div>`
     : "";
   const marginPctStr = report.totalMarginPct != null ? `${report.totalMarginPct}%` : "—";
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Costeo interno — BMC</title><style>@page{size:A4;margin:10mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:9pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact}</style></head><body>
-<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><div style="font-size:16pt;font-weight:800;color:#003366">BMC Uruguay</div><div style="font-size:12pt;font-weight:800">COSTEO INTERNO</div></div>
+  const coverageStr = report.coveredSalePct != null ? `${report.coveredSalePct}%` : "—";
+  const groupSummaryRows = (report.byGroup || []).map((g, idx) => {
+    const bg = idx % 2 ? "#FAFAFA" : "#fff";
+    const margin = g.marginPct != null ? `${g.marginPct}%` : "—";
+    return `<tr style="background:${bg}">
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;font-weight:600">${esc(g.group)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">${g.items}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">$${fmtPrice(g.saleTotal)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">$${fmtPrice(g.costTotal)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right;color:#1B7A2E;font-weight:700">$${fmtPrice(g.marginTotal)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">${margin}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">${g.missingCostItems}</td>
+    </tr>`;
+  }).join("");
+  const missingRows = (report.missingCostRows || []).map((r, idx) => {
+    const bg = idx % 2 ? "#FFF8ED" : "#FFFDF7";
+    return `<tr style="background:${bg}">
+      <td style="padding:5px 6px;border:0.4pt solid #ccc">${esc(r.group)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc">${esc(r.label)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:center">${esc(r.sku)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">${typeof r.cant === "number" ? (r.cant % 1 === 0 ? r.cant : r.cant.toFixed(2)) : r.cant}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:center">${esc(r.unidad)}</td>
+      <td style="padding:5px 6px;border:0.4pt solid #ccc;text-align:right">$${fmtPrice(r.saleTotal)}</td>
+    </tr>`;
+  }).join("");
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Costeo interno — BMC</title><style>
+  @page{size:A4 landscape;margin:10mm}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:9pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table{width:100%;border-collapse:collapse}
+  .card-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 14px}
+  .card{border:0.5pt solid #D7DEE8;border-radius:8px;padding:10px 12px;background:#F8FAFC}
+  .card .k{font-size:8pt;color:#667085;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .card .v{font-size:15pt;color:#003366;font-weight:800;margin-top:4px}
+  .section-title{font-size:10pt;font-weight:800;color:#003366;margin:14px 0 8px}
+</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><div style="font-size:18pt;font-weight:800;color:#003366">BMC Uruguay</div><div style="font-size:12pt;font-weight:800">COSTEO INTERNO · ANÁLISIS A4</div></div>
 <div style="font-size:8pt;color:#666;margin-bottom:10px">Lista activa cotización: <b>${esc(listaLabel)}</b> · Uso administración · No enviar al cliente</div>
-<div style="font-size:9pt;margin-bottom:10px"><b>Cliente:</b> ${esc(client.nombre)} · <b>Ref:</b> ${esc(project.refInterna)} · <b>Fecha:</b> ${esc(project.fecha)} · <b>Obra:</b> ${esc(project.descripcion)}</div>
-<table style="width:100%;border-collapse:collapse;font-size:8pt"><thead><tr style="background:#EDEDED;font-weight:700"><th style="text-align:left;padding:4px 5px;border:0.4pt solid #ccc">Grupo</th><th style="text-align:left;padding:4px 5px;border:0.4pt solid #ccc">Descripción</th><th style="text-align:center;padding:4px 5px;border:0.4pt solid #ccc">SKU</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Cant.</th><th style="text-align:center;padding:4px 5px;border:0.4pt solid #ccc">Unid.</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">C.U. costo</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Costo total</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">P.U. venta</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Venta total</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">% margen</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Ganancia</th></tr></thead><tbody>${body}</tbody></table>
-<div style="margin-top:12px;display:flex;justify-content:flex-end"><table style="min-width:280px;font-size:10pt;border-collapse:collapse"><tr><td style="padding:4px 8px"><b>Costo total (líneas con costo conocido)</b></td><td style="text-align:right;padding:4px 8px">$${fmtPrice(report.sumCostAll)}</td></tr><tr><td style="padding:4px 8px"><b>Venta incluida en margen</b></td><td style="text-align:right;padding:4px 8px">$${fmtPrice(report.sumSaleForMargin)}</td></tr><tr><td style="padding:4px 8px"><b>Costo incluido en margen</b></td><td style="text-align:right;padding:4px 8px">$${fmtPrice(report.sumCostForMargin)}</td></tr><tr style="border-top:1pt solid #000"><td style="padding:6px 8px;font-weight:800">Margen consolidado</td><td style="text-align:right;padding:6px 8px;font-weight:800;color:#003366">$${fmtPrice(report.totalMargin)}</td></tr><tr><td style="padding:4px 8px;font-size:9pt;color:#555">Margen % sobre costo (consolidado)</td><td style="text-align:right;padding:4px 8px;font-size:9pt;font-weight:700">${marginPctStr}</td></tr></table></div>
-${foot}
-<p style="margin-top:14px;font-size:8pt;color:#888">Líneas sin costo en catálogo no entran en el margen consolidado. Revisar MATRIZ / catálogo para completar costos.</p>
+<div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1.6fr;gap:8px 14px;font-size:9pt;margin-bottom:8px;padding:10px 12px;background:#F7F8FA;border:0.5pt solid #E5E7EB;border-radius:8px">
+  <div><b>Cliente:</b> ${esc(client.nombre)}</div>
+  <div><b>Ref:</b> ${esc(project.refInterna)}</div>
+  <div><b>Fecha:</b> ${esc(project.fecha)}</div>
+  <div><b>Obra:</b> ${esc(project.descripcion)}</div>
+</div>
+<div class="card-grid">
+  <div class="card"><div class="k">Venta total cotizada</div><div class="v">$${fmtPrice(report.sumSaleAll)}</div></div>
+  <div class="card"><div class="k">Costo conocido total</div><div class="v">$${fmtPrice(report.sumCostAll)}</div></div>
+  <div class="card"><div class="k">Margen consolidado</div><div class="v">$${fmtPrice(report.totalMargin)}</div></div>
+  <div class="card"><div class="k">Cobertura del margen</div><div class="v">${coverageStr}</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:start">
+  <div>
+    <div class="section-title">Analítica por grupo</div>
+    <table style="font-size:8.4pt"><thead><tr style="background:#EDEDED;font-weight:700">
+      <th style="text-align:left;padding:5px 6px;border:0.4pt solid #ccc">Grupo</th>
+      <th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Items</th>
+      <th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Venta</th>
+      <th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Costo</th>
+      <th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Margen</th>
+      <th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">% margen</th>
+      <th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Sin costo</th>
+    </tr></thead><tbody>${groupSummaryRows || `<tr><td colspan="7" style="padding:8px;border:0.4pt solid #ccc;text-align:center;color:#667085">Sin datos</td></tr>`}</tbody></table>
+    <div class="section-title">Detalle por línea</div>
+    <table style="width:100%;border-collapse:collapse;font-size:7.8pt"><thead><tr style="background:#EDEDED;font-weight:700"><th style="text-align:left;padding:4px 5px;border:0.4pt solid #ccc">Grupo</th><th style="text-align:left;padding:4px 5px;border:0.4pt solid #ccc">Descripción</th><th style="text-align:center;padding:4px 5px;border:0.4pt solid #ccc">SKU</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Cant.</th><th style="text-align:center;padding:4px 5px;border:0.4pt solid #ccc">Unid.</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">C.U. costo</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Costo total</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">P.U. venta</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Venta total</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">% margen</th><th style="text-align:right;padding:4px 5px;border:0.4pt solid #ccc">Ganancia</th></tr></thead><tbody>${body}</tbody></table>
+  </div>
+  <div>
+    <div class="section-title">Resumen consolidado</div>
+    <table style="font-size:9pt;border-collapse:collapse"><tr><td style="padding:5px 8px;border:0.4pt solid #ccc"><b>Venta incluida en margen</b></td><td style="text-align:right;padding:5px 8px;border:0.4pt solid #ccc">$${fmtPrice(report.sumSaleForMargin)}</td></tr><tr><td style="padding:5px 8px;border:0.4pt solid #ccc"><b>Costo incluido en margen</b></td><td style="text-align:right;padding:5px 8px;border:0.4pt solid #ccc">$${fmtPrice(report.sumCostForMargin)}</td></tr><tr><td style="padding:5px 8px;border:0.4pt solid #ccc"><b>Margen consolidado</b></td><td style="text-align:right;padding:5px 8px;border:0.4pt solid #ccc;color:#003366;font-weight:800">$${fmtPrice(report.totalMargin)}</td></tr><tr><td style="padding:5px 8px;border:0.4pt solid #ccc"><b>Margen % sobre costo</b></td><td style="text-align:right;padding:5px 8px;border:0.4pt solid #ccc;font-weight:700">${marginPctStr}</td></tr></table>
+    <div class="section-title">Líneas sin costo conocido</div>
+    <table style="font-size:8pt"><thead><tr style="background:#FFF1D6"><th style="text-align:left;padding:5px 6px;border:0.4pt solid #ccc">Grupo</th><th style="text-align:left;padding:5px 6px;border:0.4pt solid #ccc">Descripción</th><th style="text-align:center;padding:5px 6px;border:0.4pt solid #ccc">SKU</th><th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Cant.</th><th style="text-align:center;padding:5px 6px;border:0.4pt solid #ccc">Unid.</th><th style="text-align:right;padding:5px 6px;border:0.4pt solid #ccc">Venta</th></tr></thead><tbody>${missingRows || `<tr><td colspan="6" style="padding:8px;border:0.4pt solid #ccc;text-align:center;color:#667085">Todas las líneas tienen costo conocido</td></tr>`}</tbody></table>
+    ${foot}
+    <div style="margin-top:10px;padding:10px 12px;background:#F7F8FA;border:0.5pt solid #E5E7EB;border-radius:8px;font-size:8.5pt;line-height:1.55;color:#475467">
+      <b style="color:#003366">Lectura del análisis</b><br/>
+      1. La hoja separa <b>venta total cotizada</b> de la porción que entra al <b>margen consolidado</b>.<br/>
+      2. Las líneas sin costo conocido quedan listadas aparte y no distorsionan el margen.<br/>
+      3. Si falta costo de flete, la venta de flete tampoco entra al cálculo consolidado hasta completar ese dato.
+    </div>
+  </div>
+</div>
+<p style="margin-top:12px;font-size:8pt;color:#888">Líneas sin costo en catálogo no entran en el margen consolidado. Revisar MATRIZ / catálogo para completar costos y mejorar la cobertura del análisis.</p>
 </body></html>`;
 }
 

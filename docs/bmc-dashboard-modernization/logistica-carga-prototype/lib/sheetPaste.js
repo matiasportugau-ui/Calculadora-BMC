@@ -5,10 +5,37 @@
 
 /** @typedef {{ label: string, byIndex: Record<string, number|null|undefined> }} SheetPreset */
 
-/** Preset alineado al flujo histórico gviz (cols 0..14+). Ajustá índices si tu pestaña cambió. */
+/**
+ * Presets por índice (fila de **datos** sin encabezados, o 2ª fila si la 1ª es título).
+ * Planilla **2.0 - Ventas** típica: A=º, B=Vendedor, C=ID pedido, … G=Nombre, H=Dirección, I=Encargo, J=CARPETA (PDF), … O≈Contacto.
+ */
 export const SHEET_PASTE_PRESETS = {
+  ventas20Coordinaciones: {
+    label: "2.0 Ventas (recomendado: C=pedido, G=cliente, H=dir, J=CARPETA, O≈tel)",
+    byIndex: {
+      cotizacionId: 2,
+      cliente: 6,
+      direccion: 7,
+      linkAdjunto: 9,
+      telefono: 14,
+      linkUbicacion: null,
+      zona: null,
+    },
+  },
+  ventas20CoordinacionesMapaK: {
+    label: "2.0 Ventas + link mapa en col. K (índice 10)",
+    byIndex: {
+      cotizacionId: 2,
+      cliente: 6,
+      direccion: 7,
+      linkAdjunto: 9,
+      telefono: 14,
+      linkUbicacion: 10,
+      zona: null,
+    },
+  },
   ventasDashboardLegacy: {
-    label: "Ventas Dashboard (índices heredados: col.0 pedido, 7–9 cliente/dir/PDF, 14 tel)",
+    label: "Legado: col.0=pedido, 7–9 cliente/dir/adjunto (export viejo)",
     byIndex: {
       cotizacionId: 0,
       cliente: 7,
@@ -20,7 +47,7 @@ export const SHEET_PASTE_PRESETS = {
     },
   },
   ventasDashboardLegacyMapa15: {
-    label: "Ventas Dashboard + mapa en col. 15 (opcional)",
+    label: "Legado + mapa col. 15",
     byIndex: {
       cotizacionId: 0,
       cliente: 7,
@@ -79,11 +106,70 @@ export function splitTsvLine(line) {
 }
 
 /**
+ * TSV con soporte de **comillas** y saltos de línea **dentro** de una celda (Google Sheets / Excel).
  * @param {string} text
  * @returns {string[][]}
  */
 export function parseTsvRows(text) {
-  return splitPasteLines(text).map(splitTsvLine);
+  const s = stripBom(String(text || ""));
+  if (!s.trim()) return [];
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let inQ = false;
+  const pushRow = () => {
+    row.push(cur);
+    cur = "";
+    const hasContent = row.some((cell) => String(cell).trim() !== "");
+    if (hasContent || row.length > 1) {
+      rows.push(
+        row.map((c) =>
+          String(c)
+            .replace(/^"|"$/g, "")
+            .trim()
+        )
+      );
+    }
+    row = [];
+  };
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') {
+      if (inQ && s[i + 1] === '"') {
+        cur += '"';
+        i++;
+        continue;
+      }
+      inQ = !inQ;
+      continue;
+    }
+    if (!inQ && c === "\t") {
+      row.push(cur);
+      cur = "";
+      continue;
+    }
+    if (!inQ && (c === "\n" || (c === "\r" && s[i + 1] === "\n"))) {
+      if (c === "\r") i++;
+      pushRow();
+      continue;
+    }
+    if (!inQ && c === "\r") {
+      pushRow();
+      continue;
+    }
+    cur += c;
+  }
+  row.push(cur);
+  if (row.length && (row.some((cell) => String(cell).trim() !== "") || row.length > 1)) {
+    rows.push(
+      row.map((c) =>
+        String(c)
+          .replace(/^"|"$/g, "")
+          .trim()
+      )
+    );
+  }
+  return rows;
 }
 
 function normHeader(s) {
@@ -104,6 +190,8 @@ const HEADER_ALIASES = {
   cotizacionId: [
     "cotizacion_id",
     "id",
+    "id. pedido",
+    "id pedido",
     "pedido",
     "n pedido",
     "n° pedido",
@@ -113,6 +201,7 @@ const HEADER_ALIASES = {
   ],
   linkUbicacion: ["link_ubicacion", "link ubicacion", "maps", "mapa", "google maps", "ubicacion link"],
   linkAdjunto: [
+    "carpeta",
     "link_cotizacion",
     "link cotizacion",
     "pdf",
@@ -122,6 +211,7 @@ const HEADER_ALIASES = {
     "archivo",
     "link",
     "drive",
+    "dropbox",
   ],
 };
 
@@ -256,9 +346,40 @@ export function classifyAdjuntoUrl(url) {
  * @param {string} text
  * @param {string} presetKey
  */
+/**
+ * Fila completa como objeto (títulos de columna tal cual en la planilla).
+ * @param {string[][]} rows
+ * @returns {Record<string, string>}
+ */
+function buildRawSheetFromHeaderValueRows(rows) {
+  if (rows.length < 2) return {};
+  const headers = rows[0];
+  const values = rows[1];
+  const out = {};
+  headers.forEach((h, i) => {
+    const key = String(h ?? "").trim() || `COL_${i}`;
+    out[key] = String(values[i] ?? "").trim();
+  });
+  return out;
+}
+
+/**
+ * @param {string[]} cells
+ * @returns {Record<string, string>}
+ */
+function buildRawSheetFromIndexCells(cells) {
+  const out = {};
+  cells.forEach((cell, i) => {
+    out[`COL_${i}`] = String(cell ?? "").trim();
+  });
+  return out;
+}
+
 export function extractStopFieldsFromPaste(text, presetKey) {
   const trimmed = String(text || "").trim();
-  if (!trimmed) return { fields: {}, cells: [], mode: "empty", warnings: ["Pegá al menos una fila."] };
+  if (!trimmed) {
+    return { fields: {}, cells: [], mode: "empty", warnings: ["Pegá al menos una fila."], rawSheetRow: {} };
+  }
 
   const rows = parseTsvRows(trimmed);
   let fields = {};
@@ -297,5 +418,12 @@ export function extractStopFieldsFromPaste(text, presetKey) {
     }
   }
 
-  return { fields, cells: dataCells, mode, warnings };
+  let rawSheetRow = {};
+  if (mode === "header" && rows.length >= 2) {
+    rawSheetRow = buildRawSheetFromHeaderValueRows(rows);
+  } else if (mode === "index" || mode === "index_second_row") {
+    rawSheetRow = buildRawSheetFromIndexCells(dataCells);
+  }
+
+  return { fields, cells: dataCells, mode, warnings, rawSheetRow };
 }

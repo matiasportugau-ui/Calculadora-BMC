@@ -77,6 +77,7 @@ docs/team/
 | [AGENTS.md](./AGENTS.md) | Agentes documentados (Judge, Parallel/Serial, Networks, Sync, Docs Organizer) |
 | [knowledge/DocsOrganizer.md](./knowledge/DocsOrganizer.md) | KB del rol §2 Docs & Repos Organizer (índices, READMEs, handoff Repo Sync) |
 | [interactions/](./interactions/) | Instancias de interacción equipo (ej. análisis cruzado de documentos externos) |
+| [calculadora/CANONICAL-PRODUCTION.md](../calculadora/CANONICAL-PRODUCTION.md) | **Calculadora prod canónica:** Cloud Run unificado; [`RELEASE-CHECKLIST-CALCULADORA.md`](../calculadora/RELEASE-CHECKLIST-CALCULADORA.md), [`RELEASE-BRIEF-OFFICIAL.md`](../calculadora/RELEASE-BRIEF-OFFICIAL.md) |
 
 ---
 

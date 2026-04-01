@@ -118,6 +118,14 @@ Ver planilla-map.md §2 para columnas completas y diff vs blueprint.
 | FACTURADO | string | Estado |
 | NUM_FACTURA | string | Referencia |
 | PROVEEDOR | string | Filtro |
+| DIRECCION | string | Logística / mapa (si hay URL en la celda, se separa a LINK_UBICACION) |
+| TELEFONO | string | CONTACTO / tel en planilla |
+| ZONA | string | Zona |
+| LINK_UBICACION | string | Link Google Maps si detectado |
+| LINK_CARPETA | string | Columna **CARPETA** (PDF/Dropbox u otro adjunto) |
+| PEDIDO_RESUMEN | string | ENCARGO / PEDIDO / notas de línea |
+
+**GET /api/ventas:** con `?tab=<nombre>&logistica=1` se incluyen filas con cliente o pedido aunque falte costo (pestaña *Ventas y Coordinaciones*). Sin `logistica`, el filtro sigue siendo el histórico (pedido/nombre/costo).
 
 ### Stock E-Commerce (Stock_Ecommerce)
 
@@ -179,7 +187,7 @@ Ver planilla-map.md §2 para columnas completas y diff vs blueprint.
 | /api/metas-ventas | Metas_Ventas | — |
 | /api/audit | AUDIT_LOG | — |
 | /api/marcar-entregado | Master_Cotizaciones | Ventas realizadas (append), borrado en Master |
-| /api/ventas | 2.0 - Ventas — **todas las tabs** (23); ?proveedor= filtra; ?tab= tab específica | POST: append a tab de proveedor |
+| /api/ventas | 2.0 - Ventas — **todas las tabs**; `?proveedor=`; `?tab=` pestaña; `?logistica=1` con `?tab=` incluye filas solo con cliente/pedido ( Coordinaciones ) | POST: append a tab de proveedor |
 | /api/ventas/tabs | Lista de tabs disponibles en 2.0 Ventas | — |
 | /api/stock-ecommerce | Stock E-Commerce (BMC_STOCK_SHEET_ID) | — |
 | /api/stock-kpi | Stock E-Commerce | — |

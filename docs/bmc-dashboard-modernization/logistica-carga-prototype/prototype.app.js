@@ -31,9 +31,17 @@ import {
   classifyAdjuntoUrl,
   extractStopFieldsFromPaste,
 } from "./lib/sheetPaste.js";
+import { estimateRouteLoadPhysical } from "./lib/loadCharacteristics.js";
 
 const STORAGE_KEY = "bmc-carga-ruta-v1";
+const VENTAS_API_BASE_KEY = "bmc-carga-ventas-api-base";
+const VENTAS_TAB_COORDINACIONES = "Ventas y Coordinaciones";
 const TRUCK_LEN_OPTS = [6, 7, 8, 9, 10, 12, 14];
+
+/** Cache en memoria: filas canónicas desde GET /api/ventas?tab=…&logistica=1 */
+let ventasCoordinacionesRows = [];
+/** Mensaje UI bajo el bloque Ventas API (sobrevive a render). */
+let ventasFetchStatusText = "";
 
 const ISX = 25;
 const ISY = 25;
@@ -566,7 +574,7 @@ function renderAdjuntoTextExtract(stop) {
   const fid = `adjPdf-${esc(stop.id)}`;
   return `<div class="adjunto-bom-box" style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">
     <label class="lbl">Texto copiado del adjunto (PDF / cotización)</label>
-    <p class="paste-hint" style="margin:4px 0 6px">Podés <strong>cargar un PDF</strong> (texto seleccionable) o pegar manualmente la tabla / líneas de producto. El link de Drive no se descarga solo: el PDF va desde tu disco. La primera lectura de PDF descarga <strong>PDF.js</strong> desde jsDelivr (requiere internet).</p>
+    <p class="paste-hint" style="margin:4px 0 6px">Podés <strong>cargar un PDF</strong> (texto seleccionable) o pegar manualmente la tabla / líneas de producto. El link de Drive no se descarga solo: el PDF va desde tu disco. La primera lectura de PDF descarga <strong>PDF.js</strong> desde jsDelivr (requiere internet). <strong>PDF escaneado (imagen):</strong> hoy no hay OCR en el prototipo; usá pegado manual o un servicio OCR externo y luego «Añadir desde texto».</p>
     <input type="file" id="${fid}" class="adjunto-pdf-input" data-pdf-stop="${esc(stop.id)}" accept=".pdf,application/pdf" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true" />
     <div class="row-flex" style="margin-bottom:8px;gap:6px;flex-wrap:wrap;align-items:center">
       <label for="${fid}" class="btn btn-muted btn-sm" style="cursor:pointer;margin:0">Elegir PDF → texto</label>
@@ -763,7 +771,7 @@ function renderPastePreviewBox(result) {
 
 function runPastePreview() {
   const ta = document.getElementById("pasteSheetRow");
-  const preset = document.getElementById("pasteSheetPreset")?.value || "ventasDashboardLegacy";
+  const preset = document.getElementById("pasteSheetPreset")?.value || "ventas20Coordinaciones";
   const box = document.getElementById("pastePreview");
   if (!ta || !box) return;
   const result = extractStopFieldsFromPaste(ta.value, preset);
@@ -772,7 +780,7 @@ function runPastePreview() {
 
 function runPasteImport() {
   const ta = document.getElementById("pasteSheetRow");
-  const preset = document.getElementById("pasteSheetPreset")?.value || "ventasDashboardLegacy";
+  const preset = document.getElementById("pasteSheetPreset")?.value || "ventas20Coordinaciones";
   if (!ta) return;
   const text = ta.value.trim();
   if (!text) {
@@ -795,14 +803,106 @@ function runPasteImport() {
   s.linkUbicacion = f.linkUbicacion || "";
   s.linkAdjunto = f.linkAdjunto || "";
   s.cotizacionId = f.cotizacionId || "";
+  const rs = result.rawSheetRow && typeof result.rawSheetRow === "object" ? result.rawSheetRow : {};
+  s.rawSheet = { ...rs };
   state.stops.push(s);
   renumberStops();
   ta.value = "";
   renderAll();
 }
 
+function getVentasApiBaseDefault() {
+  try {
+    return localStorage.getItem(VENTAS_API_BASE_KEY) || "http://localhost:3001";
+  } catch {
+    return "http://localhost:3001";
+  }
+}
+
+/**
+ * @param {any} s
+ * @param {Record<string, string>} row fila canónica /api/ventas
+ */
+function applyVentasApiRowToStop(s, row) {
+  s.cliente = row.CLIENTE_NOMBRE || "";
+  s.telefono = row.TELEFONO || "";
+  s.direccion = row.DIRECCION || "";
+  s.zona = row.ZONA || "";
+  s.linkUbicacion = row.LINK_UBICACION || "";
+  s.cotizacionId = row.COTIZACION_ID || "";
+  s.linkAdjunto = row.LINK_CARPETA || "";
+  const prev = s.rawSheet && typeof s.rawSheet === "object" ? s.rawSheet : {};
+  s.rawSheet = { ...prev, VENTAS_API_ROW: { ...row } };
+  if (row.PEDIDO_RESUMEN) {
+    s.rawSheet.NOTAS = prev.NOTAS ? `${prev.NOTAS}\n${row.PEDIDO_RESUMEN}` : row.PEDIDO_RESUMEN;
+    s.rawSheet.ENCARGO = row.PEDIDO_RESUMEN;
+  }
+}
+
+function renderLoadCharacteristicsCard() {
+  const phy = estimateRouteLoadPhysical(state.stops);
+  const rows = phy.byStop
+    .map(
+      (b) =>
+        `<tr><td>${esc(String(b.orden))}</td><td>${esc(String(b.cliente || "—").slice(0, 32))}</td><td>${esc(
+          b.m2.toFixed(1)
+        )}</td><td>${esc(b.volumeM3.toFixed(2))}</td><td>${esc(b.estWeightKg.toFixed(0))}</td></tr>`
+    )
+    .join("");
+  return `
+    <div class="card np" style="border:1px solid #bfdbfe;background:#f8fafc">
+      <strong>Características de la carga (estimado · transportista)</strong>
+      <p class="paste-hint" style="margin:6px 0 10px">
+        Superficie aprox. (ancho nominal ${esc(String(ROW_W))} m por línea de panel), volumen y peso <strong>orientativos</strong>.
+        El diagrama valida altura por fila; el peso no reemplaza balanza ni documentación del vehículo.
+      </p>
+      <div class="grid3" style="margin-bottom:10px">
+        <div><div class="lbl" style="font-size:11px">Σ m² paneles (≈)</div><strong style="font-size:18px">${esc(
+          phy.m2.toFixed(1)
+        )}</strong></div>
+        <div><div class="lbl" style="font-size:11px">Σ volumen (m³ ≈)</div><strong style="font-size:18px">${esc(
+          phy.volumeM3.toFixed(2)
+        )}</strong></div>
+        <div><div class="lbl" style="font-size:11px">Σ peso (kg ≈)</div><strong style="font-size:18px">${esc(
+          phy.estWeightKg.toFixed(0)
+        )}</strong></div>
+      </div>
+      ${
+        phy.byStop.length
+          ? `<div style="overflow-x:auto"><table class="paste-preview-table" style="font-size:12px"><thead><tr><th>Parada</th><th>Cliente</th><th>m²</th><th>m³</th><th>kg</th></tr></thead><tbody>${rows}</tbody></table></div>`
+          : ""
+      }
+    </div>`;
+}
+
 function renderForm() {
   const cargo = getCargo();
+  const ventasApiDefault = esc(getVentasApiBaseDefault());
+  const ventasOptions = ventasCoordinacionesRows
+    .map(
+      (row, i) =>
+        `<option value="${esc(String(i))}">${esc(`${row.COTIZACION_ID || "—"} · ${row.CLIENTE_NOMBRE || "—"}`)}</option>`
+    )
+    .join("");
+  const ventasCoordBlock = `
+    <div class="card card-highlight">
+      <strong>Ventas y Coordinaciones (API)</strong>
+      <p class="paste-help">
+        Cargá el listado desde la pestaña <code>${esc(VENTAS_TAB_COORDINACIONES)}</code> del workbook 2.0 Ventas (columna <strong>CARPETA</strong> → PDF cotización).
+        Requiere API en marcha (<code>npm run start:api</code>) y <code>BMC_VENTAS_SHEET_ID</code> en el servidor. CORS ya está abierto en desarrollo.
+      </p>
+      <label class="lbl">Base API</label>
+      <input class="inp" id="ventasApiBase" value="${ventasApiDefault}" placeholder="http://localhost:3001" />
+      <div class="row-flex" style="margin-top:8px;gap:8px;flex-wrap:wrap;align-items:center">
+        <button type="button" class="btn btn-primary" id="btnVentasFetch">Cargar listado</button>
+        <select class="inp" id="ventasRowPicker" style="flex:1;min-width:220px" aria-label="Elegir fila Ventas y Coordinaciones">
+          <option value="">${esc(ventasCoordinacionesRows.length ? "— Elegir cliente / pedido —" : "— Pulsá «Cargar listado» primero —")}</option>
+          ${ventasOptions}
+        </select>
+        <button type="button" class="btn btn-success" id="btnVentasApply">Añadir parada desde fila</button>
+      </div>
+      <p id="ventasFetchStatus" class="paste-hint" style="margin-top:8px" aria-live="polite">${esc(ventasFetchStatusText)}</p>
+    </div>`;
   const importBlock = `
     <div class="card card-highlight">
       <strong>Importar JSON</strong> (próximas entregas, <code>GET /api/cotizaciones</code> o estado guardado — ver README)
@@ -812,7 +912,7 @@ function renderForm() {
         <button type="button" class="btn btn-muted" id="btnImportReplace">Reemplazar plan completo</button>
         <button type="button" class="btn btn-secondary" id="btnLoadExample">Cargar ejemplo</button>
       </div>
-      <p style="font-size:0.72rem;color:#64748b;margin:8px 0 0">No uses IDs de planilla en el cliente en producción; esto es solo prototipo offline.</p>
+      <p class="card-footnote">No uses IDs de planilla en el cliente en producción; esto es solo prototipo offline.</p>
     </div>
     <div class="card card-paste">
       <strong>Pegar fila desde planilla (Google Sheets / Excel)</strong>
@@ -826,7 +926,7 @@ function renderForm() {
         ${Object.entries(SHEET_PASTE_PRESETS)
           .map(
             ([key, pr]) =>
-              `<option value="${esc(key)}"${key === "ventasDashboardLegacy" ? " selected" : ""}>${esc(pr.label)}</option>`
+              `<option value="${esc(key)}"${key === "ventas20Coordinaciones" ? " selected" : ""}>${esc(pr.label)}</option>`
           )
           .join("")}
       </select>
@@ -949,14 +1049,14 @@ function renderForm() {
         ${renderStopAdjuntoPreview(stop)}
         ${renderAdjuntoTextExtract(stop)}
         <div style="margin-bottom:10px">
-          <div style="font-size:11px;font-weight:700;margin-bottom:6px;color:#374151">Paneles</div>
+          <div class="subsection-label">Paneles</div>
           ${panels}
           <button type="button" class="btn btn-primary btn-sm" data-add-panel="${esc(stop.id)}">+ Panel</button>
         </div>
         ${placement}
         ${renderPaquetesInterpretacion(stop)}
         <div>
-          <div style="font-size:11px;font-weight:700;margin-bottom:5px;color:#374151">Accesorios</div>
+          <div class="subsection-label" style="margin-bottom:5px">Accesorios</div>
           ${accs}
           <button type="button" class="btn btn-muted btn-sm" data-add-acc="${esc(stop.id)}">+ Accesorio</button>
         </div>
@@ -965,7 +1065,7 @@ function renderForm() {
     })
     .join("");
 
-  return `${importBlock}${envio}${stopsHtml}
+  return `${ventasCoordBlock}${importBlock}${renderLoadCharacteristicsCard()}${envio}${stopsHtml}
     <button type="button" class="btn btn-success" id="btnAddStop" style="width:100%;padding:12px;font-size:0.95rem">+ Agregar parada</button>`;
 }
 
@@ -1149,9 +1249,19 @@ function ensureMainDelegation() {
   if (!main || mainDelegationBound) return;
   mainDelegationBound = true;
 
+  main.addEventListener("paste", (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLTextAreaElement) || t.id !== "pasteSheetRow") return;
+    setTimeout(() => runPastePreview(), 0);
+  });
+
   main.addEventListener("input", (e) => {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
+    if (t instanceof HTMLTextAreaElement && t.id === "pasteSheetRow") {
+      runPastePreview();
+      return;
+    }
     const infoKey = t.getAttribute("data-info");
     if (infoKey) {
       state.info[infoKey] = t.value;
@@ -1342,6 +1452,60 @@ function ensureMainDelegation() {
     }
     if (t.closest("#btnPasteImport")) {
       runPasteImport();
+      return;
+    }
+    if (t.closest("#btnVentasFetch")) {
+      void (async () => {
+        const mainEl = document.getElementById("main");
+        const baseInp = mainEl?.querySelector("#ventasApiBase");
+        const base = String(baseInp?.value || "http://localhost:3001").replace(/\/$/, "");
+        ventasFetchStatusText = "Cargando…";
+        renderMain();
+        try {
+          localStorage.setItem(VENTAS_API_BASE_KEY, base);
+        } catch {
+          /* ignore */
+        }
+        const url = `${base}/api/ventas?tab=${encodeURIComponent(VENTAS_TAB_COORDINACIONES)}&logistica=1`;
+        try {
+          const res = await fetch(url);
+          const json = await res.json().catch(() => null);
+          if (!res.ok || !json?.ok) {
+            ventasFetchStatusText = `Error ${res.status}: ${json?.error || json?.message || res.statusText || "API"}`;
+            ventasCoordinacionesRows = [];
+          } else {
+            ventasCoordinacionesRows = Array.isArray(json.data) ? json.data : [];
+            ventasFetchStatusText = `${ventasCoordinacionesRows.length} fila(s) desde «${VENTAS_TAB_COORDINACIONES}».`;
+          }
+        } catch (err) {
+          ventasCoordinacionesRows = [];
+          ventasFetchStatusText = err instanceof Error ? err.message : String(err);
+        }
+        renderAll();
+      })();
+      return;
+    }
+    if (t.closest("#btnVentasApply")) {
+      const mainEl = document.getElementById("main");
+      const sel = mainEl?.querySelector("#ventasRowPicker");
+      const idx = sel instanceof HTMLSelectElement ? Number(sel.value) : NaN;
+      if (!Number.isFinite(idx) || idx < 0 || idx >= ventasCoordinacionesRows.length) {
+        alert("Elegí una fila del listado (o pulsá «Cargar listado» primero).");
+        return;
+      }
+      const row = ventasCoordinacionesRows[idx];
+      resetDefaultCargoIds();
+      const s = mkStop(state.stops.length + 1);
+      applyVentasApiRowToStop(s, row);
+      state.stops.push(s);
+      renumberStops();
+      state.pickedClienteLabel = row.CLIENTE_NOMBRE || "";
+      state.highlightStopId = s.id;
+      state.scrollToStopOnce = s.id;
+      renderAll();
+      alert(
+        "Parada añadida desde Ventas y Coordinaciones. Revisá paneles: abrí el PDF (CARPETA), usá «Elegir PDF → texto» o pegá líneas en el cuadro del adjunto."
+      );
       return;
     }
     const parseAdj = t.closest("[data-parse-adjunto]");

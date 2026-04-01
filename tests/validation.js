@@ -23,6 +23,8 @@ import {
   findVentaWebColumnIndex,
   findVentaWebIvaIncColumnIndex,
   getDuplicatePathReport,
+  getDuplicatePathReportFromRows,
+  parseCsvRows,
 } from "../src/utils/csvPricingImport.js";
 import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
 import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
@@ -32,6 +34,10 @@ import {
   parseLogisticaFromAdjuntoText,
   parsePanelLineHeuristic,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/adjuntoLineParse.js";
+import {
+  extractStopFieldsFromPaste,
+  parseTsvRows,
+} from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/sheetPaste.js";
 import {
   collectClienteNamesFromStop,
   findFirstStopByClienteLabel,
@@ -45,6 +51,11 @@ import {
   resetDefaultCargoIds as resetLogisticaIds,
   stopFromProximaRow,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/cargoEngine.js";
+import {
+  estimatePanelLinePhysical,
+  estimateRouteLoadPhysical,
+  kgPerM2ForEspesor,
+} from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/loadCharacteristics.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -780,6 +791,29 @@ const hdrWebCols = "path,costo,venta_local,venta_web,venta_web_iva_inc,tab".spli
 assert("findVentaWebColumnIndex exact", findVentaWebColumnIndex(hdrWebCols) === 3, findVentaWebColumnIndex(hdrWebCols), 3);
 assert("findVentaWebIvaIncColumnIndex", findVentaWebIvaIncColumnIndex(hdrWebCols) === 4, findVentaWebIvaIncColumnIndex(hdrWebCols), 4);
 
+const csvWithQuotedCommaAndNewline = [
+  "path,descripcion,costo,venta_local,venta_web,venta_web_iva_inc",
+  "\"PANELS_TECHO.ISOROOF_3G.esp.30\",\"Panel con coma, y salto",
+  "de linea\",10,20,30,36.6",
+  "\"PANELS_TECHO.ISOROOF_3G.esp.30\",\"Duplicado\",11,21,31,37.82",
+].join("\n");
+const parsedCsvRows = parseCsvRows(csvWithQuotedCommaAndNewline);
+assert("parseCsvRows keeps multiline row together", parsedCsvRows.length === 3, parsedCsvRows.length, 3);
+assert(
+  "parseCsvRows preserves quoted comma/newline description",
+  parsedCsvRows[1][1] === "Panel con coma, y salto\nde linea",
+  parsedCsvRows[1][1],
+  "Panel con coma, y salto\\nde linea"
+);
+const dupParsedReport = getDuplicatePathReportFromRows(parsedCsvRows, 0);
+assert("getDuplicatePathReportFromRows detects duplicate path", dupParsedReport.length === 1, dupParsedReport.length, 1);
+assert(
+  "getDuplicatePathReportFromRows line numbers",
+  JSON.stringify(dupParsedReport[0].lineNumbers) === JSON.stringify([2, 3]),
+  JSON.stringify(dupParsedReport[0].lineNumbers),
+  JSON.stringify([2, 3])
+);
+
 const dupLines = [
   "path,costo,venta_local",
   "A.B,1,2",
@@ -963,6 +997,28 @@ assert(
   "tornillo 100",
 );
 
+const cells20 = Array.from({ length: 16 }, (_, i) => `C${i}`);
+cells20[2] = "PID-99";
+cells20[6] = "Cliente X";
+cells20[7] = "Calle 1";
+cells20[9] = "https://dropbox.com/fake.pdf";
+cells20[14] = "099";
+const paste20 = extractStopFieldsFromPaste(cells20.join("\t"), "ventas20Coordinaciones");
+assert(
+  "extractStopFieldsFromPaste ventas20Coordinaciones indices",
+  paste20.fields.cotizacionId === "PID-99" &&
+    paste20.fields.cliente === "Cliente X" &&
+    paste20.fields.direccion === "Calle 1" &&
+    paste20.fields.linkAdjunto.includes("dropbox.com") &&
+    paste20.fields.telefono === "099",
+  paste20.fields,
+  "PID-99",
+);
+
+const quoted = 'a\t"b\nline2"\tc';
+const pr = parseTsvRows(quoted);
+assert("parseTsvRows newline inside quotes → 1 row", pr.length === 1 && pr[0].length === 3 && pr[0][1].includes("line2"), pr[0]?.[1], "multiline cell");
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 27: logística prototipo — fila planilla completa + inferencia URLs
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1023,6 +1079,29 @@ const uni = uniqueClientesFromStops([stA, stB]);
 assert("uniqueClientesFromStops dedupes normalized", uni.length === 1, uni.length, 1);
 const hit = findFirstStopByClienteLabel([stB, stA], "obras sur");
 assert("findFirstStopByClienteLabel case-insensitive", hit === stB || hit === stA, hit, "one of stops");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 29: logística — estimación volumen / peso (loadCharacteristics)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 29: loadCharacteristics (m² / m³ / kg) ═══");
+
+const k100 = kgPerM2ForEspesor(100);
+assert("kgPerM2ForEspesor 100mm in range", k100 >= 8 && k100 <= 20, k100, "8–20");
+
+const pl = estimatePanelLinePhysical({ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 10 });
+assert("estimatePanelLinePhysical m2 = cant×largo×1.2", approx(pl.m2, 72, 0.01), pl.m2, "72");
+assert("estimatePanelLinePhysical volume = m2×esp", approx(pl.volumeM3, 7.2, 0.01), pl.volumeM3, "7.2");
+
+const route = estimateRouteLoadPhysical([
+  {
+    id: "a",
+    orden: 1,
+    cliente: "X",
+    paneles: [{ tipo: "ISODEC", espesor: 100, longitud: 6, cantidad: 5 }],
+    accesorios: [{ descr: "Tornillo", cantidad: 20 }],
+  },
+]);
+assert("estimateRouteLoadPhysical aggregates", route.m2 > 0 && route.estWeightKg > 100, route.m2, ">0");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

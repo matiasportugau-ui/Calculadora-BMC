@@ -629,6 +629,19 @@ if (fs.existsSync(calcDistDir)) {
     },
     express.static(calcDistDir, { index: "index.html" })
   );
+  // SPA fallback: /calculadora/logistica etc. (no fichero estático) → index.html
+  app.get(/^\/calculadora(\/.*)?$/, (req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    if (!req.accepts("html")) return next();
+    if (req.path.startsWith("/calculadora/assets/")) return next();
+    const base = path.basename(req.path);
+    if (base.includes(".") && !req.path.endsWith("/") && path.extname(req.path).toLowerCase() !== ".html") {
+      return next();
+    }
+    res.sendFile(path.join(calcDistDir, "index.html"), (err) => {
+      if (err) next(err);
+    });
+  });
 }
 
 // Avoid 404s when ngrok/browsers hit the API root or favicon (traffic audit: EXPORT_SEAL)

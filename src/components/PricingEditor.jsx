@@ -18,15 +18,15 @@ import {
   resetPricingOverrides,
   getPricingOverrides,
 } from "../utils/pricingOverrides.js";
-import { C, FONT } from "../data/constants.js";
+import { C, FONT, IVA_MULT } from "../data/constants.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import {
   findVentaColumnIndex,
   findVentaWebColumnIndex,
   findVentaWebIvaIncColumnIndex,
   parseCsvNumber,
-  splitCsvCells,
-  getDuplicatePathReport,
+  parseCsvRows,
+  getDuplicatePathReportFromRows,
 } from "../utils/csvPricingImport.js";
 
 const MATRIZ_PUSH_TOKEN_KEY = "bmc_matriz_push_token";
@@ -139,15 +139,20 @@ export default function PricingEditor({ onSave }) {
       const res = await fetch(`${base}/api/actualizar-precios-calculadora`);
       const text = await res.text();
       if (!res.ok) {
-        const err = JSON.parse(text || "{}").error || res.statusText;
+        let err = res.statusText;
+        try {
+          err = JSON.parse(text || "{}").error || err;
+        } catch {
+          err = text?.trim() || err;
+        }
         throw new Error(err);
       }
-      const lines = text.split(/\r?\n/).filter((l) => l.trim());
-      if (lines.length < 2) {
+      const rows = parseCsvRows(text.replace(/^\uFEFF/, ""));
+      if (rows.length < 2) {
         setImportMsg("La MATRIZ no devolvió datos.");
         return;
       }
-      const cols = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+      const cols = rows[0].map((c) => String(c || "").trim());
       const pathIdx = cols.findIndex((c) => c.toLowerCase() === "path");
       const costoIdx = cols.findIndex((c) => /costo/i.test(c));
       const ventaIdx = findVentaColumnIndex(cols);
@@ -159,8 +164,8 @@ export default function PricingEditor({ onSave }) {
       }
       const updates = {};
       let count = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const cells = splitCsvCells(lines[i]);
+      for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i];
         const path = cells[pathIdx]?.trim();
         if (!path) continue;
         if (costoIdx >= 0 && cells[costoIdx]) {
@@ -175,13 +180,12 @@ export default function PricingEditor({ onSave }) {
           const v = parseCsvNumber(cells[webIdx]);
           if (v != null) { updates[`${path}.web`] = v; count++; }
         }
-        if (webIvaIdx >= 0 && cells[webIvaIdx]) {
-          const v = parseCsvNumber(cells[webIvaIdx]);
-          if (v != null) { updates[`${path}.webIvaInc`] = v; count++; }
-        }
       }
-      const dupReport = getDuplicatePathReport(lines, pathIdx);
-      let msg = `Cargados ${count} valores desde MATRIZ (costo, venta, web, web c/IVA si hay columna).`;
+      const dupReport = getDuplicatePathReportFromRows(rows, pathIdx);
+      let msg = `Cargados ${count} valores desde MATRIZ (costo ex IVA, venta BMC ex IVA, venta web ex IVA).`;
+      if (webIvaIdx >= 0) {
+        msg += " Web c/IVA se recalcula en la UI desde Web ex IVA.";
+      }
       if (dupReport.length) {
         const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
         msg += ` Atención: ${dupReport.length} path(s) duplicado(s) — prevalece la última fila: ${preview}${dupReport.length > 5 ? "…" : ""}`;
@@ -208,6 +212,18 @@ export default function PricingEditor({ onSave }) {
         i.categoria?.toLowerCase().includes(q)
     );
   }, [items, search]);
+
+  const displayRows = useMemo(
+    () =>
+      filtered.map((item) => ({
+        ...item,
+        ventaIvaInc:
+          item.venta != null ? +((Number(item.venta) || 0) * IVA_MULT).toFixed(2) : null,
+        webIvaInc:
+          item.web != null ? +((Number(item.web) || 0) * IVA_MULT).toFixed(2) : null,
+      })),
+    [filtered]
+  );
 
   const refresh = () => {
     invalidatePricingCache();
@@ -275,7 +291,7 @@ export default function PricingEditor({ onSave }) {
       i.costo != null ? String(i.costo) : "",
       i.venta != null ? String(i.venta) : "",
       i.web != null ? String(i.web) : "",
-      i.webIvaInc != null ? String(i.webIvaInc) : "",
+      i.web != null ? String(+((Number(i.web) || 0) * IVA_MULT).toFixed(2)) : "",
       (i.unidad || "").replace(/"/g, '""'),
     ]);
     const csv = [headers.join(","), ...rows.map((r) => r.map((c) => (c.includes(",") || c.includes('"') ? `"${c}"` : c)).join(","))].join("\n");
@@ -296,12 +312,12 @@ export default function PricingEditor({ onSave }) {
     reader.onload = () => {
       try {
         const text = String(reader.result);
-        const lines = text.split(/\r?\n/).filter((l) => l.trim());
-        if (lines.length < 2) {
+        const rows = parseCsvRows(text.replace(/^\uFEFF/, ""));
+        if (rows.length < 2) {
           setImportMsg("El archivo está vacío o no tiene datos.");
           return;
         }
-        const cols = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+        const cols = rows[0].map((c) => String(c || "").trim());
         const pathIdx = cols.findIndex((c) => c.toLowerCase() === "path");
         const costoIdx = cols.findIndex((c) => /costo/i.test(c));
         const ventaIdx = findVentaColumnIndex(cols);
@@ -315,8 +331,8 @@ export default function PricingEditor({ onSave }) {
         }
         const updates = {};
         let count = 0;
-        for (let i = 1; i < lines.length; i++) {
-          const cells = splitCsvCells(lines[i]);
+        for (let i = 1; i < rows.length; i++) {
+          const cells = rows[i];
           const path = cells[pathIdx]?.trim();
           if (!path) continue;
           if (costoIdx >= 0 && cells[costoIdx]) {
@@ -331,13 +347,12 @@ export default function PricingEditor({ onSave }) {
             const v = parseCsvNumber(cells[webIdx]);
             if (v != null) { updates[`${path}.web`] = v; count++; }
           }
-          if (webIvaIdx >= 0 && cells[webIvaIdx]) {
-            const v = parseCsvNumber(cells[webIvaIdx]);
-            if (v != null) { updates[`${path}.webIvaInc`] = v; count++; }
-          }
         }
-        const dupReport = getDuplicatePathReport(lines, pathIdx);
+        const dupReport = getDuplicatePathReportFromRows(rows, pathIdx);
         let msg = `Importados ${count} valores correctamente.`;
+        if (webIvaIdx >= 0) {
+          msg += " Web c/IVA se recalcula desde Web ex IVA.";
+        }
         if (dupReport.length) {
           const preview = dupReport.map((d) => d.path).slice(0, 5).join("; ");
           msg += ` Atención: ${dupReport.length} path(s) duplicado(s) — prevalece la última fila: ${preview}${dupReport.length > 5 ? "…" : ""}`;
@@ -374,13 +389,13 @@ export default function PricingEditor({ onSave }) {
         <p style={{ margin: "6px 0 0 0" }}>Clic en cualquier celda para editar. Aplica a todos los productos y servicios.</p>
         <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
           <li>
-            <strong>Costo / venta / web</strong> — <strong>USD sin IVA</strong> (el total del presupuesto suma IVA una sola vez al final).
+            <strong>Costo / Venta BMC / Venta Web</strong> — <strong>USD sin IVA</strong> (el total del presupuesto suma IVA una sola vez al final).
           </li>
           <li>
-            <strong>MATRIZ — tal cual la celda:</strong> <strong>F</strong> (costo ex IVA) y <strong>L</strong> (venta local ex IVA) se leen y escriben <strong>sin</strong> multiplicar ni dividir por 1,22. <strong>M</strong> ya es precio <strong>con IVA incluido</strong>: mismo criterio, valor <strong>idéntico</strong> al de la planilla.
+            <strong>Derivados c/IVA:</strong> <strong>Venta BMC c/IVA</strong> y <strong>Web c/IVA</strong> se calculan en esta UI como <strong>ex IVA × 1,22</strong>.
           </li>
           <li>
-            <strong>MATRIZ col. T / U:</strong> <strong>T</strong> = venta web USD ex IVA (motor y push). <strong>U</strong> = venta web USD c/IVA — se importa a la columna <strong>Web c/IVA</strong> como referencia (no entra en el cálculo del presupuesto). Push a Sheets solo escribe F/L/T.
+            <strong>MATRIZ — columnas operativas:</strong> <strong>F</strong> = costo ex IVA, <strong>L</strong> = Venta BMC ex IVA, <strong>T</strong> = Venta Web ex IVA. La UI calcula automáticamente las columnas c/IVA.
           </li>
         </ul>
       </div>
@@ -407,7 +422,7 @@ export default function PricingEditor({ onSave }) {
             gap: 8,
             opacity: cargandoMatriz ? 0.7 : 1,
           }}
-          title="Cargar desde MATRIZ: costo, venta local, venta web (T) y ref. web c/IVA (U) si viene en el CSV"
+          title="Cargar desde MATRIZ: costo ex IVA, venta BMC ex IVA y venta web ex IVA"
         >
           <RefreshCw size={16} />
           {cargandoMatriz ? "Cargando..." : "Cargar desde MATRIZ"}
@@ -582,7 +597,6 @@ export default function PricingEditor({ onSave }) {
                 <option value="costo">Costo</option>
                 <option value="venta">Precio Venta BMC (Local)</option>
                 <option value="web">Precio Venta Web</option>
-                <option value="webIvaInc">Web c/IVA (ref.)</option>
               </select>
             </div>
             <div>
@@ -631,14 +645,15 @@ export default function PricingEditor({ onSave }) {
               </th>
               <th style={{ padding: "12px 10px", textAlign: "left", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Ítem</th>
               <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Costo unitario USD s/IVA">Costo</th>
-              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC">Venta BMC</th>
-              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web">Venta Web</th>
-              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Referencia MATRIZ col U (USD c/IVA); no suma al total">Web c/IVA</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC USD s/IVA">Venta BMC ex IVA</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta directa BMC USD c/IVA">Venta BMC c/IVA</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web USD s/IVA">Venta Web ex IVA</th>
+              <th style={{ padding: "12px 10px", textAlign: "right", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }} title="Precio venta web USD c/IVA calculado desde Web ex IVA">Web c/IVA</th>
               <th style={{ padding: "12px 10px", textAlign: "center", borderBottom: "none", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row) => (
+            {displayRows.map((row) => (
                 <tr
                   key={row.path}
                   onMouseEnter={() => setHoveredRow(row.path)}
@@ -655,7 +670,7 @@ export default function PricingEditor({ onSave }) {
                     <span style={{ fontWeight: 500 }}>{row.label}</span>
                     <div style={{ fontSize: 10, color: C.ts }}>{row.categoria}</div>
                   </td>
-                  {["costo", "venta", "web", "webIvaInc"].map((field) => {
+                  {["costo", "venta"].map((field) => {
                     const val = row[field];
                     const key = `${row.path}.${field}`;
                     const isEditing = editing === key;
@@ -693,6 +708,48 @@ export default function PricingEditor({ onSave }) {
                       </td>
                     );
                   })}
+                  <td style={{ padding: "4px 6px", textAlign: "right" }}>
+                    <span style={{ padding: "4px 8px", borderRadius: 6, display: "inline-block", minWidth: 50, color: C.ts }}>
+                      {row.ventaIvaInc != null ? Number(row.ventaIvaInc).toFixed(2) : "—"}
+                    </span>
+                  </td>
+                  {["web"].map((field) => {
+                    const val = row[field];
+                    const key = `${row.path}.${field}`;
+                    const isEditing = editing === key;
+                    return (
+                      <td key={field} style={{ padding: "4px 6px", textAlign: "right" }}>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={val}
+                            autoFocus
+                            onBlur={(e) => handleCellChange(row.path, field, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleCellChange(row.path, field, e.target.value);
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            style={inputS}
+                          />
+                        ) : (
+                          <span
+                            onClick={() => setEditing(key)}
+                            style={{ cursor: "pointer", padding: "4px 8px", borderRadius: 6, display: "inline-block", minWidth: 50 }}
+                            title="Clic para editar"
+                          >
+                            {val != null ? Number(val).toFixed(2) : "—"}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td style={{ padding: "4px 6px", textAlign: "right" }}>
+                    <span style={{ padding: "4px 8px", borderRadius: 6, display: "inline-block", minWidth: 50, color: C.ts }}>
+                      {row.webIvaInc != null ? Number(row.webIvaInc).toFixed(2) : "—"}
+                    </span>
+                  </td>
                   <td style={{ padding: "6px", textAlign: "center", fontSize: 11, color: C.ts }}>{row.unidad || "—"}</td>
                 </tr>
             ))}
@@ -702,7 +759,7 @@ export default function PricingEditor({ onSave }) {
 
       {/* Acciones */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
-        <span style={{ fontSize: 11, color: C.ts }}>{filtered.length} ítems · {getPricingOverrides() && Object.keys(getPricingOverrides()).length} con override</span>
+        <span style={{ fontSize: 11, color: C.ts }}>{displayRows.length} ítems · {getPricingOverrides() && Object.keys(getPricingOverrides()).length} con override</span>
         <button
           onClick={handleReset}
           style={{
