@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-01 (project team sync — lectura estado)
+**Última actualización:** 2026-04-01 (MATRIZ API — sin caché + ID doc)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-01 (MATRIZ — lectura en vivo + doc ID):** [`GET /api/actualizar-precios-calculadora`](../../server/routes/bmcDashboard.js): cabeceras `Cache-Control` / `Pragma` para no servir CSV cacheado; [`PricingEditor.jsx`](../../src/components/PricingEditor.jsx) `fetch(..., { cache: "no-store" })`. [`planilla-inventory.md`](../google-sheets-module/planilla-inventory.md): corregido workbook **BMC_MATRIZ_SHEET_ID** al canónico `1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo` (coincide con default [`server/config.js`](../../server/config.js)). **Cloud Run:** si `BMC_MATRIZ_SHEET_ID` apunta a otro ID, alinear o quitar la var para usar el default.
+
+**2026-04-01 (Calculadora — listado precios: referencias M/U MATRIZ):** [`PricingEditor.jsx`](../../src/components/PricingEditor.jsx): al cargar CSV de MATRIZ o importar planilla, se aplican también `venta_local_iva_inc` (col **M**) y `venta_web_iva_inc` (col **U**) como overrides `ventaIvaInc` / `webIvaInc`; la UI muestra **c/IVA** con esos valores cuando existen (antes solo **ex IVA × 1,22**). Al editar venta/web ex IVA o % masivo, se limpian las referencias c/IVA para evitar valores viejos. [`pricing.js`](../../src/data/pricing.js) expone `ventaIvaInc` en ítems planos; [`csvPricingImport.js`](../../src/utils/csvPricingImport.js) `findVentaLocalIvaIncColumnIndex`. Test SUITE 23 +1. `npm run lint` + `npm test` + `npm run build` OK. **Deploy:** Vercel tras push.
 
 **2026-04-01 (Project team sync — bmc-project-team-sync):** Ejecutado workflow **Sync** ([skill](../../.cursor/skills/bmc-project-team-sync/SKILL.md)): lectura [`PROJECT-STATE.md`](./PROJECT-STATE.md) (Cambios recientes, Pendientes, Estado por área, Plan vigente) y [`SESSION-WORKSPACE-CRM.md`](./SESSION-WORKSPACE-CRM.md) §1 (foco 2026-04-01: logística v3.1.3 + routing + deploy). Sin re-auditoría línea a línea de `planilla-inventory.md` / `DASHBOARD-INTERFACE-MAP.md` / `IA.md` en esta pasada. **Pendientes vigentes:** Go-live checklist parcial; **E2E** — filas D1.x UI manual en [`E2E-VALIDATION-CHECKLIST.md`](./E2E-VALIDATION-CHECKLIST.md). **No** sustituye **Invoque full team** 0→9 ni **MATPROMT 0a** ni cierre **run55/run57**. **Propagación:** sin cambio de código en esta pasada; roles §2 — lectura de estado únicamente. **Próximo paso sugerido:** `npm run project:compass` y una acción concreta desde SESSION §3 o §4.
 

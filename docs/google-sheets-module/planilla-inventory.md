@@ -17,7 +17,7 @@ Inventario runtime de tabs, columnas y rutas API. Ver [SHEETS-MAPPING-5-WORKBOOK
 | BMC_VENTAS_SHEET_ID | 1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA | 2.0 - Ventas | ventas |
 | BMC_STOCK_SHEET_ID | 1egtKJAGaATLmmsJkaa2LlCv3Ah4lmNoGMNm4l0rXJQw | Stock E-Commerce | stock-ecommerce, stock-kpi |
 | BMC_CALENDARIO_SHEET_ID | 1bvnbYq7MTJRpa6xEHE5m-5JcGNI9oCFke3lsJj99tdk | Calendario vencimientos | calendario-vencimientos |
-| BMC_MATRIZ_SHEET_ID | 1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ | MATRIZ de COSTOS y VENTAS 2026 | actualizar-precios-calculadora |
+| BMC_MATRIZ_SHEET_ID | `1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo` ([MATRIZ Dashboard](https://docs.google.com/spreadsheets/d/1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo/edit)) | MATRIZ de COSTOS y VENTAS 2026 | `GET /api/actualizar-precios-calculadora` (default en `server/config.js` si env omitido) |
 
 **MATRIZ de COSTOS y VENTAS:** La misma planilla alimenta costos y precios de venta. Columnas buscadas por nombre (flexible):
 

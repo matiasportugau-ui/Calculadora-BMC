@@ -1984,6 +1984,9 @@ export default function createBmcDashboardRouter(config) {
       const filename = `bmc-precios-matriz-${new Date().toISOString().slice(0, 10)}.csv`;
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      // Lectura en vivo desde Sheets API (sin caché servidor); evitar CDN/navegador sirviendo CSV viejo
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
       res.send(csv);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

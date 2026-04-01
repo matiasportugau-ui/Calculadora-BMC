@@ -137,7 +137,7 @@ export default function PricingEditor({ onSave }) {
     setImportMsg(null);
     const base = getCalcApiBase();
     try {
-      const res = await fetch(`${base}/api/actualizar-precios-calculadora`);
+      const res = await fetch(`${base}/api/actualizar-precios-calculadora`, { cache: "no-store" });
       const text = await res.text();
       if (!res.ok) {
         let err = res.statusText;
