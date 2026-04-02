@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-02 (macOS — auditoría disco + doc plan)
+**Última actualización:** 2026-04-02 (skill deploy desde Cursor + macOS audit)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-02 (Cursor — skill deploy Calculadora BMC):** Skill [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](../../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md): flujo desde el agente con terminal — `npm run gate:local:full`, `smoke:prod`, `pre-deploy`, guía Cloud Run `panelin-calc` / Vercel, enlaces a [`CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`](../procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md) y human gates; sin secretos en el skill. Referencia en [`AGENTS.md`](../../AGENTS.md).
 
 **2026-04-02 (Dev env — macOS rendimiento, solo lectura):** [`scripts/mac-storage-audit-readonly.sh`](../../scripts/mac-storage-audit-readonly.sh): snapshot `sw_vers`, `df`, `diskutil` (resumen), `du` de carpetas típicas del usuario y caches/logs; sin borrar nada. **`npm run mac:storage-audit`** en [`package.json`](../../package.json). Plan por fases + links Apple: [`.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md`](../../.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md). Agente/skill: [`.cursor/agents/mac-performance-agent.md`](../../.cursor/agents/mac-performance-agent.md), [`.cursor/skills/mac-performance-optimizer/SKILL.md`](../../.cursor/skills/mac-performance-optimizer/SKILL.md). Tabla comandos: [`AGENTS.md`](../../AGENTS.md). No afecta build ni CI.
 
