@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-01 (MATRIZ API — sin caché + ID doc)
+**Última actualización:** 2026-04-02 (macOS — auditoría disco + doc plan)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-02 (Dev env — macOS rendimiento, solo lectura):** [`scripts/mac-storage-audit-readonly.sh`](../../scripts/mac-storage-audit-readonly.sh): snapshot `sw_vers`, `df`, `diskutil` (resumen), `du` de carpetas típicas del usuario y caches/logs; sin borrar nada. **`npm run mac:storage-audit`** en [`package.json`](../../package.json). Plan por fases + links Apple: [`.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md`](../../.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md). Agente/skill: [`.cursor/agents/mac-performance-agent.md`](../../.cursor/agents/mac-performance-agent.md), [`.cursor/skills/mac-performance-optimizer/SKILL.md`](../../.cursor/skills/mac-performance-optimizer/SKILL.md). Tabla comandos: [`AGENTS.md`](../../AGENTS.md). No afecta build ni CI.
 
 **2026-04-01 (MATRIZ — lectura en vivo + doc ID):** [`GET /api/actualizar-precios-calculadora`](../../server/routes/bmcDashboard.js): cabeceras `Cache-Control` / `Pragma` para no servir CSV cacheado; [`PricingEditor.jsx`](../../src/components/PricingEditor.jsx) `fetch(..., { cache: "no-store" })`. [`planilla-inventory.md`](../google-sheets-module/planilla-inventory.md): corregido workbook **BMC_MATRIZ_SHEET_ID** al canónico `1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo` (coincide con default [`server/config.js`](../../server/config.js)). **Cloud Run:** si `BMC_MATRIZ_SHEET_ID` apunta a otro ID, alinear o quitar la var para usar el default.
 
