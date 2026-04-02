@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-02 (skill deploy desde Cursor + macOS audit)
+**Última actualización:** 2026-04-02 (deploy Cloud Run + Vercel prod)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-02 (Calculadora — geometría planta multizona):** Nuevo [`src/utils/roofPlanGeometry.js`](../../src/utils/roofPlanGeometry.js): `layoutZonasEnPlanta`, `buildRoofPlanEdges` (rects en planta, **encuentros** aristas compartidas, **exterior** neto por tramo), alineado a `RoofPreview` (gap 0,25 m, ancho efectivo dos aguas). Tests **SUITE 32** en [`tests/validation.js`](../../tests/validation.js). **No** cableado al BOM aún — base para accesorios por tramo.
+
+**2026-04-02 (UX — informe navegación multizona techo):** [`docs/team/ux-feedback/USER-NAV-REPORT-2026-04-02-techo-multizona.md`](./ux-feedback/USER-NAV-REPORT-2026-04-02-techo-multizona.md): transcripción + 3 capturas (Vercel); hallazgos P0 — posición en planta no alimenta BOM (`RoofPreview.jsx`); falta modelo encuentros/cumbrera entre zonas. Evidencia en assets de sesión Cursor (copiar a `docs/team/ux-feedback/assets/` opcional).
+
+**2026-04-02 (UX — skill feedback de navegación):** Carpeta [`docs/team/ux-feedback/`](./ux-feedback/README.md): plantilla [`TEMPLATE-USER-NAV-REPORT.md`](./ux-feedback/TEMPLATE-USER-NAV-REPORT.md), README; skill [`.cursor/skills/navigation-user-feedback/SKILL.md`](../../.cursor/skills/navigation-user-feedback/SKILL.md); regla [`.cursor/rules/navigation-user-feedback.mdc`](../../.cursor/rules/navigation-user-feedback.mdc). Flujo: transcripción + capturas + URL desplegada → `USER-NAV-REPORT-*.md` (hallazgos, propagación, backlog para agente implementador). Índice: [`docs/team/README.md`](./README.md).
+
+**2026-04-02 (Deploy prod — Cloud Run `panelin-calc` + Vercel calculadora-bmc):** [`scripts/deploy-cloud-run.sh`](../../scripts/deploy-cloud-run.sh): Cloud Build + imagen `gcr.io/chatbot-bmc-live/panelin-calc`; revisión **`panelin-calc-00057-l6q`**; URL canónica `https://panelin-calc-q74zutv7dq-uc.a.run.app`. **`npm run smoke:prod -- --json`** OK (health, capabilities, MATRIZ CSV, suggest-response). Vercel: **`vercel --prod --yes`** con `VITE_API_URL`/`VITE_BASE` para build (dominio producción **`calculadora-bmc.vercel.app`**). **Nota local:** disco del Mac al ~100% → `npx vercel` puede fallar (**ENOSPC**); usar CLI global (`brew` **`vercel`**) o liberar espacio en `~/.npm/_npx`. **Afecta a:** prod API + SPA Vercel.
 
 **2026-04-02 (Cursor — skill deploy Calculadora BMC):** Skill [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](../../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md): flujo desde el agente con terminal — `npm run gate:local:full`, `smoke:prod`, `pre-deploy`, guía Cloud Run `panelin-calc` / Vercel, enlaces a [`CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`](../procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md) y human gates; sin secretos en el skill. Referencia en [`AGENTS.md`](../../AGENTS.md).
 

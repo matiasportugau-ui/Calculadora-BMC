@@ -66,6 +66,7 @@ import {
   computeLogisticaKpis,
   mirrorBedXForView,
 } from "../src/utils/bmcLogisticaBedView.js";
+import { buildRoofPlanEdges, layoutZonasEnPlanta } from "../src/utils/roofPlanGeometry.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -1238,6 +1239,103 @@ assert(
 );
 assert("buildLogisticaPlanExportPayload remitoNumero", exportPayload.remitoNumero === "R-TEST", exportPayload.remitoNumero, "R-TEST");
 assert("buildLogisticaPlanExportPayload kpis.view maxXV", exportPayload.kpis.maxXV === 12, exportPayload.kpis.maxXV, 12);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32: Techo multizona — geometría planta (encuentros / perímetro exterior)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32: roofPlanGeometry ═══");
+
+const z10x2128 = { largo: 10, ancho: 21.28 };
+const z56x6 = { largo: 5.6, ancho: 6 };
+
+const sep = buildRoofPlanEdges([z10x2128, z56x6], "una_agua");
+assert(
+  "buildRoofPlanEdges separadas: sin encuentros",
+  sep.encounters.length === 0,
+  sep.encounters.length,
+  0,
+);
+const perIndep = 2 * (21.28 + 10) + 2 * (6 + 5.6);
+assert(
+  "buildRoofPlanEdges separadas: perímetro exterior = suma zonas",
+  Math.abs(sep.totals.exteriorLength - perIndep) < 0.02,
+  sep.totals.exteriorLength,
+  perIndep,
+);
+assert(
+  "buildRoofPlanEdges separadas: encounterLength 0",
+  sep.totals.encounterLength === 0,
+  sep.totals.encounterLength,
+  0,
+);
+
+const zL1 = { largo: 10, ancho: 21.28, preview: { x: 0, y: 0 } };
+const zL2 = { largo: 5.6, ancho: 6, preview: { x: 21.28, y: 0 } };
+const L = buildRoofPlanEdges([zL1, zL2], "una_agua");
+assert(
+  "buildRoofPlanEdges L: un encuentro vertical",
+  L.encounters.length === 1 && L.encounters[0].orientation === "vertical",
+  L.encounters,
+  "1 vertical",
+);
+assert(
+  "buildRoofPlanEdges L: longitud encuentro 5.6m",
+  Math.abs(L.encounters[0].length - 5.6) < 0.02,
+  L.encounters[0].length,
+  5.6,
+);
+const extLExpected = 74.56;
+assert(
+  "buildRoofPlanEdges L: perímetro exterior reducido",
+  Math.abs(L.totals.exteriorLength - extLExpected) < 0.05,
+  L.totals.exteriorLength,
+  extLExpected,
+);
+assert(
+  "buildRoofPlanEdges L: 2*encuentros + exterior ≈ perímetro independiente",
+  Math.abs(L.totals.exteriorLength + 2 * L.totals.encounterLength - perIndep) < 0.05,
+  L.totals.exteriorLength + 2 * L.totals.encounterLength,
+  perIndep,
+);
+
+const half = layoutZonasEnPlanta([{ largo: 8, ancho: 10 }], "dos_aguas");
+assert(
+  "layoutZonasEnPlanta dos_aguas: ancho planta = mitad",
+  half.length === 1 && Math.abs(half[0].w - 5) < 0.001,
+  half[0]?.w,
+  5,
+);
+
+const d1 = { largo: 4, ancho: 8 };
+const d2 = { largo: 4, ancho: 8 };
+const dosSep = buildRoofPlanEdges([d1, d2], "dos_aguas");
+assert(
+  "buildRoofPlanEdges dos_aguas: ancho planta mitad por zona",
+  dosSep.rects.length === 2 && Math.abs(dosSep.rects[0].w - 4) < 0.001 && Math.abs(dosSep.rects[1].w - 4) < 0.001,
+  dosSep.rects.map((r) => r.w),
+  [4, 4],
+);
+assert(
+  "buildRoofPlanEdges dos_aguas separadas: sin encuentros (gap automático)",
+  dosSep.encounters.length === 0,
+  dosSep.encounters.length,
+  0,
+);
+
+const stack = buildRoofPlanEdges(
+  [
+    { largo: 5, ancho: 10, preview: { x: 0, y: 0 } },
+    { largo: 3, ancho: 10, preview: { x: 0, y: 5 } },
+  ],
+  "dos_aguas",
+);
+const horizJoin = stack.encounters.find((e) => e.orientation === "horizontal" && Math.abs(e.y1 - 5) < 0.02);
+assert(
+  "buildRoofPlanEdges dos_aguas apiladas: encuentro horizontal y=5, largo 5m (ancho útil planta)",
+  horizJoin && Math.abs(horizJoin.length - 5) < 0.02,
+  horizJoin?.length,
+  5,
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

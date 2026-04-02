@@ -1,0 +1,25 @@
+---
+description: "Navigation user feedback — structured USER-NAV-REPORT from transcript + screenshots + deployed app URL. Apply when the user pastes voice transcript, navigation comments, or screenshots of the Panelin/Vercel app and wants a structured backlog report."
+alwaysApply: false
+---
+
+# Navigation user feedback
+
+When the user shares **audio transcript**, **dictated notes**, or **screenshots** about navigating the deployed app (Vercel / Panelin / Calculadora) and wants a **structured report** for implementation agents:
+
+1. Read and follow: `.cursor/skills/navigation-user-feedback/SKILL.md`
+2. Output: `docs/team/ux-feedback/USER-NAV-REPORT-YYYY-MM-DD.md` using `docs/team/ux-feedback/TEMPLATE-USER-NAV-REPORT.md` as structure.
+3. Do not invent UI not shown in attachments or text; use `NEEDS_CONFIRMATION` when evidence is missing.
+
+## Triggers
+
+- Transcripción, notas de voz en texto, feedback de navegación
+- Capturas de pantalla + comentarios de uso
+- "Informe de usuario", "reporte de navegación", "incorporar feedback al proyecto"
+- skill name: `navigation-user-feedback`
+
+## References
+
+- `docs/team/ux-feedback/README.md`
+- `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` (propagación)
+- `docs/team/HUMAN-GATES-ONE-BY-ONE.md` (cm-0 / cm-1 / cm-2)
