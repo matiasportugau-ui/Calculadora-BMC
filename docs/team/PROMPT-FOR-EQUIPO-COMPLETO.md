@@ -86,6 +86,8 @@ Antes de ejecutar solo el **siguiente run numerado** (p. ej. run 55), leer **`do
 
 **Siguiente ciclo:** **Cierre operativo run 55** con evidencia (gates **cm-0 / cm-1 / cm-2**, fix **503** `/api/cotizaciones`, dedupe **MATRIZ** `path`, **git push** + **Repo Sync** hermanos) — [`RUN55-OPERATOR-CHECKLIST.md`](./RUN55-OPERATOR-CHECKLIST.md). Tras cerrar, el **siguiente número de run** puede documentarse como **run 56** (revisión **§0.1** R1–R5 en [`RUN-ROADMAP-FORWARD-2026.md`](./reports/RUN-ROADMAP-FORWARD-2026.md) cuando aplique). Prioridad sugerida post-evidencia: **E2E Cloud Run**, **Pista 3** (tabs/triggers), **SKILL ref KB** SIM/SIM-REV, **billing**, ML en **prod** si difiere de local; opcional GitHub Security / Dependabot; warning ESLint `calculatorConfig.js`.
 
+**Nota 2026-04-02 (full team lite R4 — sync + deploy):** Ejecutado desde Cursor: `project:compass`, `gate:local:full`, `smoke:prod`, `pre-deploy` (prod), `channels:automated --skip-smoke`, **Vercel prod** OK. **Cloud Run** nueva revisión sigue bloqueada por **`TOKEN_ENCRYPTION_KEY`** (64 hex) hasta corrección en consola — ver [`PROJECT-STATE.md`](./PROJECT-STATE.md) Cambios recientes. **No** cuenta como run 0→9 formal ni reemplaza MATPROMT bundle / Judge / Repo Sync de corrida numerada.
+
 **Run32+ (histórico — agenda tras run 31):** Detalle por run (32–39), dependencias y revisión pre-run en el roadmap.
 
 Resumen ejecutivo (cerrado documental 2026-03-20 salvo trabajo humano/decisión merge):
