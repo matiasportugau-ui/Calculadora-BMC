@@ -52,7 +52,8 @@
     "channels:onboarding": "node scripts/channels-onboarding.mjs",
     "channels:automated": "node scripts/channels-automated-pipeline.mjs",
     "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
-    "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs"
+    "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs",
+    "mac:storage-audit": "bash scripts/mac-storage-audit-readonly.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

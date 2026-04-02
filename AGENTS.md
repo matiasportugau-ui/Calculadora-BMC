@@ -43,6 +43,7 @@ Lee este archivo antes de cualquier tarea.
 | `npm run ml:pending-workup` | Preguntas ML **UNANSWERED**: checklist de puntos faltantes, precio ML vs Matriz, borrador sugerido (no publica en ML). `--json` |
 | `npm run ml:cloud-run` | Sincroniza vars a Cloud Run desde `.env`: ML OAuth, `PUBLIC_BASE_URL`, GCS tokens, y si están definidas: `WEBHOOK_VERIFY_TOKEN`, `BMC_SHEET_ID`, `API_AUTH_TOKEN` / `API_KEY`. Ver [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) §6–8 |
 | `./scripts/cloud-run-matriz-sheets-secret.sh` | Cloud Run **`panelin-calc`**: monta el JSON de Sheets desde Secret Manager (default secret `GOOGLE_APPLICATION_CREDENTIALS` → `/secrets/sa-key.json`) y setea `BMC_MATRIZ_SHEET_ID`; otorga `secretAccessor` al runtime SA. `SECRET_NAME=…` / `BMC_MATRIZ_SHEET_ID=…` opcionales. Checklist: [`docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`](docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md) (Fase 2b). |
+| `npm run mac:storage-audit` | macOS (solo lectura): snapshot de disco/memoria y tamaños de carpetas habituales; plan en [`.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md`](.cursor/skills/mac-performance-optimizer/PLAN-EJECUCION.md). |
 | `npm run pre-deploy` | Checklist pre-deploy: health, contratos (API en 3001 o `BMC_API_BASE`), **paso 2** carga `.env` para comprobar `BMC_SHEET_ID` / `GOOGLE_APPLICATION_CREDENTIALS`, **paso 4** cuenta ítems abiertos `- [ ]` en `docs/team/PROJECT-STATE.md` (canónico; `docs/PROJECT-STATE.md` es solo redirección) |
 
 **Loops de validación:**
