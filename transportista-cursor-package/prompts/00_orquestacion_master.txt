@@ -1,0 +1,3 @@
+EXPORT_SEAL
+Orquestador Modo Transportista — MVP integrado en Calculadora-BMC.
+Checklist: migraciones en transportista-cursor-package/migrations, router server/routes/transportista.js, outbox + webhook HMAC, PWA src/components/DriverTransportistaApp.jsx, tests tests/validation.js.

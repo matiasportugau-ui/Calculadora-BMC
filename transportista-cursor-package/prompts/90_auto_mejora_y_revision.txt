@@ -1,0 +1,2 @@
+EXPORT_SEAL
+Auto-mejora: releer reglas .mdc, correr npm run lint && npm test && npm run test:contracts con API arriba, diff mínimo.

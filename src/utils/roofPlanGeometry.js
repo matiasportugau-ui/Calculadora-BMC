@@ -353,24 +353,40 @@ export function layoutZonasLogico(zonas, tipoAguas = "una_agua") {
  * Those sides should have their border suppressed in the BOM (no profile item for internal joints).
  * @param {Array<{ largo: number, ancho: number, preview?: object }>} zonas
  * @param {"una_agua"|"dos_aguas"} [tipoAguas]
- * @returns {Map<number, Set<"frente"|"fondo"|"latIzq"|"latDer">>}
+ * @returns {Map<number, Map<"frente"|"fondo"|"latIzq"|"latDer", {intervals: Array<{startM:number,endM:number}>, fullySide: boolean}>>}
  */
 export function getSharedSidesPerZona(zonas, tipoAguas = "una_agua") {
   const rects = layoutZonasLogico(zonas, tipoAguas);
   const encounters = findEncounters(rects);
   const result = new Map();
+
+  const addSharedInterval = (gi, side, sideLen, startM, endM) => {
+    if (!result.has(gi)) result.set(gi, new Map());
+    const sideMap = result.get(gi);
+    if (!sideMap.has(side)) sideMap.set(side, { intervals: [], fullySide: false });
+    const entry = sideMap.get(side);
+    const s0 = +Math.max(0, startM).toFixed(4);
+    const s1 = +Math.min(sideLen, endM).toFixed(4);
+    entry.intervals.push({ startM: s0, endM: s1 });
+    if (s0 <= ROOF_PLAN_EPS && s1 >= sideLen - ROOF_PLAN_EPS) entry.fullySide = true;
+  };
+
   for (const enc of encounters) {
     for (const gi of enc.zoneIndices) {
       const rect = rects.find(r => r.gi === gi);
       if (!rect) continue;
-      if (!result.has(gi)) result.set(gi, new Set());
-      const sides = result.get(gi);
       if (enc.orientation === "vertical") {
-        if (Math.abs(enc.x1 - rect.x) <= ROOF_PLAN_EPS)            sides.add("latIzq");
-        if (Math.abs(enc.x1 - (rect.x + rect.w)) <= ROOF_PLAN_EPS) sides.add("latDer");
+        // latIzq / latDer — shared segment runs along the h (largo) axis
+        if (Math.abs(enc.x1 - rect.x) <= ROOF_PLAN_EPS)
+          addSharedInterval(gi, "latIzq", rect.h, enc.y1 - rect.y, enc.y2 - rect.y);
+        if (Math.abs(enc.x1 - (rect.x + rect.w)) <= ROOF_PLAN_EPS)
+          addSharedInterval(gi, "latDer", rect.h, enc.y1 - rect.y, enc.y2 - rect.y);
       } else {
-        if (Math.abs(enc.y1 - rect.y) <= ROOF_PLAN_EPS)            sides.add("fondo");
-        if (Math.abs(enc.y1 - (rect.y + rect.h)) <= ROOF_PLAN_EPS) sides.add("frente");
+        // frente / fondo — shared segment runs along the w (ancho) axis
+        if (Math.abs(enc.y1 - rect.y) <= ROOF_PLAN_EPS)
+          addSharedInterval(gi, "fondo", rect.w, enc.x1 - rect.x, enc.x2 - rect.x);
+        if (Math.abs(enc.y1 - (rect.y + rect.h)) <= ROOF_PLAN_EPS)
+          addSharedInterval(gi, "frente", rect.w, enc.x1 - rect.x, enc.x2 - rect.x);
       }
     }
   }

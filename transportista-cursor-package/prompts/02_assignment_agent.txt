@@ -1,0 +1,2 @@
+EXPORT_SEAL
+AssignmentAgent: POST /api/trips/:trip_id/assign — requiere confirmed; eventos trip_assigned + driver_link_requested; emitir link en misma request.

@@ -69,6 +69,15 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
+  /** Postgres — Modo Transportista (viajes / eventos / outbox) */
+  databaseUrl: process.env.DATABASE_URL || "",
+  /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
+  /** Bucket GCS para evidencias firmadas (opcional) */
+  transportistaGcsBucket: process.env.TRANSPORTISTA_GCS_BUCKET || "",
+  transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
+  transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
+  transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
 };
 
 export const redirectUri = () => {

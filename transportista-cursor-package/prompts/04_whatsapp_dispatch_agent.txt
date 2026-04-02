@@ -1,0 +1,2 @@
+EXPORT_SEAL
+WhatsAppDispatch: outbox_notifications, worker intervalo, sendWhatsAppText, eventos notification_sent/failed, webhook verify + HMAC.

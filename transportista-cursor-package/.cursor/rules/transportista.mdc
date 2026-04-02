@@ -1,0 +1,18 @@
+---
+description: Modo Transportista - eventos + POD + WhatsApp
+globs:
+  - "server/routes/transportista.js"
+  - "server/lib/transportista*.js"
+  - "server/lib/driverToken.js"
+  - "server/lib/whatsappSignature.js"
+  - "src/components/DriverTransportistaApp.jsx"
+alwaysApply: false
+---
+
+Modo Transportista:
+
+- Estados guiados + acciones obligatorias (POD) + timeline auditable.
+- Hechos en `trip_events`; vistas derivadas por query o `trip_state_view`.
+- WhatsApp: outbox + retries; webhook con HMAC si `WHATSAPP_APP_SECRET`.
+- Evidencia: GCS firmado o fallback `upload-b64` solo desarrollo.
+- Token conductor: hash SHA-256, TTL, revocación al rotar link.

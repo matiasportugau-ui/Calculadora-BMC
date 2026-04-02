@@ -67,6 +67,10 @@ import {
   mirrorBedXForView,
 } from "../src/utils/bmcLogisticaBedView.js";
 import { buildRoofPlanEdges, layoutZonasEnPlanta } from "../src/utils/roofPlanGeometry.js";
+import crypto from "node:crypto";
+import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
+import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
+import { isAllowedDriverEventType } from "../server/lib/transportistaFsm.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -1336,6 +1340,52 @@ assert(
   horizJoin?.length,
   5,
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE: Modo Transportista (token + webhook HMAC + FSM)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: Modo Transportista (helpers) ═══");
+
+const opaque = generateOpaqueToken();
+assert("generateOpaqueToken non-empty", opaque.length >= 32, opaque.length, ">=32");
+assert(
+  "sha256Hex deterministic",
+  sha256Hex("bmc") === sha256Hex("bmc"),
+  true,
+  true,
+);
+
+const waSecret = "unit-test-secret";
+const waRaw = Buffer.from('{"entry":[]}');
+const waSig = `sha256=${crypto.createHmac("sha256", waSecret).update(waRaw).digest("hex")}`;
+const waOk = verifyWhatsAppSignature({
+  appSecret: waSecret,
+  rawBodyBuffer: waRaw,
+  signatureHeader: waSig,
+});
+assert("verifyWhatsAppSignature valid", waOk.ok === true, waOk.ok, true);
+
+const waBad = verifyWhatsAppSignature({
+  appSecret: waSecret,
+  rawBodyBuffer: waRaw,
+  signatureHeader: "sha256=deadbeef",
+});
+assert("verifyWhatsAppSignature invalid", waBad.ok === false, waBad.ok, false);
+
+const waSkip = verifyWhatsAppSignature({
+  appSecret: "",
+  rawBodyBuffer: waRaw,
+  signatureHeader: "ignored",
+});
+assert(
+  "verifyWhatsAppSignature skipped without secret",
+  waSkip.skipped === true && waSkip.ok === true,
+  `${waSkip.skipped}/${waSkip.ok}`,
+  "true/true",
+);
+
+assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
+assert("isAllowedDriverEventType rejects unknown", !isAllowedDriverEventType("not_an_event"), true, true);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

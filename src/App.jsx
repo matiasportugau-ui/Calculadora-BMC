@@ -9,6 +9,7 @@ import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
 
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
+const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
 
 const suspenseFallback = (
   <div
@@ -73,6 +74,16 @@ export default function App() {
             <Shell>
               <Suspense fallback={suspenseFallback}>
                 <BmcLogisticaApp />
+              </Suspense>
+            </Shell>
+          }
+        />
+        <Route
+          path="/conductor"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <DriverTransportistaApp />
               </Suspense>
             </Shell>
           }

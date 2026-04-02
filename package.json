@@ -53,7 +53,8 @@
     "channels:automated": "node scripts/channels-automated-pipeline.mjs",
     "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
     "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs",
-    "mac:storage-audit": "bash scripts/mac-storage-audit-readonly.sh"
+    "mac:storage-audit": "bash scripts/mac-storage-audit-readonly.sh",
+    "transportista:migrate": "node scripts/run-transportista-migrations.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -70,6 +71,7 @@
     "openai": "^6.32.0",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
+    "pg": "^8.13.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.30.3",

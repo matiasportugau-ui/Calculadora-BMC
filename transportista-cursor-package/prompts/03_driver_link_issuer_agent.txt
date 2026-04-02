@@ -1,0 +1,2 @@
+EXPORT_SEAL
+DriverLinkIssuer: tabla driver_sessions, token opaco, hash SHA-256, rotación revoca sesiones previas trip+driver, evento driver_link_issued.

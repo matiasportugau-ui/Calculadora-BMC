@@ -1,0 +1,12 @@
+---
+description: Backend transportista - eventos e idempotencia
+globs:
+  - "transportista-cursor-package/migrations/**"
+  - "server/routes/transportista.js"
+  - "server/lib/transportista*.js"
+alwaysApply: false
+---
+
+- `trip_events`: unique `(trip_id, idempotency_key)`.
+- Transacciones en confirm / assign / issue link / commit evidencia.
+- Timeline: `WHERE trip_id = $1 ORDER BY at_server ASC` (no vistas con ORDER global sin sentido).

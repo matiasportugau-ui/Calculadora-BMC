@@ -1,0 +1,2 @@
+EXPORT_SEAL
+Proyección: trip_state_view; alertas Phase 2 — job inactivity/missing_pod/sla (placeholder endpoint GET /api/trips/:id/state).

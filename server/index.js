@@ -17,6 +17,10 @@ import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
+import createTransportistaRouter from "./routes/transportista.js";
+import { getTransportistaPool } from "./lib/transportistaDb.js";
+import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,10 +38,15 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Shopify webhook needs raw body for HMAC; skip json for that path
+// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
+app.use("/webhooks/whatsapp", (req, res, next) => {
+  if (req.method !== "POST") return next();
+  return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
+});
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
+  if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(
@@ -554,9 +563,30 @@ setInterval(() => {
 }, 60 * 1000); // revisar cada 1 minuto
 
 app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
-  res.status(200).json({ ok: true }); // responder rápido a Meta
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const sig = req.headers["x-hub-signature-256"];
+  const verified = verifyWhatsAppSignature({
+    appSecret: config.whatsappAppSecret,
+    rawBodyBuffer: raw,
+    signatureHeader: sig,
+  });
+  if (!verified.skipped && !verified.ok) {
+    return res.status(401).json({ ok: false, error: "invalid webhook signature" });
+  }
+  if (verified.skipped && config.appEnv !== "test") {
+    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
+  }
 
-  const entry = req.body?.entry?.[0];
+  let body = {};
+  try {
+    if (raw.length) body = JSON.parse(raw.toString("utf8"));
+  } catch {
+    return res.status(200).json({ ok: true });
+  }
+
+  res.status(200).json({ ok: true });
+
+  const entry = body?.entry?.[0];
   const changes = entry?.changes?.[0];
   const value = changes?.value;
   if (!value?.messages) return;
@@ -587,6 +617,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 app.use("/calc", calcRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
+app.use("/api", createTransportistaRouter(config, logger));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
@@ -679,6 +710,8 @@ app.use((error, req, res, _next) => {
   });
 });
 
+const transportistaPool = getTransportistaPool(config.databaseUrl);
+
 app.listen(config.port, () => {
   logger.info(
     {
@@ -688,4 +721,7 @@ app.listen(config.port, () => {
     },
     "MercadoLibre connector server started"
   );
+  if (transportistaPool) {
+    startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+  }
 });

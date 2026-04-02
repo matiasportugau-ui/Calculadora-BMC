@@ -66,3 +66,6 @@ PDF Productos/
 # Bundles locales de export (no versionar)
 bmc-logistica-transport-bundle.zip
 .env*.local
+
+# Modo Transportista — evidencias locales (dev upload-b64)
+data/transportista-evidence/

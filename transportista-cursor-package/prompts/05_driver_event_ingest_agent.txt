@@ -1,0 +1,2 @@
+EXPORT_SEAL
+DriverEventIngest: POST /api/driver/events — Bearer sesión, append trip_events, validar FSM transportista.

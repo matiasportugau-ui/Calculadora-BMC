@@ -1,0 +1,10 @@
+---
+description: PWA conductor - UX y offline-lite
+globs:
+  - "src/components/DriverTransportistaApp.jsx"
+alwaysApply: false
+---
+
+- Flujo guiado; bloquear avance si falta POD cuando aplique regla de negocio.
+- Cola IndexedDB + reintentos; `idempotency_key` estable offline.
+- Geo y `at_client_ms` cuando existan.

@@ -1,0 +1,2 @@
+EXPORT_SEAL
+TripConfirmAgent: POST /api/trips/:trip_id/confirm — draft→confirmed, snapshot en payload trip_confirmed, idempotente.

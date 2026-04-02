@@ -114,6 +114,13 @@ function checkPanelsimEmailSummary(data) {
   return { ok: true };
 }
 
+function checkTransportistaHealth(data) {
+  if (!data || typeof data !== "object") return { ok: false, msg: "not an object" };
+  if (data.ok !== true) return { ok: false, msg: "ok must be true" };
+  if (data.module !== "transportista") return { ok: false, msg: "module must be transportista" };
+  return { ok: true };
+}
+
 async function main() {
   console.log(`\nBMC API Contract Validator — ${BASE}\n`);
   let passed = 0;
@@ -178,6 +185,12 @@ async function main() {
       check: checkKpiReport,
       allow503: true,
       allow404: true, // route exists; 404 = server not restarted after deploy
+    },
+    {
+      name: "GET /api/transportista/health",
+      path: "/api/transportista/health",
+      check: checkTransportistaHealth,
+      allow503: true,
     },
   ];
 

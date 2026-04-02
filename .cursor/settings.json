@@ -2,6 +2,9 @@
   "plugins": {
     "meta-quest-agentic-tools": {
       "enabled": true
+    },
+    "supabase": {
+      "enabled": true
     }
   }
 }

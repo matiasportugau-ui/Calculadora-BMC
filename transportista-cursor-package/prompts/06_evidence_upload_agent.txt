@@ -1,0 +1,2 @@
+EXPORT_SEAL
+EvidenceUpload: upload-url GCS v4, commit evento evidence_committed; fallback POST /api/driver/evidence/upload-b64 (dev).

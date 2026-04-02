@@ -22,6 +22,7 @@ Lee este archivo antes de cualquier tarea.
 | `npm run mcp:panelin` | Servidor MCP (stdio) proxy HTTP — requiere API corriendo; `BMC_API_BASE` opcional |
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
+| `npm run transportista:migrate` | Modo Transportista: aplica migraciones Postgres (`DATABASE_URL`) desde `transportista-cursor-package/migrations/` |
 | `npm run followup` | Follow-ups / recordatorios (CLI `scripts/followup.mjs`; almacén local `.followup/` o `FOLLOWUP_STORE_PATH`); API `GET/POST /api/followups` |
 | `npm run program:status` | Programa maestro multi-área: fase actual, progreso ~%, próximos pasos (`docs/team/orientation/programs/bmc-panelin-master.json`) |
 | `npm run project:compass` | **Seguimiento unificado:** `program:status` + follow-ups vencidos (`followup due`). Índice: `docs/team/PROJECT-SCHEDULE.md`. Alias: `npm run schedule` |
