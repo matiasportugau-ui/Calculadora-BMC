@@ -69,3 +69,11 @@ bmc-logistica-transport-bundle.zip
 
 # Modo Transportista — evidencias locales (dev upload-b64)
 data/transportista-evidence/
+
+# UX — sesiones de vídeo locales (pesadas / posible PII; ver docs/team/ux-feedback/sessions/README.md)
+docs/team/ux-feedback/sessions/**/*.mp4
+docs/team/ux-feedback/sessions/**/*.mov
+docs/team/ux-feedback/sessions/**/*.m4v
+docs/team/ux-feedback/sessions/**/audio.wav
+docs/team/ux-feedback/sessions/**/extracted-*/**
+docs/team/ux-feedback/sessions/**/extracted/**

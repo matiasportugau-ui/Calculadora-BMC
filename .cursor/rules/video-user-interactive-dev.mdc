@@ -1,0 +1,13 @@
+---
+description: "Video-User-interactive-dev, método vídeo usuario, análisis completo de video de sesión, revisión documentada del video, procedimiento de desarrollo desde video, path al MP4/MOV. Activa el flujo canónico en docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md y skill user-session-video-to-backlog."
+alwaysApply: false
+---
+
+# Método Video-User-interactive-dev
+
+Cuando el usuario indique que va a usar **Video-User-interactive-dev** (o equivalente) y comparta la **ruta o adjunto del vídeo**:
+
+1. Seguir [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](../../docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md).
+2. Ejecutar la skill [`.cursor/skills/user-session-video-to-backlog/SKILL.md`](../skills/user-session-video-to-backlog/SKILL.md) en modo **entrega Video-User-interactive-dev** (un informe único + JSON).
+3. **Analizar por completo** lo evaluado en el vídeo (voz + pantalla); **no inventar** lo no observable.
+4. Generar **revisión documentada** + **procedimiento de desarrollo y ajustes** en el mismo archivo principal indicado en ese método.

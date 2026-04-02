@@ -1,0 +1,35 @@
+---
+description: "Disco lleno, ENOSPC, no space left on device, liberar espacio, DISK FULL, df sin espacio, disk-precheck fallido, escritura fallida por almacenamiento: proponer liberación agrupada (segura), aprobación explícita del usuario antes de cualquier borrado, ejecutar solo lo aprobado y reanudar el procedimiento interrumpido."
+alwaysApply: true
+---
+
+# Recuperación de espacio en disco + reanudar (BMC / Cursor)
+
+**Palabra final (obligatorio):** el usuario **siempre** autoriza eliminaciones o vaciados. **Prohibido** borrar, mover a papelera en masa o `rm -rf` sin **aprobación explícita** del usuario sobre el **plan agrupado** (qué grupos, qué rutas). Si no hubo aprobación clara, solo auditar y proponer.
+
+## Cuándo aplica este flujo
+
+Activa el procedimiento completo de la skill cuando:
+
+- Falle **`npm run dev`** o **`npm run build`** por **`disk:precheck`** (mensaje “poco espacio en disco” en stderr).
+- Aparezca **`ENOSPC`**, **`No space left on device`**, **`DISK FULL`**, o errores equivalentes al escribir archivos o instalar dependencias.
+- El usuario pida **liberar espacio**, **disco lleno**, **limpiar para seguir**, o **reanudar** tras un bloqueo por falta de espacio.
+- `df` muestre **poco espacio libre** en el volumen del repo y la tarea actual requiera escritura en disco.
+
+## Fuente canónica
+
+- Skill: [`.cursor/skills/disk-space-recovery-resume/SKILL.md`](../skills/disk-space-recovery-resume/SKILL.md)
+- Seguridad / límites: [`.cursor/skills/drive-space-optimizer/SKILL.md`](../skills/drive-space-optimizer/SKILL.md)
+- Doc humano: [`docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md`](../../docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md)
+
+## Tras la aprobación del usuario
+
+1. Ejecutar **solo** lo que el usuario aprobó (grupo A/B/C o lista explícita).
+2. Verificar espacio (`df -h`).
+3. **Reanudar** el trabajo anterior: repetir el comando o paso que falló (`npm run dev`, crear archivo, etc.) y continuar la tarea que estaba en curso.
+
+## Recordatorio breve
+
+1. Preferir **mover a Papelera** o **cachés regenerables** frente a borrado permanente.
+2. Propuesta **agrupada** (no listado exhaustivo archivo por archivo).
+3. Sin aprobación → **no ejecutar** limpieza.

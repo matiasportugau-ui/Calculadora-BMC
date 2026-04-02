@@ -7,6 +7,8 @@
   "main": "src/components/PanelinCalculadoraV3.jsx",
   "scripts": {
     "version:data": "node scripts/update-calculator-data-version.js",
+    "disk:precheck": "bash scripts/disk-space-precheck.sh .",
+    "predev": "npm run disk:precheck",
     "dev": "npm run version:data && vite",
     "dev:api": "node --watch server/index.js",
     "start:api": "node server/index.js",
@@ -17,7 +19,7 @@
     "ml:cloud-run": "./run_ml_cloud_run_setup.sh",
     "ml:verify": "bash scripts/verify-ml-oauth.sh",
     "proxy:openai": "./run_proxy_openai.sh",
-    "prebuild": "npm run version:data",
+    "prebuild": "npm run disk:precheck && npm run version:data",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/validation.js",
@@ -53,6 +55,8 @@
     "channels:automated": "node scripts/channels-automated-pipeline.mjs",
     "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
     "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs",
+    "session:video-extract": "bash scripts/user-session-video-extract.sh",
+    "session:video-ingest": "bash scripts/user-session-video-ingest-from-iphone.sh",
     "mac:storage-audit": "bash scripts/mac-storage-audit-readonly.sh",
     "transportista:migrate": "node scripts/run-transportista-migrations.mjs"
   },
