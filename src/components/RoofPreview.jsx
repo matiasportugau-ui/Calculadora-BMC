@@ -1,11 +1,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // RoofPreview.jsx — Vista previa del techo (rejilla de paneles, drag, pendiente)
-// Coordenadas del SVG en metros (planta). preview.x/y solo UI; no afecta BOM.
+// Coordenadas del SVG en metros (planta). preview.x/y no alimenta el BOM todavía;
+// buildRoofPlanEdges (mismo criterio de layout) muestra perímetro/encuentros solo informativo.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useCallback, useMemo, useRef } from "react";
 import { C, FONT } from "../data/constants.js";
 import { calcFactorPendiente } from "../utils/calculations.js";
+import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
 
 const GAP_M = 0.25;
 /** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
@@ -121,6 +123,16 @@ export default function RoofPreview({
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
+
+  /** Misma entrada que el SVG: perímetro exterior y encuentros (no modifica cotización). */
+  const planEdges = useMemo(() => {
+    if (!zonas?.length) return null;
+    try {
+      return buildRoofPlanEdges(zonas, tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua");
+    } catch {
+      return null;
+    }
+  }, [zonas, tipoAguas]);
 
   const layout = useMemo(() => {
     const is2A = tipoAguas === "dos_aguas";
@@ -494,6 +506,37 @@ export default function RoofPreview({
                 <span>Suma zonas</span>
                 <span>{layout.entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0).toFixed(1)} m²</span>
               </div>
+              {planEdges && planEdges.rects.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTop: `1px dashed ${C.border}`,
+                    fontSize: 10,
+                    color: C.ts,
+                    lineHeight: 1.45,
+                  }}
+                  aria-label="Perímetro en planta y encuentros entre zonas"
+                >
+                  <div style={{ fontWeight: 600, color: C.tp, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    Planta (encuentros)
+                  </div>
+                  <div>
+                    Perímetro exterior (estim.):{" "}
+                    <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums" }}>{planEdges.totals.exteriorLength} m</strong>
+                  </div>
+                  <div style={{ marginTop: 2 }}>
+                    Encuentros:{" "}
+                    <strong style={{ color: C.tp }}>{planEdges.encounters.length}</strong> tramo
+                    {planEdges.encounters.length === 1 ? "" : "s"} ·{" "}
+                    <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums" }}>{planEdges.totals.encounterLength} m</strong>{" "}
+                    compartido
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 9, opacity: 0.92 }}>
+                    La cotización sigue usando bordes globales; esto prepara accesorios por tramo.
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {pendiente > 0 && (
