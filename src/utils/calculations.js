@@ -408,6 +408,12 @@ export function calcTechoCompleto(inputs) {
   }
   const autoportancia = calcAutoportancia(panel, espesor, largo);
   if (!autoportancia.ok) warnings.push(`Largo ${largo}m excede autoportancia máx ${autoportancia.maxSpan}m. Requiere ${autoportancia.apoyos} apoyos.`);
+  if (autoportancia.ok && autoportancia.maxSpan != null) {
+    const headroom = (autoportancia.maxSpan - largo) / autoportancia.maxSpan;
+    if (headroom >= 0 && headroom < 0.05) {
+      warnings.push(`Largo ${largo}m está dentro del 5% de la autoportancia máx (${autoportancia.maxSpan}m). Superar ese límite requeriría ${autoportancia.apoyos + 1} apoyos y aumentaría la fijación considerablemente.`);
+    }
+  }
 
   const bomComercial = opciones?.bomComercial === true && familia === "ISODEC_PIR" && panel.sist === "varilla_tuerca";
   if (bomComercial) {

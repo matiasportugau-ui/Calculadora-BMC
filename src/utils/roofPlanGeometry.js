@@ -26,7 +26,7 @@ export function effAnchoPlanta(z, is2A) {
  * @param {"una_agua"|"dos_aguas"} [tipoAguas]
  * @returns {Array<{ gi: number, z: object, x: number, y: number, w: number, h: number }>}
  */
-export function layoutZonasEnPlanta(zonas, tipoAguas = "una_agua") {
+export function layoutZonasEnPlanta(zonas, tipoAguas = "una_agua", gapM = ROOF_PLAN_GAP_M) {
   const is2A = tipoAguas === "dos_aguas";
   const raw = zonas.map((z, gi) => ({ z, gi })).filter(({ z }) => z?.largo > 0 && z?.ancho > 0);
   let ax = 0;
@@ -34,7 +34,7 @@ export function layoutZonasEnPlanta(zonas, tipoAguas = "una_agua") {
   for (const { z, gi } of raw) {
     const w = effAnchoPlanta(z, is2A);
     autoPos[gi] = { x: ax, y: 0 };
-    ax += w + ROOF_PLAN_GAP_M;
+    ax += w + gapM;
   }
   return raw.map(({ z, gi }) => {
     const w = effAnchoPlanta(z, is2A);
@@ -338,4 +338,41 @@ export function buildRoofPlanEdges(zonas, tipoAguas = "una_agua") {
       perimeterIndependent: +perimeterIndependent.toFixed(4),
     },
   };
+}
+
+/**
+ * Layout for BOM encounter detection: zones placed adjacent (no visual gap).
+ * Use this for BOM calculations, not for visual display.
+ */
+export function layoutZonasLogico(zonas, tipoAguas = "una_agua") {
+  return layoutZonasEnPlanta(zonas, tipoAguas, 0);
+}
+
+/**
+ * For each zona (by gi), returns the set of sides shared with another zone.
+ * Those sides should have their border suppressed in the BOM (no profile item for internal joints).
+ * @param {Array<{ largo: number, ancho: number, preview?: object }>} zonas
+ * @param {"una_agua"|"dos_aguas"} [tipoAguas]
+ * @returns {Map<number, Set<"frente"|"fondo"|"latIzq"|"latDer">>}
+ */
+export function getSharedSidesPerZona(zonas, tipoAguas = "una_agua") {
+  const rects = layoutZonasLogico(zonas, tipoAguas);
+  const encounters = findEncounters(rects);
+  const result = new Map();
+  for (const enc of encounters) {
+    for (const gi of enc.zoneIndices) {
+      const rect = rects.find(r => r.gi === gi);
+      if (!rect) continue;
+      if (!result.has(gi)) result.set(gi, new Set());
+      const sides = result.get(gi);
+      if (enc.orientation === "vertical") {
+        if (Math.abs(enc.x1 - rect.x) <= ROOF_PLAN_EPS)            sides.add("latIzq");
+        if (Math.abs(enc.x1 - (rect.x + rect.w)) <= ROOF_PLAN_EPS) sides.add("latDer");
+      } else {
+        if (Math.abs(enc.y1 - rect.y) <= ROOF_PLAN_EPS)            sides.add("fondo");
+        if (Math.abs(enc.y1 - (rect.y + rect.h)) <= ROOF_PLAN_EPS) sides.add("frente");
+      }
+    }
+  }
+  return result;
 }

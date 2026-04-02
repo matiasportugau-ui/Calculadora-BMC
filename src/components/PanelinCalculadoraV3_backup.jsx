@@ -47,6 +47,7 @@ import {
   buildPdfAppendixPayload,
 } from "../utils/quotationViews.js";
 import { buildGoogleSheetReportTsv } from "../utils/sheetExport.js";
+import { getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
 import {
   initGoogleAuth, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
@@ -509,58 +510,76 @@ function TipoAguasSelector({ value, onChange, onOptionDoubleClick }) {
 
 const SIDE_LABELS = { frente: "Frente Inferior", fondo: "Frente Superior", latIzq: "Lateral Izq", latDer: "Lateral Der" };
 
-function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua" }) {
+function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua", zonasBorders = [], onZonaBorderChange }) {
+  // openSide: null | { side: string, gi: number|null }  (gi=null → global edge)
   const [openSide, setOpenSide] = useState(null);
   const containerRef = useRef(null);
   const svgRef = useRef(null);
   const popoverRef = useRef(null);
   const [popoverStyle, setPopoverStyle] = useState(null);
+  const zoneRectsRef = useRef([]);
   const panelFam = PANELS_TECHO[panelFamilia]?.fam || "";
 
-  const validZonas = (zonas || []).filter(z => z?.largo > 0 && z?.ancho > 0);
+  const validZonas = useMemo(() => (zonas || []).filter(z => z?.largo > 0 && z?.ancho > 0), [zonas]);
   const is2A = tipoAguas === "dos_aguas";
   const hasZonas = validZonas.length > 0;
+  const multiZona = validZonas.length > 1;
+
+  // Shared/internal sides per zone — use auto-layout (strip preview positions)
+  // so the encounter display always matches the visual row shown in this selector.
+  const sharedSidesMap = useMemo(() => {
+    if (!multiZona) return new Map();
+    try {
+      const zonasSinPos = validZonas.map(z => ({ ...z, preview: { ...z.preview, x: undefined, y: undefined } }));
+      return getSharedSidesPerZona(zonasSinPos, tipoAguas);
+    } catch { return new Map(); }
+  }, [validZonas, tipoAguas, multiZona]);
 
   const margin = 18;
-  const edge = 10;
+  const edge = 10;       // thickness of global edge strips
   const pad = 24;
+  const SW = 12;         // per-zone side band thickness (px in viewBox space)
+  const ZONE_GAP = 6;    // gap between zones in viewBox
 
-  const { innerX, innerY, innerW, innerH, vbW, vbH, zoneRects, totalArea } = (() => {
+  const { innerX, innerY, innerW, innerH, vbW, vbH, zoneRects, totalArea } = useMemo(() => {
     if (!hasZonas) {
       const svgW = 280, svgH = 180;
       const vbW0 = svgW + margin * 2, vbH0 = svgH + margin * 2;
-      const ox = margin, oy = margin;
-      const innerX0 = ox + pad, innerW0 = svgW - pad * 2, innerH0 = svgH - edge * 2;
       return {
-        innerX: innerX0, innerY: oy + edge, innerW: innerW0, innerH: innerH0,
+        innerX: margin + pad, innerY: margin + edge,
+        innerW: svgW - pad * 2, innerH: svgH - edge * 2,
         vbW: vbW0, vbH: vbH0, zoneRects: [], totalArea: 0,
       };
     }
-    const maxL = Math.max(...validZonas.map(z => z.largo), 1);
-    const totalA = validZonas.reduce((s, z) => s + z.ancho, 0);
-    const scale = 100 / Math.max(maxL, totalA / Math.max(validZonas.length, 1), 1);
-    const contentW = Math.max(1, totalA * scale * (is2A ? 0.5 : 1) + (validZonas.length - 1) * 8);
-    const contentH = Math.max(1, maxL * scale);
-    const innerW = Math.max(120, contentW);
-    const innerH = Math.max(80, contentH);
+    // Each zone gets a minimum display size so small zones stay legible
+    const MIN_W = 72, MIN_H = 56;
+    const baseScale = 80 / Math.max(...validZonas.map(z => z.largo), 1);
+    const sizes = validZonas.map(z => ({
+      w: Math.max(MIN_W, (is2A ? z.ancho / 2 : z.ancho) * baseScale),
+      h: Math.max(MIN_H, z.largo * baseScale),
+    }));
+    const contentW = sizes.reduce((s, sz) => s + sz.w, 0) + (validZonas.length - 1) * ZONE_GAP;
+    const contentH = Math.max(...sizes.map(sz => sz.h));
+    const innerW = Math.max(140, contentW);
+    const innerH = Math.max(MIN_H, contentH);
     const vbW = innerW + pad * 2 + edge * 2 + margin * 2;
-    const vbH = innerH + edge * 2 + margin * 2;
-    const ox = margin, oy = margin;
-    const innerX = ox + pad;
-    const innerY = oy + edge;
-    const zoneScale = Math.min(innerW / contentW, innerH / contentH, 1);
-    const zScale = scale * zoneScale;
-    const zoneRects = validZonas.map((z, i) => {
-      const l = z.largo * zScale;
-      const a = (is2A ? z.ancho / 2 : z.ancho) * zScale;
-      const x = innerX + validZonas.slice(0, i).reduce((s, prev) => s + (is2A ? prev.ancho / 2 : prev.ancho) * zScale + 6, 0);
-      const y = innerY;
-      return { x, y, w: a, h: l, label: `${z.largo}×${z.ancho}m` };
+    const vbH = innerH + edge * 2 + margin * 2 + 20; // extra bottom for area label
+    const innerX = margin + pad;
+    const innerY = margin + edge;
+    let cx = innerX;
+    const rects = validZonas.map((z, i) => {
+      const { w, h } = sizes[i];
+      const x = cx;
+      cx += w + ZONE_GAP;
+      // Vertically center zones of different heights
+      return { x, y: innerY + (innerH - h) / 2, w, h, label: `${z.largo}×${z.ancho}m`, gi: i };
     });
-    const totalArea = validZonas.reduce((s, z) => s + (z.largo * z.ancho), 0);
-    return { innerX, innerY, innerW, innerH, vbW, vbH, zoneRects, totalArea };
-  })();
+    const result = { innerX, innerY, innerW, innerH, vbW, vbH, zoneRects: rects, totalArea: validZonas.reduce((s, z) => s + z.largo * z.ancho, 0) };
+    zoneRectsRef.current = rects;
+    return result;
+  }, [hasZonas, validZonas, is2A]);
 
+  // Global edge strip definitions (only used in single-zone mode)
   const edgeDefs = {
     fondo:  { x: innerX, y: innerY - edge, w: innerW, h: edge },
     frente: { x: innerX, y: innerY + innerH, w: innerW, h: edge },
@@ -568,206 +587,287 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
     latDer: { x: innerX + innerW, y: innerY, w: edge, h: innerH },
   };
 
+  // Close popover on outside click
   useEffect(() => {
     const handler = (e) => {
-      const t = e.target;
-      if (containerRef.current && containerRef.current.contains(t)) return;
-      if (popoverRef.current && popoverRef.current.contains(t)) return;
-      setOpenSide(null);
-      setPopoverStyle(null);
+      if (containerRef.current?.contains(e.target)) return;
+      if (popoverRef.current?.contains(e.target)) return;
+      setOpenSide(null); setPopoverStyle(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const getOpts = (side) => (BORDER_OPTIONS[side] || []).filter(o => !o.familias || o.familias.includes(panelFam));
-  const getLabel = (side) => {
-    const val = borders[side];
+
+  const getLabel = (side, gi = null) => {
+    const val = gi !== null ? (zonasBorders[gi]?.[side] ?? borders[side]) : borders[side];
     if (!val || val === "none") return "—";
     const opts = BORDER_OPTIONS[side] || [];
-    const opt = opts.find(o => o.id === val && (!o.familias || o.familias.includes(panelFam)))
-      || opts.find(o => o.id === val);
+    const opt = opts.find(o => o.id === val && (!o.familias || o.familias.includes(panelFam))) || opts.find(o => o.id === val);
     return opt ? opt.label : val;
   };
 
-  const handleEdgeClick = (side) => {
-    if (disabledSides.includes(side)) return;
+  const handleEdgeClick = (side, gi = null) => {
+    if (gi === null && disabledSides.includes(side)) return;
+    if (gi !== null && sharedSidesMap.get(gi)?.has(side)) return; // internal — not configurable
     setPopoverStyle(null);
-    setOpenSide(prev => prev === side ? null : side);
+    const isSame = openSide?.side === side && openSide?.gi === gi;
+    setOpenSide(isSame ? null : { side, gi });
   };
 
-  const positionPopover = useCallback((side) => {
+  const positionPopover = useCallback(() => {
     const svgEl = svgRef.current;
     const popEl = popoverRef.current;
-    if (!side || !svgEl || !popEl) return;
-
+    if (!openSide || !svgEl || !popEl) return;
     const svgRect = svgEl.getBoundingClientRect();
     const popRect = popEl.getBoundingClientRect();
     if (popRect.width === 0 || popRect.height === 0) return;
 
-    const vpPad = 10;
-    const gap = 10;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
+    const vpPad = 10, gap = 10;
+    const vw = window.innerWidth, vh = window.innerHeight;
 
+    // Convert SVG viewBox coordinates to screen coordinates
+    const toSX = (vbx) => svgRect.left + (vbx / vbW) * svgRect.width;
+    const toSY = (vby) => svgRect.top  + (vby / vbH) * svgRect.height;
+
+    const { side, gi } = openSide;
     const anchor = (() => {
-      switch (side) {
-        case "fondo":  return { x: svgRect.left + svgRect.width / 2, y: svgRect.top };
-        case "frente": return { x: svgRect.left + svgRect.width / 2, y: svgRect.bottom };
-        case "latIzq": return { x: svgRect.left, y: svgRect.top + svgRect.height / 2 };
-        case "latDer": return { x: svgRect.right, y: svgRect.top + svgRect.height / 2 };
-        default: return null;
+      if (gi !== null) {
+        const r = zoneRectsRef.current[gi];
+        if (!r) return null;
+        return {
+          fondo:  { x: toSX(r.x + r.w / 2), y: toSY(r.y) },
+          frente: { x: toSX(r.x + r.w / 2), y: toSY(r.y + r.h) },
+          latIzq: { x: toSX(r.x),            y: toSY(r.y + r.h / 2) },
+          latDer: { x: toSX(r.x + r.w),      y: toSY(r.y + r.h / 2) },
+        }[side];
       }
+      return {
+        fondo:  { x: svgRect.left + svgRect.width / 2,  y: svgRect.top },
+        frente: { x: svgRect.left + svgRect.width / 2,  y: svgRect.bottom },
+        latIzq: { x: svgRect.left,                      y: svgRect.top + svgRect.height / 2 },
+        latDer: { x: svgRect.right,                     y: svgRect.top + svgRect.height / 2 },
+      }[side];
     })();
     if (!anchor) return;
 
-    const canTop = anchor.y - gap - popRect.height - vpPad >= 0;
+    const canTop    = anchor.y - gap - popRect.height - vpPad >= 0;
     const canBottom = anchor.y + gap + popRect.height + vpPad <= vh;
-    const canLeft = anchor.x - gap - popRect.width - vpPad >= 0;
-    const canRight = anchor.x + gap + popRect.width + vpPad <= vw;
-
-    let top = 0;
-    let left = 0;
+    const canLeft   = anchor.x - gap - popRect.width  - vpPad >= 0;
+    const canRight  = anchor.x + gap + popRect.width  + vpPad <= vw;
+    let top = 0, left = 0;
 
     if (side === "fondo") {
-      if (canTop || !canBottom) { top = anchor.y - gap - popRect.height; left = anchor.x - popRect.width / 2; }
-      else { top = anchor.y + gap; left = anchor.x - popRect.width / 2; }
+      top  = (canTop || !canBottom) ? anchor.y - gap - popRect.height : anchor.y + gap;
+      left = anchor.x - popRect.width / 2;
     } else if (side === "frente") {
-      if (canBottom || !canTop) { top = anchor.y + gap; left = anchor.x - popRect.width / 2; }
-      else { top = anchor.y - gap - popRect.height; left = anchor.x - popRect.width / 2; }
+      top  = (canBottom || !canTop) ? anchor.y + gap : anchor.y - gap - popRect.height;
+      left = anchor.x - popRect.width / 2;
     } else if (side === "latIzq") {
-      if (canLeft || !canRight) { top = anchor.y - popRect.height / 2; left = anchor.x - gap - popRect.width; }
-      else { top = anchor.y - popRect.height / 2; left = anchor.x + gap; }
-    } else if (side === "latDer") {
-      if (canRight || !canLeft) { top = anchor.y - popRect.height / 2; left = anchor.x + gap; }
-      else { top = anchor.y - popRect.height / 2; left = anchor.x - gap - popRect.width; }
+      top  = anchor.y - popRect.height / 2;
+      left = (canLeft || !canRight) ? anchor.x - gap - popRect.width : anchor.x + gap;
+    } else {
+      top  = anchor.y - popRect.height / 2;
+      left = (canRight || !canLeft) ? anchor.x + gap : anchor.x - gap - popRect.width;
     }
-
-    left = Math.min(Math.max(vpPad, left), vw - popRect.width - vpPad);
-    top = Math.min(Math.max(vpPad, top), vh - popRect.height - vpPad);
-
+    left = Math.min(Math.max(vpPad, left), vw - popRect.width  - vpPad);
+    top  = Math.min(Math.max(vpPad, top),  vh - popRect.height - vpPad);
     setPopoverStyle({ top, left, opacity: 1 });
-  }, [setPopoverStyle]);
+  }, [openSide, vbW, vbH]);
 
-  useLayoutEffect(() => {
-    if (!openSide) return;
-    positionPopover(openSide);
-  }, [openSide, positionPopover]);
-
+  useLayoutEffect(() => { if (openSide) positionPopover(); }, [openSide, positionPopover]);
   useEffect(() => {
     if (!openSide) return;
-    const recalc = () => positionPopover(openSide);
-    window.addEventListener("resize", recalc);
-    // Capture scroll events from any scroll container (scroll doesn't bubble).
-    window.addEventListener("scroll", recalc, true);
-    return () => {
-      window.removeEventListener("resize", recalc);
-      window.removeEventListener("scroll", recalc, true);
-    };
+    window.addEventListener("resize", positionPopover);
+    window.addEventListener("scroll", positionPopover, true);
+    return () => { window.removeEventListener("resize", positionPopover); window.removeEventListener("scroll", positionPopover, true); };
   }, [openSide, positionPopover]);
-
-  const labelPos = {
-    fondo:  { x: innerX + innerW / 2, y: innerY - edge / 2 + 1, anchor: "middle" },
-    frente: { x: innerX + innerW / 2, y: innerY + innerH + edge / 2 + 1, anchor: "middle" },
-    latIzq: { x: innerX - edge / 2, y: innerY + innerH / 2, anchor: "middle", rotate: -90 },
-    latDer: { x: innerX + innerW + edge / 2, y: innerY + innerH / 2, anchor: "middle", rotate: 90 },
-  };
 
   return (
     <div ref={containerRef} style={{ position: "relative", fontFamily: FONT }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vista previa del techo</div>
-      <div style={{ fontSize: 12, color: C.ts, marginBottom: 10 }}>Clic en cada tramo para elegir el accesorio</div>
+      <div style={{ fontSize: 12, color: C.ts, marginBottom: 10 }}>
+        {multiZona ? "Clic en cada lado de cada zona para elegir el accesorio" : "Clic en cada tramo para elegir el accesorio"}
+      </div>
       <svg ref={svgRef} viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 400, margin: "0 auto" }}>
-        {/* Panel area o zonas */}
-        {hasZonas ? (
-          <>
-            {zoneRects.map((r, i) => (
-              <g key={i}>
-                <rect x={r.x} y={r.y} width={r.w} height={r.h} rx={4} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
-                <text x={r.x + r.w / 2} y={r.y + r.h / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={9} fontWeight={600} fontFamily={FONT}>{r.label}</text>
-              </g>
-            ))}
-            {totalArea > 0 && (
-              <text x={innerX + innerW / 2} y={innerY + innerH + 12} textAnchor="middle" fill={C.ts} fontSize={10} fontFamily={FONT}>{totalArea.toFixed(1)} m²</text>
-            )}
-          </>
-        ) : (
-          <>
-            <rect x={innerX} y={innerY} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
-            <text x={innerX + innerW / 2} y={innerY + innerH / 2 + 1} textAnchor="middle" dominantBaseline="central" fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
-          </>
+
+        {/* Zone fills */}
+        {hasZonas ? zoneRects.map((r) => (
+          <rect key={r.gi} x={r.x} y={r.y} width={r.w} height={r.h} rx={4} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
+        )) : (
+          <rect x={innerX} y={innerY} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
         )}
 
-        {/* Edge rects */}
-        {["fondo", "frente", "latIzq", "latDer"].map(side => {
-          const d = edgeDefs[side];
-          const val = borders[side];
-          const active = val && val !== "none";
-          const isOpen = openSide === side;
-          const isDisabled = disabledSides.includes(side);
-          const lp = labelPos[side];
-          const abbr = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side);
-          const isVert = side === "latIzq" || side === "latDer";
-          const rx = isVert ? 4 : 6;
-          const hitPad = 8;
-          const hx = isVert ? d.x - hitPad : d.x;
-          const hy = isVert ? d.y : d.y - hitPad;
-          const hw = isVert ? d.w + hitPad * 2 : d.w;
-          const hh = isVert ? d.h : d.h + hitPad * 2;
+        {/* ── MULTI-ZONE MODE: per-zone side bands ── */}
+        {multiZona && zoneRects.map((r) => {
+          const shared = sharedSidesMap.get(r.gi) ?? new Set();
+          // Per-zone band thickness — proportional but capped
+          const zSW = Math.max(SW, Math.min(r.w, r.h) * 0.14);
+          const sideBands = [
+            { side: "fondo",  x: r.x,              y: r.y,               w: r.w,        h: zSW },
+            { side: "frente", x: r.x,              y: r.y + r.h - zSW,   w: r.w,        h: zSW },
+            { side: "latIzq", x: r.x,              y: r.y + zSW,         w: zSW,        h: r.h - 2 * zSW },
+            { side: "latDer", x: r.x + r.w - zSW,  y: r.y + zSW,         w: zSW,        h: r.h - 2 * zSW },
+          ];
           return (
-            <g key={side} role="button" tabIndex={isDisabled ? -1 : 0} aria-label={`${SIDE_LABELS[side] || side}: ${abbr}`} onClick={() => handleEdgeClick(side)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleEdgeClick(side); } }} style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
-              <rect x={hx} y={hy} width={hw} height={hh} fill="transparent" />
-              <rect
-                x={d.x} y={d.y} width={d.w} height={d.h} rx={rx}
-                fill={isDisabled ? C.surfaceAlt : active ? C.primarySoft : C.surface}
-                stroke={isOpen ? C.primary : active ? C.primary : C.border}
-                strokeWidth={isOpen ? 2 : 1.5}
-                strokeDasharray={active || isOpen ? "none" : "4 3"}
-                opacity={isDisabled ? 0.4 : 1}
-              />
-              {isOpen && <rect x={d.x - 2} y={d.y - 2} width={d.w + 4} height={d.h + 4} rx={rx + 2} fill="none" stroke={C.primary} strokeWidth={1} opacity={0.3} />}
-              <text
-                x={lp.x} y={lp.y} textAnchor={lp.anchor} dominantBaseline="central"
-                fill={isDisabled ? C.tt : active ? C.primary : C.ts}
-                fontSize={8} fontWeight={600} fontFamily={FONT}
-                transform={lp.rotate ? `rotate(${lp.rotate}, ${lp.x}, ${lp.y})` : undefined}
-              >{abbr.length > 12 ? abbr.slice(0, 10) + "…" : abbr}</text>
+            <g key={r.gi}>
+              {sideBands.map(({ side, x, y, w, h }) => {
+                const isShared  = shared.has(side);
+                const isOpen    = openSide?.gi === r.gi && openSide?.side === side;
+                const val       = zonasBorders[r.gi]?.[side] ?? "";
+                const active    = !isShared && val && val !== "none";
+                const label     = getLabel(side, r.gi);
+                const shortLbl  = label === "—" ? "" : label.slice(0, 6);
+                const isVert    = side === "latIzq" || side === "latDer";
+                // Colors: shared=gray, active=blue, open=blue outline, idle=tinted clickable
+                const fillColor   = isShared ? "#e2e8f0" : active ? C.primarySoft : isOpen ? C.primarySoft : "#f0f4ff";
+                const strokeColor = isOpen ? C.primary : active ? C.primary : isShared ? "#cbd5e1" : "#93aad4";
+                return (
+                  <g key={side} role="button" style={{ cursor: isShared ? "default" : "pointer" }}
+                    onClick={() => handleEdgeClick(side, r.gi)}>
+                    <title>{isShared ? `${SIDE_LABELS[side]}: Interno (encuentro)` : `Zona ${r.gi + 1} — ${SIDE_LABELS[side]}: ${label}`}</title>
+                    <rect x={x} y={y} width={w} height={h} rx={2}
+                      fill={fillColor}
+                      stroke={strokeColor}
+                      strokeWidth={isOpen ? 1.5 : 1}
+                      strokeDasharray={isShared ? "3 2" : "none"}
+                      opacity={isShared ? 0.6 : 1}
+                    />
+                    {!isShared && shortLbl && (
+                      <text
+                        x={x + w / 2} y={y + h / 2}
+                        textAnchor="middle" dominantBaseline="central"
+                        fontSize={Math.min(w, h) * 0.36}
+                        fill={active ? C.primary : "#64748b"} fontWeight={active ? 700 : 500} fontFamily={FONT}
+                        transform={isVert ? `rotate(-90,${x + w / 2},${y + h / 2})` : undefined}
+                        pointerEvents="none"
+                      >{active ? shortLbl : "+"}</text>
+                    )}
+                  </g>
+                );
+              })}
+              {/* Zone label — centered in the non-band area */}
+              <text x={r.x + r.w / 2} y={r.y + r.h / 2} textAnchor="middle" dominantBaseline="central"
+                fill={C.brand} fontSize={Math.max(7, Math.min(r.w - zSW * 2, r.h - zSW * 2) * 0.18)}
+                fontWeight={700} fontFamily={FONT} pointerEvents="none">
+                {r.label}
+              </text>
             </g>
           );
         })}
 
-        {/* Side name labels outside the diagram */}
-        <text x={innerX + innerW / 2} y={innerY + innerH + 28} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▼ FRENTE INF</text>
-        <text x={innerX + innerW / 2} y={innerY - 8} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▲ FRENTE SUP</text>
-        <text x={innerX - edge - 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90, ${innerX - edge - 6}, ${innerY + innerH / 2})`}>◄ IZQ</text>
-        <text x={innerX + innerW + edge + 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90, ${innerX + innerW + edge + 6}, ${innerY + innerH / 2})`}>DER ►</text>
+        {/* Encounter divider lines drawn in the gap between adjacent zones */}
+        {multiZona && zoneRects.slice(0, -1).map((r, i) => {
+          const next = zoneRects[i + 1];
+          if (!next) return null;
+          const shared0 = sharedSidesMap.get(r.gi)?.has("latDer");
+          const shared1 = sharedSidesMap.get(next.gi)?.has("latIzq");
+          if (!shared0 && !shared1) return null;
+          const gapCX = r.x + r.w + ZONE_GAP / 2;
+          const y0 = Math.max(r.y, next.y);
+          const y1 = Math.min(r.y + r.h, next.y + next.h);
+          if (y1 <= y0) return null;
+          return (
+            <g key={`enc-${i}`} pointerEvents="none">
+              <line x1={gapCX} y1={y0} x2={gapCX} y2={y1} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />
+              <text x={gapCX} y={(y0 + y1) / 2} textAnchor="middle" dominantBaseline="central"
+                fontSize={7} fill="#92400e" fontFamily={FONT} fontWeight={600}
+                transform={`rotate(-90,${gapCX},${(y0 + y1) / 2})`}>enc</text>
+            </g>
+          );
+        })}
+
+        {/* ── SINGLE-ZONE MODE: global edge strips (original behavior) ── */}
+        {!multiZona && <>
+          {["fondo", "frente", "latIzq", "latDer"].map(side => {
+            const d = edgeDefs[side];
+            const val = borders[side];
+            const active = val && val !== "none";
+            const isOpen = openSide?.side === side && openSide?.gi === null;
+            const isDisabled = disabledSides.includes(side);
+            const lp = {
+              fondo:  { x: innerX + innerW / 2, y: innerY - edge / 2 + 1, anchor: "middle" },
+              frente: { x: innerX + innerW / 2, y: innerY + innerH + edge / 2 + 1, anchor: "middle" },
+              latIzq: { x: innerX - edge / 2, y: innerY + innerH / 2, anchor: "middle", rotate: -90 },
+              latDer: { x: innerX + innerW + edge / 2, y: innerY + innerH / 2, anchor: "middle", rotate: 90 },
+            }[side];
+            const abbr = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side);
+            const isVert = side === "latIzq" || side === "latDer";
+            const hitPad = 8;
+            return (
+              <g key={side} role="button" tabIndex={isDisabled ? -1 : 0}
+                aria-label={`${SIDE_LABELS[side]}: ${abbr}`}
+                onClick={() => handleEdgeClick(side, null)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleEdgeClick(side, null); } }}
+                style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
+                <rect x={isVert ? d.x - hitPad : d.x} y={isVert ? d.y : d.y - hitPad}
+                  width={isVert ? d.w + hitPad * 2 : d.w} height={isVert ? d.h : d.h + hitPad * 2} fill="transparent" />
+                <rect x={d.x} y={d.y} width={d.w} height={d.h} rx={isVert ? 4 : 6}
+                  fill={isDisabled ? C.surfaceAlt : active ? C.primarySoft : C.surface}
+                  stroke={isOpen ? C.primary : active ? C.primary : C.border}
+                  strokeWidth={isOpen ? 2 : 1.5}
+                  strokeDasharray={active || isOpen ? "none" : "4 3"}
+                  opacity={isDisabled ? 0.4 : 1}
+                />
+                {isOpen && <rect x={d.x - 2} y={d.y - 2} width={d.w + 4} height={d.h + 4} rx={isVert ? 6 : 8} fill="none" stroke={C.primary} strokeWidth={1} opacity={0.3} />}
+                <text x={lp.x} y={lp.y} textAnchor={lp.anchor} dominantBaseline="central"
+                  fill={isDisabled ? C.tt : active ? C.primary : C.ts}
+                  fontSize={8} fontWeight={600} fontFamily={FONT}
+                  transform={lp.rotate ? `rotate(${lp.rotate},${lp.x},${lp.y})` : undefined}
+                >{abbr.length > 12 ? abbr.slice(0, 10) + "…" : abbr}</text>
+              </g>
+            );
+          })}
+          {/* Single-zone mode labels */}
+          <text x={innerX + innerW / 2} y={innerY + innerH + 28} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▼ FRENTE INF</text>
+          <text x={innerX + innerW / 2} y={innerY - 8}           textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▲ FRENTE SUP</text>
+          <text x={innerX - edge - 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90,${innerX - edge - 6},${innerY + innerH / 2})`}>◄ IZQ</text>
+          <text x={innerX + innerW + edge + 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90,${innerX + innerW + edge + 6},${innerY + innerH / 2})`}>DER ►</text>
+        </>}
+
+        {/* Single-zone: no-zones placeholder label */}
+        {!hasZonas && (
+          <text x={innerX + innerW / 2} y={innerY + innerH / 2 + 1} textAnchor="middle" dominantBaseline="central"
+            fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
+        )}
+
+        {/* Total area label */}
+        {totalArea > 0 && (
+          <text x={innerX + innerW / 2} y={innerY + innerH + (multiZona ? 14 : 12)}
+            textAnchor="middle" fill={C.ts} fontSize={10} fontFamily={FONT}>{totalArea.toFixed(1)} m²</text>
+        )}
       </svg>
 
-      {/* Popover for the open side */}
+      {/* Popover */}
       {openSide && typeof document !== "undefined" && createPortal((() => {
-        const opts = getOpts(openSide);
-        const baseS = { fontFamily: FONT, background: C.surface, borderRadius: 10, boxShadow: "0 4px 24px rgba(0,0,0,0.15)", minWidth: 220, maxWidth: 320, maxHeight: 320, display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out" };
+        const { side, gi } = openSide;
+        const opts = getOpts(side);
+        const curVal = gi !== null ? (zonasBorders[gi]?.[side] ?? borders[side]) : borders[side];
+        const title = gi !== null
+          ? `Zona ${gi + 1} — ${SIDE_LABELS[side]}`
+          : SIDE_LABELS[side];
         return (
-          <div
-            ref={popoverRef}
-            style={{
-              position: "fixed",
-              zIndex: 9999,
-              top: popoverStyle?.top ?? -9999,
-              left: popoverStyle?.left ?? -9999,
-              opacity: popoverStyle?.opacity ?? 0,
-              transition: "opacity 80ms ease",
-              ...baseS,
-            }}
-          >
-            <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt, borderRadius: "10px 10px 0 0", flexShrink: 0 }}>{SIDE_LABELS[openSide]}</div>
+          <div ref={popoverRef} style={{
+            position: "fixed", zIndex: 9999,
+            top: popoverStyle?.top ?? -9999, left: popoverStyle?.left ?? -9999,
+            opacity: popoverStyle?.opacity ?? 0, transition: "opacity 80ms ease",
+            fontFamily: FONT, background: C.surface, borderRadius: 10,
+            boxShadow: "0 4px 24px rgba(0,0,0,0.15)", minWidth: 220, maxWidth: 320, maxHeight: 320,
+            display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out",
+          }}>
+            <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt, borderRadius: "10px 10px 0 0", flexShrink: 0 }}>{title}</div>
             <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
               {opts.map(opt => {
-                const isSel = borders[openSide] === opt.id;
+                const isSel = curVal === opt.id;
                 return (
-                  <div
-                    key={opt.id}
-                    onClick={(e) => { e.stopPropagation(); onChange(openSide, opt.id); setPopoverStyle(null); setOpenSide(null); }}
+                  <div key={opt.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (gi !== null) onZonaBorderChange?.(gi, side, opt.id);
+                      else onChange(side, opt.id);
+                      setPopoverStyle(null); setOpenSide(null);
+                    }}
                     style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", cursor: "pointer", fontSize: 13, background: isSel ? C.primarySoft : "transparent", fontWeight: isSel ? 500 : 400, color: C.tp, transition: TR }}
                   >
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -1216,6 +1316,7 @@ export default function PanelinCalculadoraV3() {
 
   // ── Calculate results ──
   const results = useMemo(() => {
+    setListaPrecios(listaPrecios || "web"); // sync global LISTA_ACTIVA before any p() call
     const sc = scenario;
     try {
       if (sc === "presupuesto_libre") {
@@ -1239,16 +1340,24 @@ export default function PanelinCalculadoraV3() {
         // Agua 2 keeps fondo(original)+latIzq+latDer borders, frente=cumbrera (shared, not double-counted)
         const is2Aguas = techo.tipoAguas === "dos_aguas";
         const emptyBorders = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
-        const zonaResults = techo.zonas.flatMap(zona => {
+        const sharedSidesMap = techo.inclAccesorios !== false
+          ? getSharedSidesPerZona(techo.zonas, techo.tipoAguas)
+          : new Map();
+        const zonaResults = techo.zonas.flatMap((zona, gi) => {
           const inputs = { ...techo, largo: zona.largo, ancho: zona.ancho, pendienteModo: techo.pendienteModo || "calcular_pendiente", alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0 };
-          const borders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
+          const globalBorders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
+          const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };
+          const sharedSides = sharedSidesMap.get(gi) ?? new Set();
+          const effectiveBorders = sharedSides.size > 0
+            ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => [k, sharedSides.has(k) ? "none" : v]))
+            : mergedBorders;
           if (is2Aguas) {
             const halfAncho = +(zona.ancho / 2).toFixed(2);
-            const agua1 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { ...borders, fondo: "cumbrera" } });
-            const agua2 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { frente: borders.fondo === "cumbrera" ? "cumbrera" : borders.fondo, fondo: "none", latIzq: borders.latIzq, latDer: borders.latDer } });
+            const agua1 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { ...effectiveBorders, fondo: "cumbrera" } });
+            const agua2 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo, fondo: "none", latIzq: effectiveBorders.latIzq, latDer: effectiveBorders.latDer } });
             return [agua1, agua2];
           }
-          return [calcTechoCompleto({ ...inputs, borders })];
+          return [calcTechoCompleto({ ...inputs, borders: effectiveBorders })];
         });
         return mergeZonaResults(zonaResults);
       }
@@ -1261,16 +1370,24 @@ export default function PanelinCalculadoraV3() {
         if (techo.familia && techo.espesor) {
           const is2A = techo.tipoAguas === "dos_aguas";
           const emptyBorders = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
-          const zonaResults = techo.zonas.flatMap(zona => {
+          const sharedSidesMapTF = techo.inclAccesorios !== false
+            ? getSharedSidesPerZona(techo.zonas, techo.tipoAguas)
+            : new Map();
+          const zonaResults = techo.zonas.flatMap((zona, gi) => {
             const inputs = { ...techo, largo: zona.largo, ancho: zona.ancho, pendienteModo: techo.pendienteModo || "calcular_pendiente", alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0 };
-            const borders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
+            const globalBorders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
+            const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };
+            const sharedSides = sharedSidesMapTF.get(gi) ?? new Set();
+            const effectiveBorders = sharedSides.size > 0
+              ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => [k, sharedSides.has(k) ? "none" : v]))
+              : mergedBorders;
             if (is2A) {
               const ha = +(zona.ancho / 2).toFixed(2);
-              const a1 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { ...borders, fondo: "cumbrera" } });
-              const a2 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { frente: borders.fondo === "cumbrera" ? "cumbrera" : borders.fondo, fondo: "none", latIzq: borders.latIzq, latDer: borders.latDer } });
+              const a1 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { ...effectiveBorders, fondo: "cumbrera" } });
+              const a2 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo, fondo: "none", latIzq: effectiveBorders.latIzq, latDer: effectiveBorders.latDer } });
               return [a1, a2];
             }
-            return [calcTechoCompleto({ ...inputs, borders })];
+            return [calcTechoCompleto({ ...inputs, borders: effectiveBorders })];
           });
           rT = mergeZonaResults(zonaResults);
         }
@@ -2156,6 +2273,8 @@ export default function PanelinCalculadoraV3() {
                           disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
                           zonas={techo.zonas}
                           tipoAguas={techo.tipoAguas}
+                          zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
+                          onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
                         />
                       ) : (
                         <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
@@ -2662,6 +2781,8 @@ export default function PanelinCalculadoraV3() {
                 disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
                 zonas={techo.zonas}
                 tipoAguas={techo.tipoAguas}
+                zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
+                onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
               />
             ) : (
               <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>

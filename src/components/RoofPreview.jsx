@@ -7,7 +7,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { C, FONT } from "../data/constants.js";
 import { calcFactorPendiente } from "../utils/calculations.js";
-import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
+import { buildRoofPlanEdges, findEncounters } from "../utils/roofPlanGeometry.js";
 
 const GAP_M = 0.25;
 /** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
@@ -16,6 +16,8 @@ const VIEWBOX_SLACK_M = 2.8;
 const DRAG_SENSITIVITY = 0.52;
 /** Alineación fina al soltar (m); 0 = desactivado. */
 const SNAP_ON_RELEASE_M = 0.05;
+/** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
+const SNAP_ZONE_M = 0.35;
 const SLOPE_MARKS = ["off", "along_largo_pos", "along_largo_neg"];
 
 function effAnchoM(z, is2A) {
@@ -197,6 +199,11 @@ export default function RoofPreview({
     };
   }, [zonas, tipoAguas]);
 
+  const encounters = useMemo(() => {
+    if (!layout.entries.length) return [];
+    try { return findEncounters(layout.entries); } catch { return []; }
+  }, [layout.entries]);
+
   const cycleSlope = useCallback(
     (gi) => {
       const z = zonas[gi];
@@ -248,11 +255,22 @@ export default function RoofPreview({
       const p = clientToSvg(svg, e.clientX, e.clientY);
       const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
       const rawY = d.rectStartY + (p.y - d.pointerStartY) * DRAG_SENSITIVITY;
+      // Magnetic snap: adhere when edge within threshold; detach automatically when raw moves away
+      let finalX = rawX, finalY = rawY;
+      let bestDX = SNAP_ZONE_M, bestDY = SNAP_ZONE_M;
+      for (const r of layout.entries) {
+        if (r.gi === d.gi) continue;
+        const curR = rawX + d.rectW, curB = rawY + d.rectH;
+        if (Math.abs(curR - r.x) < bestDX)         { bestDX = Math.abs(curR - r.x);         finalX = r.x - d.rectW; }
+        if (Math.abs(rawX - (r.x + r.w)) < bestDX) { bestDX = Math.abs(rawX - (r.x + r.w)); finalX = r.x + r.w; }
+        if (Math.abs(curB - r.y) < bestDY)         { bestDY = Math.abs(curB - r.y);         finalY = r.y - d.rectH; }
+        if (Math.abs(rawY - (r.y + r.h)) < bestDY) { bestDY = Math.abs(rawY - (r.y + r.h)); finalY = r.y + r.h; }
+      }
       const vm = layout.viewMetrics;
-      const { x, y } = clampZonaTopLeft(rawX, rawY, d.rectW, d.rectH, vm);
+      const { x, y } = clampZonaTopLeft(finalX, finalY, d.rectW, d.rectH, vm);
       onZonaPreviewChange?.(d.gi, { x, y });
     },
-    [onZonaPreviewChange, layout.viewMetrics],
+    [onZonaPreviewChange, layout.entries, layout.viewMetrics],
   );
 
   const handlePointerUp = useCallback(
@@ -264,18 +282,6 @@ export default function RoofPreview({
         svg?.releasePointerCapture(e.pointerId);
       } catch {
         /* ignore */
-      }
-      if (d.moved && SNAP_ON_RELEASE_M > 0 && onZonaPreviewChange) {
-        const z = zonas[d.gi];
-        const px = z?.preview;
-        if (px && Number.isFinite(px.x) && Number.isFinite(px.y)) {
-          const sx = Math.round(px.x / SNAP_ON_RELEASE_M) * SNAP_ON_RELEASE_M;
-          const sy = Math.round(px.y / SNAP_ON_RELEASE_M) * SNAP_ON_RELEASE_M;
-          const { x, y } = clampZonaTopLeft(sx, sy, d.rectW, d.rectH, layout.viewMetrics);
-          if (Math.abs(x - px.x) > 1e-6 || Math.abs(y - px.y) > 1e-6) {
-            onZonaPreviewChange(d.gi, { x, y });
-          }
-        }
       }
       if (e.pointerType === "touch" && !d.moved) {
         const now = Date.now();
@@ -393,6 +399,17 @@ export default function RoofPreview({
               onPointerCancel={handleLostCapture}
               onLostPointerCapture={handleLostCapture}
             >
+            {encounters.map((enc) => (
+              <line
+                key={enc.id}
+                x1={enc.x1} y1={enc.y1} x2={enc.x2} y2={enc.y2}
+                stroke="#f59e0b"
+                strokeWidth={0.07}
+                strokeDasharray="0.18 0.09"
+                pointerEvents="none"
+                opacity={0.95}
+              />
+            ))}
             {layout.entries.map((r) => {
               const sm = r.z.preview?.slopeMark;
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
