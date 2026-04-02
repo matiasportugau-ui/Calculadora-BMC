@@ -510,14 +510,25 @@ function TipoAguasSelector({ value, onChange, onOptionDoubleClick }) {
 
 const SIDE_LABELS = { frente: "Frente Inferior", fondo: "Frente Superior", latIzq: "Lateral Izq", latDer: "Lateral Der" };
 
-function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua", zonasBorders = [], onZonaBorderChange }) {
+// ── Isometric projection helpers ────────────────────────────────────────────
+const ROOF_ISO_D  = 0.55;   // depth compression (0=flat, 1=full iso)
+const ROOF_STRIP_M = 0.28;  // edge strip width in metres
+const ROOF_FASCIA_M = 0.16; // front fascia height in metres
+const ROOF_GAP_M = 0.18;    // visual gap between adjacent zones in metres
+
+/** World → SVG iso: wx=left-right, wy=depth, wz=height (all pixels) */
+function roofIso(wx, wy, wz) {
+  return { x: wx - wy * ROOF_ISO_D, y: (wx + wy) * 0.5 * ROOF_ISO_D - wz };
+}
+
+function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua", zonasBorders = [], onZonaBorderChange, pendiente = 15, panelAu = 1.12 }) {
   // openSide: null | { side: string, gi: number|null }  (gi=null → global edge)
   const [openSide, setOpenSide] = useState(null);
   const containerRef = useRef(null);
   const svgRef = useRef(null);
   const popoverRef = useRef(null);
   const [popoverStyle, setPopoverStyle] = useState(null);
-  const zoneRectsRef = useRef([]);
+  const anchorsRef = useRef({});
   const panelFam = PANELS_TECHO[panelFamilia]?.fam || "";
 
   const validZonas = useMemo(() => (zonas || []).filter(z => z?.largo > 0 && z?.ancho > 0), [zonas]);
@@ -536,50 +547,88 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
   }, [validZonas, tipoAguas, multiZona]);
 
   const margin = 18;
-  const edge = 10;       // thickness of global edge strips
+  const edge = 10;    // thickness of global edge strips (flat/no-zones mode)
   const pad = 24;
-  const SW = 12;         // per-zone side band thickness (px in viewBox space)
-  const ZONE_GAP = 6;    // gap between zones in viewBox
 
-  const { innerX, innerY, innerW, innerH, vbW, vbH, zoneRects, totalArea } = useMemo(() => {
+  const { innerX, innerY, innerW, innerH, vbX, vbY, vbW, vbH, zoneGeo, totalArea } = useMemo(() => {
     if (!hasZonas) {
+      // ── Flat placeholder (no zones defined) ──
       const svgW = 280, svgH = 180;
-      const vbW0 = svgW + margin * 2, vbH0 = svgH + margin * 2;
-      return {
-        innerX: margin + pad, innerY: margin + edge,
-        innerW: svgW - pad * 2, innerH: svgH - edge * 2,
-        vbW: vbW0, vbH: vbH0, zoneRects: [], totalArea: 0,
-      };
+      const iX = margin + pad, iY = margin + edge;
+      const iW = svgW - pad * 2, iH = svgH - edge * 2;
+      anchorsRef.current = {};
+      return { innerX: iX, innerY: iY, innerW: iW, innerH: iH, vbX: 0, vbY: 0, vbW: svgW + margin * 2, vbH: svgH + margin * 2, zoneGeo: [], totalArea: 0 };
     }
-    // Each zone gets a minimum display size so small zones stay legible
-    const MIN_W = 72, MIN_H = 56;
-    const baseScale = 80 / Math.max(...validZonas.map(z => z.largo), 1);
-    const sizes = validZonas.map(z => ({
-      w: Math.max(MIN_W, (is2A ? z.ancho / 2 : z.ancho) * baseScale),
-      h: Math.max(MIN_H, z.largo * baseScale),
-    }));
-    const contentW = sizes.reduce((s, sz) => s + sz.w, 0) + (validZonas.length - 1) * ZONE_GAP;
-    const contentH = Math.max(...sizes.map(sz => sz.h));
-    const innerW = Math.max(140, contentW);
-    const innerH = Math.max(MIN_H, contentH);
-    const vbW = innerW + pad * 2 + edge * 2 + margin * 2;
-    const vbH = innerH + edge * 2 + margin * 2 + 20; // extra bottom for area label
-    const innerX = margin + pad;
-    const innerY = margin + edge;
-    let cx = innerX;
-    const rects = validZonas.map((z, i) => {
-      const { w, h } = sizes[i];
-      const x = cx;
-      cx += w + ZONE_GAP;
-      // Vertically center zones of different heights
-      return { x, y: innerY + (innerH - h) / 2, w, h, label: `${z.largo}×${z.ancho}m`, gi: i };
-    });
-    const result = { innerX, innerY, innerW, innerH, vbW, vbH, zoneRects: rects, totalArea: validZonas.reduce((s, z) => s + z.largo * z.ancho, 0) };
-    zoneRectsRef.current = rects;
-    return result;
-  }, [hasZonas, validZonas, is2A]);
 
-  // Global edge strip definitions (only used in single-zone mode)
+    // ── 3D Isometric layout ──
+    const THETA = Math.max(0.05, (pendiente || 15) * Math.PI / 180);
+    const cosT = Math.cos(THETA), sinT = Math.sin(THETA);
+    const totalAnchoM = validZonas.reduce((s, z) => s + (is2A ? z.ancho / 2 : z.ancho), 0);
+    const PPM = Math.min(52, Math.max(18, 260 / Math.max(totalAnchoM + (validZonas.length - 1) * ROOF_GAP_M, 0.1)));
+
+    let cumOX = 0;
+    const zones = validZonas.map((z, i) => {
+      const aw_m = is2A ? z.ancho / 2 : z.ancho;
+      const ox = cumOX;
+      cumOX += aw_m * PPM + ROOF_GAP_M * PPM;
+      const W  = aw_m * PPM;
+      const Ld = z.largo * cosT * PPM;   // horizontal depth in px
+      const Lh = z.largo * sinT * PPM;   // vertical rise in px
+      const tanR = Ld > 0 ? Lh / Ld : 0;
+
+      // Surface point (u, v) → iso SVG point
+      function sp(u, v) { return roofIso(ox + u, v, v * tanR); }
+
+      const FL = sp(0, 0), FR = sp(W, 0), BL = sp(0, Ld), BR = sp(W, Ld);
+      const FH = ROOF_FASCIA_M * PPM;
+      const fasciaL = roofIso(ox,     0, -FH);
+      const fasciaR = roofIso(ox + W, 0, -FH);
+
+      const ST = Math.min(ROOF_STRIP_M * PPM, W * 0.38, Ld * 0.38);
+      function stPts(u0, u1, v0, v1) { return [sp(u0, v0), sp(u1, v0), sp(u1, v1), sp(u0, v1)]; }
+      function stCtr(u0, u1, v0, v1) { return sp((u0 + u1) / 2, (v0 + v1) / 2); }
+
+      const strips = {
+        frente: stPts(0,      W,      0,      ST),
+        fondo:  stPts(0,      W,      Ld - ST, Ld),
+        latIzq: stPts(0,      ST,     0,      Ld),
+        latDer: stPts(W - ST, W,      0,      Ld),
+      };
+      const anchorPts = {
+        frente: stCtr(0,      W,      0,      ST),
+        fondo:  stCtr(0,      W,      Ld - ST, Ld),
+        latIzq: stCtr(0,      ST,     0,      Ld),
+        latDer: stCtr(W - ST, W,      0,      Ld),
+      };
+
+      const panelV = panelAu * cosT * PPM;
+      const gridLines = [];
+      if (panelV > 5) {
+        for (let v = panelV; v < Ld - 2; v += panelV) gridLines.push([sp(0, v), sp(W, v)]);
+      }
+
+      return { gi: i, z, W, Ld, Lh, FL, FR, BL, BR, fasciaL, fasciaR, strips, anchorPts, gridLines };
+    });
+
+    anchorsRef.current = {};
+    for (const zg of zones) anchorsRef.current[zg.gi] = zg.anchorPts;
+
+    const allPts = zones.flatMap(zg => [zg.FL, zg.FR, zg.BL, zg.BR, zg.fasciaL, zg.fasciaR]);
+    const p = 26;
+    const minX = Math.min(...allPts.map(pt => pt.x)) - p;
+    const minY = Math.min(...allPts.map(pt => pt.y)) - p;
+    const maxX = Math.max(...allPts.map(pt => pt.x)) + p;
+    const maxY = Math.max(...allPts.map(pt => pt.y)) + p;
+
+    return {
+      innerX: 0, innerY: 0, innerW: 0, innerH: 0,
+      vbX: minX, vbY: minY, vbW: maxX - minX, vbH: maxY - minY,
+      zoneGeo: zones,
+      totalArea: validZonas.reduce((s, z) => s + z.largo * z.ancho, 0),
+    };
+  }, [hasZonas, validZonas, is2A, pendiente, panelAu]);
+
+  // Global edge strip definitions — flat/no-zones mode only
   const edgeDefs = {
     fondo:  { x: innerX, y: innerY - edge, w: innerW, h: edge },
     frente: { x: innerX, y: innerY + innerH, w: innerW, h: edge },
@@ -628,21 +677,18 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
     const vw = window.innerWidth, vh = window.innerHeight;
 
     // Convert SVG viewBox coordinates to screen coordinates
-    const toSX = (vbx) => svgRect.left + (vbx / vbW) * svgRect.width;
-    const toSY = (vby) => svgRect.top  + (vby / vbH) * svgRect.height;
+    const toSX = (vbx) => svgRect.left + ((vbx - vbX) / vbW) * svgRect.width;
+    const toSY = (vby) => svgRect.top  + ((vby - vbY) / vbH) * svgRect.height;
 
     const { side, gi } = openSide;
     const anchor = (() => {
-      if (gi !== null) {
-        const r = zoneRectsRef.current[gi];
-        if (!r) return null;
-        return {
-          fondo:  { x: toSX(r.x + r.w / 2), y: toSY(r.y) },
-          frente: { x: toSX(r.x + r.w / 2), y: toSY(r.y + r.h) },
-          latIzq: { x: toSX(r.x),            y: toSY(r.y + r.h / 2) },
-          latDer: { x: toSX(r.x + r.w),      y: toSY(r.y + r.h / 2) },
-        }[side];
+      if (hasZonas) {
+        // 3D iso mode: anchor stored in anchorsRef (absolute iso coords)
+        const isoA = anchorsRef.current[gi ?? 0]?.[side];
+        if (!isoA) return null;
+        return { x: toSX(isoA.x), y: toSY(isoA.y) };
       }
+      // Flat global mode: use SVG bounding edges
       return {
         fondo:  { x: svgRect.left + svgRect.width / 2,  y: svgRect.top },
         frente: { x: svgRect.left + svgRect.width / 2,  y: svgRect.bottom },
@@ -674,7 +720,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
     left = Math.min(Math.max(vpPad, left), vw - popRect.width  - vpPad);
     top  = Math.min(Math.max(vpPad, top),  vh - popRect.height - vpPad);
     setPopoverStyle({ top, left, opacity: 1 });
-  }, [openSide, vbW, vbH]);
+  }, [openSide, hasZonas, vbX, vbY, vbW, vbH]);
 
   useLayoutEffect(() => { if (openSide) positionPopover(); }, [openSide, positionPopover]);
   useEffect(() => {
@@ -690,96 +736,135 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
       <div style={{ fontSize: 12, color: C.ts, marginBottom: 10 }}>
         {multiZona ? "Clic en cada lado de cada zona para elegir el accesorio" : "Clic en cada tramo para elegir el accesorio"}
       </div>
-      <svg ref={svgRef} viewBox={`0 0 ${vbW} ${vbH}`} width="100%" style={{ display: "block", maxWidth: 400, margin: "0 auto" }}>
+      <svg ref={svgRef} viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`} width="100%"
+        style={{ display: "block", maxWidth: 440, margin: "0 auto", overflow: "visible" }}>
 
-        {/* Zone fills */}
-        {hasZonas ? zoneRects.map((r) => (
-          <rect key={r.gi} x={r.x} y={r.y} width={r.w} height={r.h} rx={4} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
-        )) : (
-          <rect x={innerX} y={innerY} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
-        )}
+        {/* ══ 3D ISOMETRIC MODE (has zones) ══ */}
+        {hasZonas && <>
 
-        {/* ── MULTI-ZONE MODE: per-zone side bands ── */}
-        {multiZona && zoneRects.map((r) => {
-          const shared = sharedSidesMap.get(r.gi) ?? new Set();
-          // Per-zone band thickness — proportional but capped
-          const zSW = Math.max(SW, Math.min(r.w, r.h) * 0.14);
-          const sideBands = [
-            { side: "fondo",  x: r.x,              y: r.y,               w: r.w,        h: zSW },
-            { side: "frente", x: r.x,              y: r.y + r.h - zSW,   w: r.w,        h: zSW },
-            { side: "latIzq", x: r.x,              y: r.y + zSW,         w: zSW,        h: r.h - 2 * zSW },
-            { side: "latDer", x: r.x + r.w - zSW,  y: r.y + zSW,         w: zSW,        h: r.h - 2 * zSW },
-          ];
-          return (
-            <g key={r.gi}>
-              {sideBands.map(({ side, x, y, w, h }) => {
-                const isShared  = shared.has(side);
-                const isOpen    = openSide?.gi === r.gi && openSide?.side === side;
-                const val       = zonasBorders[r.gi]?.[side] ?? "";
-                const active    = !isShared && val && val !== "none";
-                const label     = getLabel(side, r.gi);
-                const shortLbl  = label === "—" ? "" : label.slice(0, 6);
-                const isVert    = side === "latIzq" || side === "latDer";
-                // Colors: shared=gray, active=blue, open=blue outline, idle=tinted clickable
-                const fillColor   = isShared ? "#e2e8f0" : active ? C.primarySoft : isOpen ? C.primarySoft : "#f0f4ff";
-                const strokeColor = isOpen ? C.primary : active ? C.primary : isShared ? "#cbd5e1" : "#93aad4";
-                return (
-                  <g key={side} role="button" style={{ cursor: isShared ? "default" : "pointer" }}
-                    onClick={() => handleEdgeClick(side, r.gi)}>
-                    <title>{isShared ? `${SIDE_LABELS[side]}: Interno (encuentro)` : `Zona ${r.gi + 1} — ${SIDE_LABELS[side]}: ${label}`}</title>
-                    <rect x={x} y={y} width={w} height={h} rx={2}
-                      fill={fillColor}
-                      stroke={strokeColor}
-                      strokeWidth={isOpen ? 1.5 : 1}
-                      strokeDasharray={isShared ? "3 2" : "none"}
-                      opacity={isShared ? 0.6 : 1}
-                    />
-                    {!isShared && shortLbl && (
-                      <text
-                        x={x + w / 2} y={y + h / 2}
+          {/* Front fascia walls — visual depth cue below each zone's eave */}
+          {zoneGeo.map(z => (
+            <polygon key={`fascia-${z.gi}`}
+              points={[z.FL, z.FR, z.fasciaR, z.fasciaL].map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
+              fill="#c4cad5" stroke="#a8b2c2" strokeWidth={0.6} />
+          ))}
+
+          {/* Roof surfaces */}
+          {zoneGeo.map(z => (
+            <polygon key={`surf-${z.gi}`}
+              points={[z.FL, z.FR, z.BR, z.BL].map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
+              fill={C.brandLight} stroke={C.border} strokeWidth={0.8} />
+          ))}
+
+          {/* Panel grid lines (every panel length along slope) */}
+          {zoneGeo.flatMap(z => z.gridLines.map(([p0, p1], li) => (
+            <line key={`gl-${z.gi}-${li}`}
+              x1={p0.x.toFixed(1)} y1={p0.y.toFixed(1)} x2={p1.x.toFixed(1)} y2={p1.y.toFixed(1)}
+              stroke={C.brand} strokeWidth={0.6} opacity={0.22} pointerEvents="none" />
+          )))}
+
+          {/* Edge strips — parallelogram slices of the sloped surface */}
+          {zoneGeo.flatMap(z => {
+            const shared  = sharedSidesMap.get(z.gi) ?? new Set();
+            const gi_eff  = multiZona ? z.gi : null;
+            return ["frente", "fondo", "latIzq", "latDer"].map(side => {
+              const pts      = z.strips[side];
+              const isShared = shared.has(side);
+              const isDisab  = !multiZona && disabledSides.includes(side);
+              const val      = multiZona ? (zonasBorders[z.gi]?.[side] ?? "") : borders[side];
+              const active   = !isShared && !isDisab && val && val !== "none";
+              const isOpen   = openSide?.side === side && openSide?.gi === gi_eff;
+              const fillC    = isShared ? "#dde3ee" : isDisab ? C.surfaceAlt : active ? C.primarySoft : isOpen ? C.primarySoft : "#ddeaff";
+              const strkC    = isOpen ? C.primary : active ? C.primary : isShared ? "#adbdd0" : isDisab ? C.border : "#7a98cc";
+              const label    = getLabel(side, gi_eff);
+              return (
+                <g key={`st-${z.gi}-${side}`} style={{ cursor: isShared || isDisab ? "default" : "pointer" }}
+                  onClick={() => { if (!isShared && !isDisab) handleEdgeClick(side, gi_eff); }}>
+                  <title>{isShared ? `${SIDE_LABELS[side]}: Interno (encuentro)` : isDisab ? `${SIDE_LABELS[side]}: Fijo` : `${SIDE_LABELS[side]}: ${label}`}</title>
+                  <polygon
+                    points={pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
+                    fill={fillC} stroke={strkC}
+                    strokeWidth={isOpen ? 1.5 : 0.8}
+                    strokeDasharray={isShared ? "3 2" : "none"}
+                    opacity={isShared ? 0.55 : isDisab ? 0.4 : 0.9}
+                  />
+                  {/* Active label text — positioned at strip center */}
+                  {!isShared && !isDisab && active && (() => {
+                    const cp = z.anchorPts[side];
+                    const shortL = label.slice(0, 7);
+                    return (
+                      <text x={cp.x.toFixed(1)} y={cp.y.toFixed(1)}
                         textAnchor="middle" dominantBaseline="central"
-                        fontSize={Math.min(w, h) * 0.36}
-                        fill={active ? C.primary : "#64748b"} fontWeight={active ? 700 : 500} fontFamily={FONT}
-                        transform={isVert ? `rotate(-90,${x + w / 2},${y + h / 2})` : undefined}
-                        pointerEvents="none"
-                      >{active ? shortLbl : "+"}</text>
-                    )}
-                  </g>
-                );
-              })}
-              {/* Zone label — centered in the non-band area */}
-              <text x={r.x + r.w / 2} y={r.y + r.h / 2} textAnchor="middle" dominantBaseline="central"
-                fill={C.brand} fontSize={Math.max(7, Math.min(r.w - zSW * 2, r.h - zSW * 2) * 0.18)}
-                fontWeight={700} fontFamily={FONT} pointerEvents="none">
-                {r.label}
-              </text>
-            </g>
-          );
-        })}
+                        fontSize="6" fill={C.primary} fontWeight={700} fontFamily={FONT}
+                        pointerEvents="none">{shortL}</text>
+                    );
+                  })()}
+                </g>
+              );
+            });
+          })}
 
-        {/* Encounter divider lines drawn in the gap between adjacent zones */}
-        {multiZona && zoneRects.slice(0, -1).map((r, i) => {
-          const next = zoneRects[i + 1];
-          if (!next) return null;
-          const shared0 = sharedSidesMap.get(r.gi)?.has("latDer");
-          const shared1 = sharedSidesMap.get(next.gi)?.has("latIzq");
-          if (!shared0 && !shared1) return null;
-          const gapCX = r.x + r.w + ZONE_GAP / 2;
-          const y0 = Math.max(r.y, next.y);
-          const y1 = Math.min(r.y + r.h, next.y + next.h);
-          if (y1 <= y0) return null;
-          return (
-            <g key={`enc-${i}`} pointerEvents="none">
-              <line x1={gapCX} y1={y0} x2={gapCX} y2={y1} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />
-              <text x={gapCX} y={(y0 + y1) / 2} textAnchor="middle" dominantBaseline="central"
-                fontSize={7} fill="#92400e" fontFamily={FONT} fontWeight={600}
-                transform={`rotate(-90,${gapCX},${(y0 + y1) / 2})`}>enc</text>
-            </g>
-          );
-        })}
+          {/* Encounter lines between logically adjacent zones */}
+          {multiZona && zoneGeo.slice(0, -1).map((z, i) => {
+            const nx = zoneGeo[i + 1];
+            if (!nx) return null;
+            if (!sharedSidesMap.get(z.gi)?.has("latDer") && !sharedSidesMap.get(nx.gi)?.has("latIzq")) return null;
+            return (
+              <line key={`enc-${i}`}
+                x1={z.FR.x.toFixed(1)} y1={z.FR.y.toFixed(1)}
+                x2={z.BR.x.toFixed(1)} y2={z.BR.y.toFixed(1)}
+                stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.9}
+                pointerEvents="none" />
+            );
+          })}
 
-        {/* ── SINGLE-ZONE MODE: global edge strips (original behavior) ── */}
-        {!multiZona && <>
+          {/* Zone labels — center of each roof surface */}
+          {multiZona && zoneGeo.map(z => {
+            const cx = ((z.FL.x + z.FR.x + z.BL.x + z.BR.x) / 4).toFixed(1);
+            const cy = ((z.FL.y + z.FR.y + z.BL.y + z.BR.y) / 4).toFixed(1);
+            const fs = Math.max(7, Math.min(z.W * 0.12, z.Ld * 0.09, 13)).toFixed(1);
+            return (
+              <text key={`lbl-${z.gi}`} x={cx} y={cy}
+                textAnchor="middle" dominantBaseline="central"
+                fill={C.brand} fontSize={fs} fontWeight={700} fontFamily={FONT}
+                pointerEvents="none">{z.z.largo}×{z.z.ancho}m</text>
+            );
+          })}
+
+          {/* Direction labels */}
+          {zoneGeo.length > 0 && (() => {
+            const first = zoneGeo[0], last = zoneGeo[zoneGeo.length - 1];
+            const frontY = (Math.max(...zoneGeo.map(z => Math.max(z.FL.y, z.FR.y))) + 11).toFixed(1);
+            const frontX = ((first.FL.x + last.FR.x) / 2).toFixed(1);
+            const backY  = (Math.min(...zoneGeo.map(z => Math.min(z.BL.y, z.BR.y))) - 7).toFixed(1);
+            const backX  = ((first.BL.x + last.BR.x) / 2).toFixed(1);
+            const lx = (first.FL.x - 9).toFixed(1);
+            const ly = ((first.FL.y + first.BL.y) / 2).toFixed(1);
+            const rx = (last.FR.x + 9).toFixed(1);
+            const ry  = ((last.FR.y + last.BR.y) / 2).toFixed(1);
+            return (
+              <>
+                <text x={frontX} y={frontY} textAnchor="middle" fill={C.ts} fontSize={8} fontWeight={600} fontFamily={FONT} pointerEvents="none">▼ FRENTE</text>
+                <text x={backX}  y={backY}  textAnchor="middle" fill={C.ts} fontSize={8} fontWeight={600} fontFamily={FONT} pointerEvents="none">▲ FONDO</text>
+                <text x={lx} y={ly} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={8} fontWeight={600} fontFamily={FONT} pointerEvents="none" transform={`rotate(-28,${lx},${ly})`}>IZQ</text>
+                <text x={rx} y={ry}  textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={8} fontWeight={600} fontFamily={FONT} pointerEvents="none" transform={`rotate(-28,${rx},${ry})`}>DER</text>
+              </>
+            );
+          })()}
+
+          {/* Total area */}
+          {totalArea > 0 && (
+            <text x={(vbX + vbW / 2).toFixed(1)} y={(vbY + vbH - 8).toFixed(1)}
+              textAnchor="middle" fill={C.ts} fontSize={10} fontFamily={FONT} pointerEvents="none">
+              {totalArea.toFixed(1)} m²
+            </text>
+          )}
+        </>}
+
+        {/* ══ FLAT GLOBAL MODE (no zones defined) ══ */}
+        {!hasZonas && <>
+          <rect x={innerX} y={innerY} width={innerW} height={innerH} rx={6} fill={C.brandLight} stroke={C.border} strokeWidth={1} />
+
           {["fondo", "frente", "latIzq", "latDer"].map(side => {
             const d = edgeDefs[side];
             const val = borders[side];
@@ -819,24 +904,13 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
               </g>
             );
           })}
-          {/* Single-zone mode labels */}
           <text x={innerX + innerW / 2} y={innerY + innerH + 28} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▼ FRENTE INF</text>
           <text x={innerX + innerW / 2} y={innerY - 8}           textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▲ FRENTE SUP</text>
           <text x={innerX - edge - 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90,${innerX - edge - 6},${innerY + innerH / 2})`}>◄ IZQ</text>
           <text x={innerX + innerW + edge + 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90,${innerX + innerW + edge + 6},${innerY + innerH / 2})`}>DER ►</text>
-        </>}
-
-        {/* Single-zone: no-zones placeholder label */}
-        {!hasZonas && (
           <text x={innerX + innerW / 2} y={innerY + innerH / 2 + 1} textAnchor="middle" dominantBaseline="central"
             fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
-        )}
-
-        {/* Total area label */}
-        {totalArea > 0 && (
-          <text x={innerX + innerW / 2} y={innerY + innerH + (multiZona ? 14 : 12)}
-            textAnchor="middle" fill={C.ts} fontSize={10} fontFamily={FONT}>{totalArea.toFixed(1)} m²</text>
-        )}
+        </>}
       </svg>
 
       {/* Popover */}
@@ -2275,6 +2349,7 @@ export default function PanelinCalculadoraV3() {
                           tipoAguas={techo.tipoAguas}
                           zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
                           onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
+                          pendiente={techo.pendiente}
                         />
                       ) : (
                         <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
@@ -2783,6 +2858,7 @@ export default function PanelinCalculadoraV3() {
                 tipoAguas={techo.tipoAguas}
                 zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
                 onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
+                pendiente={techo.pendiente}
               />
             ) : (
               <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
