@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-02 (video extract 5s + audio)
+**Última actualización:** 2026-04-02 (MCP Chrome DevTools en repo)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-02 (Cursor — MCP Chrome DevTools):** [`.cursor/mcp.json`](../../.cursor/mcp.json): servidor **`chrome-devtools`** vía `npx -y chrome-devtools-mcp@latest` con **`--no-usage-statistics`** y **`--no-performance-crux`** (sin telemetría MCP ni CrUX). Requisitos: Node **≥20.19**, Chrome estable. Tras abrir el workspace: **Cursor → Settings → MCP** (o recargar ventana) y comprobar que el servidor arranca; el agente puede automatizar Chrome y leer DevTools. **Seguridad:** no exponer sesiones con datos sensibles al MCP. Modo ligero opcional: añadir `--slim` y/o `--headless` en `args` (ver [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)).
 
 **2026-04-02 (UX — extract audio + frames cada 5s):** [`user-session-video-extract.sh`](../../scripts/user-session-video-extract.sh): **audio.wav** completo; frames default **1 cada 5 s**, **scale max 640px**, **JPEG q≈14**; env `BMC_SESSION_VIDEO_FRAME_INTERVAL_SEC`, `BMC_SESSION_VIDEO_FRAME_MAX_WIDTH`, `BMC_SESSION_VIDEO_JPEG_Q`. Doc skill, [`METHOD-VIDEO-USER-INTERACTIVE-DEV`](./ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md), [`sessions/README`](./ux-feedback/sessions/README.md), [`AGENTS`](../../AGENTS.md).
 
