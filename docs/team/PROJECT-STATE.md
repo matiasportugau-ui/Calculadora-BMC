@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-02 (Video-User-interactive-dev)
+**Última actualización:** 2026-04-02 (video extract 5s + audio)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-02 (UX — extract audio + frames cada 5s):** [`user-session-video-extract.sh`](../../scripts/user-session-video-extract.sh): **audio.wav** completo; frames default **1 cada 5 s**, **scale max 640px**, **JPEG q≈14**; env `BMC_SESSION_VIDEO_FRAME_INTERVAL_SEC`, `BMC_SESSION_VIDEO_FRAME_MAX_WIDTH`, `BMC_SESSION_VIDEO_JPEG_Q`. Doc skill, [`METHOD-VIDEO-USER-INTERACTIVE-DEV`](./ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md), [`sessions/README`](./ux-feedback/sessions/README.md), [`AGENTS`](../../AGENTS.md).
+
+**2026-04-02 (UX — video-deps automático):** Script [`scripts/user-session-video-deps.sh`](../../scripts/user-session-video-deps.sh): modos `check` / `ensure`; **ffmpeg** + **node**; macOS + **Homebrew** intenta `brew install ffmpeg` si falta. Integrado al inicio de [`user-session-video-extract.sh`](../../scripts/user-session-video-extract.sh) e [`user-session-video-ingest-from-iphone.sh`](../../scripts/user-session-video-ingest-from-iphone.sh). **`npm run session:video-deps`** / **`session:video-deps:ensure`**. Variable `BMC_VIDEO_DEPS_SKIP_INSTALL=1`. Doc [`METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](./ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md), [`AGENTS.md`](../../AGENTS.md).
 
 **2026-04-02 (UX — método Video-User-interactive-dev):** Nombre canónico del flujo vídeo → **revisión documentada + procedimiento de desarrollo** en un solo MD. Doc [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](./ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md), plantilla [`TEMPLATE-VIDEO-USER-INTERACTIVE-DEV-REPORT.md`](./ux-feedback/TEMPLATE-VIDEO-USER-INTERACTIVE-DEV-REPORT.md), regla [`.cursor/rules/video-user-interactive-dev.mdc`](../../.cursor/rules/video-user-interactive-dev.mdc). Entregables: `VIDEO-USER-INTERACTIVE-DEV-REPORT-*` + `VIDEO-USER-INTERACTIVE-DEV-ANALYSIS-*`. Skill [`user-session-video-to-backlog`](../../.cursor/skills/user-session-video-to-backlog/SKILL.md) actualizada; ingest [`user-session-video-ingest-from-iphone.sh`](../../scripts/user-session-video-ingest-from-iphone.sh) referencia el método en `CURSOR-CHAT-PROMPT.txt`. [`ux-feedback/README.md`](./ux-feedback/README.md), [`AGENTS.md`](../../AGENTS.md).
 

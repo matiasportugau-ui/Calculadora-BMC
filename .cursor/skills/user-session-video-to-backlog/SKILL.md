@@ -86,7 +86,8 @@ Interpretar **evidencia de sesión** (vídeo y/o transcripción con marcas de ti
 ## Solo compartir el vídeo (iPhone → tú → Cursor)
 
 1. **Mínimo:** adjuntar **MP4/MOV** + decir **Video-User-interactive-dev** y la ruta si no adjunta; opcional `base_url`.
-2. **Recomendado (Mac):** `npm run session:video-ingest -- ~/Downloads/IMG_….MOV [base_url]` → carpeta bajo `sessions/` con extract + `metadata.json` + `CURSOR-CHAT-PROMPT.txt`.
+2. **Recomendado (Mac):** `npm run session:video-ingest -- ~/Downloads/IMG_….MOV [base_url]` → al inicio comprueba **node** + **ffmpeg**; en macOS con Homebrew, si falta **ffmpeg** intenta **`brew install ffmpeg`**, luego copia/extrae/metadatos. Carpeta bajo `sessions/` con `CURSOR-CHAT-PROMPT.txt`.
+3. **Solo comprobar deps:** `npm run session:video-deps` (check) o `npm run session:video-deps:ensure` (e intentar instalar ffmpeg en macOS/Brew).
 
 La parte **LLM** ocurre en Cursor; no hay worker en segundo plano.
 
@@ -95,11 +96,18 @@ La parte **LLM** ocurre en Cursor; no hay worker en segundo plano.
 - Adjuntar **MP4 + metadata.json** si el modelo acepta vídeo.
 - Segmentos con **timestamps** (`mm:ss`), `confidence` `low|medium|high` por ítem.
 
-## Modo B — Preprocesado local (texto en UI + Whisper)
+## Modo B — Preprocesado local (audio + capturas espaciadas)
 
 1. MP4 en `docs/team/ux-feedback/sessions/<fecha>-<slug>/`.
-2. `npm run session:video-extract -- "…/session.mp4"`
-3. Transcribir `audio.wav` o export Loom/Descript; pegar transcript en el chat.
+2. `npm run session:video-extract -- "…/session.mp4"` genera:
+   - **`audio.wav`**: pista **completa** en 16 kHz mono (Whisper / adjunto al modelo para **entender la narración**).
+   - **`frames/frame_*.jpg`**: por defecto **1 captura cada 5 s**, ancho máx. **640 px**, JPEG comprimido (`q:v` ~14) para **poco peso** y UI aún legible.
+3. Variables opcionales (antes del comando):
+   - `BMC_SESSION_VIDEO_FRAME_INTERVAL_SEC` (default **5**) — segundos entre capturas.
+   - `BMC_SESSION_VIDEO_FRAME_MAX_WIDTH` (default **640**; **0** = sin escalar).
+   - `BMC_SESSION_VIDEO_JPEG_Q` (**2–31**, default **14**; más alto = más chafa/más liviano).
+4. Para **entender qué pasa** sin subir el MP4 entero: adjuntar **`audio.wav`** + una selección de **frames** (p. ej. cada 30 s o los que muestren errores) + `metadata.json`.
+5. Transcribir `audio.wav` (Whisper / API) o export Loom/Descript; pegar transcript en el chat si ayuda al timeline.
 
 ## Salida obligatoria (el agente crea archivos)
 

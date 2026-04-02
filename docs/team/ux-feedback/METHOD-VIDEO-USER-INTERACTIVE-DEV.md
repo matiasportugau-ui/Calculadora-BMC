@@ -13,13 +13,37 @@ Opcional en la misma línea: **URL base** de la app (`localhost:5173`, preview V
 
 No hace falta repetir toda la skill: con el **nombre del método** + **path o adjunto** alcanza.
 
+## Dependencias (automático al ejecutar extract / ingest)
+
+| Requisito | Uso | Si falta |
+|-----------|-----|----------|
+| **ffmpeg** | Extrae `audio.wav` y frames | **macOS + Homebrew:** `session:video-extract` / `session:video-ingest` ejecutan antes `user-session-video-deps.sh ensure` e intentan `brew install ffmpeg`. **Linux:** el script indica `apt`/`dnf`; no ejecuta `sudo`. |
+| **Node.js** | `metadata.json` en ingest | Debe existir (ya lo usás con `npm`). |
+| **bash** | Scripts | macOS/Linux estándar. |
+
+Comprobar sin instalar:
+
+```bash
+npm run session:video-deps
+```
+
+Forzar comprobación + intento de instalar **ffmpeg** (macOS/Brew):
+
+```bash
+npm run session:video-deps:ensure
+```
+
+Para **no** intentar `brew install` (solo fallar con mensaje): `BMC_VIDEO_DEPS_SKIP_INSTALL=1 npm run session:video-ingest -- …`
+
 ## Preparación recomendada (Mac)
 
 ```bash
 npm run session:video-ingest -- ~/Downloads/IMG_xxxx.MOV "http://localhost:5173"
 ```
 
-Eso deja vídeo, `extracted/audio.wav`, frames, `metadata.json` y `CURSOR-CHAT-PROMPT.txt` bajo `sessions/`. Podés citar esa carpeta como path.
+Al inicio, **extract** e **ingest** llaman a **`ensure`** (ffmpeg + node). Eso deja vídeo, `extracted/audio.wav`, `extracted/frames/*.jpg`, `metadata.json` y `CURSOR-CHAT-PROMPT.txt` bajo `sessions/`. Podés citar esa carpeta como path.
+
+**Audio y “fraccionamiento” visual:** `audio.wav` conserva **toda la narración**. Las capturas son por defecto **cada 5 s**, **ancho máx. 640 px** y JPEG comprimido (liviano, UI legible). Variables: `BMC_SESSION_VIDEO_FRAME_INTERVAL_SEC`, `BMC_SESSION_VIDEO_FRAME_MAX_WIDTH`, `BMC_SESSION_VIDEO_JPEG_Q` (ver comentarios en `scripts/user-session-video-extract.sh`).
 
 ## Qué debe hacer el agente
 

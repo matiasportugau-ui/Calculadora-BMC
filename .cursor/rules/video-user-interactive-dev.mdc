@@ -7,7 +7,8 @@ alwaysApply: false
 
 Cuando el usuario indique que va a usar **Video-User-interactive-dev** (o equivalente) y comparta la **ruta o adjunto del vídeo**:
 
-1. Seguir [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](../../docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md).
-2. Ejecutar la skill [`.cursor/skills/user-session-video-to-backlog/SKILL.md`](../skills/user-session-video-to-backlog/SKILL.md) en modo **entrega Video-User-interactive-dev** (un informe único + JSON).
-3. **Analizar por completo** lo evaluado en el vídeo (voz + pantalla); **no inventar** lo no observable.
-4. Generar **revisión documentada** + **procedimiento de desarrollo y ajustes** en el mismo archivo principal indicado en ese método.
+1. Si vas a ejecutar **`npm run session:video-ingest`** o **`session:video-extract`** en terminal: esos comandos ya ejecutan **`user-session-video-deps.sh ensure`** (ffmpeg vía Homebrew en macOS si falta; node obligatorio). Si falla Brew o es Linux sin ffmpeg, informar al usuario con el mensaje del script.
+3. Seguir [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](../../docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md).
+4. Ejecutar la skill [`.cursor/skills/user-session-video-to-backlog/SKILL.md`](../skills/user-session-video-to-backlog/SKILL.md) en modo **entrega Video-User-interactive-dev** (un informe único + JSON).
+5. **Analizar por completo** lo evaluado en el vídeo (voz + pantalla); **no inventar** lo no observable.
+6. Generar **revisión documentada** + **procedimiento de desarrollo y ajustes** en el mismo archivo principal indicado en ese método.

@@ -55,6 +55,8 @@
     "channels:automated": "node scripts/channels-automated-pipeline.mjs",
     "email:ingest-snapshot": "node scripts/email-snapshot-ingest.mjs",
     "matriz:reconcile": "node scripts/reconcile-matriz-csv.mjs",
+    "session:video-deps": "bash scripts/user-session-video-deps.sh check",
+    "session:video-deps:ensure": "bash scripts/user-session-video-deps.sh ensure",
     "session:video-extract": "bash scripts/user-session-video-extract.sh",
     "session:video-ingest": "bash scripts/user-session-video-ingest-from-iphone.sh",
     "mac:storage-audit": "bash scripts/mac-storage-audit-readonly.sh",

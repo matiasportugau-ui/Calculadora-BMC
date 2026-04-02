@@ -11,7 +11,10 @@
 #
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+bash "$SCRIPT_DIR/user-session-video-deps.sh" ensure || exit 1
+
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SRC="${1:?Usage: $0 <path-to-video-from-iphone> [base_url]}"
 BASE_URL="${2:-}"
 
@@ -66,7 +69,7 @@ cat > "$PROMPT_FILE" <<EOF
 2) Escribí una línea como:
    "Video-User-interactive-dev. Vídeo: ${DEST}/${BASENAME}. Analizá por completo lo evaluado; generá VIDEO-USER-INTERACTIVE-DEV-REPORT y VIDEO-USER-INTERACTIVE-DEV-ANALYSIS (misma sesión). base_url: ${BASE_URL:-<completar>}"
 
-3) Si el modelo no acepta vídeo pesado, adjuntá solo extracted/audio.wav + 3–5 frames clave de extracted/frames/ y el mismo metadata.json.
+3) Si el modelo no acepta vídeo pesado: adjuntá extracted/audio.wav (toda la narración) + frames de extracted/frames/ (por defecto 1 JPG cada 5 s, baja calidad pero legible) + metadata.json.
 EOF
 
 echo ""
