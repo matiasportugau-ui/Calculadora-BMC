@@ -1084,7 +1084,7 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
             <LogisticaCargoScene3d placed={placedView} shiftX={shiftX} truckL={truckL} maxLen={maxXV} totalLen={totalLen} />
           </Suspense>
         ) : (
-        <svg width="100%" height="auto" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+        <svg width="100%" viewBox={`0 -8 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
           {maxXV > truckL ? (
             <polygon points={fp([tf(shiftX + truckL, 0, 0), tf(shiftX + maxXV, 0, 0), tf(shiftX + maxXV, TRUCK_W, 0), tf(shiftX + truckL, TRUCK_W, 0)])} fill="rgba(255,159,10,.12)" stroke="#ff9f0a" strokeWidth={1} strokeDasharray="4,3" />
           ) : null}
@@ -1870,7 +1870,7 @@ export default function BmcLogisticaApp() {
                 const sx = (x) => x + shiftX;
                 return (
                   <div style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
-                    <svg width="100%" height="auto" viewBox={`0 0 ${tvW} ${tvH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+                    <svg width="100%" viewBox={`0 0 ${tvW} ${tvH}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
                       <TruckCabTopSvg x={sx(cabLeft)} y={10} w={cabW} h={TRUCK_W * TPY} stroke={T.primary} fill={T.surfaceAlt} />
                       <rect x={sx(bedLeft)} y={10} width={truckL * TPX} height={TRUCK_W * TPY} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
                       {maxXV > truckL ? <rect x={sx(40 + (truckL - minXV) * TPX)} y={10} width={(maxXV - truckL) * TPX} height={TRUCK_W * TPY} fill="#fff8ec" stroke={T.warning} strokeWidth={1} strokeDasharray="4,3" /> : null}
@@ -1919,7 +1919,7 @@ export default function BmcLogisticaApp() {
                 const rowOp = (row) => (row === 0 ? 0.9 : 0.45);
                 return (
                   <div style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
-                    <svg width="100%" height="auto" viewBox={`0 0 ${svW} ${svH + 20}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+                    <svg width="100%" viewBox={`0 0 ${svW} ${svH + 20}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
                       <line x1={sx(40)} y1={groundY} x2={sx(40 + totalLen * SVX + 20)} y2={groundY} stroke={T.text} strokeWidth={2} />
                       <TruckCabSideSvg x={sx(cabLeft)} cabW={cabW} groundY={groundY} svz={SVZ} stroke={T.primary} fill={T.surfaceAlt} />
                       <rect x={sx(bedLeft)} y={10} width={truckL * SVX} height={svH - 20} fill={T.surfaceAlt} stroke={T.primary} strokeWidth={1.5} />
@@ -1974,7 +1974,7 @@ export default function BmcLogisticaApp() {
                 const cabTopLabel = groundY - CAB_HEIGHT_M * SVZ;
                 return (
                   <div style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
-                    <svg width="100%" height="auto" viewBox={`0 0 ${svW} ${svH + 20}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
+                    <svg width="100%" viewBox={`0 0 ${svW} ${svH + 20}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", maxWidth: "100%", height: "auto" }}>
                       <g transform={`translate(${mirrorT},0) scale(-1,1)`}>
                         <line x1={sx(40)} y1={groundY} x2={rightEdge} y2={groundY} stroke={T.text} strokeWidth={2} />
                         <TruckCabSideSvg x={sx(cabLeft)} cabW={cabW} groundY={groundY} svz={SVZ} stroke={T.primary} fill={T.surfaceAlt} showLabel={false} />
@@ -2026,7 +2026,7 @@ export default function BmcLogisticaApp() {
             <div style={{ ...css.card, padding: 16, background: "#e8f1fb", borderColor: "#bfdbfe" }}>
               <h3 style={css.sectionTitle}>🔍 Buscar cliente en Ventas</h3>
               <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <input style={{ ...css.inp, flex: 1, minWidth: 160 }} placeholder="Nombre del cliente..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && buscarSheet()} />
+                <input id="log-search" name="log-search" aria-label="Buscar cliente" style={{ ...css.inp, flex: 1, minWidth: 160 }} placeholder="Nombre del cliente..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && buscarSheet()} />
                 <Btn onClick={buscarSheet} disabled={loadSh}>{loadSh ? "⏳" : "Buscar"}</Btn>
                 <Btn onClick={cargarActuales} disabled={loadSh} outline>Cargar actuales</Btn>
               </div>
@@ -2056,19 +2056,19 @@ export default function BmcLogisticaApp() {
             <div style={{ ...css.card, padding: 16 }}>
               <h3 style={css.sectionTitle}>Datos del Envío</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                <div><label style={css.lbl}>Nº Envío</label><input style={css.inp} value={info.numero} onChange={(e) => updInfo("numero", e.target.value)} /></div>
-                <div><label style={css.lbl}>Fecha</label><input style={css.inp} type="date" value={info.fecha} onChange={(e) => updInfo("fecha", e.target.value)} /></div>
+                <div><label htmlFor="log-numero" style={css.lbl}>Nº Envío</label><input id="log-numero" name="log-numero" style={css.inp} value={info.numero} onChange={(e) => updInfo("numero", e.target.value)} /></div>
+                <div><label htmlFor="log-fecha" style={css.lbl}>Fecha</label><input id="log-fecha" name="log-fecha" style={css.inp} type="date" value={info.fecha} onChange={(e) => updInfo("fecha", e.target.value)} /></div>
                 <div>
-                  <label style={css.lbl}>Transportista</label>
-                  <input style={css.inp} list="bmc-transportistas-list" value={info.transportista} onChange={(e) => updInfo("transportista", e.target.value)} placeholder="Nombre o elegí de la lista" />
+                  <label htmlFor="log-transportista" style={css.lbl}>Transportista</label>
+                  <input id="log-transportista" name="log-transportista" style={css.inp} list="bmc-transportistas-list" value={info.transportista} onChange={(e) => updInfo("transportista", e.target.value)} placeholder="Nombre o elegí de la lista" />
                   <datalist id="bmc-transportistas-list">
                     {transportistas.map((t) => <option key={t.id} value={t.nombre} />)}
                   </datalist>
                 </div>
-                <div><label style={css.lbl}>Patente</label><input style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} /></div>
+                <div><label htmlFor="log-patente" style={css.lbl}>Patente</label><input id="log-patente" name="log-patente" style={css.inp} value={info.patente} onChange={(e) => updInfo("patente", e.target.value)} /></div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
-                <input style={{ ...css.inp, flex: 1, minWidth: 140 }} placeholder="Nuevo transportista" value={newCarrierName} onChange={(e) => setNewCarrierName(e.target.value)} />
+                <input id="log-new-carrier" name="log-new-carrier" aria-label="Nuevo transportista" style={{ ...css.inp, flex: 1, minWidth: 140 }} placeholder="Nuevo transportista" value={newCarrierName} onChange={(e) => setNewCarrierName(e.target.value)} />
                 <Btn
                   onClick={() => {
                     const nombre = newCarrierName.trim();
@@ -2085,7 +2085,7 @@ export default function BmcLogisticaApp() {
                 </Btn>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-                <div><label style={css.lbl}>Precio viaje (UYU)</label><input style={css.inp} type="number" min={0} step="1" value={tripPriceInput} onChange={(e) => setTripPriceInput(e.target.value)} placeholder="Opcional" /></div>
+                <div><label htmlFor="log-trip-price" style={css.lbl}>Precio viaje (UYU)</label><input id="log-trip-price" name="log-trip-price" style={css.inp} type="number" min={0} step="1" value={tripPriceInput} onChange={(e) => setTripPriceInput(e.target.value)} placeholder="Opcional" /></div>
                 <div style={{ display: "flex", alignItems: "flex-end" }}>
                   <Btn
                     onClick={() => {
@@ -2213,22 +2213,24 @@ export default function BmcLogisticaApp() {
                     {badges.map((badge) => <span key={badge.label} style={badgeStyle(badge.tone)}>{badge.label}</span>)}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 8, marginBottom: 10 }}>
-                    <div><label style={css.lbl}>Cliente</label><input style={css.inp} value={stop.cliente} onChange={(e) => updStop(stop.id, "cliente", e.target.value)} /></div>
-                    <div><label style={css.lbl}>Teléfono</label><input style={css.inp} value={stop.telefono} onChange={(e) => updStop(stop.id, "telefono", e.target.value)} /></div>
-                    <div><label style={css.lbl}>Dirección</label><input style={css.inp} value={stop.direccion} onChange={(e) => { updStop(stop.id, "direccion", e.target.value); updStop(stop.id, "mapLink", e.target.value ? mapsUrl(e.target.value) : ""); }} /></div>
+                    <div><label htmlFor={`s-${stop.id}-cliente`} style={css.lbl}>Cliente</label><input id={`s-${stop.id}-cliente`} name={`s-${stop.id}-cliente`} style={css.inp} value={stop.cliente} onChange={(e) => updStop(stop.id, "cliente", e.target.value)} /></div>
+                    <div><label htmlFor={`s-${stop.id}-telefono`} style={css.lbl}>Teléfono</label><input id={`s-${stop.id}-telefono`} name={`s-${stop.id}-telefono`} style={css.inp} value={stop.telefono} onChange={(e) => updStop(stop.id, "telefono", e.target.value)} /></div>
+                    <div><label htmlFor={`s-${stop.id}-direccion`} style={css.lbl}>Dirección</label><input id={`s-${stop.id}-direccion`} name={`s-${stop.id}-direccion`} style={css.inp} value={stop.direccion} onChange={(e) => { updStop(stop.id, "direccion", e.target.value); updStop(stop.id, "mapLink", e.target.value ? mapsUrl(e.target.value) : ""); }} /></div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12 }}>
-                    <div><label style={css.lbl}>ID pedido</label><input style={css.inp} value={stop.orderId || ""} onChange={(e) => updStop(stop.id, "orderId", e.target.value)} placeholder="Desde Ventas / CRM" /></div>
-                    <div><label style={css.lbl}>ID cotización</label><input style={css.inp} value={stop.cotizacionId || ""} onChange={(e) => updStop(stop.id, "cotizacionId", e.target.value)} placeholder="Remito / cotización" /></div>
-                    <div><label style={css.lbl}>ID retiro</label><input style={css.inp} value={stop.pickupId || ""} onChange={(e) => updStop(stop.id, "pickupId", e.target.value)} placeholder="Proveedor / fábrica" /></div>
-                    <div><label style={css.lbl}>Zona</label><input style={css.inp} value={stop.zona || ""} onChange={(e) => updStop(stop.id, "zona", e.target.value)} placeholder="Barrio / zona" /></div>
-                    <div><label style={css.lbl}>Recepción (contacto)</label><input style={css.inp} value={stop.contactoRecepcion || ""} onChange={(e) => updStop(stop.id, "contactoRecepcion", e.target.value)} placeholder="Nombre receptor" /></div>
-                    <div><label style={css.lbl}>Horario</label><input style={css.inp} value={stop.horarioEntrega || ""} onChange={(e) => updStop(stop.id, "horarioEntrega", e.target.value)} placeholder="Ej. 08:00-12:00" /></div>
+                    <div><label htmlFor={`s-${stop.id}-orderId`} style={css.lbl}>ID pedido</label><input id={`s-${stop.id}-orderId`} name={`s-${stop.id}-orderId`} style={css.inp} value={stop.orderId || ""} onChange={(e) => updStop(stop.id, "orderId", e.target.value)} placeholder="Desde Ventas / CRM" /></div>
+                    <div><label htmlFor={`s-${stop.id}-cotizacionId`} style={css.lbl}>ID cotización</label><input id={`s-${stop.id}-cotizacionId`} name={`s-${stop.id}-cotizacionId`} style={css.inp} value={stop.cotizacionId || ""} onChange={(e) => updStop(stop.id, "cotizacionId", e.target.value)} placeholder="Remito / cotización" /></div>
+                    <div><label htmlFor={`s-${stop.id}-pickupId`} style={css.lbl}>ID retiro</label><input id={`s-${stop.id}-pickupId`} name={`s-${stop.id}-pickupId`} style={css.inp} value={stop.pickupId || ""} onChange={(e) => updStop(stop.id, "pickupId", e.target.value)} placeholder="Proveedor / fábrica" /></div>
+                    <div><label htmlFor={`s-${stop.id}-zona`} style={css.lbl}>Zona</label><input id={`s-${stop.id}-zona`} name={`s-${stop.id}-zona`} style={css.inp} value={stop.zona || ""} onChange={(e) => updStop(stop.id, "zona", e.target.value)} placeholder="Barrio / zona" /></div>
+                    <div><label htmlFor={`s-${stop.id}-contacto`} style={css.lbl}>Recepción (contacto)</label><input id={`s-${stop.id}-contacto`} name={`s-${stop.id}-contacto`} style={css.inp} value={stop.contactoRecepcion || ""} onChange={(e) => updStop(stop.id, "contactoRecepcion", e.target.value)} placeholder="Nombre receptor" /></div>
+                    <div><label htmlFor={`s-${stop.id}-horario`} style={css.lbl}>Horario</label><input id={`s-${stop.id}-horario`} name={`s-${stop.id}-horario`} style={css.inp} value={stop.horarioEntrega || ""} onChange={(e) => updStop(stop.id, "horarioEntrega", e.target.value)} placeholder="Ej. 08:00-12:00" /></div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 220px) 1fr", gap: 8, marginBottom: 12, alignItems: "end" }}>
                     <div>
-                      <label style={css.lbl}>Fecha De Entrega</label>
+                      <label htmlFor={`s-${stop.id}-fechaEntrega`} style={css.lbl}>Fecha De Entrega</label>
                       <input
+                        id={`s-${stop.id}-fechaEntrega`}
+                        name={`s-${stop.id}-fechaEntrega`}
                         style={css.inp}
                         type="date"
                         value={/^\d{4}-\d{2}-\d{2}$/.test(String(stop.fechaEntrega || "").trim()) ? stop.fechaEntrega : ""}
@@ -2242,19 +2244,19 @@ export default function BmcLogisticaApp() {
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                    <div><label style={css.lbl}>Link PDF pedido</label><input style={css.inp} value={stop.pdfLink || ""} onChange={(e) => updStop(stop.id, "pdfLink", e.target.value)} placeholder="https://drive.google.com/..." /></div>
-                    <div><label style={css.lbl}>Link mapa</label><input style={{ ...css.inp, color: T.muted, fontSize: 11 }} value={stop.mapLink || (stop.direccion ? mapsUrl(stop.direccion) : "")} onChange={(e) => updStop(stop.id, "mapLink", e.target.value)} /></div>
+                    <div><label htmlFor={`s-${stop.id}-pdfLink`} style={css.lbl}>Link PDF pedido</label><input id={`s-${stop.id}-pdfLink`} name={`s-${stop.id}-pdfLink`} style={css.inp} value={stop.pdfLink || ""} onChange={(e) => updStop(stop.id, "pdfLink", e.target.value)} placeholder="https://drive.google.com/..." /></div>
+                    <div><label htmlFor={`s-${stop.id}-mapLink`} style={css.lbl}>Link mapa</label><input id={`s-${stop.id}-mapLink`} name={`s-${stop.id}-mapLink`} style={{ ...css.inp, color: T.muted, fontSize: 11 }} value={stop.mapLink || (stop.direccion ? mapsUrl(stop.direccion) : "")} onChange={(e) => updStop(stop.id, "mapLink", e.target.value)} /></div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                     <div>
-                      <label style={css.lbl}>Estado operativo</label>
-                      <select style={css.inp} value={stop.estado || "Pendiente"} onChange={(e) => updStop(stop.id, "estado", e.target.value)}>
+                      <label htmlFor={`s-${stop.id}-estado`} style={css.lbl}>Estado operativo</label>
+                      <select id={`s-${stop.id}-estado`} name={`s-${stop.id}-estado`} style={css.inp} value={stop.estado || "Pendiente"} onChange={(e) => updStop(stop.id, "estado", e.target.value)}>
                         {STOP_STATUS.map((status) => <option key={status} value={status}>{status}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={css.lbl}>Recepción</label>
-                      <select style={css.inp} value={stop.recepcionEstado || "Pendiente"} onChange={(e) => updStop(stop.id, "recepcionEstado", e.target.value)}>
+                      <label htmlFor={`s-${stop.id}-recepcion`} style={css.lbl}>Recepción</label>
+                      <select id={`s-${stop.id}-recepcion`} name={`s-${stop.id}-recepcion`} style={css.inp} value={stop.recepcionEstado || "Pendiente"} onChange={(e) => updStop(stop.id, "recepcionEstado", e.target.value)}>
                         {RECEPCION_STATUS.map((status) => <option key={status} value={status}>{status}</option>)}
                       </select>
                     </div>

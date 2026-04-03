@@ -901,6 +901,7 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
   const sinT = Math.sin(theta), cosT = Math.cos(theta);
   const tipoAguasStr = is2A ? "dos_aguas" : "una_agua";
   const orbitRef = useRef(null);
+  const [debugOpen, setDebugOpen] = useState(false);
   const validZonasRef = useRef(validZonas);
   validZonasRef.current = validZonas;
 
@@ -915,30 +916,6 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       return [];
     }
   }, [validZonas, tipoAguasStr]);
-
-  /**
-   * oz: anclar el borde inferior del rect en planta (y + h, FRENTE en SVG) al pie de la cubierta.
-   * Anexos laterales del mismo techo tienen distinto largo → distinto (y+h) aunque compartan y;
-   * forzamos el mismo frente que el cuerpo raíz para que el 3D sea coplanar (un solo plano inclinado).
-   */
-  const zoneLayouts = useMemo(() => plantRects.map((r) => {
-    const rootGi = isLateralAnnexZona(r.z) ? getLateralAnnexRootBodyGi(validZonas, r.gi) : r.gi;
-    const ref = plantRects.find((p) => p.gi === rootGi) ?? r;
-    const oz = -(ref.y + ref.h);
-    return {
-      z: r.z,
-      gi: r.gi,
-      ancho: r.w,
-      ox: r.x,
-      oz,
-      largo: r.h,
-      slopeMark: r.z?.preview?.slopeMark,
-      plX: r.x,
-      plY: r.y,
-      wPl: r.w,
-      hPl: r.h,
-    };
-  }), [plantRects, validZonas]);
 
   const dragClampBounds = useMemo(() => {
     if (!plantRects.length) return null;
@@ -960,6 +937,247 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       return [];
     }
   }, [plantRects]);
+
+  /**
+   * Modelo de componentes conectadas por contacto en planta.
+   * Unión por:
+   * - encuentros geométricos (findEncounters)
+   * - relación anexo lateral -> raíz
+   */
+  const frontComponentModel = useMemo(() => {
+    if (!plantRects.length) {
+      return {
+        byGi: new Map(),
+        components: new Map(),
+        maxFrontByRoot: new Map(),
+        minFrontByRoot: new Map(),
+      };
+    }
+    const gis = plantRects.map((r) => r.gi);
+    const parent = new Map(gis.map((gi) => [gi, gi]));
+
+    const find = (x) => {
+      let cur = x;
+      while (parent.get(cur) !== cur) {
+        cur = parent.get(cur);
+      }
+      let node = x;
+      while (parent.get(node) !== node) {
+        const next = parent.get(node);
+        parent.set(node, cur);
+        node = next;
+      }
+      return cur;
+    };
+
+    const union = (a, b) => {
+      if (!parent.has(a) || !parent.has(b)) return;
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+
+    for (const enc of plantEncounters) {
+      const [a, b] = enc.zoneIndices || [];
+      if (Number.isFinite(a) && Number.isFinite(b)) union(a, b);
+    }
+
+    for (const r of plantRects) {
+      if (!isLateralAnnexZona(r.z)) continue;
+      const rootGi = getLateralAnnexRootBodyGi(validZonas, r.gi);
+      if (Number.isFinite(rootGi)) union(r.gi, rootGi);
+    }
+
+    const maxFrontByRoot = new Map();
+    const minFrontByRoot = new Map();
+    for (const r of plantRects) {
+      const root = find(r.gi);
+      const front = r.y + r.h;
+      const prevMax = maxFrontByRoot.get(root);
+      const prevMin = minFrontByRoot.get(root);
+      if (!Number.isFinite(prevMax) || front > prevMax) maxFrontByRoot.set(root, front);
+      if (!Number.isFinite(prevMin) || front < prevMin) minFrontByRoot.set(root, front);
+    }
+
+    const byGi = new Map();
+    const components = new Map();
+    for (const r of plantRects) {
+      const root = find(r.gi);
+      byGi.set(r.gi, maxFrontByRoot.get(root) ?? (r.y + r.h));
+      if (!components.has(root)) components.set(root, []);
+      components.get(root).push(r.gi);
+    }
+
+    return {
+      byGi,
+      components,
+      maxFrontByRoot,
+      minFrontByRoot,
+    };
+  }, [plantRects, plantEncounters, validZonas]);
+
+  const frontAnchorByGi = frontComponentModel?.byGi ?? new Map();
+
+  /**
+   * oz: anclar el borde inferior del rect en planta (y + h, FRENTE en SVG) al pie de la cubierta.
+   * Si hay contacto en planta, comparten frente para mantenerse coplanares en 3D.
+   */
+  const zoneLayouts = useMemo(() => plantRects.map((r) => {
+    const front = frontAnchorByGi.get(r.gi) ?? (r.y + r.h);
+    const oz = -front;
+    return {
+      z: r.z,
+      gi: r.gi,
+      ancho: r.w,
+      ox: r.x,
+      oz,
+      largo: r.h,
+      slopeMark: r.z?.preview?.slopeMark,
+      plX: r.x,
+      plY: r.y,
+      wPl: r.w,
+      hPl: r.h,
+    };
+  }), [frontAnchorByGi, plantRects]);
+
+  const debugStats = useMemo(() => {
+    const logicalShared = getSharedSidesPerZona(validZonas, tipoAguasStr);
+    const encounterLen = plantEncounters.reduce((s, e) => s + (e.length || 0), 0);
+    let logicalSharedLen = 0;
+    for (const sides of logicalShared.values()) {
+      for (const sideInfo of sides.values()) {
+        for (const iv of sideInfo.intervals || []) {
+          logicalSharedLen += Math.max(0, (iv.endM || 0) - (iv.startM || 0));
+        }
+      }
+    }
+    logicalSharedLen /= 2; // cada tramo compartido aparece en ambas zonas
+
+    const encounterByGi = new Map();
+    for (const r of plantRects) encounterByGi.set(r.gi, 0);
+    for (const enc of plantEncounters) {
+      const [a, b] = enc.zoneIndices || [];
+      if (encounterByGi.has(a)) encounterByGi.set(a, encounterByGi.get(a) + (enc.length || 0));
+      if (encounterByGi.has(b)) encounterByGi.set(b, encounterByGi.get(b) + (enc.length || 0));
+    }
+
+    const zoneRows = zoneLayouts.map((zl) => {
+      const rawFront = zl.plY + zl.hPl;
+      const anchorFront = -zl.oz;
+      const logicalSides = logicalShared.get(zl.gi);
+      const sharedIntervals = (logicalSides?.get("frente")?.intervals?.length || 0)
+        + (logicalSides?.get("fondo")?.intervals?.length || 0)
+        + (logicalSides?.get("latIzq")?.intervals?.length || 0)
+        + (logicalSides?.get("latDer")?.intervals?.length || 0);
+      return {
+        gi: zl.gi,
+        rawFront,
+        anchorFront,
+        frontDelta: anchorFront - rawFront,
+        area: zl.z.largo * zl.z.ancho,
+        encounterLen: encounterByGi.get(zl.gi) || 0,
+        sharedIntervals,
+      };
+    });
+
+    const components = [];
+    if (frontComponentModel?.components) {
+      for (const [root, gis] of frontComponentModel.components.entries()) {
+        const maxFront = frontComponentModel.maxFrontByRoot.get(root) ?? null;
+        const minFront = frontComponentModel.minFrontByRoot.get(root) ?? null;
+        components.push({
+          root,
+          gis: [...gis].sort((a, b) => a - b),
+          maxFront,
+          minFront,
+          frontSpread: Number.isFinite(maxFront) && Number.isFinite(minFront) ? maxFront - minFront : 0,
+        });
+      }
+      components.sort((a, b) => a.root - b.root);
+    }
+
+    return {
+      encounterLen,
+      logicalSharedLen,
+      diffLen: Math.abs(encounterLen - logicalSharedLen),
+      zoneRows,
+      components,
+    };
+  }, [frontComponentModel, plantEncounters, plantRects, tipoAguasStr, validZonas, zoneLayouts]);
+
+  const exportDebugCsv = useCallback(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const esc = (v) => {
+      const s = String(v ?? "");
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const rows = [];
+    const push = (arr) => rows.push(arr.map(esc).join(","));
+    const now = new Date();
+    const stamp = now.toISOString().replace(/[:]/g, "-");
+
+    push(["section", "Roof Debug Snapshot"]);
+    push(["generated_at_iso", now.toISOString()]);
+    push(["tipo_aguas", tipoAguasStr]);
+    push(["theta_rad", theta.toFixed(6)]);
+    push(["zonas_count", zoneLayouts.length]);
+    push(["encounters_count", plantEncounters.length]);
+    push(["contact_len_geom_m", debugStats.encounterLen.toFixed(4)]);
+    push(["contact_len_logical_m", debugStats.logicalSharedLen.toFixed(4)]);
+    push(["contact_len_delta_m", debugStats.diffLen.toFixed(4)]);
+    push([]);
+
+    push(["section", "Connected Components"]);
+    push(["component_root_gi", "component_label", "zone_gis", "zone_labels", "front_min_m", "front_max_m", "front_spread_m"]);
+    for (const c of debugStats.components) {
+      push([
+        c.root,
+        `C${c.root + 1}`,
+        c.gis.join("|"),
+        c.gis.map((gi) => `Z${gi + 1}`).join("|"),
+        Number.isFinite(c.minFront) ? c.minFront.toFixed(4) : "",
+        Number.isFinite(c.maxFront) ? c.maxFront.toFixed(4) : "",
+        c.frontSpread.toFixed(4),
+      ]);
+    }
+    push([]);
+
+    push(["section", "Zones"]);
+    push([
+      "zone_gi",
+      "zone_label",
+      "area_m2",
+      "front_raw_m",
+      "front_anchor_m",
+      "front_delta_m",
+      "encounter_len_m",
+      "shared_intervals_count",
+    ]);
+    for (const z of debugStats.zoneRows) {
+      push([
+        z.gi,
+        `Z${z.gi + 1}`,
+        z.area.toFixed(4),
+        z.rawFront.toFixed(4),
+        z.anchorFront.toFixed(4),
+        z.frontDelta.toFixed(4),
+        z.encounterLen.toFixed(4),
+        z.sharedIntervals,
+      ]);
+    }
+
+    const csv = `${rows.join("\n")}\n`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = `roof-debug-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(href);
+  }, [debugStats, plantEncounters.length, theta, tipoAguasStr, zoneLayouts.length]);
 
   const { totalWidth, maxLargo, minX, maxX, minZ, maxZ } = useMemo(() => {
     if (!zoneLayouts.length) {
@@ -1138,6 +1356,101 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       <div style={{ position:'absolute', bottom:22, right:8,  fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>DER ►</div>
       {totalArea > 0 && (
         <div style={{ position:'absolute', bottom:6, right:8, fontSize:10, color:'#475569', fontWeight:600, fontFamily:FONT, pointerEvents:'none' }}>{totalArea.toFixed(1)} m²</div>
+      )}
+      {/* Professional debug overlay for geometry/contact validation */}
+      <button
+        type="button"
+        onClick={() => setDebugOpen((v) => !v)}
+        style={{
+          position: "absolute",
+          top: 6,
+          right: 8,
+          borderRadius: 8,
+          border: "1px solid rgba(15,23,42,0.25)",
+          background: "rgba(255,255,255,0.92)",
+          color: "#0f172a",
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: "0.04em",
+          padding: "4px 8px",
+          cursor: "pointer",
+          zIndex: 30,
+        }}
+      >
+        {debugOpen ? "DEBUG ON" : "DEBUG OFF"}
+      </button>
+      {debugOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: 34,
+            right: 8,
+            width: "min(420px, 55vw)",
+            maxHeight: "62%",
+            overflow: "auto",
+            borderRadius: 10,
+            border: "1px solid rgba(15,23,42,0.25)",
+            background: "rgba(248,250,252,0.95)",
+            boxShadow: "0 8px 24px rgba(2,6,23,0.18)",
+            padding: 10,
+            zIndex: 30,
+            fontFamily: FONT,
+            fontSize: 10,
+            color: "#0f172a",
+            lineHeight: 1.35,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <div style={{ fontWeight: 800, letterSpacing: "0.05em" }}>ROOF DEBUG PANEL</div>
+            <button
+              type="button"
+              onClick={exportDebugCsv}
+              style={{
+                borderRadius: 7,
+                border: "1px solid rgba(15,23,42,0.28)",
+                background: "rgba(255,255,255,0.9)",
+                color: "#0f172a",
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "3px 8px",
+                cursor: "pointer",
+              }}
+            >
+              Export CSV
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+            <div><strong>Zonas</strong>: {zoneLayouts.length}</div>
+            <div><strong>Encuentros</strong>: {plantEncounters.length}</div>
+            <div><strong>Len contacto (geom)</strong>: {debugStats.encounterLen.toFixed(3)} m</div>
+            <div><strong>Len contacto (lógico)</strong>: {debugStats.logicalSharedLen.toFixed(3)} m</div>
+            <div style={{ gridColumn: "1 / -1", color: debugStats.diffLen <= 0.05 ? "#166534" : "#b91c1c", fontWeight: 700 }}>
+              Delta geom vs lógico: {debugStats.diffLen.toFixed(3)} m {debugStats.diffLen <= 0.05 ? "(OK)" : "(CHECK)"}
+            </div>
+          </div>
+
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Componentes conectadas</div>
+          {debugStats.components.length === 0 ? (
+            <div style={{ color: "#475569", marginBottom: 8 }}>Sin componentes.</div>
+          ) : (
+            <div style={{ marginBottom: 8 }}>
+              {debugStats.components.map((c) => (
+                <div key={`cmp-${c.root}`} style={{ marginBottom: 4, padding: "4px 6px", background: "rgba(255,255,255,0.7)", borderRadius: 6 }}>
+                  C{c.root + 1} · zonas [{c.gis.map((gi) => gi + 1).join(", ")}] · front {c.minFront?.toFixed(2)}..{c.maxFront?.toFixed(2)} m · spread {c.frontSpread.toFixed(3)} m
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Zonas</div>
+          <div style={{ display: "grid", gap: 4 }}>
+            {debugStats.zoneRows.map((z) => (
+              <div key={`zdbg-${z.gi}`} style={{ padding: "4px 6px", background: "rgba(255,255,255,0.7)", borderRadius: 6 }}>
+                Z{z.gi + 1} · A {z.area.toFixed(2)} m² · front raw {z.rawFront.toFixed(2)} → anchor {z.anchorFront.toFixed(2)} (Δ {z.frontDelta.toFixed(3)}) · contacto {z.encounterLen.toFixed(3)} m · shared iv {z.sharedIntervals}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1350,6 +1663,12 @@ function RoofBorderSelector({
   }, [openSide, positionPopover]);
 
   const portalEl = canvasPortalTargetRef?.current ?? null;
+  /** Evita createPortal a un nodo desconectado (p. ej. acordeón del visor cerró en el mismo commit) → React minified #200 */
+  const portalReady =
+    portalEl != null &&
+    typeof Element !== "undefined" &&
+    portalEl instanceof Element &&
+    portalEl.isConnected;
   const canvasEl = hasZonas ? (
     <RoofBorderCanvas
       validZonas={validZonas}
@@ -1368,7 +1687,7 @@ function RoofBorderSelector({
       totalArea={totalArea}
       zonaEncounters={zonaEncounters}
       onZonaPreviewChange={onZonaPreviewChange}
-      fillContainer={Boolean(portalEl)}
+      fillContainer={Boolean(portalReady)}
     />
   ) : null;
 
@@ -1389,18 +1708,19 @@ function RoofBorderSelector({
           </div>
         </>
       )}
-      {minimalChrome && hasZonas && portalEl && (
+      {minimalChrome && hasZonas && portalReady && (
         <div style={{ fontSize: 11, color: C.ts, marginBottom: 8, lineHeight: 1.45 }}>
           Configurá bordes y encuentros en la <strong style={{ color: C.tp }}>vista 3D</strong> del panel derecho.
         </div>
       )}
       {/* ══ 3D WebGL MODE (zones defined) — inline o portal al visor derecho ══ */}
-      {hasZonas && portalEl && typeof document !== "undefined" && createPortal(
+      {hasZonas && portalReady && typeof document !== "undefined" && createPortal(
         <div style={{ width: "100%", height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
           {canvasEl}
         </div>,
+        portalEl,
       )}
-      {hasZonas && !portalEl && canvasEl}
+      {hasZonas && !portalReady && canvasEl}
 
       {/* ══ FLAT GLOBAL MODE (no zones defined) ══ */}
       {!hasZonas && (
@@ -4215,8 +4535,12 @@ export default function PanelinCalculadoraV3() {
             onRoofCanvasHostReady={bumpRoof3dHostReady}
             techoBorders={techo.borders}
             techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
-            listaPrecios={listaPrecios || ""}
             dimensionSummary={quoteVisorDimensionSummary}
+            onSelectAgua={activeWizardStepId === "tipoAguas" ? (v) => {
+              if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
+              else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
+            } : null}
+            onNext={activeWizardStepId === "tipoAguas" ? advanceWizardStep : null}
           />
           {/* KPI Row */}
           {results && !results.error && !scenarioDef?.isLibre && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>

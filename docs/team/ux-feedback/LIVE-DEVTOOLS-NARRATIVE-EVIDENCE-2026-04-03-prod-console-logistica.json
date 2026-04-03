@@ -1,0 +1,47 @@
+{
+  "session": {
+    "date": "2026-04-03",
+    "baseUrl": "https://calculadora-bmc.vercel.app",
+    "mcpServer": "project-0-Calculadora-BMC-chrome-devtools"
+  },
+  "userBeats": [
+    {
+      "id": "U-01",
+      "action": "Live DevTools narrative on prod URL",
+      "expect": "Find console/network errors"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E-01",
+      "tool": "list_console_messages",
+      "summary": "GET / — no console messages",
+      "linkedUserIds": ["U-01"]
+    },
+    {
+      "id": "E-02",
+      "tool": "list_network_requests",
+      "summary": "GET / — 8 requests, all 200/304",
+      "linkedUserIds": ["U-01"]
+    },
+    {
+      "id": "E-03",
+      "tool": "list_console_messages",
+      "summary": "After Config click: issue — form field should have id or name (count: 3)",
+      "linkedUserIds": ["U-01"]
+    },
+    {
+      "id": "E-04",
+      "tool": "navigate_page + list_*",
+      "summary": "/hub — no console errors; network OK",
+      "linkedUserIds": ["U-01"]
+    },
+    {
+      "id": "E-05",
+      "tool": "list_console_messages",
+      "summary": "/logistica — error: svg height auto invalid; issues unlabeled inputs (6) and missing id/name (11)",
+      "linkedUserIds": ["U-01"]
+    }
+  ],
+  "findings": ["LDN-2026-04-03-01", "LDN-2026-04-03-02"]
+}

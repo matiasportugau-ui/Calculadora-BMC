@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "1.0.0",
+  "updatedAt": "2026-04-03T00:00:00.000Z",
+  "projectProfile": {
+    "name": "BMC/Panelin",
+    "focusAreas": [
+      "llm-platforms",
+      "developer-tooling",
+      "frontend-stack",
+      "cloud-deploy",
+      "workflow-automation"
+    ],
+    "trackedDomains": [
+      "calculadora",
+      "dashboard",
+      "crm",
+      "ml-oauth",
+      "deploy-cloudrun-vercel"
+    ]
+  },
+  "rankingPolicy": {
+    "authorityWeight": 0.35,
+    "freshnessWeight": 0.2,
+    "signalWeight": 0.25,
+    "projectFitWeight": 0.2,
+    "promoteThreshold": 0.75,
+    "demoteThreshold": 0.35
+  },
+  "sources": [
+    {
+      "id": "openai-news-rss",
+      "name": "OpenAI News",
+      "type": "rss",
+      "category": "ai-lab",
+      "status": "active",
+      "url": "https://openai.com/news/rss.xml",
+      "authorityScore": 0.98,
+      "projectFitWeight": 0.95,
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "trustTier": "tier-1",
+      "lastCheckedAt": null,
+      "stats": {
+        "eventsSeen": 0,
+        "acceptedEvents": 0,
+        "rejectedEvents": 0,
+        "avgEventScore": 0
+      }
+    },
+    {
+      "id": "anthropic-news-rss",
+      "name": "Anthropic News",
+      "type": "rss",
+      "category": "ai-lab",
+      "status": "active",
+      "url": "https://www.anthropic.com/news/rss.xml",
+      "authorityScore": 0.95,
+      "projectFitWeight": 0.9,
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "trustTier": "tier-1",
+      "lastCheckedAt": null,
+      "stats": {
+        "eventsSeen": 0,
+        "acceptedEvents": 0,
+        "rejectedEvents": 0,
+        "avgEventScore": 0
+      }
+    },
+    {
+      "id": "vercel-releases",
+      "name": "Vercel Releases",
+      "type": "github_releases",
+      "category": "platform",
+      "status": "active",
+      "url": "https://github.com/vercel/vercel/releases",
+      "apiUrl": "https://api.github.com/repos/vercel/vercel/releases",
+      "authorityScore": 0.92,
+      "projectFitWeight": 0.86,
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "trustTier": "tier-1",
+      "lastCheckedAt": null,
+      "stats": {
+        "eventsSeen": 0,
+        "acceptedEvents": 0,
+        "rejectedEvents": 0,
+        "avgEventScore": 0
+      }
+    },
+    {
+      "id": "supabase-releases",
+      "name": "Supabase Releases",
+      "type": "github_releases",
+      "category": "platform",
+      "status": "active",
+      "url": "https://github.com/supabase/supabase/releases",
+      "apiUrl": "https://api.github.com/repos/supabase/supabase/releases",
+      "authorityScore": 0.88,
+      "projectFitWeight": 0.82,
+      "tags": [
+        "supabase",
+        "postgres",
+        "realtime",
+        "auth"
+      ],
+      "trustTier": "tier-2",
+      "lastCheckedAt": null,
+      "stats": {
+        "eventsSeen": 0,
+        "acceptedEvents": 0,
+        "rejectedEvents": 0,
+        "avgEventScore": 0
+      }
+    },
+    {
+      "id": "arxiv-cs-ai-rss",
+      "name": "arXiv cs.AI",
+      "type": "rss",
+      "category": "research",
+      "status": "active",
+      "url": "https://export.arxiv.org/rss/cs.AI",
+      "authorityScore": 0.82,
+      "projectFitWeight": 0.74,
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "trustTier": "tier-2",
+      "lastCheckedAt": null,
+      "stats": {
+        "eventsSeen": 0,
+        "acceptedEvents": 0,
+        "rejectedEvents": 0,
+        "avgEventScore": 0
+      }
+    }
+  ],
+  "sourceCandidates": []
+}

@@ -7,7 +7,7 @@
  * --- Visor derecho: qué mostrar paso a paso (wizard solo_techo; otros escenarios análogos) ---
  * - escenario: carrusel contextual de cubierta / escenario.
  * - tipoAguas: una y dos aguas con fotos por defecto + subida (sessionStorage); carrusel pausado.
- * - lista: lista BMC (venta) vs Web + misma subida + opcional tercera referencia; alineado a la opción elegida en el formulario.
+ * - lista: video en loop del personaje **Panelin** (`/video/panelin-lista-loop.mp4`), sin UI de reproductor; host 3D oculto en este paso.
  * - familia…color: slides según línea y contexto getQuoteVisorContext.
  * - dimensiones: host 3D (si hay zonas válidas) + cinta con L×W de zonas si el padre la envía; carrusel.
  * - bordes en adelante: 3D + slides de borde / encuentros cuando aplica.
@@ -131,17 +131,10 @@ export const SLIDES_PRESUPUESTO_LIBRE = /** @type {QuoteVisorSlide[]} */ ([
   },
 ]);
 
-/** Imágenes por defecto para tipología de aguas (sustituibles por carga del usuario) */
+/** Imágenes de referencia fijas para tipología de aguas */
 export const DEFAULT_AGUA_REFERENCE_IMAGES = {
-  una_agua: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
-  dos_aguas: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
-};
-
-/** Referencias por defecto para paso lista (sustituibles por carga del usuario; `extra` = tercera referencia opcional) */
-export const DEFAULT_LISTA_REFERENCE_IMAGES = {
-  venta: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
-  web: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
-  extra: SLIDES_SOLO_TECHO[2]?.src || "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+  una_agua: `${import.meta.env.BASE_URL}images/1-agua.png`,
+  dos_aguas: `${import.meta.env.BASE_URL}images/2-aguas.png`,
 };
 
 const FAMILIA_TECHO_SLIDE = {

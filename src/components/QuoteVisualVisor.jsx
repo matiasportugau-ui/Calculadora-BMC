@@ -1,62 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react";
 import { C, FONT, SHC, TR } from "../data/constants.js";
-import {
-  DEFAULT_AGUA_REFERENCE_IMAGES,
-  DEFAULT_LISTA_REFERENCE_IMAGES,
-  getQuoteVisorContext,
-  QUOTE_VISOR_SHOP_URLS,
-} from "../data/quoteVisorMedia.js";
+import { DEFAULT_AGUA_REFERENCE_IMAGES, getQuoteVisorContext, QUOTE_VISOR_SHOP_URLS } from "../data/quoteVisorMedia.js";
 import { getBorderAccentSlides, readShopifyImageOverrides, writeShopifyImageOverride } from "../data/quoteVisorShopifyResolve.js";
 
-const AGUA_STORAGE_KEY = "bmc-panelin-visor-agua-images";
-const LISTA_STORAGE_KEY = "bmc-panelin-visor-lista-images";
 const CAROUSEL_MS = 5500;
 
-function readAguaOverrides() {
-  try {
-    const raw = sessionStorage.getItem(AGUA_STORAGE_KEY);
-    if (!raw) return { una_agua: "", dos_aguas: "" };
-    const j = JSON.parse(raw);
-    return {
-      una_agua: typeof j.una_agua === "string" ? j.una_agua : "",
-      dos_aguas: typeof j.dos_aguas === "string" ? j.dos_aguas : "",
-    };
-  } catch {
-    return { una_agua: "", dos_aguas: "" };
-  }
-}
-
-function writeAguaOverrides(next) {
-  try {
-    sessionStorage.setItem(AGUA_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    /* quota / private mode */
-  }
-}
-
-function readListaOverrides() {
-  try {
-    const raw = sessionStorage.getItem(LISTA_STORAGE_KEY);
-    if (!raw) return { venta: "", web: "", extra: "" };
-    const j = JSON.parse(raw);
-    return {
-      venta: typeof j.venta === "string" ? j.venta : "",
-      web: typeof j.web === "string" ? j.web : "",
-      extra: typeof j.extra === "string" ? j.extra : "",
-    };
-  } catch {
-    return { venta: "", web: "", extra: "" };
-  }
-}
-
-function writeListaOverrides(next) {
-  try {
-    sessionStorage.setItem(LISTA_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    /* quota / private mode */
-  }
-}
+/** Asset en `public/video/panelin-lista-loop.mp4` (Vite sirve bajo BASE_URL). */
+const PANELIN_LISTA_VIDEO_SRC = `${import.meta.env.BASE_URL}video/panelin-lista-loop.mp4`;
 
 /**
  * Visor visual derecho: etapa 3D (host) + carrusel Shopify según escenario / paso / bordes activos.
@@ -73,8 +24,9 @@ function writeListaOverrides(next) {
  * @param {(el: HTMLElement | null) => void} [props.onRoofCanvasHostReady]
  * @param {Record<string, string>} [props.techoBorders]
  * @param {Record<string, string>[]} [props.techoZonasBorders]
- * @param {string} [props.listaPrecios] — "venta" | "web" | ""
  * @param {string | null} [props.dimensionSummary] — resumen L×W (paso dimensiones)
+ * @param {(key: "una_agua"|"dos_aguas") => void} [props.onSelectAgua] — selecciona tipo de aguas desde el visor
+ * @param {() => void} [props.onNext] — avanza al siguiente paso desde el visor
  */
 export default function QuoteVisualVisor({
   scenarioId,
@@ -88,19 +40,18 @@ export default function QuoteVisualVisor({
   onRoofCanvasHostReady,
   techoBorders = {},
   techoZonasBorders = [],
-  listaPrecios = "",
   dimensionSummary = null,
+  onSelectAgua = null,
+  onNext = null,
 }) {
   const [open, setOpen] = useState(true);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [aguaCustom, setAguaCustom] = useState(() => readAguaOverrides());
-  const [listaCustom, setListaCustom] = useState(() => readListaOverrides());
-  const [listaExtraOpen, setListaExtraOpen] = useState(() => !!readListaOverrides().extra);
   const [overrideDraft, setOverrideDraft] = useState("");
   const [showOverride, setShowOverride] = useState(false);
   const [shopifyOverrideGen, setShopifyOverrideGen] = useState(0);
   const timerRef = useRef(null);
+  const panelinVideoRef = useRef(null);
 
   const effectiveScenario = hoverScenarioId || scenarioId;
 
@@ -153,10 +104,22 @@ export default function QuoteVisualVisor({
     (aguasHighlight && (scenarioId === "solo_techo" || scenarioId === "techo_fachada"));
 
   const showListaStep = stepId === "lista";
+  const showRoof3DInVisor = showRoof3DStage && !showListaStep;
 
   useEffect(() => {
     setIdx(0);
   }, [effectiveScenario, stepId, techoFamilia, showAguaStep, showListaStep, aguasHighlight, slides.length]);
+
+  useEffect(() => {
+    const v = panelinVideoRef.current;
+    if (!v) return;
+    if (open && showListaStep) {
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, [open, showListaStep]);
 
   useEffect(() => {
     if (!open || showAguaStep || showListaStep || slides.length <= 1 || paused) return;
@@ -175,51 +138,6 @@ export default function QuoteVisualVisor({
     },
     [slides.length],
   );
-
-  const onUploadAgua = useCallback((key, file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      setAguaCustom((prev) => {
-        const next = { ...prev, [key]: dataUrl };
-        writeAguaOverrides(next);
-        return next;
-      });
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const clearAgua = useCallback((key) => {
-    setAguaCustom((prev) => {
-      const next = { ...prev, [key]: "" };
-      writeAguaOverrides(next);
-      return next;
-    });
-  }, []);
-
-  const onUploadLista = useCallback((key, file) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : "";
-      setListaCustom((prev) => {
-        const next = { ...prev, [key]: dataUrl };
-        writeListaOverrides(next);
-        return next;
-      });
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  const clearLista = useCallback((key) => {
-    setListaCustom((prev) => {
-      const next = { ...prev, [key]: "" };
-      writeListaOverrides(next);
-      return next;
-    });
-    if (key === "extra") setListaExtraOpen(false);
-  }, []);
 
   const setHostRef = useCallback(
     (el) => {
@@ -279,36 +197,95 @@ export default function QuoteVisualVisor({
           letterSpacing: "0.06em",
         }}
       >
-        <span>Visor visual · {heading}</span>
+        <span>Visor visual · {showListaStep ? "Panelin" : heading}</span>
         {open ? <ChevronUp size={18} color={C.ts} /> : <ChevronDown size={18} color={C.ts} />}
       </button>
 
-      {open && (
+      {/* Host del portal 3D: fuera de `{open && …}` para que no se desmonte al colapsar el acordeón (evita React #200: portal a nodo desconectado). */}
+      {showRoof3DInVisor && (
+        <div
+          style={{
+            paddingLeft: 16,
+            paddingRight: 16,
+            marginBottom: open ? 16 : 0,
+          }}
+        >
+          <div
+            ref={setHostRef}
+            data-bmc-roof-3d-host
+            style={{
+              width: "100%",
+              /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
+              height: "clamp(360px, min(72vh, 820px), 900px)",
+              minHeight: "clamp(360px, min(72vh, 820px), 900px)",
+              borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              background: "#eef2f9",
+              minWidth: 0,
+              overflow: "hidden",
+              boxSizing: "border-box",
+              /* Colapsado: el nodo sigue en el DOM (portal válido); oculto visualmente */
+              display: open ? "block" : "none",
+            }}
+          />
+        </div>
+      )}
+
+      {showListaStep && (
+        <div
+          style={{
+            paddingLeft: 16,
+            paddingRight: 16,
+            marginBottom: open ? 16 : 0,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              height: "clamp(420px, min(85vh, 980px), 1050px)",
+              minHeight: "clamp(420px, min(85vh, 980px), 1050px)",
+              borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              background: "linear-gradient(180deg, #eef2f9 0%, #e2e8f4 100%)",
+              minWidth: 0,
+              overflow: "hidden",
+              boxSizing: "border-box",
+              display: open ? "block" : "none",
+              position: "relative",
+            }}
+          >
+            <video
+              ref={panelinVideoRef}
+              src={PANELIN_LISTA_VIDEO_SRC}
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              title="Panelin"
+              aria-label="Panelin, asistente BMC"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+                pointerEvents: "none",
+              }}
+            />
+            {/* Fade overlays — top, bottom, left, right */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to right, #eaf0f8 0%, transparent 14%)" }} />
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to left, #e8eef6 0%, transparent 18%)" }} />
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to bottom, #eef2f9 0%, transparent 10%)" }} />
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to top, #e2e8f4 0%, transparent 12%)" }} />
+          </div>
+        </div>
+      )}
+
+      {open && !showListaStep && (
         <div
           style={{ padding: 16 }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
-          {showRoof3DStage && (
-            <div
-              ref={setHostRef}
-              data-bmc-roof-3d-host
-              style={{
-                width: "100%",
-                /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
-                height: "clamp(360px, min(72vh, 820px), 900px)",
-                minHeight: "clamp(360px, min(72vh, 820px), 900px)",
-                marginBottom: 16,
-                borderRadius: 12,
-                border: `1px solid ${C.border}`,
-                background: "#eef2f9",
-                minWidth: 0,
-                overflow: "hidden",
-                boxSizing: "border-box",
-              }}
-            />
-          )}
-
           {dimensionSummary ? (
             <div
               style={{
@@ -344,24 +321,26 @@ export default function QuoteVisualVisor({
 
           {showAguaStep ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5 }}>
-                Referencias de <strong style={{ color: C.tp }}>una agua</strong> y{" "}
-                <strong style={{ color: C.tp }}>dos aguas</strong> con nuestros paneles de techo. Podés{" "}
-                <strong style={{ color: C.tp }}>subir fotos reales</strong> de obra; se guardan en esta sesión del
-                navegador.
-              </div>
               {(["una_agua", "dos_aguas"]).map((key) => {
                 const label = key === "una_agua" ? "Una agua" : "Dos aguas";
-                const src = aguaCustom[key] || DEFAULT_AGUA_REFERENCE_IMAGES[key];
+                const src = DEFAULT_AGUA_REFERENCE_IMAGES[key];
                 const selected = tipoAguas === key;
+                const clickable = !!onSelectAgua;
                 return (
                   <div
                     key={key}
+                    role={clickable ? "button" : undefined}
+                    tabIndex={clickable ? 0 : undefined}
+                    onClick={clickable ? () => { onSelectAgua(key); if (onNext) onNext(); } : undefined}
+                    onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { onSelectAgua(key); if (onNext) onNext(); } } : undefined}
                     style={{
                       borderRadius: 12,
                       border: `2px solid ${selected ? C.primary : C.border}`,
                       padding: 12,
                       background: selected ? C.primarySoft : "#fff",
+                      cursor: clickable ? "pointer" : "default",
+                      transition: "border-color 0.15s, box-shadow 0.15s",
+                      boxShadow: selected ? `0 0 0 3px ${C.primarySoft}` : "none",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
@@ -388,53 +367,6 @@ export default function QuoteVisualVisor({
                         style={{ maxWidth: "100%", maxHeight: "min(36vh, 240px)", objectFit: "contain", display: "block" }}
                       />
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, alignItems: "center" }}>
-                      <label
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          background: C.primary,
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <ImagePlus size={14} />
-                        Subir imagen
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) onUploadAgua(key, f);
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                      {aguaCustom[key] && (
-                        <button
-                          type="button"
-                          onClick={() => clearAgua(key)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            border: `1px solid ${C.border}`,
-                            background: C.surface,
-                            fontSize: 12,
-                            cursor: "pointer",
-                            color: C.danger,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Quitar foto
-                        </button>
-                      )}
-                    </div>
                   </div>
                 );
               })}
@@ -453,239 +385,6 @@ export default function QuoteVisualVisor({
                 }}
               >
                 Ver paneles de techo en tienda <ExternalLink size={14} />
-              </a>
-            </div>
-          ) : showListaStep ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ fontSize: 13, color: C.ts, lineHeight: 1.5 }}>
-                Referencias para <strong style={{ color: C.tp }}>lista BMC (venta)</strong> y{" "}
-                <strong style={{ color: C.tp }}>lista Web</strong>. Podés{" "}
-                <strong style={{ color: C.tp }}>subir capturas o PDF exportado a imagen</strong>; se guardan en esta sesión.
-                Usá la barra del visor arriba para colapsar o expandir, y el <strong style={{ color: C.tp }}>separador</strong>{" "}
-                entre columnas para agrandar la vista.
-              </div>
-              {(
-                [
-                  { key: "venta", label: "Lista BMC (venta directo)", hint: "Precios operación BMC" },
-                  { key: "web", label: "Lista precios Web", hint: "Referencia tienda / web" },
-                ]
-              ).map(({ key, label, hint }) => {
-                const src = listaCustom[key] || DEFAULT_LISTA_REFERENCE_IMAGES[key];
-                const selected = listaPrecios === key;
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      borderRadius: 12,
-                      border: `2px solid ${selected ? C.primary : C.border}`,
-                      padding: 12,
-                      background: selected ? C.primarySoft : "#fff",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{label}</span>
-                      {listaPrecios === key && (
-                        <span style={{ fontSize: 10, fontWeight: 800, color: C.primary, textTransform: "uppercase" }}>Selección actual</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.ts, marginBottom: 8 }}>{hint}</div>
-                    <div
-                      style={{
-                        position: "relative",
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        background: "#fff",
-                        minHeight: 140,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <img
-                        src={src}
-                        alt={label}
-                        style={{ maxWidth: "100%", maxHeight: "min(36vh, 240px)", objectFit: "contain", display: "block" }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                      <label
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          border: `1px solid ${C.border}`,
-                          background: C.surface,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          color: C.primary,
-                        }}
-                      >
-                        <ImagePlus size={14} />
-                        Subir o reemplazar
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) onUploadLista(key, f);
-                            e.target.value = "";
-                          }}
-                        />
-                      </label>
-                      {listaCustom[key] ? (
-                        <button
-                          type="button"
-                          onClick={() => clearLista(key)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            border: `1px solid ${C.border}`,
-                            background: C.surface,
-                            fontSize: 12,
-                            cursor: "pointer",
-                            color: C.danger,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Quitar foto
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-              {listaExtraOpen ? (
-                <div
-                  style={{
-                    borderRadius: 12,
-                    border: `2px dashed ${C.border}`,
-                    padding: 12,
-                    background: C.surfaceAlt,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>Otra referencia (opcional)</span>
-                    <button
-                      type="button"
-                      onClick={() => setListaExtraOpen(false)}
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: C.ts,
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                      }}
-                    >
-                      Ocultar bloque
-                    </button>
-                  </div>
-                  <div
-                    style={{
-                      borderRadius: 10,
-                      overflow: "hidden",
-                      background: "#fff",
-                      minHeight: 120,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <img
-                      src={listaCustom.extra || DEFAULT_LISTA_REFERENCE_IMAGES.extra}
-                      alt="Referencia adicional"
-                      style={{ maxWidth: "100%", maxHeight: "min(32vh, 200px)", objectFit: "contain", display: "block" }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                    <label
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "6px 12px",
-                        borderRadius: 8,
-                        border: `1px solid ${C.border}`,
-                        background: C.surface,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        color: C.primary,
-                      }}
-                    >
-                      <ImagePlus size={14} />
-                      Subir imagen adicional
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) onUploadLista("extra", f);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    {listaCustom.extra ? (
-                      <button
-                        type="button"
-                        onClick={() => clearLista("extra")}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          border: `1px solid ${C.border}`,
-                          background: C.surface,
-                          fontSize: 12,
-                          cursor: "pointer",
-                          color: C.danger,
-                          fontWeight: 600,
-                        }}
-                      >
-                        Quitar foto extra
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setListaExtraOpen(true)}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: `1.5px dashed ${C.primary}`,
-                    background: C.primarySoft,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: C.primary,
-                    cursor: "pointer",
-                    alignSelf: "flex-start",
-                  }}
-                >
-                  + Añadir otra imagen de referencia
-                </button>
-              )}
-              <a
-                href={QUOTE_VISOR_SHOP_URLS.catalogoCompleto}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: C.primary,
-                  textDecoration: "none",
-                }}
-              >
-                Ver catálogo en tienda <ExternalLink size={14} />
               </a>
             </div>
           ) : slide ? (

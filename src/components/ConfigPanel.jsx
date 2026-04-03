@@ -178,8 +178,10 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
             <>
           {/* IVA */}
           <div style={{ marginBottom: 20 }}>
-            <div style={labelS}>IVA (%)</div>
+            <label htmlFor="cfg-iva" style={labelS}>IVA (%)</label>
             <input
+              id="cfg-iva"
+              name="cfg-iva"
               type="number"
               min="0"
               max="100"
@@ -198,8 +200,10 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
 
           {/* Lista por defecto */}
           <div style={{ marginBottom: 20 }}>
-            <div style={labelS}>Lista de precios por defecto</div>
+            <label htmlFor="cfg-lista" style={labelS}>Lista de precios por defecto</label>
             <select
+              id="cfg-lista"
+              name="cfg-lista"
               value={config.listaDefault || "web"}
               onChange={(e) => setConfigState((c) => ({ ...c, listaDefault: e.target.value }))}
               style={inputS}
@@ -211,8 +215,10 @@ export default function ConfigPanel({ visible, onClose, onConfigChange }) {
 
           {/* Flete por defecto */}
           <div style={{ marginBottom: 24 }}>
-            <div style={labelS}>Flete por defecto (USD s/IVA)</div>
+            <label htmlFor="cfg-flete" style={labelS}>Flete por defecto (USD s/IVA)</label>
             <input
+              id="cfg-flete"
+              name="cfg-flete"
               type="number"
               min="0"
               step="10"
