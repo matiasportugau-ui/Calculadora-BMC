@@ -8,6 +8,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { C, FONT } from "../data/constants.js";
 import { calcFactorPendiente } from "../utils/calculations.js";
 import { buildRoofPlanEdges, findEncounters } from "../utils/roofPlanGeometry.js";
+import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 
 const GAP_M = 0.25;
 /** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
@@ -18,8 +19,6 @@ const DRAG_SENSITIVITY = 0.52;
 const SNAP_ON_RELEASE_M = 0.05;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
 const SNAP_ZONE_M = 0.35;
-const SLOPE_MARKS = ["off", "along_largo_pos", "along_largo_neg"];
-
 function effAnchoM(z, is2A) {
   return is2A ? z.ancho / 2 : z.ancho;
 }
@@ -207,12 +206,8 @@ export default function RoofPreview({
   const cycleSlope = useCallback(
     (gi) => {
       const z = zonas[gi];
-      if (!z || !SLOPE_MARKS.length) return;
-      const cur = z.preview?.slopeMark && SLOPE_MARKS.includes(z.preview.slopeMark)
-        ? z.preview.slopeMark
-        : "off";
-      const i = SLOPE_MARKS.indexOf(cur);
-      const next = SLOPE_MARKS[(i + 1) % SLOPE_MARKS.length];
+      if (!z) return;
+      const next = nextRoofSlopeMark(z.preview?.slopeMark);
       onZonaPreviewChange?.(gi, { slopeMark: next });
     },
     [onZonaPreviewChange, zonas],
@@ -283,14 +278,21 @@ export default function RoofPreview({
       } catch {
         /* ignore */
       }
-      if (e.pointerType === "touch" && !d.moved) {
+      // Doble toque (touch) o doble clic (mouse/lápiz) sin arrastre: mismo criterio que vista 3D.
+      if (!d.moved && (e.pointerType === "touch" || e.pointerType === "mouse" || e.pointerType === "pen")) {
         const now = Date.now();
         const prev = tapRef.current;
-        if (prev && prev.gi === d.gi && now - prev.t < 320) {
+        const winMs = e.pointerType === "touch" ? 320 : 450;
+        const thresh = e.pointerType === "touch" ? 28 : 14;
+        if (prev && prev.gi === d.gi && now - prev.t < winMs) {
           const pdx = e.clientX - prev.x;
           const pdy = e.clientY - prev.y;
-          if (pdx * pdx + pdy * pdy < 28 * 28) cycleSlope(d.gi);
-          tapRef.current = null;
+          if (pdx * pdx + pdy * pdy < thresh * thresh) {
+            cycleSlope(d.gi);
+            tapRef.current = null;
+          } else {
+            tapRef.current = { t: now, gi: d.gi, x: e.clientX, y: e.clientY };
+          }
         } else {
           tapRef.current = { t: now, gi: d.gi, x: e.clientX, y: e.clientY };
         }
@@ -429,11 +431,6 @@ export default function RoofPreview({
                     strokeWidth={0.04}
                     style={{ cursor: canDrag ? "grab" : "default" }}
                     onPointerDown={(e) => handlePointerDown(e, r.gi, r)}
-                    onDoubleClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      cycleSlope(r.gi);
-                    }}
                   />
                   <PanelGrid
                     x0={r.x}

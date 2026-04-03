@@ -47,9 +47,22 @@ import {
   buildPdfAppendixPayload,
 } from "../utils/quotationViews.js";
 import { buildGoogleSheetReportTsv } from "../utils/sheetExport.js";
-import { getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
-import { Canvas } from "@react-three/fiber";
+import {
+  getSharedSidesPerZona,
+  layoutZonasEnPlanta,
+  findEncounters,
+  ROOF_PLAN_GAP_M,
+} from "../utils/roofPlanGeometry.js";
+import {
+  normalizeEncounter,
+  resolveNeighborSharedSide,
+  encounterEsContinuo,
+  encounterBorderPerfil,
+} from "../utils/roofEncounterModel.js";
+import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Line, OrbitControls, Html } from "@react-three/drei";
+import * as THREE from "three";
 import {
   initGoogleAuth, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
@@ -512,6 +525,112 @@ function TipoAguasSelector({ value, onChange, onOptionDoubleClick }) {
 
 const SIDE_LABELS = { frente: "Frente Inferior", fondo: "Frente Superior", latIzq: "Lateral Izq", latDer: "Lateral Der" };
 
+/** Plano horizontal para arrastre en planta (m). */
+const ROOF3D_DRAG_PLANE_Y = 0.22;
+
+/**
+ * Discos violetas: afinan preview.x / preview.y (misma convención que RoofPreview: +y = hacia FRENTE).
+ * delta mundo: dx → +x planta, dz → -y planta (coherente con oz = -(y+h)).
+ */
+function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clampBounds, cosT }) {
+  const { camera, gl } = useThree();
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const ndc = useMemo(() => new THREE.Vector2(), []);
+  const plane = useMemo(
+    () => new THREE.Plane(new THREE.Vector3(0, 1, 0), -ROOF3D_DRAG_PLANE_Y),
+    [],
+  );
+  const dragRef = useRef(null);
+
+  const pick = useCallback(
+    (clientX, clientY) => {
+      const rect = gl.domElement.getBoundingClientRect();
+      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const out = new THREE.Vector3();
+      return raycaster.ray.intersectPlane(plane, out) ? out : null;
+    },
+    [camera, gl, ndc, plane, raycaster],
+  );
+
+  useEffect(() => {
+    const onMove = (ev) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const pt = pick(ev.clientX, ev.clientY);
+      if (!pt) return;
+      const dx = pt.x - d.px;
+      const dz = pt.z - d.pz;
+      let nx = d.x0 + dx;
+      let ny = d.y0 - dz;
+      if (clampBounds) {
+        nx = Math.min(Math.max(nx, clampBounds.minX), clampBounds.maxX - d.w);
+        ny = Math.min(Math.max(ny, clampBounds.minY), clampBounds.maxY - d.h);
+      }
+      onZonaPreviewChange(d.gi, { x: nx, y: ny });
+    };
+    const onUp = () => {
+      if (typeof document !== "undefined") document.body.style.cursor = "";
+      if (dragRef.current && orbitRef?.current) orbitRef.current.enabled = true;
+      dragRef.current = null;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp, { capture: true });
+    window.addEventListener("pointercancel", onUp, { capture: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp, { capture: true });
+      window.removeEventListener("pointercancel", onUp, { capture: true });
+    };
+  }, [pick, onZonaPreviewChange, clampBounds, orbitRef]);
+
+  if (!onZonaPreviewChange || !zoneLayouts?.length) return null;
+
+  return zoneLayouts.map(({ gi, ox, oz, ancho, largo, plX, plY, wPl, hPl }) => {
+    const cx = ox + ancho / 2;
+    const czMid = oz - largo * cosT / 2;
+    return (
+      <mesh
+        key={`dh-${gi}`}
+        position={[cx, ROOF3D_DRAG_PLANE_Y, czMid]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        renderOrder={20}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          if (orbitRef?.current) orbitRef.current.enabled = false;
+          const pt = pick(e.clientX, e.clientY);
+          if (!pt) return;
+          dragRef.current = {
+            gi,
+            px: pt.x,
+            pz: pt.z,
+            x0: plX,
+            y0: plY,
+            w: wPl,
+            h: hPl,
+          };
+        }}
+        onPointerOver={() => { if (typeof document !== "undefined") document.body.style.cursor = "grab"; }}
+        onPointerOut={() => { if (typeof document !== "undefined" && !dragRef.current) document.body.style.cursor = ""; }}
+      >
+        <circleGeometry args={[0.36, 28]} />
+        <meshStandardMaterial
+          color="#7c3aed"
+          roughness={0.45}
+          metalness={0.2}
+          transparent
+          opacity={0.92}
+          depthTest
+          polygonOffset
+          polygonOffsetFactor={-4}
+          polygonOffsetUnits={-4}
+        />
+      </mesh>
+    );
+  });
+}
+
 // ── React Three Fiber roof components ───────────────────────────────────────
 
 /**
@@ -540,10 +659,13 @@ function computeSideSegments(totalLen, intervals) {
  *   tipo "perfil"             → amber, visible → opens encounter picker
  * Free segments → blue → opens border accessory picker
  */
-function RoofZoneMesh({ ancho, largo, theta, offsetX, gi, multiZona, borders, zonasBorders,
+function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetZ = 0, gi, multiZona, borders, zonasBorders,
   sharedSidesMap, openSide, openEncounterSide, disabledSides,
-  onEdgeClick, onEncounterClick, panelAu, zonaEncounters }) {
-  const sinT = Math.sin(theta), cosT = Math.cos(theta);
+  onEdgeClick, onEncounterClick, panelAu, zonaEncounters, slopeMark, onZonaPreviewChange }) {
+  /** along_largo_neg (flecha hacia fondo en SVG) = invertir caída en 3D respecto al default. */
+  const invertSlope = slopeMark === "along_largo_neg";
+  const thetaEff = invertSlope ? -theta : theta;
+  const sinT = Math.sin(thetaEff), cosT = Math.cos(thetaEff);
   const STRIP = Math.min(0.28, ancho * 0.22, largo * 0.18);
   const FH = 0.18;
   const EPS = 0.003;
@@ -552,7 +674,7 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, gi, multiZona, borders, zo
   const encMap  = zonaEncounters?.[gi] ?? {};
   const [hoveredKey, setHoveredKey] = useState(null);
 
-  const rot = useMemo(() => [-Math.PI / 2 + theta, 0, 0], [theta]);
+  const rot = useMemo(() => [-Math.PI / 2 + thetaEff, 0, 0], [thetaEff]);
   const ny = EPS * cosT, nz = EPS * sinT;
   const cy = largo * sinT / 2, cz = -largo * cosT / 2;
 
@@ -568,7 +690,7 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, gi, multiZona, borders, zo
 
   function sharedStripColor(side) {
     const enc = encMap[side];
-    if (!enc || enc.tipo === 'continuo') return '#f59e0b'; // only shown on hover (opacity 0 → 0.30)
+    if (!enc || encounterEsContinuo(enc)) return '#f59e0b'; // only shown on hover (opacity 0 → 0.30)
     const isOpen = openEncounterSide?.side === side && openEncounterSide?.gi === gi_eff;
     if (isOpen) return '#b45309';
     return enc.perfil && enc.perfil !== 'none' ? '#f59e0b' : '#fcd34d';
@@ -576,7 +698,7 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, gi, multiZona, borders, zo
 
   function sharedStripOpacity(side, key) {
     const enc = encMap[side];
-    if (!enc || enc.tipo === 'continuo') return hoveredKey === key ? 0.30 : 0.0;
+    if (!enc || encounterEsContinuo(enc)) return hoveredKey === key ? 0.30 : 0.0;
     return 0.72;
   }
 
@@ -614,15 +736,32 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, gi, multiZona, borders, zo
   }, [ancho, largo, sinT, cosT, ny, nz, panelAu]);
 
   return (
-    <group position={[offsetX, 0, 0]}>
+    <group position={[offsetX, 0, offsetZ]}>
       {/* Front fascia */}
       <mesh position={[ancho/2, -FH/2, 0.002]} renderOrder={0}>
         <planeGeometry args={[ancho, FH]} />
         <meshStandardMaterial color="#aab4c4" roughness={0.9} side={2} />
       </mesh>
 
-      {/* Main sloped roof surface */}
-      <mesh position={[ancho/2, cy, cz]} rotation={rot} renderOrder={1}>
+      {/* Main sloped roof surface — doble clic: ciclo sentido pendiente (coherente con RoofPreview). */}
+      <mesh
+        position={[ancho/2, cy, cz]}
+        rotation={rot}
+        renderOrder={1}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (!onZonaPreviewChange) return;
+          onZonaPreviewChange(gi, { slopeMark: nextRoofSlopeMark(slopeMark) });
+        }}
+        onPointerOver={(e) => {
+          if (!onZonaPreviewChange) return;
+          e.stopPropagation();
+          if (typeof document !== "undefined") document.body.style.cursor = "alias";
+        }}
+        onPointerOut={() => {
+          if (typeof document !== "undefined") document.body.style.cursor = "";
+        }}
+      >
         <planeGeometry args={[ancho, largo]} />
         <meshStandardMaterial color="#dbeafe" roughness={0.72} metalness={0.05} side={2} />
       </mesh>
@@ -658,76 +797,180 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, gi, multiZona, borders, zo
 /** WebGL canvas that renders all zones in 3D with orbit controls */
 function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBorders,
   multiZona, sharedSidesMap, openSide, openEncounterSide, onEdgeClick, onEncounterClick,
-  disabledSides, totalArea, zonaEncounters }) {
+  disabledSides, totalArea, zonaEncounters, onZonaPreviewChange }) {
   const sinT = Math.sin(theta), cosT = Math.cos(theta);
-  const GAP = 0.25;
+  const tipoAguasStr = is2A ? "dos_aguas" : "una_agua";
+  const orbitRef = useRef(null);
 
-  const zoneLayouts = useMemo(() => {
-    let cumX = 0;
-    return validZonas.map((z, gi) => {
-      const ancho = is2A ? z.ancho / 2 : z.ancho;
-      const ox = cumX;
-      cumX += ancho + GAP;
-      return { z, gi, ancho, ox };
-    });
-  }, [validZonas, is2A]);
+  /**
+   * Misma lógica que RoofPreview: con posiciones en planta (preview) se usa gap entre autos;
+   * sin ningún preview, gap 0 para coincidir con getSharedSidesPerZona / BOM.
+   */
+  const plantRects = useMemo(() => {
+    try {
+      const anyPreview = validZonas.some((z) =>
+        Number.isFinite(z?.preview?.x) && Number.isFinite(z?.preview?.y));
+      const gapM = anyPreview ? ROOF_PLAN_GAP_M : 0;
+      return layoutZonasEnPlanta(validZonas, tipoAguasStr, gapM);
+    } catch {
+      return [];
+    }
+  }, [validZonas, tipoAguasStr]);
 
-  const { totalWidth, maxLargo } = useMemo(() => ({
-    totalWidth: Math.max(0.1, zoneLayouts.reduce((s, { ancho }) => s + ancho, 0) + (zoneLayouts.length - 1) * GAP),
-    maxLargo:   Math.max(...zoneLayouts.map(({ z }) => z.largo)),
-  }), [zoneLayouts]);
+  /**
+   * oz: anclar el borde inferior del rect en planta (y + h, FRENTE en SVG) al pie de la cubierta,
+   * coherente con brújula ▼ FRENTE y con RoofPreview (+y hacia abajo = hacia frente).
+   */
+  const zoneLayouts = useMemo(() => plantRects.map((r) => ({
+    z: r.z,
+    gi: r.gi,
+    ancho: r.w,
+    ox: r.x,
+    oz: -(r.y + r.h),
+    largo: r.h,
+    slopeMark: r.z?.preview?.slopeMark,
+    plX: r.x,
+    plY: r.y,
+    wPl: r.w,
+    hPl: r.h,
+  })), [plantRects]);
+
+  const dragClampBounds = useMemo(() => {
+    if (!plantRects.length) return null;
+    const pad = 2.8;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const r of plantRects) {
+      minX = Math.min(minX, r.x);
+      minY = Math.min(minY, r.y);
+      maxX = Math.max(maxX, r.x + r.w);
+      maxY = Math.max(maxY, r.y + r.h);
+    }
+    return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+  }, [plantRects]);
+
+  const plantEncounters = useMemo(() => {
+    try {
+      return findEncounters(plantRects);
+    } catch {
+      return [];
+    }
+  }, [plantRects]);
+
+  const { totalWidth, maxLargo, minX, maxX, minZ, maxZ } = useMemo(() => {
+    if (!zoneLayouts.length) {
+      return { totalWidth: 10, maxLargo: 6, minX: 0, maxX: 10, minZ: -6, maxZ: 0 };
+    }
+    let mix = Infinity, mxx = -Infinity, miz = Infinity, maz = -Infinity;
+    for (const r of zoneLayouts) {
+      mix = Math.min(mix, r.ox);
+      mxx = Math.max(mxx, r.ox + r.ancho);
+      const zFrente = r.oz;
+      const zFondo = r.oz - r.largo * cosT;
+      miz = Math.min(miz, zFrente, zFondo);
+      maz = Math.max(maz, zFrente, zFondo);
+    }
+    const tw = Math.max(0.1, mxx - mix);
+    const ml = Math.max(...zoneLayouts.map((e) => e.largo));
+    return { totalWidth: tw, maxLargo: ml, minX: mix, maxX: mxx, minZ: miz, maxZ: maz };
+  }, [zoneLayouts, cosT]);
 
   const maxH = maxLargo * sinT, maxD = maxLargo * cosT;
-  const camTarget = useMemo(() => [totalWidth/2, maxH/2, -maxD/2], [totalWidth, maxH, maxD]);
-  const camPos    = useMemo(() => [
-    totalWidth / 2,
-    maxH + Math.max(1.8, totalWidth * 0.55),
-    maxD * 0.85 + Math.max(2.5, totalWidth * 0.35),
-  ], [totalWidth, maxH, maxD]);
+  const spanZ = Math.max(0.1, maxZ - minZ);
+  const spanW = Math.max(0.1, maxX - minX);
+  const sceneSize = Math.max(spanW, spanZ, totalWidth * 0.5 + spanZ * 0.5);
+
+  const camTarget = useMemo(() => [
+    (minX + maxX) / 2,
+    maxH / 2,
+    (minZ + maxZ) / 2,
+  ], [minX, maxX, minZ, maxZ, maxH]);
+  const camPos = useMemo(() => [
+    (minX + maxX) / 2,
+    maxH + Math.max(1.8, sceneSize * 0.55),
+    (minZ + maxZ) / 2 + maxD * 0.85 + Math.max(2.5, sceneSize * 0.35),
+  ], [minX, maxX, minZ, maxZ, maxH, maxD, sceneSize]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: 224, borderRadius: 10, overflow: 'hidden', background: '#eef2f9' }}>
       <Canvas camera={{ position: camPos, fov: 36, near: 0.01, far: 300 }} shadows gl={{ antialias: true }}
         style={{ width: '100%', height: '100%' }}>
         <ambientLight intensity={0.62} />
-        <directionalLight position={[totalWidth*1.5+3, maxH*2+5, maxD+4]} intensity={0.55} castShadow />
+        <directionalLight position={[sceneSize * 1.5 + 3, maxH * 2 + 5, maxD + 4]} intensity={0.55} castShadow />
         <directionalLight position={[-2, 4, 3]} intensity={0.22} />
 
-        {zoneLayouts.map(({ z, gi, ancho, ox }) => (
+        {zoneLayouts.map(({ z, gi, ancho, ox, oz, slopeMark }) => (
           <RoofZoneMesh key={gi} gi={gi} ancho={ancho} largo={z.largo} theta={theta}
-            offsetX={ox} multiZona={multiZona} borders={borders} zonasBorders={zonasBorders}
+            offsetX={ox} offsetZ={oz} slopeMark={slopeMark} multiZona={multiZona} borders={borders} zonasBorders={zonasBorders}
             sharedSidesMap={sharedSidesMap} openSide={openSide} openEncounterSide={openEncounterSide}
             disabledSides={disabledSides} onEdgeClick={onEdgeClick} onEncounterClick={onEncounterClick}
-            panelAu={panelAu} zonaEncounters={zonaEncounters} />
+            panelAu={panelAu} zonaEncounters={zonaEncounters} onZonaPreviewChange={onZonaPreviewChange} />
         ))}
 
-        {/* Encounter indicators — line (perfil only) + clickable pill label */}
-        {multiZona && zoneLayouts.slice(0,-1).map(({ z, gi, ancho, ox }, i) => {
-          const nx = zoneLayouts[i+1];
-          const sideInfoDer = sharedSidesMap.get(gi)?.get('latDer');
-          const sideInfoIzq = sharedSidesMap.get(nx?.gi)?.get('latIzq');
-          if (!nx || (!sideInfoDer && !sideInfoIzq)) return null;
-          const intervals = sideInfoDer?.intervals ?? sideInfoIzq?.intervals ?? [];
-          const x = ox + ancho + GAP/2;
+        {onZonaPreviewChange && (
+          <RoofPlanDragHandles
+            zoneLayouts={zoneLayouts}
+            onZonaPreviewChange={onZonaPreviewChange}
+            orbitRef={orbitRef}
+            clampBounds={dragClampBounds}
+            cosT={cosT}
+          />
+        )}
+
+        {/* Encounter indicators — desde findEncounters(plantRects), alineado a la planta real */}
+        {multiZona && plantEncounters.filter((e) => e.orientation === "vertical").map((enc) => {
+          const [g0, g1] = enc.zoneIndices;
+          const r0 = plantRects.find((r) => r.gi === g0);
+          const r1 = plantRects.find((r) => r.gi === g1);
+          if (!r0 || !r1) return null;
+          const xLine = enc.x1;
+          let gi;
+          let rectL;
+          if (Math.abs(r0.x + r0.w - xLine) < 0.004 && Math.abs(r1.x - xLine) < 0.004) {
+            gi = r0.gi;
+            rectL = r0;
+          } else if (Math.abs(r1.x + r1.w - xLine) < 0.004 && Math.abs(r0.x - xLine) < 0.004) {
+            gi = r1.gi;
+            rectL = r1;
+          } else return null;
+          const nx = sharedSidesMap.get(gi)?.get("latDer")?.intervals;
+          const intervals = (nx && nx.length)
+            ? nx
+            : [{ startM: Math.max(0, enc.y1 - rectL.y), endM: Math.min(rectL.h, enc.y2 - rectL.y) }];
+          const EPSp = 0.003;
+          const ny = EPSp * cosT;
+          const nz = EPSp * sinT;
+          const xw = xLine;
+          const ozL = -(rectL.y + rectL.h);
           return intervals.map(({ startM, endM }, ii) => {
+            if (endM - startM < 0.02) return null;
             const encDer = zonaEncounters?.[gi]?.latDer;
-            const encIzq = zonaEncounters?.[nx.gi]?.latIzq;
-            const enc = encDer ?? encIzq;
-            const hasPerfil = enc?.tipo === 'perfil';
+            const hasPerfil = Boolean(encDer && !encounterEsContinuo(encDer) && (
+              (encDer.perfil && encDer.perfil !== "none") ||
+              (encDer.perfilVecino && encDer.perfilVecino !== "none") ||
+              (encDer.desnivel && (encDer.desnivel.perfilBajo || encDer.desnivel.perfilAlto))
+            ));
             const midM = (startM + endM) / 2;
-            const midY = midM * sinT, midZ = -midM * cosT;
+            const midY = midM * sinT + ny;
+            const midZ = ozL - midM * cosT + nz;
+            const bp = encDer ? encounterBorderPerfil(encDer) : "none";
             const pillLabel = hasPerfil
-              ? (enc.perfil && enc.perfil !== 'none' ? enc.perfil.replace(/_/g, ' ') : 'Perfil')
-              : 'Seleccionar perfil';
+              ? (bp !== "none" ? String(bp).replace(/_/g, " ") : "Perfil")
+              : "Seleccionar perfil";
             return (
-              <group key={`enc-${i}-${ii}`}>
+              <group key={`enc-${enc.id}-${ii}`}>
                 {hasPerfil && (
-                  <Line points={[[x, startM*sinT, -startM*cosT], [x, endM*sinT, -endM*cosT]]}
-                    color="#f59e0b" lineWidth={1.5} />
+                  <Line
+                    points={[
+                      [xw, startM * sinT + ny, ozL - startM * cosT + nz],
+                      [xw, endM * sinT + ny, ozL - endM * cosT + nz],
+                    ]}
+                    color="#f59e0b"
+                    lineWidth={1.5}
+                  />
                 )}
-                <Html position={[x, midY, midZ]} center distanceFactor={7} zIndexRange={[20, 0]}>
+                <Html position={[xw, midY, midZ]} center distanceFactor={7} zIndexRange={[20, 0]}>
                   <div
-                    onClick={(e) => { e.stopPropagation(); onEncounterClick('latDer', gi, { x: e.clientX, y: e.clientY }); }}
+                    onClick={(e) => { e.stopPropagation(); onEncounterClick("latDer", gi, { x: e.clientX, y: e.clientY }); }}
                     style={{
                       display: "flex", alignItems: "center", gap: 3,
                       padding: "2px 7px",
@@ -752,8 +995,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
         })}
 
         {/* Zone dimension labels */}
-        {multiZona && zoneLayouts.map(({ z, gi, ancho, ox }) => (
-          <Html key={gi} position={[ox + ancho/2, z.largo*sinT/2, -z.largo*cosT/2]} center distanceFactor={7}>
+        {multiZona && zoneLayouts.map(({ z, gi, ancho, ox, oz }) => (
+          <Html key={gi} position={[ox + ancho / 2, z.largo * sinT / 2, oz - z.largo * cosT / 2]} center distanceFactor={7}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#1e3a8a', fontFamily: FONT,
               whiteSpace: 'nowrap', pointerEvents: 'none',
               background: 'rgba(255,255,255,0.65)', padding: '1px 5px', borderRadius: 4 }}>
@@ -762,8 +1005,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
           </Html>
         ))}
 
-        <OrbitControls makeDefault target={camTarget} enablePan={false}
-          enableZoom zoomSpeed={0.6} minDistance={1} maxDistance={totalWidth * 4 + 8}
+        <OrbitControls ref={orbitRef} makeDefault target={camTarget} enablePan={false}
+          enableZoom zoomSpeed={0.6} minDistance={1} maxDistance={sceneSize * 4 + 8}
           minPolarAngle={Math.PI/10} maxPolarAngle={Math.PI/2.1}
           minAzimuthAngle={-Math.PI/3} maxAzimuthAngle={Math.PI/3} />
       </Canvas>
@@ -780,7 +1023,7 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
   );
 }
 
-function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua", zonasBorders = [], onZonaBorderChange, pendiente = 15, panelAu = 1.12, zonaEncounters = [], onZonaEncounterChange }) {
+function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua", zonasBorders = [], onZonaBorderChange, pendiente = 15, panelAu = 1.12, zonaEncounters = [], onZonaEncounterChange, onZonaPreviewChange }) {
   // openSide: null | { side: string, gi: number|null, screenPos? }  (gi=null → global edge)
   const [openSide, setOpenSide] = useState(null);
   // openEncounterSide: null | { side: string, gi: number, screenPos }
@@ -798,15 +1041,25 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
   const hasZonas = validZonas.length > 0;
   const multiZona = validZonas.length > 1;
 
-  // Shared/internal sides per zone — use auto-layout (strip preview positions)
-  // so the encounter display always matches the visual row shown in this selector.
+  // Misma planta que RoofPreview: conservar preview.x/y para encuentros y canvas 3D.
   const sharedSidesMap = useMemo(() => {
     if (!multiZona) return new Map();
     try {
-      const zonasSinPos = validZonas.map(z => ({ ...z, preview: { ...z.preview, x: undefined, y: undefined } }));
-      return getSharedSidesPerZona(zonasSinPos, tipoAguas);
+      return getSharedSidesPerZona(validZonas, tipoAguas);
     } catch { return new Map(); }
   }, [validZonas, tipoAguas, multiZona]);
+
+  /** Misma planta que RoofBorderCanvas / RoofPreview para resolver vecino en encuentros. */
+  const plantRectsForEnc = useMemo(() => {
+    try {
+      const anyPreview = validZonas.some((z) =>
+        Number.isFinite(z?.preview?.x) && Number.isFinite(z?.preview?.y));
+      const gapM = anyPreview ? ROOF_PLAN_GAP_M : 0;
+      return layoutZonasEnPlanta(validZonas, is2A ? "dos_aguas" : "una_agua", gapM);
+    } catch {
+      return [];
+    }
+  }, [validZonas, is2A]);
 
   const margin = 18;
   const edge = 10;    // thickness of global edge strips (flat/no-zones mode)
@@ -965,8 +1218,15 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
   return (
     <div ref={containerRef} style={{ position: "relative", fontFamily: FONT }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vista previa del techo</div>
-      <div style={{ fontSize: 12, color: C.ts, marginBottom: 10 }}>
-        {multiZona ? "Clic en cada lado de cada zona para elegir el accesorio" : "Clic en cada tramo para elegir el accesorio"}
+      <div style={{ fontSize: 12, color: C.ts, marginBottom: 10, lineHeight: 1.45 }}>
+        {multiZona
+          ? "Clic en cada lado de cada zona para elegir el accesorio. Disco violeta: afinar posición en planta (sincroniza con la vista 2D)."
+          : "Clic en cada tramo para elegir el accesorio."}
+        {onZonaPreviewChange && hasZonas && (
+          <span style={{ display: "block", marginTop: 4, fontSize: 11, color: C.ts }}>
+            3D alineado a planta (▼ FRENTE = borde inferior del rectángulo en 2D). Doble clic en la cubierta azul (3D) o en la vista 2D de dimensiones: sentido de pendiente (afecta 3D y encuentros/cumbrera percibidos).
+          </span>
+        )}
       </div>
       {/* ══ 3D WebGL MODE (zones defined) ══ */}
       {hasZonas && (
@@ -986,6 +1246,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
           disabledSides={disabledSides}
           totalArea={totalArea}
           zonaEncounters={zonaEncounters}
+          onZonaPreviewChange={onZonaPreviewChange}
         />
       )}
 
@@ -1089,24 +1350,119 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
         );
       })(), document.body)}
 
-      {/* ══ ENCOUNTER TYPE POPOVER ══ */}
+      {/* ══ ENCOUNTER TYPE POPOVER (4 modos: continuo / pretil / cumbrera / desnivel) ══ */}
       {openEncounterSide && typeof document !== "undefined" && createPortal((() => {
         const { side, gi } = openEncounterSide;
-        const enc = zonaEncounters?.[gi]?.[side] ?? { tipo: 'continuo', perfil: null };
-        const isContinuo = !enc || enc.tipo === 'continuo';
+        const rawEnc = zonaEncounters?.[gi]?.[side];
+        const n = normalizeEncounter(rawEnc);
         const opts = getOpts(side);
-        const setEnc = (val) => { onZonaEncounterChange?.(gi, side, val); };
+        const defId = opts[0]?.id ?? "none";
         const closeEnc = () => { setEncounterPopoverStyle(null); setOpenEncounterSide(null); };
+        const { neighborGi, neighborSide } = resolveNeighborSharedSide(gi, side, plantRectsForEnc);
+
+        const setEnc = (val) => { onZonaEncounterChange?.(gi, side, val); };
+        const syncNeighbor = (encNeighbor) => {
+          if (neighborGi != null && neighborSide && encNeighbor) {
+            onZonaEncounterChange?.(neighborGi, neighborSide, encNeighbor);
+          }
+        };
+
+        const applyContinuo = () => {
+          const payload = { tipo: "continuo", modo: "continuo", perfil: null, perfilVecino: null, cumbreraUnida: false };
+          setEnc(payload);
+          closeEnc();
+        };
+
+        const selectModo = (modo) => {
+          if (modo === "continuo") { applyContinuo(); return; }
+          if (modo === "pretil") {
+            const payload = {
+              tipo: "perfil", modo: "pretil",
+              perfil: n.perfil ?? defId,
+              perfilVecino: n.perfilVecino ?? defId,
+            };
+            setEnc(payload);
+            syncNeighbor({
+              tipo: "perfil", modo: "pretil",
+              perfil: payload.perfilVecino,
+              perfilVecino: payload.perfil,
+            });
+            return;
+          }
+          if (modo === "cumbrera") {
+            const pid = n.perfil ?? defId;
+            const payload = { tipo: "perfil", modo: "cumbrera", perfil: pid, cumbreraUnida: true };
+            setEnc(payload);
+            syncNeighbor({ ...payload });
+            return;
+          }
+          if (modo === "desnivel") {
+            const b = n.desnivel?.perfilBajo ?? n.perfil ?? defId;
+            const a = n.desnivel?.perfilAlto ?? n.perfil ?? defId;
+            setEnc({
+              tipo: "perfil", modo: "desnivel",
+              perfil: b || a,
+              desnivel: { perfilBajo: b, perfilAlto: a },
+            });
+          }
+        };
+
+        const applyPretilPerfil = (perfilSelf) => {
+          const pVec = n.perfilVecino ?? defId;
+          const selfObj = { tipo: "perfil", modo: "pretil", perfil: perfilSelf, perfilVecino: pVec };
+          setEnc(selfObj);
+          syncNeighbor({ tipo: "perfil", modo: "pretil", perfil: pVec, perfilVecino: perfilSelf });
+        };
+        const applyPretilVecino = (perfilVecino) => {
+          const pSelf = n.perfil ?? defId;
+          const selfObj = { tipo: "perfil", modo: "pretil", perfil: pSelf, perfilVecino };
+          setEnc(selfObj);
+          syncNeighbor({ tipo: "perfil", modo: "pretil", perfil: perfilVecino, perfilVecino: pSelf });
+        };
+
+        const applyCumbreraPerfil = (pid) => {
+          const payload = { tipo: "perfil", modo: "cumbrera", perfil: pid, cumbreraUnida: true };
+          setEnc(payload);
+          syncNeighbor({ ...payload });
+          closeEnc();
+        };
+
+        const applyDesnivel = (patch) => {
+          const d0 = n.desnivel || {};
+          const nextD = { perfilBajo: d0.perfilBajo ?? n.perfil ?? defId, perfilAlto: d0.perfilAlto ?? n.perfil ?? defId, ...patch };
+          const bom = nextD.perfilBajo || nextD.perfilAlto || defId;
+          setEnc({ tipo: "perfil", modo: "desnivel", perfil: bom, desnivel: nextD });
+        };
+
+        const modoChips = [
+          { id: "continuo", label: "Continuo", sub: "Mismo plano" },
+          { id: "pretil", label: "Pretil", sub: "Por zona" },
+          { id: "cumbrera", label: "Cumbrera", sub: "Un perfil" },
+          { id: "desnivel", label: "Desnivel", sub: "Dos techos" },
+        ];
+
+        const renderOptRow = (opt, isSel, onPick) => (
+          <div key={opt.id}
+            onClick={(e) => { e.stopPropagation(); onPick(opt.id); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "6px 10px", cursor: "pointer", fontSize: 11, transition: TR,
+              background: isSel ? "#fef3c7" : "transparent", color: isSel ? "#92400e" : C.tp,
+            }}>
+            <span style={{ fontWeight: isSel ? 600 : 400 }}>{opt.label}</span>
+            {isSel && <Check size={12} color="#d97706" style={{ flexShrink: 0 }} />}
+          </div>
+        );
+
         return (
           <div ref={encounterPopoverRef} style={{
             position: "fixed", zIndex: 9999,
             top: encounterPopoverStyle?.top ?? -9999, left: encounterPopoverStyle?.left ?? -9999,
             opacity: encounterPopoverStyle?.opacity ?? 0, transition: "opacity 80ms ease",
             fontFamily: FONT, background: C.surface, borderRadius: 12,
-            boxShadow: "0 6px 28px rgba(0,0,0,0.13)", minWidth: 228, maxWidth: 300,
+            boxShadow: "0 6px 28px rgba(0,0,0,0.13)", minWidth: 240, maxWidth: 340,
             display: "flex", flexDirection: "column",
           }}>
-            {/* Header — compact, neutral */}
             <div style={{ padding: "7px 12px", display: "flex", alignItems: "center", gap: 6,
               borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt,
               borderRadius: "12px 12px 0 0", flexShrink: 0 }}>
@@ -1115,59 +1471,77 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
                 {SIDE_LABELS[side]} · Z{gi + 1}
               </span>
             </div>
-            {/* Segmented toggle — Continuo / Perfil */}
-            <div style={{ padding: "10px 12px 8px", display: "flex", gap: 6 }}>
-              {[
-                { id: 'continuo', label: 'Continuo' },
-                { id: 'perfil',   label: 'Perfil' },
-              ].map(({ id, label }) => {
-                const active = id === 'continuo' ? isContinuo : !isContinuo;
-                const isAmber = id === 'perfil';
+
+            <div style={{ padding: "8px 10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {modoChips.map(({ id, label, sub }) => {
+                const active = n.modo === id;
                 return (
-                  <div key={id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (id === 'continuo') { setEnc({ tipo: 'continuo', perfil: null }); closeEnc(); }
-                      else if (isContinuo)   { setEnc({ tipo: 'perfil', perfil: opts[0]?.id ?? 'none' }); }
-                    }}
+                  <button key={id} type="button"
+                    onClick={(e) => { e.stopPropagation(); selectModo(id); }}
                     style={{
-                      flex: 1, padding: "6px 0", textAlign: "center", borderRadius: 8,
-                      cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400,
-                      transition: TR,
-                      background: active ? (isAmber ? '#fef3c7' : C.primarySoft) : C.surfaceAlt,
-                      color:      active ? (isAmber ? '#92400e' : C.primary)     : C.ts,
-                      border:     `1.5px solid ${active ? (isAmber ? '#f59e0b' : C.primary) : C.border}`,
+                      padding: "6px 8px", borderRadius: 8, cursor: "pointer", fontSize: 11, fontWeight: active ? 600 : 500,
+                      fontFamily: FONT, textAlign: "left", border: `1.5px solid ${active ? (id === "continuo" ? C.primary : "#f59e0b") : C.border}`,
+                      background: active ? (id === "continuo" ? C.primarySoft : "#fffbeb") : C.surfaceAlt,
+                      color: active ? (id === "continuo" ? C.primary : "#92400e") : C.tp,
                     }}>
-                    {label}
-                  </div>
+                    <div>{label}</div>
+                    <div style={{ fontSize: 9, color: C.ts, fontWeight: 400, marginTop: 2 }}>{sub}</div>
+                  </button>
                 );
               })}
             </div>
-            {/* Continuo description */}
-            {isContinuo && (
-              <div style={{ padding: "0 12px 10px", fontSize: 11, color: C.ts, lineHeight: 1.4 }}>
-                Sin accesorio — los paneles se unen de forma continua.
+
+            {n.modo === "continuo" && (
+              <div style={{ padding: "0 12px 12px", fontSize: 11, color: C.ts, lineHeight: 1.45 }}>
+                Sin accesorio en el tramo compartido: misma cubierta sin perfil en la unión.
+                <div style={{ marginTop: 8 }}>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); applyContinuo(); }}
+                    style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, cursor: "pointer", fontSize: 11, fontFamily: FONT }}>
+                    Cerrar
+                  </button>
+                </div>
               </div>
             )}
-            {/* Profile list — shown when tipo=perfil */}
-            {!isContinuo && (
-              <div style={{ borderTop: `1px solid ${C.border}`, overflowY: "auto", maxHeight: 190, borderRadius: "0 0 12px 12px" }}>
-                {opts.map(opt => {
-                  const isSel = enc.perfil === opt.id;
-                  return (
-                    <div key={opt.id}
-                      onClick={(e) => { e.stopPropagation(); setEnc({ tipo: 'perfil', perfil: opt.id }); closeEnc(); }}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "8px 12px", cursor: "pointer", fontSize: 12, transition: TR,
-                        background: isSel ? '#fef3c7' : "transparent", color: isSel ? '#92400e' : C.tp }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span style={{ fontWeight: isSel ? 600 : 400 }}>{opt.label}</span>
-                        {opt.descripcion && <span style={{ fontSize: 10, color: C.ts, lineHeight: 1.3 }}>{opt.descripcion}</span>}
-                      </div>
-                      {isSel && <Check size={13} color="#d97706" style={{ flexShrink: 0 }} />}
-                    </div>
-                  );
-                })}
+
+            {n.modo === "pretil" && (
+              <div style={{ borderTop: `1px solid ${C.border}`, padding: "8px 10px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, marginBottom: 4 }}>Perfil · esta zona (Z{gi + 1})</div>
+                <div style={{ maxHeight: 100, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 8 }}>
+                  {opts.map((opt) => renderOptRow(opt, n.perfil === opt.id, applyPretilPerfil))}
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, marginBottom: 4 }}>
+                  Perfil · zona vecina{neighborGi != null ? ` (Z${neighborGi + 1})` : ""}
+                </div>
+                {!neighborGi && (
+                  <div style={{ fontSize: 10, color: C.ts, marginBottom: 6, lineHeight: 1.35 }}>
+                    Alineá las zonas en planta para vincular el borde opuesto automáticamente.
+                  </div>
+                )}
+                <div style={{ maxHeight: 100, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                  {opts.map((opt) => renderOptRow(opt, n.perfilVecino === opt.id, applyPretilVecino))}
+                </div>
+              </div>
+            )}
+
+            {n.modo === "cumbrera" && (
+              <div style={{ borderTop: `1px solid ${C.border}`, overflowY: "auto", maxHeight: 200, borderRadius: "0 0 12px 12px" }}>
+                {opts.map((opt) => renderOptRow(opt, n.perfil === opt.id, applyCumbreraPerfil))}
+              </div>
+            )}
+
+            {n.modo === "desnivel" && (
+              <div style={{ borderTop: `1px solid ${C.border}`, padding: "8px 10px 12px", borderRadius: "0 0 12px 12px" }}>
+                <div style={{ fontSize: 10, color: C.ts, lineHeight: 1.4, marginBottom: 8 }}>
+                  Dos cotas o techos distintos: definí accesorio por tramo (BOM MVP usa primero el inferior).
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, marginBottom: 4 }}>Tramo inferior / cierre</div>
+                <div style={{ maxHeight: 88, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 8 }}>
+                  {opts.map((opt) => renderOptRow(opt, (n.desnivel?.perfilBajo ?? "") === opt.id, (id) => applyDesnivel({ perfilBajo: id })))}
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, marginBottom: 4 }}>Tramo superior / libre</div>
+                <div style={{ maxHeight: 88, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                  {opts.map((opt) => renderOptRow(opt, (n.desnivel?.perfilAlto ?? "") === opt.id, (id) => applyDesnivel({ perfilAlto: id })))}
+                </div>
               </div>
             )}
           </div>
@@ -1652,7 +2026,7 @@ export default function PanelinCalculadoraV3() {
             ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => {
                 if (!sharedSideMap.get(k)?.fullySide) return [k, v];
                 const enc = zona.preview?.encounters?.[k];
-                return [k, (!enc || enc.tipo === 'continuo') ? 'none' : (enc.perfil ?? 'none')];
+                return [k, encounterEsContinuo(enc) ? 'none' : encounterBorderPerfil(enc)];
               }))
             : mergedBorders;
           if (is2Aguas) {
@@ -2606,6 +2980,7 @@ export default function PanelinCalculadoraV3() {
                           onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
                           zonaEncounters={techo.zonas?.map(z => z.preview?.encounters ?? {})}
                           onZonaEncounterChange={(gi, side, enc) => updateZonaPreview(gi, { encounters: { ...techo.zonas[gi]?.preview?.encounters, [side]: enc } })}
+                          onZonaPreviewChange={updateZonaPreview}
                           pendiente={techo.pendiente}
                         />
                       ) : (
@@ -3115,6 +3490,7 @@ export default function PanelinCalculadoraV3() {
                 tipoAguas={techo.tipoAguas}
                 zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
                 onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
+                onZonaPreviewChange={updateZonaPreview}
                 pendiente={techo.pendiente}
               />
             ) : (

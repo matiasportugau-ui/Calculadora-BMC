@@ -1,0 +1,28 @@
+---
+description: "Live DevTools narrative — MCP chrome-devtools + user narration/transcript linked to console/network/snapshots for calculadora-bmc.vercel.app. Apply when the user says Live DevTools narrative, Narrativa en vivo DevTools, Narrativa MCP DevTools, or wants real-time browser evidence combined with pasted commentary."
+alwaysApply: false
+---
+
+# Live DevTools narrative (MCP)
+
+Cuando el usuario diga **Live DevTools narrative**, **Narrativa en vivo DevTools** o **Narrativa MCP DevTools**, o pida explícitamente **combinar** su comentario/transcripción con **evidencia DevTools** mientras se navega la Calculadora BMC en web:
+
+1. Leer y seguir: `.cursor/skills/live-devtools-narrative-mcp/SKILL.md`
+2. Usar herramientas del MCP **`chrome-devtools`** (si el cliente las expone): navegación, consola, red, snapshot/screenshot, performance si aplica.
+3. Organizar la narrativa del usuario en tabla `U-xx` y la evidencia en `E-xx`; salida: `docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-YYYY-MM-DD-<slug>.md` según `docs/team/ux-feedback/TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md`
+
+## Triggers
+
+- Frases canónicas arriba
+- “Uní mi transcripción con lo que ve el navegador / DevTools”
+- “Recorré calculadora-bmc.vercel.app y cruzá con lo que te voy diciendo”
+- Nombre de skill: `live-devtools-narrative-mcp`
+
+## Si el MCP no está disponible
+
+Indicar que sin `chrome-devtools` no hay evidencia en vivo; ofrecer `navigation-user-feedback` con transcripción + URL o continuar solo con texto si el usuario confirma.
+
+## Referencias
+
+- `docs/team/ux-feedback/README.md`
+- `.cursor/mcp.json`

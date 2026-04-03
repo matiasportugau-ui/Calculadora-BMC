@@ -67,6 +67,13 @@ import {
   mirrorBedXForView,
 } from "../src/utils/bmcLogisticaBedView.js";
 import { buildRoofPlanEdges, layoutZonasEnPlanta } from "../src/utils/roofPlanGeometry.js";
+import {
+  normalizeEncounter,
+  resolveNeighborSharedSide,
+  encounterEsContinuo,
+  encounterBorderPerfil,
+} from "../src/utils/roofEncounterModel.js";
+import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
 import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
@@ -1340,6 +1347,60 @@ assert(
   horizJoin?.length,
   5,
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32b: roofEncounterModel (modos + vecino en planta)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32b: roofEncounterModel ═══");
+
+const nCont = normalizeEncounter({ tipo: "continuo" });
+assert("normalizeEncounter continuo", nCont.modo === "continuo" && nCont.tipo === "continuo", nCont.modo, "continuo");
+
+const nLegacy = normalizeEncounter({ tipo: "perfil", perfil: "foo" });
+assert("normalizeEncounter legacy perfil → pretil", nLegacy.modo === "pretil" && nLegacy.perfil === "foo", nLegacy.modo, "pretil");
+
+assert("encounterEsContinuo true", encounterEsContinuo({ modo: "continuo" }), true, true);
+assert("encounterEsContinuo false", !encounterEsContinuo({ modo: "pretil", perfil: "x" }), false, false);
+
+assert(
+  "encounterBorderPerfil desnivel prioriza bajo",
+  encounterBorderPerfil({ modo: "desnivel", perfil: "z", desnivel: { perfilBajo: "b", perfilAlto: "a" } }) === "b",
+  encounterBorderPerfil({ modo: "desnivel", perfil: "z", desnivel: { perfilBajo: "b", perfilAlto: "a" } }),
+  "b",
+);
+
+const zA = { largo: 10, ancho: 6, preview: { x: 0, y: 0 } };
+const zB = { largo: 10, ancho: 6, preview: { x: 6, y: 0 } };
+const rectsL = layoutZonasEnPlanta([zA, zB], "una_agua", 0);
+const neigh = resolveNeighborSharedSide(0, "latDer", rectsL);
+assert(
+  "resolveNeighborSharedSide L: Z0 latDer → Z1 latIzq",
+  neigh.neighborGi === 1 && neigh.neighborSide === "latIzq",
+  `${neigh.neighborGi}/${neigh.neighborSide}`,
+  "1/latIzq",
+);
+
+const zTop = { largo: 5, ancho: 10, preview: { x: 0, y: 0 } };
+const zBot = { largo: 3, ancho: 10, preview: { x: 0, y: 5 } };
+const rectsStack = layoutZonasEnPlanta([zTop, zBot], "una_agua", 0);
+const nhF = resolveNeighborSharedSide(0, "frente", rectsStack);
+assert(
+  "resolveNeighborSharedSide stack: Z0 frente → Z1 fondo",
+  nhF.neighborGi === 1 && nhF.neighborSide === "fondo",
+  `${nhF.neighborGi}/${nhF.neighborSide}`,
+  "1/fondo",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32c: roofSlopeMark (ciclo UI pendiente / 3D)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32c: roofSlopeMark ═══");
+
+assert("ROOF_SLOPE_MARKS length", ROOF_SLOPE_MARKS.length === 3, ROOF_SLOPE_MARKS.length, 3);
+assert("nextRoofSlopeMark off → along_largo_pos", nextRoofSlopeMark("off") === "along_largo_pos", nextRoofSlopeMark("off"), "along_largo_pos");
+assert("nextRoofSlopeMark along_largo_pos → along_largo_neg", nextRoofSlopeMark("along_largo_pos") === "along_largo_neg", nextRoofSlopeMark("along_largo_pos"), "along_largo_neg");
+assert("nextRoofSlopeMark along_largo_neg → off", nextRoofSlopeMark("along_largo_neg") === "off", nextRoofSlopeMark("along_largo_neg"), "off");
+assert("nextRoofSlopeMark undefined → along_largo_pos", nextRoofSlopeMark(undefined) === "along_largo_pos", nextRoofSlopeMark(undefined), "along_largo_pos");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE: Modo Transportista (token + webhook HMAC + FSM)
