@@ -5,6 +5,10 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Daily at 10:20 UTC (aligns with knowledge antenna cadence)
+    - cron: '20 10 * * *'
 
 jobs:
   validate:
@@ -72,3 +76,95 @@ jobs:
 
       - name: channels:automated (JSON)
         run: node scripts/channels-automated-pipeline.mjs
+
+  knowledge_antenna:
+    name: Knowledge Antenna (preflight + run)
+    runs-on: ubuntu-latest
+    needs: [validate, lint]
+    # Keep CI stable even if external sources are temporarily unavailable.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Knowledge env CWD regression guard
+        run: npm run knowledge:env:cwd:guard
+
+      - name: Knowledge env check
+        run: npm run knowledge:env:check
+
+      - name: Knowledge preflight
+        run: npm run knowledge:preflight
+
+      - name: Knowledge full pipeline
+        run: npm run knowledge:run
+
+      - name: Knowledge summary (log)
+        if: always()
+        shell: bash
+        run: |
+          node - <<'EOF'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const root = process.cwd();
+          const registryPath = path.join(root, 'docs/team/knowledge/sources-registry.json');
+          const refsPath = path.join(root, 'docs/team/knowledge/references-catalog.json');
+          const impactPath = path.join(root, 'docs/team/knowledge/impact-map.json');
+          const reportsDir = path.join(root, 'docs/team/knowledge/reports');
+
+          const readJson = (p, fallback) => {
+            try {
+              return JSON.parse(fs.readFileSync(p, 'utf8'));
+            } catch {
+              return fallback;
+            }
+          };
+
+          const registry = readJson(registryPath, { sources: [] });
+          const refs = readJson(refsPath, { references: [] });
+          const impact = readJson(impactPath, { mappings: [] });
+
+          const topSources = [...(registry.sources || [])]
+            .sort((a, b) => Number(b.rankScore || 0) - Number(a.rankScore || 0))
+            .slice(0, 5)
+            .map((s, i) => `${i + 1}. ${s.name} (${Number(s.rankScore || 0).toFixed(4)}) [${s.status || 'unknown'}]`)
+            .join('\n');
+
+          const reports = fs.existsSync(reportsDir)
+            ? fs.readdirSync(reportsDir)
+                .filter((n) => /^KNOWLEDGE-REPORT-.*\.md$/.test(n))
+                .sort()
+            : [];
+          const latestReport = reports.length ? reports[reports.length - 1] : 'none';
+
+          console.log('=== Knowledge Antenna Summary ===');
+          console.log(`References: ${(refs.references || []).length}`);
+          console.log(`Impact mappings: ${(impact.mappings || []).length}`);
+          console.log(`Latest report: ${latestReport}`);
+          console.log('Top ranked sources:');
+          console.log(topSources || '- none');
+          EOF
+
+      - name: Upload knowledge artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-antenna-${{ github.run_id }}
+          path: |
+            docs/team/knowledge/reports/KNOWLEDGE-REPORT-*.md
+            docs/team/knowledge/sources-registry.json
+            docs/team/knowledge/references-catalog.json
+            docs/team/knowledge/impact-map.json
+            docs/team/knowledge/events-log.jsonl
+          if-no-files-found: warn

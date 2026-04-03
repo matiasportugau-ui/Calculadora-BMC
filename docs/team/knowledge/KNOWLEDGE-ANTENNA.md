@@ -29,6 +29,15 @@ Operational guide for a scripted AI-research antenna that feeds BMC/Panelin evol
 - Remove schedule (launchd): `npm run knowledge:schedule:uninstall`
 - Manual scheduler tick: `npm run knowledge:schedule:tick`
 
+## CI Automation
+
+GitHub Actions now includes a dedicated `knowledge_antenna` job in `.github/workflows/ci.yml`:
+
+- Triggered on `push`, `pull_request`, `workflow_dispatch`, and daily `schedule`.
+- Runs `knowledge:env:check`, `knowledge:preflight`, and `knowledge:run`.
+- Uploads knowledge artifacts (report + registry + references + impact + events log).
+- Uses `continue-on-error` to avoid blocking core CI when external feeds are temporarily unstable.
+
 ## Self-managed Environment and Dependencies
 
 Before each full run (`knowledge:run`) the system now enforces:

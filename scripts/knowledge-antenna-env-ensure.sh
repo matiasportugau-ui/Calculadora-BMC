@@ -78,11 +78,14 @@ ensure_repo_deps() {
   fi
 
   log "Installing dependencies for knowledge antenna runtime..."
-  if [[ -f "$lock_file" ]]; then
-    npm ci --silent
-  else
-    npm install --silent
-  fi
+  (
+    cd "$REPO_ROOT"
+    if [[ -f "$lock_file" ]]; then
+      npm ci --silent
+    else
+      npm install --silent
+    fi
+  )
   log "Dependencies installed."
 }
 
