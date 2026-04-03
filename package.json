@@ -60,7 +60,8 @@
     "session:video-extract": "bash scripts/user-session-video-extract.sh",
     "session:video-ingest": "bash scripts/user-session-video-ingest-from-iphone.sh",
     "mac:storage-audit": "bash scripts/mac-storage-audit-readonly.sh",
-    "transportista:migrate": "node scripts/run-transportista-migrations.mjs"
+    "transportista:migrate": "node scripts/run-transportista-migrations.mjs",
+    "visor:shopify-map": "node scripts/build-quote-visor-shopify-map.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -75,11 +76,12 @@
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.263.1",
     "openai": "^6.32.0",
+    "pg": "^8.13.1",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
-    "pg": "^8.13.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.3",
     "three": "^0.169.0"
   },

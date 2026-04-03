@@ -8,7 +8,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { C, FONT } from "../data/constants.js";
 import { calcFactorPendiente } from "../utils/calculations.js";
 import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
-import { isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
+import { formatZonaDisplayTitle, isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 
 /** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
@@ -336,9 +336,11 @@ export default function RoofPreview({
         )}
       </div>
       <div style={{ fontSize: 11, color: C.ts, marginBottom: 10, lineHeight: 1.4 }}>
-        Arrastrá cada <strong style={{ color: C.tp }}>zona independiente</strong> en planta. Los{" "}
-        <strong style={{ color: C.tp }}>anexos laterales</strong> (mismo cuerpo) no se arrastran: usá las flechas ← →
-        para el costado y « » para el orden en la cadena. Doble clic en la superficie: pendiente visual.
+        <strong style={{ color: C.tp }}>Mismo cuerpo de techo:</strong> varias medidas en planta (bloques tocándose) son{" "}
+        <strong style={{ color: C.tp }}>una sola superficie</strong> que se extiende al costado — no otro cuerpo. El
+        núcleo lo podés mover; las <strong style={{ color: C.tp }}>extensiones laterales</strong> se ajustan con ← → y « ».
+        Arrastrá solo <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> (superficie independiente). Doble
+        clic en la superficie: pendiente visual.
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
         {layout.entries.length === 0 ? (
@@ -413,9 +415,9 @@ export default function RoofPreview({
                     width={r.w}
                     height={r.h}
                     rx={0.12}
-                    fill={annex ? "#6366f1" : C.primary}
-                    fillOpacity={annex ? 0.18 : 0.14}
-                    stroke={annex ? "#6366f1" : C.primary}
+                    fill={C.primary}
+                    fillOpacity={0.14}
+                    stroke={C.primary}
                     strokeWidth={0.04}
                     style={{ cursor: canDrag ? "grab" : "default" }}
                     onPointerDown={(e) => handlePointerDown(e, r.gi, r)}
@@ -604,14 +606,15 @@ export default function RoofPreview({
               aria-label="Desglose de superficie por zona"
             >
               <div style={{ fontWeight: 600, color: C.tp, marginBottom: 4, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Por zona
+                Por superficie / extensión
               </div>
-              {layout.entries.map((r, i) => {
+              {layout.entries.map((r) => {
                 const a = r.z.largo * r.z.ancho;
+                const label = formatZonaDisplayTitle(zonas, r.gi);
                 return (
                   <div key={r.gi} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
                     <span style={{ color: C.ts }}>
-                      Zona {i + 1}
+                      {label}
                       <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>
                         {zonaLabelPlanta(r)} en planta
                       </span>
@@ -633,7 +636,7 @@ export default function RoofPreview({
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
-                <span>Suma zonas</span>
+                <span>Suma tramos</span>
                 <span>{layout.entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0).toFixed(1)} m²</span>
               </div>
               {planEdges && planEdges.rects.length > 0 && (

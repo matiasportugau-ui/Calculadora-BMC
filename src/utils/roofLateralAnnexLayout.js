@@ -22,6 +22,43 @@ export function isLateralAnnexZona(z) {
   return Number.isFinite(Number(ap)) && Number(ap) >= 0;
 }
 
+/**
+ * Ordinal de cuerpo de techo **raíz** (1-based): solo entran zonas sin `attachParentGi`.
+ * Sirve para mostrar "Zona 1 / Zona 2" por superficie independiente, sin numerar anexos como zona nueva.
+ * @param {object[]} zonas
+ * @param {number} idx - índice en el array (inclusive)
+ */
+export function getRootZoneOrdinal(zonas, idx) {
+  let n = 0;
+  const z = zonas ?? [];
+  const lim = Math.min(Math.max(0, idx), z.length - 1);
+  for (let i = 0; i <= lim; i++) {
+    if (!isLateralAnnexZona(z[i])) n++;
+  }
+  return n;
+}
+
+/**
+ * Título para tarjetas y desglose: anexo lateral → "Zona N · extensión lateral" (mismo cuerpo), no "Zona N+1".
+ * @param {object[]} zonas
+ * @param {number} idx
+ */
+export function formatZonaDisplayTitle(zonas, idx) {
+  const z = zonas?.[idx];
+  if (!z) return `Zona ${idx + 1}`;
+  if (isLateralAnnexZona(z)) {
+    const pg = Number(z.preview?.attachParentGi);
+    if (Number.isFinite(pg) && pg >= 0 && pg < (zonas?.length ?? 0)) {
+      const parentOrd = getRootZoneOrdinal(zonas, pg);
+      const rk = Number(z.preview?.lateralRank) || 0;
+      const extra = rk > 0 ? ` (${rk + 1}ª en cadena)` : "";
+      return `Zona ${parentOrd} · extensión lateral${extra}`;
+    }
+    return "Extensión lateral";
+  }
+  return `Zona ${getRootZoneOrdinal(zonas, idx)}`;
+}
+
 function parseGroupKey(key) {
   const i = key.lastIndexOf("|");
   const parentGi = Number(key.slice(0, i));

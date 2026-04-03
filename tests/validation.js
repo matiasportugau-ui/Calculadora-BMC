@@ -78,7 +78,12 @@ import {
   defaultPrincipalZonaIndex,
   previewPositionForTramoApiladoFrente,
 } from "../src/utils/roofPrincipalZona.js";
-import { isLateralAnnexZona, zonasToPlantRectsLogical } from "../src/utils/roofLateralAnnexLayout.js";
+import {
+  formatZonaDisplayTitle,
+  getRootZoneOrdinal,
+  isLateralAnnexZona,
+  zonasToPlantRectsLogical,
+} from "../src/utils/roofLateralAnnexLayout.js";
 import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
@@ -1483,6 +1488,50 @@ assert(
   r0i && r1i && Math.abs(r1i.x + r1i.w - r0i.x) < 1e-5 && Math.abs(r1i.y - r0i.y) < 1e-5,
   r0i && r1i ? `${r1i.x}+${r1i.w} vs ${r0i.x}` : "missing",
   "touch",
+);
+
+assert("getRootZoneOrdinal una raíz", getRootZoneOrdinal([{ largo: 1, ancho: 1 }], 0) === 1, getRootZoneOrdinal([{ largo: 1, ancho: 1 }], 0), 1);
+assert(
+  "getRootZoneOrdinal raíz+anexo: segunda fila sigue ordinal 1",
+  getRootZoneOrdinal(
+    [{ largo: 1, ancho: 1 }, { largo: 1, ancho: 1, preview: { attachParentGi: 0 } }],
+    1,
+  ) === 1,
+  getRootZoneOrdinal(
+    [{ largo: 1, ancho: 1 }, { largo: 1, ancho: 1, preview: { attachParentGi: 0 } }],
+    1,
+  ),
+  1,
+);
+assert(
+  "getRootZoneOrdinal dos raíces: segunda raíz ordinal 2",
+  getRootZoneOrdinal(
+    [
+      { largo: 1, ancho: 1 },
+      { largo: 1, ancho: 1, preview: { attachParentGi: 0 } },
+      { largo: 1, ancho: 1 },
+    ],
+    2,
+  ) === 2,
+  getRootZoneOrdinal(
+    [
+      { largo: 1, ancho: 1 },
+      { largo: 1, ancho: 1, preview: { attachParentGi: 0 } },
+      { largo: 1, ancho: 1 },
+    ],
+    2,
+  ),
+  2,
+);
+const t1 = formatZonaDisplayTitle(
+  [{ largo: 4, ancho: 4 }, { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralRank: 0 } }],
+  1,
+);
+assert(
+  "formatZonaDisplayTitle anexo: refiere zona padre, no índice 2",
+  typeof t1 === "string" && t1.includes("Zona 1") && t1.includes("extensión"),
+  t1,
+  "Zona 1 · extensión",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,64 @@
+{
+  "report": "LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-02-zona1-anexo-drive-android.md",
+  "date": "2026-04-02",
+  "baseUrl": "https://calculadora-bmc.vercel.app",
+  "userBeats": [
+    {
+      "id": "U-01",
+      "action": "Pérdida de capacidad Drive en Android para estas piezas",
+      "expect": "Restaurar uso de Drive desde Android"
+    },
+    {
+      "id": "U-02",
+      "action": "Anexo lateral / otras medidas en zona 1 = misma zona 1; medidas existentes alteran tamaño del techo al mismo nivel jerárquico",
+      "expect": "Una sola Zona 1 semántica, no nueva zona por medida lateral"
+    },
+    {
+      "id": "U-03",
+      "action": "Si todo queda contiguo, no crear otra zona; zona = superficie independiente",
+      "expect": "Multizona solo para cuerpos/superficies realmente separados"
+    },
+    {
+      "id": "U-04",
+      "action": "Paneles en contacto — naturaleza del producto",
+      "expect": "Modelo alineado a obra real"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E-01",
+      "tool": "chrome-devtools navigate_page",
+      "summary": "Failed: browser already running for chrome-devtools-mcp profile",
+      "linkedUserIds": []
+    },
+    {
+      "id": "E-02",
+      "tool": "cursor-ide-browser browser_navigate",
+      "summary": "Navigated to https://calculadora-bmc.vercel.app — title Calculadora BMC",
+      "linkedUserIds": ["U-04"]
+    },
+    {
+      "id": "E-03",
+      "tool": "cursor-ide-browser browser_snapshot",
+      "summary": "Shell: Wolfboard, Calculadora, Logística; buttons Vendedor, Cliente, Config, Drive, Presupuestos, Limpiar, Imprimir, Siguiente",
+      "linkedUserIds": ["U-01", "U-04"]
+    },
+    {
+      "id": "E-04",
+      "tool": "cursor-ide-browser browser_network_requests",
+      "summary": "GET 200 PanelinCalculadoraV3_backup chunk, calcApiBase, OrbitControls",
+      "linkedUserIds": ["U-04"]
+    },
+    {
+      "id": "E-05",
+      "tool": "cursor-ide-browser browser_console_messages",
+      "summary": "Mixed prior localhost:5173 Vite/React Router warnings and CursorBrowser notice on vercel.app",
+      "linkedUserIds": []
+    }
+  ],
+  "findings": [
+    { "id": "LDN-2026-04-02-07", "severity": "P1", "title": "Same Zone 1 vs annex as second zona" },
+    { "id": "LDN-2026-04-02-08", "severity": "P1", "title": "Drive on Android — not verified this session" },
+    { "id": "LDN-2026-04-02-09", "severity": "P2", "title": "chrome-devtools MCP profile conflict" }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "byBorderId": {
+    "gotero_frontal": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroSuperiordeCamaraIsoroof3G-Gris-WEB01.png?v=1752254989",
+      "productUrl": "https://bmcuruguay.com.uy/collections/paneles-aislantes",
+      "shopifyHandle": null
+    },
+    "gotero_frontal_greca": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "productUrl": "https://bmcuruguay.com.uy/collections/all",
+      "shopifyHandle": null
+    },
+    "canalon": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BabetadeAtornillarIsodec.jpg?v=1755206215",
+      "productUrl": "https://bmcuruguay.com.uy/collections/paneles-aislantes",
+      "shopifyHandle": null
+    },
+    "gotero_lateral": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Modelo3dG.LateralCamara-Gris-WEB01.png?v=1752240908",
+      "productUrl": "https://bmcuruguay.com.uy/collections/paneles-aislantes",
+      "shopifyHandle": null
+    },
+    "gotero_lateral_camara": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3D-GoteroLateraldeCamaraISODEC-Blanco-Renderizado-WEB01.png?v=1748581487",
+      "productUrl": "https://bmcuruguay.com.uy/collections/paneles-aislantes",
+      "shopifyHandle": null
+    },
+    "babeta_adosar": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Anguloestructural-PerfilAluminioTipoK6_8m.jpg?v=1755192296",
+      "productUrl": "https://bmcuruguay.com.uy/collections/all",
+      "shopifyHandle": null
+    },
+    "babeta_empotrar": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isowall_jpg.webp?v=1756840865",
+      "productUrl": "https://bmcuruguay.com.uy/collections/all",
+      "shopifyHandle": null
+    },
+    "cumbrera": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+      "productUrl": "https://bmcuruguay.com.uy/collections/paneles-aislantes",
+      "shopifyHandle": null
+    },
+    "none": {
+      "imageSrc": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+      "productUrl": "https://bmcuruguay.com.uy/collections/paneles-aislantes",
+      "shopifyHandle": null
+    }
+  }
+}

@@ -5,6 +5,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
@@ -53,7 +54,12 @@ import {
   findEncounters,
   ROOF_PLAN_GAP_M,
 } from "../utils/roofPlanGeometry.js";
-import { isLateralAnnexZona, zonasToPlantRectsWithAutoGap } from "../utils/roofLateralAnnexLayout.js";
+import {
+  formatZonaDisplayTitle,
+  getRootZoneOrdinal,
+  isLateralAnnexZona,
+  zonasToPlantRectsWithAutoGap,
+} from "../utils/roofLateralAnnexLayout.js";
 import {
   normalizeEncounter,
   resolveNeighborSharedSide,
@@ -74,6 +80,7 @@ import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
 import RoofPreview from "./RoofPreview.jsx";
+import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
@@ -88,14 +95,21 @@ if (typeof document !== "undefined" && !document.getElementById("bmc-kf")) {
     @keyframes bmc-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
     @keyframes bmc-slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
     @keyframes bmc-slideInUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-    @media (max-width: 900px) {
-      .bmc-main-grid { grid-template-columns: 1fr !important; height: auto !important; overflow: visible !important; }
+    @media (max-width: 1023px) {
+      .bmc-main-grid { height: auto !important; overflow: visible !important; }
       .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
       .bmc-mobile-bar { display: flex !important; }
       .bmc-desktop-actions { display: none !important; }
     }
-    @media (min-width: 901px) {
+    @media (min-width: 1024px) {
       .bmc-mobile-bar { display: none !important; }
+    }
+    .bmc-sash { width: 6px; margin: 0 -2px; background: transparent; flex-shrink: 0; position: relative; z-index: 2; outline: none; }
+    .bmc-sash--vertical { width: 100%; height: 10px; margin: -4px 0; cursor: row-resize; }
+    .bmc-sash[data-resize-handle-active]::after,
+    .bmc-sash:hover::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: rgba(0,113,227,0.35);
     }
   `;
   document.head.appendChild(s);
@@ -843,7 +857,7 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetZ = 0, gi, multiZona
 /** WebGL canvas that renders all zones in 3D with orbit controls */
 function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBorders,
   multiZona, sharedSidesMap, openSide, openEncounterSide, onEdgeClick, onEncounterClick,
-  disabledSides, totalArea, zonaEncounters, onZonaPreviewChange }) {
+  disabledSides, totalArea, zonaEncounters, onZonaPreviewChange, fillContainer = false }) {
   const sinT = Math.sin(theta), cosT = Math.cos(theta);
   const tipoAguasStr = is2A ? "dos_aguas" : "una_agua";
   const orbitRef = useRef(null);
@@ -933,10 +947,14 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     (minZ + maxZ) / 2 + maxD * 0.85 + Math.max(2.5, sceneSize * 0.35),
   ], [minX, maxX, minZ, maxZ, maxH, maxD, sceneSize]);
 
+  const shellStyle = fillContainer
+    ? { position: "relative", width: "100%", height: "100%", minHeight: 360, borderRadius: 10, overflow: "hidden", background: "#eef2f9" }
+    : { position: "relative", width: "100%", height: 224, borderRadius: 10, overflow: "hidden", background: "#eef2f9" };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: 224, borderRadius: 10, overflow: 'hidden', background: '#eef2f9' }}>
+    <div style={shellStyle}>
       <Canvas camera={{ position: camPos, fov: 36, near: 0.01, far: 300 }} shadows gl={{ antialias: true }}
-        style={{ width: '100%', height: '100%' }}>
+        style={{ width: "100%", height: "100%", display: "block" }} dpr={[1, 2]}>
         <ambientLight intensity={0.62} />
         <directionalLight position={[sceneSize * 1.5 + 3, maxH * 2 + 5, maxD + 4]} intensity={0.55} castShadow />
         <directionalLight position={[-2, 4, 3]} intensity={0.22} />
@@ -1066,7 +1084,23 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
   );
 }
 
-function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disabledSides = [], zonas = [], tipoAguas = "una_agua", zonasBorders = [], onZonaBorderChange, pendiente = 15, panelAu = 1.12, zonaEncounters = [], onZonaEncounterChange, onZonaPreviewChange }) {
+function RoofBorderSelector({
+  borders = {},
+  onChange,
+  panelFamilia = "",
+  disabledSides = [],
+  zonas = [],
+  tipoAguas = "una_agua",
+  zonasBorders = [],
+  onZonaBorderChange,
+  pendiente = 15,
+  panelAu = 1.12,
+  zonaEncounters = [],
+  onZonaEncounterChange,
+  onZonaPreviewChange,
+  canvasPortalTargetRef = null,
+  minimalChrome = false,
+}) {
   // openSide: null | { side: string, gi: number|null, screenPos? }  (gi=null → global edge)
   const [openSide, setOpenSide] = useState(null);
   // openEncounterSide: null | { side: string, gi: number, screenPos }
@@ -1124,20 +1158,21 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
     latDer: { x: innerX + innerW, y: innerY, w: edge, h: innerH },
   };
 
-  // Close both popovers on outside click
+  // Close both popovers on outside click (incl. 3D canvas portaled to visor derecho)
   useEffect(() => {
     const handler = (e) => {
       const inMain = containerRef.current?.contains(e.target);
       const inBorder = popoverRef.current?.contains(e.target);
       const inEnc = encounterPopoverRef.current?.contains(e.target);
-      if (!inMain && !inBorder && !inEnc) {
+      const inPortal = canvasPortalTargetRef?.current?.contains(e.target);
+      if (!inMain && !inBorder && !inEnc && !inPortal) {
         setOpenSide(null); setPopoverStyle(null);
         setOpenEncounterSide(null); setEncounterPopoverStyle(null);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [canvasPortalTargetRef]);
 
   const getOpts = (side) => (BORDER_OPTIONS[side] || []).filter(o => !o.familias || o.familias.includes(panelFam));
 
@@ -1255,40 +1290,57 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
     return () => { window.removeEventListener("resize", positionPopover); window.removeEventListener("scroll", positionPopover, true); };
   }, [openSide, positionPopover]);
 
+  const portalEl = canvasPortalTargetRef?.current ?? null;
+  const canvasEl = hasZonas ? (
+    <RoofBorderCanvas
+      validZonas={validZonas}
+      is2A={is2A}
+      theta={Math.max(0.05, (pendiente || 15) * Math.PI / 180)}
+      panelAu={panelAu}
+      borders={borders}
+      zonasBorders={zonasBorders}
+      multiZona={multiZona}
+      sharedSidesMap={sharedSidesMap}
+      openSide={openSide}
+      openEncounterSide={openEncounterSide}
+      onEdgeClick={handleEdgeClick}
+      onEncounterClick={handleEncounterClick}
+      disabledSides={disabledSides}
+      totalArea={totalArea}
+      zonaEncounters={zonaEncounters}
+      onZonaPreviewChange={onZonaPreviewChange}
+      fillContainer={Boolean(portalEl)}
+    />
+  ) : null;
+
   return (
     <div ref={containerRef} style={{ position: "relative", fontFamily: FONT }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vista previa del techo</div>
-      <div style={{ fontSize: 12, color: C.ts, marginBottom: 10, lineHeight: 1.45 }}>
-        {multiZona
-          ? "Clic en cada lado de cada zona para elegir el accesorio. Disco violeta: afinar posición en planta (sincroniza con la vista 2D)."
-          : "Clic en cada tramo para elegir el accesorio."}
-        {onZonaPreviewChange && hasZonas && (
-          <span style={{ display: "block", marginTop: 4, fontSize: 11, color: C.ts }}>
-            3D alineado a planta (▼ FRENTE = borde inferior del rectángulo en 2D). Doble clic en la cubierta azul (3D) o en la vista 2D de dimensiones: sentido de pendiente (afecta 3D y encuentros/cumbrera percibidos).
-          </span>
-        )}
-      </div>
-      {/* ══ 3D WebGL MODE (zones defined) ══ */}
-      {hasZonas && (
-        <RoofBorderCanvas
-          validZonas={validZonas}
-          is2A={is2A}
-          theta={Math.max(0.05, (pendiente || 15) * Math.PI / 180)}
-          panelAu={panelAu}
-          borders={borders}
-          zonasBorders={zonasBorders}
-          multiZona={multiZona}
-          sharedSidesMap={sharedSidesMap}
-          openSide={openSide}
-          openEncounterSide={openEncounterSide}
-          onEdgeClick={handleEdgeClick}
-          onEncounterClick={handleEncounterClick}
-          disabledSides={disabledSides}
-          totalArea={totalArea}
-          zonaEncounters={zonaEncounters}
-          onZonaPreviewChange={onZonaPreviewChange}
-        />
+      {!minimalChrome && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vista previa del techo</div>
+          <div style={{ fontSize: 12, color: C.ts, marginBottom: 10, lineHeight: 1.45 }}>
+            {multiZona
+              ? "Clic en cada lado de cada zona para elegir el accesorio. Disco violeta: afinar posición en planta (sincroniza con la vista 2D)."
+              : "Clic en cada tramo para elegir el accesorio."}
+            {onZonaPreviewChange && hasZonas && (
+              <span style={{ display: "block", marginTop: 4, fontSize: 11, color: C.ts }}>
+                3D alineado a planta (▼ FRENTE = borde inferior del rectángulo en 2D). Doble clic en la cubierta azul (3D) o en la vista 2D de dimensiones: sentido de pendiente (afecta 3D y encuentros/cumbrera percibidos).
+              </span>
+            )}
+          </div>
+        </>
       )}
+      {minimalChrome && hasZonas && portalEl && (
+        <div style={{ fontSize: 11, color: C.ts, marginBottom: 8, lineHeight: 1.45 }}>
+          Configurá bordes y encuentros en la <strong style={{ color: C.tp }}>vista 3D</strong> del panel derecho.
+        </div>
+      )}
+      {/* ══ 3D WebGL MODE (zones defined) — inline o portal al visor derecho ══ */}
+      {hasZonas && portalEl && typeof document !== "undefined" && createPortal(
+        <div style={{ width: "100%", height: "100%", minHeight: 360, minWidth: 0 }}>{canvasEl}</div>,
+        portalEl,
+      )}
+      {hasZonas && !portalEl && canvasEl}
 
       {/* ══ FLAT GLOBAL MODE (no zones defined) ══ */}
       {!hasZonas && (
@@ -1713,6 +1765,8 @@ export default function PanelinCalculadoraV3() {
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
+  const [scenarioHoverId, setScenarioHoverId] = useState(null);
+  const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
   const [overrides, _setOverrides] = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [toast, setToast] = useState(null);
@@ -1755,6 +1809,9 @@ export default function PanelinCalculadoraV3() {
   const dimensionesRef = useRef(null);
   const bordesRef = useRef(null);
   const opcionesRef = useRef(null);
+  const roof3dHostRef = useRef(null);
+  const mainPanelGroupRef = useRef(null);
+  const [, setRoofHostMountGen] = useState(0);
 
   // PDF snapshot capture refs
   const pdfCaptureSummaryRef = useRef(null);
@@ -1858,6 +1915,24 @@ export default function PanelinCalculadoraV3() {
 
   const vis = VIS[scenario] || VIS.solo_techo;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
+  const activeWizardStepId =
+    modoVendedor && scenario === "solo_techo"
+      ? WIZARD_STEPS_SOLO_TECHO[wizardStep]?.id ?? null
+      : null;
+
+  const quoteVisorDimensionSummary = useMemo(() => {
+    if (activeWizardStepId !== "dimensiones" || !scenarioDef?.hasTecho) return null;
+    const zs = techo.zonas || [];
+    if (!zs.length) return null;
+    return zs
+      .map((z, i) => {
+        const l = Number(z.largo) || 0;
+        const w = Number(z.ancho) || 0;
+        return `Z${i + 1}: ${l}×${w} m`;
+      })
+      .join(" · ");
+  }, [activeWizardStepId, scenarioDef?.hasTecho, techo.zonas]);
+
   const isPhone = viewportWidth < 640;
   const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
   const isCompactLayout = viewportWidth < 1024;
@@ -1880,6 +1955,26 @@ export default function PanelinCalculadoraV3() {
 
   // ── Panel data for techo ──
   const techoPanelData = useMemo(() => PANELS_TECHO[techo.familia] || null, [techo.familia]);
+
+  const validRoofZonasFor3D = useMemo(
+    () => (techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
+    [techo.zonas],
+  );
+  const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isCompactLayout);
+  const soloTechoWizardDimStepIndex = useMemo(() => WIZARD_STEPS_SOLO_TECHO.findIndex((s) => s.id === "dimensiones"), []);
+  const useDockedRoofBorderSelector = Boolean(
+    modoVendedor
+    && scenario === "solo_techo"
+    && showRoof3DHost
+    && soloTechoWizardDimStepIndex >= 0
+    && wizardStep >= soloTechoWizardDimStepIndex,
+  );
+
+  const bumpRoof3dHostReady = useCallback((el) => {
+    roof3dHostRef.current = el;
+    if (el) setRoofHostMountGen((g) => g + 1);
+  }, []);
+
   const techoEspesorOptions = useMemo(() => {
     if (!techoPanelData) return [];
     return Object.keys(techoPanelData.esp).map(e => ({ value: Number(e), label: `${e} mm`, badge: techoPanelData.esp[e].ap ? `AP ${techoPanelData.esp[e].ap}m` : undefined }));
@@ -2080,6 +2175,42 @@ export default function PanelinCalculadoraV3() {
       zonas: t.zonas.map((z, i) => (i === idx ? { ...z, preview: { ...z.preview, ...patch } } : z)),
     }));
   }, [setTecho]);
+
+  const roofBorderDockProps = useMemo(() => ({
+    borders: techo.borders,
+    onChange: (side, val) => setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } })),
+    panelFamilia: techo.familia,
+    disabledSides: techo.tipoAguas === "dos_aguas" ? ["fondo"] : [],
+    zonas: techo.zonas,
+    tipoAguas: techo.tipoAguas,
+    zonasBorders: techo.zonas?.map((z) => z.preview?.borders ?? {}),
+    onZonaBorderChange: (gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } }),
+    zonaEncounters: techo.zonas?.map((z) => z.preview?.encounters ?? {}),
+    onZonaEncounterChange: (gi, side, enc) => updateZonaPreview(gi, { encounters: { ...techo.zonas[gi]?.preview?.encounters, [side]: enc } }),
+    onZonaPreviewChange: updateZonaPreview,
+    pendiente: techo.pendiente,
+    panelAu: techoPanelData?.au ?? 1.12,
+    canvasPortalTargetRef: roof3dHostRef,
+    minimalChrome: true,
+  }), [
+    techo.borders,
+    techo.familia,
+    techo.tipoAguas,
+    techo.zonas,
+    techo.pendiente,
+    techoPanelData?.au,
+    updateZonaPreview,
+    setTecho,
+  ]);
+
+  const resetMainSplitLayout = useCallback(() => {
+    try {
+      mainPanelGroupRef.current?.setLayout?.([28, 72]);
+    } catch {
+      /* optional API */
+    }
+  }, []);
+
   const resetRoofPreviewLayout = useCallback(() => {
     setTecho(t => ({
       ...t,
@@ -2896,18 +3027,26 @@ export default function PanelinCalculadoraV3() {
       </div>
 
 
-      <div className="bmc-main-grid" style={{
-        display: "grid",
-        gridTemplateColumns: isCompactLayout ? "1fr" : "minmax(360px, 520px) 1fr",
-        gap: isPhone ? 16 : 24,
-        padding: isPhone ? 12 : isTablet ? 16 : 24,
-        maxWidth: 1400,
-        margin: "0 auto",
-        height: isCompactLayout ? "auto" : "calc(100vh - 100px)",
-        overflow: isCompactLayout ? "visible" : "hidden",
-      }}>
+      <PanelGroup
+        ref={mainPanelGroupRef}
+        direction={isCompactLayout ? "vertical" : "horizontal"}
+        autoSaveId={isCompactLayout ? undefined : "bmc-panelin-main-split"}
+        className="bmc-main-grid"
+        style={{
+          display: "flex",
+          flexDirection: isCompactLayout ? "column" : "row",
+          gap: isPhone ? 16 : 24,
+          padding: isPhone ? 12 : isTablet ? 16 : 24,
+          maxWidth: 1600,
+          margin: "0 auto",
+          height: isCompactLayout ? "auto" : "calc(100vh - 100px)",
+          overflow: isCompactLayout ? "visible" : "hidden",
+          minHeight: 0,
+        }}
+      >
+        <Panel defaultSize={isCompactLayout ? 55 : 28} minSize={isCompactLayout ? 24 : 20} maxSize={isCompactLayout ? 85 : 48} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
-        <div className="bmc-left-panel" style={{ overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
+        <div className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
             /* ── WIZARD: una variable a la vez ── */
             (() => {
@@ -2971,10 +3110,14 @@ export default function PanelinCalculadoraV3() {
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, marginBottom: 20, overflow: "visible", minWidth: 0 }}>{step?.label}</div>
                   {stepId === "escenario" && (
-                    <div style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}>
+                    <div
+                      style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}
+                      onMouseLeave={() => setScenarioHoverId(null)}
+                    >
                       {SCENARIOS_DEF.map(sc => (
                         <div
                           key={sc.id}
+                          onMouseEnter={() => setScenarioHoverId(sc.id)}
                           onClick={() => setScenario(sc.id)}
                           onDoubleClick={() => {
                             setScenario(sc.id);
@@ -2991,10 +3134,12 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "tipoAguas" && (
-                    <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => advanceWizardStep()} onChange={v => {
-                      if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-                      else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-                    }} />
+                    <div onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
+                      <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => advanceWizardStep()} onChange={v => {
+                        if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
+                        else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
+                      }} />
+                    </div>
                   )}
                   {stepId === "lista" && (
                     <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
@@ -3065,7 +3210,7 @@ export default function PanelinCalculadoraV3() {
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>Zona {idx + 1}</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>{formatZonaDisplayTitle(techo.zonas || [], idx)}</span>
                               {idx === effectivePrincipalZonaGi && (
                                 <span
                                   style={{
@@ -3083,11 +3228,8 @@ export default function PanelinCalculadoraV3() {
                                   Techo principal
                                 </span>
                               )}
-                              {isLateralAnnexZona(zona) && (
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 6px", borderRadius: 6, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)" }}>Anexo lateral · Zona {idx + 1}</span>
-                              )}
                               {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && !isLateralAnnexZona(zona) && (
-                                <span style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>Zona independiente · Podés marcarla como principal abajo</span>
+                                <span style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>Otro cuerpo de techo · Podés marcarla como principal abajo</span>
                               )}
                             </div>
                             {(techo.zonas?.length || 1) > 1 && (
@@ -3102,6 +3244,7 @@ export default function PanelinCalculadoraV3() {
                               <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
                           </div>
+                          {!isLateralAnnexZona(zona) && (
                           <button
                             type="button"
                             onClick={() => addLateralAnnexZona(idx)}
@@ -3121,8 +3264,9 @@ export default function PanelinCalculadoraV3() {
                             }}
                           >
                             <Plus size={16} />
-                            Anexo lateral (otras medidas) — Zona {idx + 1}
+                            Otra medida al costado (mismo techo · Zona {getRootZoneOrdinal(techo.zonas || [], idx)})
                           </button>
+                          )}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
                             <button
                               type="button"
@@ -3211,20 +3355,16 @@ export default function PanelinCalculadoraV3() {
                         <Toggle label={techo.inclAccesorios !== false ? "Desactivar" : "Activar"} value={techo.inclAccesorios !== false} onChange={v => setTecho(t => ({ ...t, inclAccesorios: v }))} />
                       </div>
                       {techo.inclAccesorios !== false ? (
-                        <RoofBorderSelector
-                          borders={techo.borders}
-                          onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))}
-                          panelFamilia={techo.familia}
-                          disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
-                          zonas={techo.zonas}
-                          tipoAguas={techo.tipoAguas}
-                          zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
-                          onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
-                          zonaEncounters={techo.zonas?.map(z => z.preview?.encounters ?? {})}
-                          onZonaEncounterChange={(gi, side, enc) => updateZonaPreview(gi, { encounters: { ...techo.zonas[gi]?.preview?.encounters, [side]: enc } })}
-                          onZonaPreviewChange={updateZonaPreview}
-                          pendiente={techo.pendiente}
-                        />
+                        <>
+                          <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                            <strong style={{ color: C.tp }}>Vista 3D en el panel derecho:</strong> clic en cada borde de la cubierta para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
+                          </div>
+                          {techo.tipoAguas === "dos_aguas" && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", background: C.primarySoft, borderRadius: 10, marginBottom: 4, fontSize: 12, color: C.primary, fontWeight: 500 }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón en la vista 3D.</span>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
                       )}
@@ -3295,10 +3435,13 @@ export default function PanelinCalculadoraV3() {
             <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
             <div style={{ marginTop: 16 }}>
               <div style={labelS}>ESCENARIO DE OBRA</div>
-              <div style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}>
+              <div
+                style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}
+                onMouseLeave={() => setScenarioHoverId(null)}
+              >
                 {SCENARIOS_DEF.map(sc => {
                   const isS = scenario === sc.id;
-                  return <div key={sc.id} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
+                  return <div key={sc.id} onMouseEnter={() => setScenarioHoverId(sc.id)} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
                     <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
                     <div style={{ fontSize: 14, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 2 }}>{sc.label}</div>
                     <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
@@ -3306,7 +3449,7 @@ export default function PanelinCalculadoraV3() {
                 })}
               </div>
             </div>
-            {scenarioDef?.hasTecho && <div style={{ marginTop: 16 }}>
+            {scenarioDef?.hasTecho && <div style={{ marginTop: 16 }} onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
               <div style={labelS}>CAÍDAS DEL TECHO</div>
               <TipoAguasSelector value={techo.tipoAguas || "una_agua"} onChange={v => {
                 if (v === "dos_aguas") {
@@ -3626,6 +3769,7 @@ export default function PanelinCalculadoraV3() {
                 )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                  {!isLateralAnnexZona(zona) && (
                   <button
                     type="button"
                     onClick={() => addLateralAnnexZona(idx)}
@@ -3645,8 +3789,9 @@ export default function PanelinCalculadoraV3() {
                     }}
                   >
                     <Plus size={14} />
-                    Anexo lateral — Zona {idx + 1}
+                    Otra medida al costado (Zona {getRootZoneOrdinal(techo.zonas || [], idx)})
                   </button>
+                  )}
                   {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && (
                     <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 10, fontWeight: 500, cursor: "pointer", color: C.ts }}>Usar esta zona como techo principal</button>
                   )}
@@ -3654,7 +3799,7 @@ export default function PanelinCalculadoraV3() {
               </div>
             ))}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>Anexo lateral desde cada tarjeta (mismo cuerpo). Aquí: <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> independiente.</div>
+              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>La <strong style={{ color: C.tp }}>otra medida al costado</strong> sigue siendo el mismo cuerpo. Aquí sumás <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> (superficie independiente).</div>
               <button type="button" onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surfaceAlt, fontSize: 13, cursor: "pointer", color: C.tp, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                 <Plus size={14} /> Otro cuerpo de techo (zona independiente)
               </button>
@@ -3777,8 +3922,13 @@ export default function PanelinCalculadoraV3() {
                 tipoAguas={techo.tipoAguas}
                 zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
                 onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
+                zonaEncounters={techo.zonas?.map(z => z.preview?.encounters ?? {})}
+                onZonaEncounterChange={(gi, side, enc) => updateZonaPreview(gi, { encounters: { ...techo.zonas[gi]?.preview?.encounters, [side]: enc } })}
                 onZonaPreviewChange={updateZonaPreview}
                 pendiente={techo.pendiente}
+                panelAu={techoPanelData?.au ?? 1.12}
+                canvasPortalTargetRef={showRoof3DHost ? roof3dHostRef : null}
+                minimalChrome={Boolean(showRoof3DHost)}
               />
             ) : (
               <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
@@ -3866,9 +4016,46 @@ export default function PanelinCalculadoraV3() {
             </>
           )}
         </div>
-
+        </Panel>
+        <PanelResizeHandle
+          className={`bmc-sash${isCompactLayout ? " bmc-sash--vertical" : ""}`}
+          style={isCompactLayout ? { height: 10, flexShrink: 0 } : undefined}
+          hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
+          onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetMainSplitLayout(); }}
+        />
+        <Panel defaultSize={isCompactLayout ? 45 : 72} minSize={isCompactLayout ? 20 : 38} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* RIGHT PANEL */}
-        <div className="bmc-right-panel" style={{ overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
+        <div className="bmc-right-panel" style={{ position: "relative", flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", overflowX: "hidden", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
+          {useDockedRoofBorderSelector && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                overflow: "hidden",
+                clip: "rect(0,0,0,0)",
+                pointerEvents: "none",
+              }}
+            >
+              <RoofBorderSelector {...roofBorderDockProps} />
+            </div>
+          )}
+          <QuoteVisualVisor
+            scenarioId={scenario}
+            hoverScenarioId={scenarioHoverId}
+            stepId={activeWizardStepId}
+            tipoAguas={techo.tipoAguas || "una_agua"}
+            techoFamilia={techo.familia || ""}
+            aguasHighlight={aguasVisorHighlight}
+            showRoof3DStage={showRoof3DHost}
+            roofCanvasHostRef={roof3dHostRef}
+            onRoofCanvasHostReady={bumpRoof3dHostReady}
+            techoBorders={techo.borders}
+            techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
+            listaPrecios={listaPrecios || ""}
+            dimensionSummary={quoteVisorDimensionSummary}
+          />
           {/* KPI Row */}
           {results && !results.error && !scenarioDef?.isLibre && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
@@ -4002,7 +4189,8 @@ export default function PanelinCalculadoraV3() {
             </div>}
           </div>}
         </div>
-      </div>
+        </Panel>
+      </PanelGroup>
 
       <Toast message={toast} visible={!!toast} />
       <InteractionLogPanel
