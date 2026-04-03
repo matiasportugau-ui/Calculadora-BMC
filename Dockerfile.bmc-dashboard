@@ -13,6 +13,8 @@ RUN npm ci --omit=dev --legacy-peer-deps
 
 FROM node:20-alpine AS calc-build
 WORKDIR /app
+# prebuild runs bash scripts/disk-space-precheck.sh (not in minimal alpine)
+RUN apk add --no-cache bash
 COPY package.json package-lock.json* ./
 # --ignore-scripts: skip easymidi node-gyp (needs Python); calc build doesn't need it
 RUN npm ci --ignore-scripts --legacy-peer-deps
@@ -23,7 +25,8 @@ COPY scripts/ ./scripts/
 COPY docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/ ./docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/
 # Same Cloud Run URL serves SPA (/calculadora) and API (/api): browser uses origin (see src/utils/calcApiBase.js)
 ENV VITE_BASE=/calculadora/ \
-    VITE_SAME_ORIGIN_API=1
+    VITE_SAME_ORIGIN_API=1 \
+    BMC_DISK_PRECHECK_SKIP=1
 RUN npm run build
 
 FROM node:20-alpine AS runtime

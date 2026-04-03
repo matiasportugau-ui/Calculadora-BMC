@@ -4,12 +4,11 @@ import { Storage } from "@google-cloud/storage";
 
 const ALGO = "aes-256-gcm";
 
+/** @returns {Buffer | null} null if missing or not exactly 32 bytes when decoded as hex */
 const getKeyBuffer = (hexKey) => {
   if (!hexKey) return null;
-  const key = Buffer.from(hexKey, "hex");
-  if (key.length !== 32) {
-    throw new Error("TOKEN_ENCRYPTION_KEY must be 64 hex chars (32 bytes)");
-  }
+  const key = Buffer.from(String(hexKey).trim(), "hex");
+  if (key.length !== 32) return null;
   return key;
 };
 
@@ -67,9 +66,15 @@ const createFileTokenStore = ({ filePath, keyBuffer, logger }) => {
 export const createGcsTokenStore = ({ bucket, objectKey, encryptionKey, logger }) => {
   const keyBuffer = getKeyBuffer(encryptionKey);
   if (!keyBuffer) {
-    logger.warn(
-      "TOKEN_ENCRYPTION_KEY missing: GCS tokens will be plaintext (not recommended)"
-    );
+    if (encryptionKey) {
+      logger.error(
+        "TOKEN_ENCRYPTION_KEY invalid (need 64 hex chars = 32 bytes); GCS token read/write may fail until fixed"
+      );
+    } else {
+      logger.warn(
+        "TOKEN_ENCRYPTION_KEY missing: GCS tokens will be plaintext (not recommended)"
+      );
+    }
   }
 
   const storage = new Storage();
@@ -109,7 +114,11 @@ export const createTokenStore = ({
 }) => {
   const keyBuffer = getKeyBuffer(encryptionKey);
 
-  if (!keyBuffer && storageType === "file") {
+  if (encryptionKey && !keyBuffer) {
+    logger.error(
+      "TOKEN_ENCRYPTION_KEY invalid (need 64 hex chars = 32 bytes); ML token encryption disabled until fixed"
+    );
+  } else if (!keyBuffer && storageType === "file") {
     logger.warn(
       "TOKEN_ENCRYPTION_KEY missing: token file will be plaintext in local dev only"
     );

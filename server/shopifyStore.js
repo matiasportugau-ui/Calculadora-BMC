@@ -8,10 +8,11 @@ import crypto from "node:crypto";
 
 const ALGO = "aes-256-gcm";
 
+/** @returns {Buffer | null} */
 function getKeyBuffer(hexKey) {
   if (!hexKey) return null;
-  const key = Buffer.from(hexKey, "hex");
-  if (key.length !== 32) throw new Error("TOKEN_ENCRYPTION_KEY must be 64 hex chars (32 bytes)");
+  const key = Buffer.from(String(hexKey).trim(), "hex");
+  if (key.length !== 32) return null;
   return key;
 }
 
@@ -46,6 +47,11 @@ function safeShop(shop) {
 
 export function createShopifyStore({ dataDir, encryptionKey, logger }) {
   const keyBuffer = getKeyBuffer(encryptionKey);
+  if (encryptionKey && !keyBuffer) {
+    logger.error(
+      "TOKEN_ENCRYPTION_KEY invalid (need 64 hex chars = 32 bytes); Shopify shop files may not decrypt until fixed"
+    );
+  }
   const baseDir = path.resolve(dataDir || ".shopify-shops");
 
   async function getFilePath(shop) {

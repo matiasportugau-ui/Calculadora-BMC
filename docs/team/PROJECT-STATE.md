@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-03 (Calculadora — visor paso lista + dimensiones + split)
+**Última actualización:** 2026-04-03 (Deploy prod Cloud Run + Vercel; Dockerfile + TOKEN_ENCRYPTION_KEY arranque)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-03 (Deploy — Cloud Run `panelin-calc` + Vercel calculadora-bmc):** [`Dockerfile.bmc-dashboard`](../../Dockerfile.bmc-dashboard): `apk add bash` + `BMC_DISK_PRECHECK_SKIP=1` en stage **calc-build** (Cloud Build fallaba: `prebuild` invoca `bash` y no existía en `node:20-alpine`). [`server/tokenStore.js`](../../server/tokenStore.js) + [`server/shopifyStore.js`](../../server/shopifyStore.js): clave `TOKEN_ENCRYPTION_KEY` **inválida** ya no hace `exit(1)` al importar (log `error`; en Cloud Run conviene dejar **64 caracteres hex**). Cloud Build + `gcloud run deploy` → revisión **`panelin-calc-00083-j4p`** (URL también `https://panelin-calc-642127786762.us-central1.run.app`). `smoke:prod` con esa base: health, capabilities, MATRIZ CSV OK; **`POST /api/crm/suggest-response` → 503** (revisar keys IA en Cloud Run). [`scripts/deploy-vercel.sh --prod`](../../scripts/deploy-vercel.sh) → prod **`https://calculadora-bmc.vercel.app`**. Opcional: alinear `PUBLIC_BASE_URL`, `VITE_API_URL` y el default del smoke si se unifica el host Run.
 
 **2026-04-03 (Calculadora — visor paso lista + resumen dimensiones + más área visual):** [`quoteVisorMedia.js`](../../src/data/quoteVisorMedia.js): comentario **expectativas por paso** del visor; **`DEFAULT_LISTA_REFERENCE_IMAGES`**. [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx): paso wizard **`lista`** — referencias **venta / web** con **subida** (`sessionStorage` `bmc-panelin-visor-lista-images`), **tercera imagen opcional** (“+ Añadir otra…”), **badge** según `listaPrecios`; paso **dimensiones** — cinta **Dimensiones cargadas · Zn: L×W** vía prop `dimensionSummary`; host 3D **`minHeight: min(52vh, 560px)`**; carrusel **`maxHeight: min(42vh, 420px)`**; carrusel pausado en paso lista. [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): **`quoteVisorDimensionSummary`**; props al visor; grid **`maxWidth` 1600**; paneles default **~28/72**, doble clic sash **28/72**. `npm test` OK; `npm run lint` (warnings previos `RoofPreview.jsx`).
 

@@ -2,4 +2,4 @@
 // Se regenera al ejecutar npm run version:data, npm run dev o npm run build
 
 export const CALCULATOR_DATA_VERSION = "263a036228";
-export const CALCULATOR_DATA_VERSION_DATE = "2026-04-03T02:03:02.131Z";
+export const CALCULATOR_DATA_VERSION_DATE = "2026-04-03T03:15:29.399Z";
