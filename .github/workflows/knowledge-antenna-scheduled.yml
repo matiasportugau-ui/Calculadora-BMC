@@ -1,0 +1,13 @@
+# Cron and manual dispatch run ONLY the knowledge antenna job — not validate, lint, or
+# channels_pipeline (prod smoke / humanGate), which must stay tied to push/PR in ci.yml.
+name: Knowledge Antenna — scheduled
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 10:20 UTC (aligns with knowledge antenna cadence)
+    - cron: '20 10 * * *'
+
+jobs:
+  knowledge_antenna:
+    uses: ./.github/workflows/knowledge-antenna-reusable.yml

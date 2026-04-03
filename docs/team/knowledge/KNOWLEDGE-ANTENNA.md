@@ -35,12 +35,10 @@ Operational guide for a scripted AI-research antenna that feeds BMC/Panelin evol
 
 ## CI Automation
 
-GitHub Actions now includes a dedicated `knowledge_antenna` job in `.github/workflows/ci.yml`:
+- **Push / PR (`main`, `develop`):** `.github/workflows/ci.yml` runs `validate`, `lint`, `channels_pipeline`, then calls the reusable workflow `.github/workflows/knowledge-antenna-reusable.yml` as job `knowledge_antenna` (after `validate` + `lint`). This keeps prod smoke / `humanGate` tied only to code events.
+- **Daily cron + manual:** `.github/workflows/knowledge-antenna-scheduled.yml` triggers `workflow_dispatch` and `schedule` (10:20 UTC) and **only** invokes `knowledge-antenna-reusable.yml`, so transient prod issues do not fail unrelated jobs or spam notifications.
 
-- Triggered on `push`, `pull_request`, `workflow_dispatch`, and daily `schedule`.
-- Runs `knowledge:env:check`, `knowledge:preflight`, and `knowledge:run`.
-- Uploads knowledge artifacts (report + registry + references + impact + events log).
-- Uses `continue-on-error` to avoid blocking core CI when external feeds are temporarily unstable.
+Steps: `knowledge:env:cwd:guard`, `knowledge:env:check`, `knowledge:preflight`, `knowledge:run`, summary log, artifact upload. `continue-on-error` is set on the reusable job so flaky external feeds do not fail the workflow run.
 
 ## Self-managed Environment and Dependencies
 
