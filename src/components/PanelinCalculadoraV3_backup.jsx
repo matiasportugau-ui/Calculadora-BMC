@@ -89,6 +89,8 @@ import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { useChat } from "../hooks/useChat.js";
+import PanelinChatPanel from "./PanelinChatPanel.jsx";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -2144,6 +2146,10 @@ export default function PanelinCalculadoraV3() {
   const [fleteCosto, setFleteCosto] = useState("");
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+  const [chatOpen, setChatOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("chat") === "1";
+  });
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
   const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
@@ -2185,6 +2191,33 @@ export default function PanelinCalculadoraV3() {
   const setOverrides = useMemo(() => wrapSetter(_setOverrides, "overrides"), [_setOverrides]);
   const setExcludedItems = useMemo(() => wrapSetter(_setExcludedItems, "excludedItems"), [_setExcludedItems]);
   const setCategoriasActivas = useMemo(() => wrapSetter(_setCategoriasActivas, "categoriasActivas"), [_setCategoriasActivas]);
+
+  // ── Panelin AI agent ──
+  const calcState = useMemo(
+    () => ({ scenario, listaPrecios, techo, pared, camara, flete, proyecto, wizardStep }),
+    [scenario, listaPrecios, techo, pared, camara, flete, proyecto, wizardStep]
+  );
+
+  const handleChatAction = useCallback(
+    (action) => {
+      if (!action?.type) return;
+      switch (action.type) {
+        case "setScenario":   setScenario(action.payload); break;
+        case "setLP":         setLP(action.payload); break;
+        case "setTecho":      setTecho((prev) => ({ ...prev, ...action.payload })); break;
+        case "setPared":      setPared((prev) => ({ ...prev, ...action.payload })); break;
+        case "setCamara":     setCamara((prev) => ({ ...prev, ...action.payload })); break;
+        case "setFlete":      setFlete(Number(action.payload)); break;
+        case "setProyecto":   setProyecto((prev) => ({ ...prev, ...action.payload })); break;
+        case "setWizardStep": setWizardStep(Number(action.payload)); break;
+        case "advanceWizard": window.dispatchEvent(new CustomEvent("bmc-wizard-next")); break;
+        default: break;
+      }
+    },
+    [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto, setWizardStep]
+  );
+
+  const chat = useChat({ calcState, onAction: handleChatAction });
 
   // Section refs for auto-scroll
   const panelRef = useRef(null);
@@ -3405,6 +3438,12 @@ export default function PanelinCalculadoraV3() {
           )}
           <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
           <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
+          <button
+            onClick={() => setChatOpen((o) => !o)}
+            style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+          >
+            💬 Panelin
+          </button>
         </div>
       </div>
 
@@ -4677,6 +4716,12 @@ export default function PanelinCalculadoraV3() {
         </div>
         </Panel>
       </PanelGroup>
+
+      <PanelinChatPanel
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        {...chat}
+      />
 
       <Toast message={toast} visible={!!toast} />
       <InteractionLogPanel

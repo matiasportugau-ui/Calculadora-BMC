@@ -95,10 +95,14 @@ export default function BmcWolfboardHub() {
               Abrir logística
             </Link>
           </div>
-          <div style={disabled} aria-disabled="true">
-            <h2 style={cardTitle}>Próximo módulo</h2>
-            <p style={cardDesc}>Reservado para el siguiente despliegue.</p>
-            <span style={{ ...cta, background: "#aeaeb2", cursor: "default" }}>Próximamente</span>
+          <div style={card}>
+            <h2 style={cardTitle}>Panelin · Asistente IA</h2>
+            <p style={cardDesc}>
+              Cotizá con ayuda de inteligencia artificial. Panelin te guía paso a paso según tu obra.
+            </p>
+            <Link to="/?chat=1" style={{ ...cta, background: "#1a3a5c" }}>
+              Hablar con Panelin
+            </Link>
           </div>
           <div style={disabled} aria-disabled="true">
             <h2 style={cardTitle}>Próximo módulo</h2>
@@ -107,6 +111,31 @@ export default function BmcWolfboardHub() {
           </div>
         </div>
       </div>
+      {/* Floating Panelin bubble */}
+      <Link
+        to="/?chat=1"
+        title="Hablar con Panelin"
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 100,
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "#1a3a5c",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textDecoration: "none",
+          fontSize: 26,
+          overflow: "hidden",
+        }}
+        aria-label="Hablar con Panelin"
+      >
+        💬
+      </Link>
     </div>
   );
 }
