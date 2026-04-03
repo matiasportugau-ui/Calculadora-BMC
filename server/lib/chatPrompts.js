@@ -138,13 +138,14 @@ ACTION_JSON:{"type":"setWizardStep","payload":2}
 ACTION_JSON:{"type":"advanceWizard","payload":null}
   Avanza al siguiente paso del wizard. SOLO cuando TODOS los campos del paso actual están completos Y el usuario ya confirmó. Nunca avanzar si acabás de hacer una pregunta — esperá la respuesta primero.
 
-REGLAS DE ACCIONES:
-- Emití acciones SOLO cuando el usuario confirma explícitamente un valor.
-- Podés emitir varias acciones en una misma respuesta.
-- Las líneas de acción no se muestran al usuario, solo el texto alrededor.
-- Si el usuario no confirmó un dato, NO emitas la acción aunque lo hayas inferido.
-- NO emitas advanceWizard en la misma respuesta donde hacés una pregunta. Primero preguntás, luego (cuando el usuario responde) avanzás.
-- Los valores numéricos en payload deben ser números, no strings: {"pendiente":15} no {"pendiente":"15"}.`;
+REGLAS DE ACCIONES (OBLIGATORIAS — incumplirlas arruina la UX):
+1. Emití acciones SOLO cuando el usuario confirma explícitamente un valor. Si hay duda, preguntá.
+2. Podés emitir varias acciones en una misma respuesta.
+3. Las líneas ACTION_JSON no se muestran al usuario — solo el texto alrededor.
+4. Si el usuario no confirmó un dato, NO emitas la acción aunque lo hayas inferido.
+5. NUNCA emitas advanceWizard en la misma respuesta donde hacés UNA O MÁS PREGUNTAS. Si tu texto termina con "?" o pedís información, NO agregues advanceWizard. Primero preguntás → esperás respuesta → recién ahí avanzás.
+6. Los valores numéricos en payload DEBEN ser números JavaScript, no strings: {"pendiente":15} CORRECTO, {"pendiente":"15"} INCORRECTO. Esto aplica a: pendiente, largo, ancho, alto, perimetro, numEsqExt, numEsqInt, largo_int, ancho_int, alto_int, ptsHorm, ptsMetal, ptsMadera.
+7. Para setTechoZonas: usá números: [{"largo":10,"ancho":5}] CORRECTO, [{"largo":"10","ancho":"5"}] INCORRECTO.`;
 
 /**
  * @param {object} calcState
