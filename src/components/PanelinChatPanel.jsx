@@ -15,7 +15,14 @@ const VIDEO_SRC = `${typeof import.meta !== "undefined" ? import.meta.env?.BASE_
 const ACTION_LABELS = {
   setScenario:   (p) => `Escenario → ${p}`,
   setLP:         (p) => `Lista → ${p === "web" ? "Precio web" : "Precio venta"}`,
-  setTecho:      (p) => `Techo → ${Object.entries(p).filter(([,v]) => v != null && v !== "").map(([k,v]) => `${k}=${Array.isArray(v) ? v.map(z=>`${z.largo}×${z.ancho}m`).join(", ") : v}`).join(", ")}`,
+  setTecho:      (p) => `Techo → ${Object.entries(p).filter(([,v]) => v != null && v !== "").map(([k,v]) => {
+    if (k === "borders" && typeof v === "object" && !Array.isArray(v)) {
+      const sides = Object.entries(v).filter(([,s]) => s && s !== "none").map(([side, style]) => `${side}:${style}`);
+      return `bordes=[${sides.join(", ")}]`;
+    }
+    if (Array.isArray(v)) return `${k}=${v.map(z=>`${z.largo}×${z.ancho}m`).join(", ")}`;
+    return `${k}=${v}`;
+  }).join(", ")}`,
   setPared:      (p) => `Pared → ${Object.entries(p).filter(([,v]) => v != null && v !== "").map(([k,v]) => `${k}=${v}`).join(", ")}`,
   setCamara:     (p) => `Cámara → ${p.largo_int}×${p.ancho_int}×${p.alto_int}m`,
   setFlete:      (p) => `Flete → USD ${p}`,
