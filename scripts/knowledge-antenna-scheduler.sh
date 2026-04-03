@@ -43,6 +43,8 @@ if already_ran_today; then
 fi
 
 log "Running knowledge antenna full pipeline"
+bash "$REPO_ROOT/scripts/knowledge-antenna-env-ensure.sh" ensure >> "$log_file" 2>&1
+node "$REPO_ROOT/scripts/knowledge-antenna-preflight.mjs" --strict --sample=3 >> "$log_file" 2>&1
 node "$REPO_ROOT/scripts/knowledge-antenna-run.mjs" >> "$log_file" 2>&1
 mark_ran_today
 log "Completed knowledge antenna pipeline"

@@ -22,9 +22,29 @@ Operational guide for a scripted AI-research antenna that feeds BMC/Panelin evol
 - Run scanner/report only: `npm run knowledge:scan`
 - Recompute ranking only: `npm run knowledge:rank`
 - Recompute impact mapping only: `npm run knowledge:impact`
+- Environment ensure (self-heal): `npm run knowledge:env:ensure`
+- Environment check (no changes): `npm run knowledge:env:check`
+- Pipeline preflight (strict): `npm run knowledge:preflight`
 - Install schedule (launchd): `npm run knowledge:schedule:install`
 - Remove schedule (launchd): `npm run knowledge:schedule:uninstall`
 - Manual scheduler tick: `npm run knowledge:schedule:tick`
+
+## Self-managed Environment and Dependencies
+
+Before each full run (`knowledge:run`) the system now enforces:
+
+- Node/npm presence and minimum Node major version.
+- Common PATH bootstrapping (`/opt/homebrew/bin`, `/usr/local/bin`) for scheduler sessions.
+- Optional `nvm` auto-load if available.
+- Dependency presence (`node_modules`) and auto-install (`npm ci`/`npm install`) when needed.
+- Writable knowledge directories and report output paths.
+- Strict preflight: validates JSON schemas and connectivity to sampled active sources.
+
+Config knobs:
+
+- `KNOWLEDGE_NODE_MIN_MAJOR` (default `20`)
+- `KNOWLEDGE_AUTO_INSTALL_NODE` (default `0`)
+- `KNOWLEDGE_AUTO_INSTALL_DEPS` (default `1`)
 
 ## Ranking Model
 

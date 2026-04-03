@@ -45,6 +45,8 @@ cat > "$PLIST_DEST" <<EOF
 
   <key>EnvironmentVariables</key>
   <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     <key>TZ_NAME</key>
     <string>America/Montevideo</string>
     <key>RUN_HOUR_UTC</key>

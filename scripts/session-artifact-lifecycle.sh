@@ -104,6 +104,7 @@ mkdir -p "$REMOTE_ARCHIVE"
 mkdir -p "$LOCAL_ARCHIVE/index"
 
 INDEX_CSV="$LOCAL_ARCHIVE/index/archive-index.csv"
+SIG_FILE="$LOCAL_ARCHIVE/index/archive-signatures.log"
 LOG_FILE="$LOCAL_ARCHIVE/index/lifecycle-$(date +%Y%m%d).log"
 
 log() {
@@ -192,17 +193,25 @@ done
 pack_count=0
 packed_bytes=0
 copied_count=0
+skipped_count=0
 pruned_count=0
 pruned_bytes=0
 
 if [[ "$MODE" == "run" ]]; then
   [[ -f "$INDEX_CSV" ]] || echo "timestamp_iso,source_path,source_bytes,bundle_name,bundle_bytes,sha256,remote_path,pruned" > "$INDEX_CSV"
+  [[ -f "$SIG_FILE" ]] || : > "$SIG_FILE"
   trash_bag="$HOME/.Trash/SessionArtifactPrune-$(date +%Y%m%d-%H%M%S)"
 
   for i in "${!candidate_paths[@]}"; do
     src="${candidate_paths[$i]}"
     src_root="${candidate_src_roots[$i]}"
     src_size="${candidate_sizes[$i]}"
+    src_mtime="$(stat_mtime "$src")"
+    sig="${src}|${src_mtime}|${src_size}"
+    if awk -v target="$sig" '($0==target){found=1; exit} END {exit(found ? 0 : 1)}' "$SIG_FILE" 2>/dev/null; then
+      skipped_count=$((skipped_count + 1))
+      continue
+    fi
     src_base="$(basename "$src")"
     root_slug="$(safe_slug "$(basename "$src_root")")"
     base_slug="$(safe_slug "$src_base")"
@@ -224,13 +233,13 @@ if [[ "$MODE" == "run" ]]; then
 
     cp -f "$bundle_path" "$remote_path"
     cp -f "$bundle_path.sha256" "$REMOTE_ARCHIVE/$bundle_name.sha256"
+    echo "$sig" >> "$SIG_FILE"
 
     pack_count=$((pack_count + 1))
     packed_bytes=$((packed_bytes + bundle_size))
     copied_count=$((copied_count + 1))
 
     pruned="no"
-    src_mtime="$(stat_mtime "$src")"
     src_age_days=$(( (now_epoch - src_mtime) / 86400 ))
     if (( APPLY_PRUNE == 1 )) && (( src_age_days >= PRUNE_DAYS )); then
       mkdir -p "$trash_bag"
@@ -258,6 +267,7 @@ if (( JSON == 1 )); then
   "packed_count": $pack_count,
   "packed_bytes": $packed_bytes,
   "copied_count": $copied_count,
+  "skipped_count": $skipped_count,
   "apply_prune": $APPLY_PRUNE,
   "pruned_count": $pruned_count,
   "pruned_bytes": $pruned_bytes,
@@ -286,5 +296,6 @@ fi
 
 echo "Packed: $pack_count ($(human_bytes "$packed_bytes"))"
 echo "Copied to remote: $copied_count bundle(s)"
+echo "Skipped (already archived signature): $skipped_count"
 echo "Pruned: $pruned_count ($(human_bytes "$pruned_bytes"))"
 echo "Index: $INDEX_CSV"

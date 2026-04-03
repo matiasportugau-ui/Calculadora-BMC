@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-03T00:00:00.000Z",
+  "updatedAt": "2026-04-03T08:42:32.312Z",
   "projectProfile": {
     "name": "BMC/Panelin",
     "focusAreas": [
@@ -43,21 +43,24 @@
         "agent"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": null,
+      "lastCheckedAt": "2026-04-03T08:42:30.154Z",
       "stats": {
-        "eventsSeen": 0,
-        "acceptedEvents": 0,
-        "rejectedEvents": 0,
-        "avgEventScore": 0
-      }
+        "eventsSeen": 8,
+        "acceptedEvents": 6,
+        "rejectedEvents": 2,
+        "avgEventScore": 0.548
+      },
+      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "rankScore": 0.9003
     },
     {
       "id": "anthropic-news-rss",
-      "name": "Anthropic News",
-      "type": "rss",
+      "name": "Anthropic SDK Releases",
+      "type": "github_releases",
       "category": "ai-lab",
       "status": "active",
-      "url": "https://www.anthropic.com/news/rss.xml",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases",
+      "apiUrl": "https://api.github.com/repos/anthropics/anthropic-sdk-typescript/releases",
       "authorityScore": 0.95,
       "projectFitWeight": 0.9,
       "tags": [
@@ -67,13 +70,15 @@
         "safety"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": null,
+      "lastCheckedAt": "2026-04-03T08:42:30.898Z",
       "stats": {
-        "eventsSeen": 0,
-        "acceptedEvents": 0,
-        "rejectedEvents": 0,
-        "avgEventScore": 0
-      }
+        "eventsSeen": 8,
+        "acceptedEvents": 5,
+        "rejectedEvents": 3,
+        "avgEventScore": 0.5637
+      },
+      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "rankScore": 0.8626
     },
     {
       "id": "vercel-releases",
@@ -92,13 +97,15 @@
         "ci-cd"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": null,
+      "lastCheckedAt": "2026-04-03T08:42:31.040Z",
       "stats": {
-        "eventsSeen": 0,
-        "acceptedEvents": 0,
+        "eventsSeen": 8,
+        "acceptedEvents": 8,
         "rejectedEvents": 0,
-        "avgEventScore": 0
-      }
+        "avgEventScore": 0.652
+      },
+      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "rankScore": 0.9092
     },
     {
       "id": "supabase-releases",
@@ -116,14 +123,16 @@
         "realtime",
         "auth"
       ],
-      "trustTier": "tier-2",
-      "lastCheckedAt": null,
+      "trustTier": "tier-1",
+      "lastCheckedAt": "2026-04-03T08:42:31.080Z",
       "stats": {
-        "eventsSeen": 0,
-        "acceptedEvents": 0,
+        "eventsSeen": 8,
+        "acceptedEvents": 8,
         "rejectedEvents": 0,
-        "avgEventScore": 0
-      }
+        "avgEventScore": 0.6705
+      },
+      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "rankScore": 0.8891
     },
     {
       "id": "arxiv-cs-ai-rss",
@@ -140,14 +149,65 @@
         "benchmarks"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": null,
+      "lastCheckedAt": "2026-04-03T08:42:31.484Z",
       "stats": {
-        "eventsSeen": 0,
-        "acceptedEvents": 0,
+        "eventsSeen": 8,
+        "acceptedEvents": 8,
         "rejectedEvents": 0,
-        "avgEventScore": 0
-      }
+        "avgEventScore": 0.647
+      },
+      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "rankScore": 0.8497
     }
   ],
-  "sourceCandidates": []
+  "sourceCandidates": [
+    {
+      "id": "candidate_openai-com",
+      "name": "openai.com",
+      "type": "candidate",
+      "category": "discovered",
+      "status": "candidate",
+      "url": "https://openai.com",
+      "authorityScore": 0.67,
+      "projectFitWeight": 0.45,
+      "tags": [
+        "auto-discovered",
+        "needs-review"
+      ],
+      "discoveredFromEventId": "evt_e0d098e32152febc",
+      "discoveredAt": "2026-04-03T08:42:31.731Z"
+    },
+    {
+      "id": "candidate_github-com",
+      "name": "github.com",
+      "type": "candidate",
+      "category": "discovered",
+      "status": "candidate",
+      "url": "https://github.com",
+      "authorityScore": 0.61,
+      "projectFitWeight": 0.45,
+      "tags": [
+        "auto-discovered",
+        "needs-review"
+      ],
+      "discoveredFromEventId": "evt_c60b7fdad8b561a3",
+      "discoveredAt": "2026-04-03T08:42:31.731Z"
+    },
+    {
+      "id": "candidate_arxiv-org",
+      "name": "arxiv.org",
+      "type": "candidate",
+      "category": "discovered",
+      "status": "candidate",
+      "url": "https://arxiv.org",
+      "authorityScore": 0.62,
+      "projectFitWeight": 0.45,
+      "tags": [
+        "auto-discovered",
+        "needs-review"
+      ],
+      "discoveredFromEventId": "evt_60723b36f47e52be",
+      "discoveredAt": "2026-04-03T08:42:31.732Z"
+    }
+  ]
 }
