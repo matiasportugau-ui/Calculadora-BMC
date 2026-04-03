@@ -92,6 +92,9 @@ import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
 import { isAllowedDriverEventType } from "../server/lib/transportistaFsm.js";
+import { parseRssItems, pickTier, clamp01 } from "../scripts/knowledge-antenna-lib.mjs";
+import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
+import { getRoofPanelVisualProfile } from "../src/data/roofPanelVisualProfiles.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -1665,6 +1668,80 @@ assert(
 
 assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
 assert("isAllowedDriverEventType rejects unknown", !isAllowedDriverEventType("not_an_event"), true, true);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 33: Knowledge antenna helpers (RSS + scoring)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 33: knowledge-antenna helpers ═══");
+
+const rssSample = `
+<rss><channel>
+  <item>
+    <title>OpenAI &amp; Agents</title>
+    <link>https://example.com/openai-agents</link>
+    <pubDate>Fri, 03 Apr 2026 00:00:00 GMT</pubDate>
+    <description><p>Hello &amp; <b>world</b></p></description>
+  </item>
+  <item>
+    <title>Ignored without link</title>
+    <description>missing link</description>
+  </item>
+</channel></rss>
+`;
+const rssItems = parseRssItems(rssSample);
+assert("parseRssItems keeps only entries with title+link", rssItems.length === 1, rssItems.length, 1);
+assert("parseRssItems decodes title entities", rssItems[0]?.title === "OpenAI & Agents", rssItems[0]?.title, "OpenAI & Agents");
+assert("parseRssItems strips HTML description", rssItems[0]?.description === "Hello & world", rssItems[0]?.description, "Hello & world");
+assert("pickTier boundary 0.85 => tier-1", pickTier(0.85) === "tier-1", pickTier(0.85), "tier-1");
+assert("pickTier boundary 0.65 => tier-2", pickTier(0.65) === "tier-2", pickTier(0.65), "tier-2");
+assert("pickTier low score => tier-3", pickTier(0.64) === "tier-3", pickTier(0.64), "tier-3");
+assert("clamp01 floors negatives", clamp01(-2) === 0, clamp01(-2), 0);
+assert("clamp01 caps >1", clamp01(2.5) === 1, clamp01(2.5), 1);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 34: Roof 3D layout helpers (annex front coplanar)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 34: roofZoneLayouts3d + visual profile ═══");
+
+const zonas3d = [
+  { largo: 6, ancho: 4, preview: { x: 1, y: 2, slopeMark: "along_largo_neg" } },
+  { largo: 3, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0, slopeMark: "off" } },
+  { largo: 4, ancho: 4, preview: { x: 20, y: 1, slopeMark: "along_largo_pos" } },
+];
+const layouts3d = buildZoneLayoutsForRoof3d(zonas3d, "una_agua");
+const byGi3d = new Map(layouts3d.map((l) => [l.gi, l]));
+const z0 = byGi3d.get(0);
+const z1 = byGi3d.get(1);
+const z2 = byGi3d.get(2);
+assert("buildZoneLayoutsForRoof3d includes all valid zonas", layouts3d.length === 3, layouts3d.length, 3);
+assert("buildZoneLayoutsForRoof3d root oz uses preview y + largo", approx(z0?.oz, -8, 0.0001), z0?.oz, -8);
+assert("buildZoneLayoutsForRoof3d annex shares root oz (coplanar frente)", approx(z1?.oz, z0?.oz, 0.0001), z1?.oz, z0?.oz);
+assert("buildZoneLayoutsForRoof3d independent root keeps own oz", approx(z2?.oz, -5, 0.0001), z2?.oz, -5);
+assert("buildZoneLayoutsForRoof3d preserves slopeMark", z0?.slopeMark === "along_largo_neg" && z1?.slopeMark === "off", `${z0?.slopeMark}/${z1?.slopeMark}`, "along_largo_neg/off");
+
+const dosAguas3d = buildZoneLayoutsForRoof3d([{ largo: 4, ancho: 10 }], "dos_aguas");
+assert("buildZoneLayoutsForRoof3d dos_aguas halves ancho in planta", approx(dosAguas3d[0]?.ancho, 5, 0.0001), dosAguas3d[0]?.ancho, 5);
+
+const withInvalidZona = buildZoneLayoutsForRoof3d([
+  { largo: 0, ancho: 4 },
+  { largo: 2, ancho: 2 },
+], "una_agua");
+assert(
+  "buildZoneLayoutsForRoof3d filters invalid zonas and keeps original gi",
+  withInvalidZona.length === 1 && withInvalidZona[0]?.gi === 1,
+  JSON.stringify(withInvalidZona.map((z) => z.gi)),
+  "[1]",
+);
+
+const profileFallback = getRoofPanelVisualProfile("UNKNOWN_FAMILY", "");
+assert(
+  "getRoofPanelVisualProfile falls back to ISODEC_EPS defaults",
+  profileFallback.thicknessMm === 150 && typeof profileFallback.mapUrl === "string",
+  JSON.stringify({ t: profileFallback.thicknessMm, mapUrl: profileFallback.mapUrl }),
+  "{ t: 150, mapUrl: string }",
+);
+const profileOverride = getRoofPanelVisualProfile("ISOROOF_3G", "40");
+assert("getRoofPanelVisualProfile honors espesor override", profileOverride.thicknessMm === 40, profileOverride.thicknessMm, 40);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
