@@ -80,6 +80,7 @@ import {
 } from "../src/utils/roofPrincipalZona.js";
 import {
   formatZonaDisplayTitle,
+  getLateralAnnexRootBodyGi,
   getRootZoneOrdinal,
   isLateralAnnexZona,
   zonasToPlantRectsLogical,
@@ -1532,6 +1533,39 @@ assert(
   typeof t1 === "string" && t1.includes("Zona 1") && t1.includes("extensión"),
   t1,
   "Zona 1 · extensión",
+);
+
+assert(
+  "getLateralAnnexRootBodyGi anexo → raíz 0",
+  getLateralAnnexRootBodyGi(
+    [{ largo: 1, ancho: 1 }, { largo: 1, ancho: 1, preview: { attachParentGi: 0 } }],
+    1,
+  ) === 0,
+  getLateralAnnexRootBodyGi(
+    [{ largo: 1, ancho: 1 }, { largo: 1, ancho: 1, preview: { attachParentGi: 0 } }],
+    1,
+  ),
+  0,
+);
+assert(
+  "getLateralAnnexRootBodyGi cadena anexo→anexo → raíz 0",
+  getLateralAnnexRootBodyGi(
+    [
+      { largo: 1, ancho: 1 },
+      { largo: 1, ancho: 1, preview: { attachParentGi: 0 } },
+      { largo: 1, ancho: 1, preview: { attachParentGi: 1 } },
+    ],
+    2,
+  ) === 0,
+  getLateralAnnexRootBodyGi(
+    [
+      { largo: 1, ancho: 1 },
+      { largo: 1, ancho: 1, preview: { attachParentGi: 0 } },
+      { largo: 1, ancho: 1, preview: { attachParentGi: 1 } },
+    ],
+    2,
+  ),
+  0,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

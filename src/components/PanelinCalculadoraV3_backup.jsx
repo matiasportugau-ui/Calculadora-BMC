@@ -56,6 +56,7 @@ import {
 } from "../utils/roofPlanGeometry.js";
 import {
   formatZonaDisplayTitle,
+  getLateralAnnexRootBodyGi,
   getRootZoneOrdinal,
   isLateralAnnexZona,
   zonasToPlantRectsWithAutoGap,
@@ -647,7 +648,9 @@ function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clamp
 
   if (!onZonaPreviewChange || !zoneLayouts?.length) return null;
 
-  return zoneLayouts.map(({ gi, ox, oz, ancho, largo, plX, plY, wPl, hPl }) => {
+  return zoneLayouts
+    .filter(({ z }) => !isLateralAnnexZona(z))
+    .map(({ gi, ox, oz, ancho, largo, plX, plY, wPl, hPl }) => {
     const cx = ox + ancho / 2;
     const czMid = oz - largo * cosT / 2;
     return (
@@ -875,22 +878,28 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
   }, [validZonas, tipoAguasStr]);
 
   /**
-   * oz: anclar el borde inferior del rect en planta (y + h, FRENTE en SVG) al pie de la cubierta,
-   * coherente con brújula ▼ FRENTE y con RoofPreview (+y hacia abajo = hacia frente).
+   * oz: anclar el borde inferior del rect en planta (y + h, FRENTE en SVG) al pie de la cubierta.
+   * Anexos laterales del mismo techo tienen distinto largo → distinto (y+h) aunque compartan y;
+   * forzamos el mismo frente que el cuerpo raíz para que el 3D sea coplanar (un solo plano inclinado).
    */
-  const zoneLayouts = useMemo(() => plantRects.map((r) => ({
-    z: r.z,
-    gi: r.gi,
-    ancho: r.w,
-    ox: r.x,
-    oz: -(r.y + r.h),
-    largo: r.h,
-    slopeMark: r.z?.preview?.slopeMark,
-    plX: r.x,
-    plY: r.y,
-    wPl: r.w,
-    hPl: r.h,
-  })), [plantRects]);
+  const zoneLayouts = useMemo(() => plantRects.map((r) => {
+    const rootGi = isLateralAnnexZona(r.z) ? getLateralAnnexRootBodyGi(validZonas, r.gi) : r.gi;
+    const ref = plantRects.find((p) => p.gi === rootGi) ?? r;
+    const oz = -(ref.y + ref.h);
+    return {
+      z: r.z,
+      gi: r.gi,
+      ancho: r.w,
+      ox: r.x,
+      oz,
+      largo: r.h,
+      slopeMark: r.z?.preview?.slopeMark,
+      plX: r.x,
+      plY: r.y,
+      wPl: r.w,
+      hPl: r.h,
+    };
+  }), [plantRects, validZonas]);
 
   const dragClampBounds = useMemo(() => {
     if (!plantRects.length) return null;

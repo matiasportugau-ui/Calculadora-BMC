@@ -59,6 +59,25 @@ export function formatZonaDisplayTitle(zonas, idx) {
   return `Zona ${getRootZoneOrdinal(zonas, idx)}`;
 }
 
+/**
+ * Sigue `attachParentGi` hasta la primera zona que no es anexo lateral (cuerpo raíz en planta).
+ * En 3D: alinear el frente (misma línea / mismo plano inclinado) entre tramos del mismo techo.
+ * @param {object[]} zonas - mismo array que el layout (p. ej. validZonas); índices = `gi` en planta.
+ * @param {number} gi
+ */
+export function getLateralAnnexRootBodyGi(zonas, gi) {
+  let cur = gi;
+  for (let k = 0; k < 64; k++) {
+    const z = zonas?.[cur];
+    if (!z) return gi;
+    if (!isLateralAnnexZona(z)) return cur;
+    const p = Number(z.preview?.attachParentGi);
+    if (!Number.isFinite(p) || p < 0 || p >= (zonas?.length ?? 0)) return cur;
+    cur = p;
+  }
+  return cur;
+}
+
 function parseGroupKey(key) {
   const i = key.lastIndexOf("|");
   const parentGi = Number(key.slice(0, i));
