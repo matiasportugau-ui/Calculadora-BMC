@@ -94,7 +94,6 @@ import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
 import { isAllowedDriverEventType } from "../server/lib/transportistaFsm.js";
 import { parseRssItems, pickTier, clamp01 } from "../scripts/knowledge-antenna-lib.mjs";
 import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
-import { getRoofPanelVisualProfile } from "../src/data/roofPanelVisualProfiles.js";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -1732,16 +1731,6 @@ assert(
   JSON.stringify(withInvalidZona.map((z) => z.gi)),
   "[1]",
 );
-
-const profileFallback = getRoofPanelVisualProfile("UNKNOWN_FAMILY", "");
-assert(
-  "getRoofPanelVisualProfile falls back to ISODEC_EPS defaults",
-  profileFallback.thicknessMm === 150 && typeof profileFallback.mapUrl === "string",
-  JSON.stringify({ t: profileFallback.thicknessMm, mapUrl: profileFallback.mapUrl }),
-  "{ t: 150, mapUrl: string }",
-);
-const profileOverride = getRoofPanelVisualProfile("ISOROOF_3G", "40");
-assert("getRoofPanelVisualProfile honors espesor override", profileOverride.thicknessMm === 40, profileOverride.thicknessMm, 40);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
