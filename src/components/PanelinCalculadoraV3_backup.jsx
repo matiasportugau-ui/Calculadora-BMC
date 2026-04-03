@@ -3,7 +3,7 @@
 // BMC Uruguay · Calculadora de Cotización v3.0
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
@@ -59,6 +59,8 @@ import {
   getLateralAnnexRootBodyGi,
   getRootZoneOrdinal,
   isLateralAnnexZona,
+  LATERAL_ANNEX_SNAP_M,
+  snapLateralAnnexPlanta,
   zonasToPlantRectsWithAutoGap,
 } from "../utils/roofLateralAnnexLayout.js";
 import {
@@ -81,6 +83,8 @@ import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
 import RoofPreview from "./RoofPreview.jsx";
+
+const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
@@ -593,7 +597,15 @@ const ROOF3D_DRAG_PLANE_Y = 0.22;
  * Discos violetas: afinan preview.x / preview.y (misma convención que RoofPreview: +y = hacia FRENTE).
  * delta mundo: dx → +x planta, dz → -y planta (coherente con oz = -(y+h)).
  */
-function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clampBounds, cosT }) {
+function RoofPlanDragHandles({
+  zoneLayouts,
+  onZonaPreviewChange,
+  orbitRef,
+  clampBounds,
+  cosT,
+  zonasRef,
+  tipoAguasStr,
+}) {
   const { camera, gl } = useThree();
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const ndc = useMemo(() => new THREE.Vector2(), []);
@@ -623,6 +635,22 @@ function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clamp
       if (!pt) return;
       const dx = pt.x - d.px;
       const dz = pt.z - d.pz;
+      const zs = zonasRef?.current;
+      const z = d.z ?? zs?.[d.gi];
+      if (z && isLateralAnnexZona(z)) {
+        const parentGi = Number(z.preview?.attachParentGi);
+        const parentLayout = zoneLayouts.find((l) => l.gi === parentGi);
+        if (!parentLayout) return;
+        let nx = d.x0 + dx;
+        const ny = parentLayout.plY;
+        if (clampBounds) {
+          nx = Math.min(Math.max(nx, clampBounds.minX), clampBounds.maxX - d.w);
+        }
+        const mid = parentLayout.plX + parentLayout.wPl / 2;
+        const lateralSide = nx + d.w / 2 < mid ? "izq" : "der";
+        onZonaPreviewChange(d.gi, { x: nx, y: ny, lateralSide, lateralManual: true });
+        return;
+      }
       let nx = d.x0 + dx;
       let ny = d.y0 - dz;
       if (clampBounds) {
@@ -632,6 +660,15 @@ function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clamp
       onZonaPreviewChange(d.gi, { x: nx, y: ny });
     };
     const onUp = () => {
+      const d = dragRef.current;
+      if (d && d.z && isLateralAnnexZona(d.z) && zonasRef?.current && onZonaPreviewChange && tipoAguasStr) {
+        const zs = zonasRef.current;
+        const rects = zonasToPlantRectsWithAutoGap(zs, tipoAguasStr);
+        const entryLike = rects.map((r) => ({ gi: r.gi, x: r.x, y: r.y, w: r.w, h: r.h }));
+        const rawX = Number(zs[d.gi]?.preview?.x) ?? d.x0;
+        const snapped = snapLateralAnnexPlanta(zs, tipoAguasStr, d.gi, rawX, entryLike, LATERAL_ANNEX_SNAP_M);
+        if (snapped) onZonaPreviewChange(d.gi, snapped);
+      }
       if (typeof document !== "undefined") document.body.style.cursor = "";
       if (dragRef.current && orbitRef?.current) orbitRef.current.enabled = true;
       dragRef.current = null;
@@ -644,13 +681,12 @@ function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clamp
       window.removeEventListener("pointerup", onUp, { capture: true });
       window.removeEventListener("pointercancel", onUp, { capture: true });
     };
-  }, [pick, onZonaPreviewChange, clampBounds, orbitRef]);
+  }, [pick, onZonaPreviewChange, clampBounds, orbitRef, zoneLayouts, zonasRef, tipoAguasStr]);
 
   if (!onZonaPreviewChange || !zoneLayouts?.length) return null;
 
   return zoneLayouts
-    .filter(({ z }) => !isLateralAnnexZona(z))
-    .map(({ gi, ox, oz, ancho, largo, plX, plY, wPl, hPl }) => {
+    .map(({ z, gi, ox, oz, ancho, largo, plX, plY, wPl, hPl }) => {
     const cx = ox + ancho / 2;
     const czMid = oz - largo * cosT / 2;
     return (
@@ -666,6 +702,7 @@ function RoofPlanDragHandles({ zoneLayouts, onZonaPreviewChange, orbitRef, clamp
           if (!pt) return;
           dragRef.current = {
             gi,
+            z,
             px: pt.x,
             pz: pt.z,
             x0: plX,
@@ -864,6 +901,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
   const sinT = Math.sin(theta), cosT = Math.cos(theta);
   const tipoAguasStr = is2A ? "dos_aguas" : "una_agua";
   const orbitRef = useRef(null);
+  const validZonasRef = useRef(validZonas);
+  validZonasRef.current = validZonas;
 
   /**
    * Misma lógica que RoofPreview: con posiciones en planta (preview) se usa gap entre autos;
@@ -957,7 +996,16 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
   ], [minX, maxX, minZ, maxZ, maxH, maxD, sceneSize]);
 
   const shellStyle = fillContainer
-    ? { position: "relative", width: "100%", height: "100%", minHeight: 360, borderRadius: 10, overflow: "hidden", background: "#eef2f9" }
+    ? {
+        position: "relative",
+        width: "100%",
+        flex: "1 1 auto",
+        minHeight: 0,
+        alignSelf: "stretch",
+        borderRadius: 10,
+        overflow: "hidden",
+        background: "#eef2f9",
+      }
     : { position: "relative", width: "100%", height: 224, borderRadius: 10, overflow: "hidden", background: "#eef2f9" };
 
   return (
@@ -983,6 +1031,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
             orbitRef={orbitRef}
             clampBounds={dragClampBounds}
             cosT={cosT}
+            zonasRef={validZonasRef}
+            tipoAguasStr={tipoAguasStr}
           />
         )}
 
@@ -1346,8 +1396,9 @@ function RoofBorderSelector({
       )}
       {/* ══ 3D WebGL MODE (zones defined) — inline o portal al visor derecho ══ */}
       {hasZonas && portalEl && typeof document !== "undefined" && createPortal(
-        <div style={{ width: "100%", height: "100%", minHeight: 360, minWidth: 0 }}>{canvasEl}</div>,
-        portalEl,
+        <div style={{ width: "100%", height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          {canvasEl}
+        </div>,
       )}
       {hasZonas && !portalEl && canvasEl}
 
@@ -1776,6 +1827,8 @@ export default function PanelinCalculadoraV3() {
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
   const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
+  /** Vista 3D referencial con textura de catálogo (paralela al RoofPreview 2D). */
+  const [roofRealistic3dOn, setRoofRealistic3dOn] = useState(false);
   const [overrides, _setOverrides] = useState({});
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [toast, setToast] = useState(null);
@@ -2227,7 +2280,7 @@ export default function PanelinCalculadoraV3() {
         const p = z.preview || {};
         const sm = p.slopeMark;
         if (isLateralAnnexZona(z)) {
-          const { x, y, ...keep } = p;
+          const { x, y, lateralManual, ...keep } = p;
           if (Object.keys(keep).length) return { ...z, preview: keep };
           const o = { ...z };
           delete o.preview;
@@ -3205,6 +3258,56 @@ export default function PanelinCalculadoraV3() {
                           ) : null}
                         </div>
                       )}
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          onClick={() => setRoofRealistic3dOn((v) => !v)}
+                          style={{
+                            padding: "8px 14px",
+                            borderRadius: 10,
+                            border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
+                            background: roofRealistic3dOn ? C.primarySoft : C.surface,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            color: roofRealistic3dOn ? C.primary : C.tp,
+                          }}
+                        >
+                          {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
+                        </button>
+                        <span style={{ fontSize: 11, color: C.ts, lineHeight: 1.4, maxWidth: 420 }}>
+                          Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
+                        </span>
+                      </div>
+                      {roofRealistic3dOn && techoPanelData ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <Suspense
+                            fallback={
+                              <div
+                                style={{
+                                  padding: 40,
+                                  textAlign: "center",
+                                  color: C.ts,
+                                  fontSize: 13,
+                                  background: C.surfaceAlt,
+                                  borderRadius: 10,
+                                  border: `1px solid ${C.border}`,
+                                }}
+                              >
+                                Cargando vista 3D…
+                              </div>
+                            }
+                          >
+                            <RoofPanelRealisticScene
+                              validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
+                              tipoAguas={techo.tipoAguas}
+                              pendiente={techo.pendiente}
+                              familiaKey={techo.familia}
+                              espesorMm={techo.espesor}
+                            />
+                          </Suspense>
+                        </div>
+                      ) : null}
                       <RoofPreview
                         zonas={techo.zonas || []}
                         tipoAguas={techo.tipoAguas}
@@ -3723,6 +3826,56 @@ export default function PanelinCalculadoraV3() {
                 disabledIds={!techoPanelData ? ["paneles"] : []}
               />
             </div>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => setRoofRealistic3dOn((v) => !v)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
+                  background: roofRealistic3dOn ? C.primarySoft : C.surface,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  color: roofRealistic3dOn ? C.primary : C.tp,
+                }}
+              >
+                {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
+              </button>
+              <span style={{ fontSize: 11, color: C.ts, lineHeight: 1.4, maxWidth: 420 }}>
+                Misma geometría que el presupuesto; textura según familia de panel techo.
+              </span>
+            </div>
+            {roofRealistic3dOn && techoPanelData ? (
+              <div style={{ marginBottom: 14 }}>
+                <Suspense
+                  fallback={
+                    <div
+                      style={{
+                        padding: 40,
+                        textAlign: "center",
+                        color: C.ts,
+                        fontSize: 13,
+                        background: C.surfaceAlt,
+                        borderRadius: 10,
+                        border: `1px solid ${C.border}`,
+                      }}
+                    >
+                      Cargando vista 3D…
+                    </div>
+                  }
+                >
+                  <RoofPanelRealisticScene
+                    validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
+                    tipoAguas={techo.tipoAguas}
+                    pendiente={techo.pendiente}
+                    familiaKey={techo.familia}
+                    espesorMm={techo.espesor}
+                  />
+                </Suspense>
+              </div>
+            ) : null}
             {techo.zonas.map((zona, idx) => (
               <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 }}>

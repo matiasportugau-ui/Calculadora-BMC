@@ -44,4 +44,11 @@ export default [
       "react/no-unknown-property": "off",
     },
   },
+  {
+    files: ["src/components/RoofPanelRealisticScene.jsx"],
+    rules: {
+      "react/no-unknown-property": "off",
+      "react-hooks/immutability": "off",
+    },
+  },
 ];

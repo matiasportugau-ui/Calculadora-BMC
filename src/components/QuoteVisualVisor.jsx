@@ -295,13 +295,16 @@ export default function QuoteVisualVisor({
               data-bmc-roof-3d-host
               style={{
                 width: "100%",
-                minHeight: "min(52vh, 560px)",
+                /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
+                height: "clamp(360px, min(72vh, 820px), 900px)",
+                minHeight: "clamp(360px, min(72vh, 820px), 900px)",
                 marginBottom: 16,
                 borderRadius: 12,
                 border: `1px solid ${C.border}`,
                 background: "#eef2f9",
                 minWidth: 0,
                 overflow: "hidden",
+                boxSizing: "border-box",
               }}
             />
           )}

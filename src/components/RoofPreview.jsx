@@ -8,20 +8,22 @@ import { useCallback, useMemo, useRef } from "react";
 import { C, FONT } from "../data/constants.js";
 import { calcFactorPendiente } from "../utils/calculations.js";
 import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
-import { formatZonaDisplayTitle, isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
+import {
+  formatZonaDisplayTitle,
+  getAnnexSnapCandidateLeftXs,
+  getLateralAnnexRootBodyGi,
+  isLateralAnnexZona,
+  LATERAL_ANNEX_SNAP_M,
+  snapLateralAnnexPlanta,
+} from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 
 /** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
 const VIEWBOX_SLACK_M = 2.8;
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
 const DRAG_SENSITIVITY = 0.52;
-/** Alineación fina al soltar (m); 0 = desactivado. */
-const SNAP_ON_RELEASE_M = 0.05;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
 const SNAP_ZONE_M = 0.35;
-function effAnchoM(z, is2A) {
-  return is2A ? z.ancho / 2 : z.ancho;
-}
 
 /** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
 function zonaLabelPlanta(r) {
@@ -41,6 +43,22 @@ function clientToSvg(svgEl, cx, cy) {
   if (!m) return { x: 0, y: 0 };
   const p = pt.matrixTransform(m.inverse());
   return { x: p.x, y: p.y };
+}
+
+/** Evita doble trazo entre rectángulos del mismo cuerpo (misma fila, mismo root en planta). */
+function suppressSharedVerticalStroke(r, entries, zonas) {
+  const eps = 0.006;
+  const root = getLateralAnnexRootBodyGi(zonas, r.gi);
+  let left = false;
+  let right = false;
+  for (const e of entries) {
+    if (e.gi === r.gi) continue;
+    if (getLateralAnnexRootBodyGi(zonas, e.gi) !== root) continue;
+    if (Math.abs(e.y - r.y) > eps || Math.abs(e.h - r.h) > eps) continue;
+    if (Math.abs(e.x + e.w - r.x) < eps) left = true;
+    if (Math.abs(r.x + r.w - e.x) < eps) right = true;
+  }
+  return { left, right };
 }
 
 function clampZonaTopLeft(x, y, w, h, vm) {
@@ -213,6 +231,8 @@ export default function RoofPreview({
         clientSX: e.clientX,
         clientSY: e.clientY,
         moved: false,
+        lastX: rect.x,
+        lastY: rect.y,
       };
     },
     [onZonaPreviewChange],
@@ -222,31 +242,82 @@ export default function RoofPreview({
     (e) => {
       const d = dragRef.current;
       if (!d || e.pointerId !== d.pointerId) return;
-      if (isLateralAnnexZona(zonas[d.gi])) return;
       const dx = e.clientX - d.clientSX;
       const dy = e.clientY - d.clientSY;
       if (dx * dx + dy * dy > 64) d.moved = true;
       const svg = svgRef.current;
       if (!svg) return;
       const p = clientToSvg(svg, e.clientX, e.clientY);
+      const zDrag = zonas[d.gi];
+
+      if (isLateralAnnexZona(zDrag)) {
+        const parentGi = Number(zDrag?.preview?.attachParentGi);
+        const parentR = layout.entries.find((er) => er.gi === parentGi);
+        if (!parentR) return;
+        const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
+        const rawY = parentR.y;
+        const entryLike = layout.entries.map((er) => ({
+          gi: er.gi,
+          x: er.x,
+          y: er.y,
+          w: er.w,
+          h: er.h,
+        }));
+        const xs = getAnnexSnapCandidateLeftXs(zonas, tipoPlanta, d.gi, entryLike);
+        let finalX = rawX;
+        let bestDX = SNAP_ZONE_M;
+        for (const cx of xs) {
+          const ddx = Math.abs(rawX - cx);
+          if (ddx < bestDX) {
+            bestDX = ddx;
+            finalX = cx;
+          }
+        }
+        const vm = layout.viewMetrics;
+        const { x } = clampZonaTopLeft(finalX, rawY, d.rectW, d.rectH, vm);
+        const y = parentR.y;
+        const mid = parentR.x + parentR.w / 2;
+        const lateralSide = x + d.rectW / 2 < mid ? "izq" : "der";
+        d.lastX = x;
+        d.lastY = y;
+        onZonaPreviewChange?.(d.gi, { x, y, lateralSide, lateralManual: true });
+        return;
+      }
+
       const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
       const rawY = d.rectStartY + (p.y - d.pointerStartY) * DRAG_SENSITIVITY;
-      // Magnetic snap: adhere when edge within threshold; detach automatically when raw moves away
-      let finalX = rawX, finalY = rawY;
-      let bestDX = SNAP_ZONE_M, bestDY = SNAP_ZONE_M;
+      let finalX = rawX;
+      let finalY = rawY;
+      let bestDX = SNAP_ZONE_M;
+      let bestDY = SNAP_ZONE_M;
       for (const r of layout.entries) {
         if (r.gi === d.gi) continue;
-        const curR = rawX + d.rectW, curB = rawY + d.rectH;
-        if (Math.abs(curR - r.x) < bestDX)         { bestDX = Math.abs(curR - r.x);         finalX = r.x - d.rectW; }
-        if (Math.abs(rawX - (r.x + r.w)) < bestDX) { bestDX = Math.abs(rawX - (r.x + r.w)); finalX = r.x + r.w; }
-        if (Math.abs(curB - r.y) < bestDY)         { bestDY = Math.abs(curB - r.y);         finalY = r.y - d.rectH; }
-        if (Math.abs(rawY - (r.y + r.h)) < bestDY) { bestDY = Math.abs(rawY - (r.y + r.h)); finalY = r.y + r.h; }
+        const curR = rawX + d.rectW;
+        const curB = rawY + d.rectH;
+        if (Math.abs(curR - r.x) < bestDX) {
+          bestDX = Math.abs(curR - r.x);
+          finalX = r.x - d.rectW;
+        }
+        if (Math.abs(rawX - (r.x + r.w)) < bestDX) {
+          bestDX = Math.abs(rawX - (r.x + r.w));
+          finalX = r.x + r.w;
+        }
+        if (Math.abs(curB - r.y) < bestDY) {
+          bestDY = Math.abs(curB - r.y);
+          finalY = r.y - d.rectH;
+        }
+        if (Math.abs(rawY - (r.y + r.h)) < bestDY) {
+          bestDY = Math.abs(rawY - (r.y + r.h));
+          finalY = r.y + r.h;
+        }
       }
       const vm = layout.viewMetrics;
       const { x, y } = clampZonaTopLeft(finalX, finalY, d.rectW, d.rectH, vm);
+      d.lastX = x;
+      d.lastY = y;
       onZonaPreviewChange?.(d.gi, { x, y });
     },
-    [onZonaPreviewChange, layout.entries, layout.viewMetrics, zonas],
+    [onZonaPreviewChange, layout.entries, layout.viewMetrics, zonas, tipoPlanta],
   );
 
   const handlePointerUp = useCallback(
@@ -278,9 +349,26 @@ export default function RoofPreview({
           tapRef.current = { t: now, gi: d.gi, x: e.clientX, y: e.clientY };
         }
       }
+      if (d && isLateralAnnexZona(zonas[d.gi]) && onZonaPreviewChange) {
+        const zA = zonas[d.gi];
+        const parentGi = Number(zA?.preview?.attachParentGi);
+        const parentR = layout.entries.find((er) => er.gi === parentGi);
+        if (parentR) {
+          const rawX = typeof d.lastX === "number" ? d.lastX : d.rectStartX;
+          const entryLike = layout.entries.map((er) => ({
+            gi: er.gi,
+            x: er.x,
+            y: er.y,
+            w: er.w,
+            h: er.h,
+          }));
+          const snapped = snapLateralAnnexPlanta(zonas, tipoPlanta, d.gi, rawX, entryLike, LATERAL_ANNEX_SNAP_M);
+          if (snapped) onZonaPreviewChange(d.gi, snapped);
+        }
+      }
       dragRef.current = null;
     },
-    [cycleSlope, onZonaPreviewChange, zonas, layout.viewMetrics],
+    [cycleSlope, onZonaPreviewChange, zonas, layout.entries, tipoPlanta],
   );
 
   const handleLostCapture = useCallback(() => {
@@ -337,12 +425,13 @@ export default function RoofPreview({
       </div>
       <div style={{ fontSize: 11, color: C.ts, marginBottom: 10, lineHeight: 1.4 }}>
         <strong style={{ color: C.tp }}>Mismo cuerpo de techo:</strong> varias medidas en planta (bloques tocándose) son{" "}
-        <strong style={{ color: C.tp }}>una sola superficie</strong> que se extiende al costado — no otro cuerpo. El
-        núcleo lo podés mover; las <strong style={{ color: C.tp }}>extensiones laterales</strong> se ajustan con ← → y « ».
-        Arrastrá solo <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> (superficie independiente). Doble
-        clic en la superficie: pendiente visual.
+        <strong style={{ color: C.tp }}>una sola superficie</strong> sin separación visual entre tramos — no otro cuerpo. El
+        núcleo lo podés mover; las <strong style={{ color: C.tp }}>extensiones laterales</strong> se arrastran en planta solo
+        por costados (no por frente/fondo) y también con ← → y « ». Arrastrá otra{" "}
+        <strong style={{ color: C.tp }}>superficie independiente</strong> (otra zona raíz). Doble clic en la superficie:
+        pendiente visual.
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
         {layout.entries.length === 0 ? (
           <div
             style={{
@@ -364,11 +453,13 @@ export default function RoofPreview({
         ) : (
           <div
             style={{
+              flex: "1 1 280px",
               width: "100%",
-              maxWidth: 280,
-              height: 200,
+              minWidth: 200,
+              maxWidth: "100%",
+              height: "clamp(220px, min(42vh, 440px), 520px)",
+              minHeight: 220,
               flexShrink: 0,
-              alignSelf: "flex-start",
             }}
           >
             <svg
@@ -402,7 +493,8 @@ export default function RoofPreview({
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
               const fs = Math.max(0.16, Math.min(0.32, r.w * 0.11));
               const annex = isLateralAnnexZona(r.z);
-              const canDrag = Boolean(onZonaPreviewChange) && !annex;
+              const canDrag = Boolean(onZonaPreviewChange);
+              const supV = suppressSharedVerticalStroke(r, layout.entries, zonas);
               const showAnnexCtl = annex && (onAnnexLateralSideChange || onAnnexRankSwap);
               const btnH = 0.26;
               const btnY = r.y - btnH - 0.08;
@@ -417,11 +509,22 @@ export default function RoofPreview({
                     rx={0.12}
                     fill={C.primary}
                     fillOpacity={0.14}
-                    stroke={C.primary}
-                    strokeWidth={0.04}
+                    stroke="none"
                     style={{ cursor: canDrag ? "grab" : "default" }}
                     onPointerDown={(e) => handlePointerDown(e, r.gi, r)}
                   />
+                  <g
+                    pointerEvents="none"
+                    stroke={C.primary}
+                    strokeWidth={0.04}
+                    fill="none"
+                    strokeLinecap="square"
+                  >
+                    <line x1={r.x} y1={r.y} x2={r.x + r.w} y2={r.y} />
+                    <line x1={r.x} y1={r.y + r.h} x2={r.x + r.w} y2={r.y + r.h} />
+                    {!supV.left && <line x1={r.x} y1={r.y} x2={r.x} y2={r.y + r.h} />}
+                    {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
+                  </g>
                   <PanelGrid
                     x0={r.x}
                     y0={r.y}

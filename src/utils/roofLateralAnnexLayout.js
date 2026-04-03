@@ -6,8 +6,14 @@
 // Mantener ROOF_LATERAL_LAYOUT_GAP_M alineado con ROOF_PLAN_GAP_M en roofPlanGeometry.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Mismo valor que ROOF_PLAN_GAP_M (m). */
+/** Mismo valor que ROOF_PLAN_GAP_M (m). Solo entre **cuerpos raíz** independientes en fila, no entre anexo lateral y padre. */
 export const ROOF_LATERAL_LAYOUT_GAP_M = 0.25;
+
+/** Entre techo principal y extensiones laterales, y entre extensiones: **0** = paneles unidos en planta (sin hueco). */
+export const LATERAL_ANNEX_CHAIN_GAP_M = 0;
+
+/** Alineación fina al soltar / imán durante arrastre de anexo lateral (m). */
+export const LATERAL_ANNEX_SNAP_M = 0.35;
 
 function effW(z, is2A) {
   return is2A ? z.ancho / 2 : z.ancho;
@@ -110,6 +116,10 @@ function placeLateralChain(parentGi, side, gis, zonas, rects, gapM, is2A) {
     let curX = parent.x + parent.w + gapM;
     const y = parent.y;
     for (const it of items) {
+      if (rects[it.gi]) {
+        curX = Math.max(curX, rects[it.gi].x + rects[it.gi].w + gapM);
+        continue;
+      }
       rects[it.gi] = { x: curX, y, w: it.w, h: it.h };
       curX += it.w + gapM;
     }
@@ -117,11 +127,83 @@ function placeLateralChain(parentGi, side, gis, zonas, rects, gapM, is2A) {
     let curX = parent.x - gapM;
     const y = parent.y;
     for (const it of items) {
+      if (rects[it.gi]) {
+        curX = Math.min(curX, rects[it.gi].x - gapM);
+        continue;
+      }
       curX -= it.w;
       rects[it.gi] = { x: curX, y, w: it.w, h: it.h };
       curX -= gapM;
     }
   }
+}
+
+/**
+ * Posiciones X candidatas (borde izquierdo del rect del anexo) para unión solo por costados verticales.
+ * @param {object[]} zonas
+ * @param {"una_agua"|"dos_aguas"} tipoAguas
+ * @param {number} gi
+ * @param {Array<{ gi: number, x: number, y: number, w: number, h: number }>} layoutEntries - rectángulos en planta (incluye padre y hermanos en misma fila)
+ */
+export function getAnnexSnapCandidateLeftXs(zonas, tipoAguas, gi, layoutEntries) {
+  const z = zonas[gi];
+  if (!z || !isLateralAnnexZona(z)) return [];
+  const is2A = tipoAguas === "dos_aguas";
+  const w = effW(z, is2A);
+  const parentGi = Number(z.preview?.attachParentGi);
+  if (!Number.isFinite(parentGi)) return [];
+  const parentEntry = layoutEntries.find((e) => e.gi === parentGi);
+  if (!parentEntry) return [];
+  const py = parentEntry.y;
+  const rootGi = getLateralAnnexRootBodyGi(zonas, gi);
+  const cand = new Set();
+  const push = (x) => {
+    if (Number.isFinite(x)) cand.add(Math.round(x * 1e6) / 1e6);
+  };
+  push(parentEntry.x - w);
+  push(parentEntry.x + parentEntry.w);
+  for (const e of layoutEntries) {
+    if (e.gi === gi) continue;
+    const ez = zonas[e.gi];
+    if (!ez) continue;
+    if (getLateralAnnexRootBodyGi(zonas, e.gi) !== rootGi) continue;
+    if (Math.abs(e.y - py) > 1e-2) continue;
+    const ew = effW(ez, is2A);
+    push(e.x - w);
+    push(e.x + ew);
+  }
+  return [...cand];
+}
+
+/**
+ * Ajusta posición al soltar: misma fila que el padre, lateralSide coherente, marca lateralManual.
+ * @param {number} snapMaxM - si el candidato más cercano está más lejos, conserva rawX (solo y anclado).
+ */
+export function snapLateralAnnexPlanta(zonas, tipoAguas, gi, rawX, layoutEntries, snapMaxM = LATERAL_ANNEX_SNAP_M) {
+  const z = zonas[gi];
+  if (!z || !isLateralAnnexZona(z)) return null;
+  const is2A = tipoAguas === "dos_aguas";
+  const w = effW(z, is2A);
+  const parentGi = Number(z.preview.attachParentGi);
+  if (!Number.isFinite(parentGi)) return null;
+  const parentEntry = layoutEntries.find((e) => e.gi === parentGi);
+  if (!parentEntry) return null;
+  const xs = getAnnexSnapCandidateLeftXs(zonas, tipoAguas, gi, layoutEntries);
+  if (!xs.length) return null;
+  let best = rawX;
+  let bestD = Infinity;
+  for (const cx of xs) {
+    const d = Math.abs(rawX - cx);
+    if (d < bestD) {
+      bestD = d;
+      best = cx;
+    }
+  }
+  if (bestD > snapMaxM) best = rawX;
+  const py = parentEntry.y;
+  const mid = parentEntry.x + parentEntry.w / 2;
+  const lateralSide = best + w / 2 < mid ? "izq" : "der";
+  return { x: best, y: py, lateralSide, lateralManual: true };
 }
 
 /**
@@ -182,6 +264,14 @@ export function applyLateralAnnexLayout(zonas = [], tipoAguas = "una_agua", gapM
     groups.get(key).push(gi);
   }
 
+  for (const gi of annexGis) {
+    const z = zonas[gi];
+    const p = z.preview;
+    if (p?.lateralManual && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+      rects[gi] = { x: p.x, y: p.y, w: effW(z, is2A), h: z.largo };
+    }
+  }
+
   let guard = 0;
   const maxIt = Math.max(annexGis.length * 4, 8);
   while (guard++ < maxIt) {
@@ -190,8 +280,7 @@ export function applyLateralAnnexLayout(zonas = [], tipoAguas = "una_agua", gapM
       const { parentGi, side } = parseGroupKey(key);
       if (!rects[parentGi]) continue;
       if (gis.every((gi) => rects[gi])) continue;
-      if (gis.some((gi) => rects[gi])) continue;
-      placeLateralChain(parentGi, side, gis, zonas, rects, gapM, is2A);
+      placeLateralChain(parentGi, side, gis, zonas, rects, LATERAL_ANNEX_CHAIN_GAP_M, is2A);
       progressed = true;
     }
     if (!progressed) break;

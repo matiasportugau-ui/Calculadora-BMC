@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-03 (Deploy prod Cloud Run + Vercel; Dockerfile + TOKEN_ENCRYPTION_KEY arranque)
+**Última actualización:** 2026-04-03 (Render 3D referencial techo — textura por familia)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-03 (Calculadora — render 3D referencial techo, textura catálogo):** Nuevo [`RoofPanelRealisticScene.jsx`](../../src/components/RoofPanelRealisticScene.jsx): WebGL con **misma planta** que `RoofBorderCanvas` / `RoofPreview` (`buildZoneLayoutsForRoof3d`), plano inclinado por **pendiente** y **`slopeMark`**, **textura Shopify** por familia (`roofPanelVisualProfiles.js` → `quoteVisorMedia` slides). Toggle **Ver render 3D (textura catálogo)** en asistente **paso dimensiones** y en **modo cliente · dimensiones techo**; estado `roofRealistic3dOn`; chunk **lazy** + `Suspense`. Util [`roofZoneLayouts3d.js`](../../src/utils/roofZoneLayouts3d.js). ESLint: override para R3F en [`eslint.config.js`](../../eslint.config.js). `npm run lint` / `npm test` / `npm run build` OK.
+
+**2026-04-03 (UX — Live DevTools narrative, visor 3D espacio):** Narrativa: render 3D pequeño/recortado en “Visor visual · paneles para cubierta”; se buscaba usar ~el doble del área. **Causa:** host `[data-bmc-roof-3d-host]` solo con `minHeight` → hijos `height:100%` no resolvían altura del `<Canvas />`. **Fix:** [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx) `height`/`minHeight` `clamp(360px, min(72vh, 820px), 900px)` + `boxSizing`; portal [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx) contenedor flex + `RoofBorderCanvas` `fillContainer` con `flex:1`, `minHeight:0`. Bonus: [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx) área SVG más grande (`clamp` vh). Informe [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-03-roof-visor-space.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-03-roof-visor-space.md). chrome-devtools MCP `navigate_page`: perfil ya en uso (sin consola/red en esa corrida).
 
 **2026-04-03 (Deploy — Cloud Run `panelin-calc` + Vercel calculadora-bmc):** [`Dockerfile.bmc-dashboard`](../../Dockerfile.bmc-dashboard): `apk add bash` + `BMC_DISK_PRECHECK_SKIP=1` en stage **calc-build** (Cloud Build fallaba: `prebuild` invoca `bash` y no existía en `node:20-alpine`). [`server/tokenStore.js`](../../server/tokenStore.js) + [`server/shopifyStore.js`](../../server/shopifyStore.js): clave `TOKEN_ENCRYPTION_KEY` **inválida** ya no hace `exit(1)` al importar (log `error`; en Cloud Run conviene dejar **64 caracteres hex**). Cloud Build + `gcloud run deploy` → revisión **`panelin-calc-00083-j4p`** (URL también `https://panelin-calc-642127786762.us-central1.run.app`). `smoke:prod` con esa base: health, capabilities, MATRIZ CSV OK; **`POST /api/crm/suggest-response` → 503** (revisar keys IA en Cloud Run). [`scripts/deploy-vercel.sh --prod`](../../scripts/deploy-vercel.sh) → prod **`https://calculadora-bmc.vercel.app`**. Opcional: alinear `PUBLIC_BASE_URL`, `VITE_API_URL` y el default del smoke si se unifica el host Run.
 

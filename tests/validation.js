@@ -79,10 +79,13 @@ import {
   previewPositionForTramoApiladoFrente,
 } from "../src/utils/roofPrincipalZona.js";
 import {
+  applyLateralAnnexLayout,
   formatZonaDisplayTitle,
+  getAnnexSnapCandidateLeftXs,
   getLateralAnnexRootBodyGi,
   getRootZoneOrdinal,
   isLateralAnnexZona,
+  snapLateralAnnexPlanta,
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
 import crypto from "node:crypto";
@@ -1566,6 +1569,55 @@ assert(
     2,
   ),
   0,
+);
+
+const mergedManual = applyLateralAnnexLayout(
+  [
+    { largo: 5, ancho: 4 },
+    {
+      largo: 5,
+      ancho: 2,
+      preview: {
+        attachParentGi: 0,
+        lateralSide: "der",
+        lateralRank: 0,
+        lateralManual: true,
+        x: 18.5,
+        y: 0,
+      },
+    },
+  ],
+  "una_agua",
+  0,
+);
+const pm1 = mergedManual[1]?.preview;
+assert(
+  "applyLateralAnnexLayout respeta lateralManual x/y del anexo",
+  pm1 && Math.abs(pm1.x - 18.5) < 1e-5 && Math.abs(pm1.y - 0) < 1e-5,
+  pm1 ? `${pm1.x},${pm1.y}` : "missing",
+  "18.5,0",
+);
+
+const snapZs = [
+  { largo: 4, ancho: 4 },
+  { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+];
+const snapRects = zonasToPlantRectsLogical(snapZs, "una_agua");
+const snapEntries = snapRects.map((r) => ({ gi: r.gi, x: r.x, y: r.y, w: r.w, h: r.h }));
+const r0s = snapRects.find((r) => r.gi === 0);
+const snap1 = snapLateralAnnexPlanta(snapZs, "una_agua", 1, r0s.x + r0s.w + 0.08, snapEntries, 0.35);
+assert(
+  "snapLateralAnnexPlanta acerca al borde vertical del padre",
+  snap1 && Math.abs(snap1.x - (r0s.x + r0s.w)) < 1e-4 && snap1.lateralManual === true,
+  snap1 ? `${snap1.x},${snap1.lateralManual}` : "null",
+  "touch+manual",
+);
+const xsCand = getAnnexSnapCandidateLeftXs(snapZs, "una_agua", 1, snapEntries);
+assert(
+  "getAnnexSnapCandidateLeftXs incluye borde derecho del padre",
+  xsCand.some((x) => Math.abs(x - (r0s.x + r0s.w)) < 1e-5),
+  xsCand.join(","),
+  "has parent right",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
