@@ -1,5 +1,33 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+
+const STORAGE_KEY = "panelin-chat-history";
+const MAX_STORED = 40; // keep last 40 messages in localStorage
+
+function loadHistory() {
+  try {
+    const raw = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(messages) {
+  try {
+    const toSave = messages.slice(-MAX_STORED).map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      actions: m.actions,
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch {
+    // storage quota or SSR — ignore
+  }
+}
 
 /**
  * Manages Panelin chat state and SSE streaming.
@@ -8,13 +36,18 @@ import { getCalcApiBase } from "../utils/calcApiBase.js";
  * @returns {{ messages, isStreaming, send, clear, error }}
  */
 export function useChat({ calcState, onAction }) {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => loadHistory());
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
   // Keep a ref to messages so send() closures see current history
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  // Persist to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0) saveHistory(messages);
+  }, [messages]);
 
   const send = useCallback(
     async (userText) => {
@@ -91,6 +124,13 @@ export function useChat({ calcState, onAction }) {
                 );
               } else if (evt.type === "action") {
                 onAction?.(evt.action);
+                // Append a visual action-feedback entry into the last assistant message's actions list
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (!last || last.role !== "assistant") return prev;
+                  const actions = [...(last.actions || []), evt.action];
+                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, actions } : m));
+                });
               } else if (evt.type === "error") {
                 setError(evt.message || "Error del agente");
               }
@@ -128,6 +168,7 @@ export function useChat({ calcState, onAction }) {
     setMessages([]);
     setError(null);
     setIsStreaming(false);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
   return { messages, isStreaming, send, clear, error };

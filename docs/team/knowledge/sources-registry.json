@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-03T09:26:23.876Z",
+  "updatedAt": "2026-04-03T10:51:55.812Z",
   "projectProfile": {
     "name": "BMC/Panelin",
     "focusAreas": [
@@ -43,14 +43,14 @@
         "agent"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T09:26:22.141Z",
+      "lastCheckedAt": "2026-04-03T10:51:53.722Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 6,
         "rejectedEvents": 2,
         "avgEventScore": 0.548
       },
-      "updatedAt": "2026-04-03T09:26:23.876Z",
+      "updatedAt": "2026-04-03T10:51:55.812Z",
       "rankScore": 0.9003
     },
     {
@@ -69,16 +69,16 @@
         "api",
         "safety"
       ],
-      "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T09:26:22.873Z",
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:54.825Z",
       "stats": {
-        "eventsSeen": 8,
+        "eventsSeen": 18,
         "acceptedEvents": 5,
-        "rejectedEvents": 3,
-        "avgEventScore": 0.5637
+        "rejectedEvents": 13,
+        "avgEventScore": 0.2506
       },
-      "updatedAt": "2026-04-03T09:26:23.876Z",
-      "rankScore": 0.8626
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.7792
     },
     {
       "id": "vercel-releases",
@@ -96,16 +96,16 @@
         "edge",
         "ci-cd"
       ],
-      "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T09:26:23.017Z",
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:54.933Z",
       "stats": {
-        "eventsSeen": 8,
+        "eventsSeen": 18,
         "acceptedEvents": 8,
-        "rejectedEvents": 0,
-        "avgEventScore": 0.652
+        "rejectedEvents": 10,
+        "avgEventScore": 0.2898
       },
-      "updatedAt": "2026-04-03T09:26:23.876Z",
-      "rankScore": 0.9092
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.7896
     },
     {
       "id": "supabase-releases",
@@ -123,16 +123,16 @@
         "realtime",
         "auth"
       ],
-      "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T09:26:23.056Z",
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:55.042Z",
       "stats": {
-        "eventsSeen": 8,
+        "eventsSeen": 19,
         "acceptedEvents": 8,
-        "rejectedEvents": 0,
-        "avgEventScore": 0.6705
+        "rejectedEvents": 11,
+        "avgEventScore": 0.2823
       },
-      "updatedAt": "2026-04-03T09:26:23.876Z",
-      "rankScore": 0.8891
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.7634
     },
     {
       "id": "arxiv-cs-ai-rss",
@@ -149,15 +149,122 @@
         "benchmarks"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-03T09:26:23.432Z",
+      "lastCheckedAt": "2026-04-03T10:51:55.077Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 8,
         "rejectedEvents": 0,
         "avgEventScore": 0.647
       },
-      "updatedAt": "2026-04-03T09:26:23.876Z",
+      "updatedAt": "2026-04-03T10:51:55.812Z",
       "rankScore": 0.8497
+    },
+    {
+      "id": "openai-node-releases",
+      "name": "OpenAI Node SDK Releases",
+      "type": "github_releases",
+      "category": "developer-tooling",
+      "status": "active",
+      "url": "https://github.com/openai/openai-node/releases",
+      "apiUrl": "https://api.github.com/repos/openai/openai-node/releases",
+      "authorityScore": 0.96,
+      "projectFitWeight": 0.95,
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:55.182Z",
+      "stats": {
+        "eventsSeen": 19,
+        "acceptedEvents": 2,
+        "rejectedEvents": 17,
+        "avgEventScore": 0.2077
+      },
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.7626
+    },
+    {
+      "id": "vercel-ai-sdk-releases",
+      "name": "Vercel AI SDK Releases",
+      "type": "github_releases",
+      "category": "developer-tooling",
+      "status": "active",
+      "url": "https://github.com/vercel/ai/releases",
+      "apiUrl": "https://api.github.com/repos/vercel/ai/releases",
+      "authorityScore": 0.91,
+      "projectFitWeight": 0.89,
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:55.218Z",
+      "stats": {
+        "eventsSeen": 19,
+        "acceptedEvents": 8,
+        "rejectedEvents": 11,
+        "avgEventScore": 0.2436
+      },
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.784
+    },
+    {
+      "id": "mcp-ts-sdk-releases",
+      "name": "MCP TypeScript SDK Releases",
+      "type": "github_releases",
+      "category": "developer-tooling",
+      "status": "active",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases",
+      "apiUrl": "https://api.github.com/repos/modelcontextprotocol/typescript-sdk/releases",
+      "authorityScore": 0.9,
+      "projectFitWeight": 0.9,
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:55.254Z",
+      "stats": {
+        "eventsSeen": 19,
+        "acceptedEvents": 8,
+        "rejectedEvents": 11,
+        "avgEventScore": 0.2674
+      },
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.7849
+    },
+    {
+      "id": "huggingface-blog-rss",
+      "name": "Hugging Face Blog",
+      "type": "rss",
+      "category": "research",
+      "status": "active",
+      "url": "https://huggingface.co/blog/feed.xml",
+      "authorityScore": 0.87,
+      "projectFitWeight": 0.8,
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "trustTier": "tier-2",
+      "lastCheckedAt": "2026-04-03T10:51:55.289Z",
+      "stats": {
+        "eventsSeen": 8,
+        "acceptedEvents": 5,
+        "rejectedEvents": 3,
+        "avgEventScore": 0.4908
+      },
+      "updatedAt": "2026-04-03T10:51:55.812Z",
+      "rankScore": 0.8073
     }
   ],
   "sourceCandidates": [
@@ -208,6 +315,22 @@
       ],
       "discoveredFromEventId": "evt_60723b36f47e52be",
       "discoveredAt": "2026-04-03T08:42:31.732Z"
+    },
+    {
+      "id": "candidate_huggingface-co",
+      "name": "huggingface.co",
+      "type": "candidate",
+      "category": "discovered",
+      "status": "candidate",
+      "url": "https://huggingface.co",
+      "authorityScore": 0.5,
+      "projectFitWeight": 0.45,
+      "tags": [
+        "auto-discovered",
+        "needs-review"
+      ],
+      "discoveredFromEventId": "evt_47830330a009e1ef",
+      "discoveredAt": "2026-04-03T10:49:51.473Z"
     }
   ]
 }

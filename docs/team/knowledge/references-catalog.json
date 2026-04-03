@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-03T09:26:23.628Z",
+  "updatedAt": "2026-04-03T10:51:55.526Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -832,6 +832,678 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_44108caabb9491bc"
+      ]
+    },
+    {
+      "id": "ref_b4a4a25caac6f9aa",
+      "sourceId": "openai-node-releases",
+      "title": "v6.33.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.33.0",
+      "summary": "## 6.33.0 (2026-03-25) Full Changelog: [v6.32.0...v6.33.0](https://github.com/openai/openai-node/compare/v6.32.0...v6.33.0) ### Features * **api:** add keys field to computer action types ([27a850e](https://github.com/openai/openai-node/commit/27a850e8a698cde5b7e05da70d8babb1205b2830)) * **client:** add async iterator and stream() to WebSocket classes ([e1c16ee](https://github.com/openai/openai-node/commit/e1c16ee35b8ef9db30e9a99a2b3460368f3044d0)) ### Bug Fixes * **api:** align SDK response types with expanded item schemas ([491cd52](https://github.com/openai/openai-node/commit/491cd5290c36e6b1de7ff9787e80c73899d8b642)) * **types:** make type required in ResponseInputMessageItem ([2012293](https://github.com/openai/openai-node/commit/20122931977c2de8630cb03182766fbf6dc37868)) ### Chores * **ci:** skip lint on metadata-only changes ([74a917f](https://github.com/openai/openai-node/commit/74a917fd92dd2a1bd3089f3b5f79781bdc0d4ec3)) * **internal:** refactor imports ([cfe9c60](https://github.com/openai/openai-node/commit/cfe9c60aa41e9ed53e7d5f9187d31baf4364f8bd)) * **internal:** update gitignore ([71bd114](https://github.com/openai/openai-node/commit/71bd114f97e24c547660694d03c19b22d62ae961)) * **tests:** bump steady to v0.19.4 ([f2e9dea](https://github.com/openai/openai-node/commit/f2e9dea844405f189cc63a1d1493de3eabfcb7e7)) * **tests:** bump steady to v0.19.5 ([37c6cf4](https://github.com/openai/openai-node/commit/37c6cf495b9a05128572f9e955211b67d01410f3)) * **tests:** bump steady to v0.19.6 ([496b3af](https://github.com/openai/openai-node/commit/496b3af4371cf40f5d14f72d0770e152710b09df)) * **tests:** bump steady to v0.19.7 ([8491eb6](https://github.com/openai/openai-node/commit/8491eb6d83cf8680bdc9d69e60b8e5d09e2bc8e8)) ### Refactors * **tests:** switch from prism to steady ([47c0581](https://github.com/openai/openai-node/commit/47c0581a1923c9e700a619dd6bfa3fb93a188899))",
+      "publishedAt": "2026-03-25T22:08:36Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_86e689c209d61fdf"
+      ]
+    },
+    {
+      "id": "ref_c9d78deb2d85b5b1",
+      "sourceId": "openai-node-releases",
+      "title": "v6.32.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.32.0",
+      "summary": "## 6.32.0 (2026-03-17) Full Changelog: [v6.31.0...v6.32.0](https://github.com/openai/openai-node/compare/v6.31.0...v6.32.0) ### Features * **api:** 5.4 nano and mini model slugs ([068df6d](https://github.com/openai/openai-node/commit/068df6d625d7faa76dfac160065f1ca550539ba8))",
+      "publishedAt": "2026-03-17T17:53:01Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_730d27266a922341"
+      ]
+    },
+    {
+      "id": "ref_3d1f1568e7d98fd5",
+      "sourceId": "openai-node-releases",
+      "title": "v6.31.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.31.0",
+      "summary": "## 6.31.0 (2026-03-16) Full Changelog: [v6.30.1...v6.31.0](https://github.com/openai/openai-node/compare/v6.30.1...v6.31.0) ### Features * **api:** add in/nin filter types to ComparisonFilter ([b2eda27](https://github.com/openai/openai-node/commit/b2eda274418ceb9bbdb3778cb6a5ee28090df8ad))",
+      "publishedAt": "2026-03-16T22:12:31Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_29d3254cd50c8a53"
+      ]
+    },
+    {
+      "id": "ref_f96b60c12877502c",
+      "sourceId": "openai-node-releases",
+      "title": "v6.30.1",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.30.1",
+      "summary": "## 6.30.1 (2026-03-16) Full Changelog: [v6.30.0...v6.30.1](https://github.com/openai/openai-node/compare/v6.30.0...v6.30.1) ### Chores * **internal:** tweak CI branches ([25f5d74](https://github.com/openai/openai-node/commit/25f5d74c1fc16e3303fcb87022f5f0559b052cbf))",
+      "publishedAt": "2026-03-16T21:16:51Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_254a941f2a8b94f4"
+      ]
+    },
+    {
+      "id": "ref_1e840163c549a62e",
+      "sourceId": "openai-node-releases",
+      "title": "v6.30.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.30.0",
+      "summary": "## 6.30.0 (2026-03-16) Full Changelog: [v6.29.0...v6.30.0](https://github.com/openai/openai-node/compare/v6.29.0...v6.30.0) ### Features * **api:** add /v1/videos endpoint option to batches ([271d879](https://github.com/openai/openai-node/commit/271d87979f16950900f4253915bdda319b7fe935)) * **api:** add defer_loading field to NamespaceTool ([7cc8f0a](https://github.com/openai/openai-node/commit/7cc8f0a736ea7ba0aa3e7860b4c30eaaa5795966)) ### Bug Fixes * **api:** oidc publishing for npm ([fa50066](https://github.com/openai/openai-node/commit/fa500666e38379f2241ac43d60e2eb7eef7d39cb))",
+      "publishedAt": "2026-03-16T14:59:25Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_a2e4b965fe2e2f8b"
+      ]
+    },
+    {
+      "id": "ref_eb855994e1a2c0bf",
+      "sourceId": "openai-node-releases",
+      "title": "v6.29.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.29.0",
+      "summary": "## 6.29.0 (2026-03-13) Full Changelog: [v6.28.0...v6.29.0](https://github.com/openai/openai-node/compare/v6.28.0...v6.29.0) ### Features * **api:** custom voices ([a11307a](https://github.com/openai/openai-node/commit/a11307afab49299fdf7e7ed3675d3e277d9b5c60))",
+      "publishedAt": "2026-03-13T21:06:57Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_69bfebe2869b9e2e"
+      ]
+    },
+    {
+      "id": "ref_78be33f6e386fbe9",
+      "sourceId": "openai-node-releases",
+      "title": "v6.28.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.28.0",
+      "summary": "## 6.28.0 (2026-03-13) Full Changelog: [v6.27.0...v6.28.0](https://github.com/openai/openai-node/compare/v6.27.0...v6.28.0) ### Features * **api:** manual updates ([d543959](https://github.com/openai/openai-node/commit/d54395976aa4c1c1864bb45dbaf81ec1d66b8c6b)) * **api:** manual updates ([4f87840](https://github.com/openai/openai-node/commit/4f878406e029ae7527201251632e3fa00b800045)) * **api:** sora api improvements: character api, video extensions/edits, higher resolution exports. ([262dac2](https://github.com/openai/openai-node/commit/262dac25aec6c9caa561f57a0b9e2a086f47a26a)) ### Bug Fixes * **types:** remove detail field from ResponseInputFile and ResponseInputFileContent ([8d6c0cd](https://github.com/openai/openai-node/commit/8d6c0cdbbf08829db08745597e1806661534853f)) ### Chores * **internal:** update dependencies to address dependabot vulnerabilities ([f5810ee](https://github.com/openai/openai-node/commit/f5810ee5f5bf96e81a77f91939f3d56427c46e00)) * match http protocol with ws protocol instead of wss ([6f4e936](https://github.com/openai/openai-node/commit/6f4e936bc2211da885bf492615b2bf413887576b)) * **mcp-server:** improve instructions ([aad9ca1](https://github.com/openai/openai-node/commit/aad9ca15ddbb8dbc27ed6b2aa9b242af9bbf7b8f)) * use proper capitalization for WebSockets ([cb4cf62](https://github.com/openai/openai-node/commit/cb4cf6297c2a0eb7d3f55f8850e6e8ffc4c7ecc6))",
+      "publishedAt": "2026-03-13T19:16:17Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_cfd00ac6628de76b"
+      ]
+    },
+    {
+      "id": "ref_6a053a71794f83fc",
+      "sourceId": "openai-node-releases",
+      "title": "v6.27.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.27.0",
+      "summary": "## 6.27.0 (2026-03-05) Full Changelog: [v6.26.0...v6.27.0](https://github.com/openai/openai-node/compare/v6.26.0...v6.27.0) ### Features * **api:** The GA ComputerTool now uses the CompuerTool class. The 'computer_use_preview' tool is moved to ComputerUsePreview ([0206188](https://github.com/openai/openai-node/commit/0206188f760be830738136e37dcf7be6ea0fe20c)) ### Chores * **internal:** improve import alias names ([9cc2478](https://github.com/openai/openai-node/commit/9cc24789730a309037ef81f5a30af515d700459a))",
+      "publishedAt": "2026-03-05T23:19:23Z",
+      "firstSeenAt": "2026-04-03T10:49:50.484Z",
+      "lastSeenAt": "2026-04-03T10:49:50.484Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d38c15cfd0ab63ce"
+      ]
+    },
+    {
+      "id": "ref_5aa13bc4654bd678",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.145",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.145",
+      "summary": "### Patch Changes - Updated dependencies [ffd431a] - @ai-sdk/gateway@3.0.87",
+      "publishedAt": "2026-04-03T01:36:08Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_16fc09a07664ac17"
+      ]
+    },
+    {
+      "id": "ref_026aaf0e6f71dae5",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.145",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.145",
+      "summary": "### Patch Changes - ai@6.0.145",
+      "publishedAt": "2026-04-03T01:36:17Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d95053354e39808a"
+      ]
+    },
+    {
+      "id": "ref_2c5599ef685633fb",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/svelte@4.0.145",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/svelte%404.0.145",
+      "summary": "### Patch Changes - ai@6.0.145",
+      "publishedAt": "2026-04-03T01:36:32Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1a409a8d5b35fc29"
+      ]
+    },
+    {
+      "id": "ref_b2b41aa5779bac83",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/rsc@2.0.145",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/rsc%402.0.145",
+      "summary": "### Patch Changes - ai@6.0.145",
+      "publishedAt": "2026-04-03T01:36:38Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_b3bcf5df22e3dfa5"
+      ]
+    },
+    {
+      "id": "ref_b9308ead4a6f7837",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/react@3.0.147",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/react%403.0.147",
+      "summary": "### Patch Changes - ai@6.0.145",
+      "publishedAt": "2026-04-03T01:36:26Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_221515f8162a256f"
+      ]
+    },
+    {
+      "id": "ref_b6b6ed37e7714b17",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/llamaindex@2.0.145",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/llamaindex%402.0.145",
+      "summary": "### Patch Changes - ai@6.0.145",
+      "publishedAt": "2026-04-03T01:36:20Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_caf59c81b6afcd1e"
+      ]
+    },
+    {
+      "id": "ref_7b36304c9997e1cb",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/langchain@2.0.151",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/langchain%402.0.151",
+      "summary": "### Patch Changes - ai@6.0.145",
+      "publishedAt": "2026-04-03T01:36:35Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_65d6ab466c1cf7e2"
+      ]
+    },
+    {
+      "id": "ref_75a88107cfbb1728",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/google@3.0.57",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/google%403.0.57",
+      "summary": "### Patch Changes - 0f2b2f1: fix(provider/google): fix Gemini service tier enum after upstream update",
+      "publishedAt": "2026-04-03T01:36:14Z",
+      "firstSeenAt": "2026-04-03T10:49:50.782Z",
+      "lastSeenAt": "2026-04-03T10:49:50.782Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_3f5b398573d25b7e"
+      ]
+    },
+    {
+      "id": "ref_ee8af214fdac0205",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/server@2.0.0-alpha.2",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/server%402.0.0-alpha.2",
+      "summary": "### Patch Changes - [#1840](https://github.com/modelcontextprotocol/typescript-sdk/pull/1840) [`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - tsdown exports resolution fix",
+      "publishedAt": "2026-04-01T16:44:31Z",
+      "firstSeenAt": "2026-04-03T10:49:51.067Z",
+      "lastSeenAt": "2026-04-03T10:49:51.067Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ceb1d9fb7db15698"
+      ]
+    },
+    {
+      "id": "ref_6de5d0011fc18d32",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/server@2.0.0-alpha.1",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/server%402.0.0-alpha.1",
+      "summary": "### Major Changes - [#1389](https://github.com/modelcontextprotocol/typescript-sdk/pull/1389) [`108f2f3`](https://github.com/modelcontextprotocol/typescript-sdk/commit/108f2f3ab6a1267587c7c4f900b6eca3cc2dae51) Thanks [@DePasqualeOrg](https://github.com/DePasqualeOrg)! - Fix error handling for unknown tools and resources per MCP spec. **Tools:** Unknown or disabled tool calls now return JSON-RPC protocol errors with code `-32602` (InvalidParams) instead of `CallToolResult` with `isError: true`. Callers who checked `result.isError` for unknown tools should catch rejected promises instead. **Resources:** Unknown resource reads now return error code `-32002` (ResourceNotFound) instead of `-32602` (InvalidParams). Added `ProtocolErrorCode.ResourceNotFound`. ### Minor Changes - [#1673](https://github.com/modelcontextprotocol/typescript-sdk/pull/1673) [`462c3fc`](https://github.com/modelcontextprotocol/typescript-sdk/commit/462c3fc47dffac908d2ba27784d47ff010fa065e) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - refactor: extract task orchestration from Protocol into TaskManager **Breaking changes:** - `taskStore`, `taskMessageQueue`, `defaultTaskPollInterval`, and `maxTaskQueueSize` moved from `ProtocolOptions` to `capabilities.tasks` on `ClientOptions`/`ServerOptions` - [#1689](https://github.com/modelcontextprotocol/typescript-sdk/pull/1689) [`0784be1`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0784be1a67fb3cc2aba0182d88151264f4ea73c8) Thanks [@felixweinberger](https://github.com/felixweinberger)! - Support Standard Schema for tool and prompt schemas Tool and prompt registration now accepts any schema library that implements the [Standard Schema spec](https://standardschema.dev/): Zod v4, Valibot, ArkType, and others. `RegisteredTool.inputSchema`, `RegisteredTool.outputSchema`, and `RegisteredPrompt.argsSchema` now use `StandardSchemaWithJSON` (requires both `~standard.validate` and `~standard.jsonSchema`) instead of the Zod-specific `AnySchema` type. **Zod v4 schemas continue to work unchanged** — Zod v4 implements the required interfaces natively. ```typescript import { type } from 'arktype'; server.registerTool( 'greet', { inputSchema: type({ name: 'string' }) }, async ({ name }) => ({ content: [{ type: 'text', text: `Hello, ${name}!` }] }) ); ``` For raw JSON Schema (e.g. TypeBox output), use the new `fromJsonSchema` adapter: ```typescript import { fromJsonSchema, AjvJsonSchemaValidator } from '@modelcontextprotocol/core'; server.registerTool( 'greet', { inputSchema: fromJsonSchema({ type: 'object', properties: { name: { type: 'string' } } }, new AjvJsonSchemaValidator()) }, handler ); ``` **Breaking changes:** - `experimental.tasks.getTaskResult()` no longer accepts a `resultSchema` parameter. Returns `GetTaskPayloadResult` (a loose `Result`); cast to the expected type at the call site. - Removed unused exports from `@modelcontextprotocol/core`: `SchemaInput`, `schemaToJson`, `parseSchemaAsync`, `getSchemaShape`, `getSchemaDescription`, `isOptionalSchema`, `unwrapOptionalSchema`. Use the new `standardSchemaToJsonSchema` and `validateStandardSchema` instead. - `completable()` remains Zod-specific (it relies on Zod's `.shape` introspection). ### Patch Changes - [#1758](https://github.com/modelcontextprotocol/typescript-sdk/pull/1758) [`e86b183`](https://github.com/modelcontextprotocol/typescript-sdk/commit/e86b1835ccf213c3799ac19f4111d01816912333) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - tasks - disallow requesting a null TTL - [#1363](https://github.com/modelcontextprotocol/typescript-sdk/pull/1363) [`0a75810`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0a75810b26e24bae6b9cfb41e12ac770aeaa1da4) Thanks [@DevJanderson](https://github.com/DevJanderson)! - Fix ReDoS vulnerability in UriTemplate regex patterns (CVE-2026-0621) - [#1372](https://github.com/modelcontextprotocol/typescript-sdk/pull/1372) [`3466a9e`](https://github.com/modelcontextprotocol/typescript-sdk/commit/3466a9e0e5d392824156d9b290863ae08192d87e) Thanks [@mattzcarey](https://github.com/mattzcarey)! - missing change for fix(client): replace body.cancel() with text() to prevent hanging - [#1824](https://github.com/modelcontextprotocol/typescript-sdk/pull/1824) [`fcde488`](https://github.com/modelcontextprotocol/typescript-sdk/commit/fcde4882276cb0a7d199e47f00120fe13f7f5d47) Thanks [@felixweinberger](https://github.com/felixweinberger)! - Drop `zod` from `peerDependencies` (kept as direct dependency) Since Standard Schema support landed, `zod` is purely an internal runtime dependency used for protocol message parsing. User-facing schemas (`registerTool`, `registerPrompt`) accept any Standard Schema library. `zod` remains in `dependencies` and auto-installs; users no longer need to install it alongside the SDK. - [#1761](https://github.com/modelcontextprotocol/typescript-sdk/pull/1761) [`01954e6`](https://github.com/modelcontextprotocol/typescript-sdk/commit/01954e621afe525cc3c1bbe8d781e44734cf81c2) Thanks [@felixweinberger](https://github.com/felixweinberger)! - Convert remaining capability-assertion throws to `SdkError(SdkErrorCode.CapabilityNotSupported, ...)`. Follow-up to #1454 which missed `Client.assertCapability()`, the task capability helpers in `experimental/tasks/helpers.ts`, and the sampling/elicitation capability checks in `experimental/tasks/server.ts`. - [#1433](https://github.com/modelcontextprotocol/typescript-sdk/pull/1433) [`78bae74`](https://github.com/modelcontextprotocol/typescript-sdk/commit/78bae7426d4ca38216c0571b5aa7806f58ab81e4) Thanks [@codewithkenzo](https://github.com/codewithkenzo)! - Fix transport errors being silently swallowed by adding missing `onerror` callback invocations before all `createJsonErrorResponse` calls in `WebStandardStreamableHTTPServerTransport`. This ensures errors like parse failures, invalid headers, and session validation errors are properly reported via the `onerror` callback. - [#1660](https://github.com/modelcontextprotocol/typescript-sdk/pull/1660) [`689148d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/689148dc7235f53244869ed64b2ecc9ec4ef70f1) Thanks [@rechedev9](https://github.com/rechedev9)! - fix(server): propagate negotiated protocol version to transport in \\_oninitialize - [#1568](https://github.com/modelcontextprotocol/typescript-sdk/pull/1568) [`f1ade75`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f1ade75b67a2b46b06316fa4e5caa1d277537cc7) Thanks [@stakeswky](https://github.com/stakeswky)! - Handle stdout errors (e.g. EPIPE) in `StdioServerTransport` gracefully instead of crashing. When the client disconnects abruptly, the transport now catches the stdout error, surfaces it via `onerror`, and closes. - [#1419](https://github.com/modelcontextprotocol/typescript-sdk/pull/1419) [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - remove deprecated .tool, .prompt, .resource method signatures - [#1388](https://github.com/modelcontextprotocol/typescript-sdk/pull/1388) [`f66a55b`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f66a55b5f4eb7ce0f8b3885633bf9a7b1080e0b5) Thanks [@mattzcarey](https://github.com/mattzcarey)! - reverting application/json in notifications - [#1534](https://github.com/modelcontextprotocol/typescript-sdk/pull/1534) [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e) Thanks [@josefaidt](https://github.com/josefaidt)! - remove npm references, use pnpm - [#1534](https://github.com/modelcontextprotocol/typescript-sdk/pull/1534) [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e) Thanks [@josefaidt](https://github.com/josefaidt)! - clean up package manager usage, all pnpm - [#1419](https://github.com/modelcontextprotocol/typescript-sdk/pull/1419) [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - deprecated .tool, .prompt, .resource method removal - [#1279](https://github.com/modelcontextprotocol/typescript-sdk/pull/1279) [`71ae3ac`](https://github.com/modelcontextprotocol/typescript-sdk/commit/71ae3acee0203a1023817e3bffcd172d0966d2ac) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - Initial 2.0.0-alpha.0 client and server package",
+      "publishedAt": "2026-04-01T14:46:44Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_965de5e78d283ff2"
+      ]
+    },
+    {
+      "id": "ref_95920b1214ab479a",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/node@2.0.0-alpha.2",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/node%402.0.0-alpha.2",
+      "summary": "### Patch Changes - [#1840](https://github.com/modelcontextprotocol/typescript-sdk/pull/1840) [`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - tsdown exports resolution fix - Updated dependencies \\[[`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb)]: - @modelcontextprotocol/server@2.0.0-alpha.2",
+      "publishedAt": "2026-04-01T16:44:22Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_b929df3f609fe55f"
+      ]
+    },
+    {
+      "id": "ref_dcf0f231f4f1be92",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/node@2.0.0-alpha.1",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/node%402.0.0-alpha.1",
+      "summary": "### Patch Changes - [#1504](https://github.com/modelcontextprotocol/typescript-sdk/pull/1504) [`327243c`](https://github.com/modelcontextprotocol/typescript-sdk/commit/327243cebd96e07686c88f7fa9ca22a5a7a7993d) Thanks [@corvid-agent](https://github.com/corvid-agent)! - Add missing `hono` peer dependency to `@modelcontextprotocol/node`. The package already depends on `@hono/node-server` which requires `hono` at runtime, but `hono` was only listed in the workspace root, not as a peer dependency of the package itself. - [#1410](https://github.com/modelcontextprotocol/typescript-sdk/pull/1410) [`9296459`](https://github.com/modelcontextprotocol/typescript-sdk/commit/9296459ac006546499f6b4105ffc528b8c212d88) Thanks [@mattzcarey](https://github.com/mattzcarey)! - Prevent Hono from overriding global Response object by passing `overrideGlobalObjects: false` to `getRequestListener()`. This fixes compatibility with frameworks like Next.js whose response classes extend the native Response. - [#1419](https://github.com/modelcontextprotocol/typescript-sdk/pull/1419) [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - remove deprecated .tool, .prompt, .resource method signatures - [#1534](https://github.com/modelcontextprotocol/typescript-sdk/pull/1534) [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e) Thanks [@josefaidt](https://github.com/josefaidt)! - remove npm references, use pnpm - [#1534](https://github.com/modelcontextprotocol/typescript-sdk/pull/1534) [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e) Thanks [@josefaidt](https://github.com/josefaidt)! - clean up package manager usage, all pnpm - [#1419](https://github.com/modelcontextprotocol/typescript-sdk/pull/1419) [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - deprecated .tool, .prompt, .resource method removal - Updated dependencies \\[[`e86b183`](https://github.com/modelcontextprotocol/typescript-sdk/commit/e86b1835ccf213c3799ac19f4111d01816912333), [`0a75810`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0a75810b26e24bae6b9cfb41e12ac770aeaa1da4), [`3466a9e`](https://github.com/modelcontextprotocol/typescript-sdk/commit/3466a9e0e5d392824156d9b290863ae08192d87e), [`fcde488`](https://github.com/modelcontextprotocol/typescript-sdk/commit/fcde4882276cb0a7d199e47f00120fe13f7f5d47), [`462c3fc`](https://github.com/modelcontextprotocol/typescript-sdk/commit/462c3fc47dffac908d2ba27784d47ff010fa065e), [`01954e6`](https://github.com/modelcontextprotocol/typescript-sdk/commit/01954e621afe525cc3c1bbe8d781e44734cf81c2), [`78bae74`](https://github.com/modelcontextprotocol/typescript-sdk/commit/78bae7426d4ca38216c0571b5aa7806f58ab81e4), [`689148d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/689148dc7235f53244869ed64b2ecc9ec4ef70f1), [`f1ade75`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f1ade75b67a2b46b06316fa4e5caa1d277537cc7), [`108f2f3`](https://github.com/modelcontextprotocol/typescript-sdk/commit/108f2f3ab6a1267587c7c4f900b6eca3cc2dae51), [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a), [`f66a55b`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f66a55b5f4eb7ce0f8b3885633bf9a7b1080e0b5), [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e), [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e), [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a), [`0784be1`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0784be1a67fb3cc2aba0182d88151264f4ea73c8), [`71ae3ac`](https://github.com/modelcontextprotocol/typescript-sdk/commit/71ae3acee0203a1023817e3bffcd172d0966d2ac)]: - @modelcontextprotocol/server@2.0.0-alpha.1",
+      "publishedAt": "2026-04-01T14:46:32Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_4b4d37b162d26a89"
+      ]
+    },
+    {
+      "id": "ref_1e0c230a2e3c28e5",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/hono@2.0.0-alpha.2",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/hono%402.0.0-alpha.2",
+      "summary": "### Patch Changes - [#1840](https://github.com/modelcontextprotocol/typescript-sdk/pull/1840) [`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - tsdown exports resolution fix - Updated dependencies \\[[`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb)]: - @modelcontextprotocol/server@2.0.0-alpha.2",
+      "publishedAt": "2026-04-01T16:44:28Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1f9da92576d1f13a"
+      ]
+    },
+    {
+      "id": "ref_db4733b419da2ba5",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/hono@2.0.0-alpha.1",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/hono%402.0.0-alpha.1",
+      "summary": "### Patch Changes - [#1534](https://github.com/modelcontextprotocol/typescript-sdk/pull/1534) [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e) Thanks [@josefaidt](https://github.com/josefaidt)! - remove npm references, use pnpm - [#1534](https://github.com/modelcontextprotocol/typescript-sdk/pull/1534) [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e) Thanks [@josefaidt](https://github.com/josefaidt)! - clean up package manager usage, all pnpm - Updated dependencies \\[[`e86b183`](https://github.com/modelcontextprotocol/typescript-sdk/commit/e86b1835ccf213c3799ac19f4111d01816912333), [`0a75810`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0a75810b26e24bae6b9cfb41e12ac770aeaa1da4), [`3466a9e`](https://github.com/modelcontextprotocol/typescript-sdk/commit/3466a9e0e5d392824156d9b290863ae08192d87e), [`fcde488`](https://github.com/modelcontextprotocol/typescript-sdk/commit/fcde4882276cb0a7d199e47f00120fe13f7f5d47), [`462c3fc`](https://github.com/modelcontextprotocol/typescript-sdk/commit/462c3fc47dffac908d2ba27784d47ff010fa065e), [`01954e6`](https://github.com/modelcontextprotocol/typescript-sdk/commit/01954e621afe525cc3c1bbe8d781e44734cf81c2), [`78bae74`](https://github.com/modelcontextprotocol/typescript-sdk/commit/78bae7426d4ca38216c0571b5aa7806f58ab81e4), [`689148d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/689148dc7235f53244869ed64b2ecc9ec4ef70f1), [`f1ade75`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f1ade75b67a2b46b06316fa4e5caa1d277537cc7), [`108f2f3`](https://github.com/modelcontextprotocol/typescript-sdk/commit/108f2f3ab6a1267587c7c4f900b6eca3cc2dae51), [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a), [`f66a55b`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f66a55b5f4eb7ce0f8b3885633bf9a7b1080e0b5), [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e), [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e), [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a), [`0784be1`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0784be1a67fb3cc2aba0182d88151264f4ea73c8), [`71ae3ac`](https://github.com/modelcontextprotocol/typescript-sdk/commit/71ae3acee0203a1023817e3bffcd172d0966d2ac)]: - @modelcontextprotocol/server@2.0.0-alpha.1",
+      "publishedAt": "2026-04-01T14:46:47Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8a6d04e80e7d5794"
+      ]
+    },
+    {
+      "id": "ref_d56a900fd0cc4f44",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/fastify@2.0.0-alpha.2",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/fastify%402.0.0-alpha.2",
+      "summary": "### Patch Changes - [#1840](https://github.com/modelcontextprotocol/typescript-sdk/pull/1840) [`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb) Thanks [@KKonstantinov](https://github.com/KKonstantinov)! - tsdown exports resolution fix - Updated dependencies \\[[`424cbae`](https://github.com/modelcontextprotocol/typescript-sdk/commit/424cbaeee13b7fe18d38048295135395b9ad81bb)]: - @modelcontextprotocol/server@2.0.0-alpha.2",
+      "publishedAt": "2026-04-01T16:44:34Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_cedca1ce4ec12f08"
+      ]
+    },
+    {
+      "id": "ref_4115b46aee40b764",
+      "sourceId": "mcp-ts-sdk-releases",
+      "title": "@modelcontextprotocol/fastify@2.0.0-alpha.1",
+      "url": "https://github.com/modelcontextprotocol/typescript-sdk/releases/tag/%40modelcontextprotocol/fastify%402.0.0-alpha.1",
+      "summary": "### Minor Changes - [#1536](https://github.com/modelcontextprotocol/typescript-sdk/pull/1536) [`81e4b2a`](https://github.com/modelcontextprotocol/typescript-sdk/commit/81e4b2a412ab52ada436061502dd711a67555519) Thanks [@andyfleming](https://github.com/andyfleming)! - Add Fastify middleware adapter for MCP servers, following the same pattern as the Express and Hono adapters. ### Patch Changes - Updated dependencies \\[[`e86b183`](https://github.com/modelcontextprotocol/typescript-sdk/commit/e86b1835ccf213c3799ac19f4111d01816912333), [`0a75810`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0a75810b26e24bae6b9cfb41e12ac770aeaa1da4), [`3466a9e`](https://github.com/modelcontextprotocol/typescript-sdk/commit/3466a9e0e5d392824156d9b290863ae08192d87e), [`fcde488`](https://github.com/modelcontextprotocol/typescript-sdk/commit/fcde4882276cb0a7d199e47f00120fe13f7f5d47), [`462c3fc`](https://github.com/modelcontextprotocol/typescript-sdk/commit/462c3fc47dffac908d2ba27784d47ff010fa065e), [`01954e6`](https://github.com/modelcontextprotocol/typescript-sdk/commit/01954e621afe525cc3c1bbe8d781e44734cf81c2), [`78bae74`](https://github.com/modelcontextprotocol/typescript-sdk/commit/78bae7426d4ca38216c0571b5aa7806f58ab81e4), [`689148d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/689148dc7235f53244869ed64b2ecc9ec4ef70f1), [`f1ade75`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f1ade75b67a2b46b06316fa4e5caa1d277537cc7), [`108f2f3`](https://github.com/modelcontextprotocol/typescript-sdk/commit/108f2f3ab6a1267587c7c4f900b6eca3cc2dae51), [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a), [`f66a55b`](https://github.com/modelcontextprotocol/typescript-sdk/commit/f66a55b5f4eb7ce0f8b3885633bf9a7b1080e0b5), [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e), [`69a0626`](https://github.com/modelcontextprotocol/typescript-sdk/commit/69a062693f61e024d7a366db0c3e3ba74ff59d8e), [`dcf708d`](https://github.com/modelcontextprotocol/typescript-sdk/commit/dcf708d892b7ca5f137c74109d42cdeb05e2ee3a), [`0784be1`](https://github.com/modelcontextprotocol/typescript-sdk/commit/0784be1a67fb3cc2aba0182d88151264f4ea73c8), [`71ae3ac`](https://github.com/modelcontextprotocol/typescript-sdk/commit/71ae3acee0203a1023817e3bffcd172d0966d2ac)]: - @modelcontextprotocol/server@2.0.0-alpha.1",
+      "publishedAt": "2026-04-01T14:46:40Z",
+      "firstSeenAt": "2026-04-03T10:49:51.068Z",
+      "lastSeenAt": "2026-04-03T10:49:51.068Z",
+      "tags": [
+        "mcp",
+        "sdk",
+        "typescript",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1103caf65637d91c"
+      ]
+    },
+    {
+      "id": "ref_1e28a3c9c3c0902c",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Welcome Gemma 4: Frontier multimodal intelligence on device",
+      "url": "https://huggingface.co/blog/gemma4",
+      "summary": "",
+      "publishedAt": "2026-04-02T00:00:00.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_47830330a009e1ef"
+      ]
+    },
+    {
+      "id": "ref_33ae16c096991610",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Holo3: Breaking the Computer Use Frontier",
+      "url": "https://huggingface.co/blog/Hcompany/holo3",
+      "summary": "",
+      "publishedAt": "2026-04-01T16:36:15.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_3fa2f4c7179e9304"
+      ]
+    },
+    {
+      "id": "ref_8cd424d03f6aefd6",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Falcon Perception",
+      "url": "https://huggingface.co/blog/tiiuae/falcon-perception",
+      "summary": "",
+      "publishedAt": "2026-04-01T07:13:20.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_f9a328620100b457"
+      ]
+    },
+    {
+      "id": "ref_6af0041c157d0ff6",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Granite 4.0 3B Vision: Compact Multimodal Intelligence for Enterprise Documents",
+      "url": "https://huggingface.co/blog/ibm-granite/granite-4-vision",
+      "summary": "",
+      "publishedAt": "2026-03-31T15:10:41.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_2a124f3253894d32"
+      ]
+    },
+    {
+      "id": "ref_6bdd97de9d5a530c",
+      "sourceId": "huggingface-blog-rss",
+      "title": "TRL v1.0: Post-Training Library Built to Move with the Field",
+      "url": "https://huggingface.co/blog/trl-v1",
+      "summary": "",
+      "publishedAt": "2026-03-31T00:00:00.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_22ba1d06056de32a"
+      ]
+    },
+    {
+      "id": "ref_0a5369f117ebee3c",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Liberate your OpenClaw",
+      "url": "https://huggingface.co/blog/liberate-your-openclaw",
+      "summary": "",
+      "publishedAt": "2026-03-27T00:00:00.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_883d53773a0b13e0"
+      ]
+    },
+    {
+      "id": "ref_ff51e068fdafee72",
+      "sourceId": "huggingface-blog-rss",
+      "title": "A New Framework for Evaluating Voice Agents (EVA)",
+      "url": "https://huggingface.co/blog/ServiceNow-AI/eva",
+      "summary": "",
+      "publishedAt": "2026-03-24T02:01:52.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b3d3354be6ad2544"
+      ]
+    },
+    {
+      "id": "ref_6270662cc896cd45",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Build a Domain-Specific Embedding Model in Under a Day",
+      "url": "https://huggingface.co/blog/nvidia/domain-specific-embedding-finetune",
+      "summary": "",
+      "publishedAt": "2026-03-20T19:38:16.000Z",
+      "firstSeenAt": "2026-04-03T10:49:51.473Z",
+      "lastSeenAt": "2026-04-03T10:49:51.473Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_987ba185f2b95622"
       ]
     }
   ]

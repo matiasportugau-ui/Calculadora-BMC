@@ -32,11 +32,23 @@ async function checkSource(source) {
     }
     if (source.type === "github_releases") {
       const data = await fetchJson(source.apiUrl || source.url, 12000);
-      return { ok: Array.isArray(data), reason: "github releases fetched" };
+      return { ok: Array.isArray(data), reason: "github releases fetched", degraded: false };
     }
-    return { ok: true, reason: "unsupported source type skipped" };
+    return { ok: true, reason: "unsupported source type skipped", degraded: false };
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    const reason = error instanceof Error ? error.message : String(error);
+    const isGithubRateLimit =
+      source.type === "github_releases" &&
+      reason.includes("HTTP 403") &&
+      reason.includes("api.github.com");
+    if (isGithubRateLimit) {
+      return {
+        ok: true,
+        degraded: true,
+        reason: "github releases rate-limited (HTTP 403), tolerated in preflight",
+      };
+    }
+    return { ok: false, degraded: false, reason };
   }
 }
 
@@ -66,14 +78,17 @@ async function main() {
     sourceChecks.push({
       sourceId: source.id,
       ok: result.ok,
+      degraded: Boolean(result.degraded),
       reason: result.reason,
       lastCheckedAtValid: source.lastCheckedAt ? isIsoDate(source.lastCheckedAt) : true,
     });
   }
   const sourceOk = sourceChecks.every((check) => check.ok);
+  const degradedCount = sourceChecks.filter((check) => check.degraded).length;
   checks.push({
     name: "source-connectivity",
     ok: sourceOk,
+    degradedCount,
     details: sourceChecks,
   });
 

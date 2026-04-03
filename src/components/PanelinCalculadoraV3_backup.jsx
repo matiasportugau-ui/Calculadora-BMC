@@ -2204,12 +2204,47 @@ export default function PanelinCalculadoraV3() {
       switch (action.type) {
         case "setScenario":   setScenario(action.payload); break;
         case "setLP":         setLP(action.payload); break;
-        case "setTecho":      setTecho((prev) => ({ ...prev, ...action.payload })); break;
-        case "setPared":      setPared((prev) => ({ ...prev, ...action.payload })); break;
-        case "setCamara":     setCamara((prev) => ({ ...prev, ...action.payload })); break;
+        case "setTecho": {
+          const p = { ...action.payload };
+          // Coerce numeric fields so calculations don't break
+          if (p.pendiente != null) p.pendiente = Number(p.pendiente) || 0;
+          if (p.alturaDif != null) p.alturaDif = Number(p.alturaDif) || 0;
+          if (p.ptsHorm != null) p.ptsHorm = Number(p.ptsHorm) || 0;
+          if (p.ptsMetal != null) p.ptsMetal = Number(p.ptsMetal) || 0;
+          if (p.ptsMadera != null) p.ptsMadera = Number(p.ptsMadera) || 0;
+          if (Array.isArray(p.zonas)) {
+            p.zonas = p.zonas.map((z) => ({ ...z, largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }));
+          }
+          setTecho((prev) => ({ ...prev, ...p }));
+          break;
+        }
+        case "setPared": {
+          const p = { ...action.payload };
+          if (p.alto != null) p.alto = Number(p.alto) || 0;
+          if (p.perimetro != null) p.perimetro = Number(p.perimetro) || 0;
+          if (p.numEsqExt != null) p.numEsqExt = Number(p.numEsqExt) || 0;
+          if (p.numEsqInt != null) p.numEsqInt = Number(p.numEsqInt) || 0;
+          setPared((prev) => ({ ...prev, ...p }));
+          break;
+        }
+        case "setCamara": {
+          const p = { ...action.payload };
+          if (p.largo_int != null) p.largo_int = Number(p.largo_int) || 0;
+          if (p.ancho_int != null) p.ancho_int = Number(p.ancho_int) || 0;
+          if (p.alto_int != null) p.alto_int = Number(p.alto_int) || 0;
+          setCamara((prev) => ({ ...prev, ...p }));
+          break;
+        }
         case "setFlete":      setFlete(Number(action.payload)); break;
         case "setProyecto":   setProyecto((prev) => ({ ...prev, ...action.payload })); break;
         case "setWizardStep": setWizardStep(Number(action.payload)); break;
+        case "setTechoZonas": {
+          const zonas = Array.isArray(action.payload)
+            ? action.payload.map((z) => ({ largo: Number(z.largo) || 0, ancho: Number(z.ancho) || 0 }))
+            : [];
+          if (zonas.length > 0) setTecho((prev) => ({ ...prev, zonas }));
+          break;
+        }
         case "advanceWizard": window.dispatchEvent(new CustomEvent("bmc-wizard-next")); break;
         default: break;
       }

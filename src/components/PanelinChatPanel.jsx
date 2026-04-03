@@ -11,6 +11,19 @@ const TEXT = "#1d1d1f";
 const SUBTEXT = "#6e6e73";
 const VIDEO_SRC = `${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}video/panelin-lista-loop.mp4`;
 
+const ACTION_LABELS = {
+  setScenario:   (p) => `Escenario → ${p}`,
+  setLP:         (p) => `Lista → ${p === "web" ? "Precio web" : "Precio venta"}`,
+  setTecho:      (p) => `Techo → ${Object.entries(p).filter(([,v]) => v != null && v !== "").map(([k,v]) => `${k}=${Array.isArray(v) ? v.map(z=>`${z.largo}×${z.ancho}m`).join(", ") : v}`).join(", ")}`,
+  setPared:      (p) => `Pared → ${Object.entries(p).filter(([,v]) => v != null && v !== "").map(([k,v]) => `${k}=${v}`).join(", ")}`,
+  setCamara:     (p) => `Cámara → ${p.largo_int}×${p.ancho_int}×${p.alto_int}m`,
+  setFlete:      (p) => `Flete → USD ${p}`,
+  setProyecto:   (p) => `Proyecto → ${Object.entries(p).filter(([,v]) => v).map(([k,v]) => `${k}=${v}`).join(", ")}`,
+  setWizardStep: (p) => `Paso → ${p}`,
+  setTechoZonas: (p) => `Zonas techo → ${Array.isArray(p) ? p.map((z,i)=>`Zona ${i+1}: ${z.largo}×${z.ancho}m`).join(", ") : p}`,
+  advanceWizard: ()  => `Avanzó al siguiente paso`,
+};
+
 // Inject dot-pulse keyframe once
 if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf")) {
   const s = document.createElement("style");
@@ -284,29 +297,44 @@ export default function PanelinChatPanel({
                 }}
               >
                 {!isUser && <Avatar size={24} />}
-                <div
-                  style={{
-                    maxWidth: "80%",
-                    padding: "10px 13px",
-                    borderRadius: isUser
-                      ? "16px 16px 4px 16px"
-                      : "16px 16px 16px 4px",
-                    background: isUser ? PRIMARY : SURFACE,
-                    color: isUser ? "#fff" : TEXT,
-                    fontSize: 14,
-                    lineHeight: 1.5,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {msg.pending && !msg.content ? (
-                    <span>
-                      <span className="panelin-dot" />
-                      <span className="panelin-dot" />
-                      <span className="panelin-dot" />
-                    </span>
-                  ) : (
-                    msg.content
+                <div style={{ maxWidth: "80%", display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div
+                    style={{
+                      padding: "10px 13px",
+                      borderRadius: isUser
+                        ? "16px 16px 4px 16px"
+                        : "16px 16px 16px 4px",
+                      background: isUser ? PRIMARY : SURFACE,
+                      color: isUser ? "#fff" : TEXT,
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {msg.pending && !msg.content ? (
+                      <span>
+                        <span className="panelin-dot" />
+                        <span className="panelin-dot" />
+                        <span className="panelin-dot" />
+                      </span>
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                  {/* Action feedback badges */}
+                  {!isUser && msg.actions?.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 2 }}>
+                      {msg.actions.map((a, i) => {
+                        const labelFn = ACTION_LABELS[a.type];
+                        const label = labelFn ? labelFn(a.payload) : a.type;
+                        return (
+                          <div key={i} style={{ fontSize: 11, color: "#34c759", display: "flex", alignItems: "center", gap: 3, fontFamily: FONT }}>
+                            <span>✓</span><span>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-04-03T09:26:24.616Z",
+  "generatedAt": "2026-04-03T10:51:56.563Z",
   "generatedForDate": "2026-04-03",
   "source": "docs/team/knowledge/knowledge-db.json",
   "summary": {
@@ -18,7 +18,7 @@
       "title": "Review target: docs/openapi-email-gpt.yaml",
       "priority": "high",
       "score": 3,
-      "reason": "25 impact hits (2H/12M/11L)",
+      "reason": "106 impact hits (2H/19M/85L)",
       "recommendation": "Review prompt/actions contracts and capability manifests.",
       "target": "docs/openapi-email-gpt.yaml",
       "existsInRepo": true,
@@ -28,14 +28,14 @@
       "nextStep": "Comparar spec con rutas reales y listar operationIds faltantes.",
       "evidence": "PR diff + smoke GPT actions",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "scripts-capabilities-snapshot-mjs-review-target-scripts-capabilities-snapshot-mj",
       "title": "Review target: scripts/capabilities-snapshot.mjs",
       "priority": "high",
       "score": 3,
-      "reason": "25 impact hits (2H/12M/11L)",
+      "reason": "106 impact hits (2H/19M/85L)",
       "recommendation": "Review prompt/actions contracts and capability manifests.",
       "target": "scripts/capabilities-snapshot.mjs",
       "existsInRepo": true,
@@ -45,14 +45,14 @@
       "nextStep": "Regenerar snapshot y validar que no haya drift con /capabilities.",
       "evidence": "Snapshot generado + salida comando",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "server-gptactions-js-review-target-server-gptactions-js",
       "title": "Review target: server/gptActions.js",
       "priority": "high",
       "score": 3,
-      "reason": "25 impact hits (2H/12M/11L)",
+      "reason": "106 impact hits (2H/19M/85L)",
       "recommendation": "Review prompt/actions contracts and capability manifests.",
       "target": "server/gptActions.js",
       "existsInRepo": true,
@@ -62,14 +62,14 @@
       "nextStep": "Alinear handlers con OpenAPI y validar errores 4xx/5xx.",
       "evidence": "Tests/contratos + ejemplos curl",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "server-index-js-review-target-server-index-js",
       "title": "Review target: server/index.js",
       "priority": "high",
       "score": 3,
-      "reason": "25 impact hits (2H/12M/11L)",
+      "reason": "106 impact hits (2H/19M/85L)",
       "recommendation": "Review prompt/actions contracts and capability manifests.",
       "target": "server/index.js",
       "existsInRepo": true,
@@ -79,14 +79,14 @@
       "nextStep": "Verificar wiring de rutas y compatibilidad con capacidades publicas.",
       "evidence": "Checklist de rutas + health OK",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "dockerfile-bmc-dashboard-review-target-dockerfile-bmc-dashboard",
       "title": "Review target: Dockerfile.bmc-dashboard",
       "priority": "high",
       "score": 3,
-      "reason": "20 impact hits (5H/2M/13L)",
+      "reason": "44 impact hits (5H/2M/37L)",
       "recommendation": "Validate deploy pipeline and production smoke checks.",
       "target": "Dockerfile.bmc-dashboard",
       "existsInRepo": true,
@@ -96,14 +96,14 @@
       "nextStep": "Revisar build args/env y endurecer pasos prebuild para deploy estable.",
       "evidence": "Build local + nota de cambios",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "scripts-deploy-cloud-run-sh-review-target-scripts-deploy-cloud-run-sh",
       "title": "Review target: scripts/deploy-cloud-run.sh",
       "priority": "high",
       "score": 3,
-      "reason": "20 impact hits (5H/2M/13L)",
+      "reason": "44 impact hits (5H/2M/37L)",
       "recommendation": "Validate deploy pipeline and production smoke checks.",
       "target": "scripts/deploy-cloud-run.sh",
       "existsInRepo": true,
@@ -113,14 +113,14 @@
       "nextStep": "Agregar validaciones previas de env criticas y rollback hint.",
       "evidence": "Deploy dry-run / output validacion",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "scripts-deploy-vercel-sh-review-target-scripts-deploy-vercel-sh",
       "title": "Review target: scripts/deploy-vercel.sh",
       "priority": "high",
       "score": 3,
-      "reason": "20 impact hits (5H/2M/13L)",
+      "reason": "44 impact hits (5H/2M/37L)",
       "recommendation": "Validate deploy pipeline and production smoke checks.",
       "target": "scripts/deploy-vercel.sh",
       "existsInRepo": true,
@@ -130,14 +130,14 @@
       "nextStep": "Confirmar variables obligatorias y smoke post-deploy.",
       "evidence": "URL deploy + smoke OK",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "scripts-smoke-prod-api-mjs-review-target-scripts-smoke-prod-api-mjs",
       "title": "Review target: scripts/smoke-prod-api.mjs",
       "priority": "high",
       "score": 3,
-      "reason": "20 impact hits (5H/2M/13L)",
+      "reason": "44 impact hits (5H/2M/37L)",
       "recommendation": "Validate deploy pipeline and production smoke checks.",
       "target": "scripts/smoke-prod-api.mjs",
       "existsInRepo": true,
@@ -147,14 +147,14 @@
       "nextStep": "Priorizar chequeos criticos y salida JSON accionable para CI.",
       "evidence": "Reporte smoke con checks criticos",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "cross-cutting-domain-watch-llm-platforms",
       "title": "Domain watch: llm-platforms",
       "priority": "high",
       "score": 3,
-      "reason": "25 mappings (2H/12M/11L)",
+      "reason": "106 mappings (2H/19M/85L)",
       "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts.",
       "target": "(cross-cutting)",
       "existsInRepo": true,
@@ -164,14 +164,14 @@
       "nextStep": "Definir backlog de compatibilidad LLM/API para esta semana.",
       "evidence": "Top 3 tareas creadas en tracker",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "cross-cutting-domain-watch-deployment-stack",
       "title": "Domain watch: deployment-stack",
       "priority": "high",
       "score": 3,
-      "reason": "20 mappings (5H/2M/13L)",
+      "reason": "44 mappings (5H/2M/37L)",
       "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts.",
       "target": "(cross-cutting)",
       "existsInRepo": true,
@@ -181,31 +181,14 @@
       "nextStep": "Cerrar checklist unica de deploy Cloud Run + Vercel.",
       "evidence": "Checklist completado",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
-    },
-    {
-      "id": "cross-cutting-domain-watch-data-and-storage",
-      "title": "Domain watch: data-and-storage",
-      "priority": "high",
-      "score": 3,
-      "reason": "9 mappings (6H/2M/1L)",
-      "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts.",
-      "target": "(cross-cutting)",
-      "existsInRepo": true,
-      "status": "todo",
-      "owner": "AI",
-      "dueDate": "2026-04-09",
-      "nextStep": "Revisar migraciones/rutas sensibles y riesgos de compatibilidad.",
-      "evidence": "Informe de riesgo corto",
-      "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     },
     {
       "id": "cross-cutting-domain-watch-workflow-automation",
       "title": "Domain watch: workflow-automation",
       "priority": "medium",
       "score": 2,
-      "reason": "16 mappings (0H/4M/12L)",
+      "reason": "32 mappings (0H/5M/27L)",
       "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts.",
       "target": "(cross-cutting)",
       "existsInRepo": true,
@@ -215,7 +198,24 @@
       "nextStep": "Proponer 2 automatizaciones de alto impacto y bajo esfuerzo.",
       "evidence": "2 propuestas priorizadas",
       "notes": "",
-      "updatedAt": "2026-04-03T09:26:24.616Z"
+      "updatedAt": "2026-04-03T10:51:56.562Z"
+    },
+    {
+      "id": "cross-cutting-domain-watch-data-and-storage",
+      "title": "Domain watch: data-and-storage",
+      "priority": "high",
+      "score": 3,
+      "reason": "20 mappings (6H/2M/12L)",
+      "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts.",
+      "target": "(cross-cutting)",
+      "existsInRepo": true,
+      "status": "todo",
+      "owner": "AI",
+      "dueDate": "2026-04-09",
+      "nextStep": "Revisar migraciones/rutas sensibles y riesgos de compatibilidad.",
+      "evidence": "Informe de riesgo corto",
+      "notes": "",
+      "updatedAt": "2026-04-03T10:51:56.562Z"
     }
   ]
 }
