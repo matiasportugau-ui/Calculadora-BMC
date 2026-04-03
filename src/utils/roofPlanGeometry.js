@@ -1,7 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // roofPlanGeometry.js — Planta techo multizona: layout coherente con RoofPreview
 // y aristas exteriores / encuentros entre zonas (sin acoplarse al BOM).
+// Anexos laterales: zonasToPlantRects* en roofLateralAnnexLayout.js
 // ═══════════════════════════════════════════════════════════════════════════
+
+import { zonasToPlantRectsWithAutoGap, zonasToPlantRectsLogical } from "./roofLateralAnnexLayout.js";
 
 /** Misma separación que RoofPreview.jsx entre zonas en layout automático. */
 export const ROOF_PLAN_GAP_M = 0.25;
@@ -315,7 +318,7 @@ function buildExteriorSegments(rects, encounters) {
  * }}
  */
 export function buildRoofPlanEdges(zonas, tipoAguas = "una_agua") {
-  const rects = layoutZonasEnPlanta(zonas, tipoAguas);
+  const rects = zonasToPlantRectsWithAutoGap(zonas, tipoAguas);
   const encounters = findEncounters(rects);
   const exterior = buildExteriorSegments(rects, encounters);
 
@@ -345,7 +348,7 @@ export function buildRoofPlanEdges(zonas, tipoAguas = "una_agua") {
  * Use this for BOM calculations, not for visual display.
  */
 export function layoutZonasLogico(zonas, tipoAguas = "una_agua") {
-  return layoutZonasEnPlanta(zonas, tipoAguas, 0);
+  return zonasToPlantRectsLogical(zonas, tipoAguas);
 }
 
 /**
@@ -356,7 +359,7 @@ export function layoutZonasLogico(zonas, tipoAguas = "una_agua") {
  * @returns {Map<number, Map<"frente"|"fondo"|"latIzq"|"latDer", {intervals: Array<{startM:number,endM:number}>, fullySide: boolean}>>}
  */
 export function getSharedSidesPerZona(zonas, tipoAguas = "una_agua") {
-  const rects = layoutZonasLogico(zonas, tipoAguas);
+  const rects = zonasToPlantRectsLogical(zonas, tipoAguas);
   const encounters = findEncounters(rects);
   const result = new Map();
 

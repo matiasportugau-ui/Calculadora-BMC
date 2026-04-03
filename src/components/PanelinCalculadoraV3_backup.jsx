@@ -53,6 +53,7 @@ import {
   findEncounters,
   ROOF_PLAN_GAP_M,
 } from "../utils/roofPlanGeometry.js";
+import { isLateralAnnexZona, zonasToPlantRectsWithAutoGap } from "../utils/roofLateralAnnexLayout.js";
 import {
   normalizeEncounter,
   resolveNeighborSharedSide,
@@ -164,9 +165,27 @@ function formatNumDisplay(n, decimals) {
   return n.toFixed(decimals).replace(".", ",");
 }
 
-function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, unit = "", decimals = 2 }) {
+/** ± en ancho (m): 0,1 m por clic. Largo usa `BUMP_STEP_LARGO_M`. */
+const BUMP_STEP_METROS = 0.1;
+/** ± en largo (m): 1 m por clic (cotización rápida). */
+const BUMP_STEP_LARGO_M = 1;
+
+function StepperInput({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 9999,
+  step = 1,
+  bumpStep,
+  unit = "",
+  decimals = 2,
+  chainFocus = false,
+}) {
   const [draft, setDraft] = useState(null);
+  const skipNextBlurCommitRef = useRef(false);
   const num = Number(value);
+  const stepForBump = bumpStep ?? step;
 
   const commit = (raw) => {
     let p = parseNumInput(raw);
@@ -180,9 +199,21 @@ function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, u
   const bump = (dir) => {
     setDraft(null);
     const base = Number.isFinite(num) ? num : min;
-    const next = parseFloat((base + dir * step).toFixed(decimals));
+    const next = parseFloat((base + dir * stepForBump).toFixed(decimals));
     if (next < min || next > max) return;
     onChange(decimals === 0 ? Math.round(next) : parseFloat(next.toFixed(decimals)));
+  };
+
+  const focusNextInGroup = (el) => {
+    if (!chainFocus || !el) return;
+    const group = el.closest("[data-stepper-group]");
+    if (!group) return;
+    const inputs = [...group.querySelectorAll("input[data-stepper-chain='1']")];
+    const idx = inputs.indexOf(el);
+    if (idx < 0 || idx >= inputs.length - 1) return;
+    requestAnimationFrame(() => {
+      inputs[idx + 1]?.focus?.();
+    });
   };
 
   const btnS = (dis) => ({ width: 36, height: 36, borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.surface, cursor: dis ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: dis ? 0.4 : 1, transition: TR, flexShrink: 0 });
@@ -198,10 +229,25 @@ function StepperInput({ label, value, onChange, min = 0, max = 9999, step = 1, u
           type="text"
           inputMode="decimal"
           autoComplete="off"
+          data-stepper-chain={chainFocus ? "1" : undefined}
           value={show}
           onFocus={() => setDraft(formatNumDisplay(num, decimals))}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            const raw = draft !== null ? draft : formatNumDisplay(num, decimals);
+            skipNextBlurCommitRef.current = true;
+            setDraft(null);
+            commit(raw);
+            focusNextInGroup(e.currentTarget);
+          }}
           onBlur={() => {
+            if (skipNextBlurCommitRef.current) {
+              skipNextBlurCommitRef.current = false;
+              setDraft(null);
+              return;
+            }
             const d = draft;
             setDraft(null);
             commit(d);
@@ -808,10 +854,7 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
    */
   const plantRects = useMemo(() => {
     try {
-      const anyPreview = validZonas.some((z) =>
-        Number.isFinite(z?.preview?.x) && Number.isFinite(z?.preview?.y));
-      const gapM = anyPreview ? ROOF_PLAN_GAP_M : 0;
-      return layoutZonasEnPlanta(validZonas, tipoAguasStr, gapM);
+      return zonasToPlantRectsWithAutoGap(validZonas, tipoAguasStr);
     } catch {
       return [];
     }
@@ -1052,10 +1095,7 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
   /** Misma planta que RoofBorderCanvas / RoofPreview para resolver vecino en encuentros. */
   const plantRectsForEnc = useMemo(() => {
     try {
-      const anyPreview = validZonas.some((z) =>
-        Number.isFinite(z?.preview?.x) && Number.isFinite(z?.preview?.y));
-      const gapM = anyPreview ? ROOF_PLAN_GAP_M : 0;
-      return layoutZonasEnPlanta(validZonas, is2A ? "dos_aguas" : "una_agua", gapM);
+      return zonasToPlantRectsWithAutoGap(validZonas, is2A ? "dos_aguas" : "una_agua");
     } catch {
       return [];
     }
@@ -1935,16 +1975,104 @@ export default function PanelinCalculadoraV3() {
   }, []);
 
   // ── Zonas helpers ──
-  const addZona = () => setTecho(t => {
+  const buildDefaultZona = useCallback((t) => {
     const defaultLargo = 6.0;
     const defaultAnchoM = 5.0;
     const wantPaneles = techoAnchoModo === "paneles" && techoPanelData;
     const ancho = wantPaneles
       ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, t.tipoAguas)
       : defaultAnchoM;
-    return { ...t, zonas: [...t.zonas, { largo: defaultLargo, ancho }] };
+    return { largo: defaultLargo, ancho };
+  }, [techoAnchoModo, techoPanelData, normalizeTechoAnchoToPaneles]);
+
+  const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, buildDefaultZona(t)] }));
+
+  /** Anexo lateral (mismo cuerpo): solo costado izq/der del padre; medidas por defecto editables. */
+  const addLateralAnnexZona = useCallback((parentIdx) => {
+    setTecho((t) => {
+      const parent = t.zonas[parentIdx];
+      if (!parent) return t;
+      const newZ = buildDefaultZona(t);
+      const side = "der";
+      const siblings = t.zonas
+        .map((zz, gi) => ({ zz, gi }))
+        .filter(
+          ({ zz, gi }) =>
+            gi !== parentIdx &&
+            isLateralAnnexZona(zz) &&
+            Number(zz.preview?.attachParentGi) === parentIdx &&
+            (zz.preview?.lateralSide === "izq" ? "izq" : "der") === side,
+        );
+      const ranks = siblings.map(({ zz }) => Number(zz.preview?.lateralRank) || 0);
+      const lateralRank = ranks.length ? Math.max(...ranks) + 1 : 0;
+      return {
+        ...t,
+        zonas: [
+          ...t.zonas,
+          {
+            ...newZ,
+            preview: { attachParentGi: parentIdx, lateralSide: side, lateralRank },
+          },
+        ],
+      };
+    });
+  }, [buildDefaultZona]);
+
+  const swapAnnexRank = useCallback((gi, dir) => {
+    if (dir !== -1 && dir !== 1) return;
+    setTecho((t) => {
+      const z = t.zonas[gi];
+      if (!isLateralAnnexZona(z)) return t;
+      const pGi = Number(z.preview.attachParentGi);
+      const side = z.preview.lateralSide === "izq" ? "izq" : "der";
+      const myR = Number(z.preview.lateralRank) || 0;
+      const targetR = myR + dir;
+      const siblings = t.zonas
+        .map((zz, idx) => ({ zz, idx }))
+        .filter(
+          ({ zz, idx }) =>
+            idx !== gi &&
+            isLateralAnnexZona(zz) &&
+            Number(zz.preview.attachParentGi) === pGi &&
+            (zz.preview.lateralSide === "izq" ? "izq" : "der") === side,
+        );
+      const neighbor = siblings.find(({ zz }) => (Number(zz.preview.lateralRank) || 0) === targetR);
+      if (!neighbor) return t;
+      const nr = Number(neighbor.zz.preview.lateralRank) || 0;
+      return {
+        ...t,
+        zonas: t.zonas.map((zz, idx) => {
+          if (idx === gi) return { ...zz, preview: { ...zz.preview, lateralRank: nr } };
+          if (idx === neighbor.idx) return { ...zz, preview: { ...neighbor.zz.preview, lateralRank: myR } };
+          return zz;
+        }),
+      };
+    });
+  }, []);
+
+  const removeZona = (idx) => setTecho((t) => {
+    if (t.zonas.length <= 1) return t;
+    const newZonas = t.zonas
+      .filter((_, i) => i !== idx)
+      .map((z) => {
+        const p = z.preview;
+        if (!p || typeof p.attachParentGi !== "number") return z;
+        let ap = p.attachParentGi;
+        if (ap === idx) {
+          const { attachParentGi: _a, lateralSide: _s, lateralRank: _r, x: _x, y: _y, ...rest } = p;
+          if (Object.keys(rest).length) return { ...z, preview: rest };
+          const o = { ...z };
+          delete o.preview;
+          return o;
+        }
+        if (ap > idx) return { ...z, preview: { ...p, attachParentGi: ap - 1 } };
+        return z;
+      });
+    let zp = t.zonaPrincipalGi;
+    if (zp === idx) zp = undefined;
+    else if (typeof zp === "number" && zp > idx) zp = zp - 1;
+    return { ...t, zonas: newZonas, zonaPrincipalGi: zp };
   });
-  const removeZona = (idx) => setTecho(t => ({ ...t, zonas: t.zonas.length > 1 ? t.zonas.filter((_, i) => i !== idx) : t.zonas }));
   const updateZona = (idx, key, val) => setTecho(t => ({ ...t, zonas: t.zonas.map((z, i) => i === idx ? { ...z, [key]: val } : z) }));
   const updateZonaPreview = useCallback((idx, patch) => {
     setTecho(t => ({
@@ -1956,7 +2084,15 @@ export default function PanelinCalculadoraV3() {
     setTecho(t => ({
       ...t,
       zonas: t.zonas.map((z) => {
-        const sm = z.preview?.slopeMark;
+        const p = z.preview || {};
+        const sm = p.slopeMark;
+        if (isLateralAnnexZona(z)) {
+          const { x, y, ...keep } = p;
+          if (Object.keys(keep).length) return { ...z, preview: keep };
+          const o = { ...z };
+          delete o.preview;
+          return o;
+        }
         if (sm && sm !== "off") return { ...z, preview: { slopeMark: sm } };
         const out = { ...z };
         delete out.preview;
@@ -1964,6 +2100,15 @@ export default function PanelinCalculadoraV3() {
       }),
     }));
   }, [setTecho]);
+
+  /** Índice de zona “techo principal” (presupuesto): manual `techo.zonaPrincipalGi`; si no, siempre la primera (no roba atención un tramo nuevo aunque tenga más m²). */
+  const effectivePrincipalZonaGi = useMemo(() => {
+    const z = techo.zonas || [];
+    if (!z.length) return 0;
+    const m = techo.zonaPrincipalGi;
+    if (typeof m === "number" && m >= 0 && m < z.length) return m;
+    return 0;
+  }, [techo.zonas, techo.zonaPrincipalGi]);
 
   // Mantener el ancho “alineado” a paneles cuando el modo está activo
   useEffect(() => {
@@ -2865,6 +3010,22 @@ export default function PanelinCalculadoraV3() {
                   )}
                   {stepId === "dimensiones" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: C.ts,
+                          lineHeight: 1.5,
+                          padding: "10px 12px",
+                          background: C.surface,
+                          borderRadius: 10,
+                          border: `1px solid ${C.border}`,
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: C.tp }}>Varias zonas:</span> el{" "}
+                        <strong style={{ color: C.tp }}>techo principal</strong> referencia el presupuesto (por defecto el de mayor m²; podés marcar otro). Para{" "}
+                        <strong style={{ color: C.tp }}>mismo ancho y otro largo</strong> hacia el frente en planta, usá{" "}
+                        <strong>Agregar tramo de largo abajo</strong> en la zona base; el tipo de encuentro (continuo, pretil, cumbrera, desnivel) lo definís en el paso Bordes.
+                      </div>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad de medida</div>
                         <SegmentedControl value={techoAnchoModo || "metros"} onChange={v => setTechoAnchoModo(v)} options={[{ id: "metros", label: "Metros (largo × ancho)" }, { id: "paneles", label: "Paneles (cantidad)" }]} />
@@ -2897,26 +3058,107 @@ export default function PanelinCalculadoraV3() {
                         panelAu={techoPanelData?.au ?? 1.12}
                         onZonaPreviewChange={updateZonaPreview}
                         onResetLayout={resetRoofPreviewLayout}
+                        onAnnexLateralSideChange={(gi, side) => updateZonaPreview(gi, { lateralSide: side })}
+                        onAnnexRankSwap={swapAnnexRank}
                       />
                       {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>Zona {idx + 1}</span>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: C.tp }}>Zona {idx + 1}</span>
+                              {idx === effectivePrincipalZonaGi && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    color: C.primary,
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.06em",
+                                    padding: "3px 8px",
+                                    borderRadius: 6,
+                                    background: C.primarySoft,
+                                    border: `1px solid ${C.primary}`,
+                                  }}
+                                >
+                                  Techo principal
+                                </span>
+                              )}
+                              {isLateralAnnexZona(zona) && (
+                                <span style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 6px", borderRadius: 6, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)" }}>Anexo lateral · Zona {idx + 1}</span>
+                              )}
+                              {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && !isLateralAnnexZona(zona) && (
+                                <span style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>Zona independiente · Podés marcarla como principal abajo</span>
+                              )}
+                            </div>
                             {(techo.zonas?.length || 1) > 1 && (
                               <button onClick={() => removeZona(idx)} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.dangerSoft, color: C.danger, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><X size={14} />Quitar</button>
                             )}
                           </div>
-                          <div style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
-                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} unit="m" decimals={2} />
+                          <div data-stepper-group style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
+                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus />
                             {techoAnchoModo === "paneles" && techoPanelData ? (
-                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} />
+                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
                             ) : (
-                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} unit="m" decimals={2} />
+                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => addLateralAnnexZona(idx)}
+                            style={{
+                              alignSelf: "flex-start",
+                              padding: "8px 12px",
+                              borderRadius: 8,
+                              border: `1px dashed ${C.primary}`,
+                              background: C.surface,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              color: C.primary,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <Plus size={16} />
+                            Anexo lateral (otras medidas) — Zona {idx + 1}
+                          </button>
+                          {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
+                            <button
+                              type="button"
+                              onClick={() => uT("zonaPrincipalGi", idx)}
+                              style={{
+                                alignSelf: "flex-start",
+                                padding: "6px 10px",
+                                borderRadius: 8,
+                                border: `1px solid ${C.border}`,
+                                background: C.surfaceAlt,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                cursor: "pointer",
+                                color: C.ts,
+                              }}
+                            >
+                              Usar esta zona como techo principal
+                            </button>
+                          )}
                         </div>
                       ))}
-                      <button onClick={addZona} style={{ padding: "12px 20px", borderRadius: 12, border: `2px dashed ${C.border}`, background: C.surface, color: C.primary, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: TR }}><Plus size={18} />Agregar zona</button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.45 }}>
+                          <strong style={{ color: C.tp }}>Anexo lateral</strong> (desde cada tarjeta): mismo cuerpo de techo, otro largo/paneles, solo costados en planta.
+                          {" "}
+                          <strong style={{ color: C.tp }}>Otro cuerpo</strong>: zona independiente (otro plano).
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addZona}
+                          style={{ padding: "12px 20px", borderRadius: 12, border: `2px dashed ${C.border}`, background: C.surfaceAlt, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: TR }}
+                        >
+                          <Plus size={18} />
+                          Otro cuerpo de techo (zona independiente)
+                        </button>
+                      </div>
                     </div>
                   )}
                   {stepId === "pendiente" && (
@@ -3330,9 +3572,21 @@ export default function PanelinCalculadoraV3() {
               />
             </div>
             {techo.zonas.map((zona, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: isPhone ? "wrap" : "nowrap", marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
+              <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  {idx === effectivePrincipalZonaGi && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", padding: "2px 6px", borderRadius: 6, background: C.primarySoft, border: `1px solid ${C.primary}` }}>Techo principal</span>
+                  )}
+                  {isLateralAnnexZona(zona) && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.04em", padding: "2px 6px", borderRadius: 6, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.35)" }}>Anexo lateral · Zona {idx + 1}</span>
+                  )}
+                  {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && !isLateralAnnexZona(zona) && (
+                    <span style={{ fontSize: 10, fontWeight: 500, color: C.ts }}>Zona independiente · Principal debajo</span>
+                  )}
+                </div>
+                <div data-stepper-group style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: isPhone ? "wrap" : "nowrap" }}>
                 <div style={{ flex: 1 }}>
-                  <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.01} unit="m" decimals={2} />
+                  <StepperInput label={`Largo ${techo.zonas.length > 1 ? idx + 1 : ""} (m)`} value={zona.largo} onChange={v => updateZona(idx, "largo", v)} min={1} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus />
                 </div>
                 <div style={{ flex: 1 }}>
                   {techoAnchoModo === "paneles" && techoPanelData ? (
@@ -3345,6 +3599,7 @@ export default function PanelinCalculadoraV3() {
                       step={1}
                       unit={is2A ? "pzas/faldón" : "pzas"}
                       decimals={0}
+                      chainFocus
                     />
                   ) : (
                     <StepperInput
@@ -3354,8 +3609,10 @@ export default function PanelinCalculadoraV3() {
                       min={1}
                       max={20}
                       step={0.01}
+                      bumpStep={BUMP_STEP_METROS}
                       unit="m"
                       decimals={2}
+                      chainFocus
                     />
                   )}
                 </div>
@@ -3367,11 +3624,41 @@ export default function PanelinCalculadoraV3() {
                     <Trash2 size={14} />
                   </button>
                 )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => addLateralAnnexZona(idx)}
+                    style={{
+                      alignSelf: "flex-start",
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: `1px dashed ${C.primary}`,
+                      background: C.surface,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      color: C.primary,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Plus size={14} />
+                    Anexo lateral — Zona {idx + 1}
+                  </button>
+                  {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && (
+                    <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 10, fontWeight: 500, cursor: "pointer", color: C.ts }}>Usar esta zona como techo principal</button>
+                  )}
+                </div>
               </div>
             ))}
-            <button onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surface, fontSize: 13, cursor: "pointer", color: C.primary, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <Plus size={14} /> Agregar zona
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>Anexo lateral desde cada tarjeta (mismo cuerpo). Aquí: <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> independiente.</div>
+              <button type="button" onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surfaceAlt, fontSize: 13, cursor: "pointer", color: C.tp, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Plus size={14} /> Otro cuerpo de techo (zona independiente)
+              </button>
+            </div>
 
             {/* Pendiente de techo */}
             <div style={{ marginTop: 16, padding: 12, background: C.surfaceAlt, borderRadius: 10 }}>

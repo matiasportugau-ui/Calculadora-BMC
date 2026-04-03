@@ -74,6 +74,11 @@ import {
   encounterBorderPerfil,
 } from "../src/utils/roofEncounterModel.js";
 import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
+import {
+  defaultPrincipalZonaIndex,
+  previewPositionForTramoApiladoFrente,
+} from "../src/utils/roofPrincipalZona.js";
+import { isLateralAnnexZona, zonasToPlantRectsLogical } from "../src/utils/roofLateralAnnexLayout.js";
 import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
@@ -1401,6 +1406,84 @@ assert("nextRoofSlopeMark off → along_largo_pos", nextRoofSlopeMark("off") ===
 assert("nextRoofSlopeMark along_largo_pos → along_largo_neg", nextRoofSlopeMark("along_largo_pos") === "along_largo_neg", nextRoofSlopeMark("along_largo_pos"), "along_largo_neg");
 assert("nextRoofSlopeMark along_largo_neg → off", nextRoofSlopeMark("along_largo_neg") === "off", nextRoofSlopeMark("along_largo_neg"), "off");
 assert("nextRoofSlopeMark undefined → along_largo_pos", nextRoofSlopeMark(undefined) === "along_largo_pos", nextRoofSlopeMark(undefined), "along_largo_pos");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32d: roofPrincipalZona (techo principal + apilado en planta)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32d: roofPrincipalZona ═══");
+
+assert(
+  "defaultPrincipalZonaIndex picks max area",
+  defaultPrincipalZonaIndex([
+    { largo: 4, ancho: 5 },
+    { largo: 6, ancho: 5 },
+  ]) === 1,
+  defaultPrincipalZonaIndex([
+    { largo: 4, ancho: 5 },
+    { largo: 6, ancho: 5 },
+  ]),
+  1,
+);
+
+const prevStack = previewPositionForTramoApiladoFrente({
+  zonas: [
+    { largo: 5, ancho: 6, preview: { x: 0, y: 0 } },
+  ],
+  tipoAguas: "una_agua",
+  baseGi: 0,
+  gapM: 0.25,
+});
+assert(
+  "previewPositionForTramoApiladoFrente stacks below (+y)",
+  prevStack && Math.abs(prevStack.x - 0) < 1e-6 && Math.abs(prevStack.y - (5 + 0.25)) < 1e-4,
+  prevStack ? `${prevStack.x},${prevStack.y}` : "null",
+  "0,5.25",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32e: roofLateralAnnexLayout (anexo lateral mismo cuerpo)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32e: roofLateralAnnexLayout ═══");
+
+assert("isLateralAnnexZona false sin attach", !isLateralAnnexZona({ largo: 1, ancho: 1 }), true, false);
+assert(
+  "isLateralAnnexZona true con attachParentGi",
+  isLateralAnnexZona({ largo: 1, ancho: 1, preview: { attachParentGi: 0 } }),
+  true,
+  true,
+);
+
+const latDer = zonasToPlantRectsLogical(
+  [
+    { largo: 5, ancho: 4 },
+    { largo: 5, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+  ],
+  "una_agua",
+);
+const r0d = latDer.find((r) => r.gi === 0);
+const r1d = latDer.find((r) => r.gi === 1);
+assert(
+  "zonasToPlantRectsLogical anexo der: junto al lateral derecho del padre (gap 0)",
+  r0d && r1d && Math.abs(r1d.x - (r0d.x + r0d.w)) < 1e-5 && Math.abs(r1d.y - r0d.y) < 1e-5,
+  r0d && r1d ? `${r0d.x},${r0d.w} → ${r1d.x}` : "missing",
+  "touch",
+);
+
+const latIzq = zonasToPlantRectsLogical(
+  [
+    { largo: 4, ancho: 4 },
+    { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "izq", lateralRank: 0 } },
+  ],
+  "una_agua",
+);
+const r0i = latIzq.find((r) => r.gi === 0);
+const r1i = latIzq.find((r) => r.gi === 1);
+assert(
+  "zonasToPlantRectsLogical anexo izq: a la izquierda del padre",
+  r0i && r1i && Math.abs(r1i.x + r1i.w - r0i.x) < 1e-5 && Math.abs(r1i.y - r0i.y) < 1e-5,
+  r0i && r1i ? `${r1i.x}+${r1i.w} vs ${r0i.x}` : "missing",
+  "touch",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE: Modo Transportista (token + webhook HMAC + FSM)

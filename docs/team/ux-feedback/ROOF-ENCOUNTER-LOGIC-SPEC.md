@@ -1,5 +1,7 @@
 # Especificación: encuentros entre zonas (techo multizona)
 
+**Relacionado:** taxonomía geométrica + techo principal + tramos apilados — [`ROOF-ZONAS-PRINCIPAL-Y-ENCUENTROS-TAXONOMY.md`](./ROOF-ZONAS-PRINCIPAL-Y-ENCUENTROS-TAXONOMY.md).
+
 Objetivo: modelar **qué pasa en el tramo compartido** entre dos zonas para accesorios/BOM y para coherencia con la vista en planta y el paso 10 (3D).
 
 ## Cuatro modos (estado máquina)
