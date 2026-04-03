@@ -14,6 +14,7 @@ import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
 import agentChatRouter from "./routes/agentChat.js";
+import agentTrainingRouter from "./routes/agentTraining.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import { createFollowupsRouter } from "./routes/followups.js";
@@ -617,6 +618,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
 app.use("/calc", calcRouter);
 app.use("/api", agentChatRouter);
+app.use("/api", agentTrainingRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));

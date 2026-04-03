@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, RotateCcw, Send, Mic } from "lucide-react";
+import PanelinDevPanel from "./PanelinDevPanel.jsx";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -88,6 +89,19 @@ function ActionToast({ text }) {
  *   send: (text:string) => void,
  *   clear: () => void,
  *   error: string|null,
+ *   devMode?: boolean,
+ *   onToggleDevMode?: () => void,
+ *   devMeta?: object,
+ *   trainingEntries?: Array<object>,
+ *   trainingStats?: object,
+ *   promptPreview?: string,
+ *   promptSections?: object,
+ *   onSaveCorrection?: (payload: object) => Promise<void>,
+ *   onReloadTrainingKB?: () => Promise<void>,
+ *   onReloadPromptPreview?: () => Promise<void>,
+ *   onReloadPromptSections?: () => Promise<void>,
+ *   onSavePromptSection?: (payload: object) => Promise<void>,
+ *   onVerifyCalculation?: (text: string) => Promise<void>,
  * }} props
  */
 export default function PanelinChatPanel({
@@ -98,6 +112,19 @@ export default function PanelinChatPanel({
   send,
   clear,
   error,
+  devMode = false,
+  onToggleDevMode,
+  devMeta,
+  trainingEntries,
+  trainingStats,
+  promptPreview,
+  promptSections,
+  onSaveCorrection,
+  onReloadTrainingKB,
+  onReloadPromptPreview,
+  onReloadPromptSections,
+  onSavePromptSection,
+  onVerifyCalculation,
 }) {
   const [input, setInput] = useState("");
   const [actionToast] = useState(null);
@@ -197,8 +224,27 @@ export default function PanelinChatPanel({
           <Avatar size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>Panelin</div>
-            <div style={{ fontSize: 11, opacity: 0.7 }}>Asistente BMC Uruguay</div>
+            <div style={{ fontSize: 11, opacity: 0.7 }}>
+              Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
+            </div>
           </div>
+          {onToggleDevMode && (
+            <button
+              onClick={onToggleDevMode}
+              title="Developer mode"
+              style={{
+                ...ghostBtn,
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "4px 8px",
+                fontSize: 11,
+                color: "#fff",
+                background: devMode ? "rgba(255,255,255,0.24)" : "transparent",
+              }}
+            >
+              DEV
+            </button>
+          )}
           <button
             onClick={clear}
             title="Nueva conversación"
@@ -424,6 +470,23 @@ export default function PanelinChatPanel({
             <Send size={16} />
           </button>
         </div>
+
+        {devMode && (
+          <PanelinDevPanel
+            messages={messages}
+            trainingEntries={trainingEntries}
+            trainingStats={trainingStats}
+            devMeta={devMeta}
+            promptPreview={promptPreview}
+            promptSections={promptSections}
+            onSaveCorrection={onSaveCorrection}
+            onReloadTrainingKB={onReloadTrainingKB}
+            onReloadPromptPreview={onReloadPromptPreview}
+            onReloadPromptSections={onReloadPromptSections}
+            onSavePromptSection={onSavePromptSection}
+            onVerifyCalculation={onVerifyCalculation}
+          />
+        )}
       </div>
     </>
   );

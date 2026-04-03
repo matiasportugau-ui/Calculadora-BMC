@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "createdAt": "2026-04-03T00:00:00.000Z",
+  "updatedAt": "2026-04-03T00:00:00.000Z",
+  "entries": [
+    {
+      "id": "example-1",
+      "category": "sales",
+      "question": "¿Qué panel me conviene para un techo liviano?",
+      "badAnswer": "",
+      "goodAnswer": "Para un techo liviano, normalmente recomendamos ISOROOF 3G. Si querés, te pido medidas y te preparo una cotización exacta.",
+      "context": "Caso inicial de conversación comercial",
+      "source": "example",
+      "permanent": true,
+      "createdAt": "2026-04-03T00:00:00.000Z",
+      "updatedAt": "2026-04-03T00:00:00.000Z"
+    }
+  ]
+}

@@ -148,9 +148,11 @@ REGLAS DE ACCIONES:
 
 /**
  * @param {object} calcState
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean }} options
  * @returns {string}
  */
-export function buildSystemPrompt(calcState = {}) {
+export function buildSystemPrompt(calcState = {}, options = {}) {
+  const { trainingExamples = [], devMode = false } = options;
   const {
     scenario = "sin seleccionar",
     listaPrecios = "sin seleccionar",
@@ -189,5 +191,32 @@ Cámara: ${camara.largo_int ?? "?"}m × ${camara.ancho_int ?? "?"}m × ${camara.
 Flete: USD ${flete}
 Proyecto: nombre="${proyecto.nombre || ""}" | cliente="${proyecto.tipoCliente || ""}" | tel="${proyecto.telefono || ""}"`;
 
-  return [IDENTITY, CATALOG, WORKFLOW, ACTIONS_DOC, currentState].join("\n\n");
+  const examplesBlock = Array.isArray(trainingExamples) && trainingExamples.length > 0
+    ? `## CORRECCIONES DE ENTRENAMIENTO (MODO DESARROLLADOR)
+Aplicá estas correcciones como guía prioritaria cuando el usuario pregunte algo similar.
+
+${trainingExamples
+  .map((entry, idx) => {
+    return [
+      `Ejemplo ${idx + 1} [${entry.category || "conversational"}]`,
+      `Pregunta: ${entry.question || ""}`,
+      `Respuesta esperada: ${entry.goodAnswer || ""}`,
+      entry.context ? `Contexto: ${entry.context}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  })
+  .join("\n\n")}`
+    : "";
+
+  const devModeRules = devMode
+    ? `## MODO DESARROLLADOR
+Este chat está en modo entrenamiento. Priorizá precisión matemática y coherencia comercial.
+Si estimás un total o precio, mostrá claramente qué supuestos usaste.
+Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
+    : "";
+
+  return [IDENTITY, CATALOG, WORKFLOW, ACTIONS_DOC, currentState, examplesBlock, devModeRules]
+    .filter(Boolean)
+    .join("\n\n");
 }

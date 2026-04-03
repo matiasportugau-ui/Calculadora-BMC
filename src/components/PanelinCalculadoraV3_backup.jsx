@@ -2150,6 +2150,14 @@ export default function PanelinCalculadoraV3() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("chat") === "1";
   });
+  const [devMode, setDevMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("panelin-dev-mode") === "1";
+  });
+  const [devAuthToken, setDevAuthToken] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return sessionStorage.getItem("panelin-dev-token") || "";
+  });
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
   const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
@@ -2252,7 +2260,49 @@ export default function PanelinCalculadoraV3() {
     [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto, setWizardStep]
   );
 
-  const chat = useChat({ calcState, onAction: handleChatAction });
+  const chat = useChat({
+    calcState,
+    onAction: handleChatAction,
+    devMode,
+    devAuthToken,
+  });
+
+  const toggleDevMode = useCallback(() => {
+    if (devMode) {
+      setDevMode(false);
+      if (typeof window !== "undefined") sessionStorage.setItem("panelin-dev-mode", "0");
+      return;
+    }
+    let token = devAuthToken;
+    if (!token && typeof window !== "undefined") {
+      token = window.prompt("API_AUTH_TOKEN para activar Developer Mode:") || "";
+    }
+    if (!token) return;
+    setDevAuthToken(token);
+    setDevMode(true);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("panelin-dev-token", token);
+      sessionStorage.setItem("panelin-dev-mode", "1");
+    }
+  }, [devMode, devAuthToken]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && String(e.key).toLowerCase() === "d") {
+        e.preventDefault();
+        toggleDevMode();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleDevMode]);
+
+  useEffect(() => {
+    if (!devMode) return;
+    chat.reloadTrainingKB?.().catch(() => {});
+    chat.reloadPromptSections?.().catch(() => {});
+    chat.reloadPromptPreview?.().catch(() => {});
+  }, [devMode, chat.reloadTrainingKB, chat.reloadPromptSections, chat.reloadPromptPreview]);
 
   // Section refs for auto-scroll
   const panelRef = useRef(null);
@@ -3478,6 +3528,22 @@ export default function PanelinCalculadoraV3() {
             style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
           >
             💬 Panelin
+          </button>
+          <button
+            onClick={toggleDevMode}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: devMode ? "none" : "1px solid rgba(255,255,255,0.3)",
+              background: devMode ? "rgba(255,255,255,0.22)" : "transparent",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: devMode ? 700 : 400,
+              cursor: "pointer",
+            }}
+            title="Ctrl/Cmd + Shift + D"
+          >
+            DEV
           </button>
         </div>
       </div>
@@ -4756,6 +4822,19 @@ export default function PanelinCalculadoraV3() {
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
         {...chat}
+        devMode={devMode}
+        onToggleDevMode={toggleDevMode}
+        devMeta={chat.devMeta}
+        trainingEntries={chat.trainingEntries}
+        trainingStats={chat.trainingStats}
+        promptPreview={chat.promptPreview}
+        promptSections={chat.promptSections}
+        onSaveCorrection={chat.saveCorrection}
+        onReloadTrainingKB={chat.reloadTrainingKB}
+        onReloadPromptPreview={chat.reloadPromptPreview}
+        onReloadPromptSections={chat.reloadPromptSections}
+        onSavePromptSection={chat.savePromptSection}
+        onVerifyCalculation={chat.verifyCalculation}
       />
 
       <Toast message={toast} visible={!!toast} />

@@ -76,6 +76,7 @@
     "knowledge:impact": "node scripts/knowledge-antenna-impact.mjs --days=14",
     "knowledge:db": "node scripts/knowledge-antenna-db.mjs --days=14",
     "knowledge:direction": "node scripts/knowledge-direction-tracker.mjs --max=12",
+    "training:report": "node scripts/training-report.mjs",
     "knowledge:report": "node scripts/knowledge-antenna-run.mjs --max-per-source=8 --min-score=0.45",
     "knowledge:env:ensure": "bash scripts/knowledge-antenna-env-ensure.sh ensure",
     "knowledge:env:check": "bash scripts/knowledge-antenna-env-ensure.sh check",

@@ -32,13 +32,23 @@ function saveHistory(messages) {
 /**
  * Manages Panelin chat state and SSE streaming.
  *
- * @param {{ calcState: object, onAction: (action: {type:string, payload:any}) => void }} opts
+ * @param {{
+ *   calcState: object,
+ *   onAction: (action: {type:string, payload:any}) => void,
+ *   devMode?: boolean,
+ *   devAuthToken?: string,
+ * }} opts
  * @returns {{ messages, isStreaming, send, clear, error }}
  */
-export function useChat({ calcState, onAction }) {
+export function useChat({ calcState, onAction, devMode = false, devAuthToken = "" }) {
   const [messages, setMessages] = useState(() => loadHistory());
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
+  const [devMeta, setDevMeta] = useState({ kbMatches: 0, calcValidation: null });
+  const [trainingEntries, setTrainingEntries] = useState([]);
+  const [trainingStats, setTrainingStats] = useState({ total: 0 });
+  const [promptPreview, setPromptPreview] = useState("");
+  const [promptSections, setPromptSections] = useState({});
   const abortRef = useRef(null);
   // Keep a ref to messages so send() closures see current history
   const messagesRef = useRef(messages);
@@ -48,6 +58,14 @@ export function useChat({ calcState, onAction }) {
   useEffect(() => {
     if (messages.length > 0) saveHistory(messages);
   }, [messages]);
+
+  const buildDevAuthHeaders = useCallback(() => {
+    if (!devMode || !devAuthToken) return {};
+    return {
+      Authorization: `Bearer ${devAuthToken}`,
+      "X-Api-Key": devAuthToken,
+    };
+  }, [devMode, devAuthToken]);
 
   const send = useCallback(
     async (userText) => {
@@ -76,16 +94,21 @@ export function useChat({ calcState, onAction }) {
       try {
         const apiBase = getCalcApiBase();
         const history = messagesRef.current;
+        const headers = {
+          "Content-Type": "application/json",
+          ...buildDevAuthHeaders(),
+        };
 
         const res = await fetch(`${apiBase}/api/agent/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             messages: [...history, userMsg].map((m) => ({
               role: m.role,
               content: m.content,
             })),
             calcState,
+            devMode,
           }),
           signal: controller.signal,
         });
@@ -133,6 +156,19 @@ export function useChat({ calcState, onAction }) {
                 });
               } else if (evt.type === "error") {
                 setError(evt.message || "Error del agente");
+              } else if (evt.type === "kb_match") {
+                setDevMeta((prev) => ({ ...prev, kbMatches: Number(evt.count || 0) }));
+              } else if (evt.type === "calc_validation") {
+                setDevMeta((prev) => ({ ...prev, calcValidation: evt.validation || null }));
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (!last || last.role !== "assistant") return prev;
+                  return prev.map((m, i) => (
+                    i === prev.length - 1
+                      ? { ...m, calcValidation: evt.validation || null }
+                      : m
+                  ));
+                });
               }
               // type === "done" → loop exits naturally when reader closes
             } catch {
@@ -160,7 +196,120 @@ export function useChat({ calcState, onAction }) {
         abortRef.current = null;
       }
     },
-    [isStreaming, calcState, onAction]
+    [isStreaming, calcState, onAction, devMode, buildDevAuthHeaders]
+  );
+
+  const reloadTrainingKB = useCallback(async () => {
+    if (!devMode || !devAuthToken) return null;
+    const apiBase = getCalcApiBase();
+    const res = await fetch(`${apiBase}/api/agent/training-kb`, {
+      method: "GET",
+      headers: buildDevAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    setTrainingEntries(data.entries || []);
+    setTrainingStats(data.stats || { total: 0 });
+    return data;
+  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+
+  const saveCorrection = useCallback(
+    async ({ category, question, badAnswer, goodAnswer, context }) => {
+      const apiBase = getCalcApiBase();
+      const res = await fetch(`${apiBase}/api/agent/train`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...buildDevAuthHeaders(),
+        },
+        body: JSON.stringify({
+          category,
+          question,
+          badAnswer,
+          goodAnswer,
+          context,
+          source: "panelin-dev-mode",
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      await reloadTrainingKB();
+      return data;
+    },
+    [buildDevAuthHeaders, reloadTrainingKB]
+  );
+
+  const reloadPromptPreview = useCallback(async () => {
+    if (!devMode || !devAuthToken) return null;
+    const apiBase = getCalcApiBase();
+    const q = [...messagesRef.current].reverse().find((m) => m.role === "user")?.content || "";
+    const res = await fetch(`${apiBase}/api/agent/prompt-preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...buildDevAuthHeaders(),
+      },
+      body: JSON.stringify({ calcState, query: q }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    setPromptPreview(data.prompt || "");
+    return data;
+  }, [devMode, devAuthToken, calcState, buildDevAuthHeaders]);
+
+  const reloadPromptSections = useCallback(async () => {
+    if (!devMode || !devAuthToken) return null;
+    const apiBase = getCalcApiBase();
+    const res = await fetch(`${apiBase}/api/agent/dev-config`, {
+      method: "GET",
+      headers: buildDevAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    setPromptSections(data.sections || {});
+    return data;
+  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+
+  const savePromptSection = useCallback(
+    async ({ section, content }) => {
+      const apiBase = getCalcApiBase();
+      const res = await fetch(`${apiBase}/api/agent/dev-config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...buildDevAuthHeaders(),
+        },
+        body: JSON.stringify({ section, content }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      await reloadPromptSections();
+      await reloadPromptPreview();
+      return data;
+    },
+    [buildDevAuthHeaders, reloadPromptSections, reloadPromptPreview]
+  );
+
+  const verifyCalculation = useCallback(
+    async (quoteText = "") => {
+      const apiBase = getCalcApiBase();
+      const res = await fetch(`${apiBase}/api/agent/training/log-event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...buildDevAuthHeaders(),
+        },
+        body: JSON.stringify({
+          type: "calc_verify_clicked",
+          mode: "developer",
+          quoteText: String(quoteText || "").slice(0, 1000),
+          calcState,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    [buildDevAuthHeaders, calcState]
   );
 
   const clear = useCallback(() => {
@@ -171,5 +320,22 @@ export function useChat({ calcState, onAction }) {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
-  return { messages, isStreaming, send, clear, error };
+  return {
+    messages,
+    isStreaming,
+    send,
+    clear,
+    error,
+    devMeta,
+    trainingEntries,
+    trainingStats,
+    promptPreview,
+    promptSections,
+    saveCorrection,
+    reloadTrainingKB,
+    reloadPromptPreview,
+    reloadPromptSections,
+    savePromptSection,
+    verifyCalculation,
+  };
 }
