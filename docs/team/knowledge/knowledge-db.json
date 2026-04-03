@@ -1,0 +1,456 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-04-03T09:26:24.429Z",
+  "generatedForDate": "2026-04-03",
+  "daysAnalyzed": 14,
+  "stats": {
+    "sources": 5,
+    "references": 40,
+    "events": 40,
+    "mappings": 78
+  },
+  "improvementEvaluation": {
+    "executiveActions": [
+      {
+        "title": "Review target: docs/openapi-email-gpt.yaml",
+        "priority": "high",
+        "reason": "25 impact hits (2H/12M/11L)",
+        "target": "docs/openapi-email-gpt.yaml",
+        "existsInRepo": true,
+        "recommendation": "Review prompt/actions contracts and capability manifests."
+      },
+      {
+        "title": "Review target: scripts/capabilities-snapshot.mjs",
+        "priority": "high",
+        "reason": "25 impact hits (2H/12M/11L)",
+        "target": "scripts/capabilities-snapshot.mjs",
+        "existsInRepo": true,
+        "recommendation": "Review prompt/actions contracts and capability manifests."
+      },
+      {
+        "title": "Review target: server/gptActions.js",
+        "priority": "high",
+        "reason": "25 impact hits (2H/12M/11L)",
+        "target": "server/gptActions.js",
+        "existsInRepo": true,
+        "recommendation": "Review prompt/actions contracts and capability manifests."
+      },
+      {
+        "title": "Review target: server/index.js",
+        "priority": "high",
+        "reason": "25 impact hits (2H/12M/11L)",
+        "target": "server/index.js",
+        "existsInRepo": true,
+        "recommendation": "Review prompt/actions contracts and capability manifests."
+      },
+      {
+        "title": "Review target: Dockerfile.bmc-dashboard",
+        "priority": "high",
+        "reason": "20 impact hits (5H/2M/13L)",
+        "target": "Dockerfile.bmc-dashboard",
+        "existsInRepo": true,
+        "recommendation": "Validate deploy pipeline and production smoke checks."
+      },
+      {
+        "title": "Review target: scripts/deploy-cloud-run.sh",
+        "priority": "high",
+        "reason": "20 impact hits (5H/2M/13L)",
+        "target": "scripts/deploy-cloud-run.sh",
+        "existsInRepo": true,
+        "recommendation": "Validate deploy pipeline and production smoke checks."
+      },
+      {
+        "title": "Review target: scripts/deploy-vercel.sh",
+        "priority": "high",
+        "reason": "20 impact hits (5H/2M/13L)",
+        "target": "scripts/deploy-vercel.sh",
+        "existsInRepo": true,
+        "recommendation": "Validate deploy pipeline and production smoke checks."
+      },
+      {
+        "title": "Review target: scripts/smoke-prod-api.mjs",
+        "priority": "high",
+        "reason": "20 impact hits (5H/2M/13L)",
+        "target": "scripts/smoke-prod-api.mjs",
+        "existsInRepo": true,
+        "recommendation": "Validate deploy pipeline and production smoke checks."
+      },
+      {
+        "title": "Domain watch: llm-platforms",
+        "priority": "high",
+        "reason": "25 mappings (2H/12M/11L)",
+        "target": "(cross-cutting)",
+        "existsInRepo": true,
+        "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts."
+      },
+      {
+        "title": "Domain watch: deployment-stack",
+        "priority": "high",
+        "reason": "20 mappings (5H/2M/13L)",
+        "target": "(cross-cutting)",
+        "existsInRepo": true,
+        "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts."
+      },
+      {
+        "title": "Domain watch: data-and-storage",
+        "priority": "high",
+        "reason": "9 mappings (6H/2M/1L)",
+        "target": "(cross-cutting)",
+        "existsInRepo": true,
+        "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts."
+      },
+      {
+        "title": "Domain watch: workflow-automation",
+        "priority": "medium",
+        "reason": "16 mappings (0H/4M/12L)",
+        "target": "(cross-cutting)",
+        "existsInRepo": true,
+        "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts."
+      }
+    ],
+    "targetCoverage": [
+      {
+        "target": "docs/openapi-email-gpt.yaml",
+        "existsInRepo": true,
+        "hits": 25,
+        "high": 2,
+        "medium": 12,
+        "low": 11,
+        "score": 41,
+        "domains": [
+          "llm-platforms"
+        ],
+        "recommendations": [
+          "Review prompt/actions contracts and capability manifests."
+        ]
+      },
+      {
+        "target": "scripts/capabilities-snapshot.mjs",
+        "existsInRepo": true,
+        "hits": 25,
+        "high": 2,
+        "medium": 12,
+        "low": 11,
+        "score": 41,
+        "domains": [
+          "llm-platforms"
+        ],
+        "recommendations": [
+          "Review prompt/actions contracts and capability manifests."
+        ]
+      },
+      {
+        "target": "server/gptActions.js",
+        "existsInRepo": true,
+        "hits": 25,
+        "high": 2,
+        "medium": 12,
+        "low": 11,
+        "score": 41,
+        "domains": [
+          "llm-platforms"
+        ],
+        "recommendations": [
+          "Review prompt/actions contracts and capability manifests."
+        ]
+      },
+      {
+        "target": "server/index.js",
+        "existsInRepo": true,
+        "hits": 25,
+        "high": 2,
+        "medium": 12,
+        "low": 11,
+        "score": 41,
+        "domains": [
+          "llm-platforms"
+        ],
+        "recommendations": [
+          "Review prompt/actions contracts and capability manifests."
+        ]
+      },
+      {
+        "target": "Dockerfile.bmc-dashboard",
+        "existsInRepo": true,
+        "hits": 20,
+        "high": 5,
+        "medium": 2,
+        "low": 13,
+        "score": 32,
+        "domains": [
+          "deployment-stack"
+        ],
+        "recommendations": [
+          "Validate deploy pipeline and production smoke checks."
+        ]
+      },
+      {
+        "target": "scripts/deploy-cloud-run.sh",
+        "existsInRepo": true,
+        "hits": 20,
+        "high": 5,
+        "medium": 2,
+        "low": 13,
+        "score": 32,
+        "domains": [
+          "deployment-stack"
+        ],
+        "recommendations": [
+          "Validate deploy pipeline and production smoke checks."
+        ]
+      },
+      {
+        "target": "scripts/deploy-vercel.sh",
+        "existsInRepo": true,
+        "hits": 20,
+        "high": 5,
+        "medium": 2,
+        "low": 13,
+        "score": 32,
+        "domains": [
+          "deployment-stack"
+        ],
+        "recommendations": [
+          "Validate deploy pipeline and production smoke checks."
+        ]
+      },
+      {
+        "target": "scripts/smoke-prod-api.mjs",
+        "existsInRepo": true,
+        "hits": 20,
+        "high": 5,
+        "medium": 2,
+        "low": 13,
+        "score": 32,
+        "domains": [
+          "deployment-stack"
+        ],
+        "recommendations": [
+          "Validate deploy pipeline and production smoke checks."
+        ]
+      },
+      {
+        "target": "vercel.json",
+        "existsInRepo": true,
+        "hits": 20,
+        "high": 5,
+        "medium": 2,
+        "low": 13,
+        "score": 32,
+        "domains": [
+          "deployment-stack"
+        ],
+        "recommendations": [
+          "Validate deploy pipeline and production smoke checks."
+        ]
+      },
+      {
+        "target": "scripts/run-transportista-migrations.mjs",
+        "existsInRepo": true,
+        "hits": 9,
+        "high": 6,
+        "medium": 2,
+        "low": 1,
+        "score": 23,
+        "domains": [
+          "data-and-storage"
+        ],
+        "recommendations": [
+          "Assess schema/runtime compatibility and migration impact."
+        ]
+      },
+      {
+        "target": "server/routes/bmcDashboard.js",
+        "existsInRepo": true,
+        "hits": 9,
+        "high": 6,
+        "medium": 2,
+        "low": 1,
+        "score": 23,
+        "domains": [
+          "data-and-storage"
+        ],
+        "recommendations": [
+          "Assess schema/runtime compatibility and migration impact."
+        ]
+      },
+      {
+        "target": "server/routes/transportista.js",
+        "existsInRepo": true,
+        "hits": 9,
+        "high": 6,
+        "medium": 2,
+        "low": 1,
+        "score": 23,
+        "domains": [
+          "data-and-storage"
+        ],
+        "recommendations": [
+          "Assess schema/runtime compatibility and migration impact."
+        ]
+      },
+      {
+        "target": "docs/team/PROJECT-STATE.md",
+        "existsInRepo": true,
+        "hits": 16,
+        "high": 0,
+        "medium": 4,
+        "low": 12,
+        "score": 20,
+        "domains": [
+          "workflow-automation"
+        ],
+        "recommendations": [
+          "Map new automation capabilities into team runbooks and scripts."
+        ]
+      },
+      {
+        "target": "docs/team/SESSION-WORKSPACE-CRM.md",
+        "existsInRepo": true,
+        "hits": 16,
+        "high": 0,
+        "medium": 4,
+        "low": 12,
+        "score": 20,
+        "domains": [
+          "workflow-automation"
+        ],
+        "recommendations": [
+          "Map new automation capabilities into team runbooks and scripts."
+        ]
+      },
+      {
+        "target": "scripts/channels-automated-pipeline.mjs",
+        "existsInRepo": true,
+        "hits": 16,
+        "high": 0,
+        "medium": 4,
+        "low": 12,
+        "score": 20,
+        "domains": [
+          "workflow-automation"
+        ],
+        "recommendations": [
+          "Map new automation capabilities into team runbooks and scripts."
+        ]
+      },
+      {
+        "target": "scripts/project-compass.mjs",
+        "existsInRepo": true,
+        "hits": 16,
+        "high": 0,
+        "medium": 4,
+        "low": 12,
+        "score": 20,
+        "domains": [
+          "workflow-automation"
+        ],
+        "recommendations": [
+          "Map new automation capabilities into team runbooks and scripts."
+        ]
+      },
+      {
+        "target": "eslint.config.js",
+        "existsInRepo": true,
+        "hits": 8,
+        "high": 1,
+        "medium": 1,
+        "low": 6,
+        "score": 11,
+        "domains": [
+          "frontend-stack"
+        ],
+        "recommendations": [
+          "Prioritize UI/runtime changes with highest UX or perf leverage."
+        ]
+      },
+      {
+        "target": "src/components",
+        "existsInRepo": true,
+        "hits": 8,
+        "high": 1,
+        "medium": 1,
+        "low": 6,
+        "score": 11,
+        "domains": [
+          "frontend-stack"
+        ],
+        "recommendations": [
+          "Prioritize UI/runtime changes with highest UX or perf leverage."
+        ]
+      },
+      {
+        "target": "src/utils",
+        "existsInRepo": true,
+        "hits": 8,
+        "high": 1,
+        "medium": 1,
+        "low": 6,
+        "score": 11,
+        "domains": [
+          "frontend-stack"
+        ],
+        "recommendations": [
+          "Prioritize UI/runtime changes with highest UX or perf leverage."
+        ]
+      },
+      {
+        "target": "vite.config.js",
+        "existsInRepo": true,
+        "hits": 8,
+        "high": 1,
+        "medium": 1,
+        "low": 6,
+        "score": 11,
+        "domains": [
+          "frontend-stack"
+        ],
+        "recommendations": [
+          "Prioritize UI/runtime changes with highest UX or perf leverage."
+        ]
+      }
+    ],
+    "domainCoverage": [
+      {
+        "domain": "llm-platforms",
+        "total": 25,
+        "high": 2,
+        "medium": 12,
+        "low": 11,
+        "score": 41
+      },
+      {
+        "domain": "deployment-stack",
+        "total": 20,
+        "high": 5,
+        "medium": 2,
+        "low": 13,
+        "score": 32
+      },
+      {
+        "domain": "data-and-storage",
+        "total": 9,
+        "high": 6,
+        "medium": 2,
+        "low": 1,
+        "score": 23
+      },
+      {
+        "domain": "workflow-automation",
+        "total": 16,
+        "high": 0,
+        "medium": 4,
+        "low": 12,
+        "score": 20
+      },
+      {
+        "domain": "frontend-stack",
+        "total": 8,
+        "high": 1,
+        "medium": 1,
+        "low": 6,
+        "score": 11
+      }
+    ]
+  }
+}

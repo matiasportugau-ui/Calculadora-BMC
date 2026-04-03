@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-04-03T09:26:29.825Z",
+  "generatedForDate": "2026-04-03",
+  "mode": "standard",
+  "ok": true,
+  "startedAt": "2026-04-03T09:26:19.572Z",
+  "endedAt": "2026-04-03T09:26:29.825Z",
+  "summary": {
+    "totalSteps": 3,
+    "passed": 3,
+    "failed": 0,
+    "totalDurationMs": 10253
+  },
+  "steps": [
+    {
+      "id": "knowledge_run",
+      "title": "Knowledge Intake + Direction",
+      "description": "Refresh knowledge, impact map, DB and tracker.",
+      "command": "npm run knowledge:run",
+      "startedAt": "2026-04-03T09:26:19.573Z",
+      "endedAt": "2026-04-03T09:26:24.628Z",
+      "durationMs": 5055,
+      "ok": true,
+      "exitCode": 0,
+      "skipped": false
+    },
+    {
+      "id": "project_compass",
+      "title": "Project Compass Snapshot",
+      "description": "Update current program and follow-up status.",
+      "command": "npm run project:compass",
+      "startedAt": "2026-04-03T09:26:24.628Z",
+      "endedAt": "2026-04-03T09:26:25.013Z",
+      "durationMs": 385,
+      "ok": true,
+      "exitCode": 0,
+      "skipped": false
+    },
+    {
+      "id": "quality_gate",
+      "title": "Quality Gate",
+      "description": "Run lint + test.",
+      "command": "npm run gate:local",
+      "startedAt": "2026-04-03T09:26:25.013Z",
+      "endedAt": "2026-04-03T09:26:29.825Z",
+      "durationMs": 4812,
+      "ok": true,
+      "exitCode": 0,
+      "skipped": false
+    }
+  ],
+  "topAction": {
+    "id": "docs-openapi-email-gpt-yaml-review-target-docs-openapi-email-gpt-yaml",
+    "title": "Review target: docs/openapi-email-gpt.yaml",
+    "priority": "high",
+    "score": 3,
+    "reason": "25 impact hits (2H/12M/11L)",
+    "recommendation": "Review prompt/actions contracts and capability manifests.",
+    "target": "docs/openapi-email-gpt.yaml",
+    "existsInRepo": true,
+    "status": "todo",
+    "owner": "Matias + AI",
+    "dueDate": "2026-04-04",
+    "nextStep": "Comparar spec con rutas reales y listar operationIds faltantes.",
+    "evidence": "PR diff + smoke GPT actions",
+    "notes": "",
+    "updatedAt": "2026-04-03T09:26:24.616Z"
+  }
+}

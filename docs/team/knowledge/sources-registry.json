@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-03T08:42:32.312Z",
+  "updatedAt": "2026-04-03T09:26:23.876Z",
   "projectProfile": {
     "name": "BMC/Panelin",
     "focusAreas": [
@@ -43,14 +43,14 @@
         "agent"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T08:42:30.154Z",
+      "lastCheckedAt": "2026-04-03T09:26:22.141Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 6,
         "rejectedEvents": 2,
         "avgEventScore": 0.548
       },
-      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "updatedAt": "2026-04-03T09:26:23.876Z",
       "rankScore": 0.9003
     },
     {
@@ -70,14 +70,14 @@
         "safety"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T08:42:30.898Z",
+      "lastCheckedAt": "2026-04-03T09:26:22.873Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 5,
         "rejectedEvents": 3,
         "avgEventScore": 0.5637
       },
-      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "updatedAt": "2026-04-03T09:26:23.876Z",
       "rankScore": 0.8626
     },
     {
@@ -97,14 +97,14 @@
         "ci-cd"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T08:42:31.040Z",
+      "lastCheckedAt": "2026-04-03T09:26:23.017Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 8,
         "rejectedEvents": 0,
         "avgEventScore": 0.652
       },
-      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "updatedAt": "2026-04-03T09:26:23.876Z",
       "rankScore": 0.9092
     },
     {
@@ -124,14 +124,14 @@
         "auth"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-03T08:42:31.080Z",
+      "lastCheckedAt": "2026-04-03T09:26:23.056Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 8,
         "rejectedEvents": 0,
         "avgEventScore": 0.6705
       },
-      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "updatedAt": "2026-04-03T09:26:23.876Z",
       "rankScore": 0.8891
     },
     {
@@ -149,14 +149,14 @@
         "benchmarks"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-03T08:42:31.484Z",
+      "lastCheckedAt": "2026-04-03T09:26:23.432Z",
       "stats": {
         "eventsSeen": 8,
         "acceptedEvents": 8,
         "rejectedEvents": 0,
         "avgEventScore": 0.647
       },
-      "updatedAt": "2026-04-03T08:42:32.312Z",
+      "updatedAt": "2026-04-03T09:26:23.876Z",
       "rankScore": 0.8497
     }
   ],

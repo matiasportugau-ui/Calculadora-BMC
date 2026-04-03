@@ -22,6 +22,10 @@ Operational guide for a scripted AI-research antenna that feeds BMC/Panelin evol
 - Run scanner/report only: `npm run knowledge:scan`
 - Recompute ranking only: `npm run knowledge:rank`
 - Recompute impact mapping only: `npm run knowledge:impact`
+- Build knowledge DB + improvement evaluation: `npm run knowledge:db`
+- Build development direction tracker (user-friendly): `npm run knowledge:direction`
+- Run end-to-end development chain (step by step): `npm run development:chain`
+- Run full chain including build gate: `npm run development:chain:full`
 - Environment ensure (self-heal): `npm run knowledge:env:ensure`
 - Environment check (no changes): `npm run knowledge:env:check`
 - Pipeline preflight (strict): `npm run knowledge:preflight`
@@ -48,6 +52,13 @@ Before each full run (`knowledge:run`) the system now enforces:
 - Dependency presence (`node_modules`) and auto-install (`npm ci`/`npm install`) when needed.
 - Writable knowledge directories and report output paths.
 - Strict preflight: validates JSON schemas and connectivity to sampled active sources.
+- Automatic improvement evaluation snapshot (`knowledge-db.json`) and a dated report in `knowledge/reports/KNOWLEDGE-IMPROVEMENT-EVAL-*.md`.
+- Direction tracker files:
+  - `docs/team/knowledge/development-direction-tracker.json` (machine + editable tracking fields)
+  - `docs/team/knowledge/DEVELOPMENT-DIRECTION-TRACKER.md` (human-friendly board)
+- Chain status files:
+  - `docs/team/knowledge/development-chain-status.json` (machine status with steps and timings)
+  - `docs/team/knowledge/DEVELOPMENT-CHAIN-STATUS.md` (human-friendly chain report)
 
 Config knobs:
 

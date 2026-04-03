@@ -96,44 +96,51 @@ human_bytes() {
   fi
 }
 
-collect_stale_dirs() {
-  local root="$1"
-  local pattern="$2"
-  local arr_name="$3"
-  local total_name="$4"
-  local stale_name="$5"
-
-  # shellcheck disable=SC2034
-  eval "$arr_name=()"
-  eval "$total_name=0"
-  eval "$stale_name=0"
-
-  [[ -d "$root" ]] || return 0
-
-  local d
-  for d in "$root"/$pattern; do
+# Bash 3.2 (macOS /usr/bin/bash): building arrays via eval inside a function leaves those
+# arrays function-local, so prune --apply breaks under set -u. Scan at top level instead.
+stale_mcp_dirs=()
+total_mcp_bytes=0
+stale_mcp_bytes=0
+if [[ -d "$MCP_ROOT" ]]; then
+  for d in "$MCP_ROOT"/chrome-profile*; do
     [[ -d "$d" ]] || continue
-    local base
     base="$(basename "$d")"
-    # keep main non-isolated profile untouched by automatic prune
     if [[ "$base" == "chrome-profile" ]]; then
       continue
     fi
-
-    local mtime age_days size_kb size_b
     mtime="$(stat_mtime "$d")"
     age_days=$(( (now_epoch - mtime) / 86400 ))
     size_kb="$(dir_size_kb "$d")"
     size_b="$(bytes_from_kb "$size_kb")"
-
-    eval "$total_name=\$(( $total_name + $size_b ))"
+    total_mcp_bytes=$((total_mcp_bytes + size_b))
     if (( age_days >= STALE_DAYS )); then
-      eval "$stale_name=\$(( $stale_name + $size_b ))"
-      # shellcheck disable=SC2206
-      eval "$arr_name+=(\"$d\")"
+      stale_mcp_bytes=$((stale_mcp_bytes + size_b))
+      stale_mcp_dirs+=("$d")
     fi
   done
-}
+fi
+
+stale_npx_dirs=()
+total_npx_bytes=0
+stale_npx_bytes=0
+if [[ -d "$NPX_CACHE_ROOT" ]]; then
+  for d in "$NPX_CACHE_ROOT"/*; do
+    [[ -d "$d" ]] || continue
+    base="$(basename "$d")"
+    if [[ "$base" == "chrome-profile" ]]; then
+      continue
+    fi
+    mtime="$(stat_mtime "$d")"
+    age_days=$(( (now_epoch - mtime) / 86400 ))
+    size_kb="$(dir_size_kb "$d")"
+    size_b="$(bytes_from_kb "$size_kb")"
+    total_npx_bytes=$((total_npx_bytes + size_b))
+    if (( age_days >= STALE_DAYS )); then
+      stale_npx_bytes=$((stale_npx_bytes + size_b))
+      stale_npx_dirs+=("$d")
+    fi
+  done
+fi
 
 move_to_trash() {
   local src="$1"
@@ -167,9 +174,6 @@ emit_json() {
 }
 EOF
 }
-
-collect_stale_dirs "$MCP_ROOT" "chrome-profile*" stale_mcp_dirs total_mcp_bytes stale_mcp_bytes
-collect_stale_dirs "$NPX_CACHE_ROOT" "*" stale_npx_dirs total_npx_bytes stale_npx_bytes
 
 stale_count_mcp="${#stale_mcp_dirs[@]}"
 stale_count_npx="${#stale_npx_dirs[@]}"
@@ -218,15 +222,20 @@ fi
 
 trash_bag="$HOME/.Trash/McpCachePrune-$(date +%Y%m%d-%H%M%S)"
 
-for d in "${stale_mcp_dirs[@]}"; do
-  (( VERBOSE == 1 )) && echo "Prune MCP: $d"
-  move_to_trash "$d" "$trash_bag"
-done
+# Bash 3.2 + set -u: "${arr[@]}" in for is an error when arr is empty; guard on length.
+if (( ${#stale_mcp_dirs[@]} > 0 )); then
+  for d in "${stale_mcp_dirs[@]}"; do
+    (( VERBOSE == 1 )) && echo "Prune MCP: $d"
+    move_to_trash "$d" "$trash_bag"
+  done
+fi
 
-for d in "${stale_npx_dirs[@]}"; do
-  (( VERBOSE == 1 )) && echo "Prune NPX: $d"
-  move_to_trash "$d" "$trash_bag"
-done
+if (( ${#stale_npx_dirs[@]} > 0 )); then
+  for d in "${stale_npx_dirs[@]}"; do
+    (( VERBOSE == 1 )) && echo "Prune NPX: $d"
+    move_to_trash "$d" "$trash_bag"
+  done
+fi
 
 if (( JSON == 1 )); then
   emit_json "$total_mcp_bytes" "$stale_mcp_bytes" "$total_npx_bytes" "$stale_npx_bytes" "$stale_count_mcp" "$stale_count_npx" 1

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-03 (Calculadora — paso lista: video Panelin)
+**Última actualización:** 2026-04-03 (Knowledge DB + evaluación automática)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-03 (Development Chain — ejecución encadenada paso a paso):** nuevo orquestador [`scripts/development-chain-runner.mjs`](../../scripts/development-chain-runner.mjs) para correr automáticamente la cadena de desarrollo en orden y con trazabilidad: `knowledge:run` → `project:compass` → gate de calidad (`gate:local` o `gate:local:full`). Nuevos comandos en `package.json`: `development:chain` y `development:chain:full`. Genera reportes `docs/team/knowledge/development-chain-status.json` + `docs/team/knowledge/DEVELOPMENT-CHAIN-STATUS.md` con tiempos por paso, estado OK/FAIL y próxima acción tomada desde `development-direction-tracker.json`.
+
+**2026-04-03 (Knowledge Antenna — tracker user-friendly y trackeable):** nuevo generador [`scripts/knowledge-direction-tracker.mjs`](../../scripts/knowledge-direction-tracker.mjs) para convertir `knowledge-db.json` en tablero operativo editable por equipo. Entregables: [`docs/team/knowledge/DEVELOPMENT-DIRECTION-TRACKER.md`](./knowledge/DEVELOPMENT-DIRECTION-TRACKER.md) (lectura humana) y [`docs/team/knowledge/development-direction-tracker.json`](./knowledge/development-direction-tracker.json) (seguimiento estructurado con `status`, `owner`, `dueDate`, `nextStep`, `evidence`, `notes`). `package.json` agrega `knowledge:direction`; `knowledge:run` ahora ejecuta también este paso para mantener dirección de desarrollo actualizada en cada corrida.
+
+**2026-04-03 (Knowledge Antenna — base de conocimiento + evaluación automática):** nuevo script [`scripts/knowledge-antenna-db.mjs`](../../scripts/knowledge-antenna-db.mjs) genera snapshot consolidado [`docs/team/knowledge/knowledge-db.json`](./knowledge/knowledge-db.json) con stats (fuentes/referencias/eventos/mappings) y evaluación de mejoras alineada al repo (cobertura por `targets`, prioridad H/M/L por dominio y acciones ejecutivas). Salida adicional: [`KNOWLEDGE-IMPROVEMENT-EVAL-*.md`](./knowledge/reports/README.md). `package.json` agrega `knowledge:db` y `knowledge:run` ahora ejecuta en cadena **env ensure -> preflight -> scan -> rank -> impact -> db** para actualizar tecnológicamente en cada corrida/scheduler.
 
 **2026-04-03 (Knowledge Antenna — CI guard contra CWD drift):** agregado [`scripts/knowledge-antenna-env-cwd-regression.sh`](../../scripts/knowledge-antenna-env-cwd-regression.sh) para evitar regresiones donde `knowledge-antenna-env-ensure.sh` instale deps fuera del repo al correr desde `launchd`/CWD no controlado. El guard valida estructura (`cd "$REPO_ROOT"` antes de `npm ci/install`) y ejecución real desde `cd /`. Integrado en `package.json` (`knowledge:env:cwd:guard`) y en `.github/workflows/ci.yml` dentro de `knowledge_antenna` antes de `knowledge:env:check`.
 

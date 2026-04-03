@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-03T08:42:32.555Z",
+  "updatedAt": "2026-04-03T09:26:24.238Z",
   "domains": [
     "llm-platforms",
     "frontend-stack",
@@ -22,7 +22,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.552Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_27c5d3d673cd5e0d_deployment-stack",
@@ -38,7 +38,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.552Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_989491e8b9306b95_llm-platforms",
@@ -53,7 +53,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.552Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_975b53ff9a8566c9_llm-platforms",
@@ -68,7 +68,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_c60b7fdad8b561a3_llm-platforms",
@@ -83,7 +83,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_a5ca0012034d840f_llm-platforms",
@@ -98,7 +98,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_72eae1b78e6667bb_llm-platforms",
@@ -113,7 +113,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_9c7106b453502f78_llm-platforms",
@@ -128,7 +128,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_9c7106b453502f78_deployment-stack",
@@ -144,7 +144,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_9009664f85527651_llm-platforms",
@@ -159,7 +159,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_a4984367749e9f27_llm-platforms",
@@ -174,7 +174,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_a4984367749e9f27_data-and-storage",
@@ -188,7 +188,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_a4984367749e9f27_workflow-automation",
@@ -203,7 +203,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_e2550a800757b44d_llm-platforms",
@@ -218,7 +218,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_7986606899272d35_llm-platforms",
@@ -233,7 +233,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_2bb65f71a9445716_deployment-stack",
@@ -249,7 +249,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_248433ebee953d15_deployment-stack",
@@ -265,7 +265,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_4cfe4c655777f669_deployment-stack",
@@ -281,7 +281,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_95d224f3d9175f1f_deployment-stack",
@@ -297,7 +297,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_624c5eaf694f99ba_deployment-stack",
@@ -313,7 +313,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_6483861d8b925f67_deployment-stack",
@@ -329,7 +329,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_1e162cafa033c8c6_deployment-stack",
@@ -345,7 +345,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.236Z"
     },
     {
       "id": "impact_evt_11500965e80a0623_deployment-stack",
@@ -361,7 +361,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_a62fa74f2b3aee1d_llm-platforms",
@@ -376,7 +376,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_a62fa74f2b3aee1d_deployment-stack",
@@ -392,7 +392,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_a62fa74f2b3aee1d_data-and-storage",
@@ -406,7 +406,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_a62fa74f2b3aee1d_frontend-stack",
@@ -421,7 +421,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_a62fa74f2b3aee1d_workflow-automation",
@@ -436,7 +436,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_924ea0055be9f0cd_llm-platforms",
@@ -451,7 +451,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_924ea0055be9f0cd_deployment-stack",
@@ -467,7 +467,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_924ea0055be9f0cd_data-and-storage",
@@ -481,7 +481,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_924ea0055be9f0cd_frontend-stack",
@@ -496,7 +496,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_924ea0055be9f0cd_workflow-automation",
@@ -511,7 +511,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d1bdee05678c69bd_llm-platforms",
@@ -526,7 +526,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d1bdee05678c69bd_deployment-stack",
@@ -542,7 +542,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d1bdee05678c69bd_data-and-storage",
@@ -556,7 +556,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d1bdee05678c69bd_frontend-stack",
@@ -571,7 +571,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d1bdee05678c69bd_workflow-automation",
@@ -586,7 +586,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_52617de8bd4170e1_llm-platforms",
@@ -601,7 +601,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_52617de8bd4170e1_deployment-stack",
@@ -617,7 +617,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_52617de8bd4170e1_data-and-storage",
@@ -631,7 +631,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_52617de8bd4170e1_workflow-automation",
@@ -646,7 +646,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.553Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_9f002c373fe5ae1d_llm-platforms",
@@ -661,7 +661,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_9f002c373fe5ae1d_deployment-stack",
@@ -677,7 +677,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_9f002c373fe5ae1d_data-and-storage",
@@ -691,7 +691,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_9f002c373fe5ae1d_frontend-stack",
@@ -706,7 +706,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_9f002c373fe5ae1d_workflow-automation",
@@ -721,7 +721,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d47d8decb3cff3e8_llm-platforms",
@@ -736,7 +736,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d47d8decb3cff3e8_deployment-stack",
@@ -752,7 +752,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d47d8decb3cff3e8_data-and-storage",
@@ -766,7 +766,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d47d8decb3cff3e8_frontend-stack",
@@ -781,7 +781,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_d47d8decb3cff3e8_workflow-automation",
@@ -796,7 +796,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_4e111d12634b1ccd_llm-platforms",
@@ -811,7 +811,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_4e111d12634b1ccd_deployment-stack",
@@ -827,7 +827,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_4e111d12634b1ccd_data-and-storage",
@@ -841,7 +841,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.237Z"
     },
     {
       "id": "impact_evt_4e111d12634b1ccd_workflow-automation",
@@ -856,7 +856,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_ff1163e39d7e0a1b_deployment-stack",
@@ -872,7 +872,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_ff1163e39d7e0a1b_data-and-storage",
@@ -886,7 +886,7 @@
         "server/routes/bmcDashboard.js"
       ],
       "recommendation": "Assess schema/runtime compatibility and migration impact.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_60723b36f47e52be_llm-platforms",
@@ -901,7 +901,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_60723b36f47e52be_frontend-stack",
@@ -916,7 +916,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_60723b36f47e52be_workflow-automation",
@@ -931,7 +931,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_4e2a48a0bdfd35bb_llm-platforms",
@@ -946,7 +946,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_4e2a48a0bdfd35bb_workflow-automation",
@@ -961,7 +961,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_9c682fa2bc5e865b_frontend-stack",
@@ -976,7 +976,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_9c682fa2bc5e865b_workflow-automation",
@@ -991,7 +991,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_0d3421c95c06f435_llm-platforms",
@@ -1006,7 +1006,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_0d3421c95c06f435_workflow-automation",
@@ -1021,7 +1021,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_3b9deefc254a8dc4_llm-platforms",
@@ -1036,7 +1036,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_3b9deefc254a8dc4_workflow-automation",
@@ -1051,7 +1051,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_57cc7f6555bb249e_llm-platforms",
@@ -1066,7 +1066,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_57cc7f6555bb249e_deployment-stack",
@@ -1082,7 +1082,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_57cc7f6555bb249e_workflow-automation",
@@ -1097,7 +1097,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_4d73fb71f7525536_llm-platforms",
@@ -1112,7 +1112,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_4d73fb71f7525536_workflow-automation",
@@ -1127,7 +1127,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_44108caabb9491bc_llm-platforms",
@@ -1142,7 +1142,7 @@
         "scripts/capabilities-snapshot.mjs"
       ],
       "recommendation": "Review prompt/actions contracts and capability manifests.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_44108caabb9491bc_deployment-stack",
@@ -1158,7 +1158,7 @@
         "Dockerfile.bmc-dashboard"
       ],
       "recommendation": "Validate deploy pipeline and production smoke checks.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_44108caabb9491bc_frontend-stack",
@@ -1173,7 +1173,7 @@
         "eslint.config.js"
       ],
       "recommendation": "Prioritize UI/runtime changes with highest UX or perf leverage.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     },
     {
       "id": "impact_evt_44108caabb9491bc_workflow-automation",
@@ -1188,7 +1188,7 @@
         "docs/team/SESSION-WORKSPACE-CRM.md"
       ],
       "recommendation": "Map new automation capabilities into team runbooks and scripts.",
-      "createdAt": "2026-04-03T08:42:32.554Z"
+      "createdAt": "2026-04-03T09:26:24.238Z"
     }
   ],
   "generatedForDate": "2026-04-03"
