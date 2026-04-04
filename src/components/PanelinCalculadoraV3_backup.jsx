@@ -2267,6 +2267,20 @@ export default function PanelinCalculadoraV3() {
     devAuthToken,
   });
 
+  // 3.1 — Sync ?chat=1 URL param with drawer state
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (chatOpen) {
+      params.set("chat", "1");
+    } else {
+      params.delete("chat");
+    }
+    const newSearch = params.toString();
+    const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+    window.history.replaceState(null, "", newUrl);
+  }, [chatOpen]);
+
   const toggleDevMode = useCallback(() => {
     if (devMode) {
       setDevMode(false);
@@ -4824,6 +4838,8 @@ export default function PanelinCalculadoraV3() {
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
         {...chat}
+        stop={chat.stop}
+        retry={chat.retry}
         devMode={devMode}
         onToggleDevMode={toggleDevMode}
         devMeta={chat.devMeta}

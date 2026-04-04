@@ -41,7 +41,6 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
     .panelin-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:${SUBTEXT}; margin:0 2px; animation:panelin-pulse 1.2s infinite ease-in-out; }
     .panelin-dot:nth-child(2){ animation-delay:0.2s; }
     .panelin-dot:nth-child(3){ animation-delay:0.4s; }
-    @keyframes panelin-action-fade { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(-8px)} }
     @keyframes panelin-mic-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,59,48,0)} }
   `;
   document.head.appendChild(s);
@@ -67,6 +66,7 @@ function Avatar({ size = 28 }) {
   );
 }
 
+const PRIVACY_KEY = "panelin-chat-notice-seen";
 
 /**
  * Panelin AI chat drawer.
@@ -125,6 +125,9 @@ export default function PanelinChatPanel({
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [privacyNoticeSeen, setPrivacyNoticeSeen] = useState(
+    () => typeof localStorage !== "undefined" && !!localStorage.getItem(PRIVACY_KEY)
+  );
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
@@ -461,6 +464,33 @@ export default function PanelinChatPanel({
             position: "relative",
           }}
         >
+          {/* 3.2 — Privacy first-run notice */}
+          {!privacyNoticeSeen && (
+            <div
+              style={{
+                fontSize: 11,
+                color: SUBTEXT,
+                textAlign: "center",
+                padding: "6px 12px",
+                background: SURFACE,
+                borderRadius: 8,
+                lineHeight: 1.5,
+              }}
+            >
+              Tu historial se guarda en este navegador. Podés borrarlo con{" "}
+              <strong>Nueva conversación</strong>.{" "}
+              <button
+                onClick={() => {
+                  setPrivacyNoticeSeen(true);
+                  try { localStorage.setItem(PRIVACY_KEY, "1"); } catch { /* ignore */ }
+                }}
+                style={{ background: "none", border: "none", color: PRIMARY, cursor: "pointer", fontFamily: FONT, fontSize: 11, padding: 0 }}
+              >
+                Entendido
+              </button>
+            </div>
+          )}
+
           {isEmpty && (
             <div
               style={{

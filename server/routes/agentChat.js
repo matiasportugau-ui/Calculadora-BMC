@@ -14,6 +14,12 @@ import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+// 4.2 — Cache dynamic OpenAI import to avoid re-import on every Grok/OpenAI request
+let _OpenAI = null;
+async function getOpenAI() {
+  if (!_OpenAI) { const m = await import("openai"); _OpenAI = m.default; }
+  return _OpenAI;
+}
 import { config } from "../config.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
@@ -405,7 +411,7 @@ router.post("/agent/chat", async (req, res) => {
           }
         }
       } else {
-        const { default: OpenAI } = await import("openai");
+        const OpenAI = await getOpenAI();
         const client =
           provider === "grok"
             ? new OpenAI({ apiKey: config.grokApiKey, baseURL: "https://api.x.ai/v1" })
