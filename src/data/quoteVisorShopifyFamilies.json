@@ -1,0 +1,777 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-04T11:26:40.486Z",
+  "source": "https://bmcuruguay.com.uy/collections/all/products.json",
+  "byFamily": {
+    "ISODEC_EPS": {
+      "gallery": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC.png?v=1757424916",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.png?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_2_-_ISODEC.jpg?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_4_-_Largos_y_Anchos_definicion.jpg?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_01.jpg?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_04.jpg?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file_49eae070-e157-4474-a247-0ad12f84227e.png?v=1756747335",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_ROJO.png?v=1753382379",
+          "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+          "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+        }
+      ],
+      "byColor": {
+        "Blanco": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC.png?v=1757424916",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.png?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_2_-_ISODEC.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_4_-_Largos_y_Anchos_definicion.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_01.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          }
+        ],
+        "Gris": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC.png?v=1757424916",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.png?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_2_-_ISODEC.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_4_-_Largos_y_Anchos_definicion.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_01.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          }
+        ],
+        "Rojo": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC.png?v=1757424916",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.png?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_2_-_ISODEC.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_4_-_Largos_y_Anchos_definicion.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_01.jpg?v=1756747335",
+            "title": "ISODEC EPS (Techos y Cubiertas) / 100 - 150 - 200 - 250 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isopanel-isodec-eps-cubiertas-bmc-reloaded",
+            "shopifyHandle": "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+          }
+        ]
+      },
+      "productCount": 1,
+      "matchedHandles": [
+        "isopanel-isodec-eps-cubiertas-bmc-reloaded"
+      ]
+    },
+    "ISODEC_PIR": {
+      "gallery": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+          "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+          "shopifyHandle": "isodec®-pir"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IsodecPIR01.png?v=1755503238",
+          "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+          "shopifyHandle": "isodec®-pir"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ficha_tecnica_Isodec.png?v=1755503238",
+          "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+          "shopifyHandle": "isodec®-pir"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Ficha_Tecnica_Isodec_PIR_.pdf.png?v=1755503238",
+          "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+          "subtitle": "Catálogo Shopify",
+          "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+          "shopifyHandle": "isodec®-pir"
+        }
+      ],
+      "byColor": {
+        "Blanco": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IsodecPIR01.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ficha_tecnica_Isodec.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Ficha_Tecnica_Isodec_PIR_.pdf.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          }
+        ],
+        "Gris": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IsodecPIR01.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ficha_tecnica_Isodec.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Ficha_Tecnica_Isodec_PIR_.pdf.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          }
+        ],
+        "Rojo": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IsodecPIR01.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ficha_tecnica_Isodec.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Ficha_Tecnica_Isodec_PIR_.pdf.png?v=1755503238",
+            "title": "ISODEC® PIR (Techos y Cubiertas) / 50 - 80 - 120 mm.",
+            "subtitle": "Catálogo Shopify",
+            "href": "https://bmcuruguay.com.uy/products/isodec®-pir",
+            "shopifyHandle": "isodec®-pir"
+          }
+        ]
+      },
+      "productCount": 1,
+      "matchedHandles": [
+        "isodec®-pir"
+      ]
+    },
+    "ISOROOF_3G": {
+      "gallery": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+          "title": "ISOROOF. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+          "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+          "title": "ISOROOF. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+          "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+          "title": "ISOROOF. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+          "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/image.png?v=1752169863",
+          "title": "ISOROOF. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+          "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+        }
+      ],
+      "byColor": {
+        "Blanco": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/image.png?v=1752169863",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          }
+        ],
+        "Gris": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/image.png?v=1752169863",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          }
+        ],
+        "Rojo": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/image.png?v=1752169863",
+            "title": "ISOROOF. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/isoroof-3g-gris-rojo-blanco-bromyros",
+            "shopifyHandle": "isoroof-3g-gris-rojo-blanco-bromyros"
+          }
+        ]
+      },
+      "productCount": 1,
+      "matchedHandles": [
+        "isoroof-3g-gris-rojo-blanco-bromyros"
+      ]
+    },
+    "ISOROOF_PLUS": {
+      "gallery": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+          "title": "ISOROOF PLUS. 3G.",
+          "subtitle": "Panel",
+          "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+          "shopifyHandle": "iroof80-pls"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+          "title": "ISOROOF PLUS. 3G.",
+          "subtitle": "Panel",
+          "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+          "shopifyHandle": "iroof80-pls"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+          "title": "ISOROOF PLUS. 3G.",
+          "subtitle": "Panel",
+          "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+          "shopifyHandle": "iroof80-pls"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png?v=1752180781",
+          "title": "ISOROOF PLUS. 3G.",
+          "subtitle": "Panel",
+          "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+          "shopifyHandle": "iroof80-pls"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_01_ad017e0b-ed7f-4b3e-8dbb-b594813909c5.jpg?v=1752180781",
+          "title": "ISOROOF PLUS. 3G.",
+          "subtitle": "Panel",
+          "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+          "shopifyHandle": "iroof80-pls"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_02_d1ee7bd6-2f0b-408f-b360-b6619d31e65f.jpg?v=1752180781",
+          "title": "ISOROOF PLUS. 3G.",
+          "subtitle": "Panel",
+          "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+          "shopifyHandle": "iroof80-pls"
+        }
+      ],
+      "byColor": {
+        "Blanco": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_01_ad017e0b-ed7f-4b3e-8dbb-b594813909c5.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_02_d1ee7bd6-2f0b-408f-b360-b6619d31e65f.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          }
+        ],
+        "Gris": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_01_ad017e0b-ed7f-4b3e-8dbb-b594813909c5.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_02_d1ee7bd6-2f0b-408f-b360-b6619d31e65f.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          }
+        ],
+        "Rojo": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_01_ad017e0b-ed7f-4b3e-8dbb-b594813909c5.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_02_d1ee7bd6-2f0b-408f-b360-b6619d31e65f.jpg?v=1752180781",
+            "title": "ISOROOF PLUS. 3G.",
+            "subtitle": "Panel",
+            "href": "https://bmcuruguay.com.uy/products/iroof80-pls",
+            "shopifyHandle": "iroof80-pls"
+          }
+        ]
+      },
+      "productCount": 1,
+      "matchedHandles": [
+        "iroof80-pls"
+      ]
+    },
+    "ISOROOF_FOIL": {
+      "gallery": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+          "title": "ISOROOF FOIL. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/iagro30",
+          "shopifyHandle": "iagro30"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+          "title": "ISOROOF FOIL. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/iagro30",
+          "shopifyHandle": "iagro30"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMCFlyer10-IsoroofFOIL.jpg?v=1752175101",
+          "title": "ISOROOF FOIL. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/iagro30",
+          "shopifyHandle": "iagro30"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isoagro.png?v=1752175101",
+          "title": "ISOROOF FOIL. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/iagro30",
+          "shopifyHandle": "iagro30"
+        },
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_FOIL.png?v=1752175101",
+          "title": "ISOROOF FOIL. 3G.",
+          "subtitle": "Panel Aislante",
+          "href": "https://bmcuruguay.com.uy/products/iagro30",
+          "shopifyHandle": "iagro30"
+        }
+      ],
+      "byColor": {
+        "Gris": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMCFlyer10-IsoroofFOIL.jpg?v=1752175101",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isoagro.png?v=1752175101",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_FOIL.png?v=1752175101",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          }
+        ],
+        "Rojo": [
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMCFlyer10-IsoroofFOIL.jpg?v=1752175101",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isoagro.png?v=1752175101",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          },
+          {
+            "src": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_FOIL.png?v=1752175101",
+            "title": "ISOROOF FOIL. 3G.",
+            "subtitle": "Panel Aislante",
+            "href": "https://bmcuruguay.com.uy/products/iagro30",
+            "shopifyHandle": "iagro30"
+          }
+        ]
+      },
+      "productCount": 1,
+      "matchedHandles": [
+        "iagro30"
+      ]
+    },
+    "ISOROOF_COLONIAL": {
+      "gallery": [],
+      "byColor": {},
+      "productCount": 0,
+      "matchedHandles": []
+    }
+  }
+}

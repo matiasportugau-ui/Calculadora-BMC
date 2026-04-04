@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 
@@ -10,8 +10,117 @@ const SURFACE = "#f5f5f7";
 const BORDER = "#e5e5ea";
 const TEXT = "#1d1d1f";
 const SUBTEXT = "#6e6e73";
+const STORAGE_SELECTED_SKIN = "panelin-chat-selected-skin-v1";
+const STORAGE_CUSTOM_SKINS = "panelin-chat-custom-skins-v1";
+const BUILTIN_SKINS = [
+  {
+    id: "classic",
+    name: "Classic BMC",
+    tokens: {
+      brand: "#1a3a5c",
+      primary: "#0071e3",
+      surface: "#f5f5f7",
+      border: "#e5e5ea",
+      text: "#1d1d1f",
+      subtext: "#6e6e73",
+      drawerBg: "#ffffff",
+      backdrop: "rgba(0,0,0,0.35)",
+      headerText: "#ffffff",
+      userBubbleText: "#ffffff",
+      assistantBubbleText: "#1d1d1f",
+    },
+  },
+  {
+    id: "night",
+    name: "Night Steel",
+    tokens: {
+      brand: "#101A2B",
+      primary: "#3B82F6",
+      surface: "#1A2438",
+      border: "#2A3955",
+      text: "#E5E7EB",
+      subtext: "#94A3B8",
+      drawerBg: "#0F172A",
+      backdrop: "rgba(2,6,23,0.62)",
+      headerText: "#F8FAFC",
+      userBubbleText: "#F8FAFC",
+      assistantBubbleText: "#E5E7EB",
+    },
+  },
+  {
+    id: "sand",
+    name: "Arena Soft",
+    tokens: {
+      brand: "#5A4632",
+      primary: "#C9863A",
+      surface: "#F7EFE6",
+      border: "#E8D7C5",
+      text: "#2E241B",
+      subtext: "#7A6551",
+      drawerBg: "#FFFDFB",
+      backdrop: "rgba(34,24,16,0.34)",
+      headerText: "#FFF9F3",
+      userBubbleText: "#FFFFFF",
+      assistantBubbleText: "#2E241B",
+    },
+  },
+];
 const VIDEO_SRC = `${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}video/panelin-lista-loop.mp4`;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function buildSkinMap() {
+  return new Map(BUILTIN_SKINS.map((skin) => [skin.id, skin]));
+}
+
+function loadCustomSkins() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_CUSTOM_SKINS);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((skin) => skin && skin.id && skin.name && skin.tokens);
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomSkins(customSkins) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_CUSTOM_SKINS, JSON.stringify(customSkins));
+  } catch {
+    // Ignore storage failures (private mode / quota).
+  }
+}
+
+function makeSkinDraftFromTokens(tokens) {
+  const base = BUILTIN_SKINS[0].tokens;
+  return {
+    name: "",
+    brand: tokens?.brand || base.brand,
+    primary: tokens?.primary || base.primary,
+    surface: tokens?.surface || base.surface,
+    border: tokens?.border || base.border,
+    text: tokens?.text || base.text,
+    subtext: tokens?.subtext || base.subtext,
+    drawerBg: tokens?.drawerBg || base.drawerBg,
+    headerText: tokens?.headerText || base.headerText,
+    backdrop: tokens?.backdrop || base.backdrop,
+    userBubbleText: tokens?.userBubbleText || base.userBubbleText,
+    assistantBubbleText: tokens?.assistantBubbleText || base.assistantBubbleText,
+  };
+}
+
+function makeNextCustomSkinId(existingSkins) {
+  let idx = existingSkins.length + 1;
+  let candidate = `custom-${idx}`;
+  const ids = new Set(existingSkins.map((skin) => skin.id));
+  while (ids.has(candidate)) {
+    idx += 1;
+    candidate = `custom-${idx}`;
+  }
+  return candidate;
+}
 
 const ACTION_LABELS = {
   setScenario:   (p) => `Escenario → ${p}`,
@@ -123,6 +232,14 @@ export default function PanelinChatPanel({
   detachedMode = false,
   onOpenDetachedWindow,
 }) {
+  const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
+  const [customSkins, setCustomSkins] = useState(() => loadCustomSkins());
+  const [skinEditorOpen, setSkinEditorOpen] = useState(false);
+  const [skinDraft, setSkinDraft] = useState(() => makeSkinDraftFromTokens(BUILTIN_SKINS[0].tokens));
+  const [selectedSkinId, setSelectedSkinId] = useState(() => {
+    if (typeof window === "undefined") return "classic";
+    return localStorage.getItem(STORAGE_SELECTED_SKIN) || "classic";
+  });
   const [input, setInput] = useState("");
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
@@ -152,6 +269,29 @@ export default function PanelinChatPanel({
   const dragStartYRef = useRef(0);
   const dragStartWidthRef = useRef(0);
   const dragStartLiftRef = useRef(0);
+
+  const skinMap = useMemo(() => {
+    const map = buildSkinMap();
+    customSkins.forEach((skin) => map.set(skin.id, skin));
+    return map;
+  }, [customSkins]);
+
+  const skinOptions = useMemo(() => Array.from(skinMap.values()), [skinMap]);
+  const activeSkin = skinMap.get(selectedSkinId) || skinMap.get("classic") || BUILTIN_SKINS[0];
+  const activeTokens = skinEditorOpen ? { ...activeSkin.tokens, ...skinDraft } : activeSkin.tokens;
+  const {
+    brand: BRAND_COLOR,
+    primary: PRIMARY_COLOR,
+    surface: SURFACE_COLOR,
+    border: BORDER_COLOR,
+    text: TEXT_COLOR,
+    subtext: SUBTEXT_COLOR,
+    drawerBg: DRAWER_BG_COLOR,
+    backdrop: BACKDROP_COLOR,
+    headerText: HEADER_TEXT_COLOR,
+    userBubbleText: USER_BUBBLE_TEXT_COLOR = "#ffffff",
+    assistantBubbleText: ASSISTANT_BUBBLE_TEXT_COLOR = TEXT_COLOR,
+  } = activeTokens;
 
   // 2.5 — Smart auto-scroll: only scroll if near bottom
   useEffect(() => {
@@ -269,6 +409,11 @@ export default function PanelinChatPanel({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    localStorage.setItem(STORAGE_SELECTED_SKIN, selectedSkinId);
+  }, [selectedSkinId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const onPointerMove = (e) => {
       if (drawerResizeActiveRef.current) {
         const hardMax = Math.min(980, Math.floor(window.innerWidth * 0.98));
@@ -366,6 +511,96 @@ export default function PanelinChatPanel({
     send(text);
   }, [input, isStreaming, send]);
 
+  const saveCurrentSkin = () => {
+    const name = typeof window !== "undefined" ? window.prompt("Nombre de la skin:") : "";
+    const trimmed = name?.trim();
+    if (!trimmed) return;
+    const id = makeNextCustomSkinId(customSkins);
+    const newSkin = {
+      id,
+      name: trimmed,
+      tokens: activeSkin.tokens,
+      locked: false,
+    };
+    setCustomSkins((prev) => {
+      const next = [...prev, newSkin];
+      saveCustomSkins(next);
+      return next;
+    });
+    setSelectedSkinId(id);
+  };
+
+  const renameSkin = (skinId) => {
+    const target = customSkins.find((s) => s.id === skinId);
+    if (!target) return;
+    const name = typeof window !== "undefined" ? window.prompt("Nuevo nombre de skin:", target.name) : "";
+    const trimmed = name?.trim();
+    if (!trimmed) return;
+    setCustomSkins((prev) => {
+      const next = prev.map((s) => (s.id === skinId ? { ...s, name: trimmed } : s));
+      saveCustomSkins(next);
+      return next;
+    });
+  };
+
+  const toggleSkinLock = (skinId) => {
+    setCustomSkins((prev) => {
+      const next = prev.map((s) => (s.id === skinId ? { ...s, locked: !s.locked } : s));
+      saveCustomSkins(next);
+      return next;
+    });
+  };
+
+  const deleteSkin = (skinId) => {
+    const target = customSkins.find((s) => s.id === skinId);
+    if (!target || target.locked) return;
+    const ok = typeof window !== "undefined"
+      ? window.confirm(`Eliminar skin "${target.name}"?`)
+      : false;
+    if (!ok) return;
+    setCustomSkins((prev) => {
+      const next = prev.filter((s) => s.id !== skinId);
+      saveCustomSkins(next);
+      return next;
+    });
+    if (selectedSkinId === skinId) {
+      setSelectedSkinId("classic");
+    }
+  };
+
+  const createSkinFromEditor = () => {
+    const name = skinDraft.name.trim();
+    if (!name) return;
+    const id = makeNextCustomSkinId(customSkins);
+    const newSkin = {
+      id,
+      name,
+      locked: false,
+      tokens: {
+        ...activeSkin.tokens,
+        brand: skinDraft.brand,
+        primary: skinDraft.primary,
+        surface: skinDraft.surface,
+        border: skinDraft.border,
+        text: skinDraft.text,
+        subtext: skinDraft.subtext,
+        drawerBg: skinDraft.drawerBg,
+        headerText: skinDraft.headerText,
+        backdrop: skinDraft.backdrop,
+        userBubbleText: skinDraft.userBubbleText,
+        assistantBubbleText: skinDraft.assistantBubbleText,
+      },
+    };
+    setCustomSkins((prev) => {
+      const next = [...prev, newSkin];
+      saveCustomSkins(next);
+      return next;
+    });
+    setSelectedSkinId(id);
+    setSkinEditorOpen(false);
+    setSkinDraft(makeSkinDraftFromTokens(newSkin.tokens));
+  };
+
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -415,7 +650,7 @@ export default function PanelinChatPanel({
           position: "fixed",
           inset: 0,
           zIndex: 299,
-          background: detachedMode ? "transparent" : "rgba(0,0,0,0.35)",
+          background: detachedMode ? "transparent" : BACKDROP_COLOR,
           opacity: isOpen ? 1 : 0,
           pointerEvents: isOpen && !detachedMode ? "auto" : "none",
           transition: "opacity 200ms ease",
@@ -437,7 +672,7 @@ export default function PanelinChatPanel({
           zIndex: 300,
           width: "100%",
           maxWidth: detachedMode ? "100%" : drawerMaxWidth,
-          background: "#fff",
+          background: DRAWER_BG_COLOR,
           boxShadow: detachedMode ? "none" : "-4px 0 32px rgba(0,0,0,0.18)",
           display: "flex",
           flexDirection: "column",
@@ -466,11 +701,308 @@ export default function PanelinChatPanel({
             }}
           />
         )}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            left: 24,
+            zIndex: 310,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+          onMouseEnter={(e) => {
+            const label = e.currentTarget.querySelector("[data-skin-hover-label]");
+            if (label) {
+              label.style.opacity = "1";
+              label.style.transform = "translateX(0)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            const label = e.currentTarget.querySelector("[data-skin-hover-label]");
+            if (label) {
+              label.style.opacity = "0";
+              label.style.transform = "translateX(-6px)";
+            }
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setIsSkinMenuOpen((v) => !v)}
+            title="Seleccionar skin"
+            aria-label="Seleccionar skin"
+            style={{
+              width: 44,
+              height: 88,
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              padding: 0,
+              cursor: "pointer",
+              opacity: 0.85,
+              transition: "opacity 150ms ease, transform 150ms ease",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "flex-start",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "1";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "0.85";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                backgroundImage: `url(${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}signature.png)`,
+                backgroundSize: "contain",
+                backgroundPosition: "center bottom",
+                backgroundRepeat: "no-repeat",
+                mixBlendMode: "multiply",
+                filter: "contrast(1.2) drop-shadow(0 1px 1px rgba(0,0,0,0.05))"
+              }}
+            />
+          </button>
+          <span
+            data-skin-hover-label
+            style={{
+              fontSize: 11,
+              color: SUBTEXT_COLOR,
+              background: DRAWER_BG_COLOR,
+              border: `1px solid ${BORDER_COLOR}`,
+              borderRadius: 999,
+              padding: "2px 8px",
+              opacity: 0,
+              transform: "translateX(-6px)",
+              transition: "opacity 180ms ease, transform 180ms ease",
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Seleccionar skin
+          </span>
+          {isSkinMenuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 56,
+                left: 0,
+                width: 220,
+                background: DRAWER_BG_COLOR,
+                border: `1px solid ${BORDER_COLOR}`,
+                borderRadius: 12,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.16)",
+                padding: 8,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {skinOptions.map((skin) => {
+                const active = skin.id === selectedSkinId;
+                const isBuiltin = BUILTIN_SKINS.some((b) => b.id === skin.id);
+                const isLocked = !!skin.locked || isBuiltin;
+                return (
+                  <div
+                    key={skin.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: 6,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSkinId(skin.id);
+                        setIsSkinMenuOpen(false);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        padding: "7px 8px",
+                        borderRadius: 8,
+                        border: `1px solid ${active ? PRIMARY_COLOR : BORDER_COLOR}`,
+                        background: active ? SURFACE_COLOR : "transparent",
+                        color: active ? PRIMARY_COLOR : TEXT_COLOR,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        textAlign: "left",
+                        fontFamily: FONT,
+                      }}
+                    >
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{skin.name}</span>
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: "50%",
+                          background: skin.tokens.primary,
+                          border: `1px solid ${skin.tokens.border}`,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </button>
+                    {!isBuiltin && (
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => renameSkin(skin.id)}
+                          style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: SUBTEXT_COLOR }}
+                          title="Renombrar skin"
+                        >
+                          Ren
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleSkinLock(skin.id)}
+                          style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: isLocked ? PRIMARY_COLOR : SUBTEXT_COLOR }}
+                          title={isLocked ? "Desbloquear skin" : "Bloquear skin"}
+                        >
+                          {isLocked ? "Lock" : "Open"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isLocked}
+                          onClick={() => deleteSkin(skin.id)}
+                          style={{
+                            ...tinyActionBtn,
+                            borderColor: BORDER_COLOR,
+                            color: isLocked ? BORDER_COLOR : "#d11a2a",
+                            cursor: isLocked ? "not-allowed" : "pointer",
+                          }}
+                          title={isLocked ? "Skin bloqueada" : "Eliminar skin"}
+                        >
+                          Del
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={saveCurrentSkin}
+                style={{
+                  marginTop: 2,
+                  padding: "7px 8px",
+                  borderRadius: 8,
+                  border: `1px dashed ${BORDER_COLOR}`,
+                  background: "transparent",
+                  color: SUBTEXT_COLOR,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                }}
+              >
+                Guardar skin actual
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSkinEditorOpen((v) => !v);
+                  setSkinDraft((prev) => ({ ...makeSkinDraftFromTokens(activeSkin.tokens), name: prev.name }));
+                }}
+                style={{
+                  padding: "7px 8px",
+                  borderRadius: 8,
+                  border: `1px solid ${BORDER_COLOR}`,
+                  background: SURFACE_COLOR,
+                  color: TEXT_COLOR,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: FONT,
+                }}
+              >
+                {skinEditorOpen ? "Cerrar editor" : "Editor visual de skin"}
+              </button>
+              {skinEditorOpen && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    border: `1px solid ${BORDER_COLOR}`,
+                    borderRadius: 10,
+                    padding: 8,
+                    display: "grid",
+                    gap: 6,
+                  }}
+                >
+                  <input
+                    value={skinDraft.name}
+                    onChange={(e) => setSkinDraft((prev) => ({ ...prev, name: e.target.value }))}
+                    placeholder="Nombre de skin"
+                    style={{
+                      border: `1px solid ${BORDER_COLOR}`,
+                      borderRadius: 8,
+                      padding: "6px 8px",
+                      fontSize: 12,
+                      fontFamily: FONT,
+                    }}
+                  />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    {[
+                      ["brand", "Brand"],
+                      ["primary", "Primary"],
+                      ["surface", "Surface"],
+                      ["border", "Border"],
+                      ["text", "Text"],
+                      ["subtext", "Subtext"],
+                      ["drawerBg", "Drawer BG"],
+                      ["headerText", "Header text"],
+                      ["backdrop", "Backdrop"],
+                      ["userBubbleText", "User txt"],
+                      ["assistantBubbleText", "Assist txt"],
+                    ].map(([key, label]) => (
+                      <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 11, color: SUBTEXT_COLOR }}>
+                        <span>{label}</span>
+                        <div style={{ display: "flex", gap: 4, width: 100 }}>
+                          <input
+                            type="text"
+                            value={skinDraft[key] || ""}
+                            onChange={(e) => setSkinDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                            style={{ flex: 1, border: `1px solid ${BORDER_COLOR}`, borderRadius: 4, padding: "2px 4px", fontSize: 10, minWidth: 0, background: DRAWER_BG_COLOR, color: TEXT_COLOR }}
+                          />
+                          <div style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid rgba(0,0,0,0.1)", background: skinDraft[key], flexShrink: 0 }} />
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={createSkinFromEditor}
+                      disabled={!skinDraft.name.trim()}
+                      style={{
+                        flex: 1,
+                        padding: "7px 8px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: skinDraft.name.trim() ? PRIMARY_COLOR : BORDER_COLOR,
+                        color: "#fff",
+                        fontSize: 12,
+                        cursor: skinDraft.name.trim() ? "pointer" : "not-allowed",
+                        fontFamily: FONT,
+                      }}
+                    >
+                      Crear skin
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {/* ── Header ── */}
         <div
           style={{
-            background: BRAND,
-            color: "#fff",
+            background: BRAND_COLOR,
+            color: HEADER_TEXT_COLOR,
             padding: "12px 14px",
             display: "flex",
             alignItems: "center",
@@ -661,8 +1193,8 @@ export default function PanelinChatPanel({
                       borderRadius: isUser
                         ? "16px 16px 4px 16px"
                         : "16px 16px 16px 4px",
-                      background: isUser ? PRIMARY : SURFACE,
-                      color: isUser ? "#fff" : TEXT,
+                      background: isUser ? PRIMARY_COLOR : SURFACE_COLOR,
+                      color: isUser ? USER_BUBBLE_TEXT_COLOR : ASSISTANT_BUBBLE_TEXT_COLOR,
                       fontSize: 14,
                       lineHeight: 1.5,
                       whiteSpace: "pre-wrap",
@@ -864,8 +1396,8 @@ export default function PanelinChatPanel({
               style={{
                 position: "absolute",
                 left: "50%",
+                top: -7,
                 transform: "translateX(-50%)",
-                marginTop: -18,
                 width: 64,
                 height: 12,
                 borderRadius: 999,
@@ -874,6 +1406,7 @@ export default function PanelinChatPanel({
                 boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
                 cursor: "ns-resize",
                 touchAction: "none",
+                zIndex: 2,
               }}
             />
           )}
@@ -988,4 +1521,15 @@ const iconBtn = {
   cursor: "pointer",
   flexShrink: 0,
   transition: "background 150ms ease",
+};
+
+const tinyActionBtn = {
+  padding: "0 6px",
+  height: 26,
+  borderRadius: 7,
+  border: "1px solid",
+  background: "transparent",
+  fontSize: 10,
+  fontFamily: FONT,
+  cursor: "pointer",
 };

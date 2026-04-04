@@ -6,6 +6,7 @@
 
 import { useCallback, useMemo, useRef } from "react";
 import { C, FONT } from "../data/constants.js";
+import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente } from "../utils/calculations.js";
 import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
 import {
@@ -423,14 +424,14 @@ export default function RoofPreview({
           </button>
         )}
       </div>
-      <div style={{ fontSize: 11, color: C.ts, marginBottom: 10, lineHeight: 1.4 }}>
-        <strong style={{ color: C.tp }}>Mismo cuerpo de techo:</strong> varias medidas en planta (bloques tocándose) son{" "}
+      <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
+        Varias medidas en planta (bloques tocándose) son{" "}
         <strong style={{ color: C.tp }}>una sola superficie</strong> sin separación visual entre tramos — no otro cuerpo. El
         núcleo lo podés mover; las <strong style={{ color: C.tp }}>extensiones laterales</strong> se arrastran en planta solo
         por costados (no por frente/fondo) y también con ← → y « ». Arrastrá otra{" "}
         <strong style={{ color: C.tp }}>superficie independiente</strong> (otra zona raíz). Doble clic en la superficie:
         pendiente visual.
-      </div>
+      </CollapsibleHint>
       <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
         {layout.entries.length === 0 ? (
           <div

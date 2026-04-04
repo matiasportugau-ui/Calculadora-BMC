@@ -72,6 +72,8 @@
     "session:archive:schedule:tick": "bash scripts/session-artifact-scheduler.sh",
     "transportista:migrate": "node scripts/run-transportista-migrations.mjs",
     "visor:shopify-map": "node scripts/build-quote-visor-shopify-map.mjs",
+    "visor:shopify-families": "node scripts/build-quote-visor-shopify-families.mjs",
+    "visor:shopify-sync": "npm run visor:shopify-map && npm run visor:shopify-families",
     "knowledge:scan": "node scripts/knowledge-antenna-run.mjs --max-per-source=8 --min-score=0.45",
     "knowledge:rank": "node scripts/knowledge-antenna-rank.mjs",
     "knowledge:impact": "node scripts/knowledge-antenna-impact.mjs --days=14",

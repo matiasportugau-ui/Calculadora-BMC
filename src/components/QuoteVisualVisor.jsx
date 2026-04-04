@@ -18,6 +18,8 @@ const PANELIN_LISTA_VIDEO_SRC = `${import.meta.env.BASE_URL}video/panelin-lista-
  * @param {string | null} [props.stepId]
  * @param {string} [props.tipoAguas]
  * @param {string} [props.techoFamilia]
+ * @param {string} [props.hoverTechoFamilia]
+ * @param {string} [props.techoColor]
  * @param {boolean} [props.aguasHighlight]
  * @param {boolean} [props.showRoof3DStage]
  * @param {import("react").MutableRefObject<HTMLElement | null>} [props.roofCanvasHostRef]
@@ -34,6 +36,8 @@ export default function QuoteVisualVisor({
   stepId = null,
   tipoAguas = "una_agua",
   techoFamilia = "",
+  hoverTechoFamilia = "",
+  techoColor = "",
   aguasHighlight = false,
   showRoof3DStage = false,
   roofCanvasHostRef,
@@ -69,33 +73,37 @@ export default function QuoteVisualVisor({
       getQuoteVisorContext({
         scenarioId: effectiveScenario,
         stepId,
-        techoFamilia,
+        techoFamilia: hoverTechoFamilia || techoFamilia,
+        techoColor,
       }),
-    [effectiveScenario, stepId, techoFamilia],
+    [effectiveScenario, stepId, techoFamilia, hoverTechoFamilia, techoColor],
   );
 
   const mergedSlides = useMemo(() => {
     const seen = new Set();
     const out = [];
+    const allowAccessorySlides = !["familia", "espesor", "color"].includes(stepId || "");
     const push = (s) => {
       const k = s.src || s.title;
       if (!k || seen.has(k)) return;
       seen.add(k);
       out.push(s);
     };
-    borderSlides.forEach((b) =>
-      push({
-        src: b.src,
-        title: b.title,
-        subtitle: b.subtitle,
-        href: b.href,
-        kind: "border",
-        borderId: b.id,
-      }),
-    );
+    if (allowAccessorySlides) {
+      borderSlides.forEach((b) =>
+        push({
+          src: b.src,
+          title: b.title,
+          subtitle: b.subtitle,
+          href: b.href,
+          kind: "border",
+          borderId: b.id,
+        }),
+      );
+    }
     baseSlides.forEach((s) => push({ ...s, kind: "base" }));
     return out;
-  }, [baseSlides, borderSlides]);
+  }, [baseSlides, borderSlides, stepId]);
 
   const slides = mergedSlides;
 
@@ -108,7 +116,7 @@ export default function QuoteVisualVisor({
 
   useEffect(() => {
     setIdx(0);
-  }, [effectiveScenario, stepId, techoFamilia, showAguaStep, showListaStep, aguasHighlight, slides.length]);
+  }, [effectiveScenario, stepId, techoFamilia, hoverTechoFamilia, techoColor, showAguaStep, showListaStep, aguasHighlight, slides.length]);
 
   useEffect(() => {
     const v = panelinVideoRef.current;
@@ -266,14 +274,13 @@ export default function QuoteVisualVisor({
               style={{
                 width: "100%",
                 height: "100%",
-                objectFit: "contain",
+                objectFit: "cover",
+                objectPosition: "center",
                 display: "block",
                 pointerEvents: "none",
               }}
             />
-            {/* Fade overlays — top, bottom, left, right */}
-            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to right, #eaf0f8 0%, transparent 14%)" }} />
-            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to left, #e8eef6 0%, transparent 18%)" }} />
+            {/* Fade overlays — only top/bottom to avoid side column artifact */}
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to bottom, #eef2f9 0%, transparent 10%)" }} />
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(to top, #e2e8f4 0%, transparent 12%)" }} />
           </div>
@@ -316,6 +323,22 @@ export default function QuoteVisualVisor({
               }}
             >
               Vista previa al pasar el cursor · escenario: {hoverScenarioId.replace(/_/g, " ")}
+            </div>
+          )}
+
+          {stepId === "familia" && hoverTechoFamilia && (
+            <div
+              style={{
+                fontSize: 11,
+                color: C.primary,
+                fontWeight: 600,
+                marginBottom: 10,
+                padding: "6px 10px",
+                background: C.primarySoft,
+                borderRadius: 8,
+              }}
+            >
+              Vista previa al pasar el cursor · familia: {hoverTechoFamilia.replace(/_/g, " ")}
             </div>
           )}
 
@@ -544,6 +567,18 @@ export default function QuoteVisualVisor({
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>{slide.title}</div>
                 {slide.subtitle && <div style={{ fontSize: 12, color: C.ts, marginTop: 4 }}>{slide.subtitle}</div>}
+                {slide.description && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: C.tp,
+                      marginTop: 6,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {slide.description}
+                  </div>
+                )}
               </div>
               {slides.length > 1 && (
                 <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 12 }}>

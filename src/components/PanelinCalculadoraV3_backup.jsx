@@ -14,6 +14,7 @@ import {
   Table, LayoutTemplate, CircleDollarSign
 } from "lucide-react";
 
+import CollapsibleHint from "./CollapsibleHint.jsx";
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
   setListaPrecios,
@@ -92,6 +93,7 @@ import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
+import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -2089,6 +2091,7 @@ export default function PanelinCalculadoraV3() {
   });
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
+  const [techoFamilyHoverId, setTechoFamilyHoverId] = useState("");
   const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
   /** Vista 3D referencial con textura de catálogo (paralela al RoofPreview 2D). */
   const [roofRealistic3dOn, setRoofRealistic3dOn] = useState(false);
@@ -2366,6 +2369,12 @@ export default function PanelinCalculadoraV3() {
       ? SOLO_TECHO_STEPS[wizardStep]?.id ?? null
       : null;
 
+  useEffect(() => {
+    if (activeWizardStepId !== "tipoAguas") {
+      setAguasVisorHighlight(false);
+    }
+  }, [activeWizardStepId]);
+
   const quoteVisorDimensionSummary = useMemo(() => {
     if (activeWizardStepId !== "dimensiones" || !scenarioDef?.hasTecho) return null;
     const zs = techo.zonas || [];
@@ -2393,6 +2402,31 @@ export default function PanelinCalculadoraV3() {
     if (!scenarioDef?.hasTecho) return [];
     return Object.entries(PANELS_TECHO).map(([fk, pd]) => ({ value: fk, label: pd.label, sublabel: pd.sub }));
   }, [scenarioDef]);
+
+  const techoFamilyCardMedia = useMemo(
+    () => ({
+      ISODEC_EPS: SLIDES_SOLO_TECHO[0],
+      ISODEC_PIR: SLIDES_SOLO_TECHO[1],
+      ISOROOF_3G: SLIDES_SOLO_TECHO[2],
+      ISOROOF_PLUS: SLIDES_SOLO_TECHO[3],
+      ISOROOF_FOIL: SLIDES_SOLO_TECHO[4],
+      ISOROOF_COLONIAL: {
+        ...SLIDES_SOLO_TECHO[2],
+        title: "Isoroof Colonial",
+        subtitle: "Teja exterior · interior blanco",
+      },
+    }),
+    [],
+  );
+
+  const techoFamilyCards = useMemo(
+    () =>
+      techoFamilyOptions.map((opt) => ({
+        ...opt,
+        media: techoFamilyCardMedia[opt.value] || null,
+      })),
+    [techoFamilyOptions, techoFamilyCardMedia],
+  );
 
   const paredFamilyOptions = useMemo(() => {
     if (!scenarioDef?.hasPared) return [];
@@ -3527,32 +3561,157 @@ export default function PanelinCalculadoraV3() {
                     <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
                   )}
                   {stepId === "familia" && (
-                    <CustomSelect label="Familia panel" value={techo.familia} options={techoFamilyOptions} onChange={setTechoFamilia} advanceOnChange />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setTechoFamilyHoverId("")}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Familia panel
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: isPhone ? "1fr" : "1fr 1fr", gap: 10 }}>
+                        {techoFamilyCards.map((opt) => {
+                          const selected = techo.familia === opt.value;
+                          return (
+                            <button
+                              type="button"
+                              key={opt.value}
+                              onMouseEnter={() => setTechoFamilyHoverId(opt.value)}
+                              onFocus={() => setTechoFamilyHoverId(opt.value)}
+                              onClick={() => {
+                                setTechoFamilia(opt.value);
+                                setTechoFamilyHoverId("");
+                                window.setTimeout(() => {
+                                  window.dispatchEvent(new CustomEvent("bmc-wizard-next"));
+                                }, 0);
+                              }}
+                              style={{
+                                borderRadius: 12,
+                                border: `2px solid ${selected ? C.primary : C.border}`,
+                                background: selected ? C.primarySoft : C.surface,
+                                boxShadow: selected ? `0 0 0 3px ${C.primarySoft}` : SHI,
+                                cursor: "pointer",
+                                padding: 8,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 8,
+                                textAlign: "left",
+                                transition: TR,
+                              }}
+                              aria-label={`Seleccionar ${opt.label}`}
+                            >
+                              <div style={{ fontSize: 12, fontWeight: 700, color: selected ? C.primary : C.tp, lineHeight: 1.2 }}>
+                                {opt.label}
+                              </div>
+                              {opt.media?.src ? (
+                                <img
+                                  src={opt.media.src}
+                                  alt={opt.label}
+                                  loading="lazy"
+                                  style={{
+                                    width: "100%",
+                                    height: isPhone ? 96 : 118,
+                                    objectFit: "cover",
+                                    borderRadius: 10,
+                                    border: `1px solid ${C.border}`,
+                                    background: "#fff",
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: isPhone ? 96 : 118,
+                                    borderRadius: 10,
+                                    border: `1px dashed ${C.border}`,
+                                    background: C.surfaceAlt,
+                                  }}
+                                />
+                              )}
+                              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.3 }}>{opt.sublabel || opt.media?.subtitle || "Panel de cubierta"}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                   {stepId === "espesor" && (
-                    <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge advanceOnChange />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Espesor
+                      </div>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: isPhone ? "1fr" : "1fr 1fr",
+                          gap: 10,
+                        }}
+                      >
+                        {techoEspesorOptions.map((opt) => {
+                          const selected = Number(techo.espesor) === Number(opt.value);
+                          return (
+                            <button
+                              type="button"
+                              key={opt.value}
+                              onClick={() => {
+                                uT("espesor", opt.value);
+                                window.setTimeout(() => {
+                                  window.dispatchEvent(new CustomEvent("bmc-wizard-next"));
+                                }, 0);
+                              }}
+                              style={{
+                                borderRadius: 12,
+                                border: `2px solid ${selected ? C.primary : C.border}`,
+                                background: selected ? C.primarySoft : C.surface,
+                                boxShadow: selected ? `0 0 0 3px ${C.primarySoft}` : SHI,
+                                cursor: "pointer",
+                                padding: "12px 14px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                textAlign: "left",
+                                transition: TR,
+                              }}
+                              aria-label={`Seleccionar ${opt.label}`}
+                            >
+                              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <span style={{ fontSize: 15, fontWeight: 800, color: selected ? C.primary : C.tp }}>
+                                  {opt.label}
+                                </span>
+                                <span style={{ fontSize: 11, color: C.ts }}>
+                                  {techoPanelData?.label || "Panel"}
+                                </span>
+                              </div>
+                              {opt.badge && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    color: selected ? C.primary : C.tp,
+                                    background: selected ? "#fff" : C.surfaceAlt,
+                                    border: `1px solid ${selected ? C.primary : C.border}`,
+                                    borderRadius: 999,
+                                    padding: "4px 8px",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {opt.badge}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                   {stepId === "color" && techoPanelData && (
                     <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onColorDoubleClick={() => advanceWizardStep()} notes={techoPanelData.colNotes || {}} />
                   )}
                   {stepId === "dimensiones" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: C.ts,
-                          lineHeight: 1.5,
-                          padding: "10px 12px",
-                          background: C.surface,
-                          borderRadius: 10,
-                          border: `1px solid ${C.border}`,
-                        }}
-                      >
-                        <span style={{ fontWeight: 700, color: C.tp }}>Varias zonas:</span> el{" "}
+                      <CollapsibleHint title="Dimensiones (metros o paneles)">
+                        El{" "}
                         <strong style={{ color: C.tp }}>techo principal</strong> referencia el presupuesto (por defecto el de mayor m²; podés marcar otro). Para{" "}
                         <strong style={{ color: C.tp }}>mismo ancho y otro largo</strong> hacia el frente en planta, usá{" "}
                         <strong>Agregar tramo de largo abajo</strong> en la zona base; el tipo de encuentro (continuo, pretil, cumbrera, desnivel) lo definís en el paso Bordes.
-                      </div>
+                      </CollapsibleHint>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad de medida</div>
                         <SegmentedControl value={techoAnchoModo || "metros"} onChange={v => setTechoAnchoModo(v)} options={[{ id: "metros", label: "Metros (largo × ancho)" }, { id: "paneles", label: "Paneles (cantidad)" }]} />
@@ -3595,9 +3754,9 @@ export default function PanelinCalculadoraV3() {
                         >
                           {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
                         </button>
-                        <span style={{ fontSize: 11, color: C.ts, lineHeight: 1.4, maxWidth: 420 }}>
+                        <CollapsibleHint title="Vista 3D" style={{ flex: 1, minWidth: 200 }}>
                           Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
-                        </span>
+                        </CollapsibleHint>
                       </div>
                       {roofRealistic3dOn && techoPanelData ? (
                         <div style={{ marginBottom: 14 }}>
@@ -4529,6 +4688,8 @@ export default function PanelinCalculadoraV3() {
             stepId={activeWizardStepId}
             tipoAguas={techo.tipoAguas || "una_agua"}
             techoFamilia={techo.familia || ""}
+            hoverTechoFamilia={activeWizardStepId === "familia" ? techoFamilyHoverId : ""}
+            techoColor={techo.color || ""}
             aguasHighlight={aguasVisorHighlight}
             showRoof3DStage={showRoof3DHost}
             roofCanvasHostRef={roof3dHostRef}

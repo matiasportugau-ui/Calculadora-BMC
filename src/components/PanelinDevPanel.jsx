@@ -20,6 +20,7 @@ function tabButton(active) {
 }
 
 export default function PanelinDevPanel({
+  skinTokens,
   messages,
   trainingEntries,
   trainingStats,
@@ -33,7 +34,13 @@ export default function PanelinDevPanel({
   onSavePromptSection,
   onVerifyCalculation,
 }) {
+  const PRIMARY_COLOR = skinTokens?.primary || PRIMARY;
+  const SURFACE_COLOR = skinTokens?.surface || SURFACE;
+  const BORDER_COLOR = skinTokens?.border || BORDER;
+  const TEXT_COLOR = skinTokens?.text || TEXT;
+  const SUBTEXT_COLOR = skinTokens?.subtext || SUBTEXT;
   const [activeTab, setActiveTab] = useState("train");
+  const [trainExpanded, setTrainExpanded] = useState(false);
   const [category, setCategory] = useState("conversational");
   const [correction, setCorrection] = useState("");
   const [context, setContext] = useState("");
@@ -54,23 +61,48 @@ export default function PanelinDevPanel({
   };
 
   return (
-    <div style={{ borderTop: `1px solid ${BORDER}`, background: "#fff", flexShrink: 0 }}>
-      <div style={{ display: "flex", gap: 4, padding: "0 8px", borderBottom: `1px solid ${BORDER}` }}>
-        <button type="button" style={tabButton(activeTab === "train")} onClick={() => setActiveTab("train")}>
+    <div style={{ borderTop: `1px solid ${BORDER_COLOR}`, background: skinTokens?.drawerBg || "#fff", flexShrink: 0 }}>
+      <div style={{ display: "flex", gap: 4, padding: "0 8px", borderBottom: `1px solid ${BORDER_COLOR}` }}>
+        <button type="button" style={{ ...tabButton(activeTab === "train"), color: activeTab === "train" ? PRIMARY_COLOR : SUBTEXT_COLOR, borderBottom: activeTab === "train" ? `2px solid ${PRIMARY_COLOR}` : "2px solid transparent" }} onClick={() => setActiveTab("train")}>
           Train
         </button>
-        <button type="button" style={tabButton(activeTab === "kb")} onClick={() => setActiveTab("kb")}>
+        <button type="button" style={{ ...tabButton(activeTab === "kb"), color: activeTab === "kb" ? PRIMARY_COLOR : SUBTEXT_COLOR, borderBottom: activeTab === "kb" ? `2px solid ${PRIMARY_COLOR}` : "2px solid transparent" }} onClick={() => setActiveTab("kb")}>
           KB
         </button>
-        <button type="button" style={tabButton(activeTab === "prompt")} onClick={() => setActiveTab("prompt")}>
+        <button type="button" style={{ ...tabButton(activeTab === "prompt"), color: activeTab === "prompt" ? PRIMARY_COLOR : SUBTEXT_COLOR, borderBottom: activeTab === "prompt" ? `2px solid ${PRIMARY_COLOR}` : "2px solid transparent" }} onClick={() => setActiveTab("prompt")}>
           Prompt
         </button>
       </div>
 
-      <div style={{ maxHeight: 210, overflowY: "auto", padding: 10 }}>
+      <div
+        style={{
+          maxHeight: activeTab === "train" && trainExpanded ? 440 : 280,
+          overflowY: "auto",
+          padding: 10,
+          transition: "max-height 160ms ease",
+        }}
+      >
         {activeTab === "train" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 11, color: SUBTEXT }}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setTrainExpanded((v) => !v)}
+                style={{
+                  alignSelf: "flex-end",
+                  border: `1px solid ${BORDER_COLOR}`,
+                  borderRadius: 8,
+                  background: SURFACE_COLOR,
+                  padding: "6px 8px",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  color: TEXT_COLOR,
+                }}
+              >
+                {trainExpanded ? "Compactar" : "Expandir"}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: SUBTEXT_COLOR }}>
               KB match: <b>{devMeta?.kbMatches ?? 0}</b> · Calc check:{" "}
               <b>
                 {devMeta?.calcValidation?.matches == null
@@ -84,7 +116,7 @@ export default function PanelinDevPanel({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                style={{ flex: 1, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 8px", fontSize: 12 }}
+                style={{ flex: 1, border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: "6px 8px", fontSize: 12, background: skinTokens?.drawerBg || "#fff", color: TEXT_COLOR }}
               >
                 <option value="conversational">Conversational</option>
                 <option value="sales">Sales</option>
@@ -94,7 +126,7 @@ export default function PanelinDevPanel({
               <button
                 type="button"
                 onClick={() => onVerifyCalculation?.(lastAssistant)}
-                style={{ border: `1px solid ${BORDER}`, borderRadius: 8, background: SURFACE, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}
+                style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, background: SURFACE_COLOR, padding: "6px 8px", fontSize: 12, cursor: "pointer", color: TEXT_COLOR }}
               >
                 Verify calc
               </button>
@@ -104,13 +136,34 @@ export default function PanelinDevPanel({
               onChange={(e) => setCorrection(e.target.value)}
               placeholder="Ideal response (correction)"
               rows={3}
-              style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 8, fontSize: 12, color: TEXT }}
+              style={{
+                border: `1px solid ${BORDER_COLOR}`,
+                borderRadius: 8,
+                padding: 8,
+                fontSize: 12,
+                color: TEXT_COLOR,
+                resize: "vertical",
+                minHeight: 78,
+                maxHeight: 260,
+                fontFamily: "inherit",
+              }}
             />
-            <input
+            <textarea
               value={context}
               onChange={(e) => setContext(e.target.value)}
               placeholder="Optional context"
-              style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 8, fontSize: 12 }}
+              rows={2}
+              style={{
+                border: `1px solid ${BORDER_COLOR}`,
+                borderRadius: 8,
+                padding: 8,
+                fontSize: 12,
+                color: TEXT_COLOR,
+                resize: "vertical",
+                minHeight: 62,
+                maxHeight: 220,
+                fontFamily: "inherit",
+              }}
             />
             <button
               type="button"
@@ -129,7 +182,7 @@ export default function PanelinDevPanel({
               style={{
                 border: "none",
                 borderRadius: 8,
-                background: correction.trim() && lastUser.trim() ? PRIMARY : BORDER,
+                background: correction.trim() && lastUser.trim() ? PRIMARY_COLOR : BORDER_COLOR,
                 color: "#fff",
                 padding: "8px 10px",
                 fontSize: 12,
@@ -144,25 +197,25 @@ export default function PanelinDevPanel({
 
         {activeTab === "kb" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 11, color: SUBTEXT }}>
+            <div style={{ fontSize: 11, color: SUBTEXT_COLOR }}>
               Total entries: <b>{trainingStats?.total ?? 0}</b>
             </div>
             <button
               type="button"
               onClick={onReloadTrainingKB}
-              style={{ alignSelf: "flex-start", border: `1px solid ${BORDER}`, borderRadius: 8, background: SURFACE, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}
+              style={{ alignSelf: "flex-start", border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, background: SURFACE_COLOR, padding: "6px 8px", fontSize: 12, cursor: "pointer", color: TEXT_COLOR }}
             >
               Reload KB
             </button>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {(trainingEntries || []).slice(0, 8).map((entry) => (
-                <div key={entry.id} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 8, background: SURFACE }}>
-                  <div style={{ fontSize: 10, color: SUBTEXT, marginBottom: 4 }}>{entry.category}</div>
-                  <div style={{ fontSize: 12, color: TEXT }}>{entry.question}</div>
+                <div key={entry.id} style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: 8, background: SURFACE_COLOR }}>
+                  <div style={{ fontSize: 10, color: SUBTEXT_COLOR, marginBottom: 4 }}>{entry.category}</div>
+                  <div style={{ fontSize: 12, color: TEXT_COLOR }}>{entry.question}</div>
                 </div>
               ))}
               {(!trainingEntries || trainingEntries.length === 0) && (
-                <div style={{ fontSize: 12, color: SUBTEXT }}>No entries yet.</div>
+                <div style={{ fontSize: 12, color: SUBTEXT_COLOR }}>No entries yet.</div>
               )}
             </div>
           </div>
@@ -174,17 +227,17 @@ export default function PanelinDevPanel({
               <select
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
-                style={{ flex: 1, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "6px 8px", fontSize: 12 }}
+                style={{ flex: 1, border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: "6px 8px", fontSize: 12, background: skinTokens?.drawerBg || "#fff", color: TEXT_COLOR }}
               >
                 <option value="IDENTITY">IDENTITY</option>
                 <option value="CATALOG">CATALOG</option>
                 <option value="WORKFLOW">WORKFLOW</option>
                 <option value="ACTIONS_DOC">ACTIONS_DOC</option>
               </select>
-              <button type="button" onClick={onReloadPromptSections} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, background: SURFACE, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+              <button type="button" onClick={onReloadPromptSections} style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, background: SURFACE_COLOR, padding: "6px 8px", fontSize: 12, cursor: "pointer", color: TEXT_COLOR }}>
                 Reload
               </button>
-              <button type="button" onClick={loadSectionIntoDraft} style={{ border: `1px solid ${BORDER}`, borderRadius: 8, background: SURFACE, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}>
+              <button type="button" onClick={loadSectionIntoDraft} style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, background: SURFACE_COLOR, padding: "6px 8px", fontSize: 12, cursor: "pointer", color: TEXT_COLOR }}>
                 Load
               </button>
             </div>
@@ -193,7 +246,7 @@ export default function PanelinDevPanel({
               onChange={(e) => setSectionDraft(e.target.value)}
               placeholder="Section content"
               rows={4}
-              style={{ border: `1px solid ${BORDER}`, borderRadius: 8, padding: 8, fontSize: 12 }}
+              style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: 8, fontSize: 12, background: skinTokens?.drawerBg || "#fff", color: TEXT_COLOR }}
             />
             <button
               type="button"
@@ -202,7 +255,7 @@ export default function PanelinDevPanel({
               style={{
                 border: "none",
                 borderRadius: 8,
-                background: sectionDraft.trim() ? PRIMARY : BORDER,
+                background: sectionDraft.trim() ? PRIMARY_COLOR : BORDER_COLOR,
                 color: "#fff",
                 padding: "8px 10px",
                 fontSize: 12,
@@ -215,11 +268,11 @@ export default function PanelinDevPanel({
             <button
               type="button"
               onClick={onReloadPromptPreview}
-              style={{ alignSelf: "flex-start", border: `1px solid ${BORDER}`, borderRadius: 8, background: SURFACE, padding: "6px 8px", fontSize: 12, cursor: "pointer" }}
+              style={{ alignSelf: "flex-start", border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, background: SURFACE_COLOR, padding: "6px 8px", fontSize: 12, cursor: "pointer", color: TEXT_COLOR }}
             >
               Refresh preview
             </button>
-            <div style={{ fontSize: 11, color: SUBTEXT, whiteSpace: "pre-wrap", maxHeight: 90, overflowY: "auto" }}>
+            <div style={{ fontSize: 11, color: SUBTEXT_COLOR, whiteSpace: "pre-wrap", maxHeight: 90, overflowY: "auto" }}>
               {(promptPreview || "").slice(0, 1200)}
               {(promptPreview || "").length > 1200 ? "\n..." : ""}
             </div>
