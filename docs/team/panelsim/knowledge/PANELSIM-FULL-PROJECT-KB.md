@@ -19,6 +19,7 @@
 | [`PROJECT-STATE.md`](../../PROJECT-STATE.md) | Estado vivo, pendientes, cambios recientes. |
 | [`SESSION-WORKSPACE-CRM.md`](../../SESSION-WORKSPACE-CRM.md) | Foco de sesión, auto-start §5. |
 | [`PANELSIM-DIALOGUE-AND-CRITERIA.md`](./PANELSIM-DIALOGUE-AND-CRITERIA.md) | **Destilado GPT → repo:** tono, datos antes de cotizar, guardrails, mapeo a MATRIZ/API (no JSON GPT como precio). |
+| [`KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md`](./KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md) | **Inventario** artefactos de conocimiento (prompts, KB, OpenAPI, repos hermanos) + matriz buenas prácticas y golden set borrador. |
 | [`../biblioteca-tecnica-productos/README.md`](../biblioteca-tecnica-productos/README.md) | **Índice** material técnico-comercial (flyers/fichas); ruta canónica a assets bajo `PDF Productos /`. |
 
 **Orden de lectura sugerido (primer arranque):** `AGENT-SIMULATOR-SIM.md` §0–§2 → `SESSION-WORKSPACE-CRM.md` §5 → `PROJECT-STATE.md` → **este KB** (búsqueda por tema) → hub Sheets si hay que citar columnas/tabs.

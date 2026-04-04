@@ -1,0 +1,55 @@
+{
+  "schema": "roof-visual-quote-repro-v1",
+  "description": "Casos canónicos para reproducir alineación planta 2D vs motor de cotización (paso dimensiones / RoofPreview).",
+  "panelAuDefaultM": 1.12,
+  "cases": [
+    {
+      "id": "single_zone_una_agua",
+      "label": "Una zona, una agua",
+      "tipoAguas": "una_agua",
+      "zonas": [{ "largo": 6, "ancho": 5 }],
+      "notes": "anchoPlanta = 5 m; columnas = ceil(5/au). Una sola corrida calcTechoCompleto por zona."
+    },
+    {
+      "id": "single_zone_dos_aguas",
+      "label": "Una zona, dos aguas",
+      "tipoAguas": "dos_aguas",
+      "zonas": [{ "largo": 6, "ancho": 10 }],
+      "notes": "En planta w = ancho/2 por faldón. computeTechoZonas llama calcTechoCompleto dos veces con ancho/2. Etiqueta de columnas en un rectángulo = paneles por faldón; KPI cantPaneles suma ambos faldones."
+    },
+    {
+      "id": "two_root_zones_una_agua",
+      "label": "Dos cuerpos independientes, una agua",
+      "tipoAguas": "una_agua",
+      "zonas": [
+        { "largo": 5, "ancho": 4 },
+        { "largo": 4, "ancho": 3.36 }
+      ],
+      "notes": "Sin preview.x/y el layout automático separa en X con ROOF_PLAN_GAP_M. Encuentros si comparten arista tras drag."
+    },
+    {
+      "id": "lateral_annex_same_body",
+      "label": "Anexo lateral (mismo cuerpo)",
+      "tipoAguas": "una_agua",
+      "zonas": [
+        { "largo": 6, "ancho": 5 },
+        {
+          "largo": 5,
+          "ancho": 2.24,
+          "preview": { "attachParentGi": 0, "lateralSide": "der", "lateralRank": 0 }
+        }
+      ],
+      "notes": "Segunda fila con attachParentGi; planta sin hueco entre padre y anexo (LATERAL_ANNEX_CHAIN_GAP_M = 0). Ver roofLateralAnnexLayout.js."
+    },
+    {
+      "id": "stacked_tramo_preview_y",
+      "label": "Tramo apilado (preview debajo)",
+      "tipoAguas": "una_agua",
+      "zonas": [
+        { "largo": 6, "ancho": 5 },
+        { "largo": 4, "ancho": 5, "preview": { "x": 0, "y": 6.25 } }
+      ],
+      "notes": "Coordenadas ejemplo; valores reales dependen de ROOF_PLAN_GAP_M y layout. Objetivo: encuentro horizontal detectable por findEncounters."
+    }
+  ]
+}

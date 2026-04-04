@@ -10,6 +10,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-04-04 (Knowledge — inventario para agentes IA):** Nuevo doc [`docs/team/panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md`](./panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md): tabla maestra de artefactos (chatPrompts, training-kb, OpenAPI, constants, PANELSIM/ML KB, skills, Knowledge Antenna), repos hermanos a completar, duplicados/huecos, prioridad de extracción hacia Panelin vs GPT, matriz de buenas prácticas (política, grounding, RAG, HITL, eval, versionado, seguridad) y borrador de golden set cotización. Enlazado desde [`PANELSIM-FULL-PROJECT-KB.md`](./panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md) §1.
+
 **2026-04-04 (Live DevTools — baseline prod MCP):** Narrativa MCP contra `https://calculadora-bmc.vercel.app/`: informe [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-prod-baseline-mcp.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-prod-baseline-mcp.md). Evidencia: carga OK; consola sin `error`, 1× warn meta PWA Apple + 1× issue form sin id/name; red con **2×** `POST /api/vitals` **`ERR_ABORTED`**. Hallazgos **LDN-2026-04-04-04** … **06**.
 
 **2026-04-04 (ROOF DEBUG — comparar Δ frente):** Panel y CSV de export en [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): sección CSV **Delta summary** (`front_delta_max_abs_m`, `zones_sorted_by_abs_front_delta_desc`, nota gi 0-based); en UI, máximo |Δ frente|, zonas ordenadas por |Δ| y resaltado ámbar si |Δ| ≥ 2 m.
