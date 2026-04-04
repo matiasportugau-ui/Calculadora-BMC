@@ -14,7 +14,7 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-04-04 (Visor interactivo de Shopify — On hover en galería de colores):** Se extendió el Visor y los selectores de `<ColorChips>` en la Calculadora. Al pasar el cursor por encima de una variante de color en el selector `ColorChips`, el Visor principal (derecha) ahora refleja de inmediato la imagen de Shopify correspondiente al color exacto (Blanco, Gris, Rojo), otorgando a los usuarios una vista previa instantánea de las variantes sin necesidad de haber seleccionado todavía el color (`techoColor / hoverTechoColor / hoverParedColor`). Además de que el selector ahora también dibuja las miniaturas dinámicas en reemplazo del color plano CSS si hay imagen en Shopify.
 
-**2026-04-04 (Visor — Imagen referencial para Estructura):** Se ha copiado e inyectado la imagen `estructura-referencia.png` en `public/images/`. Ahora en el wizard, cuando el usuario entra en el paso `estructura` (step 7 de la calculadora regular), el visor renderizará fluidamente la imagen referencial con la estructura 3D provista de manera responsiva, para visualizar la estructura de soporte para el montaje.
+**2026-04-04 (Estructura — Imagen referencial en columna izquierda):** Se movió la imagen `estructura-referencia.png` de `public/images/` para que no reemplace al visor derecho (3D) en el paso 7, sino que se renderice estáticamente en el panel de la izquierda bajo el selector de **Estructura** (visible condicionalmente a partir de `wizardStep >= 5`). Se dimensiona responsivamente al 100% del contenedor sin deformarse, manteniendo el panel derecho para la visualización del panel y los cruces en 3D.
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 

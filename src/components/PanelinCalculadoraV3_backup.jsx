@@ -4634,6 +4634,21 @@ export default function PanelinCalculadoraV3() {
                 </div>
               </div>
             )}
+            
+            {/* Referencia estructural en la columna izquierda cuando corresponda (a partir del paso 5) */}
+            {wizardStep >= 5 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Referencia de montaje</div>
+                <div style={{ borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", background: C.surfaceAlt }}>
+                  <img
+                    src={`${import.meta.env.BASE_URL}images/estructura-referencia.png`}
+                    alt="Referencia de estructura y montaje"
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                    decoding="async"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Opciones */}
