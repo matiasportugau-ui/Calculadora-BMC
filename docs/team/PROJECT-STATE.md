@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-03 (CI: knowledge cron aislado)
+**Última actualización:** 2026-04-04 (Dashboard Finanzas: UI alineada a Calculadora)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ## Cambios recientes
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
+
+**2026-04-04 (Dashboard Finanzas — UI alineada a Calculadora BMC):** Rediseño visual del static `/finanzas` (`docs/bmc-dashboard-modernization/dashboard/`): canvas `#e6e6eb` y filas `#ececf0` (contraste con tarjetas blancas); marca `#1a3a5c`; acento `#0071e3` con franja superior 4px en header sticky; bordes `#e5e5ea`; sombras en capas (`--shadow-card`) en `.card`; tipografía sistema (alineada a `BmcModuleNav` / `PanelinChatPanel`); navegación tipo píldora con borde. `index.html`: sin Google Fonts (DM Sans / JetBrains); favicon `#0071e3`. Sección **Invoque Panelin** sustituida por documentación en página: alcance de la UI, rutas `GET`/`POST` que consume `app.js`, nombres habituales de planillas Sheets, y aclaración de que Calculadora / chat Panelin / Evolution son otros frontends (ver `docs/team/INVOQUE-PANELIN-ESTADO.md`). Estilos nuevos `.invoque-panel` y grid responsive. Sin cambios de lógica en `app.js`.
 
 **2026-04-04 (Knowledge Antenna — Panelin Signal revista HTML):** Nueva salida editorial para el equipo: [`scripts/knowledge-antenna-magazine.mjs`](../../scripts/knowledge-antenna-magazine.mjs) genera `docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html` y copia fechada `KNOWLEDGE-MAGAZINE-YYYY-MM-DD.html` a partir de `sources-registry.json`, `references-catalog.json` e `impact-map.json`. Se invoca al final de [`knowledge-antenna-run.mjs`](../../scripts/knowledge-antenna-run.mjs) y manualmente con `npm run knowledge:magazine`. El reporte Markdown enlaza la revista en la sección **Panelin Signal**. CI: artefactos y resumen actualizados en [`knowledge-antenna-reusable.yml`](../../.github/workflows/knowledge-antenna-reusable.yml). Doc: [`KNOWLEDGE-ANTENNA.md`](./knowledge/KNOWLEDGE-ANTENNA.md), [`reports/README.md`](./knowledge/reports/README.md).
 

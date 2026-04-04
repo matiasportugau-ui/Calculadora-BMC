@@ -4,11 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BMC - Finanzas y Operaciones</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Typography matches Calculadora BMC shell (system / SF Pro stack in styles.css) -->
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%2359a8ff' width='32' height='32' rx='6'/><text x='16' y='22' font-size='18' fill='%23fff' text-anchor='middle' font-family='system-ui'>B</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%230071e3' width='32' height='32' rx='8'/><text x='16' y='22' font-size='18' fill='%23fff' text-anchor='middle' font-family='system-ui' font-weight='700'>B</text></svg>">
 </head>
 <body>
   <header class="header">
@@ -327,15 +325,13 @@
     <section id="invoque" class="section card">
       <div class="section-head">
         <p class="section-kicker">Invoque Panelin</p>
-        <h2>Asistente GPT</h2>
-        <p class="section-desc">Asistente impulsado por OpenAI para extraer datos de clientes y órdenes, y calcular cotizaciones.</p>
+        <h2>Esta vista: función y fuentes</h2>
+        <p class="section-desc">
+          Referencia <strong>solo</strong> de esta página HTML (<code>app.js</code> + API del mismo host).
+          Los datos no se guardan en el navegador: vienen del backend y de las planillas enlazadas.
+        </p>
       </div>
-      <div class="invoque-actions">
-        <a href="http://localhost:3847/viewer/" target="_blank" rel="noopener noreferrer" class="btn btn-primary" title="Abrir Panelin Evolution (puerto 3847)">
-          Abrir Invoque Panelin
-        </a>
-        <p class="invoque-hint">Primero: <code>./run_invoque_panelin.sh</code> (levanta 3847). Para chat GPT: <code>./run_proxy_openai.sh</code> (3848). Ver docs/team/INVOQUE-PANELIN-ESTADO.md.</p>
-      </div>
+      <div id="invoquePanel" class="invoque-panel"></div>
     </section>
   </main>
 
