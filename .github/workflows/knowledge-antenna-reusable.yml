@@ -75,11 +75,14 @@ jobs:
                 .sort()
             : [];
           const latestReport = reports.length ? reports[reports.length - 1] : 'none';
+          const magLatest = path.join(reportsDir, 'KNOWLEDGE-MAGAZINE-latest.html');
+          const magazineOk = fs.existsSync(magLatest);
 
           console.log('=== Knowledge Antenna Summary ===');
           console.log(`References: ${(refs.references || []).length}`);
           console.log(`Impact mappings: ${(impact.mappings || []).length}`);
           console.log(`Latest report: ${latestReport}`);
+          console.log(`Panelin Signal magazine: ${magazineOk ? 'KNOWLEDGE-MAGAZINE-latest.html' : 'missing (run knowledge:scan or knowledge:magazine)'}`);
           console.log('Top ranked sources:');
           console.log(topSources || '- none');
           EOF
@@ -91,6 +94,8 @@ jobs:
           name: knowledge-antenna-${{ github.run_id }}
           path: |
             docs/team/knowledge/reports/KNOWLEDGE-REPORT-*.md
+            docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html
+            docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-*.html
             docs/team/knowledge/sources-registry.json
             docs/team/knowledge/references-catalog.json
             docs/team/knowledge/impact-map.json

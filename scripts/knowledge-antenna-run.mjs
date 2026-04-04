@@ -22,6 +22,7 @@ import {
 } from "./knowledge-antenna-lib.mjs";
 import { runRanking } from "./knowledge-antenna-rank.mjs";
 import { runImpactMapping } from "./knowledge-antenna-impact.mjs";
+import { generateKnowledgeMagazine } from "./knowledge-antenna-magazine.mjs";
 
 function parseArg(name, fallback) {
   const hit = process.argv.find((arg) => arg.startsWith(`--${name}=`));
@@ -136,9 +137,19 @@ function buildReportMarkdown({ summary, rankedTop, impactSummary, acceptedEvents
     ? noActionEvents.slice(0, 10).map((event) => `- ${event.title} (${event.sourceName})`).join("\n")
     : "- None.";
 
-  return `# Knowledge Antenna Report — ${asDateOnly()}
+  const issue = asDateOnly();
+  return `# Knowledge Antenna Report — ${issue}
 
 Generated at: ${generatedAt}
+
+## Panelin Signal — revista interna (HTML)
+
+Lectura humana en el navegador: diseño editorial con el conocimiento actual del agente. Se actualiza al ejecutar este reporte o \`npm run knowledge:magazine\` (solo regenera HTML desde los JSON).
+
+- [Última edición](./KNOWLEDGE-MAGAZINE-latest.html) (siempre apunta al último build)
+- [Edición del día](./KNOWLEDGE-MAGAZINE-${issue}.html) (archivo fechado)
+
+*Nota:* una futura edición pública puede reutilizar la misma plantilla con fuentes y textos curados aparte.
 
 ## Executive Summary
 
@@ -332,8 +343,16 @@ async function main() {
     noActionEvents,
   });
 
+  let magazineRel = null;
   if (!dryRun) {
     await fs.writeFile(reportFilePath(), report, "utf8");
+    const mag = await generateKnowledgeMagazine({
+      runSummary: summary,
+      rankedTop: rankResult.top || [],
+      acceptedThisRun: acceptedEvents,
+      silent: true,
+    });
+    magazineRel = mag.relLatest;
   }
 
   console.log(
@@ -342,6 +361,7 @@ async function main() {
         ok: true,
         summary,
         reportFile: dryRun ? "(dry-run)" : path.relative(paths.repoRoot, reportFilePath()),
+        magazineFile: dryRun ? "(dry-run)" : magazineRel,
       },
       null,
       2

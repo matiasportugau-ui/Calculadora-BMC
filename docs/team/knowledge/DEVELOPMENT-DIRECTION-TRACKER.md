@@ -1,6 +1,6 @@
-# Development Direction Tracker — 2026-04-03
+# Development Direction Tracker — 2026-04-04
 
-Generated at: 2026-04-03T10:51:56.563Z
+Generated at: 2026-04-04T06:34:49.401Z
 
 ## How To Use
 
@@ -24,7 +24,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `docs/openapi-email-gpt.yaml`
    - owner: Matias + AI
    - due: 2026-04-04
-   - reason: 106 impact hits (2H/19M/85L)
+   - reason: 109 impact hits (2H/19M/88L)
    - recommendation: Review prompt/actions contracts and capability manifests.
    - next: Comparar spec con rutas reales y listar operationIds faltantes.
    - evidence: PR diff + smoke GPT actions
@@ -32,7 +32,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `scripts/capabilities-snapshot.mjs`
    - owner: AI
    - due: 2026-04-04
-   - reason: 106 impact hits (2H/19M/85L)
+   - reason: 109 impact hits (2H/19M/88L)
    - recommendation: Review prompt/actions contracts and capability manifests.
    - next: Regenerar snapshot y validar que no haya drift con /capabilities.
    - evidence: Snapshot generado + salida comando
@@ -40,7 +40,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `server/gptActions.js`
    - owner: Matias + AI
    - due: 2026-04-05
-   - reason: 106 impact hits (2H/19M/85L)
+   - reason: 109 impact hits (2H/19M/88L)
    - recommendation: Review prompt/actions contracts and capability manifests.
    - next: Alinear handlers con OpenAPI y validar errores 4xx/5xx.
    - evidence: Tests/contratos + ejemplos curl
@@ -48,7 +48,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `server/index.js`
    - owner: AI
    - due: 2026-04-05
-   - reason: 106 impact hits (2H/19M/85L)
+   - reason: 109 impact hits (2H/19M/88L)
    - recommendation: Review prompt/actions contracts and capability manifests.
    - next: Verificar wiring de rutas y compatibilidad con capacidades publicas.
    - evidence: Checklist de rutas + health OK
@@ -56,7 +56,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `Dockerfile.bmc-dashboard`
    - owner: AI
    - due: 2026-04-06
-   - reason: 44 impact hits (5H/2M/37L)
+   - reason: 47 impact hits (6H/2M/39L)
    - recommendation: Validate deploy pipeline and production smoke checks.
    - next: Revisar build args/env y endurecer pasos prebuild para deploy estable.
    - evidence: Build local + nota de cambios
@@ -64,7 +64,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `scripts/deploy-cloud-run.sh`
    - owner: Matias
    - due: 2026-04-06
-   - reason: 44 impact hits (5H/2M/37L)
+   - reason: 47 impact hits (6H/2M/39L)
    - recommendation: Validate deploy pipeline and production smoke checks.
    - next: Agregar validaciones previas de env criticas y rollback hint.
    - evidence: Deploy dry-run / output validacion
@@ -72,7 +72,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `scripts/deploy-vercel.sh`
    - owner: Matias
    - due: 2026-04-07
-   - reason: 44 impact hits (5H/2M/37L)
+   - reason: 47 impact hits (6H/2M/39L)
    - recommendation: Validate deploy pipeline and production smoke checks.
    - next: Confirmar variables obligatorias y smoke post-deploy.
    - evidence: URL deploy + smoke OK
@@ -80,7 +80,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `scripts/smoke-prod-api.mjs`
    - owner: AI
    - due: 2026-04-07
-   - reason: 44 impact hits (5H/2M/37L)
+   - reason: 47 impact hits (6H/2M/39L)
    - recommendation: Validate deploy pipeline and production smoke checks.
    - next: Priorizar chequeos criticos y salida JSON accionable para CI.
    - evidence: Reporte smoke con checks criticos
@@ -88,7 +88,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `(cross-cutting)`
    - owner: Matias + AI
    - due: 2026-04-08
-   - reason: 106 mappings (2H/19M/85L)
+   - reason: 109 mappings (2H/19M/88L)
    - recommendation: Promote top mapping recommendations into sprint backlog and validate contracts.
    - next: Definir backlog de compatibilidad LLM/API para esta semana.
    - evidence: Top 3 tareas creadas en tracker
@@ -96,7 +96,7 @@ Generated at: 2026-04-03T10:51:56.563Z
    - target: `(cross-cutting)`
    - owner: Matias + AI
    - due: 2026-04-08
-   - reason: 44 mappings (5H/2M/37L)
+   - reason: 47 mappings (6H/2M/39L)
    - recommendation: Promote top mapping recommendations into sprint backlog and validate contracts.
    - next: Cerrar checklist unica de deploy Cloud Run + Vercel.
    - evidence: Checklist completado

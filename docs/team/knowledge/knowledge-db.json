@@ -1,20 +1,20 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-04-03T10:51:56.366Z",
-  "generatedForDate": "2026-04-03",
+  "generatedAt": "2026-04-04T06:34:49.213Z",
+  "generatedForDate": "2026-04-04",
   "daysAnalyzed": 14,
   "stats": {
     "sources": 9,
-    "references": 72,
-    "events": 136,
-    "mappings": 211
+    "references": 85,
+    "events": 149,
+    "mappings": 218
   },
   "improvementEvaluation": {
     "executiveActions": [
       {
         "title": "Review target: docs/openapi-email-gpt.yaml",
         "priority": "high",
-        "reason": "106 impact hits (2H/19M/85L)",
+        "reason": "109 impact hits (2H/19M/88L)",
         "target": "docs/openapi-email-gpt.yaml",
         "existsInRepo": true,
         "recommendation": "Review prompt/actions contracts and capability manifests."
@@ -22,7 +22,7 @@
       {
         "title": "Review target: scripts/capabilities-snapshot.mjs",
         "priority": "high",
-        "reason": "106 impact hits (2H/19M/85L)",
+        "reason": "109 impact hits (2H/19M/88L)",
         "target": "scripts/capabilities-snapshot.mjs",
         "existsInRepo": true,
         "recommendation": "Review prompt/actions contracts and capability manifests."
@@ -30,7 +30,7 @@
       {
         "title": "Review target: server/gptActions.js",
         "priority": "high",
-        "reason": "106 impact hits (2H/19M/85L)",
+        "reason": "109 impact hits (2H/19M/88L)",
         "target": "server/gptActions.js",
         "existsInRepo": true,
         "recommendation": "Review prompt/actions contracts and capability manifests."
@@ -38,7 +38,7 @@
       {
         "title": "Review target: server/index.js",
         "priority": "high",
-        "reason": "106 impact hits (2H/19M/85L)",
+        "reason": "109 impact hits (2H/19M/88L)",
         "target": "server/index.js",
         "existsInRepo": true,
         "recommendation": "Review prompt/actions contracts and capability manifests."
@@ -46,7 +46,7 @@
       {
         "title": "Review target: Dockerfile.bmc-dashboard",
         "priority": "high",
-        "reason": "44 impact hits (5H/2M/37L)",
+        "reason": "47 impact hits (6H/2M/39L)",
         "target": "Dockerfile.bmc-dashboard",
         "existsInRepo": true,
         "recommendation": "Validate deploy pipeline and production smoke checks."
@@ -54,7 +54,7 @@
       {
         "title": "Review target: scripts/deploy-cloud-run.sh",
         "priority": "high",
-        "reason": "44 impact hits (5H/2M/37L)",
+        "reason": "47 impact hits (6H/2M/39L)",
         "target": "scripts/deploy-cloud-run.sh",
         "existsInRepo": true,
         "recommendation": "Validate deploy pipeline and production smoke checks."
@@ -62,7 +62,7 @@
       {
         "title": "Review target: scripts/deploy-vercel.sh",
         "priority": "high",
-        "reason": "44 impact hits (5H/2M/37L)",
+        "reason": "47 impact hits (6H/2M/39L)",
         "target": "scripts/deploy-vercel.sh",
         "existsInRepo": true,
         "recommendation": "Validate deploy pipeline and production smoke checks."
@@ -70,7 +70,7 @@
       {
         "title": "Review target: scripts/smoke-prod-api.mjs",
         "priority": "high",
-        "reason": "44 impact hits (5H/2M/37L)",
+        "reason": "47 impact hits (6H/2M/39L)",
         "target": "scripts/smoke-prod-api.mjs",
         "existsInRepo": true,
         "recommendation": "Validate deploy pipeline and production smoke checks."
@@ -78,7 +78,7 @@
       {
         "title": "Domain watch: llm-platforms",
         "priority": "high",
-        "reason": "106 mappings (2H/19M/85L)",
+        "reason": "109 mappings (2H/19M/88L)",
         "target": "(cross-cutting)",
         "existsInRepo": true,
         "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts."
@@ -86,7 +86,7 @@
       {
         "title": "Domain watch: deployment-stack",
         "priority": "high",
-        "reason": "44 mappings (5H/2M/37L)",
+        "reason": "47 mappings (6H/2M/39L)",
         "target": "(cross-cutting)",
         "existsInRepo": true,
         "recommendation": "Promote top mapping recommendations into sprint backlog and validate contracts."
@@ -112,11 +112,11 @@
       {
         "target": "docs/openapi-email-gpt.yaml",
         "existsInRepo": true,
-        "hits": 106,
+        "hits": 109,
         "high": 2,
         "medium": 19,
-        "low": 85,
-        "score": 129,
+        "low": 88,
+        "score": 132,
         "domains": [
           "llm-platforms"
         ],
@@ -127,11 +127,11 @@
       {
         "target": "scripts/capabilities-snapshot.mjs",
         "existsInRepo": true,
-        "hits": 106,
+        "hits": 109,
         "high": 2,
         "medium": 19,
-        "low": 85,
-        "score": 129,
+        "low": 88,
+        "score": 132,
         "domains": [
           "llm-platforms"
         ],
@@ -142,11 +142,11 @@
       {
         "target": "server/gptActions.js",
         "existsInRepo": true,
-        "hits": 106,
+        "hits": 109,
         "high": 2,
         "medium": 19,
-        "low": 85,
-        "score": 129,
+        "low": 88,
+        "score": 132,
         "domains": [
           "llm-platforms"
         ],
@@ -157,11 +157,11 @@
       {
         "target": "server/index.js",
         "existsInRepo": true,
-        "hits": 106,
+        "hits": 109,
         "high": 2,
         "medium": 19,
-        "low": 85,
-        "score": 129,
+        "low": 88,
+        "score": 132,
         "domains": [
           "llm-platforms"
         ],
@@ -172,11 +172,11 @@
       {
         "target": "Dockerfile.bmc-dashboard",
         "existsInRepo": true,
-        "hits": 44,
-        "high": 5,
+        "hits": 47,
+        "high": 6,
         "medium": 2,
-        "low": 37,
-        "score": 56,
+        "low": 39,
+        "score": 61,
         "domains": [
           "deployment-stack"
         ],
@@ -187,11 +187,11 @@
       {
         "target": "scripts/deploy-cloud-run.sh",
         "existsInRepo": true,
-        "hits": 44,
-        "high": 5,
+        "hits": 47,
+        "high": 6,
         "medium": 2,
-        "low": 37,
-        "score": 56,
+        "low": 39,
+        "score": 61,
         "domains": [
           "deployment-stack"
         ],
@@ -202,11 +202,11 @@
       {
         "target": "scripts/deploy-vercel.sh",
         "existsInRepo": true,
-        "hits": 44,
-        "high": 5,
+        "hits": 47,
+        "high": 6,
         "medium": 2,
-        "low": 37,
-        "score": 56,
+        "low": 39,
+        "score": 61,
         "domains": [
           "deployment-stack"
         ],
@@ -217,11 +217,11 @@
       {
         "target": "scripts/smoke-prod-api.mjs",
         "existsInRepo": true,
-        "hits": 44,
-        "high": 5,
+        "hits": 47,
+        "high": 6,
         "medium": 2,
-        "low": 37,
-        "score": 56,
+        "low": 39,
+        "score": 61,
         "domains": [
           "deployment-stack"
         ],
@@ -232,11 +232,11 @@
       {
         "target": "vercel.json",
         "existsInRepo": true,
-        "hits": 44,
-        "high": 5,
+        "hits": 47,
+        "high": 6,
         "medium": 2,
-        "low": 37,
-        "score": 56,
+        "low": 39,
+        "score": 61,
         "domains": [
           "deployment-stack"
         ],
@@ -352,11 +352,11 @@
       {
         "target": "eslint.config.js",
         "existsInRepo": true,
-        "hits": 9,
+        "hits": 10,
         "high": 1,
         "medium": 1,
-        "low": 7,
-        "score": 12,
+        "low": 8,
+        "score": 13,
         "domains": [
           "frontend-stack"
         ],
@@ -367,11 +367,11 @@
       {
         "target": "src/components",
         "existsInRepo": true,
-        "hits": 9,
+        "hits": 10,
         "high": 1,
         "medium": 1,
-        "low": 7,
-        "score": 12,
+        "low": 8,
+        "score": 13,
         "domains": [
           "frontend-stack"
         ],
@@ -382,11 +382,11 @@
       {
         "target": "src/utils",
         "existsInRepo": true,
-        "hits": 9,
+        "hits": 10,
         "high": 1,
         "medium": 1,
-        "low": 7,
-        "score": 12,
+        "low": 8,
+        "score": 13,
         "domains": [
           "frontend-stack"
         ],
@@ -397,11 +397,11 @@
       {
         "target": "vite.config.js",
         "existsInRepo": true,
-        "hits": 9,
+        "hits": 10,
         "high": 1,
         "medium": 1,
-        "low": 7,
-        "score": 12,
+        "low": 8,
+        "score": 13,
         "domains": [
           "frontend-stack"
         ],
@@ -413,19 +413,19 @@
     "domainCoverage": [
       {
         "domain": "llm-platforms",
-        "total": 106,
+        "total": 109,
         "high": 2,
         "medium": 19,
-        "low": 85,
-        "score": 129
+        "low": 88,
+        "score": 132
       },
       {
         "domain": "deployment-stack",
-        "total": 44,
-        "high": 5,
+        "total": 47,
+        "high": 6,
         "medium": 2,
-        "low": 37,
-        "score": 56
+        "low": 39,
+        "score": 61
       },
       {
         "domain": "workflow-automation",
@@ -445,11 +445,11 @@
       },
       {
         "domain": "frontend-stack",
-        "total": 9,
+        "total": 10,
         "high": 1,
         "medium": 1,
-        "low": 7,
-        "score": 12
+        "low": 8,
+        "score": 13
       }
     ]
   }

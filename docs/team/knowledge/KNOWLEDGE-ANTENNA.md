@@ -15,6 +15,8 @@ Operational guide for a scripted AI-research antenna that feeds BMC/Panelin evol
 - `docs/team/knowledge/references-catalog.json`: deduplicated persistent references for future runs.
 - `docs/team/knowledge/impact-map.json`: event-to-code/workflow mappings and recommended actions.
 - `docs/team/knowledge/reports/KNOWLEDGE-REPORT-YYYY-MM-DD.md`: run reports.
+- `docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html`: **Panelin Signal** — revista interna HTML (lectura humana; se regenera con cada scan o con `npm run knowledge:magazine`).
+- `docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-YYYY-MM-DD.html`: copia fechada del mismo número.
 
 ## Commands
 
@@ -32,6 +34,7 @@ Operational guide for a scripted AI-research antenna that feeds BMC/Panelin evol
 - Install schedule (launchd): `npm run knowledge:schedule:install`
 - Remove schedule (launchd): `npm run knowledge:schedule:uninstall`
 - Manual scheduler tick: `npm run knowledge:schedule:tick`
+- Regenerar solo la revista HTML desde JSON actuales: `npm run knowledge:magazine`
 
 ## CI Automation
 

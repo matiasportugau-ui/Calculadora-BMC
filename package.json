@@ -82,6 +82,7 @@
     "knowledge:env:check": "bash scripts/knowledge-antenna-env-ensure.sh check",
     "knowledge:env:cwd:guard": "bash scripts/knowledge-antenna-env-cwd-regression.sh",
     "knowledge:preflight": "node scripts/knowledge-antenna-preflight.mjs --strict --sample=3",
+    "knowledge:magazine": "node scripts/knowledge-antenna-magazine.mjs",
     "knowledge:run": "npm run knowledge:env:ensure && npm run knowledge:preflight && npm run knowledge:scan && npm run knowledge:rank && npm run knowledge:impact && npm run knowledge:db && npm run knowledge:direction",
     "development:chain": "node scripts/development-chain-runner.mjs",
     "development:chain:full": "node scripts/development-chain-runner.mjs --full",

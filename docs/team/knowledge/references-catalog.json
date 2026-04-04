@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-03T10:51:55.526Z",
+  "updatedAt": "2026-04-04T06:34:48.496Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -1504,6 +1504,279 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_987ba185f2b95622"
+      ]
+    },
+    {
+      "id": "ref_5fd7d0485ef514ec",
+      "sourceId": "anthropic-news-rss",
+      "title": "vertex-sdk: v0.15.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/vertex-sdk-v0.15.0",
+      "summary": "## 0.15.0 (2026-04-03) Full Changelog: [vertex-sdk-v0.14.4...vertex-sdk-v0.15.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/vertex-sdk-v0.14.4...vertex-sdk-v0.15.0) ### Features * **vertex:** add support for US multi-region endpoint ([5e5aea7](https://github.com/anthropics/anthropic-sdk-typescript/commit/5e5aea72e8af1d0cd0af7770f7c98a716fa24629)) * **vertex:** add support for US multi-region endpoint ([0de0e98](https://github.com/anthropics/anthropic-sdk-typescript/commit/0de0e98aace311d7f6b5617b597d73324de73e2f))",
+      "publishedAt": "2026-04-03T18:55:59Z",
+      "firstSeenAt": "2026-04-04T06:34:32.827Z",
+      "lastSeenAt": "2026-04-04T06:34:32.827Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_210f13cf09de44d6"
+      ]
+    },
+    {
+      "id": "ref_092f473c8e47b87a",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.83.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.83.0",
+      "summary": "## 0.83.0 (2026-04-03) Full Changelog: [sdk-v0.82.0...sdk-v0.83.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.82.0...sdk-v0.83.0) ### Features * **vertex:** add support for US multi-region endpoint ([5e5aea7](https://github.com/anthropics/anthropic-sdk-typescript/commit/5e5aea72e8af1d0cd0af7770f7c98a716fa24629)) * **vertex:** add support for US multi-region endpoint ([0de0e98](https://github.com/anthropics/anthropic-sdk-typescript/commit/0de0e98aace311d7f6b5617b597d73324de73e2f)) ### Chores * **client:** deprecate client-side compaction helpers ([1926e87](https://github.com/anthropics/anthropic-sdk-typescript/commit/1926e870393b653ac87c4fb9e521a8a44786ab49)) * **client:** internal updates ([3d64763](https://github.com/anthropics/anthropic-sdk-typescript/commit/3d6476315480508cff8462a5b4523944579dbd32))",
+      "publishedAt": "2026-04-03T18:55:53Z",
+      "firstSeenAt": "2026-04-04T06:34:32.828Z",
+      "lastSeenAt": "2026-04-04T06:34:32.828Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_79fd505d7fcd82bc"
+      ]
+    },
+    {
+      "id": "ref_9e7cb98f46f22559",
+      "sourceId": "vercel-releases",
+      "title": "vercel@50.39.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4050.39.0",
+      "summary": "### Minor Changes - Add `vercel tokens` subcommands (`ls`, `add`, `rm`) for auth token API parity with the dashboard. ([#15812](https://github.com/vercel/vercel/pull/15812)) - Add `vercel project access-summary` subcommand to list member counts by role for a project. ([#15813](https://github.com/vercel/vercel/pull/15813)) - Add `vercel project members` and `vercel project access-groups` commands, and fix `vercel teams members` to fetch all pages from the paginated team members API. ([#15786](https://github.com/vercel/vercel/pull/15786)) ### Patch Changes - Add `--id` flag to `vercel build` and `vercel env pull` to fetch deployment-scoped environment variables ([#15805](https://github.com/vercel/vercel/pull/15805)) - Updated dependencies \\[]: - @vercel/static-build@2.9.8",
+      "publishedAt": "2026-04-03T17:25:58Z",
+      "firstSeenAt": "2026-04-04T06:34:33.024Z",
+      "lastSeenAt": "2026-04-04T06:34:33.024Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_896ba8aa61ef35d4"
+      ]
+    },
+    {
+      "id": "ref_81d775830fa801cd",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/fs-detectors@5.14.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/fs-detectors%405.14.1",
+      "summary": "### Patch Changes - Updated dependencies \\[[`d034d90dcf78316ddacdcce8fd51329fb7eefe82`](https://github.com/vercel/vercel/commit/d034d90dcf78316ddacdcce8fd51329fb7eefe82)]: - @vercel/frameworks@3.23.0",
+      "publishedAt": "2026-04-03T17:25:55Z",
+      "firstSeenAt": "2026-04-04T06:34:33.025Z",
+      "lastSeenAt": "2026-04-04T06:34:33.025Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_7b3a70b5ad4c857b"
+      ]
+    },
+    {
+      "id": "ref_750ea266b3d5570b",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/frameworks@3.23.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/frameworks%403.23.0",
+      "summary": "### Minor Changes - Add Mastra framework preset ([#15076](https://github.com/vercel/vercel/pull/15076))",
+      "publishedAt": "2026-04-03T17:25:52Z",
+      "firstSeenAt": "2026-04-04T06:34:33.025Z",
+      "lastSeenAt": "2026-04-04T06:34:33.025Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_996a8f27d5106bef"
+      ]
+    },
+    {
+      "id": "ref_04e6c118e724c5f5",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.146",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.146",
+      "summary": "### Patch Changes - Updated dependencies [5f439a1] - @ai-sdk/gateway@3.0.88",
+      "publishedAt": "2026-04-04T00:45:00Z",
+      "firstSeenAt": "2026-04-04T06:34:42.669Z",
+      "lastSeenAt": "2026-04-04T06:34:42.669Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c833b132820a8111"
+      ]
+    },
+    {
+      "id": "ref_1fed0e4c4960a8dd",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.146",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.146",
+      "summary": "### Patch Changes - ai@6.0.146",
+      "publishedAt": "2026-04-04T00:45:12Z",
+      "firstSeenAt": "2026-04-04T06:34:42.669Z",
+      "lastSeenAt": "2026-04-04T06:34:42.669Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_de3d2b797d9ac703"
+      ]
+    },
+    {
+      "id": "ref_5190c1fe4fd516e0",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/svelte@4.0.146",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/svelte%404.0.146",
+      "summary": "### Patch Changes - ai@6.0.146",
+      "publishedAt": "2026-04-04T00:45:18Z",
+      "firstSeenAt": "2026-04-04T06:34:42.669Z",
+      "lastSeenAt": "2026-04-04T06:34:42.669Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_9d7271a4488c2bb1"
+      ]
+    },
+    {
+      "id": "ref_daee559817c01f60",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/rsc@2.0.146",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/rsc%402.0.146",
+      "summary": "### Patch Changes - ai@6.0.146",
+      "publishedAt": "2026-04-04T00:45:06Z",
+      "firstSeenAt": "2026-04-04T06:34:42.669Z",
+      "lastSeenAt": "2026-04-04T06:34:42.669Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_831db347902cd628"
+      ]
+    },
+    {
+      "id": "ref_7ebe54c9d3ec6535",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/react@3.0.148",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/react%403.0.148",
+      "summary": "### Patch Changes - ai@6.0.146",
+      "publishedAt": "2026-04-04T00:45:09Z",
+      "firstSeenAt": "2026-04-04T06:34:42.669Z",
+      "lastSeenAt": "2026-04-04T06:34:42.669Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_3db150b867c5e090"
+      ]
+    },
+    {
+      "id": "ref_495418cf95044bef",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/llamaindex@2.0.146",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/llamaindex%402.0.146",
+      "summary": "### Patch Changes - ai@6.0.146",
+      "publishedAt": "2026-04-04T00:45:15Z",
+      "firstSeenAt": "2026-04-04T06:34:42.669Z",
+      "lastSeenAt": "2026-04-04T06:34:42.669Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_6a27ad901b5d8768"
+      ]
+    },
+    {
+      "id": "ref_749444609be23976",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/langchain@2.0.152",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/langchain%402.0.152",
+      "summary": "### Patch Changes - ai@6.0.146",
+      "publishedAt": "2026-04-04T00:45:03Z",
+      "firstSeenAt": "2026-04-04T06:34:42.670Z",
+      "lastSeenAt": "2026-04-04T06:34:42.670Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b74f637636cdba30"
+      ]
+    },
+    {
+      "id": "ref_283724468ddaaf1b",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/gateway@3.0.88",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/gateway%403.0.88",
+      "summary": "### Patch Changes - 5f439a1: feat (provider/gateway): add hipaaCompliant gateway provider option",
+      "publishedAt": "2026-04-04T00:45:24Z",
+      "firstSeenAt": "2026-04-04T06:34:42.670Z",
+      "lastSeenAt": "2026-04-04T06:34:42.670Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_d4c2ebc2e9c9c711"
       ]
     }
   ]
