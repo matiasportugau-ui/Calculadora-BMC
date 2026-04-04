@@ -148,6 +148,10 @@ export default function PanelinChatPanel({
   const prevMsgCountRef = useRef(0);
   const drawerResizeActiveRef = useRef(false);
   const inputLiftDragActiveRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartYRef = useRef(0);
+  const dragStartWidthRef = useRef(0);
+  const dragStartLiftRef = useRef(0);
 
   // 2.5 — Smart auto-scroll: only scroll if near bottom
   useEffect(() => {
@@ -264,32 +268,33 @@ export default function PanelinChatPanel({
   }, [devInputLift, devMode]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || (!drawerResizeActiveRef.current && !inputLiftDragActiveRef.current)) return;
-    const onMouseMove = (e) => {
+    if (typeof window === "undefined") return;
+    const onPointerMove = (e) => {
       if (drawerResizeActiveRef.current) {
-        const nextWidth = window.innerWidth - e.clientX;
         const hardMax = Math.min(980, Math.floor(window.innerWidth * 0.98));
-        setDevDrawerWidth(clamp(nextWidth, 320, hardMax));
+        const delta = dragStartXRef.current - e.clientX;
+        setDevDrawerWidth(clamp(dragStartWidthRef.current + delta, 320, hardMax));
       }
       if (inputLiftDragActiveRef.current) {
-        const viewportHeight = window.innerHeight || 900;
-        const nextLift = viewportHeight - e.clientY - 56;
-        setDevInputLift(clamp(nextLift, 0, 260));
+        const delta = dragStartYRef.current - e.clientY;
+        setDevInputLift(clamp(dragStartLiftRef.current + delta, 0, 260));
       }
     };
-    const onMouseUp = () => {
+    const stopDragging = () => {
       drawerResizeActiveRef.current = false;
       inputLiftDragActiveRef.current = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
     };
-  }, [devMode]);
+  }, []);
 
   const speakMessage = useCallback((text) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -385,6 +390,8 @@ export default function PanelinChatPanel({
   const startDrawerResize = (e) => {
     if (!devMode || detachedMode) return;
     e.preventDefault();
+    dragStartXRef.current = e.clientX;
+    dragStartWidthRef.current = devDrawerWidth;
     drawerResizeActiveRef.current = true;
     document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
@@ -392,6 +399,8 @@ export default function PanelinChatPanel({
   const startInputLiftDrag = (e) => {
     if (!devMode) return;
     e.preventDefault();
+    dragStartYRef.current = e.clientY;
+    dragStartLiftRef.current = devInputLift;
     inputLiftDragActiveRef.current = true;
     document.body.style.cursor = "ns-resize";
     document.body.style.userSelect = "none";
@@ -440,7 +449,7 @@ export default function PanelinChatPanel({
       >
         {devMode && !detachedMode && (
           <div
-            onMouseDown={startDrawerResize}
+            onPointerDown={startDrawerResize}
             title="Arrastrar para redimensionar panel"
             style={{
               position: "absolute",
@@ -452,6 +461,7 @@ export default function PanelinChatPanel({
               background:
                 "linear-gradient(to right, rgba(0,113,227,0.16), rgba(0,113,227,0.06), transparent)",
               cursor: "ew-resize",
+              touchAction: "none",
               zIndex: 5,
             }}
           />
@@ -849,7 +859,7 @@ export default function PanelinChatPanel({
         >
           {devMode && (
             <div
-              onMouseDown={startInputLiftDrag}
+              onPointerDown={startInputLiftDrag}
               title="Arrastrar para mover bloque de input"
               style={{
                 position: "absolute",
@@ -863,6 +873,7 @@ export default function PanelinChatPanel({
                 background: "linear-gradient(180deg, #f4f6ff, #d7e6ff)",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
                 cursor: "ns-resize",
+                touchAction: "none",
               }}
             />
           )}
