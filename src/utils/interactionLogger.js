@@ -40,10 +40,24 @@ export function log(type, target, payload = {}) {
 }
 
 /**
+ * True si prev/next son equivalentes para el log (evita hinchar actions con no-ops).
+ * Usa JSON estable para objetos anidados (orden de keys del snapshot de estado es estable en la app).
+ */
+function isRedundantChange(prev, next) {
+  if (Object.is(prev, next)) return true;
+  try {
+    return JSON.stringify(prev) === JSON.stringify(next);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Log de cambio de estado (para setters envueltos).
  */
 export function logChange(target, prev, next) {
   if (!isDev()) return;
+  if (isRedundantChange(prev, next)) return;
   log("change", target, { prev, next });
 }
 
