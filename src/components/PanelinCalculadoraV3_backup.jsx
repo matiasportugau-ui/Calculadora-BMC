@@ -3641,7 +3641,7 @@ export default function PanelinCalculadoraV3() {
                     <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
                   )}
                   {stepId === "familia" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setTechoFamilyHoverId("")}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setHoverTechoFamilia("")}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         Familia panel
                       </div>
@@ -3652,11 +3652,11 @@ export default function PanelinCalculadoraV3() {
                             <button
                               type="button"
                               key={opt.value}
-                              onMouseEnter={() => setTechoFamilyHoverId(opt.value)}
-                              onFocus={() => setTechoFamilyHoverId(opt.value)}
+                              onMouseEnter={() => setHoverTechoFamilia(opt.value)}
+                              onFocus={() => setHoverTechoFamilia(opt.value)}
                               onClick={(e) => {
                                 setTechoFamilia(opt.value);
-                                setTechoFamilyHoverId("");
+                                setHoverTechoFamilia("");
                                 // Fallback for environments where onDoubleClick is flaky:
                                 // second consecutive click still reports detail >= 2.
                                 if ((e?.detail || 0) >= 2) {
@@ -3665,7 +3665,7 @@ export default function PanelinCalculadoraV3() {
                               }}
                               onDoubleClick={() => {
                                 setTechoFamilia(opt.value);
-                                setTechoFamilyHoverId("");
+                                setHoverTechoFamilia("");
                                 advanceWizardStep();
                               }}
                               style={{

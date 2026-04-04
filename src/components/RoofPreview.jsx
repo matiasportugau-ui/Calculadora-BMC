@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // RoofPreview.jsx — Vista previa del techo (rejilla de paneles, drag, pendiente)
-// Coordenadas del SVG en metros (planta). preview.x/y no alimenta el BOM todavía;
-// buildRoofPlanEdges (mismo criterio de layout) muestra perímetro/encuentros solo informativo.
+// Coordenadas del SVG en metros (planta). preview.x/y alimenta encuentros y (con geometría) el BOM;
+// buildRoofPlanEdges muestra perímetro/encuentros; rejilla horizontal = paso au a lo largo de largo en planta.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useCallback, useMemo, useRef } from "react";
@@ -77,28 +77,75 @@ function clampZonaTopLeft(x, y, w, h, vm) {
   };
 }
 
-function PanelGrid({ x0, y0, w, h, au, stroke, strokeW }) {
+/**
+ * Roof-style panel visualization: stripes parallel to ancho (horizontal bands in SVG)
+ * spaced by au along largo (h), so each band width = au and count ≈ ceil(h/au).
+ * Matches plan: util width steps along the dimension where panels stack (largo in plant).
+ */
+/** @returns {number} Paneles visuales a lo largo de largo (h), paso au (rejilla horizontal en SVG). */
+function panelCountAlongLargoStripe(h, au) {
+  if (!(au > 0) || !(h > 0)) return 0;
+  return Math.max(1, Math.ceil(h / au - 1e-9));
+}
+
+function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "0" }) {
   if (!(au > 0) || !(w > 0) || !(h > 0)) return null;
+  const bands = [];
   const lines = [];
-  let xi = x0 + au;
-  let k = 0;
-  while (xi < x0 + w - 1e-6) {
-    lines.push(
-      <line
-        key={`${xi}-${k++}`}
-        x1={xi}
-        y1={y0}
-        x2={xi}
-        y2={y0 + h}
-        stroke={stroke}
-        strokeWidth={strokeW}
-        opacity={0.45}
+  let y = y0;
+  let idx = 0;
+  while (y < y0 + h - 1e-9) {
+    const bandH = Math.min(au, y0 + h - y);
+    const fillOpacity = idx % 2 === 0 ? 0.1 : 0.18;
+    bands.push(
+      <rect
+        key={`band-${idx}`}
+        x={x0}
+        y={y}
+        width={w}
+        height={bandH}
+        fill={stroke}
+        fillOpacity={fillOpacity}
+        stroke="none"
         pointerEvents="none"
       />,
     );
-    xi += au;
+    y += au;
+    idx += 1;
   }
-  return <g>{lines}</g>;
+  let yi = y0 + au;
+  let k = 0;
+  while (yi < y0 + h - 1e-6) {
+    lines.push(
+      <line
+        key={`hj-${k++}`}
+        x1={x0}
+        y1={yi}
+        x2={x0 + w}
+        y2={yi}
+        stroke={stroke}
+        strokeWidth={strokeW}
+        opacity={0.55}
+        pointerEvents="none"
+      />,
+    );
+    yi += au;
+  }
+  const gradId = `roofGrad-${String(gradKey).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  return (
+    <g pointerEvents="none">
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.06" />
+          <stop offset="50%" stopColor={C.primary} stopOpacity="0.04" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
+      <rect x={x0} y={y0} width={w} height={h} fill={`url(#${gradId})`} rx={0.08} />
+      {bands}
+      {lines}
+    </g>
+  );
 }
 
 function SlopeArrow({ cx, cy, h, dir }) {
@@ -509,35 +556,37 @@ export default function RoofPreview({
                     height={r.h}
                     rx={0.12}
                     fill={C.primary}
-                    fillOpacity={0.14}
+                    fillOpacity={0.08}
                     stroke="none"
                     style={{ cursor: canDrag ? "grab" : "default" }}
                     onPointerDown={(e) => handlePointerDown(e, r.gi, r)}
                   />
-                  <g
-                    pointerEvents="none"
-                    stroke={C.primary}
-                    strokeWidth={0.04}
-                    fill="none"
-                    strokeLinecap="square"
-                  >
-                    <line x1={r.x} y1={r.y} x2={r.x + r.w} y2={r.y} />
-                    <line x1={r.x} y1={r.y + r.h} x2={r.x + r.w} y2={r.y + r.h} />
-                    {!supV.left && <line x1={r.x} y1={r.y} x2={r.x} y2={r.y + r.h} />}
-                    {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
-                  </g>
-                  <PanelGrid
+                  <PanelRoofVisualization
                     x0={r.x}
                     y0={r.y}
                     w={r.w}
                     h={r.h}
                     au={panelAu}
                     stroke={C.brand}
-                    strokeW={0.035}
+                    strokeW={0.032}
+                    gradKey={`z-${r.gi}`}
                   />
+                  <g
+                    pointerEvents="none"
+                    stroke={C.primary}
+                    strokeWidth={0.072}
+                    fill="none"
+                    strokeLinecap="square"
+                    opacity={0.92}
+                  >
+                    <line x1={r.x} y1={r.y} x2={r.x + r.w} y2={r.y} />
+                    <line x1={r.x} y1={r.y + r.h} x2={r.x + r.w} y2={r.y + r.h} />
+                    {!supV.left && <line x1={r.x} y1={r.y} x2={r.x} y2={r.y + r.h} />}
+                    {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
+                  </g>
                   <text
                     x={r.x + r.w / 2}
-                    y={r.y + r.h / 2}
+                    y={r.y + r.h / 2 - fs * 0.35}
                     textAnchor="middle"
                     dominantBaseline="central"
                     fontSize={fs}
@@ -547,6 +596,20 @@ export default function RoofPreview({
                     pointerEvents="none"
                   >
                     {zonaLabelPlanta(r)}
+                  </text>
+                  <text
+                    x={r.x + r.w / 2}
+                    y={r.y + r.h / 2 + fs * 0.55}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={Math.max(0.11, fs * 0.42)}
+                    fill={C.ts}
+                    fontWeight={600}
+                    fontFamily={FONT}
+                    pointerEvents="none"
+                  >
+                    {panelCountAlongLargoStripe(r.h, panelAu)}{" "}
+                    {panelCountAlongLargoStripe(r.h, panelAu) === 1 ? "panel" : "paneles"}
                   </text>
                   {showSlope && (
                     <SlopeArrow
