@@ -390,6 +390,21 @@ export function getQuoteVisorContext({ scenarioId, stepId, techoFamilia, techoCo
     heading: "Paneles para cubierta",
   };
 
+  if (stepId === "estructura") {
+    return {
+      slides: [
+        {
+          src: `${import.meta.env.BASE_URL}images/estructura-referencia.png`,
+          title: "Estructura Base",
+          subtitle: "Referencia para el montaje",
+          description: "Visualización de la estructura de apoyo y soporte para el montaje de los paneles.",
+        }
+      ],
+      shopHref: QUOTE_VISOR_SHOP_URLS.catalogoCompleto,
+      heading: "Estructura"
+    };
+  }
+
   switch (scenarioId) {
     case "solo_fachada":
       return {

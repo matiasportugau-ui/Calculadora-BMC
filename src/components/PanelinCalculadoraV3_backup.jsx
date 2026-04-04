@@ -95,35 +95,7 @@ import { useChat } from "../hooks/useChat.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
 import { SLIDES_SOLO_TECHO, getGeneratedColorGallery } from "../data/quoteVisorMedia.js";
 
-// ── CSS injection ────────────────────────────────────────────────────────────
-
-if (typeof document !== "undefined" && !document.getElementById("bmc-kf")) {
-  const s = document.createElement("style");
-  s.id = "bmc-kf";
-  s.textContent = `
-    @keyframes bmc-fade{from{opacity:0}to{opacity:1}}
-    @keyframes bmc-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
-    @keyframes bmc-slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-    @keyframes bmc-slideInUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-    @media (max-width: 1023px) {
-      .bmc-main-grid { height: auto !important; overflow: visible !important; }
-      .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
-      .bmc-mobile-bar { display: flex !important; }
-      .bmc-desktop-actions { display: none !important; }
-    }
-    @media (min-width: 1024px) {
-      .bmc-mobile-bar { display: none !important; }
-    }
-    .bmc-sash { width: 6px; margin: 0 -2px; background: transparent; flex-shrink: 0; position: relative; z-index: 2; outline: none; }
-    .bmc-sash--vertical { width: 100%; height: 10px; margin: -4px 0; cursor: row-resize; }
-    .bmc-sash[data-resize-handle-active]::after,
-    .bmc-sash:hover::after {
-      content: ""; position: absolute; inset: 0; pointer-events: none;
-      background: rgba(0,113,227,0.35);
-    }
-  `;
-  document.head.appendChild(s);
-}
+// CSS extracted to src/styles/bmc-mobile.css (imported in main.jsx)
 
 /**
  * Botón principal del footer del wizard (p. ej. **Siguiente**): alto contraste cuando está deshabilitado.
@@ -476,6 +448,8 @@ function MobileBottomBar({ total, onPrint, onWhatsApp }) {
 
 function PDFPreviewModal({ html, title, onClose }) {
   const [url, setUrl] = useState(null);
+  const [isCompact, setIsCompact] = useState(() => typeof window !== "undefined" ? window.innerWidth < 760 : false);
+
   useEffect(() => {
     if (!html) return;
     const u = createPreviewUrl(html);
@@ -490,6 +464,14 @@ function PDFPreviewModal({ html, title, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [html, onClose]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 759px)");
+    const handler = (e) => setIsCompact(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   if (!html || !url) return null;
 
   const handlePrint = () => {
@@ -498,16 +480,31 @@ function PDFPreviewModal({ html, title, onClose }) {
       iframe.contentWindow.print();
     }
   };
-  const isCompact = typeof window !== "undefined" ? window.innerWidth < 760 : false;
+
+  const handleShare = async () => {
+    if (!navigator.share) return;
+    try {
+      await navigator.share({ title: title || "Cotización BMC", url: url });
+    } catch { /* user cancelled */ }
+  };
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.6)", animation: "bmc-fade 150ms ease-in-out" }}>
+    <div
+      className={isCompact ? "bmc-pdf-modal-compact" : undefined}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.6)", animation: "bmc-fade 150ms ease-in-out" }}
+    >
       <div style={{ display: "flex", alignItems: isCompact ? "stretch" : "center", flexDirection: isCompact ? "column" : "row", justifyContent: "space-between", gap: 10, padding: isCompact ? "12px 14px" : "10px 20px", background: C.dark, color: "#fff", flexShrink: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 700 }}>{title || "Vista previa de cotización"}</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={handlePrint} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isCompact ? "1 1 160px" : "0 0 auto" }}>
             <Printer size={14} />Imprimir / PDF
           </button>
+          {isCompact && navigator.share && (
+            <button onClick={handleShare} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: "1 1 120px" }}>
+              Compartir
+            </button>
+          )}
           <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isCompact ? "1 1 120px" : "0 0 auto" }}>
             <X size={14} />Cerrar
           </button>
@@ -522,8 +519,8 @@ function PDFPreviewModal({ html, title, onClose }) {
             maxWidth: "100%",
             height: "100%",
             border: "none",
-            borderRadius: 8,
-            boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+            borderRadius: isCompact ? 0 : 8,
+            boxShadow: isCompact ? "none" : "0 8px 40px rgba(0,0,0,0.4)",
             background: "#fff",
           }}
           title="Vista previa PDF"
@@ -2307,9 +2304,13 @@ export default function PanelinCalculadoraV3() {
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-    const onResize = () => setViewportWidth(window.innerWidth);
+    let rafId = 0;
+    const onResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => setViewportWidth(window.innerWidth));
+    };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => { window.removeEventListener("resize", onResize); cancelAnimationFrame(rafId); };
   }, []);
 
   // ── Wizard step validation (Modo Vendedor) ──
@@ -2929,7 +2930,13 @@ export default function PanelinCalculadoraV3() {
       totals: grandTotal,
       listaLabel: listaPrecios === "venta" ? "BMC directo" : "Web",
     });
-    navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles"));
+    if (isCompactLayout && navigator.share) {
+      navigator.share({ title: "Cotización BMC", text: txt }).catch(() => {});
+    } else if (isCompactLayout) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, "_blank");
+    } else {
+      navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles"));
+    }
   };
 
   const buildPrintDimensions = useCallback(() => {
@@ -3585,9 +3592,11 @@ export default function PanelinCalculadoraV3() {
                               onClick={() => {
                                 setTechoFamilia(opt.value);
                                 setTechoFamilyHoverId("");
-                                window.setTimeout(() => {
-                                  window.dispatchEvent(new CustomEvent("bmc-wizard-next"));
-                                }, 0);
+                              }}
+                              onDoubleClick={() => {
+                                setTechoFamilia(opt.value);
+                                setTechoFamilyHoverId("");
+                                advanceWizardStep();
                               }}
                               style={{
                                 borderRadius: 12,

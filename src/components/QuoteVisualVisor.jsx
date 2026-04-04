@@ -293,6 +293,8 @@ export default function QuoteVisualVisor({
           style={{ padding: 16 }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
+          onTouchStart={() => setPaused(true)}
+          onTouchEnd={() => { setTimeout(() => setPaused(false), 8000); }}
         >
           {dimensionSummary ? (
             <div
@@ -430,6 +432,10 @@ export default function QuoteVisualVisor({
                   key={slide.src + idx}
                   src={slide.src}
                   alt={slide.title}
+                  width={800}
+                  height={600}
+                  decoding="async"
+                  fetchPriority={idx === 0 ? "high" : "auto"}
                   style={{
                     width: "100%",
                     maxHeight: "min(42vh, 420px)",

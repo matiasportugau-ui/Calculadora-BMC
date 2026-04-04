@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-04 (Sync Shopify estricto por familia; fuera Hiansa/Butilo)
+**Última actualización:** 2026-04-04 (Autolanzador local `local:view` + regla “ver en local”)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -10,11 +10,17 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-04-04 (Local DX — autolanzar al pedir “ver en local”):** Nuevo script [`scripts/local-view-autolaunch.sh`](../../scripts/local-view-autolaunch.sh) con arranque inteligente de servicios locales: detecta estado de API (`:3001`) y frontend (`:5173`) y levanta solo lo faltante (`npm run dev:full`, `npm run start:api` o `npm run dev`), sin duplicar procesos. Espera readiness y reporta URLs + health; opcional `--open` abre navegador. `package.json` agrega `npm run local:view` y `npm run local:view:open`. Nueva regla [`.cursor/rules/local-view-autolaunch.mdc`](../../.cursor/rules/local-view-autolaunch.mdc) para ejecutar ese flujo cuando el usuario pida “ver en local”.
+
 **2026-04-04 (Visor interactivo de Shopify — On hover en galería de colores):** Se extendió el Visor y los selectores de `<ColorChips>` en la Calculadora. Al pasar el cursor por encima de una variante de color en el selector `ColorChips`, el Visor principal (derecha) ahora refleja de inmediato la imagen de Shopify correspondiente al color exacto (Blanco, Gris, Rojo), otorgando a los usuarios una vista previa instantánea de las variantes sin necesidad de haber seleccionado todavía el color (`techoColor / hoverTechoColor / hoverParedColor`). Además de que el selector ahora también dibuja las miniaturas dinámicas en reemplazo del color plano CSS si hay imagen en Shopify.
+
+**2026-04-04 (Visor — Imagen referencial para Estructura):** Se ha copiado e inyectado la imagen `estructura-referencia.png` en `public/images/`. Ahora en el wizard, cuando el usuario entra en el paso `estructura` (step 7 de la calculadora regular), el visor renderizará fluidamente la imagen referencial con la estructura 3D provista de manera responsiva, para visualizar la estructura de soporte para el montaje.
 
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 
 **2026-04-04 (Dashboard Finanzas — UI alineada a Calculadora BMC):** Rediseño visual del static `/finanzas` (`docs/bmc-dashboard-modernization/dashboard/`): canvas `#e6e6eb` y filas `#ececf0` (contraste con tarjetas blancas); marca `#1a3a5c`; acento `#0071e3` con franja superior 4px en header sticky; bordes `#e5e5ea`; sombras en capas (`--shadow-card`) en `.card`; tipografía sistema (alineada a `BmcModuleNav` / `PanelinChatPanel`); navegación tipo píldora con borde. `index.html`: sin Google Fonts (DM Sans / JetBrains); favicon `#0071e3`. Sección **Invoque Panelin** sustituida por documentación en página y luego llevada a render dinámico vía `INVOQUE_PANEL_MODEL` + `renderInvoquePanel()` en `app.js` (single source of truth para funcionalidades, API y fuentes Sheets), con contenedor `#invoquePanel` en HTML. Estilos nuevos `.invoque-panel` y grid responsive.
+
+**2026-04-04 (Local runtime — full stack operativo):** Se relanzó `npm run dev:full` y se verificó estado operativo de ambos servicios locales: API (`http://localhost:3001/health` → `ok:true`) y frontend (`http://localhost:5173` → `200 OK`). Validación con MCP chrome-devtools en `localhost:5173`: snapshot de UI cargada, red en `200/304`, sin errores críticos de consola (solo warnings de future flags React Router). Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-local-full-stack-ready.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-local-full-stack-ready.md).
 
 **2026-04-04 (Visor Shopify — matching estricto por familia):** Ajustado [`build-quote-visor-shopify-families.mjs`](../../scripts/build-quote-visor-shopify-families.mjs) para evitar contaminación cruzada en paso familia/color: reglas estrictas por familia (`FAMILY_STRICT_FILTERS`) + allowlist por handle (`FAMILY_HANDLE_ALLOWLIST`) + exclusión fuerte de accesorios/no panel (`cinta`, `butilo`, `frontalin`, `cumbreron`, `fijaciones`, `hiansa`, `becam`, etc.). Regenerado [`quoteVisorShopifyFamilies.json`](../../src/data/quoteVisorShopifyFamilies.json): sin `hiansa` ni `cinta-butilo`; `ISOROOF_COLONIAL` quedó sin match remoto (fallback local del visor). Guard rail nuevo: si Shopify devuelve 0 productos, el script aborta sin sobreescribir mapping existente.
 
