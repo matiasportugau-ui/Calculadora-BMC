@@ -657,175 +657,6 @@ export default function PanelinChatPanel({
         }}
       />
 
-      {/* ── Signature / Skin Selector (always visible, app corner) ── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 24,
-          left: 24,
-          zIndex: 200,
-          pointerEvents: "auto",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onMouseEnter={(e) => {
-          const label = e.currentTarget.querySelector("[data-skin-hover-label]");
-          if (label) {
-            label.style.opacity = "1";
-            label.style.transform = "translateX(0)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          const label = e.currentTarget.querySelector("[data-skin-hover-label]");
-          if (label) {
-            label.style.opacity = "0";
-            label.style.transform = "translateX(-6px)";
-          }
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setIsSkinMenuOpen((v) => !v)}
-          title="Seleccionar skin"
-          aria-label="Seleccionar skin"
-          style={{
-            width: 88,
-            height: 176,
-            borderRadius: 8,
-            border: "none",
-            background: "transparent",
-            padding: 0,
-            cursor: "pointer",
-            opacity: 0.85,
-            transition: "opacity 150ms ease, transform 150ms ease",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "flex-start",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "1";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "0.85";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              backgroundImage: `url(${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}signature.png)`,
-              backgroundSize: "contain",
-              backgroundPosition: "center bottom",
-              backgroundRepeat: "no-repeat",
-              mixBlendMode: "multiply",
-              filter: "contrast(1.2) drop-shadow(0 1px 1px rgba(0,0,0,0.05))"
-            }}
-          />
-        </button>
-        <span
-          data-skin-hover-label
-          style={{
-            fontSize: 11,
-            color: SUBTEXT_COLOR,
-            background: DRAWER_BG_COLOR,
-            border: `1px solid ${BORDER_COLOR}`,
-            borderRadius: 999,
-            padding: "2px 8px",
-            opacity: 0,
-            transform: "translateX(-6px)",
-            transition: "opacity 180ms ease, transform 180ms ease",
-            pointerEvents: "none",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Seleccionar skin
-        </span>
-        {isSkinMenuOpen && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 56,
-              left: 0,
-              width: 240,
-              maxHeight: "70vh",
-              overflowY: "auto",
-              background: DRAWER_BG_COLOR,
-              border: `1px solid ${BORDER_COLOR}`,
-              borderRadius: 12,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.16)",
-              padding: 8,
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            {skinOptions.map((skin) => {
-              const active = skin.id === selectedSkinId;
-              const isBuiltin = BUILTIN_SKINS.some((b) => b.id === skin.id);
-              const isLocked = !!skin.locked || isBuiltin;
-              return (
-                <div key={skin.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedSkinId(skin.id); setIsSkinMenuOpen(false); }}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                      padding: "7px 8px", borderRadius: 8,
-                      border: `1px solid ${active ? PRIMARY_COLOR : BORDER_COLOR}`,
-                      background: active ? SURFACE_COLOR : "transparent",
-                      color: active ? PRIMARY_COLOR : TEXT_COLOR,
-                      fontSize: 12, cursor: "pointer", textAlign: "left", fontFamily: FONT,
-                    }}
-                  >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{skin.name}</span>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: skin.tokens.primary, border: `1px solid ${skin.tokens.border}`, flexShrink: 0 }} />
-                  </button>
-                  {!isBuiltin && (
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button type="button" onClick={() => renameSkin(skin.id)} style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: SUBTEXT_COLOR }} title="Renombrar skin">Ren</button>
-                      <button type="button" onClick={() => toggleSkinLock(skin.id)} style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: isLocked ? PRIMARY_COLOR : SUBTEXT_COLOR }} title={isLocked ? "Desbloquear skin" : "Bloquear skin"}>{isLocked ? "Lock" : "Open"}</button>
-                      <button type="button" disabled={isLocked} onClick={() => deleteSkin(skin.id)} style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: isLocked ? BORDER_COLOR : "#d11a2a", cursor: isLocked ? "not-allowed" : "pointer" }} title={isLocked ? "Skin bloqueada" : "Eliminar skin"}>Del</button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            <button type="button" onClick={saveCurrentSkin} style={{ marginTop: 2, padding: "7px 8px", borderRadius: 8, border: `1px dashed ${BORDER_COLOR}`, background: "transparent", color: SUBTEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
-              Guardar skin actual
-            </button>
-            <button type="button" onClick={() => { setSkinEditorOpen((v) => !v); setSkinDraft((prev) => ({ ...makeSkinDraftFromTokens(activeSkin.tokens), name: prev.name })); }} style={{ padding: "7px 8px", borderRadius: 8, border: `1px solid ${BORDER_COLOR}`, background: SURFACE_COLOR, color: TEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
-              {skinEditorOpen ? "Cerrar editor" : "Editor visual de skin"}
-            </button>
-            {skinEditorOpen && (
-              <div style={{ marginTop: 4, border: `1px solid ${BORDER_COLOR}`, borderRadius: 10, padding: 8, display: "grid", gap: 6 }}>
-                <input value={skinDraft.name} onChange={(e) => setSkinDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nombre de skin" style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: "6px 8px", fontSize: 12, fontFamily: FONT }} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  {[
-                    ["brand", "Brand"], ["primary", "Primary"], ["surface", "Surface"], ["border", "Border"],
-                    ["text", "Text"], ["subtext", "Subtext"], ["drawerBg", "Drawer BG"], ["headerText", "Header text"],
-                    ["backdrop", "Backdrop"], ["userBubbleText", "User txt"], ["assistantBubbleText", "Assist txt"],
-                  ].map(([key, label]) => (
-                    <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 11, color: SUBTEXT_COLOR }}>
-                      <span>{label}</span>
-                      <div style={{ display: "flex", gap: 4, width: 100 }}>
-                        <input type="text" value={skinDraft[key] || ""} onChange={(e) => setSkinDraft((prev) => ({ ...prev, [key]: e.target.value }))} style={{ flex: 1, border: `1px solid ${BORDER_COLOR}`, borderRadius: 4, padding: "2px 4px", fontSize: 10, minWidth: 0, background: DRAWER_BG_COLOR, color: TEXT_COLOR }} />
-                        <div style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid rgba(0,0,0,0.1)", background: skinDraft[key], flexShrink: 0 }} />
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                <button type="button" onClick={createSkinFromEditor} disabled={!skinDraft.name.trim()} style={{ padding: "7px 8px", borderRadius: 8, border: "none", background: skinDraft.name.trim() ? PRIMARY_COLOR : BORDER_COLOR, color: "#fff", fontSize: 12, cursor: skinDraft.name.trim() ? "pointer" : "not-allowed", fontFamily: FONT }}>
-                  Crear skin
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Drawer */}
       <div
         ref={drawerRef}
@@ -1241,6 +1072,178 @@ export default function PanelinChatPanel({
               Ver últimos mensajes ↓
             </button>
           )}
+
+          {/* Signature + skin selector: end of scroll area only (no fixed overlap with dev tools / page chrome) */}
+          <div
+            style={{
+              position: "relative",
+              marginTop: 28,
+              paddingBottom: 8,
+              flexShrink: 0,
+              alignSelf: "flex-start",
+              maxWidth: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+            onMouseEnter={(e) => {
+              const label = e.currentTarget.querySelector("[data-skin-hover-label]");
+              if (label) {
+                label.style.opacity = "1";
+                label.style.transform = "translateX(0)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              const label = e.currentTarget.querySelector("[data-skin-hover-label]");
+              if (label) {
+                label.style.opacity = "0";
+                label.style.transform = "translateX(-6px)";
+              }
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setIsSkinMenuOpen((v) => !v)}
+              title="Seleccionar skin"
+              aria-label="Seleccionar skin"
+              style={{
+                width: 88,
+                height: 176,
+                borderRadius: 8,
+                border: "none",
+                background: "transparent",
+                padding: 0,
+                cursor: "pointer",
+                opacity: 0.85,
+                transition: "opacity 150ms ease, transform 150ms ease",
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "flex-start",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = "1";
+                e.currentTarget.style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = "0.85";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  backgroundImage: `url(${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}signature.png)`,
+                  backgroundSize: "contain",
+                  backgroundPosition: "center bottom",
+                  backgroundRepeat: "no-repeat",
+                  mixBlendMode: "multiply",
+                  filter: "contrast(1.2) drop-shadow(0 1px 1px rgba(0,0,0,0.05))",
+                }}
+              />
+            </button>
+            <span
+              data-skin-hover-label
+              style={{
+                fontSize: 11,
+                color: SUBTEXT_COLOR,
+                background: DRAWER_BG_COLOR,
+                border: `1px solid ${BORDER_COLOR}`,
+                borderRadius: 999,
+                padding: "2px 8px",
+                opacity: 0,
+                transform: "translateX(-6px)",
+                transition: "opacity 180ms ease, transform 180ms ease",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Seleccionar skin
+            </span>
+            {isSkinMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  bottom: "100%",
+                  marginBottom: 8,
+                  width: 240,
+                  maxHeight: "min(70vh, 320px)",
+                  overflowY: "auto",
+                  background: DRAWER_BG_COLOR,
+                  border: `1px solid ${BORDER_COLOR}`,
+                  borderRadius: 12,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.16)",
+                  padding: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  zIndex: 4,
+                }}
+              >
+                {skinOptions.map((skin) => {
+                  const active = skin.id === selectedSkinId;
+                  const isBuiltin = BUILTIN_SKINS.some((b) => b.id === skin.id);
+                  const isLocked = !!skin.locked || isBuiltin;
+                  return (
+                    <div key={skin.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedSkinId(skin.id); setIsSkinMenuOpen(false); }}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                          padding: "7px 8px", borderRadius: 8,
+                          border: `1px solid ${active ? PRIMARY_COLOR : BORDER_COLOR}`,
+                          background: active ? SURFACE_COLOR : "transparent",
+                          color: active ? PRIMARY_COLOR : TEXT_COLOR,
+                          fontSize: 12, cursor: "pointer", textAlign: "left", fontFamily: FONT,
+                        }}
+                      >
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{skin.name}</span>
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: skin.tokens.primary, border: `1px solid ${skin.tokens.border}`, flexShrink: 0 }} />
+                      </button>
+                      {!isBuiltin && (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button type="button" onClick={() => renameSkin(skin.id)} style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: SUBTEXT_COLOR }} title="Renombrar skin">Ren</button>
+                          <button type="button" onClick={() => toggleSkinLock(skin.id)} style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: isLocked ? PRIMARY_COLOR : SUBTEXT_COLOR }} title={isLocked ? "Desbloquear skin" : "Bloquear skin"}>{isLocked ? "Lock" : "Open"}</button>
+                          <button type="button" disabled={isLocked} onClick={() => deleteSkin(skin.id)} style={{ ...tinyActionBtn, borderColor: BORDER_COLOR, color: isLocked ? BORDER_COLOR : "#d11a2a", cursor: isLocked ? "not-allowed" : "pointer" }} title={isLocked ? "Skin bloqueada" : "Eliminar skin"}>Del</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <button type="button" onClick={saveCurrentSkin} style={{ marginTop: 2, padding: "7px 8px", borderRadius: 8, border: `1px dashed ${BORDER_COLOR}`, background: "transparent", color: SUBTEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
+                  Guardar skin actual
+                </button>
+                <button type="button" onClick={() => { setSkinEditorOpen((v) => !v); setSkinDraft((prev) => ({ ...makeSkinDraftFromTokens(activeSkin.tokens), name: prev.name })); }} style={{ padding: "7px 8px", borderRadius: 8, border: `1px solid ${BORDER_COLOR}`, background: SURFACE_COLOR, color: TEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
+                  {skinEditorOpen ? "Cerrar editor" : "Editor visual de skin"}
+                </button>
+                {skinEditorOpen && (
+                  <div style={{ marginTop: 4, border: `1px solid ${BORDER_COLOR}`, borderRadius: 10, padding: 8, display: "grid", gap: 6 }}>
+                    <input value={skinDraft.name} onChange={(e) => setSkinDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nombre de skin" style={{ border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, padding: "6px 8px", fontSize: 12, fontFamily: FONT }} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                      {[
+                        ["brand", "Brand"], ["primary", "Primary"], ["surface", "Surface"], ["border", "Border"],
+                        ["text", "Text"], ["subtext", "Subtext"], ["drawerBg", "Drawer BG"], ["headerText", "Header text"],
+                        ["backdrop", "Backdrop"], ["userBubbleText", "User txt"], ["assistantBubbleText", "Assist txt"],
+                      ].map(([key, label]) => (
+                        <label key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 11, color: SUBTEXT_COLOR }}>
+                          <span>{label}</span>
+                          <div style={{ display: "flex", gap: 4, width: 100 }}>
+                            <input type="text" value={skinDraft[key] || ""} onChange={(e) => setSkinDraft((prev) => ({ ...prev, [key]: e.target.value }))} style={{ flex: 1, border: `1px solid ${BORDER_COLOR}`, borderRadius: 4, padding: "2px 4px", fontSize: 10, minWidth: 0, background: DRAWER_BG_COLOR, color: TEXT_COLOR }} />
+                            <div style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid rgba(0,0,0,0.1)", background: skinDraft[key], flexShrink: 0 }} />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <button type="button" onClick={createSkinFromEditor} disabled={!skinDraft.name.trim()} style={{ padding: "7px 8px", borderRadius: 8, border: "none", background: skinDraft.name.trim() ? PRIMARY_COLOR : BORDER_COLOR, color: "#fff", fontSize: 12, cursor: skinDraft.name.trim() ? "pointer" : "not-allowed", fontFamily: FONT }}>
+                      Crear skin
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div ref={messagesEndRef} />
         </div>

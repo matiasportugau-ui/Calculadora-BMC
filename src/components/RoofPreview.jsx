@@ -4,18 +4,16 @@
 // buildRoofPlanEdges muestra perímetro/encuentros; rejilla horizontal = paso au a lo largo de largo en planta.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { C, FONT } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente } from "../utils/calculations.js";
-import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
+import { buildRoofPlanEdges, encounterPairKey, findEncounters } from "../utils/roofPlanGeometry.js";
+import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import {
   formatZonaDisplayTitle,
-  getAnnexSnapCandidateLeftXs,
   getLateralAnnexRootBodyGi,
   isLateralAnnexZona,
-  LATERAL_ANNEX_SNAP_M,
-  snapLateralAnnexPlanta,
 } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 
@@ -75,6 +73,86 @@ function clampZonaTopLeft(x, y, w, h, vm) {
     x: Math.min(Math.max(x, x1), x2),
     y: Math.min(Math.max(y, y1), y2),
   };
+}
+
+/** Imán a aristas de otras zonas (8 candidatos por eje). */
+function snapDragRect(rawX, rawY, w, h, gi, entries, snapM) {
+  let fx = rawX;
+  let fy = rawY;
+  let bestX = snapM;
+  let bestY = snapM;
+  const L = rawX;
+  const R = rawX + w;
+  const T = rawY;
+  const B = rawY + h;
+  for (const r of entries) {
+    if (r.gi === gi) continue;
+    const rL = r.x;
+    const rR = r.x + r.w;
+    const rT = r.y;
+    const rB = r.y + r.h;
+    const tryX = (nx, d) => {
+      if (d < bestX) {
+        bestX = d;
+        fx = nx;
+      }
+    };
+    const tryY = (ny, d) => {
+      if (d < bestY) {
+        bestY = d;
+        fy = ny;
+      }
+    };
+    tryX(rL, Math.abs(L - rL));
+    tryX(rR, Math.abs(L - rR));
+    tryX(rL - w, Math.abs(R - rL));
+    tryX(rR - w, Math.abs(R - rR));
+    tryY(rT, Math.abs(T - rT));
+    tryY(rB, Math.abs(T - rB));
+    tryY(rT - h, Math.abs(B - rT));
+    tryY(rB - h, Math.abs(B - rB));
+  }
+  return { x: fx, y: fy, snappedX: bestX < snapM, snappedY: bestY < snapM };
+}
+
+/** Guías de alineación (extensiones al viewBox). */
+function alignmentGuidesForRect(x, y, w, h, gi, entries, snapM) {
+  const vx = new Set();
+  const hy = new Set();
+  const candX = [x, x + w, x + w / 2];
+  const candY = [y, y + h, y + h / 2];
+  const tol = snapM * 1.15;
+  for (const r of entries) {
+    if (r.gi === gi) continue;
+    const ox = [r.x, r.x + r.w, r.x + r.w / 2];
+    const oy = [r.y, r.y + r.h, r.y + r.h / 2];
+    for (const cx of candX) {
+      for (const oxv of ox) {
+        if (Math.abs(cx - oxv) < tol) vx.add(+(cx).toFixed(4));
+      }
+    }
+    for (const cy of candY) {
+      for (const oyv of oy) {
+        if (Math.abs(cy - oyv) < tol) hy.add(+(cy).toFixed(4));
+      }
+    }
+  }
+  return { vx: [...vx], hy: [...hy] };
+}
+
+function encounterStrokeForModo(modo) {
+  if (modo === "continuo") return "#22c55e";
+  if (modo === "pretil") return "#f97316";
+  if (modo === "cumbrera") return "#3b82f6";
+  if (modo === "desnivel") return "#ef4444";
+  return "#f59e0b";
+}
+
+function getEncounterConfigFromZonas(zonas, ga, gb) {
+  const pk = encounterPairKey(ga, gb);
+  const low = Math.min(ga, gb);
+  const raw = zonas[low]?.preview?.encounterByPair?.[pk];
+  return normalizeEncounter(raw);
 }
 
 /**
@@ -179,6 +257,9 @@ function SlopeArrow({ cx, cy, h, dir }) {
  * @param {function} [props.onResetLayout] - limpia posiciones; conserva slopeMark si aplica
  * @param {function} [props.onAnnexLateralSideChange] - (gi, 'izq'|'der') anexo lateral mismo cuerpo
  * @param {function} [props.onAnnexRankSwap] - (gi, dir: -1|1) intercambia orden en cadena lateral
+ * @param {function} [props.onAddZona] - agrega una zona nueva (toolbar)
+ * @param {function} [props.onEncounterPairChange] - (pairKey, encounterPatch|null) guarda en `preview.encounterByPair`; null = desconectar
+ * @param {function} [props.onZonaDimensionPatch] - (gi, { largo?, ancho? }) edición inline al seleccionar zona
  */
 export default function RoofPreview({
   zonas = [],
@@ -189,11 +270,18 @@ export default function RoofPreview({
   onResetLayout,
   onAnnexLateralSideChange,
   onAnnexRankSwap,
+  onAddZona,
+  onEncounterPairChange,
+  onZonaDimensionPatch,
 }) {
   const fp = calcFactorPendiente(pendiente);
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
+  const [dragOverlay, setDragOverlay] = useState(null);
+  const [encounterPrompt, setEncounterPrompt] = useState(null);
+  const [selectedGi, setSelectedGi] = useState(null);
+  const [undoStack, setUndoStack] = useState([]);
 
   const tipoPlanta = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
 
@@ -255,6 +343,21 @@ export default function RoofPreview({
     [onZonaPreviewChange, zonas],
   );
 
+  const applyUndo = useCallback(() => {
+    setUndoStack((s) => {
+      if (!s.length) return s;
+      const prev = s[s.length - 1];
+      for (const k of Object.keys(prev)) {
+        const gi = Number(k);
+        const pos = prev[k];
+        if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) {
+          onZonaPreviewChange?.(gi, { x: pos.x, y: pos.y });
+        }
+      }
+      return s.slice(0, -1);
+    });
+  }, [onZonaPreviewChange]);
+
   const annexHitStop = useCallback((e) => {
     e.stopPropagation();
   }, []);
@@ -267,6 +370,13 @@ export default function RoofPreview({
       if (!svg) return;
       svg.setPointerCapture(e.pointerId);
       const p = clientToSvg(svg, e.clientX, e.clientY);
+      setSelectedGi(gi);
+      const snap = {};
+      for (let i = 0; i < zonas.length; i++) {
+        const px = zonas[i]?.preview?.x;
+        const py = zonas[i]?.preview?.y;
+        if (Number.isFinite(px) && Number.isFinite(py)) snap[i] = { x: px, y: py };
+      }
       dragRef.current = {
         gi,
         pointerId: e.pointerId,
@@ -281,9 +391,11 @@ export default function RoofPreview({
         moved: false,
         lastX: rect.x,
         lastY: rect.y,
+        startSnapshot: snap,
+        snapshotSaved: false,
       };
     },
-    [onZonaPreviewChange],
+    [onZonaPreviewChange, zonas],
   );
 
   const handlePointerMove = useCallback(
@@ -295,77 +407,41 @@ export default function RoofPreview({
       if (dx * dx + dy * dy > 64) d.moved = true;
       const svg = svgRef.current;
       if (!svg) return;
+      if (d.moved && !d.snapshotSaved && d.startSnapshot && Object.keys(d.startSnapshot).length) {
+        d.snapshotSaved = true;
+        setUndoStack((s) => [...s.slice(-4), d.startSnapshot]);
+      }
       const p = clientToSvg(svg, e.clientX, e.clientY);
       const zDrag = zonas[d.gi];
 
+      const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
+      const rawY = d.rectStartY + (p.y - d.pointerStartY) * DRAG_SENSITIVITY;
+      const sn = snapDragRect(rawX, rawY, d.rectW, d.rectH, d.gi, layout.entries, SNAP_ZONE_M);
+      const vm = layout.viewMetrics;
+      const { x, y } = clampZonaTopLeft(sn.x, sn.y, d.rectW, d.rectH, vm);
+
+      const patch = { x, y };
       if (isLateralAnnexZona(zDrag)) {
         const parentGi = Number(zDrag?.preview?.attachParentGi);
         const parentR = layout.entries.find((er) => er.gi === parentGi);
-        if (!parentR) return;
-        const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
-        const rawY = parentR.y;
-        const entryLike = layout.entries.map((er) => ({
-          gi: er.gi,
-          x: er.x,
-          y: er.y,
-          w: er.w,
-          h: er.h,
-        }));
-        const xs = getAnnexSnapCandidateLeftXs(zonas, tipoPlanta, d.gi, entryLike);
-        let finalX = rawX;
-        let bestDX = SNAP_ZONE_M;
-        for (const cx of xs) {
-          const ddx = Math.abs(rawX - cx);
-          if (ddx < bestDX) {
-            bestDX = ddx;
-            finalX = cx;
-          }
+        if (parentR) {
+          const mid = parentR.x + parentR.w / 2;
+          patch.lateralSide = x + d.rectW / 2 < mid ? "izq" : "der";
+          patch.lateralManual = true;
         }
-        const vm = layout.viewMetrics;
-        const { x } = clampZonaTopLeft(finalX, rawY, d.rectW, d.rectH, vm);
-        const y = parentR.y;
-        const mid = parentR.x + parentR.w / 2;
-        const lateralSide = x + d.rectW / 2 < mid ? "izq" : "der";
-        d.lastX = x;
-        d.lastY = y;
-        onZonaPreviewChange?.(d.gi, { x, y, lateralSide, lateralManual: true });
-        return;
       }
 
-      const rawX = d.rectStartX + (p.x - d.pointerStartX) * DRAG_SENSITIVITY;
-      const rawY = d.rectStartY + (p.y - d.pointerStartY) * DRAG_SENSITIVITY;
-      let finalX = rawX;
-      let finalY = rawY;
-      let bestDX = SNAP_ZONE_M;
-      let bestDY = SNAP_ZONE_M;
-      for (const r of layout.entries) {
-        if (r.gi === d.gi) continue;
-        const curR = rawX + d.rectW;
-        const curB = rawY + d.rectH;
-        if (Math.abs(curR - r.x) < bestDX) {
-          bestDX = Math.abs(curR - r.x);
-          finalX = r.x - d.rectW;
-        }
-        if (Math.abs(rawX - (r.x + r.w)) < bestDX) {
-          bestDX = Math.abs(rawX - (r.x + r.w));
-          finalX = r.x + r.w;
-        }
-        if (Math.abs(curB - r.y) < bestDY) {
-          bestDY = Math.abs(curB - r.y);
-          finalY = r.y - d.rectH;
-        }
-        if (Math.abs(rawY - (r.y + r.h)) < bestDY) {
-          bestDY = Math.abs(rawY - (r.y + r.h));
-          finalY = r.y + r.h;
-        }
-      }
-      const vm = layout.viewMetrics;
-      const { x, y } = clampZonaTopLeft(finalX, finalY, d.rectW, d.rectH, vm);
       d.lastX = x;
       d.lastY = y;
-      onZonaPreviewChange?.(d.gi, { x, y });
+      setDragOverlay({
+        gi: d.gi,
+        snappedX: sn.snappedX,
+        snappedY: sn.snappedY,
+        guides: alignmentGuidesForRect(x, y, d.rectW, d.rectH, d.gi, layout.entries, SNAP_ZONE_M),
+      });
+      onZonaPreviewChange?.(d.gi, patch);
     },
-    [onZonaPreviewChange, layout.entries, layout.viewMetrics, zonas, tipoPlanta],
+    [onZonaPreviewChange, layout.entries, layout.viewMetrics, zonas],
   );
 
   const handlePointerUp = useCallback(
@@ -378,6 +454,7 @@ export default function RoofPreview({
       } catch {
         /* ignore */
       }
+      setDragOverlay(null);
       // Doble toque (touch) o doble clic (mouse/lápiz) sin arrastre: mismo criterio que vista 3D.
       if (!d.moved && (e.pointerType === "touch" || e.pointerType === "mouse" || e.pointerType === "pen")) {
         const now = Date.now();
@@ -397,26 +474,26 @@ export default function RoofPreview({
           tapRef.current = { t: now, gi: d.gi, x: e.clientX, y: e.clientY };
         }
       }
-      if (d && isLateralAnnexZona(zonas[d.gi]) && onZonaPreviewChange) {
-        const zA = zonas[d.gi];
-        const parentGi = Number(zA?.preview?.attachParentGi);
-        const parentR = layout.entries.find((er) => er.gi === parentGi);
-        if (parentR) {
-          const rawX = typeof d.lastX === "number" ? d.lastX : d.rectStartX;
-          const entryLike = layout.entries.map((er) => ({
-            gi: er.gi,
-            x: er.x,
-            y: er.y,
-            w: er.w,
-            h: er.h,
-          }));
-          const snapped = snapLateralAnnexPlanta(zonas, tipoPlanta, d.gi, rawX, entryLike, LATERAL_ANNEX_SNAP_M);
-          if (snapped) onZonaPreviewChange(d.gi, snapped);
+      if (d.moved && onEncounterPairChange && layout.entries.length > 1) {
+        try {
+          const encs = findEncounters(layout.entries);
+          const missing = encs.filter((enc) => {
+            const [a, b] = enc.zoneIndices;
+            const pk = encounterPairKey(a, b);
+            const low = Math.min(a, b);
+            return zonas[low]?.preview?.encounterByPair?.[pk] == null;
+          });
+          if (missing.length) {
+            const [a, b] = missing[0].zoneIndices;
+            setEncounterPrompt({ pairKey: encounterPairKey(a, b), ga: a, gb: b });
+          }
+        } catch {
+          /* ignore */
         }
       }
       dragRef.current = null;
     },
-    [cycleSlope, onZonaPreviewChange, zonas, layout.entries, tipoPlanta],
+    [cycleSlope, onEncounterPairChange, zonas, layout.entries],
   );
 
   const handleLostCapture = useCallback(() => {
@@ -452,32 +529,144 @@ export default function RoofPreview({
         }}
       >
         <span>Vista previa del techo</span>
-        {onResetLayout && layout.entries.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          {onAddZona && (
+            <button
+              type="button"
+              onClick={onAddZona}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.tp,
+                background: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+              }}
+            >
+              Agregar zona
+            </button>
+          )}
+          {onResetLayout && layout.entries.length > 0 && (
+            <button
+              type="button"
+              onClick={onResetLayout}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.primary,
+                background: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+              }}
+            >
+              Alinear zonas
+            </button>
+          )}
+          {undoStack.length > 0 && onZonaPreviewChange && (
+            <button
+              type="button"
+              onClick={applyUndo}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.tp,
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+              }}
+            >
+              Deshacer
+            </button>
+          )}
+        </div>
+      </div>
+      {encounterPrompt && onEncounterPairChange && (
+        <div
+          style={{
+            marginBottom: 10,
+            padding: 12,
+            borderRadius: 10,
+            border: `1px solid ${C.border}`,
+            background: C.surface,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.tp, marginRight: 4 }}>
+            Encuentro zonas {encounterPrompt.pairKey}
+          </span>
           <button
             type="button"
-            onClick={onResetLayout}
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              color: C.primary,
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              padding: "6px 10px",
-              cursor: "pointer",
+            onClick={() => {
+              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "continuo", modo: "continuo" });
+              setEncounterPrompt(null);
             }}
+            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#ecfdf5", color: "#166534", cursor: "pointer" }}
           >
-            Alinear zonas
+            Continuo
           </button>
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={() => {
+              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "pretil", perfil: "pretil" });
+              setEncounterPrompt(null);
+            }}
+            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff7ed", color: "#9a3412", cursor: "pointer" }}
+          >
+            Pretil
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "cumbrera", perfil: "cumbrera", cumbreraUnida: true });
+              setEncounterPrompt(null);
+            }}
+            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#eff6ff", color: "#1d4ed8", cursor: "pointer" }}
+          >
+            Cumbrera
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "desnivel", perfil: "pretil", desnivel: { perfilBajo: "pretil", perfilAlto: "cumbrera" } });
+              setEncounterPrompt(null);
+            }}
+            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fef2f2", color: "#b91c1c", cursor: "pointer" }}
+          >
+            Desnivel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onEncounterPairChange(encounterPrompt.pairKey, null);
+              setEncounterPrompt(null);
+            }}
+            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.ts, cursor: "pointer" }}
+          >
+            Desconectar (exterior)
+          </button>
+          <button
+            type="button"
+            onClick={() => setEncounterPrompt(null)}
+            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.tp, cursor: "pointer", marginLeft: "auto" }}
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
       <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
-        Varias medidas en planta (bloques tocándose) son{" "}
-        <strong style={{ color: C.tp }}>una sola superficie</strong> sin separación visual entre tramos — no otro cuerpo. El
-        núcleo lo podés mover; las <strong style={{ color: C.tp }}>extensiones laterales</strong> se arrastran en planta solo
-        por costados (no por frente/fondo) y también con ← → y « ». Arrastrá otra{" "}
-        <strong style={{ color: C.tp }}>superficie independiente</strong> (otra zona raíz). Doble clic en la superficie:
-        pendiente visual.
+        Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
+        Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir.
+        Doble clic en la superficie: pendiente visual. Usá <strong style={{ color: C.tp }}>Agregar zona</strong> para sumar
+        superficies independientes.
       </CollapsibleHint>
       <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
         {layout.entries.length === 0 ? (
@@ -525,17 +714,59 @@ export default function RoofPreview({
               onPointerCancel={handleLostCapture}
               onLostPointerCapture={handleLostCapture}
             >
-            {encounters.map((enc) => (
-              <line
-                key={enc.id}
-                x1={enc.x1} y1={enc.y1} x2={enc.x2} y2={enc.y2}
-                stroke="#f59e0b"
-                strokeWidth={0.07}
-                strokeDasharray="0.18 0.09"
-                pointerEvents="none"
-                opacity={0.95}
-              />
-            ))}
+            {layout.viewMetrics && dragOverlay?.guides && (
+              <g pointerEvents="none" opacity={0.55}>
+                {dragOverlay.guides.vx.map((xv) => (
+                  <line
+                    key={`vg-${xv}`}
+                    x1={xv}
+                    x2={xv}
+                    y1={layout.viewMetrics.vbY}
+                    y2={layout.viewMetrics.vbY + layout.viewMetrics.vbH}
+                    stroke="#64748b"
+                    strokeWidth={0.035}
+                    strokeDasharray="0.12 0.08"
+                  />
+                ))}
+                {dragOverlay.guides.hy.map((yv) => (
+                  <line
+                    key={`hg-${yv}`}
+                    x1={layout.viewMetrics.vbX}
+                    x2={layout.viewMetrics.vbX + layout.viewMetrics.vbW}
+                    y1={yv}
+                    y2={yv}
+                    stroke="#64748b"
+                    strokeWidth={0.035}
+                    strokeDasharray="0.12 0.08"
+                  />
+                ))}
+              </g>
+            )}
+            {encounters.map((enc) => {
+              const [ga, gb] = enc.zoneIndices;
+              const cfg = getEncounterConfigFromZonas(zonas, ga, gb);
+              const stroke = encounterStrokeForModo(cfg.modo);
+              return (
+                <line
+                  key={enc.id}
+                  x1={enc.x1}
+                  y1={enc.y1}
+                  x2={enc.x2}
+                  y2={enc.y2}
+                  stroke={stroke}
+                  strokeWidth={0.09}
+                  strokeDasharray="0.16 0.1"
+                  pointerEvents="stroke"
+                  opacity={0.95}
+                  style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
+                  onPointerDown={(ev) => {
+                    if (!onEncounterPairChange) return;
+                    ev.stopPropagation();
+                    setEncounterPrompt({ pairKey: encounterPairKey(ga, gb), ga, gb });
+                  }}
+                />
+              );
+            })}
             {layout.entries.map((r) => {
               const sm = r.z.preview?.slopeMark;
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
@@ -556,11 +787,25 @@ export default function RoofPreview({
                     height={r.h}
                     rx={0.12}
                     fill={C.primary}
-                    fillOpacity={0.08}
+                    fillOpacity={selectedGi === r.gi ? 0.12 : 0.08}
                     stroke="none"
                     style={{ cursor: canDrag ? "grab" : "default" }}
                     onPointerDown={(e) => handlePointerDown(e, r.gi, r)}
                   />
+                  {dragOverlay?.gi === r.gi && (dragOverlay.snappedX || dragOverlay.snappedY) && (
+                    <rect
+                      x={r.x}
+                      y={r.y}
+                      width={r.w}
+                      height={r.h}
+                      rx={0.14}
+                      fill="none"
+                      stroke="#22c55e"
+                      strokeWidth={0.09}
+                      opacity={0.9}
+                      pointerEvents="none"
+                    />
+                  )}
                   <PanelRoofVisualization
                     x0={r.x}
                     y0={r.y}
@@ -758,6 +1003,53 @@ export default function RoofPreview({
             <strong style={{ fontSize: 15 }}>{layout.totalArea.toFixed(1)} m²</strong>
             <span style={{ fontWeight: 500, color: C.ts }}> total</span>
           </div>
+          {typeof onZonaDimensionPatch === "function" && selectedGi != null && zonas[selectedGi] && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: 10,
+                borderRadius: 10,
+                border: `1px solid ${C.border}`,
+                background: C.surface,
+                fontSize: 11,
+                color: C.ts,
+              }}
+            >
+              <div style={{ fontWeight: 700, color: C.tp, marginBottom: 8 }}>
+                Zona {formatZonaDisplayTitle(zonas, selectedGi)}
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span style={{ width: 72 }}>Largo (m)</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={zonas[selectedGi].largo ?? 0}
+                  onChange={(ev) => {
+                    const v = Number(ev.target.value);
+                    if (!Number.isFinite(v)) return;
+                    onZonaDimensionPatch(selectedGi, { largo: v });
+                  }}
+                  style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }}
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 72 }}>Ancho (m)</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={zonas[selectedGi].ancho ?? 0}
+                  onChange={(ev) => {
+                    const v = Number(ev.target.value);
+                    if (!Number.isFinite(v)) return;
+                    onZonaDimensionPatch(selectedGi, { ancho: v });
+                  }}
+                  style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }}
+                />
+              </label>
+            </div>
+          )}
           {layout.entries.length > 0 && (
             <div
               style={{
@@ -833,7 +1125,7 @@ export default function RoofPreview({
                     compartido
                   </div>
                   <div style={{ marginTop: 6, fontSize: 9, opacity: 0.92 }}>
-                    La cotización sigue usando bordes globales; esto prepara accesorios por tramo.
+                    Perímetro y encuentros alimentan accesorios (una agua, multizona) vía geometría de planta y tipo de encuentro.
                   </div>
                 </div>
               )}

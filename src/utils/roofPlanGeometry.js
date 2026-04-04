@@ -395,3 +395,57 @@ export function getSharedSidesPerZona(zonas, tipoAguas = "una_agua") {
   }
   return result;
 }
+
+/**
+ * Clave estable para configuración de encuentro entre dos zonas (índices globales).
+ * @param {number} ga
+ * @param {number} gb
+ */
+export function encounterPairKey(ga, gb) {
+  const a = Number(ga);
+  const b = Number(gb);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return "";
+  return a <= b ? `${a}-${b}` : `${b}-${a}`;
+}
+
+/**
+ * ML de perímetro **exterior** por zona y lado semántico (tras restar encuentros en arista).
+ * Usa layout lógico (sin gap visual) coherente con `getSharedSidesPerZona`.
+ *
+ * @param {Array<{ largo: number, ancho: number, preview?: object }>} zonas
+ * @param {"una_agua"|"dos_aguas"} [tipoAguas]
+ * @returns {{
+ *   rects: ReturnType<typeof zonasToPlantRectsLogical>,
+ *   encounters: ReturnType<typeof findEncounters>,
+ *   exteriorEdges: ReturnType<typeof buildExteriorSegments>,
+ *   mlByZona: Record<number, { frente: number, fondo: number, latIzq: number, latDer: number }>
+ * }}
+ */
+export function buildEdgeBOM(zonas, tipoAguas = "una_agua") {
+  const rects = zonasToPlantRectsLogical(zonas, tipoAguas);
+  const encounters = findEncounters(rects);
+  const exteriorEdges = buildExteriorSegments(rects, encounters);
+
+  /** @type {Record<number, { frente: number, fondo: number, latIzq: number, latDer: number }>} */
+  const mlByZona = {};
+  for (const r of rects) {
+    mlByZona[r.gi] = { frente: 0, fondo: 0, latIzq: 0, latDer: 0 };
+  }
+
+  const svgSideToSemantic = (side) =>
+    side === "top" ? "fondo" : side === "bottom" ? "frente" : side === "left" ? "latIzq" : "latDer";
+
+  for (const s of exteriorEdges) {
+    const sem = svgSideToSemantic(s.side);
+    const row = mlByZona[s.zoneIndex];
+    if (row) row[sem] += s.length;
+  }
+  for (const gi of Object.keys(mlByZona)) {
+    const row = mlByZona[gi];
+    for (const k of Object.keys(row)) {
+      row[k] = +row[k].toFixed(4);
+    }
+  }
+
+  return { rects, encounters, exteriorEdges, mlByZona };
+}

@@ -2636,36 +2636,38 @@ export default function PanelinCalculadoraV3() {
 
   const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, buildDefaultZona(t)] }));
 
-  /** Anexo lateral (mismo cuerpo): solo costado izq/der del padre; medidas por defecto editables. */
-  const addLateralAnnexZona = useCallback((parentIdx) => {
+  const onRoofEncounterPairChange = useCallback((pairKey, enc) => {
     setTecho((t) => {
-      const parent = t.zonas[parentIdx];
-      if (!parent) return t;
-      const newZ = buildDefaultZona(t);
-      const side = "der";
-      const siblings = t.zonas
-        .map((zz, gi) => ({ zz, gi }))
-        .filter(
-          ({ zz, gi }) =>
-            gi !== parentIdx &&
-            isLateralAnnexZona(zz) &&
-            Number(zz.preview?.attachParentGi) === parentIdx &&
-            (zz.preview?.lateralSide === "izq" ? "izq" : "der") === side,
-        );
-      const ranks = siblings.map(({ zz }) => Number(zz.preview?.lateralRank) || 0);
-      const lateralRank = ranks.length ? Math.max(...ranks) + 1 : 0;
+      const parts = String(pairKey).split("-").map(Number);
+      if (parts.length !== 2 || !parts.every((n) => Number.isFinite(n))) return t;
+      const low = Math.min(parts[0], parts[1]);
+      const z = t.zonas[low];
+      if (!z) return t;
+      const prev = z.preview?.encounterByPair;
+      const base = prev && typeof prev === "object" ? { ...prev } : {};
+      if (enc == null) delete base[pairKey];
+      else base[pairKey] = enc;
       return {
         ...t,
-        zonas: [
-          ...t.zonas,
-          {
-            ...newZ,
-            preview: { attachParentGi: parentIdx, lateralSide: side, lateralRank },
-          },
-        ],
+        zonas: t.zonas.map((zz, i) =>
+          i === low ? { ...zz, preview: { ...zz.preview, encounterByPair: base } } : zz,
+        ),
       };
     });
-  }, [buildDefaultZona]);
+  }, [setTecho]);
+
+  const onRoofZonaDimensionPatch = useCallback((gi, patch) => {
+    setTecho((t) => ({
+      ...t,
+      zonas: t.zonas.map((z, i) => {
+        if (i !== gi) return z;
+        const next = { ...z };
+        if (patch.largo != null) next.largo = patch.largo;
+        if (patch.ancho != null) next.ancho = patch.ancho;
+        return next;
+      }),
+    }));
+  }, [setTecho]);
 
   const swapAnnexRank = useCallback((gi, dir) => {
     if (dir !== -1 && dir !== 1) return;
@@ -3856,29 +3858,6 @@ export default function PanelinCalculadoraV3() {
                               <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
                           </div>
-                          {!isLateralAnnexZona(zona) && (
-                          <button
-                            type="button"
-                            onClick={() => addLateralAnnexZona(idx)}
-                            style={{
-                              alignSelf: "flex-start",
-                              padding: "8px 12px",
-                              borderRadius: 8,
-                              border: `1px dashed ${C.primary}`,
-                              background: C.surface,
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              color: C.primary,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                            }}
-                          >
-                            <Plus size={16} />
-                            Otra medida
-                          </button>
-                          )}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
                             <button
                               type="button"
@@ -3906,7 +3885,7 @@ export default function PanelinCalculadoraV3() {
                         style={{ padding: "12px 20px", borderRadius: 12, border: `2px dashed ${C.border}`, background: C.surfaceAlt, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: TR }}
                       >
                         <Plus size={18} />
-                        Otro cuerpo de techo
+                        Agregar zona
                       </button>
                       <RoofPreview
                         zonas={techo.zonas || []}
@@ -3917,6 +3896,9 @@ export default function PanelinCalculadoraV3() {
                         onResetLayout={resetRoofPreviewLayout}
                         onAnnexLateralSideChange={(gi, side) => updateZonaPreview(gi, { lateralSide: side })}
                         onAnnexRankSwap={swapAnnexRank}
+                        onAddZona={addZona}
+                        onEncounterPairChange={onRoofEncounterPairChange}
+                        onZonaDimensionPatch={onRoofZonaDimensionPatch}
                       />
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
                         <button
@@ -4484,29 +4466,6 @@ export default function PanelinCalculadoraV3() {
                 )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                  {!isLateralAnnexZona(zona) && (
-                  <button
-                    type="button"
-                    onClick={() => addLateralAnnexZona(idx)}
-                    style={{
-                      alignSelf: "flex-start",
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      border: `1px dashed ${C.primary}`,
-                      background: C.surface,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      color: C.primary,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Plus size={14} />
-                    Otra medida al costado (Zona {getRootZoneOrdinal(techo.zonas || [], idx)})
-                  </button>
-                  )}
                   {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && (
                     <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 10, fontWeight: 500, cursor: "pointer", color: C.ts }}>Usar esta zona como techo principal</button>
                   )}
@@ -4514,9 +4473,11 @@ export default function PanelinCalculadoraV3() {
               </div>
             ))}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>La <strong style={{ color: C.tp }}>otra medida al costado</strong> sigue siendo el mismo cuerpo. Aquí sumás <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> (superficie independiente).</div>
+              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>
+                Sumá <strong style={{ color: C.tp }}>otra zona</strong> para superficies independientes; en planta podés alinearlas y marcar encuentros.
+              </div>
               <button type="button" onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surfaceAlt, fontSize: 13, cursor: "pointer", color: C.tp, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <Plus size={14} /> Otro cuerpo de techo (zona independiente)
+                <Plus size={14} /> Agregar zona
               </button>
             </div>
 

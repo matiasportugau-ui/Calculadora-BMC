@@ -6,11 +6,37 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "./calculations.js";
-import { getSharedSidesPerZona } from "./roofPlanGeometry.js";
-import { encounterEsContinuo, encounterBorderPerfil } from "./roofEncounterModel.js";
+import { buildEdgeBOM, encounterPairKey, getSharedSidesPerZona, layoutZonasLogico } from "./roofPlanGeometry.js";
+import { encounterEsContinuo, encounterBorderPerfil, resolveNeighborSharedSide } from "./roofEncounterModel.js";
 import { getPricing } from "../data/pricing.js";
 
 const EMPTY_BORDERS = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
+
+/**
+ * Perfiles en encuentros (geometría): una fila por tramo compartido, solo en la zona dueña `min(a,b)`.
+ * @param {number} gi
+ * @param {object[]} encounters
+ * @param {object[]} zonas
+ */
+function junctionListForZonaGi(gi, encounters, zonas) {
+  const out = [];
+  for (const e of encounters || []) {
+    const [a, b] = e.zoneIndices || [];
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    if (Math.min(a, b) !== gi) continue;
+    const pk = encounterPairKey(a, b);
+    const raw = zonas[gi]?.preview?.encounterByPair?.[pk];
+    if (!raw || encounterEsContinuo(raw)) continue;
+    const perfil = encounterBorderPerfil(raw);
+    if (!perfil || perfil === "none") continue;
+    out.push({
+      perfil,
+      lengthM: e.length,
+      label: `Encuentro (${pk}): ${perfil}`,
+    });
+  }
+  return out;
+}
 
 /**
  * Shared helper: compute techo zonas and merge results.
@@ -24,6 +50,11 @@ function computeTechoZonas(techo, useEncounterBorders) {
   const sharedSidesMap = techo.inclAccesorios !== false
     ? getSharedSidesPerZona(techo.zonas, techo.tipoAguas)
     : new Map();
+
+  const edgePack = !is2Aguas && Array.isArray(techo.zonas) && techo.zonas.length
+    ? buildEdgeBOM(techo.zonas, techo.tipoAguas)
+    : null;
+  const layoutRects = edgePack?.rects ?? layoutZonasLogico(techo.zonas || [], techo.tipoAguas);
 
   const zonaResults = techo.zonas.flatMap((zona, gi) => {
     const inputs = {
@@ -43,7 +74,10 @@ function computeTechoZonas(techo, useEncounterBorders) {
       effectiveBorders = sharedSideMap?.size > 0
         ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => {
             if (!sharedSideMap.get(k)?.fullySide) return [k, v];
-            const enc = zona.preview?.encounters?.[k];
+            const { neighborGi } = resolveNeighborSharedSide(gi, k, layoutRects);
+            const pk = neighborGi != null ? encounterPairKey(gi, neighborGi) : null;
+            const rawPair = pk != null ? techo.zonas[Math.min(gi, neighborGi)]?.preview?.encounterByPair?.[pk] : null;
+            const enc = rawPair ?? zona.preview?.encounters?.[k];
             return [k, encounterEsContinuo(enc) ? "none" : encounterBorderPerfil(enc)];
           }))
         : mergedBorders;
@@ -55,19 +89,42 @@ function computeTechoZonas(techo, useEncounterBorders) {
         : mergedBorders;
     }
 
+    const edgeML = !is2Aguas && edgePack?.mlByZona?.[gi]
+      ? { ...edgePack.mlByZona[gi] }
+      : undefined;
+    const encounterJunctions = !is2Aguas && edgePack?.encounters?.length
+      ? junctionListForZonaGi(gi, edgePack.encounters, techo.zonas)
+      : [];
+    const baseOpciones = inputs.opciones && typeof inputs.opciones === "object" ? inputs.opciones : {};
+    const opcionesMerged = {
+      ...baseOpciones,
+      ...(edgeML ? { edgeML } : {}),
+      ...(encounterJunctions.length ? { encounterJunctions } : {}),
+    };
+
     if (is2Aguas) {
       const halfAncho = +(zona.ancho / 2).toFixed(2);
       return [
-        calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { ...effectiveBorders, fondo: "cumbrera" } }),
-        calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: {
-          frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo,
-          fondo: "none",
-          latIzq: effectiveBorders.latIzq,
-          latDer: effectiveBorders.latDer,
-        }}),
+        calcTechoCompleto({
+          ...inputs,
+          ancho: halfAncho,
+          borders: { ...effectiveBorders, fondo: "cumbrera" },
+          opciones: { ...baseOpciones },
+        }),
+        calcTechoCompleto({
+          ...inputs,
+          ancho: halfAncho,
+          borders: {
+            frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo,
+            fondo: "none",
+            latIzq: effectiveBorders.latIzq,
+            latDer: effectiveBorders.latDer,
+          },
+          opciones: { ...baseOpciones },
+        }),
       ];
     }
-    return [calcTechoCompleto({ ...inputs, borders: effectiveBorders })];
+    return [calcTechoCompleto({ ...inputs, borders: effectiveBorders, opciones: opcionesMerged })];
   });
 
   return mergeZonaResults(zonaResults);

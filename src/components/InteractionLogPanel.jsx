@@ -57,7 +57,8 @@ export default function InteractionLogPanel({ getSnapshot }) {
       style={{
         position: "fixed",
         bottom: 16,
-        left: 16,
+        right: 16,
+        left: "auto",
         zIndex: 9998,
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         background: "#1a1a2e",

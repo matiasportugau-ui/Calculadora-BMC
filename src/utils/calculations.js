@@ -167,12 +167,18 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, costo: costoUn, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2), largoBarra: resolved.largo });
   };
 
+  const em = opciones?.edgeML && typeof opciones.edgeML === "object" ? opciones.edgeML : null;
+  const dimFrente = em && Number.isFinite(em.frente) ? em.frente : anchoTotal;
+  const dimFondo = em && Number.isFinite(em.fondo) ? em.fondo : anchoTotal;
+  const dimLatIzq = em && Number.isFinite(em.latIzq) ? em.latIzq : largo;
+  const dimLatDer = em && Number.isFinite(em.latDer) ? em.latDer : largo;
+
   // Canalón en frente: agregar canalón + soporte automáticamente
   if (borders.frente === "canalon") {
     const canData = resolveSKU_techo("canalon", familiaP, espesor);
     if (canData) {
       const precioCan = p(canData);
-      const pzasCan = Math.ceil(anchoTotal / canData.largo);
+      const pzasCan = Math.ceil(dimFrente / canData.largo);
       totalML += pzasCan * canData.largo;
       items.push({ label: "Frente Inf: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, costo: canData.costo ?? 0, total: +(pzasCan * precioCan).toFixed(2), largoBarra: canData.largo });
     }
@@ -184,22 +190,36 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       const precioSop = p(sopData);
       items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, costo: sopData.costo ?? 0, total: +(barrasSoporte * precioSop).toFixed(2), largoBarra: sopData.largo });
     }
-  } else if (borders.frente && borders.frente !== "none") {
-    addPerfil("Frente Inf: " + borders.frente, borders.frente, anchoTotal);
+  } else if (borders.frente && borders.frente !== "none" && dimFrente > 0) {
+    addPerfil("Frente Inf: " + borders.frente, borders.frente, dimFrente);
   }
 
-  if (borders.fondo && borders.fondo !== "none") addPerfil("Frente Sup: " + borders.fondo, borders.fondo, anchoTotal);
-  if (borders.latIzq && borders.latIzq !== "none") addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, largo);
-  if (borders.latDer && borders.latDer !== "none") addPerfil("Lat.Der: " + borders.latDer, borders.latDer, largo);
+  if (borders.fondo && borders.fondo !== "none" && dimFondo > 0) {
+    addPerfil("Frente Sup: " + borders.fondo, borders.fondo, dimFondo);
+  }
+  if (borders.latIzq && borders.latIzq !== "none" && dimLatIzq > 0) {
+    addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, dimLatIzq);
+  }
+  if (borders.latDer && borders.latDer !== "none" && dimLatDer > 0) {
+    addPerfil("Lat.Der: " + borders.latDer, borders.latDer, dimLatDer);
+  }
 
   if (opciones && opciones.inclGotSup) {
     const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
     if (gs) {
       const precio = p(gs);
-      const pzas = Math.ceil(anchoTotal / gs.largo);
+      const pzas = Math.ceil(dimFrente / gs.largo);
       totalML += pzas * gs.largo;
       items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, costo: gs.costo ?? 0, total: +(pzas * precio).toFixed(2), largoBarra: gs.largo });
     }
+  }
+
+  for (const j of opciones?.encounterJunctions || []) {
+    const tipo = j.perfil || j.tipo;
+    if (!tipo || tipo === "none") continue;
+    const len = Number(j.lengthM);
+    if (!Number.isFinite(len) || len <= 0) continue;
+    addPerfil(j.label || `Encuentro: ${tipo}`, tipo, len);
   }
 
   if (totalML > 0) {
@@ -221,7 +241,7 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
  * - Encuentros con muros (babetas): ml × 2 (panel–babeta y babeta–muro)
  * - Canalones: 2 cordones entre empalmes (~60 cm por extensión)
  */
-export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0, largoReal = 0, familiaP, espesor } = {}) {
+export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0, largoReal = 0, familiaP, espesor, edgeML } = {}) {
   const { SELLADORES } = getPricing();
   const ML_POR_UNID_SILICONA = getDimensioningParam("SELLADORES_TECHO.silicona_ml_por_unid", SELLADORES.silicona?.ml_por_unid ?? 10.27);
   const items = [];
@@ -238,19 +258,25 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   mlSilicona += 2 * au * cantP;
 
   // 3. Encuentros con muros (babetas): ml × 2 cuando hay babeta_adosar o babeta_empotrar
+  const em = edgeML && typeof edgeML === "object" ? edgeML : null;
+  const dimFrente = em && Number.isFinite(em.frente) ? em.frente : anchoTotal;
+  const dimFondo = em && Number.isFinite(em.fondo) ? em.fondo : anchoTotal;
+  const dimLatIzq = em && Number.isFinite(em.latIzq) ? em.latIzq : largoReal;
+  const dimLatDer = em && Number.isFinite(em.latDer) ? em.latDer : largoReal;
+
   const BABETAS = ["babeta_adosar", "babeta_empotrar"];
   let mlBabetas = 0;
-  if (borders.frente && BABETAS.includes(borders.frente)) mlBabetas += anchoTotal;
-  if (borders.fondo && BABETAS.includes(borders.fondo)) mlBabetas += anchoTotal;
-  if (borders.latIzq && BABETAS.includes(borders.latIzq)) mlBabetas += largoReal;
-  if (borders.latDer && BABETAS.includes(borders.latDer)) mlBabetas += largoReal;
+  if (borders.frente && BABETAS.includes(borders.frente)) mlBabetas += dimFrente;
+  if (borders.fondo && BABETAS.includes(borders.fondo)) mlBabetas += dimFondo;
+  if (borders.latIzq && BABETAS.includes(borders.latIzq)) mlBabetas += dimLatIzq;
+  if (borders.latDer && BABETAS.includes(borders.latDer)) mlBabetas += dimLatDer;
   mlSilicona += mlBabetas * 2;
 
   // 4. Canalones: 2 cordones entre empalmes (~60 cm por extensión)
-  if (borders.frente === "canalon" && anchoTotal > 0) {
+  if (borders.frente === "canalon" && dimFrente > 0) {
     const canData = resolveSKU_techo("canalon", familiaP, espesor);
     const largoCan = canData?.largo ?? 3.03;
-    const pzasCan = Math.ceil(anchoTotal / largoCan);
+    const pzasCan = Math.ceil(dimFrente / largoCan);
     if (pzasCan > 1) {
       const empalmeMl = getDimensioningParam("PERFILERIA.canalon_empalme_silicona_ml", 0.6);
       mlSilicona += (pzasCan - 1) * empalmeMl * 2; // 2 cordones por empalme
@@ -447,6 +473,7 @@ export function calcTechoCompleto(inputs) {
           largoReal,
           familiaP: panel.fam,
           espesor,
+          edgeML: opciones?.edgeML,
         });
   }
   const costoM2 = espData.costo ?? 0;
