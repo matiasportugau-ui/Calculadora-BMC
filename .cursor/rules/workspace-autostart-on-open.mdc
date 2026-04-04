@@ -1,0 +1,12 @@
+---
+description: "Autostart al abrir workspace: tarea folderOpen + evitar duplicar API/Vite."
+alwaysApply: true
+---
+
+# Workspace autostart (Calculadora BMC)
+
+Al abrir esta carpeta en **Cursor/VS Code**, puede ejecutarse la tarea **On folder open: workspace + local stack** (`npm run workspace:autostart`): instala dependencias solo si falta `node_modules`, corre `env:ensure`, y `scripts/local-view-autolaunch.sh` (levanta API `:3001` y Vite `:5173` solo si no responden; logs en `.runtime/`).
+
+Antes de arrancar otro `npm run dev:full`, `./run_full_stack.sh` o `concurrently`, comprobar si el stack ya está arriba (p. ej. `http://localhost:3001/health` y `http://localhost:5173`) para no duplicar procesos.
+
+Para desactivar el arranque automático: en ajustes de workspace quitar o poner en `off` la clave `task.allowAutomaticTasks`, o eliminar `runOptions.runOn` de esa tarea en `.vscode/tasks.json`.

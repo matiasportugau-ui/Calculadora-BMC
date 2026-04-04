@@ -1,0 +1,18 @@
+---
+description: "Start Workspace — cuando el usuario pide arrancar/preparar el workspace de Calculadora BMC (deps + .env + enlaces)."
+alwaysApply: false
+---
+
+# Start Workspace (Calculadora BMC)
+
+Cuando el usuario diga **Start Workspace**, **arrancar workspace**, **preparar el proyecto** o equivalente para este repo:
+
+1. En la raíz del repositorio **Calculadora-BMC**, ejecutar:
+
+   `npm run workspace:start`
+
+2. Resumir: prod [Calculadora BMC](https://calculadora-bmc.vercel.app); stack local con `npm run dev:full` o `./run_full_stack.sh` (API `:3001`, Vite `:5173`, `GET /health`).
+
+3. Si acaba de crearse `.env` desde `.env.example`, recordar completar credenciales según la tarea (Sheets, ML, `API_AUTH_TOKEN`, etc.).
+
+Opcional según necesidad: `npm run panelsim:env`, `npm run smoke:prod`, `npm run ml:verify` (con API en marcha).

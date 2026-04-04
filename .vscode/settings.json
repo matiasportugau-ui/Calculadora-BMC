@@ -1,4 +1,6 @@
 {
+  // Allow tasks with runOn: folderOpen (On folder open: workspace + local stack).
+  "task.allowAutomaticTasks": "on",
   // Calculadora-BMC — editor alineado a `npm run lint` (ESLint flat config). Sin Prettier en repo.
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
