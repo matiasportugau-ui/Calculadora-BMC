@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-04 (Autolanzador local `local:view` + regla “ver en local”)
+**Última actualización:** 2026-04-04 (Investigación cotización visual precisa + tests alineación planta)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-04 (UX / motor — cotización visual precisa, plan cerrado):** Informe [`docs/team/ux-feedback/PRECISE-VISUAL-QUOTE-RESEARCH.md`](./ux-feedback/PRECISE-VISUAL-QUOTE-RESEARCH.md): criterios medibles, tabla de fuentes de verdad, hallazgo **dos aguas** (planta `w = ancho/2`, presupuesto = 2× corrida `calcTechoCompleto` + `mergeZonaResults`), matriz de herramientas condicionada al cuello de botella, estrategia CI. Spike [`src/utils/roofVisualQuoteModel.js`](../../src/utils/roofVisualQuoteModel.js) (`resolveRoofZoneVisualModel`, verificación franjas vs `ceil`). Fixtures JSON [`docs/team/ux-feedback/fixtures/roof-visual-quote-cases.json`](./ux-feedback/fixtures/roof-visual-quote-cases.json). Tests Node [`tests/roofVisualQuoteConsistency.js`](../../tests/roofVisualQuoteConsistency.js) encadenados en `npm test` (`package.json`). Tests usan `getPricing()` para `au` coherente con el motor.
 
 **2026-04-04 (Knowledge — inventario para agentes IA):** Nuevo doc [`docs/team/panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md`](./panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md): tabla maestra de artefactos (chatPrompts, training-kb, OpenAPI, constants, PANELSIM/ML KB, skills, Knowledge Antenna), repos hermanos a completar, duplicados/huecos, prioridad de extracción hacia Panelin vs GPT, matriz de buenas prácticas (política, grounding, RAG, HITL, eval, versionado, seguridad) y borrador de golden set cotización. Enlazado desde [`PANELSIM-FULL-PROJECT-KB.md`](./panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md) §1.
 

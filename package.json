@@ -24,7 +24,7 @@
     "prebuild": "npm run disk:precheck && npm run version:data",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/validation.js",
+    "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js",
     "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
     "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
