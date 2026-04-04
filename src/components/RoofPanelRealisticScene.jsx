@@ -304,11 +304,11 @@ export default function RoofPanelRealisticScene({
 
   const zoneLayouts = useMemo(() => {
     try {
-      return buildZoneLayoutsForRoof3d(validZonas, tipoAguasStr);
+      return buildZoneLayoutsForRoof3d(validZonas, tipoAguasStr, theta);
     } catch {
       return [];
     }
-  }, [validZonas, tipoAguasStr]);
+  }, [validZonas, tipoAguasStr, theta]);
 
   const bounds = useMemo(() => computeSceneBounds(zoneLayouts, theta), [zoneLayouts, theta]);
 
