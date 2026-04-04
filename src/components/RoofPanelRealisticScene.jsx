@@ -11,7 +11,7 @@ import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
 import { C } from "../data/constants.js";
 
-function computeSceneBounds(zoneLayouts, theta) {
+function computeSceneBounds(zoneLayouts, theta, fovDeg = 36) {
   if (!zoneLayouts.length) {
     return {
       minX: 0,
@@ -29,6 +29,8 @@ function computeSceneBounds(zoneLayouts, theta) {
   const sinT = Math.sin(theta);
   let mix = Infinity;
   let mxx = -Infinity;
+  let miy = 0;
+  let may = 0;
   let miz = Infinity;
   let maz = -Infinity;
   let ml = 0;
@@ -39,21 +41,36 @@ function computeSceneBounds(zoneLayouts, theta) {
     const zFondo = r.oz - r.largo * cosT;
     miz = Math.min(miz, zFrente, zFondo);
     maz = Math.max(maz, zFrente, zFondo);
+    const peakY = r.largo * sinT;
+    may = Math.max(may, peakY);
     ml = Math.max(ml, r.largo);
   }
-  const tw = Math.max(0.1, mxx - mix);
   const maxLargoVal = ml;
-  const maxHVal = maxLargoVal * sinT;
+  const maxHVal = may;
   const maxDVal = maxLargoVal * cosT;
-  const spanZ = Math.max(0.1, maz - miz);
-  const spanW = Math.max(0.1, mxx - mix);
-  const sceneSize = Math.max(spanW, spanZ, tw * 0.5 + spanZ * 0.5);
-  const camTarget = [(mix + mxx) / 2, maxHVal / 2, (miz + maz) / 2];
+
+  const cx = (mix + mxx) / 2;
+  const cy = (miy + may) / 2;
+  const cz = (miz + maz) / 2;
+  const camTarget = [cx, cy, cz];
+
+  const dx = (mxx - mix) / 2;
+  const dy = (may - miy) / 2;
+  const dz = (maz - miz) / 2;
+  const boundRadius = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+
+  const fovRad = (fovDeg * Math.PI) / 180;
+  const margin = 1.35;
+  const dist = (boundRadius * margin) / Math.sin(fovRad / 2);
+
+  const elevAngle = 0.55;
+  const azimAngle = 0.15;
   const camPos = [
-    (mix + mxx) / 2,
-    maxHVal + Math.max(1.8, sceneSize * 0.55),
-    (miz + maz) / 2 + maxDVal * 0.85 + Math.max(2.5, sceneSize * 0.35),
+    cx + dist * Math.sin(azimAngle) * Math.cos(elevAngle),
+    cy + dist * Math.sin(elevAngle),
+    cz + dist * Math.cos(azimAngle) * Math.cos(elevAngle),
   ];
+
   return {
     minX: mix,
     maxX: mxx,
@@ -67,13 +84,35 @@ function computeSceneBounds(zoneLayouts, theta) {
   };
 }
 
-function CameraRig({ position, target }) {
-  const camera = useThree((s) => s.camera);
+function CameraRig({ position, target, bounds }) {
+  const { camera, size } = useThree();
   useEffect(() => {
     camera.position.set(position[0], position[1], position[2]);
     camera.lookAt(target[0], target[1], target[2]);
+
+    const aspect = size.width / (size.height || 1);
+    const { minX, maxX, minZ, maxZ, maxH } = bounds;
+    const dx = (maxX - minX) / 2;
+    const dy = maxH / 2;
+    const dz = (maxZ - minZ) / 2;
+    const radius = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    const vFov = (camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const effectiveFov = Math.min(vFov, hFov);
+    const minDist = (radius * 1.35) / Math.sin(effectiveFov / 2);
+    const currentDist = camera.position.distanceTo(
+      new THREE.Vector3(target[0], target[1], target[2])
+    );
+    if (currentDist < minDist) {
+      const dir = new THREE.Vector3()
+        .subVectors(camera.position, new THREE.Vector3(target[0], target[1], target[2]))
+        .normalize();
+      camera.position.copy(
+        new THREE.Vector3(target[0], target[1], target[2]).add(dir.multiplyScalar(minDist))
+      );
+    }
     camera.updateProjectionMatrix();
-  }, [camera, position, target]);
+  }, [camera, position, target, bounds, size]);
   return null;
 }
 
@@ -135,7 +174,7 @@ function RoofRealisticSceneContent({
 
   const sceneBody = (map) => (
     <>
-      <CameraRig position={camPos} target={camTarget} />
+      <CameraRig position={camPos} target={camTarget} bounds={bounds} />
       <color attach="background" args={["#e8edf5"]} />
       <ambientLight intensity={0.58} />
       <directionalLight

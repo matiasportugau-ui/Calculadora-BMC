@@ -1,6 +1,6 @@
 # Knowledge Antenna Report — 2026-04-04
 
-Generated at: 2026-04-04T06:48:24.463Z
+Generated at: 2026-04-04T13:00:11.645Z
 
 ## Panelin Signal — revista interna (HTML)
 
@@ -47,7 +47,7 @@ Lectura humana en el navegador: diseño editorial con el conocimiento actual del
 ```json
 {
   "ok": true,
-  "generatedAt": "2026-04-04T06:48:24.462Z",
+  "generatedAt": "2026-04-04T13:00:11.643Z",
   "daysAnalyzed": 14,
   "mappings": 218,
   "summary": {

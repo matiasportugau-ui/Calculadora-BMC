@@ -928,6 +928,31 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetZ = 0, gi, multiZona
   );
 }
 
+function RoofBorderCameraFitter({ camPos, camTarget, spanW, spanZ, maxH, orbitRef }) {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    camera.position.set(camPos[0], camPos[1], camPos[2]);
+    camera.lookAt(camTarget[0], camTarget[1], camTarget[2]);
+    const aspect = size.width / (size.height || 1);
+    const dx = spanW / 2, dy = maxH / 2, dz = spanZ / 2;
+    const radius = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    const vFov = (camera.fov * Math.PI) / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const effectiveFov = Math.min(vFov, hFov);
+    const minDist = (radius * 1.4) / Math.sin(effectiveFov / 2);
+    const tgt = new THREE.Vector3(camTarget[0], camTarget[1], camTarget[2]);
+    const currentDist = camera.position.distanceTo(tgt);
+    if (currentDist < minDist) {
+      const dir = camera.position.clone().sub(tgt).normalize();
+      camera.position.copy(tgt.clone().add(dir.multiplyScalar(minDist)));
+    }
+    camera.updateProjectionMatrix();
+    const oc = orbitRef.current;
+    if (oc) { oc.target.copy(tgt); oc.update(); }
+  }, [camera, camPos, camTarget, spanW, spanZ, maxH, size, orbitRef]);
+  return null;
+}
+
 /** WebGL canvas that renders all zones in 3D with orbit controls */
 function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBorders,
   multiZona, sharedSidesMap, openSide, openEncounterSide, onEdgeClick, onEncounterClick,
@@ -1241,11 +1266,24 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     maxH / 2,
     (minZ + maxZ) / 2,
   ], [minX, maxX, minZ, maxZ, maxH]);
-  const camPos = useMemo(() => [
-    (minX + maxX) / 2,
-    maxH + Math.max(1.8, sceneSize * 0.55),
-    (minZ + maxZ) / 2 + maxD * 0.85 + Math.max(2.5, sceneSize * 0.35),
-  ], [minX, maxX, minZ, maxZ, maxH, maxD, sceneSize]);
+  const camPos = useMemo(() => {
+    const cx = (minX + maxX) / 2;
+    const cy = maxH / 2;
+    const cz = (minZ + maxZ) / 2;
+    const dx = spanW / 2;
+    const dy = maxH / 2;
+    const dz = spanZ / 2;
+    const radius = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    const fovRad = (36 * Math.PI) / 180;
+    const dist = (radius * 1.4) / Math.sin(fovRad / 2);
+    const elevAngle = 0.55;
+    const azimAngle = 0.15;
+    return [
+      cx + dist * Math.sin(azimAngle) * Math.cos(elevAngle),
+      cy + dist * Math.sin(elevAngle),
+      cz + dist * Math.cos(azimAngle) * Math.cos(elevAngle),
+    ];
+  }, [minX, maxX, minZ, maxZ, maxH, spanW, spanZ]);
 
   const shellStyle = fillContainer
     ? {
@@ -1264,6 +1302,7 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     <div style={shellStyle}>
       <Canvas camera={{ position: camPos, fov: 36, near: 0.01, far: 300 }} shadows gl={{ antialias: true }}
         style={{ width: "100%", height: "100%", display: "block" }} dpr={[1, 2]}>
+        <RoofBorderCameraFitter camPos={camPos} camTarget={camTarget} spanW={spanW} spanZ={spanZ} maxH={maxH} orbitRef={orbitRef} />
         <ambientLight intensity={0.62} />
         <directionalLight position={[sceneSize * 1.5 + 3, maxH * 2 + 5, maxD + 4]} intensity={0.55} castShadow />
         <directionalLight position={[-2, 4, 3]} intensity={0.22} />
@@ -2098,7 +2137,7 @@ export default function PanelinCalculadoraV3() {
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
-  const [techoAnchoModo, _setTechoAnchoModo] = useState("metros"); // "metros" | "paneles"
+  const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
   const [camara, _setCamara] = useState({ largo_int: 6, ancho_int: 4, alto_int: 3 });
   const [flete, _setFlete] = useState(() => getFleteDefault());
   /** Costo interno del flete (USD s/IVA); opcional — afecta margen y hoja Costeo. */
