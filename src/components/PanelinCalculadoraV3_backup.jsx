@@ -2189,6 +2189,7 @@ export default function PanelinCalculadoraV3() {
     onAction: handleChatAction,
     devMode,
     devAuthToken,
+    persistHistory: false,
   });
 
   const toggleDevMode = useCallback(() => {
@@ -3366,24 +3367,23 @@ export default function PanelinCalculadoraV3() {
           >
             💬 Panelin
           </button>
-          {devMode && (
-            <button
-              onClick={toggleDevMode}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: "none",
-                background: "rgba(255,255,255,0.22)",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-              title="Ctrl/Cmd + Shift + D"
-            >
-              DEV
-            </button>
-          )}
+          <button
+            onClick={toggleDevMode}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.35)",
+              background: devMode ? "rgba(255,255,255,0.22)" : "transparent",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+            title={devMode ? "Developer mode activo · Ctrl/Cmd + Shift + D" : "Activar Developer mode · Ctrl/Cmd + Shift + D"}
+            aria-label={devMode ? "Developer mode activo" : "Activar Developer mode"}
+          >
+            DEV
+          </button>
         </div>
       </div>
 

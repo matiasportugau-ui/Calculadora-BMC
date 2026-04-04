@@ -39,11 +39,18 @@ function saveHistory(messages) {
  *   onAction: (action: {type:string, payload:any}) => void,
  *   devMode?: boolean,
  *   devAuthToken?: string,
+ *   persistHistory?: boolean,
  * }} opts
  * @returns {{ messages, isStreaming, send, stop, retry, clear, error }}
  */
-export function useChat({ calcState, onAction, devMode = false, devAuthToken = "" }) {
-  const [messages, setMessages] = useState(() => loadHistory());
+export function useChat({
+  calcState,
+  onAction,
+  devMode = false,
+  devAuthToken = "",
+  persistHistory = false,
+}) {
+  const [messages, setMessages] = useState(() => (persistHistory ? loadHistory() : []));
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
   const [devMeta, setDevMeta] = useState({ kbMatches: 0, calcValidation: null });
@@ -58,10 +65,21 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
   // 1.2 — Track last user text for retry
   const lastUserTextRef = useRef("");
 
-  // Persist to localStorage whenever messages change
+  // Persist history only when explicitly enabled.
   useEffect(() => {
+    if (!persistHistory) return;
     if (messages.length > 0) saveHistory(messages);
-  }, [messages]);
+  }, [messages, persistHistory]);
+
+  // Default UX: every session starts clean (no previous conversation visible).
+  useEffect(() => {
+    if (persistHistory) return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }, [persistHistory]);
 
   const buildDevAuthHeaders = useCallback(() => {
     if (!devMode || !devAuthToken) return {};

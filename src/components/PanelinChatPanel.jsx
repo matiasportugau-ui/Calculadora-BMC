@@ -384,10 +384,10 @@ export default function PanelinChatPanel({
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
             </div>
           </div>
-          {devMode && onToggleDevMode && (
+          {onToggleDevMode && (
             <button
               onClick={onToggleDevMode}
-              title="Developer mode"
+              title={devMode ? "Developer mode activo (Ctrl/Cmd + Shift + D)" : "Activar Developer mode (Ctrl/Cmd + Shift + D)"}
               style={{
                 ...ghostBtn,
                 border: "1px solid rgba(255,255,255,0.35)",
@@ -397,6 +397,7 @@ export default function PanelinChatPanel({
                 color: "#fff",
                 background: devMode ? "rgba(255,255,255,0.24)" : "transparent",
               }}
+              aria-label={devMode ? "Developer mode activo" : "Activar Developer mode"}
             >
               DEV
             </button>
