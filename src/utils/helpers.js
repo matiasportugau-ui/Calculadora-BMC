@@ -280,14 +280,14 @@ function buildBomTable(data) {
   let tbody = "";
   groups.forEach(g => {
     const sub = g.items.reduce((s, i) => s + (i.total || 0), 0);
-    tbody += `<tr style="background:#EEF3F8"><td colspan="${colCount - 1}" style="font-weight:600;padding:6px 8px;color:${COMPANY.brandColor}">&#9656; ${esc(g.title)}</td><td style="text-align:right;font-weight:600;padding:6px 8px">$${fmtPrice(sub)}</td></tr>`;
+    tbody += `<tr style="background:#EEF3F8;page-break-after:avoid"><td colspan="${colCount - 1}" style="font-weight:600;padding:6px 8px;color:${COMPANY.brandColor}">&#9656; ${esc(g.title)}</td><td style="text-align:right;font-weight:600;padding:6px 8px">$${fmtPrice(sub)}</td></tr>`;
     g.items.forEach((item, idx) => {
       const bg = idx % 2 ? "#FAFAFA" : "#fff";
       const cantDisplay = typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant;
       tbody += `<tr style="background:${bg}">`;
-      const largoHint = item.largoBarra ? ` <span style="color:#6E6E73;font-size:8pt">(${item.largoBarra}m c/u)</span>` : "";
+      const largoHint = item.largoBarra ? ` <span style="color:#6E6E73;font-size:9pt">(${item.largoBarra}m c/u)</span>` : "";
       const panelDetail = item.cantPaneles
-        ? `<div style="color:#6E6E73;font-size:8pt;margin-top:1px">${item.cantPaneles} paneles${item.largoPanel ? ` × ${item.largoPanel}m largo` : ""}</div>`
+        ? `<div style="color:#6E6E73;font-size:9pt;margin-top:1px">${item.cantPaneles} paneles${item.largoPanel ? ` × ${item.largoPanel}m largo` : ""}</div>`
         : "";
       tbody += `<td style="padding:5px 8px">${esc(item.label)}${largoHint}${panelDetail}</td>`;
       if (showSKU) tbody += `<td style="text-align:center;color:#6E6E73;padding:5px 8px;font-size:8.5pt">${esc(item.sku || "—")}</td>`;
@@ -300,7 +300,7 @@ function buildBomTable(data) {
   });
 
   return `
-<table style="font-size:9pt;margin-bottom:12px">
+<table style="font-size:10pt;margin-bottom:12px">
   <thead>${thead}</thead>
   <tbody>${tbody}</tbody>
 </table>`;

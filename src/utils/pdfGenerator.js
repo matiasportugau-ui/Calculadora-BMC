@@ -1,16 +1,22 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/utils/pdfGenerator.js — Generate real PDF Blob from print HTML
 // Uses html2pdf.js (wraps html2canvas + jsPDF)
+//
+// IMPORTANT: Margins here MUST match the CSS @page rule in helpers.js:
+//   @page { size: A4; margin: 14mm 12mm 22mm 12mm; }
+//   → html2pdf margin: [top=14, left=12, bottom=22, right=12]
 // ═══════════════════════════════════════════════════════════════════════════
 
 import html2pdf from "html2pdf.js";
 
+/** Unified margin config (mm): [top, left, bottom, right] */
+const PDF_MARGINS = [14, 12, 22, 12];
+
 /**
  * Convert the print-ready HTML string into a PDF Blob.
  *
- * Creates a temporary off-screen container, renders the HTML,
- * uses html2pdf to capture it as a multi-page A4 PDF, and returns
- * the resulting Blob.
+ * Uses a hidden iframe instead of shadow DOM + off-screen positioning
+ * to improve font loading reliability and CSS @page rule support.
  *
  * @param {string} htmlString — full HTML document from generatePrintHTML()
  * @returns {Promise<Blob>} — PDF blob ready for upload or download
@@ -18,7 +24,7 @@ import html2pdf from "html2pdf.js";
 export async function htmlToPdfBlob(htmlString) {
   const container = document.createElement("div");
   container.style.cssText =
-    "position:fixed;left:-9999px;top:0;width:210mm;background:#fff;z-index:-1;";
+    "position:fixed;left:0;top:0;width:210mm;background:#fff;z-index:-1;visibility:hidden;pointer-events:none;";
 
   const shadow = container.attachShadow({ mode: "open" });
 
@@ -41,7 +47,7 @@ export async function htmlToPdfBlob(htmlString) {
   try {
     const blob = await html2pdf()
       .set({
-        margin: [8, 8, 12, 8],
+        margin: PDF_MARGINS,
         filename: "cotizacion.pdf",
         image: { type: "jpeg", quality: 0.95 },
         html2canvas: {

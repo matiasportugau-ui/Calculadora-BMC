@@ -29,6 +29,7 @@ import {
   calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
   calcFactorPendiente, calcLargoRealFromModo, mergeZonaResults, normalizarMedida,
 } from "../utils/calculations.js";
+import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import {
   applyOverrides, bomToGroups,
   fmtPrice, generatePrintHTML, generateInternalHTML, buildWhatsAppText,
@@ -738,84 +739,13 @@ function RoofBorderSelector({ borders = {}, onChange, panelFamilia = "", disable
 
 // ── Wizard steps (Modo Vendedor — por escenario; excluye presupuesto_libre) ─────
 // Footer: wizardPrimaryActionStyle(isValid) para Siguiente en todos los flujos.
-const WIZARD_STEPS_SOLO_TECHO = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "tipoAguas", label: "Caída del techo" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel techo" },
-  { id: "espesor", label: "Espesor techo" },
-  { id: "color", label: "Color techo" },
-  { id: "dimensiones", label: "Dimensiones (metros o paneles)" },
-  { id: "pendiente", label: "Pendiente" },
-  { id: "estructura", label: "Estructura" },
-  { id: "bordes", label: "Accesorios perimetrales" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_SOLO_FACHADA = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia_pared", label: "Familia panel pared" },
-  { id: "espesor_pared", label: "Espesor pared" },
-  { id: "color_pared", label: "Color pared" },
-  { id: "dimensiones_pared", label: "Dimensiones pared" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "estructura", label: "Estructura" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_TECHO_FACHADA = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "tipoAguas", label: "Caída del techo" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel techo" },
-  { id: "espesor", label: "Espesor techo" },
-  { id: "color", label: "Color techo" },
-  { id: "dimensiones", label: "Dimensiones techo" },
-  { id: "pendiente", label: "Pendiente" },
-  { id: "estructura", label: "Estructura" },
-  { id: "bordes", label: "Accesorios perimetrales" },
-  { id: "selladores", label: "Selladores" },
-  { id: "familia_pared", label: "Familia panel pared" },
-  { id: "espesor_pared", label: "Espesor pared" },
-  { id: "color_pared", label: "Color pared" },
-  { id: "dimensiones_pared", label: "Dimensiones pared" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "perfil_5852", label: "Perfil 5852 aluminio" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_CAMARA_FRIG = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia_pared", label: "Familia panel" },
-  { id: "espesor_pared", label: "Espesor" },
-  { id: "color_pared", label: "Color" },
-  { id: "camara_dim", label: "Dimensiones cámara (interiores)" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "estructura", label: "Estructura" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-/** Pasos del wizard modo vendedor. `presupuesto_libre` → [] (sin wizard). */
+/** Wizard steps lookup — reads from unified SCENARIOS_DEF (constants.js) */
+const _scenarioMap = Object.fromEntries(SCENARIOS_DEF.map(s => [s.id, s]));
 function getWizardStepsForScenario(scenarioId) {
-  switch (scenarioId) {
-    case "solo_techo": return WIZARD_STEPS_SOLO_TECHO;
-    case "solo_fachada": return WIZARD_STEPS_SOLO_FACHADA;
-    case "techo_fachada": return WIZARD_STEPS_TECHO_FACHADA;
-    case "camara_frig": return WIZARD_STEPS_CAMARA_FRIG;
-    case "presupuesto_libre":
-    default:
-      return [];
-  }
+  return _scenarioMap[scenarioId]?.wizardSteps ?? [];
 }
+/** Backward-compatible alias used in wizard UI */
+const WIZARD_STEPS_SOLO_TECHO = getWizardStepsForScenario("solo_techo");
 
 const TECHO_INITIAL_VENDEDOR = {
   familia: "", espesor: "", color: "", zonas: [{ largo: 0, ancho: 0 }],
@@ -1139,10 +1069,11 @@ export default function PanelinCalculadoraV3() {
   }, [techo.zonas]);
 
   // ── Calculate results ──
+  // Uses executeScenario() from scenarioOrchestrator.js for standard scenarios.
+  // presupuesto_libre has its own path since it doesn't use the surface model.
   const results = useMemo(() => {
-    const sc = scenario;
     try {
-      if (sc === "presupuesto_libre") {
+      if (scenario === "presupuesto_libre") {
         const listaEff = listaPrecios || "web";
         return computePresupuestoLibreCatalogo({
           listaPrecios: listaEff,
@@ -1156,76 +1087,8 @@ export default function PanelinCalculadoraV3() {
           catalog: libreCatalog || undefined,
         });
       }
-      if (sc === "solo_techo") {
-        if (!techo.familia || !techo.espesor) return null;
-        // For 2 aguas: each zona generates 2 faldones (half ancho each)
-        // Agua 1 keeps frente+latIzq+latDer borders, fondo=cumbrera
-        // Agua 2 keeps fondo(original)+latIzq+latDer borders, frente=cumbrera (shared, not double-counted)
-        const is2Aguas = techo.tipoAguas === "dos_aguas";
-        const emptyBorders = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
-        const zonaResults = techo.zonas.flatMap(zona => {
-          const inputs = { ...techo, largo: zona.largo, ancho: zona.ancho, pendienteModo: techo.pendienteModo || "calcular_pendiente", alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0 };
-          const borders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
-          if (is2Aguas) {
-            const halfAncho = +(zona.ancho / 2).toFixed(2);
-            const agua1 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { ...borders, fondo: "cumbrera" } });
-            const agua2 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { frente: borders.fondo === "cumbrera" ? "cumbrera" : borders.fondo, fondo: "none", latIzq: borders.latIzq, latDer: borders.latDer } });
-            return [agua1, agua2];
-          }
-          return [calcTechoCompleto({ ...inputs, borders })];
-        });
-        return mergeZonaResults(zonaResults);
-      }
-      if (sc === "solo_fachada") {
-        if (!pared.familia || !pared.espesor) return null;
-        return calcParedCompleto(pared);
-      }
-      if (sc === "techo_fachada") {
-        let rT = null;
-        if (techo.familia && techo.espesor) {
-          const is2A = techo.tipoAguas === "dos_aguas";
-          const emptyBorders = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
-          const zonaResults = techo.zonas.flatMap(zona => {
-            const inputs = { ...techo, largo: zona.largo, ancho: zona.ancho, pendienteModo: techo.pendienteModo || "calcular_pendiente", alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0 };
-            const borders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
-            if (is2A) {
-              const ha = +(zona.ancho / 2).toFixed(2);
-              const a1 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { ...borders, fondo: "cumbrera" } });
-              const a2 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { frente: borders.fondo === "cumbrera" ? "cumbrera" : borders.fondo, fondo: "none", latIzq: borders.latIzq, latDer: borders.latDer } });
-              return [a1, a2];
-            }
-            return [calcTechoCompleto({ ...inputs, borders })];
-          });
-          rT = mergeZonaResults(zonaResults);
-        }
-        const rP = pared.familia && pared.espesor ? calcParedCompleto(pared) : null;
-        if (!rT && !rP) return null;
-        const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
-        const totales = calcTotalesSinIVA(allItems);
-        return { ...rT, paredResult: rP, allItems, totales, warnings: [...(rT?.warnings || []), ...(rP?.warnings || [])] };
-      }
-      if (sc === "camara_frig") {
-        if (!pared.familia || !pared.espesor) return null;
-        const perim = 2 * (camara.largo_int + camara.ancho_int);
-        const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-        const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
-        const techoPanel = PANELS_TECHO[techoFam];
-        const extraW = [];
-        let techoEsp = pared.espesor;
-        if (!techoPanel.esp[techoEsp]) {
-          const available = Object.keys(techoPanel.esp).map(Number).sort((a, b) => a - b);
-          techoEsp = available.find(e => e >= techoEsp) || available[available.length - 1];
-          extraW.push(`Techo cámara: espesor ${pared.espesor}mm no disponible en ${techoFam}, se usó ${techoEsp}mm.`);
-        }
-        const rT = calcTechoCompleto({ familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color });
-        if (rT?.error) extraW.push(`Techo cámara: ${rT.error}`);
-        const techoItems = rT?.error ? [] : (rT?.allItems || []);
-        const allItems = [...(rP?.allItems || []), ...techoItems];
-        const totales = calcTotalesSinIVA(allItems);
-        return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraW] };
-      }
+      return executeScenario(scenario, { techo, pared, camara });
     } catch (e) { return { error: e.message }; }
-    return null;
   }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Build BOM groups ──
