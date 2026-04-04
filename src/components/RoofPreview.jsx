@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // RoofPreview.jsx — Vista previa del techo (rejilla de paneles, drag, pendiente)
 // Coordenadas del SVG en metros (planta). preview.x/y alimenta encuentros y (con geometría) el BOM;
-// buildRoofPlanEdges muestra perímetro/encuentros; rejilla horizontal = paso au a lo largo de largo en planta.
+// buildRoofPlanEdges muestra perímetro/encuentros. Rejilla en planta: largo del panel = largo del techo (h en SVG);
+// cantidad de paneles reparte el ancho en planta (w) cada au → columnas verticales / juntas verticales (alineado a calcPanelesTecho).
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -16,6 +17,7 @@ import {
   isLateralAnnexZona,
 } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
+import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 
 /** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
 const VIEWBOX_SLACK_M = 2.8;
@@ -156,58 +158,44 @@ function getEncounterConfigFromZonas(zonas, ga, gb) {
 }
 
 /**
- * Roof-style panel visualization: stripes parallel to ancho (horizontal bands in SVG)
- * spaced by au along largo (h), so each band width = au and count ≈ ceil(h/au).
- * Matches plan: util width steps along the dimension where panels stack (largo in plant).
+ * Vista en planta alineada al motor de cálculo: el **largo** del panel sigue el **largo** del techo
+ * (arista lateral del rectángulo = `h` en SVG); el **ancho útil au** se repite a lo largo del **ancho** en planta (`w`),
+ * es decir la dirección frente↔fondo en convención “paneles en fila”. Franjas alternadas = columnas de ancho au;
+ * juntas = líneas verticales.
  */
-/** @returns {number} Paneles visuales a lo largo de largo (h), paso au (rejilla horizontal en SVG). */
-function panelCountAlongLargoStripe(h, au) {
-  if (!(au > 0) || !(h > 0)) return 0;
-  return Math.max(1, Math.ceil(h / au - 1e-9));
-}
-
 function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "0" }) {
   if (!(au > 0) || !(w > 0) || !(h > 0)) return null;
-  const bands = [];
+  const strips = buildAnchoStripsPlanta(w, au);
+  const bands = strips.map((s) => (
+    <rect
+      key={`band-${s.idx}`}
+      x={x0 + s.x0}
+      y={y0}
+      width={s.width}
+      height={h}
+      fill={stroke}
+      fillOpacity={s.idx % 2 === 0 ? 0.1 : 0.18}
+      stroke="none"
+      pointerEvents="none"
+    />
+  ));
   const lines = [];
-  let y = y0;
-  let idx = 0;
-  while (y < y0 + h - 1e-9) {
-    const bandH = Math.min(au, y0 + h - y);
-    const fillOpacity = idx % 2 === 0 ? 0.1 : 0.18;
-    bands.push(
-      <rect
-        key={`band-${idx}`}
-        x={x0}
-        y={y}
-        width={w}
-        height={bandH}
-        fill={stroke}
-        fillOpacity={fillOpacity}
-        stroke="none"
-        pointerEvents="none"
-      />,
-    );
-    y += au;
-    idx += 1;
-  }
-  let yi = y0 + au;
-  let k = 0;
-  while (yi < y0 + h - 1e-6) {
+  let jointX = x0;
+  for (let i = 0; i < strips.length - 1; i++) {
+    jointX += strips[i].width;
     lines.push(
       <line
-        key={`hj-${k++}`}
-        x1={x0}
-        y1={yi}
-        x2={x0 + w}
-        y2={yi}
+        key={`vj-${i}`}
+        x1={jointX}
+        y1={y0}
+        x2={jointX}
+        y2={y0 + h}
         stroke={stroke}
         strokeWidth={strokeW}
         opacity={0.55}
         pointerEvents="none"
       />,
     );
-    yi += au;
   }
   const gradId = `roofGrad-${String(gradKey).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
   return (
@@ -502,6 +490,9 @@ export default function RoofPreview({
 
   return (
     <div
+      data-bmc-view="roof-preview-2d"
+      data-bmc-component="RoofPreview"
+      title="Vista previa 2D techo (planta, rejilla au)"
       style={{
         padding: 16,
         background: C.surfaceAlt,
@@ -853,8 +844,8 @@ export default function RoofPreview({
                     fontFamily={FONT}
                     pointerEvents="none"
                   >
-                    {panelCountAlongLargoStripe(r.h, panelAu)}{" "}
-                    {panelCountAlongLargoStripe(r.h, panelAu) === 1 ? "panel" : "paneles"}
+                    {panelCountAcrossAnchoPlanta(r.w, panelAu)}{" "}
+                    {panelCountAcrossAnchoPlanta(r.w, panelAu) === 1 ? "panel" : "paneles"}
                   </text>
                   {showSlope && (
                     <SlopeArrow

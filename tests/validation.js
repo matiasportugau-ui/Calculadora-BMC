@@ -88,6 +88,7 @@ import {
   snapLateralAnnexPlanta,
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
+import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../src/utils/roofPanelStripsPlanta.js";
 import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
@@ -1269,6 +1270,17 @@ assert("buildLogisticaPlanExportPayload kpis.view maxXV", exportPayload.kpis.max
 // SUITE 32: Techo multizona — geometría planta (encuentros / perímetro exterior)
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 32: roofPlanGeometry ═══");
+
+const strips908 = buildAnchoStripsPlanta(10.08, 1.12);
+const sum908 = strips908.reduce((s, r) => s + r.width, 0);
+assert("buildAnchoStripsPlanta 10.08m / 1.12m: 9 franjas", strips908.length === 9, strips908.length, 9);
+assert("buildAnchoStripsPlanta suma = ancho", Math.abs(sum908 - 10.08) < 1e-9, sum908, 10.08);
+assert(
+  "panelCountAcrossAnchoPlanta coherente con franjas",
+  panelCountAcrossAnchoPlanta(10.08, 1.12) === strips908.length,
+  panelCountAcrossAnchoPlanta(10.08, 1.12),
+  strips908.length,
+);
 
 const z10x2128 = { largo: 10, ancho: 21.28 };
 const z56x6 = { largo: 5.6, ancho: 6 };

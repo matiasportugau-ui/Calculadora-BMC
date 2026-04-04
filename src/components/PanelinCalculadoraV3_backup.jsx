@@ -2328,6 +2328,7 @@ export default function PanelinCalculadoraV3() {
   const dimensionesRef = useRef(null);
   const bordesRef = useRef(null);
   const opcionesRef = useRef(null);
+  /** Ref al host DOM de la **Visualización 3D** en `QuoteVisualVisor` (`[data-bmc-view="visualizacion-3d"]`) para portal de `RoofBorderCanvas`. */
   const roof3dHostRef = useRef(null);
   const mainPanelGroupRef = useRef(null);
   const [, setRoofHostMountGen] = useState(0);
@@ -3946,6 +3947,7 @@ export default function PanelinCalculadoraV3() {
                               pendiente={techo.pendiente}
                               familiaKey={techo.familia}
                               espesorMm={techo.espesor}
+                              panelAu={techoPanelData?.au ?? 1.12}
                             />
                           </Suspense>
                         </div>
@@ -4407,6 +4409,7 @@ export default function PanelinCalculadoraV3() {
                     pendiente={techo.pendiente}
                     familiaKey={techo.familia}
                     espesorMm={techo.espesor}
+                    panelAu={techoPanelData?.au ?? 1.12}
                   />
                 </Suspense>
               </div>

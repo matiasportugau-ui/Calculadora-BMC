@@ -10,7 +10,9 @@ const CAROUSEL_MS = 5500;
 const PANELIN_LISTA_VIDEO_SRC = `${import.meta.env.BASE_URL}video/panelin-lista-loop.mp4`;
 
 /**
- * Visor visual derecho: etapa 3D (host) + carrusel Shopify según escenario / paso / bordes activos.
+ * Visor visual derecho: **Visualización 3D** (host del portal `RoofBorderCanvas`, planta + bordes, vía `createPortal`)
+ * + carrusel Shopify según escenario / paso / bordes activos.
+ * Selector DOM de la Visualización 3D: `[data-bmc-view="visualizacion-3d"]` · alias: `[data-bmc-roof-3d-host]`.
  *
  * @param {object} props
  * @param {string} props.scenarioId
@@ -182,6 +184,8 @@ export default function QuoteVisualVisor({
 
   return (
     <div
+      data-bmc-view="quote-visual-visor"
+      data-bmc-component="QuoteVisualVisor"
       style={{
         fontFamily: FONT,
         background: C.surface,
@@ -215,7 +219,7 @@ export default function QuoteVisualVisor({
         {open ? <ChevronUp size={18} color={C.ts} /> : <ChevronDown size={18} color={C.ts} />}
       </button>
 
-      {/* Host del portal 3D: fuera de `{open && …}` para que no se desmonte al colapsar el acordeón (evita React #200: portal a nodo desconectado). */}
+      {/* Visualización 3D: host del portal RoofBorderCanvas; fuera de `{open && …}` para no desmontar al colapsar (evita React #200). */}
       {showRoof3DInVisor && (
         <div
           style={{
@@ -224,9 +228,29 @@ export default function QuoteVisualVisor({
             marginBottom: open ? 16 : 0,
           }}
         >
+          {open && (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: C.ts,
+                marginBottom: 8,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+              }}
+            >
+              Visualización 3D
+            </div>
+          )}
           <div
             ref={setHostRef}
             data-bmc-roof-3d-host
+            data-bmc-view="visualizacion-3d"
+            data-bmc-view-legacy="roof-border-canvas-host"
+            data-bmc-component="RoofBorderCanvas-portal-host"
+            role="region"
+            aria-label="Visualización 3D: planta y bordes del techo"
+            title="Visualización 3D — planta y bordes (RoofBorderCanvas vía portal)"
             style={{
               width: "100%",
               /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */

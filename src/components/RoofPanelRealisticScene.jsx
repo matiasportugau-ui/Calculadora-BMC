@@ -8,6 +8,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
+import { buildAnchoStripsPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
 import { C } from "../data/constants.js";
 
@@ -116,7 +117,53 @@ function CameraRig({ position, target, bounds }) {
   return null;
 }
 
-function SlopeZoneMesh({ ancho, largo, ox, oz, thetaBase, slopeMark, profile, map }) {
+/** Una franja en X (ancho en planta); misma lógica de anchos que `RoofPreview` / `buildAnchoStripsPlanta`. */
+function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, map, panelAu, profile }) {
+  const mat = useMemo(() => {
+    const auRep = panelAu > 0 ? panelAu : Math.max(stripW, 1e-6);
+    const baseColor = stripIdx % 2 === 0 ? 0xb8c4d4 : 0xa3b0c2;
+    const m = new THREE.MeshStandardMaterial({
+      color: map ? "#ffffff" : baseColor,
+      roughness: profile.roughness,
+      metalness: profile.metalness,
+      side: THREE.DoubleSide,
+    });
+    if (map) {
+      const t = map.clone();
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(stripW / auRep, Math.max(0.4, largo / auRep));
+      t.offset.set(stripX / auRep, 0);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+      m.map = t;
+    }
+    return m;
+  }, [stripX, stripW, stripIdx, largo, map, panelAu, profile]);
+
+  useEffect(
+    () => () => {
+      mat.dispose();
+      if (mat.map) mat.map.dispose();
+    },
+    [mat]
+  );
+
+  return (
+    <mesh position={[stripX + stripW / 2, cy, cz]} rotation={rot} castShadow receiveShadow material={mat}>
+      <planeGeometry args={[stripW, largo]} />
+    </mesh>
+  );
+}
+
+function SlopeZoneStripedMeshes({ ancho, largo, ox, oz, thetaBase, slopeMark, profile, map, panelAu }) {
+  const strips = useMemo(() => {
+    if (!(ancho > 0)) return [];
+    if (!(panelAu > 0)) return [{ x0: 0, width: ancho, idx: 0 }];
+    const s = buildAnchoStripsPlanta(ancho, panelAu);
+    return s.length ? s : [{ x0: 0, width: ancho, idx: 0 }];
+  }, [ancho, panelAu]);
+
   const invertSlope = slopeMark === "along_largo_neg";
   const thetaEff = invertSlope ? -thetaBase : thetaBase;
   const sinT = Math.sin(thetaEff);
@@ -125,18 +172,25 @@ function SlopeZoneMesh({ ancho, largo, ox, oz, thetaBase, slopeMark, profile, ma
   const cz = -largo * cosT / 2;
   const rot = useMemo(() => [-Math.PI / 2 + thetaEff, 0, 0], [thetaEff]);
 
+  const auForUv = panelAu > 0 ? panelAu : ancho;
+
   return (
     <group position={[ox, 0, oz]}>
-      <mesh position={[ancho / 2, cy, cz]} rotation={rot} castShadow receiveShadow>
-        <planeGeometry args={[ancho, largo]} />
-        <meshStandardMaterial
-          color={map ? "#ffffff" : "#aeb8c8"}
-          map={map || null}
-          roughness={profile.roughness}
-          metalness={profile.metalness}
-          side={THREE.DoubleSide}
+      {strips.map((s) => (
+        <RoofStripMesh
+          key={`${s.idx}-${s.x0}-${s.width}`}
+          stripX={s.x0}
+          stripW={s.width}
+          stripIdx={s.idx}
+          largo={largo}
+          cy={cy}
+          cz={cz}
+          rot={rot}
+          map={map}
+          panelAu={auForUv}
+          profile={profile}
         />
-      </mesh>
+      ))}
     </group>
   );
 }
@@ -161,6 +215,7 @@ function RoofRealisticSceneContent({
   profile,
   mapUrl,
   bounds,
+  panelAu,
 }) {
   const orbitRef = useRef(null);
   const { minX, maxX, maxH, maxD, maxLargo, camTarget, camPos } = bounds;
@@ -186,7 +241,7 @@ function RoofRealisticSceneContent({
       />
       <directionalLight position={[-3, 5, -2]} intensity={0.28} />
       {zoneLayouts.map((z) => (
-        <SlopeZoneMesh
+        <SlopeZoneStripedMeshes
           key={z.gi}
           ancho={z.ancho}
           largo={z.largo}
@@ -196,6 +251,7 @@ function RoofRealisticSceneContent({
           slopeMark={z.slopeMark}
           profile={profile}
           map={map}
+          panelAu={panelAu}
         />
       ))}
       <OrbitControls
@@ -224,6 +280,7 @@ function RoofRealisticSceneContent({
  *   pendiente: number,
  *   familiaKey: string,
  *   espesorMm?: number|string,
+ *   panelAu?: number,
  * }} props
  */
 export default function RoofPanelRealisticScene({
@@ -232,6 +289,7 @@ export default function RoofPanelRealisticScene({
   pendiente = 15,
   familiaKey = "",
   espesorMm,
+  panelAu = 1.12,
 }) {
   const tipoAguasStr = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
   const theta = Math.max(0.05, (Number(pendiente) || 15) * (Math.PI / 180));
@@ -250,6 +308,9 @@ export default function RoofPanelRealisticScene({
   if (!zoneLayouts.length) {
     return (
       <div
+        data-bmc-view="roof-panel-realistic-3d"
+        data-bmc-component="RoofPanelRealisticScene"
+        data-bmc-state="empty"
         style={{
           width: "100%",
           minHeight: 200,
@@ -270,6 +331,10 @@ export default function RoofPanelRealisticScene({
 
   return (
     <div
+      data-bmc-view="roof-panel-realistic-3d"
+      data-bmc-component="RoofPanelRealisticScene"
+      data-bmc-state="canvas"
+      title="Render 3D referencial techo (textura catálogo, rejilla au)"
       style={{
         position: "relative",
         width: "100%",
@@ -295,6 +360,7 @@ export default function RoofPanelRealisticScene({
             profile={profile}
             mapUrl={profile.mapUrl}
             bounds={bounds}
+            panelAu={panelAu}
           />
         </Suspense>
       </Canvas>
@@ -311,7 +377,7 @@ export default function RoofPanelRealisticScene({
           lineHeight: 1.35,
         }}
       >
-        Render referencial · textura catálogo · no sustituye medidas ni aspectos constructivos
+        Render referencial · misma rejilla au que la vista 2D · textura catálogo · no sustituye medidas ni aspectos constructivos
       </div>
     </div>
   );
