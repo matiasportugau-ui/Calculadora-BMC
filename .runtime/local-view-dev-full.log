@@ -1,0 +1,35 @@
+
+> calculadora-bmc@3.1.5 dev:full
+> concurrently -n api,vite -c blue,green "npm run start:api" "npm run dev"
+
+[vite] 
+[vite] > calculadora-bmc@3.1.5 predev
+[vite] > npm run disk:precheck
+[vite] 
+[api] 
+[api] > calculadora-bmc@3.1.5 start:api
+[api] > node server/index.js
+[api] 
+[vite] 
+[vite] > calculadora-bmc@3.1.5 disk:precheck
+[vite] > bash scripts/disk-space-precheck.sh .
+[vite] 
+[vite] 
+[vite] > calculadora-bmc@3.1.5 dev
+[vite] > npm run version:data && vite
+[vite] 
+[api] [dotenv@17.3.1] injecting env (20) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[vite] 
+[vite] > calculadora-bmc@3.1.5 version:data
+[vite] > node scripts/update-calculator-data-version.js
+[vite] 
+[vite] [version:data] CALCULATOR_DATA_VERSION=d43a5e9b1c -> src/data/calculatorDataVersion.js
+[vite] 
+[vite]   VITE v7.3.1  ready in 381 ms
+[vite] 
+[vite]   ➜  Local:   http://localhost:5173/
+[vite]   ➜  Network: http://192.168.1.2:5173/
+[vite]   ➜  Network: http://192.168.1.7:5173/
+[api] {"level":30,"time":1775314595719,"pid":7757,"hostname":"192.168.1.2","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
+[api] {"level":30,"time":1775314596975,"pid":7757,"hostname":"192.168.1.2","req":{"id":"5e75c94c-a0d5-4220-b9da-c820e0f4311e","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49447},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":10,"msg":"request completed"}
+[api] {"level":30,"time":1775314599389,"pid":7757,"hostname":"192.168.1.2","req":{"id":"536daa0c-59c9-4e5c-8d5e-13758c4a2478","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49457},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":1,"msg":"request completed"}
