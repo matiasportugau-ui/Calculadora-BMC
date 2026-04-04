@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, RotateCcw, Send, Mic, Volume2, VolumeX } from "lucide-react";
+import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 
 const FONT =
@@ -67,24 +67,6 @@ function Avatar({ size = 28 }) {
   );
 }
 
-function ActionToast({ text }) {
-  return (
-    <div
-      style={{
-        fontSize: 11,
-        color: "#34c759",
-        fontFamily: FONT,
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 0",
-        animation: "panelin-action-fade 2s ease forwards",
-      }}
-    >
-      ✓ {text}
-    </div>
-  );
-}
 
 /**
  * Panelin AI chat drawer.
@@ -118,6 +100,8 @@ export default function PanelinChatPanel({
   messages,
   isStreaming,
   send,
+  stop,
+  retry,
   clear,
   error,
   devMode = false,
@@ -135,28 +119,82 @@ export default function PanelinChatPanel({
   onVerifyCalculation,
 }) {
   const [input, setInput] = useState("");
-  const [actionToast] = useState(null);
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
+  const openerRef = useRef(null);
   const recognitionRef = useRef(null);
   const prevMsgCountRef = useRef(0);
 
-  // Auto-scroll to bottom on new content
+  // 2.5 — Smart auto-scroll: only scroll if near bottom
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isNearBottom) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else if (isOpen && !isNearBottom) {
+      setShowScrollBtn(true);
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, isNearBottom]);
 
-  // Focus input when drawer opens
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    setIsNearBottom(nearBottom);
+    if (nearBottom) setShowScrollBtn(false);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollBtn(false);
+    setIsNearBottom(true);
+  }, []);
+
+  // Focus input when drawer opens; restore focus on close
   useEffect(() => {
     if (isOpen) {
+      openerRef.current = document.activeElement;
       setTimeout(() => textareaRef.current?.focus(), 300);
+    } else {
+      openerRef.current?.focus();
     }
+  }, [isOpen]);
+
+  // 2.3 — Escape key closes drawer
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  // 2.2 — Focus trap: keep Tab/Shift+Tab inside drawer
+  const drawerRef = useRef(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = drawerRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      if (e.key !== "Tab") return;
+      const focusable = Array.from(
+        el.querySelectorAll('button:not([disabled]),textarea:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])')
+      ).filter((n) => n.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    el.addEventListener("keydown", handler);
+    return () => el.removeEventListener("keydown", handler);
   }, [isOpen]);
 
   // TTS: read new assistant messages aloud when enabled
@@ -166,14 +204,23 @@ export default function PanelinChatPanel({
     if (count > prevMsgCountRef.current) {
       const last = messages[count - 1];
       if (last && last.role === "assistant" && last.content && !last.pending) {
-        const utterance = new SpeechSynthesisUtterance(last.content);
-        utterance.lang = "es-UY";
-        utterance.rate = 1.0;
+        const speak = () => {
+          const utterance = new SpeechSynthesisUtterance(last.content);
+          utterance.lang = "es-UY";
+          utterance.rate = 1.0;
+          // 4.4 — getVoices() may be empty on first call; resolve after voiceschanged
+          const voices = window.speechSynthesis.getVoices();
+          const esVoice = voices.find((v) => v.lang.startsWith("es"));
+          if (esVoice) utterance.voice = esVoice;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+        };
         const voices = window.speechSynthesis.getVoices();
-        const esVoice = voices.find((v) => v.lang.startsWith("es"));
-        if (esVoice) utterance.voice = esVoice;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
+        if (voices.length > 0) {
+          speak();
+        } else {
+          window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
+        }
       }
     }
     prevMsgCountRef.current = count;
@@ -191,14 +238,19 @@ export default function PanelinChatPanel({
 
   const speakMessage = useCallback((text) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-UY";
-    utterance.rate = 1.0;
+    const speak = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "es-UY";
+      utterance.rate = 1.0;
+      const voices = window.speechSynthesis.getVoices();
+      const esVoice = voices.find((v) => v.lang.startsWith("es"));
+      if (esVoice) utterance.voice = esVoice;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    };
     const voices = window.speechSynthesis.getVoices();
-    const esVoice = voices.find((v) => v.lang.startsWith("es"));
-    if (esVoice) utterance.voice = esVoice;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    if (voices.length > 0) speak();
+    else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
   }, []);
 
   const toggleListening = useCallback(() => {
@@ -291,13 +343,15 @@ export default function PanelinChatPanel({
 
       {/* Drawer */}
       <div
+        ref={drawerRef}
         role="dialog"
         aria-label="Panelin Asistente BMC"
+        aria-modal="true"
         style={{
           position: "fixed",
           top: 0,
           right: 0,
-          bottom: 0,
+          height: "100dvh",
           zIndex: 300,
           width: "100%",
           maxWidth: 380,
@@ -358,6 +412,20 @@ export default function PanelinChatPanel({
           >
             {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
+          {isStreaming && stop && (
+            <button
+              type="button"
+              onClick={() => stop()}
+              title="Detener respuesta"
+              style={{
+                ...ghostBtn,
+                background: "rgba(255,255,255,0.2)",
+              }}
+              aria-label="Detener respuesta"
+            >
+              <Square size={14} fill="currentColor" />
+            </button>
+          )}
           <button
             onClick={clear}
             title="Nueva conversación"
@@ -378,6 +446,11 @@ export default function PanelinChatPanel({
 
         {/* ── Messages ── */}
         <div
+          ref={scrollContainerRef}
+          role="log"
+          aria-label="Conversación"
+          aria-live="polite"
+          onScroll={handleScroll}
           style={{
             flex: 1,
             overflowY: "auto",
@@ -385,6 +458,7 @@ export default function PanelinChatPanel({
             display: "flex",
             flexDirection: "column",
             gap: 12,
+            position: "relative",
           }}
         >
           {isEmpty && (
@@ -582,21 +656,66 @@ export default function PanelinChatPanel({
             );
           })}
 
-          {/* Action toast */}
-          {actionToast && <ActionToast text={actionToast} />}
-
           {/* Error */}
           {error && (
             <div
+              role="alert"
+              aria-live="assertive"
               style={{
                 fontSize: 12,
                 color: "#ff3b30",
                 textAlign: "center",
                 padding: "4px 0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {error}
+              <span>{error}</span>
+              {retry && (
+                <button
+                  type="button"
+                  onClick={() => retry()}
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    border: `1px solid ${BORDER}`,
+                    background: SURFACE,
+                    color: PRIMARY,
+                    cursor: "pointer",
+                    fontFamily: FONT,
+                  }}
+                >
+                  Reintentar
+                </button>
+              )}
             </div>
+          )}
+
+          {showScrollBtn && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              style={{
+                position: "sticky",
+                bottom: 8,
+                alignSelf: "center",
+                fontSize: 11,
+                padding: "6px 12px",
+                borderRadius: 999,
+                border: `1px solid ${BORDER}`,
+                background: "#fff",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                color: PRIMARY,
+                cursor: "pointer",
+                fontFamily: FONT,
+                zIndex: 2,
+              }}
+            >
+              Ver últimos mensajes ↓
+            </button>
           )}
 
           <div ref={messagesEndRef} />
@@ -607,6 +726,7 @@ export default function PanelinChatPanel({
           style={{
             borderTop: `1px solid ${BORDER}`,
             padding: "10px 12px",
+            paddingBottom: "max(10px, env(safe-area-inset-bottom, 0px))",
             display: "flex",
             alignItems: "flex-end",
             gap: 8,
@@ -635,6 +755,8 @@ export default function PanelinChatPanel({
             placeholder="Escribí tu consulta..."
             rows={1}
             disabled={isStreaming}
+            aria-disabled={isStreaming}
+            aria-label="Mensaje para Panelin"
             style={{
               flex: 1,
               resize: "none",
@@ -652,19 +774,30 @@ export default function PanelinChatPanel({
               overflowY: "auto",
             }}
           />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
-            style={{
-              ...iconBtn,
-              background: input.trim() && !isStreaming ? PRIMARY : BORDER,
-              color: input.trim() && !isStreaming ? "#fff" : SUBTEXT,
-              cursor: input.trim() && !isStreaming ? "pointer" : "not-allowed",
-            }}
-            aria-label="Enviar mensaje"
-          >
-            <Send size={16} />
-          </button>
+          {isStreaming ? (
+            <button
+              onClick={stop}
+              style={{ ...iconBtn, background: "#ff3b30", color: "#fff" }}
+              aria-label="Detener generación"
+            >
+              <Square size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              aria-disabled={!input.trim()}
+              style={{
+                ...iconBtn,
+                background: input.trim() ? PRIMARY : BORDER,
+                color: input.trim() ? "#fff" : SUBTEXT,
+                cursor: input.trim() ? "pointer" : "not-allowed",
+              }}
+              aria-label="Enviar mensaje"
+            >
+              <Send size={16} />
+            </button>
+          )}
         </div>
 
         {devMode && (

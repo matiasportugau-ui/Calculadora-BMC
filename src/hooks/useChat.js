@@ -29,6 +29,22 @@ function saveHistory(messages) {
   }
 }
 
+// 1.1 — Map HTTP/network errors to user-friendly Spanish messages
+function mapErrorMessage(err) {
+  if (err?.name === "AbortError") return null; // intentional abort
+  const status = err?._status;
+  if (status === 401) return "Token de desarrollador inválido.";
+  if (status === 403) return "Origen no permitido para este servicio.";
+  if (status === 429) return "Demasiadas consultas. Esperá un momento.";
+  if (status === 503) return "Servicio de IA no disponible en este momento.";
+  if (status >= 500) return `Error del servidor (${status}). Intentá de nuevo.`;
+  if (err instanceof TypeError || status === 0) {
+    return "No se puede conectar con el servidor. Verificá tu conexión.";
+  }
+  if (status) return `Error ${status}. Intentá de nuevo.`;
+  return "No se pudo conectar con Panelin. Intentá de nuevo.";
+}
+
 /**
  * Manages Panelin chat state and SSE streaming.
  *
@@ -38,7 +54,7 @@ function saveHistory(messages) {
  *   devMode?: boolean,
  *   devAuthToken?: string,
  * }} opts
- * @returns {{ messages, isStreaming, send, clear, error }}
+ * @returns {{ messages, isStreaming, send, stop, retry, clear, error }}
  */
 export function useChat({ calcState, onAction, devMode = false, devAuthToken = "" }) {
   const [messages, setMessages] = useState(() => loadHistory());
@@ -50,9 +66,11 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
   const [promptPreview, setPromptPreview] = useState("");
   const [promptSections, setPromptSections] = useState({});
   const abortRef = useRef(null);
-  // Keep a ref to messages so send() closures see current history
+  // Keep a ref to messages so send()/retry() closures see current history
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  // 1.2 — Track last user text for retry
+  const lastUserTextRef = useRef("");
 
   // Persist to localStorage whenever messages change
   useEffect(() => {
@@ -70,6 +88,7 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
   const send = useCallback(
     async (userText) => {
       if (isStreaming || !String(userText || "").trim()) return;
+      lastUserTextRef.current = userText.trim();
 
       const userMsg = {
         id: crypto.randomUUID(),
@@ -114,7 +133,9 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
         });
 
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+          const err = new Error(`HTTP ${res.status}`);
+          err._status = res.status;
+          throw err;
         }
 
         const reader = res.body.getReader();
@@ -177,17 +198,21 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
           }
         }
       } catch (err) {
-        if (err.name !== "AbortError") {
-          setError("No se pudo conectar con Panelin. Intentá de nuevo.");
+        const msg = mapErrorMessage(err);
+        if (msg) {
+          setError(msg);
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
-                ? {
-                    ...m,
-                    content: "Lo siento, hubo un error. Intentá de nuevo.",
-                    pending: false,
-                  }
+                ? { ...m, content: "", pending: false }
                 : m
+            )
+          );
+        } else {
+          // AbortError from stop() — keep partial content
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, pending: false } : m
             )
           );
         }
@@ -312,11 +337,32 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
     [buildDevAuthHeaders, calcState]
   );
 
+  // 1.3 — Stop generating without clearing history
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    setIsStreaming(false);
+  }, []);
+
+  // 1.2 — Retry last user message
+  const retry = useCallback(() => {
+    if (isStreaming || !lastUserTextRef.current) return;
+    // Remove the last user+assistant pair before re-sending
+    setMessages((prev) => {
+      const idx = [...prev].reverse().findIndex((m) => m.role === "user");
+      if (idx === -1) return prev;
+      return prev.slice(0, prev.length - idx - 1);
+    });
+    setError(null);
+    // Use setTimeout to let state flush before re-sending
+    setTimeout(() => send(lastUserTextRef.current), 0);
+  }, [isStreaming, send]);
+
   const clear = useCallback(() => {
     abortRef.current?.abort();
     setMessages([]);
     setError(null);
     setIsStreaming(false);
+    lastUserTextRef.current = "";
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
@@ -324,6 +370,8 @@ export function useChat({ calcState, onAction, devMode = false, devAuthToken = "
     messages,
     isStreaming,
     send,
+    stop,
+    retry,
     clear,
     error,
     devMeta,

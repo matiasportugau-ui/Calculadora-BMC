@@ -44,6 +44,104 @@
     return div.innerHTML;
   }
 
+  const INVOQUE_PANEL_MODEL = {
+    blocks: [
+      {
+        title: 'Qué cubre esta interfaz',
+        items: [
+          { label: 'Inicio / KPI report', detail: 'snapshot ejecutivo (pagos, entregas, stock, meta).' },
+          { label: 'Finanzas', detail: 'KPIs por moneda, tendencia de vencimientos y tabla de pagos pendientes.' },
+          { label: 'Calendario', detail: 'vencimientos en lectura desde hoja.' },
+          { label: 'Operaciones', detail: 'próximas entregas, mensaje de coordinación y marcar entregado.' },
+          { label: 'Metas, Audit, Ventas 2.0, Stock', detail: 'tablas de apoyo y export CSV donde aplica.' },
+        ],
+      },
+      {
+        title: 'API que puebla app.js',
+        lead: 'Mismo origen que la página (API_BASE vacío = rutas relativas). Lectura salvo donde se indica.',
+        apiList: [
+          { method: 'GET', path: '/api/kpi-report', detail: 'KPI inicio.' },
+          { method: 'GET', path: '/api/kpi-financiero', detail: 'resumen financiero, tendencia, breakdown, metas.' },
+          { method: 'GET', path: '/api/calendario-vencimientos', detail: 'calendario de vencimientos.' },
+          { method: 'GET', path: '/api/proximas-entregas', detail: 'entregas de la semana.' },
+          { method: 'GET', path: '/api/coordinacion-logistica', detail: 'texto para WhatsApp (opcional ?ids=).' },
+          { method: 'POST', path: '/api/marcar-entregado', detail: 'marca entrega (cotizacionId, comentarios opcionales).' },
+          { method: 'GET', path: '/api/audit', detail: 'audit log.' },
+          { method: 'GET', path: '/api/ventas', detail: 'ventas 2.0.' },
+          { method: 'GET', path: '/api/stock-ecommerce', detail: 'inventario de stock.' },
+          { method: 'GET', path: '/api/stock-kpi', detail: 'KPIs de stock.' },
+        ],
+        hint: 'Desarrollo: con ?dev=1 en la URL, GET /api/dev/dashboard-mtime puede disparar recarga al cambiar estos archivos estáticos.',
+      },
+      {
+        title: 'Planillas Google Sheets (origen de negocio)',
+        lead: 'El servidor lee las pestañas configuradas en backend; esta UI solo las consume vía API.',
+        sheets: [
+          'Pagos_Pendientes',
+          'Metas_Ventas',
+          'Master_Cotizaciones',
+          'AUDIT_LOG',
+          '2.0 Ventas',
+          'Stock E-Commerce',
+        ],
+      },
+      {
+        title: 'Fuera de esta página',
+        muted: true,
+        hint: 'Calculadora cotizaciones, chat Panelin y Evolution viewer son otros frontends; ver docs/team/INVOQUE-PANELIN-ESTADO.md. El enlace Cotizaciones del menú apunta al dev local de la calculadora.',
+      },
+    ],
+  };
+
+  function renderInvoqueBlock(block) {
+    const className = 'invoque-block' + (block.muted ? ' invoque-block--muted' : '');
+    let html = '<div class="' + className + '">';
+    html += '<h3 class="invoque-subhead">' + escapeHtml(block.title || '') + '</h3>';
+
+    if (block.lead) {
+      html += '<p class="invoque-lead">' + escapeHtml(block.lead) + '</p>';
+    }
+
+    if (Array.isArray(block.items) && block.items.length) {
+      html += '<ul class="invoque-list">';
+      html += block.items.map(function (item) {
+        const label = escapeHtml(item.label || '');
+        const detail = escapeHtml(item.detail || '');
+        return '<li><strong>' + label + '</strong> — ' + detail + '</li>';
+      }).join('');
+      html += '</ul>';
+    }
+
+    if (Array.isArray(block.apiList) && block.apiList.length) {
+      html += '<ul class="invoque-list invoque-list--api">';
+      html += block.apiList.map(function (row) {
+        const method = escapeHtml(row.method || 'GET');
+        const path = escapeHtml(row.path || '');
+        const detail = escapeHtml(row.detail || '');
+        return '<li><code>' + method + ' ' + path + '</code>' + (detail ? ' — ' + detail : '') + '</li>';
+      }).join('');
+      html += '</ul>';
+    }
+
+    if (Array.isArray(block.sheets) && block.sheets.length) {
+      html += '<p class="invoque-sheets">' + block.sheets.map(escapeHtml).join(' · ') + '</p>';
+    }
+
+    if (block.hint) {
+      const hintClass = block.apiList ? 'invoque-hint invoque-hint--tight' : 'invoque-hint';
+      html += '<p class="' + hintClass + '">' + escapeHtml(block.hint) + '</p>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderInvoquePanel() {
+    const panel = byId('invoquePanel');
+    if (!panel) return;
+    panel.innerHTML = (INVOQUE_PANEL_MODEL.blocks || []).map(renderInvoqueBlock).join('');
+  }
+
   function normalizeCurrency(value) {
     const currency = String(value || '$').trim();
     return currency || '$';
@@ -1267,5 +1365,6 @@
 
   byId('btnExportStockCSV') && byId('btnExportStockCSV').addEventListener('click', exportStockCSV);
 
+  renderInvoquePanel();
   load();
 })();

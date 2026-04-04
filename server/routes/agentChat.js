@@ -11,6 +11,7 @@
  *   {"type":"error","message":"..."}
  */
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
@@ -25,6 +26,62 @@ import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
 
 const router = Router();
+
+// 0.4 — Allowed origins (CSRF guard)
+const ALLOWED_ORIGINS = new Set([
+  "https://calculadora-bmc.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+]);
+
+function rateLimitClientKey(req) {
+  const xf = req.headers["x-forwarded-for"];
+  if (typeof xf === "string" && xf.trim()) {
+    return xf.split(",")[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+/** Allows Vercel previews (*.vercel.app) and localhost dev; exact list for canonical URLs. */
+function isChatOriginAllowed(origin) {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const u = new URL(origin);
+    if (u.protocol === "https:" && u.hostname.endsWith(".vercel.app")) return true;
+    if (u.protocol === "http:" && (u.hostname === "localhost" || u.hostname === "127.0.0.1")) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+// 0.4 — Allowed action types
+const VALID_ACTION_TYPES = new Set([
+  "setScenario", "setLP", "setTecho", "setTechoZonas",
+  "setPared", "setCamara", "setFlete", "setProyecto",
+  "setWizardStep", "advanceWizard",
+]);
+
+// 0.1 — Rate limiting: 10/min public, 30/min devMode
+const publicLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitClientKey,
+  message: { ok: false, error: "Demasiadas consultas. Esperá un momento." },
+  skip: () => false, // devMode bypass is handled post-parse via devModeLimiter
+});
+
+const devModeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitClientKey,
+  message: { ok: false, error: "Demasiadas consultas en modo dev. Esperá un momento." },
+});
 
 function isDevAuthorized(req) {
   if (!config.apiAuthToken) return { ok: false, status: 503, error: "API_AUTH_TOKEN not configured" };
@@ -159,16 +216,43 @@ function buildCalcValidation(calcState, assistantText) {
 }
 
 router.post("/agent/chat", async (req, res) => {
+  // 0.1 — Apply rate limit (devMode gets higher limit, validated after auth)
   const { messages = [], calcState = {}, devMode = false } = req.body || {};
 
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ ok: false, error: "messages array required" });
+  // 0.4 — CSRF origin check
+  const origin = req.headers.origin;
+  if (origin && !isChatOriginAllowed(origin)) {
+    return res.status(403).json({ ok: false, error: "Origin not allowed" });
   }
 
+  // 0.1 — Rate limit: devMode users get higher quota if authorized
   if (devMode) {
     const auth = isDevAuthorized(req);
     if (!auth.ok) {
       return res.status(auth.status).json({ ok: false, error: auth.error });
+    }
+    await new Promise((resolve, reject) => {
+      devModeLimiter(req, res, (err) => (err ? reject(err) : resolve()));
+    });
+  } else {
+    await new Promise((resolve, reject) => {
+      publicLimiter(req, res, (err) => (err ? reject(err) : resolve()));
+    });
+  }
+
+  // Check if rate limiter already sent a response
+  if (res.headersSent) return;
+
+  // 0.2 — Input validation
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ ok: false, error: "messages array required" });
+  }
+  if (messages.length > 60) {
+    return res.status(400).json({ ok: false, error: "Historial demasiado largo (máx. 60 mensajes)." });
+  }
+  for (const msg of messages) {
+    if (typeof msg.content === "string" && msg.content.length > 4000) {
+      msg.content = msg.content.slice(0, 4000);
     }
   }
 
@@ -187,8 +271,19 @@ router.post("/agent/chat", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // disable nginx / Cloud Run buffering
 
-  const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  const send = (obj) => { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
   let visibleAssistantText = "";
+  let aborted = false;
+
+  // 1.5 — Abort LLM stream on client disconnect
+  const disconnectController = new AbortController();
+  req.on("close", () => {
+    aborted = true;
+    disconnectController.abort();
+  });
+
+  // 1.4 — SSE keepalive heartbeat every 15s to prevent proxy timeouts
+  const heartbeat = setInterval(() => { if (!aborted) res.write(":\n\n"); }, 15000);
 
   /** Process buffered text: emit text events, extract ACTION_JSON directives. Returns leftover tail. */
   function flushLines(buf) {
@@ -199,7 +294,12 @@ router.post("/agent/chat", async (req, res) => {
       if (trimmed.startsWith("ACTION_JSON:")) {
         try {
           const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-          send({ type: "action", action });
+          // 0.4 — Only emit validated action types
+          if (VALID_ACTION_TYPES.has(action.type)) {
+            send({ type: "action", action });
+          } else {
+            send({ type: "text", delta: line + "\n" });
+          }
         } catch {
           if (line) send({ type: "text", delta: line + "\n" });
         }
@@ -217,7 +317,12 @@ router.post("/agent/chat", async (req, res) => {
     if (trimmed.startsWith("ACTION_JSON:")) {
       try {
         const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-        send({ type: "action", action });
+        // 0.4 — Only emit validated action types
+        if (VALID_ACTION_TYPES.has(action.type)) {
+          send({ type: "action", action });
+        } else {
+          send({ type: "text", delta: trimmed });
+        }
       } catch {
         send({ type: "text", delta: trimmed });
       }
@@ -233,9 +338,25 @@ router.post("/agent/chat", async (req, res) => {
     send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
   const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode });
-  const msgs = messages
+  let filteredMsgs = messages
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
+
+  // 1.7 — Truncate history to stay within ~8000 token budget (rough: chars/4)
+  const SYSTEM_ESTIMATE = Math.ceil(systemPrompt.length / 4);
+  const TOKEN_BUDGET = 8000;
+  let tokenSum = SYSTEM_ESTIMATE;
+  const truncated = [];
+  for (let i = filteredMsgs.length - 1; i >= 0; i--) {
+    const t = Math.ceil(filteredMsgs[i].content.length / 4) + 5;
+    if (tokenSum + t > TOKEN_BUDGET && truncated.length >= 2) break;
+    tokenSum += t;
+    truncated.unshift(filteredMsgs[i]);
+  }
+  if (truncated.length < filteredMsgs.length) {
+    send({ type: "info", message: "Se resumió el historial para mantener la calidad de la respuesta." });
+  }
+  const msgs = truncated;
 
   const providerChain = [];
   if (hasAnthropic) providerChain.push("claude");
@@ -307,29 +428,36 @@ router.post("/agent/chat", async (req, res) => {
       }
 
       flushTail(buf);
-      if (devMode) {
-        const validation = buildCalcValidation(calcState, visibleAssistantText);
-        send({ type: "calc_validation", validation });
-        appendTrainingSessionEvent({
-          type: "chat_turn",
-          mode: "developer",
-          provider,
-          kbMatches: trainingExamples.length,
-          question: String(lastUserMessage || "").slice(0, 500),
-          calcValidation: validation,
-        });
+      if (!aborted) {
+        if (devMode) {
+          const validation = buildCalcValidation(calcState, visibleAssistantText);
+          send({ type: "calc_validation", validation });
+          appendTrainingSessionEvent({
+            type: "chat_turn",
+            mode: "developer",
+            provider,
+            kbMatches: trainingExamples.length,
+            question: String(lastUserMessage || "").slice(0, 500),
+            calcValidation: validation,
+          });
+        }
+        send({ type: "done" });
       }
-      send({ type: "done" });
+      clearInterval(heartbeat);
       res.end();
       return; // success
-    } catch {
-      // Try next provider
+    } catch (err) {
+      // 1.6 — Log provider failure instead of silent catch
+      req.log?.warn({ provider, err: err.message }, "provider failed, trying next");
     }
   }
 
+  clearInterval(heartbeat);
   // All providers failed
-  send({ type: "error", message: "Todos los proveedores de IA fallaron. Intentá más tarde." });
-  res.end();
+  if (!aborted) {
+    send({ type: "error", message: "Todos los proveedores de IA fallaron. Intentá más tarde." });
+    res.end();
+  }
 });
 
 export default router;

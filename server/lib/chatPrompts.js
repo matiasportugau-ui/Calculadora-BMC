@@ -148,6 +148,26 @@ REGLAS DE ACCIONES (OBLIGATORIAS — incumplirlas arruina la UX):
 7. Para setTechoZonas: usá números: [{"largo":10,"ancho":5}] CORRECTO, [{"largo":"10","ancho":"5"}] INCORRECTO.`;
 
 /**
+ * 0.3 — Sanitize user-supplied strings before injecting into system prompt.
+ * Strips control characters, limits length, neutralizes prompt-injection patterns.
+ * @param {unknown} val
+ * @param {number} [maxLen=200]
+ * @returns {string}
+ */
+function sanitizeForPrompt(val, maxLen = 200) {
+  if (val == null) return "";
+  const str = String(val)
+    // Remove control chars (except common whitespace)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    // Neutralize template-like injection patterns
+    .replace(/\$\{[^}]*\}/g, "[blocked]")
+    // Neutralize markdown heading injection
+    .replace(/^#{1,6}\s/gm, "")
+    .trim();
+  return str.slice(0, maxLen);
+}
+
+/**
  * @param {object} calcState
  * @param {{ trainingExamples?: Array<object>, devMode?: boolean }} options
  * @returns {string}
@@ -190,7 +210,9 @@ Pared:
 
 Cámara: ${camara.largo_int ?? "?"}m × ${camara.ancho_int ?? "?"}m × ${camara.alto_int ?? "?"}m
 Flete: USD ${flete}
-Proyecto: nombre="${proyecto.nombre || ""}" | cliente="${proyecto.tipoCliente || ""}" | tel="${proyecto.telefono || ""}"`;
+<user_data>
+Proyecto: nombre="${sanitizeForPrompt(proyecto.nombre)}" | cliente="${sanitizeForPrompt(proyecto.tipoCliente)}" | tel="${sanitizeForPrompt(proyecto.telefono)}" | dir="${sanitizeForPrompt(proyecto.direccion)}" | desc="${sanitizeForPrompt(proyecto.descripcion, 300)}" | ref="${sanitizeForPrompt(proyecto.refInterna)}"
+</user_data>`;
 
   const examplesBlock = Array.isArray(trainingExamples) && trainingExamples.length > 0
     ? `## CORRECCIONES DE ENTRENAMIENTO (MODO DESARROLLADOR)
@@ -199,10 +221,10 @@ Aplicá estas correcciones como guía prioritaria cuando el usuario pregunte alg
 ${trainingExamples
   .map((entry, idx) => {
     return [
-      `Ejemplo ${idx + 1} [${entry.category || "conversational"}]`,
-      `Pregunta: ${entry.question || ""}`,
-      `Respuesta esperada: ${entry.goodAnswer || ""}`,
-      entry.context ? `Contexto: ${entry.context}` : null,
+      `Ejemplo ${idx + 1} [${sanitizeForPrompt(entry.category || "conversational", 50)}]`,
+      `Pregunta: ${sanitizeForPrompt(entry.question, 500)}`,
+      `Respuesta esperada: ${sanitizeForPrompt(entry.goodAnswer, 1000)}`,
+      entry.context ? `Contexto: ${sanitizeForPrompt(entry.context, 300)}` : null,
     ]
       .filter(Boolean)
       .join("\n");

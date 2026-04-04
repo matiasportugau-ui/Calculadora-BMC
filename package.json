@@ -99,6 +99,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.1",
     "googleapis": "^144.0.0",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.263.1",
