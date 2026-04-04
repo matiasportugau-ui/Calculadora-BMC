@@ -93,7 +93,7 @@ import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
-import { SLIDES_SOLO_TECHO, getGeneratedColorGallery } from "../data/quoteVisorMedia.js";
+import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
 // CSS extracted to src/styles/bmc-mobile.css (imported in main.jsx)
 
@@ -288,21 +288,40 @@ function KPICard({ label, value, borderColor = C.primary }) {
   );
 }
 
-function ColorChips({ colors = [], value, onChange, notes = {}, onColorDoubleClick, familia = "", onHover = null }) {
+function ColorChips({ colors = [], value, onChange, notes = {}, onColorDoubleClick, onHover = null }) {
   return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontFamily: FONT }}>
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontFamily: FONT }}>
       {colors.map(color => {
         const isS = value === color, hex = COLOR_HEX[color] || "#999";
-        const gallery = familia ? getGeneratedColorGallery(familia, color) : [];
-        const shopifyImage = gallery?.[0]?.src;
-        return <button key={color} onClick={() => onChange(color)} onDoubleClick={() => onColorDoubleClick?.(color)} onMouseEnter={() => onHover?.(color)} onFocus={() => onHover?.(color)} onMouseLeave={() => onHover?.("")} onBlur={() => onHover?.("")} title={notes[color] || color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 6px", borderRadius: 20, border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, cursor: "pointer", transition: TR, fontSize: 12, fontWeight: isS ? 600 : 400, color: C.tp }}>
-          {shopifyImage ? (
-            <img src={shopifyImage} alt={color} style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `1px solid ${C.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
-          ) : (
-            <span style={{ width: 20, height: 20, borderRadius: "50%", background: hex, flexShrink: 0, border: `1px solid ${color === "Blanco" ? C.border : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
-          )}
-          {color}
-        </button>;
+        return (
+          <button
+            key={color}
+            onClick={() => onChange(color)}
+            onDoubleClick={() => onColorDoubleClick?.(color)}
+            onMouseEnter={() => onHover?.(color)}
+            onFocus={() => onHover?.(color)}
+            onMouseLeave={() => onHover?.("")}
+            onBlur={() => onHover?.("")}
+            title={notes[color] || color}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 16px 8px 10px", borderRadius: 24,
+              border: `2px solid ${isS ? C.primary : C.border}`,
+              background: isS ? C.primarySoft : C.surface,
+              cursor: "pointer", transition: TR,
+              fontSize: 13, fontWeight: isS ? 700 : 500, color: C.tp,
+            }}
+          >
+            <span style={{
+              width: 24, height: 24, borderRadius: "50%",
+              background: hex, flexShrink: 0,
+              border: `2px solid ${isS ? C.primary : color === "Blanco" ? C.border : "transparent"}`,
+              boxShadow: isS ? `0 0 0 2px ${C.primarySoft}` : "0 1px 3px rgba(0,0,0,0.12)",
+              transition: TR,
+            }} />
+            {color}
+          </button>
+        );
       })}
     </div>
   );
@@ -484,7 +503,14 @@ function PDFPreviewModal({ html, title, onClose }) {
   const handleShare = async () => {
     if (!navigator.share) return;
     try {
-      await navigator.share({ title: title || "Cotización BMC", url: url });
+      const file = new File([html], "cotizacion-bmc.html", { type: "text/html" });
+      const shareData = { title: title || "Cotización BMC" };
+      if (navigator.canShare?.({ files: [file] })) {
+        shareData.files = [file];
+      } else {
+        shareData.text = title || "Cotización BMC";
+      }
+      await navigator.share(shareData);
     } catch { /* user cancelled */ }
   };
 
@@ -3589,9 +3615,14 @@ export default function PanelinCalculadoraV3() {
                               key={opt.value}
                               onMouseEnter={() => setTechoFamilyHoverId(opt.value)}
                               onFocus={() => setTechoFamilyHoverId(opt.value)}
-                              onClick={() => {
+                              onClick={(e) => {
                                 setTechoFamilia(opt.value);
                                 setTechoFamilyHoverId("");
+                                // Fallback for environments where onDoubleClick is flaky:
+                                // second consecutive click still reports detail >= 2.
+                                if ((e?.detail || 0) >= 2) {
+                                  advanceWizardStep();
+                                }
                               }}
                               onDoubleClick={() => {
                                 setTechoFamilia(opt.value);

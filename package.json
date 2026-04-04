@@ -14,6 +14,8 @@
     "start:api": "node server/index.js",
     "dev:full": "concurrently -n api,vite -c blue,green \"npm run start:api\" \"npm run dev\"",
     "dev:full-stack": "./run_full_stack.sh",
+    "local:view": "bash scripts/local-view-autolaunch.sh",
+    "local:view:open": "bash scripts/local-view-autolaunch.sh --open",
     "dev:full:watch": "concurrently -n api,vite -c blue,green \"npm run dev:api\" \"npm run dev\"",
     "bmc-dashboard": "node docs/bmc-dashboard-modernization/sheets-api-server.js",
     "ml:cloud-run": "./run_ml_cloud_run_setup.sh",

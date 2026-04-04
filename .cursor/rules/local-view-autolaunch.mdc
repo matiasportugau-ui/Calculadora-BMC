@@ -1,0 +1,17 @@
+---
+description: "Autolanzar stack local cuando el usuario pide 'ver en local' (o frases equivalentes)."
+alwaysApply: false
+---
+
+# Ver en local -> autolanzar
+
+Cuando el usuario pida ver la app en local (ej.: "ver en local", "mostrame local", "levantá local", "abrí local"):
+
+1. Ejecutar `npm run local:view`.
+2. Si el usuario quiere abrir navegador automáticamente, ejecutar `npm run local:view:open`.
+3. Confirmar que:
+   - Frontend responde en `http://localhost:5173`
+   - API responde en `http://localhost:3001/health`
+4. Si hay errores de arranque, reportar causa y ruta de logs en `.runtime/`.
+
+Objetivo: evitar pasos manuales y no duplicar procesos si ya están corriendo.

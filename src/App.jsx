@@ -1,11 +1,12 @@
 // Versión completa: Google Drive, historial de presupuestos, responsive (v3.0 modular)
 // Canonical Calculadora component: PanelinCalculadoraV3_backup (see docs/bmc-dashboard-modernization/IA.md)
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { getRouterBasename } from "./utils/routerBasename.js";
 import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
+import { onLCP, onINP, onCLS } from "web-vitals";
 
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
@@ -40,8 +41,20 @@ function Shell({ children }) {
   );
 }
 
+function sendVitals(metric) {
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon("/api/vitals", JSON.stringify({ name: metric.name, value: metric.value, rating: metric.rating, id: metric.id }));
+  }
+}
+
 export default function App() {
   const basename = getRouterBasename();
+
+  useEffect(() => {
+    onLCP(sendVitals);
+    onINP(sendVitals);
+    onCLS(sendVitals);
+  }, []);
 
   return (
     <BrowserRouter basename={basename}>

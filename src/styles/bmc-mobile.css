@@ -1,0 +1,146 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   bmc-mobile.css — Extracted from bmc-kf injected block + mobile enhancements
+   Desktop: unaffected (rules scoped via @media or env() that resolves to 0)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens (CSS custom properties) ────────────────────────────── */
+:root {
+  --bmc-brand: #1a1a2e;
+  --bmc-brand-light: #23234a;
+  --bmc-surface: #F5F5F7;
+  --bmc-surface-alt: #eef1f6;
+  --bmc-border: #dde1e8;
+  --bmc-text-primary: #1a1a2e;
+  --bmc-text-secondary: #6b7280;
+  --bmc-accent: #0071e3;
+  --bmc-radius: 12px;
+  --bmc-radius-sm: 8px;
+}
+
+/* ── Keyframes (used by both platforms) ───────────────────────────────── */
+@keyframes bmc-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes bmc-shake {
+  0%, 100% { transform: translateX(0) }
+  20% { transform: translateX(-4px) }
+  40% { transform: translateX(4px) }
+  60% { transform: translateX(-3px) }
+  80% { transform: translateX(3px) }
+}
+@keyframes bmc-slideUp { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+@keyframes bmc-slideInUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+
+/* ── Resize sash (both platforms) ─────────────────────────────────────── */
+.bmc-sash {
+  width: 6px; margin: 0 -2px; background: transparent;
+  flex-shrink: 0; position: relative; z-index: 2; outline: none;
+}
+.bmc-sash--vertical { width: 100%; height: 10px; margin: -4px 0; cursor: row-resize; }
+.bmc-sash[data-resize-handle-active]::after,
+.bmc-sash:hover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: rgba(0,113,227,0.35);
+}
+
+/* ── Right panel scrollbar hide (both platforms) ──────────────────────── */
+.bmc-right-panel::-webkit-scrollbar { display: none; }
+.bmc-right-panel { scrollbar-width: none; }
+
+/* ── Mobile layout (< 1024px) ─────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .bmc-main-grid { height: auto !important; overflow: visible !important; }
+  .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
+  .bmc-mobile-bar { display: flex !important; }
+  .bmc-desktop-actions { display: none !important; }
+
+  /* Touch-action: eliminate 300ms tap delay on form areas */
+  .bmc-left-panel { touch-action: manipulation; }
+
+  /* Fluid typography for small screens — caps at 18px (desktop unaffected) */
+  .bmc-left-panel, .bmc-right-panel {
+    font-size: clamp(14px, 3.5vw, 18px);
+  }
+}
+
+/* ── Desktop layout (>= 1024px) ───────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .bmc-mobile-bar { display: none !important; }
+}
+
+/* ── Safe area insets (0 on desktop, protects notched phones) ──────────── */
+.bmc-mobile-bar {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── Touch-friendly targets on mobile ─────────────────────────────────── */
+@media (max-width: 1023px) {
+  .bmc-wizard-dots button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .bmc-stepper-btn {
+    min-width: 48px;
+    min-height: 48px;
+  }
+}
+
+/* ── Hover vs touch detection for tooltips ─────────────────────────────── */
+@media (hover: hover) {
+  .bmc-wizard-tooltip { display: none; }
+  .bmc-wizard-dot:hover .bmc-wizard-tooltip { display: block; }
+}
+@media (hover: none) {
+  .bmc-wizard-tooltip { display: none; }
+  .bmc-wizard-dot:active .bmc-wizard-tooltip { display: block; }
+}
+
+/* ── Visor carousel — mobile-only scroll-snap (desktop keeps JS index) ── */
+@media (max-width: 1023px) {
+  .visor-carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .visor-carousel::-webkit-scrollbar { display: none; }
+  .visor-slide {
+    scroll-snap-align: center;
+    flex: 0 0 100%;
+    min-width: 100%;
+  }
+}
+
+/* ── Bottom sheet overlay (mobile action bar expansion) ────────────────── */
+.bmc-bottom-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(0,0,0,0.4);
+  opacity: 0; transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.bmc-bottom-sheet-backdrop.open {
+  opacity: 1; pointer-events: auto;
+}
+.bmc-bottom-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+}
+.bmc-bottom-sheet.open {
+  transform: translateY(0);
+}
+
+/* ── PDF modal full-screen on mobile ──────────────────────────────────── */
+@media (max-width: 759px) {
+  .bmc-pdf-modal-compact {
+    position: fixed !important;
+    inset: 0 !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+}

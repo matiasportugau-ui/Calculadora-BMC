@@ -56,6 +56,7 @@ export default function QuoteVisualVisor({
   const [showOverride, setShowOverride] = useState(false);
   const [shopifyOverrideGen, setShopifyOverrideGen] = useState(0);
   const timerRef = useRef(null);
+  const touchUnpauseRef = useRef(null);
   const panelinVideoRef = useRef(null);
 
   const effectiveScenario = hoverScenarioId || scenarioId;
@@ -139,6 +140,10 @@ export default function QuoteVisualVisor({
       if (timerRef.current) window.clearInterval(timerRef.current);
     };
   }, [open, showAguaStep, showListaStep, slides.length, paused]);
+
+  useEffect(() => {
+    return () => clearTimeout(touchUnpauseRef.current);
+  }, []);
 
   const go = useCallback(
     (delta) => {
@@ -293,8 +298,8 @@ export default function QuoteVisualVisor({
           style={{ padding: 16 }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
-          onTouchStart={() => setPaused(true)}
-          onTouchEnd={() => { setTimeout(() => setPaused(false), 8000); }}
+          onTouchStart={() => { clearTimeout(touchUnpauseRef.current); setPaused(true); }}
+          onTouchEnd={() => { clearTimeout(touchUnpauseRef.current); touchUnpauseRef.current = setTimeout(() => setPaused(false), 8000); }}
         >
           {dimensionSummary ? (
             <div
