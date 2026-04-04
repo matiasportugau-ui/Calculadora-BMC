@@ -89,6 +89,8 @@ import {
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../src/utils/roofPanelStripsPlanta.js";
+import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
+import { buildLateralStepInfillGeometries } from "../src/utils/roof3dLateralStepInfill.js";
 import { getRoofPanelMapUrl, pickBestMapUrlFromSlides } from "../src/data/roofPanelMapUrl.js";
 import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
@@ -1726,6 +1728,29 @@ assert(
 
 assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
 assert("isAllowedDriverEventType rejects unknown", !isAllowedDriverEventType("not_an_event"), true, true);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE: 3D lateral step infill (cosmético, referencial)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: roof3d lateral step infill ═══");
+const thetaInfillDeg = (15 * Math.PI) / 180;
+const zRootInfill = { largo: 10.08, ancho: 10, preview: { x: 0, y: 0 } };
+const zAnnInfill = {
+  largo: 6,
+  ancho: 5.6,
+  preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 },
+};
+const vzInfill = [zRootInfill, zAnnInfill];
+const layInfill = buildZoneLayoutsForRoof3d(vzInfill, "una_agua", thetaInfillDeg);
+const infInfill = buildLateralStepInfillGeometries(layInfill, vzInfill, thetaInfillDeg);
+assert("lateral step infill: one mesh", infInfill.length === 1, infInfill.length, 1);
+const yTopInfill = infInfill[0]?.positions?.[7];
+assert(
+  "lateral step infill: ridge corner above eave",
+  yTopInfill > 0.05,
+  yTopInfill,
+  ">0.05",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

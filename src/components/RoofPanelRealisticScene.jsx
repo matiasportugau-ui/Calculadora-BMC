@@ -8,6 +8,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
+import { buildLateralStepInfillGeometries } from "../utils/roof3dLateralStepInfill.js";
 import { buildAnchoStripsPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
 import { getRoofPanelMapUrl } from "../data/roofPanelMapUrl.js";
@@ -196,6 +197,45 @@ function SlopeZoneStripedMeshes({ ancho, largo, ox, oz, thetaBase, slopeMark, pr
   );
 }
 
+function RoofLateralStepInfills({ zoneLayouts, validZonas, theta }) {
+  const items = useMemo(
+    () => buildLateralStepInfillGeometries(zoneLayouts, validZonas, theta),
+    [zoneLayouts, validZonas, theta],
+  );
+
+  return items.map((it) => (
+    <RoofLateralStepInfillMesh key={it.key} positions={it.positions} indices={it.indices} />
+  ));
+}
+
+function RoofLateralStepInfillMesh({ positions, indices }) {
+  const geom = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    g.setIndex(new THREE.BufferAttribute(indices, 1));
+    g.computeVertexNormals();
+    return g;
+  }, [positions, indices]);
+
+  useEffect(
+    () => () => {
+      geom.dispose();
+    },
+    [geom],
+  );
+
+  return (
+    <mesh geometry={geom} castShadow receiveShadow>
+      <meshStandardMaterial
+        color="#5a6a7d"
+        roughness={0.88}
+        metalness={0.04}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
 function MapLoader({ mapUrl, render }) {
   const map = useTexture(mapUrl);
   const gl = useThree((s) => s.gl);
@@ -212,6 +252,7 @@ function MapLoader({ mapUrl, render }) {
 
 function RoofRealisticSceneContent({
   zoneLayouts,
+  validZonas,
   theta,
   profile,
   mapUrl,
@@ -241,6 +282,7 @@ function RoofRealisticSceneContent({
         shadow-mapSize-height={1024}
       />
       <directionalLight position={[-3, 5, -2]} intensity={0.28} />
+      <RoofLateralStepInfills zoneLayouts={zoneLayouts} validZonas={validZonas} theta={theta} />
       {zoneLayouts.map((z) => (
         <SlopeZoneStripedMeshes
           key={z.gi}
@@ -363,6 +405,7 @@ export default function RoofPanelRealisticScene({
         <Suspense fallback={null}>
           <RoofRealisticSceneContent
             zoneLayouts={zoneLayouts}
+            validZonas={validZonas}
             theta={theta}
             profile={profile}
             mapUrl={mapUrl}
