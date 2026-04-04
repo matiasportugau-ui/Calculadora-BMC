@@ -243,7 +243,6 @@ function SlopeArrow({ cx, cy, h, dir }) {
  * @param {number} props.panelAu - ancho útil panel (m)
  * @param {function} [props.onZonaPreviewChange] - (globalIndex, patch) => void
  * @param {function} [props.onResetLayout] - limpia posiciones; conserva slopeMark si aplica
- * @param {function} [props.onAnnexLateralSideChange] - (gi, 'izq'|'der') anexo lateral mismo cuerpo
  * @param {function} [props.onAnnexRankSwap] - (gi, dir: -1|1) intercambia orden en cadena lateral
  * @param {function} [props.onAddZona] - agrega una zona nueva (toolbar)
  * @param {function} [props.onEncounterPairChange] - (pairKey, encounterPatch|null) guarda en `preview.encounterByPair`; null = desconectar
@@ -256,7 +255,6 @@ export default function RoofPreview({
   panelAu = 1.12,
   onZonaPreviewChange,
   onResetLayout,
-  onAnnexLateralSideChange,
   onAnnexRankSwap,
   onAddZona,
   onEncounterPairChange,
@@ -536,7 +534,7 @@ export default function RoofPreview({
                 cursor: "pointer",
               }}
             >
-              Agregar zona
+              Otro cuerpo de techo
             </button>
           )}
           {onResetLayout && layout.entries.length > 0 && (
@@ -656,8 +654,9 @@ export default function RoofPreview({
       <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
         Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
         Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir.
-        Doble clic en la superficie: pendiente visual. Usá <strong style={{ color: C.tp }}>Agregar zona</strong> para sumar
-        superficies independientes.
+        Doble clic en la superficie: pendiente visual. <strong style={{ color: C.tp }}>+ Otra medida</strong> en cada tarjeta
+        suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
+        independiente en planta.
       </CollapsibleHint>
       <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
         {layout.entries.length === 0 ? (
@@ -765,10 +764,7 @@ export default function RoofPreview({
               const annex = isLateralAnnexZona(r.z);
               const canDrag = Boolean(onZonaPreviewChange);
               const supV = suppressSharedVerticalStroke(r, layout.entries, zonas);
-              const showAnnexCtl = annex && (onAnnexLateralSideChange || onAnnexRankSwap);
-              const btnH = 0.26;
-              const btnY = r.y - btnH - 0.08;
-              const side = r.z.preview?.lateralSide === "izq" ? "izq" : "der";
+              const showAnnexCtl = annex && onAnnexRankSwap;
               return (
                 <g key={r.gi}>
                   <rect
@@ -857,130 +853,64 @@ export default function RoofPreview({
                   )}
                   {showAnnexCtl && (
                     <g pointerEvents="auto">
-                      {onAnnexLateralSideChange && (
-                        <>
-                          <rect
-                            x={r.x + r.w * 0.08}
-                            y={btnY}
-                            width={r.w * 0.38}
-                            height={btnH}
-                            rx={0.06}
-                            fill={side === "izq" ? C.primarySoft : "rgba(255,255,255,0.92)"}
-                            stroke={C.primary}
-                            strokeWidth={0.03}
-                            style={{ cursor: "pointer" }}
-                            onPointerDown={annexHitStop}
-                            onPointerUp={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onAnnexLateralSideChange(r.gi, "izq");
-                            }}
-                          />
-                          <text
-                            x={r.x + r.w * 0.27}
-                            y={btnY + btnH * 0.72}
-                            textAnchor="middle"
-                            fontSize={0.14}
-                            fontWeight={700}
-                            fill={C.primary}
-                            pointerEvents="none"
-                            fontFamily={FONT}
-                          >
-                            ←
-                          </text>
-                          <rect
-                            x={r.x + r.w * 0.54}
-                            y={btnY}
-                            width={r.w * 0.38}
-                            height={btnH}
-                            rx={0.06}
-                            fill={side === "der" ? C.primarySoft : "rgba(255,255,255,0.92)"}
-                            stroke={C.primary}
-                            strokeWidth={0.03}
-                            style={{ cursor: "pointer" }}
-                            onPointerDown={annexHitStop}
-                            onPointerUp={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onAnnexLateralSideChange(r.gi, "der");
-                            }}
-                          />
-                          <text
-                            x={r.x + r.w * 0.73}
-                            y={btnY + btnH * 0.72}
-                            textAnchor="middle"
-                            fontSize={0.14}
-                            fontWeight={700}
-                            fill={C.primary}
-                            pointerEvents="none"
-                            fontFamily={FONT}
-                          >
-                            →
-                          </text>
-                        </>
-                      )}
-                      {onAnnexRankSwap && (
-                        <>
-                          <rect
-                            x={r.x + r.w * 0.2}
-                            y={r.y + r.h + 0.06}
-                            width={r.w * 0.22}
-                            height={0.22}
-                            rx={0.05}
-                            fill="rgba(255,255,255,0.92)"
-                            stroke={C.border}
-                            strokeWidth={0.025}
-                            style={{ cursor: "pointer" }}
-                            onPointerDown={annexHitStop}
-                            onPointerUp={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onAnnexRankSwap(r.gi, -1);
-                            }}
-                          />
-                          <text
-                            x={r.x + r.w * 0.31}
-                            y={r.y + r.h + 0.2}
-                            textAnchor="middle"
-                            fontSize={0.12}
-                            fontWeight={700}
-                            fill={C.tp}
-                            pointerEvents="none"
-                            fontFamily={FONT}
-                          >
-                            «
-                          </text>
-                          <rect
-                            x={r.x + r.w * 0.58}
-                            y={r.y + r.h + 0.06}
-                            width={r.w * 0.22}
-                            height={0.22}
-                            rx={0.05}
-                            fill="rgba(255,255,255,0.92)"
-                            stroke={C.border}
-                            strokeWidth={0.025}
-                            style={{ cursor: "pointer" }}
-                            onPointerDown={annexHitStop}
-                            onPointerUp={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              onAnnexRankSwap(r.gi, 1);
-                            }}
-                          />
-                          <text
-                            x={r.x + r.w * 0.69}
-                            y={r.y + r.h + 0.2}
-                            textAnchor="middle"
-                            fontSize={0.12}
-                            fontWeight={700}
-                            fill={C.tp}
-                            pointerEvents="none"
-                            fontFamily={FONT}
-                          >
-                            »
-                          </text>
-                        </>
-                      )}
+                      <rect
+                        x={r.x + r.w * 0.2}
+                        y={r.y + r.h + 0.06}
+                        width={r.w * 0.22}
+                        height={0.22}
+                        rx={0.05}
+                        fill="rgba(255,255,255,0.92)"
+                        stroke={C.border}
+                        strokeWidth={0.025}
+                        style={{ cursor: "pointer" }}
+                        onPointerDown={annexHitStop}
+                        onPointerUp={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onAnnexRankSwap(r.gi, -1);
+                        }}
+                      />
+                      <text
+                        x={r.x + r.w * 0.31}
+                        y={r.y + r.h + 0.2}
+                        textAnchor="middle"
+                        fontSize={0.12}
+                        fontWeight={700}
+                        fill={C.tp}
+                        pointerEvents="none"
+                        fontFamily={FONT}
+                      >
+                        «
+                      </text>
+                      <rect
+                        x={r.x + r.w * 0.58}
+                        y={r.y + r.h + 0.06}
+                        width={r.w * 0.22}
+                        height={0.22}
+                        rx={0.05}
+                        fill="rgba(255,255,255,0.92)"
+                        stroke={C.border}
+                        strokeWidth={0.025}
+                        style={{ cursor: "pointer" }}
+                        onPointerDown={annexHitStop}
+                        onPointerUp={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onAnnexRankSwap(r.gi, 1);
+                        }}
+                      />
+                      <text
+                        x={r.x + r.w * 0.69}
+                        y={r.y + r.h + 0.2}
+                        textAnchor="middle"
+                        fontSize={0.12}
+                        fontWeight={700}
+                        fill={C.tp}
+                        pointerEvents="none"
+                        fontFamily={FONT}
+                      >
+                        »
+                      </text>
                     </g>
                   )}
                 </g>

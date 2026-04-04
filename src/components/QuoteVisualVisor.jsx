@@ -13,6 +13,7 @@ const PANELIN_LISTA_VIDEO_SRC = `${import.meta.env.BASE_URL}video/panelin-lista-
  * Visor visual derecho: **Visualización 3D** (host del portal `RoofBorderCanvas`, planta + bordes, vía `createPortal`)
  * + carrusel Shopify según escenario / paso / bordes activos.
  * Selector DOM de la Visualización 3D: `[data-bmc-view="visualizacion-3d"]` · alias: `[data-bmc-roof-3d-host]`.
+ * Etiqueta **Frente** (tipografía chica) centrada abajo del marco del visor; el canvas 3D omite el rótulo duplicado `FRENTE` cuando hay portal (`suppressFrenteCompass`).
  *
  * @param {object} props
  * @param {string} props.scenarioId
@@ -242,30 +243,65 @@ export default function QuoteVisualVisor({
               Visualización 3D
             </div>
           )}
-          <div
-            ref={setHostRef}
-            data-bmc-roof-3d-host
-            data-bmc-view="visualizacion-3d"
-            data-bmc-view-legacy="roof-border-canvas-host"
-            data-bmc-component="RoofBorderCanvas-portal-host"
-            role="region"
-            aria-label="Visualización 3D: planta y bordes del techo"
-            title="Visualización 3D — planta y bordes (RoofBorderCanvas vía portal)"
-            style={{
-              width: "100%",
-              /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
-              height: "clamp(360px, min(72vh, 820px), 900px)",
-              minHeight: "clamp(360px, min(72vh, 820px), 900px)",
-              borderRadius: 12,
-              border: `1px solid ${C.border}`,
-              background: "#eef2f9",
-              minWidth: 0,
-              overflow: "hidden",
-              boxSizing: "border-box",
-              /* Colapsado: el nodo sigue en el DOM (portal válido); oculto visualmente */
-              display: open ? "block" : "none",
-            }}
-          />
+          <div style={{ position: "relative", width: "100%" }}>
+            <div
+              ref={setHostRef}
+              data-bmc-roof-3d-host
+              data-bmc-view="visualizacion-3d"
+              data-bmc-view-legacy="roof-border-canvas-host"
+              data-bmc-component="RoofBorderCanvas-portal-host"
+              role="region"
+              aria-label="Visualización 3D: planta y bordes del techo"
+              title="Visualización 3D — planta y bordes (RoofBorderCanvas vía portal)"
+              style={{
+                width: "100%",
+                /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
+                height: "clamp(360px, min(72vh, 820px), 900px)",
+                minHeight: "clamp(360px, min(72vh, 820px), 900px)",
+                borderRadius: 12,
+                border: `1px solid ${C.border}`,
+                background: "#eef2f9",
+                minWidth: 0,
+                overflow: "hidden",
+                boxSizing: "border-box",
+                /* Colapsado: el nodo sigue en el DOM (portal válido); oculto visualmente */
+                display: open ? "block" : "none",
+              }}
+            />
+            {open && (
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  paddingBottom: 10,
+                  zIndex: 2,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 8,
+                    fontWeight: 600,
+                    color: C.ts,
+                    letterSpacing: "0.04em",
+                    fontFamily: FONT,
+                    lineHeight: 1.2,
+                    padding: "2px 7px",
+                    borderRadius: 5,
+                    background: "rgba(255,255,255,0.78)",
+                    border: `1px solid ${C.border}`,
+                    boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+                  }}
+                >
+                  Frente
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-04T14:34:29.001Z",
+  "sourceJson": "src/data/quoteVisorShopifyFamilies.json",
+  "familiesIncluded": [
+    "ISODEC_EPS",
+    "ISODEC_PIR",
+    "ISOROOF_3G",
+    "ISOROOF_FOIL",
+    "ISOROOF_PLUS"
+  ],
+  "files": [
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif?v=1752178338",
+      "file": "images/3855c6_76076ea584c54d8a831a243543881da4_mv2.avif",
+      "bytes": 103945,
+      "families": [
+        "ISOROOF_3G",
+        "ISOROOF_FOIL",
+        "ISOROOF_PLUS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMCFlyer10-IsoroofFOIL.jpg?v=1752175101",
+      "file": "images/BMCFlyer10-IsoroofFOIL.jpg",
+      "bytes": 186057,
+      "families": [
+        "ISOROOF_FOIL"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_2_-_ISODEC.jpg?v=1756747335",
+      "file": "images/BMC_Flyer_2_-_ISODEC.jpg",
+      "bytes": 209942,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/BMC_Flyer_4_-_Largos_y_Anchos_definicion.jpg?v=1756747335",
+      "file": "images/BMC_Flyer_4_-_Largos_y_Anchos_definicion.jpg",
+      "bytes": 151453,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Ficha_Tecnica_Isodec_PIR_.pdf.png?v=1755503238",
+      "file": "images/Ficha_Tecnica_Isodec_PIR_.pdf.png",
+      "bytes": 317482,
+      "families": [
+        "ISODEC_PIR"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC.png?v=1757424916",
+      "file": "images/ISODEC.png",
+      "bytes": 219959,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+      "file": "images/ISODEC_GRIS.png",
+      "bytes": 209292,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_ROJO.png?v=1753382379",
+      "file": "images/ISODEC_ROJO.png",
+      "bytes": 231128,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/IsodecPIR01.png?v=1755503238",
+      "file": "images/IsodecPIR01.png",
+      "bytes": 83274,
+      "families": [
+        "ISODEC_PIR"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_01.jpg?v=1756747335",
+      "file": "images/Isodec_01.jpg",
+      "bytes": 550673,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_04.jpg?v=1756747335",
+      "file": "images/Isodec_04.jpg",
+      "bytes": 583971,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+      "file": "images/Isodec_PIR.png",
+      "bytes": 805155,
+      "families": [
+        "ISODEC_PIR"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+      "file": "images/Isoroof.jpg",
+      "bytes": 15771,
+      "families": [
+        "ISOROOF_3G",
+        "ISOROOF_PLUS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_FOIL.png?v=1752175101",
+      "file": "images/Isoroof_FOIL.png",
+      "bytes": 86624,
+      "families": [
+        "ISOROOF_FOIL"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png?v=1752180781",
+      "file": "images/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png",
+      "bytes": 515543,
+      "families": [
+        "ISOROOF_PLUS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_01_ad017e0b-ed7f-4b3e-8dbb-b594813909c5.jpg?v=1752180781",
+      "file": "images/Isoroof_PLUS_80_mm_01_ad017e0b-ed7f-4b3e-8dbb-b594813909c5.jpg",
+      "bytes": 672111,
+      "families": [
+        "ISOROOF_PLUS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_80_mm_02_d1ee7bd6-2f0b-408f-b360-b6619d31e65f.jpg?v=1752180781",
+      "file": "images/Isoroof_PLUS_80_mm_02_d1ee7bd6-2f0b-408f-b360-b6619d31e65f.jpg",
+      "bytes": 922548,
+      "families": [
+        "ISOROOF_PLUS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ficha_tecnica_Isodec.png?v=1755503238",
+      "file": "images/ficha_tecnica_Isodec.png",
+      "bytes": 269712,
+      "families": [
+        "ISODEC_PIR"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+      "file": "images/file.jpg",
+      "bytes": 20795,
+      "families": [
+        "ISOROOF_3G",
+        "ISOROOF_FOIL",
+        "ISOROOF_PLUS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.png?v=1756747335",
+      "file": "images/file.png",
+      "bytes": 59936,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file_49eae070-e157-4474-a247-0ad12f84227e.png?v=1756747335",
+      "file": "images/file_49eae070-e157-4474-a247-0ad12f84227e.png",
+      "bytes": 59936,
+      "families": [
+        "ISODEC_EPS"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/image.png?v=1752169863",
+      "file": "images/image.png",
+      "bytes": 65523,
+      "families": [
+        "ISOROOF_3G"
+      ]
+    },
+    {
+      "url": "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/isoagro.png?v=1752175101",
+      "file": "images/isoagro.png",
+      "bytes": 431006,
+      "families": [
+        "ISOROOF_FOIL"
+      ]
+    }
+  ]
+}

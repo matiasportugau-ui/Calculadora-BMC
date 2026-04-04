@@ -850,21 +850,28 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetZ = 0, gi, multiZona
         meshes.push({ key: `${side}-${si}`, side, shared: seg.shared, ...getPos(mid, segLen) });
       });
     };
+    // Planta = misma convención que RoofPreview: eje X = ancho (entre laterales) = frente↔fondo; pendiente corre en “largo” (= z.largo en rect).
+    // Laterales: longitud ~ largo (largo del panel). Frente/fondo: longitud ~ ancho (cantidad de paneles × au).
+    // Juntas verticales en 2D = paralelas al largo; en 3D = líneas a v=0→largo con u fijo (no al revés).
     addSide('latIzq', largo, (mid, segLen) => ({
       pos: [STRIP/2,       mid*sinT+ny, -mid*cosT+nz], w: STRIP,  h: segLen }));
     addSide('latDer', largo, (mid, segLen) => ({
       pos: [ancho-STRIP/2, mid*sinT+ny, -mid*cosT+nz], w: STRIP,  h: segLen }));
+    // SVG: frente = borde inferior del rect (y + h) — pie de cubierta anclado ahí → banda frente en v≈largo; fondo en v≈0.
     addSide('frente', ancho, (mid, segLen) => ({
-      pos: [mid, (STRIP/2)*sinT+ny,       -(STRIP/2)*cosT+nz],       w: segLen, h: STRIP }));
-    addSide('fondo',  ancho, (mid, segLen) => ({
-      pos: [mid, (largo-STRIP/2)*sinT+ny, -(largo-STRIP/2)*cosT+nz], w: segLen, h: STRIP }));
+      pos: [mid, (largo - STRIP / 2) * sinT + ny, -(largo - STRIP / 2) * cosT + nz], w: segLen, h: STRIP }));
+    addSide('fondo', ancho, (mid, segLen) => ({
+      pos: [mid, (STRIP / 2) * sinT + ny, -(STRIP / 2) * cosT + nz], w: segLen, h: STRIP }));
     return meshes;
   }, [ancho, largo, sinT, cosT, ny, nz, STRIP, sideMap]);
 
   const gridPts = useMemo(() => {
     const pts = [];
-    for (let v = panelAu; v < largo - 0.01; v += panelAu) {
-      pts.push([[0, v*sinT+ny, -v*cosT+nz], [ancho, v*sinT+ny, -v*cosT+nz]]);
+    for (let u = panelAu; u < ancho - 0.01; u += panelAu) {
+      pts.push([
+        [u, ny, nz],
+        [u, largo * sinT + ny, -largo * cosT + nz],
+      ]);
     }
     return pts;
   }, [ancho, largo, sinT, cosT, ny, nz, panelAu]);
@@ -956,7 +963,8 @@ function RoofBorderCameraFitter({ camPos, camTarget, spanW, spanZ, maxH, orbitRe
 /** WebGL canvas that renders all zones in 3D with orbit controls */
 function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBorders,
   multiZona, sharedSidesMap, openSide, openEncounterSide, onEdgeClick, onEncounterClick,
-  disabledSides, totalArea, zonaEncounters, onZonaPreviewChange, fillContainer = false }) {
+  disabledSides, totalArea, zonaEncounters, onZonaPreviewChange, fillContainer = false,
+  suppressFrenteCompass = false }) {
   const sinT = Math.sin(theta), cosT = Math.cos(theta);
   const tipoAguasStr = is2A ? "dos_aguas" : "una_agua";
   const orbitRef = useRef(null);
@@ -1422,11 +1430,13 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
           minAzimuthAngle={-Math.PI/3} maxAzimuthAngle={Math.PI/3} />
       </Canvas>
 
-      {/* Compass overlay */}
-      <div style={{ position:'absolute', bottom:6, left:'50%', transform:'translateX(-50%)', fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>▼ FRENTE</div>
-      <div style={{ position:'absolute', top:6,   left:'50%', transform:'translateX(-50%)', fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>▲ FONDO</div>
-      <div style={{ position:'absolute', bottom:22, left:8,   fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>◄ IZQ</div>
-      <div style={{ position:'absolute', bottom:22, right:8,  fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>DER ►</div>
+      {/* Compass: Frente lo pinta QuoteVisualVisor (chiquito) cuando hay portal al visor */}
+      {!suppressFrenteCompass && (
+        <div style={{ position:'absolute', bottom:6, left:'50%', transform:'translateX(-50%)', fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>FRENTE</div>
+      )}
+      <div style={{ position:'absolute', top:6,   left:'50%', transform:'translateX(-50%)', fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>FONDO</div>
+      <div style={{ position:'absolute', bottom:22, left:8,   fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>IZQ</div>
+      <div style={{ position:'absolute', bottom:22, right:8,  fontSize:9, color:'#475569', fontWeight:700, fontFamily:FONT, pointerEvents:'none' }}>DER</div>
       {totalArea > 0 && (
         <div style={{ position:'absolute', bottom:6, right:8, fontSize:10, color:'#475569', fontWeight:600, fontFamily:FONT, pointerEvents:'none' }}>{totalArea.toFixed(1)} m²</div>
       )}
@@ -1761,6 +1771,7 @@ function RoofBorderSelector({
       zonaEncounters={zonaEncounters}
       onZonaPreviewChange={onZonaPreviewChange}
       fillContainer={Boolean(portalReady)}
+      suppressFrenteCompass={Boolean(portalReady)}
     />
   ) : null;
 
@@ -1775,7 +1786,7 @@ function RoofBorderSelector({
               : "Clic en cada tramo para elegir el accesorio."}
             {onZonaPreviewChange && hasZonas && (
               <span style={{ display: "block", marginTop: 4, fontSize: 11, color: C.ts }}>
-                3D alineado a planta (▼ FRENTE = borde inferior del rectángulo en 2D). Doble clic en la cubierta azul (3D) o en la vista 2D de dimensiones: sentido de pendiente (afecta 3D y encuentros/cumbrera percibidos).
+                3D alineado a planta (FRENTE = borde inferior del rectángulo en 2D). Doble clic en la cubierta azul (3D) o en la vista 2D de dimensiones: sentido de pendiente (afecta 3D y encuentros/cumbrera percibidos).
               </span>
             )}
           </div>
@@ -1841,10 +1852,10 @@ function RoofBorderSelector({
               </g>
             );
           })}
-          <text x={innerX + innerW / 2} y={innerY + innerH + 28} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▼ FRENTE INF</text>
-          <text x={innerX + innerW / 2} y={innerY - 8}           textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">▲ FRENTE SUP</text>
-          <text x={innerX - edge - 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90,${innerX - edge - 6},${innerY + innerH / 2})`}>◄ IZQ</text>
-          <text x={innerX + innerW + edge + 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90,${innerX + innerW + edge + 6},${innerY + innerH / 2})`}>DER ►</text>
+          <text x={innerX + innerW / 2} y={innerY + innerH + 28} textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">FRENTE INF</text>
+          <text x={innerX + innerW / 2} y={innerY - 8}           textAnchor="middle" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em">FRENTE SUP</text>
+          <text x={innerX - edge - 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(-90,${innerX - edge - 6},${innerY + innerH / 2})`}>IZQ</text>
+          <text x={innerX + innerW + edge + 6} y={innerY + innerH / 2} textAnchor="middle" dominantBaseline="central" fill={C.ts} fontSize={9} fontWeight={600} fontFamily={FONT} letterSpacing="0.05em" transform={`rotate(90,${innerX + innerW + edge + 6},${innerY + innerH / 2})`}>DER</text>
           <text x={innerX + innerW / 2} y={innerY + innerH / 2 + 1} textAnchor="middle" dominantBaseline="central"
             fill={C.brand} fontSize={13} fontWeight={700} fontFamily={FONT}>PANELES</text>
         </>
@@ -2636,6 +2647,36 @@ export default function PanelinCalculadoraV3() {
   }, [techoAnchoModo, techoPanelData, normalizeTechoAnchoToPaneles]);
 
   const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, buildDefaultZona(t)] }));
+
+  /** Anexo lateral: otras medidas en el mismo cuerpo (preview.attachParentGi + lateralSide + lateralRank). */
+  const addLateralAnnexForParent = useCallback(
+    (parentGi) => {
+      setTecho((t) => {
+        const zs = t.zonas || [];
+        if (!Number.isFinite(Number(parentGi)) || parentGi < 0 || parentGi >= zs.length) return t;
+        const side = "der";
+        let maxR = -1;
+        for (const z of zs) {
+          if (!isLateralAnnexZona(z)) continue;
+          if (Number(z.preview?.attachParentGi) !== parentGi) continue;
+          const ls = z.preview?.lateralSide === "izq" ? "izq" : "der";
+          if (ls !== side) continue;
+          maxR = Math.max(maxR, Number(z.preview?.lateralRank) || 0);
+        }
+        const lateralRank = maxR + 1;
+        const newZona = {
+          ...buildDefaultZona(t),
+          preview: {
+            attachParentGi: parentGi,
+            lateralSide: side,
+            lateralRank,
+          },
+        };
+        return { ...t, zonas: [...zs, newZona] };
+      });
+    },
+    [buildDefaultZona],
+  );
 
   const onRoofEncounterPairChange = useCallback((pairKey, enc) => {
     setTecho((t) => {
@@ -3878,15 +3919,39 @@ export default function PanelinCalculadoraV3() {
                               Usar esta zona como techo principal
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => addLateralAnnexForParent(idx)}
+                            style={{
+                              alignSelf: "stretch",
+                              padding: "8px 12px",
+                              borderRadius: 10,
+                              border: `1.5px solid rgba(99,102,241,0.45)`,
+                              background: "rgba(99,102,241,0.08)",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              color: "#4f46e5",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 6,
+                            }}
+                            title="Otro tramo con distinto largo o ancho de panel, pegado al costado de esta zona (mismo cuerpo de techo)"
+                          >
+                            <Plus size={16} />
+                            Otra medida (mismo cuerpo)
+                          </button>
                         </div>
                       ))}
                       <button
                         type="button"
                         onClick={addZona}
                         style={{ padding: "12px 20px", borderRadius: 12, border: `2px dashed ${C.border}`, background: C.surfaceAlt, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: TR }}
+                        title="Superficie independiente en planta (otro cuerpo de techo)"
                       >
                         <Plus size={18} />
-                        Agregar zona
+                        Otro cuerpo de techo
                       </button>
                       <RoofPreview
                         zonas={techo.zonas || []}
@@ -3895,7 +3960,6 @@ export default function PanelinCalculadoraV3() {
                         panelAu={techoPanelData?.au ?? 1.12}
                         onZonaPreviewChange={updateZonaPreview}
                         onResetLayout={resetRoofPreviewLayout}
-                        onAnnexLateralSideChange={(gi, side) => updateZonaPreview(gi, { lateralSide: side })}
                         onAnnexRankSwap={swapAnnexRank}
                         onAddZona={addZona}
                         onEncounterPairChange={onRoofEncounterPairChange}
@@ -4472,15 +4536,37 @@ export default function PanelinCalculadoraV3() {
                   {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && (
                     <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 10, fontWeight: 500, cursor: "pointer", color: C.ts }}>Usar esta zona como techo principal</button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => addLateralAnnexForParent(idx)}
+                    style={{
+                      alignSelf: "stretch",
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1.5px solid rgba(99,102,241,0.45)",
+                      background: "rgba(99,102,241,0.08)",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      color: "#4f46e5",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                    }}
+                    title="Otro tramo con distinto largo o ancho de panel, pegado al costado de esta zona (mismo cuerpo de techo)"
+                  >
+                    <Plus size={14} /> Otra medida (mismo cuerpo)
+                  </button>
                 </div>
               </div>
             ))}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>
-                Sumá <strong style={{ color: C.tp }}>otra zona</strong> para superficies independientes; en planta podés alinearlas y marcar encuentros.
+                En cada zona: <strong style={{ color: C.tp }}>+ Otra medida</strong> suma un tramo lateral con otras dimensiones en el <strong>mismo cuerpo</strong>. Abajo: <strong style={{ color: C.tp }}>otro cuerpo de techo</strong> (zona independiente en planta).
               </div>
-              <button type="button" onClick={addZona} style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surfaceAlt, fontSize: 13, cursor: "pointer", color: C.tp, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                <Plus size={14} /> Agregar zona
+              <button type="button" onClick={addZona} title="Superficie independiente en planta (otro cuerpo de techo)" style={{ width: "100%", padding: "10px 16px", borderRadius: 10, border: `1.5px dashed ${C.border}`, background: C.surfaceAlt, fontSize: 13, cursor: "pointer", color: C.tp, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Plus size={14} /> Otro cuerpo de techo
               </button>
             </div>
 
