@@ -10,6 +10,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-04-04 (Visor interactivo de Shopify — On hover en galería de colores):** Se extendió el Visor y los selectores de `<ColorChips>` en la Calculadora. Al pasar el cursor por encima de una variante de color en el selector `ColorChips`, el Visor principal (derecha) ahora refleja de inmediato la imagen de Shopify correspondiente al color exacto (Blanco, Gris, Rojo), otorgando a los usuarios una vista previa instantánea de las variantes sin necesidad de haber seleccionado todavía el color (`techoColor / hoverTechoColor / hoverParedColor`). Además de que el selector ahora también dibuja las miniaturas dinámicas en reemplazo del color plano CSS si hay imagen en Shopify.
+
 > Historial completo: [CAMBIOS-RECIENTES-ARCHIVE.md](./CAMBIOS-RECIENTES-ARCHIVE.md)
 
 **2026-04-04 (Dashboard Finanzas — UI alineada a Calculadora BMC):** Rediseño visual del static `/finanzas` (`docs/bmc-dashboard-modernization/dashboard/`): canvas `#e6e6eb` y filas `#ececf0` (contraste con tarjetas blancas); marca `#1a3a5c`; acento `#0071e3` con franja superior 4px en header sticky; bordes `#e5e5ea`; sombras en capas (`--shadow-card`) en `.card`; tipografía sistema (alineada a `BmcModuleNav` / `PanelinChatPanel`); navegación tipo píldora con borde. `index.html`: sin Google Fonts (DM Sans / JetBrains); favicon `#0071e3`. Sección **Invoque Panelin** sustituida por documentación en página y luego llevada a render dinámico vía `INVOQUE_PANEL_MODEL` + `renderInvoquePanel()` en `app.js` (single source of truth para funcionalidades, API y fuentes Sheets), con contenedor `#invoquePanel` en HTML. Estilos nuevos `.invoque-panel` y grid responsive.

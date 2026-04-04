@@ -38,6 +38,7 @@ export default function QuoteVisualVisor({
   techoFamilia = "",
   hoverTechoFamilia = "",
   techoColor = "",
+  hoverTechoColor = "",
   aguasHighlight = false,
   showRoof3DStage = false,
   roofCanvasHostRef,
@@ -74,9 +75,9 @@ export default function QuoteVisualVisor({
         scenarioId: effectiveScenario,
         stepId,
         techoFamilia: hoverTechoFamilia || techoFamilia,
-        techoColor,
+        techoColor: hoverTechoColor || techoColor,
       }),
-    [effectiveScenario, stepId, techoFamilia, hoverTechoFamilia, techoColor],
+    [effectiveScenario, stepId, techoFamilia, hoverTechoFamilia, techoColor, hoverTechoColor],
   );
 
   const mergedSlides = useMemo(() => {
@@ -116,7 +117,7 @@ export default function QuoteVisualVisor({
 
   useEffect(() => {
     setIdx(0);
-  }, [effectiveScenario, stepId, techoFamilia, hoverTechoFamilia, techoColor, showAguaStep, showListaStep, aguasHighlight, slides.length]);
+  }, [effectiveScenario, stepId, techoFamilia, hoverTechoFamilia, techoColor, hoverTechoColor, showAguaStep, showListaStep, aguasHighlight, slides.length]);
 
   useEffect(() => {
     const v = panelinVideoRef.current;

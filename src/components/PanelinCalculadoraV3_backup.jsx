@@ -93,7 +93,7 @@ import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
-import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
+import { SLIDES_SOLO_TECHO, getGeneratedColorGallery } from "../data/quoteVisorMedia.js";
 
 // ── CSS injection ────────────────────────────────────────────────────────────
 
@@ -316,13 +316,19 @@ function KPICard({ label, value, borderColor = C.primary }) {
   );
 }
 
-function ColorChips({ colors = [], value, onChange, notes = {}, onColorDoubleClick }) {
+function ColorChips({ colors = [], value, onChange, notes = {}, onColorDoubleClick, familia = "", onHover = null }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontFamily: FONT }}>
       {colors.map(color => {
         const isS = value === color, hex = COLOR_HEX[color] || "#999";
-        return <button key={color} onClick={() => onChange(color)} onDoubleClick={() => onColorDoubleClick?.(color)} title={notes[color] || color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 6px", borderRadius: 20, border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, cursor: "pointer", transition: TR, fontSize: 12, fontWeight: isS ? 600 : 400, color: C.tp }}>
-          <span style={{ width: 20, height: 20, borderRadius: "50%", background: hex, flexShrink: 0, border: `1px solid ${color === "Blanco" ? C.border : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+        const gallery = familia ? getGeneratedColorGallery(familia, color) : [];
+        const shopifyImage = gallery?.[0]?.src;
+        return <button key={color} onClick={() => onChange(color)} onDoubleClick={() => onColorDoubleClick?.(color)} onMouseEnter={() => onHover?.(color)} onFocus={() => onHover?.(color)} onMouseLeave={() => onHover?.("")} onBlur={() => onHover?.("")} title={notes[color] || color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px 5px 6px", borderRadius: 20, border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, cursor: "pointer", transition: TR, fontSize: 12, fontWeight: isS ? 600 : 400, color: C.tp }}>
+          {shopifyImage ? (
+            <img src={shopifyImage} alt={color} style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `1px solid ${C.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+          ) : (
+            <span style={{ width: 20, height: 20, borderRadius: "50%", background: hex, flexShrink: 0, border: `1px solid ${color === "Blanco" ? C.border : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+          )}
           {color}
         </button>;
       })}
@@ -2091,7 +2097,9 @@ export default function PanelinCalculadoraV3() {
   });
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
-  const [techoFamilyHoverId, setTechoFamilyHoverId] = useState("");
+  const [hoverTechoFamilia, setHoverTechoFamilia] = useState("");
+  const [hoverTechoColor, setHoverTechoColor] = useState("");
+  const [hoverParedColor, setHoverParedColor] = useState("");
   const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
   /** Vista 3D referencial con textura de catálogo (paralela al RoofPreview 2D). */
   const [roofRealistic3dOn, setRoofRealistic3dOn] = useState(false);
@@ -3702,16 +3710,10 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "color" && techoPanelData && (
-                    <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onColorDoubleClick={() => advanceWizardStep()} notes={techoPanelData.colNotes || {}} />
+                    <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onColorDoubleClick={() => advanceWizardStep()} onHover={setHoverTechoColor} notes={techoPanelData.colNotes || {}} familia={techo.familia} />
                   )}
                   {stepId === "dimensiones" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      <CollapsibleHint title="Dimensiones (metros o paneles)">
-                        El{" "}
-                        <strong style={{ color: C.tp }}>techo principal</strong> referencia el presupuesto (por defecto el de mayor m²; podés marcar otro). Para{" "}
-                        <strong style={{ color: C.tp }}>mismo ancho y otro largo</strong> hacia el frente en planta, usá{" "}
-                        <strong>Agregar tramo de largo abajo</strong> en la zona base; el tipo de encuentro (continuo, pretil, cumbrera, desnivel) lo definís en el paso Bordes.
-                      </CollapsibleHint>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unidad de medida</div>
                         <SegmentedControl value={techoAnchoModo || "metros"} onChange={v => setTechoAnchoModo(v)} options={[{ id: "metros", label: "Metros (largo × ancho)" }, { id: "paneles", label: "Paneles (cantidad)" }]} />
@@ -4105,7 +4107,7 @@ export default function PanelinCalculadoraV3() {
                       </div>
                       <div style={{ marginTop: 12 }}>
                         <div style={labelS}>Color</div>
-                        <ColorChips colors={pd.col} value={line.color} onChange={(c) => updateLibrePanelLine(idx, { color: c })} notes={pd.colNotes || {}} />
+                        <ColorChips colors={pd.col} value={line.color} onChange={(c) => updateLibrePanelLine(idx, { color: c })} onHover={line.tipo === "techo" ? setHoverTechoColor : setHoverParedColor} notes={pd.colNotes || {}} familia={line.familia} />
                       </div>
                     </>}
                     <div style={{ marginTop: 12 }}>
@@ -4200,7 +4202,7 @@ export default function PanelinCalculadoraV3() {
             </div>
             {techoPanelData && <div style={{ marginTop: 12 }}>
               <div style={labelS}>Color</div>
-              <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} notes={techoPanelData.colNotes || {}} />
+              <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onHover={setHoverTechoColor} notes={techoPanelData.colNotes || {}} familia={techo.familia} />
             </div>}
           </div>}
 
@@ -4215,7 +4217,7 @@ export default function PanelinCalculadoraV3() {
             </div>
             {paredPanelData && <div style={{ marginTop: 12 }}>
               <div style={labelS}>Color</div>
-              <ColorChips colors={paredPanelData.col} value={pared.color} onChange={c => uP("color", c)} notes={paredPanelData.colNotes || {}} />
+              <ColorChips colors={paredPanelData.col} value={pared.color} onChange={c => uP("color", c)} onHover={setHoverParedColor} notes={paredPanelData.colNotes || {}} familia={pared.familia} />
             </div>}
           </div>}
 
@@ -4688,8 +4690,9 @@ export default function PanelinCalculadoraV3() {
             stepId={activeWizardStepId}
             tipoAguas={techo.tipoAguas || "una_agua"}
             techoFamilia={techo.familia || ""}
-            hoverTechoFamilia={activeWizardStepId === "familia" ? techoFamilyHoverId : ""}
+            hoverTechoFamilia={activeWizardStepId === "familia" ? hoverTechoFamilia : ""}
             techoColor={techo.color || ""}
+            hoverTechoColor={activeWizardStepId === "color" || activeWizardStepId === "color_pared" ? hoverTechoColor || hoverParedColor : ""}
             aguasHighlight={aguasVisorHighlight}
             showRoof3DStage={showRoof3DHost}
             roofCanvasHostRef={roof3dHostRef}
