@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, RotateCcw, Send, Mic } from "lucide-react";
+import { X, RotateCcw, Send, Mic, Volume2, VolumeX } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 
 const FONT =
@@ -42,6 +42,7 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
     .panelin-dot:nth-child(2){ animation-delay:0.2s; }
     .panelin-dot:nth-child(3){ animation-delay:0.4s; }
     @keyframes panelin-action-fade { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(-8px)} }
+    @keyframes panelin-mic-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,59,48,0)} }
   `;
   document.head.appendChild(s);
 }
@@ -135,8 +136,14 @@ export default function PanelinChatPanel({
 }) {
   const [input, setInput] = useState("");
   const [actionToast] = useState(null);
+  const [correctingMsgId, setCorrectingMsgId] = useState(null);
+  const [correctionText, setCorrectionText] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const prevMsgCountRef = useRef(0);
 
   // Auto-scroll to bottom on new content
   useEffect(() => {
@@ -151,6 +158,94 @@ export default function PanelinChatPanel({
       setTimeout(() => textareaRef.current?.focus(), 300);
     }
   }, [isOpen]);
+
+  // TTS: read new assistant messages aloud when enabled
+  useEffect(() => {
+    if (!ttsEnabled || typeof window === "undefined" || !window.speechSynthesis) return;
+    const count = messages.length;
+    if (count > prevMsgCountRef.current) {
+      const last = messages[count - 1];
+      if (last && last.role === "assistant" && last.content && !last.pending) {
+        const utterance = new SpeechSynthesisUtterance(last.content);
+        utterance.lang = "es-UY";
+        utterance.rate = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const esVoice = voices.find((v) => v.lang.startsWith("es"));
+        if (esVoice) utterance.voice = esVoice;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+    prevMsgCountRef.current = count;
+  }, [messages, ttsEnabled]);
+
+  // Cleanup recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+
+  const speakMessage = useCallback((text) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "es-UY";
+    utterance.rate = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const esVoice = voices.find((v) => v.lang.startsWith("es"));
+    if (esVoice) utterance.voice = esVoice;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const toggleListening = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz. Usá Chrome o Edge.");
+      return;
+    }
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "es-UY";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.maxAlternatives = 1;
+    let finalTranscript = "";
+    recognition.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += t;
+        } else {
+          interim += t;
+        }
+      }
+      setInput(finalTranscript || interim);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+      if (finalTranscript) {
+        setInput(finalTranscript);
+      }
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening]);
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -235,7 +330,7 @@ export default function PanelinChatPanel({
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
             </div>
           </div>
-          {onToggleDevMode && (
+          {devMode && onToggleDevMode && (
             <button
               onClick={onToggleDevMode}
               title="Developer mode"
@@ -252,6 +347,17 @@ export default function PanelinChatPanel({
               DEV
             </button>
           )}
+          <button
+            onClick={() => setTtsEnabled((v) => !v)}
+            title={ttsEnabled ? "Desactivar lectura en voz alta" : "Activar lectura en voz alta"}
+            style={{
+              ...ghostBtn,
+              background: ttsEnabled ? "rgba(255,255,255,0.24)" : "transparent",
+            }}
+            aria-label={ttsEnabled ? "Desactivar lectura en voz alta" : "Activar lectura en voz alta"}
+          >
+            {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+          </button>
           <button
             onClick={clear}
             title="Nueva conversación"
@@ -337,8 +443,12 @@ export default function PanelinChatPanel({
             </div>
           )}
 
-          {messages.map((msg) => {
+          {messages.map((msg, msgIdx) => {
             const isUser = msg.role === "user";
+            const prevUserMsg = !isUser
+              ? [...messages].slice(0, msgIdx).reverse().find((m) => m.role === "user")
+              : null;
+            const prevQuestion = prevUserMsg?.content ?? "";
             return (
               <div
                 key={msg.id}
@@ -389,6 +499,84 @@ export default function PanelinChatPanel({
                       })}
                     </div>
                   )}
+                  {/* TTS play button for assistant messages */}
+                  {!isUser && msg.content && !msg.pending && (
+                    <button
+                      onClick={() => speakMessage(msg.content)}
+                      title="Escuchar respuesta"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: SUBTEXT,
+                        cursor: "pointer",
+                        padding: "2px 4px",
+                        borderRadius: 4,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                        fontSize: 11,
+                        fontFamily: FONT,
+                        alignSelf: "flex-start",
+                      }}
+                      aria-label="Escuchar respuesta"
+                    >
+                      <Volume2 size={12} /> Escuchar
+                    </button>
+                  )}
+                  {/* Dev training buttons — only in devMode for assistant messages with content */}
+                  {devMode && !isUser && msg.content && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 2 }}>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          onClick={() => {
+                            onSaveCorrection?.({ category: "conversational", question: prevQuestion, goodAnswer: msg.content, context: "rated-good" });
+                          }}
+                          style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE, color: "#34c759", cursor: "pointer", fontFamily: FONT }}
+                        >
+                          ✓ Good
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCorrectingMsgId(msg.id);
+                            setCorrectionText("");
+                          }}
+                          style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE, color: SUBTEXT, cursor: "pointer", fontFamily: FONT }}
+                        >
+                          ✗ Correct
+                        </button>
+                      </div>
+                      {correctingMsgId === msg.id && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <textarea
+                            value={correctionText}
+                            onChange={(e) => setCorrectionText(e.target.value)}
+                            placeholder="Respuesta correcta…"
+                            rows={3}
+                            style={{ fontSize: 12, padding: "6px 8px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", color: TEXT, fontFamily: FONT, resize: "vertical" }}
+                          />
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button
+                              onClick={() => {
+                                if (!correctionText.trim()) return;
+                                onSaveCorrection?.({ category: "conversational", question: prevQuestion, badAnswer: msg.content, goodAnswer: correctionText.trim(), context: "" });
+                                setCorrectingMsgId(null);
+                                setCorrectionText("");
+                              }}
+                              style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: "none", background: PRIMARY, color: "#fff", cursor: "pointer", fontFamily: FONT }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => { setCorrectingMsgId(null); setCorrectionText(""); }}
+                              style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE, color: SUBTEXT, cursor: "pointer", fontFamily: FONT }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -427,14 +615,15 @@ export default function PanelinChatPanel({
           }}
         >
           <button
-            disabled
-            title="Micrófono (próximamente)"
+            onClick={toggleListening}
+            title={isListening ? "Escuchando..." : "Hablar"}
             style={{
               ...iconBtn,
-              opacity: 0.3,
-              cursor: "not-allowed",
+              background: isListening ? "#ff3b30" : "transparent",
+              color: isListening ? "#fff" : SUBTEXT,
+              animation: isListening ? "panelin-mic-pulse 1.5s infinite" : "none",
             }}
-            aria-label="Micrófono (próximamente)"
+            aria-label={isListening ? "Detener grabación" : "Hablar"}
           >
             <Mic size={18} />
           </button>

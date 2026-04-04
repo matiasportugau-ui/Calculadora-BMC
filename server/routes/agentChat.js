@@ -1,7 +1,7 @@
 /**
  * POST /api/agent/chat — SSE streaming endpoint for the Panelin AI agent.
  *
- * Provider chain: claude → grok → openai (first available key wins; falls through on error).
+ * Provider chain: claude → grok → gemini → openai (first available key wins; falls through on error).
  *
  * Request:  { messages: [{role, content}], calcState: {...} }
  * Response: text/event-stream, events:
@@ -12,6 +12,7 @@
  */
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
@@ -173,9 +174,10 @@ router.post("/agent/chat", async (req, res) => {
 
   const hasAnthropic = !!config.anthropicApiKey;
   const hasGrok      = !!config.grokApiKey;
+  const hasGemini    = !!config.geminiApiKey;
   const hasOpenAI    = !!config.openaiApiKey;
 
-  if (!hasAnthropic && !hasGrok && !hasOpenAI) {
+  if (!hasAnthropic && !hasGrok && !hasGemini && !hasOpenAI) {
     return res.status(503).json({ ok: false, error: "AI not configured" });
   }
 
@@ -238,6 +240,7 @@ router.post("/agent/chat", async (req, res) => {
   const providerChain = [];
   if (hasAnthropic) providerChain.push("claude");
   if (hasGrok)      providerChain.push("grok");
+  if (hasGemini)    providerChain.push("gemini");
   if (hasOpenAI)    providerChain.push("openai");
 
   for (const provider of providerChain) {
@@ -259,6 +262,24 @@ router.post("/agent/chat", async (req, res) => {
             chunk.delta.text
           ) {
             buf += chunk.delta.text;
+            buf = flushLines(buf);
+          }
+        }
+      } else if (provider === "gemini") {
+        const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+        const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const geminiMessages = msgs.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
+        const result = await geminiModel.generateContentStream({
+          contents: geminiMessages,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+        });
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          if (text) {
+            buf += text;
             buf = flushLines(buf);
           }
         }

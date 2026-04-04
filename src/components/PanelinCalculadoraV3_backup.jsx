@@ -3529,22 +3529,24 @@ export default function PanelinCalculadoraV3() {
           >
             💬 Panelin
           </button>
-          <button
-            onClick={toggleDevMode}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: devMode ? "none" : "1px solid rgba(255,255,255,0.3)",
-              background: devMode ? "rgba(255,255,255,0.22)" : "transparent",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: devMode ? 700 : 400,
-              cursor: "pointer",
-            }}
-            title="Ctrl/Cmd + Shift + D"
-          >
-            DEV
-          </button>
+          {devMode && (
+            <button
+              onClick={toggleDevMode}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "none",
+                background: "rgba(255,255,255,0.22)",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              title="Ctrl/Cmd + Shift + D"
+            >
+              DEV
+            </button>
+          )}
         </div>
       </div>
 
