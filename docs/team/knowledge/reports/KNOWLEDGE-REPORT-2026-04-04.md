@@ -1,6 +1,6 @@
 # Knowledge Antenna Report — 2026-04-04
 
-Generated at: 2026-04-04T06:34:48.513Z
+Generated at: 2026-04-04T06:48:24.463Z
 
 ## Panelin Signal — revista interna (HTML)
 
@@ -15,8 +15,8 @@ Lectura humana en el navegador: diseño editorial con el conocimiento actual del
 
 - Sources scanned: 9
 - Raw events fetched: 64
-- New references saved: 13
-- Accepted events: 13
+- New references saved: 0
+- Accepted events: 0
 - No-action events: 0
 - New source candidates discovered: 0
 
@@ -40,26 +40,14 @@ Lectura humana en el navegador: diseño editorial con el conocimiento actual del
 
 ## Accepted Events
 
-- [vertex-sdk: v0.15.0](https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/vertex-sdk-v0.15.0) — score 0.6625, source Anthropic SDK Releases
-- [sdk: v0.83.0](https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.83.0) — score 0.6625, source Anthropic SDK Releases
-- [vercel@50.39.0](https://github.com/vercel/vercel/releases/tag/vercel%4050.39.0) — score 0.732, source Vercel Releases
-- [@vercel/fs-detectors@5.14.1](https://github.com/vercel/vercel/releases/tag/%40vercel/fs-detectors%405.14.1) — score 0.652, source Vercel Releases
-- [@vercel/frameworks@3.23.0](https://github.com/vercel/vercel/releases/tag/%40vercel/frameworks%403.23.0) — score 0.652, source Vercel Releases
-- [ai@6.0.146](https://github.com/vercel/ai/releases/tag/ai%406.0.146) — score 0.5685, source Vercel AI SDK Releases
-- [@ai-sdk/vue@3.0.146](https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.146) — score 0.5685, source Vercel AI SDK Releases
-- [@ai-sdk/svelte@4.0.146](https://github.com/vercel/ai/releases/tag/%40ai-sdk/svelte%404.0.146) — score 0.5685, source Vercel AI SDK Releases
-- [@ai-sdk/rsc@2.0.146](https://github.com/vercel/ai/releases/tag/%40ai-sdk/rsc%402.0.146) — score 0.5685, source Vercel AI SDK Releases
-- [@ai-sdk/react@3.0.148](https://github.com/vercel/ai/releases/tag/%40ai-sdk/react%403.0.148) — score 0.6485, source Vercel AI SDK Releases
-- [@ai-sdk/llamaindex@2.0.146](https://github.com/vercel/ai/releases/tag/%40ai-sdk/llamaindex%402.0.146) — score 0.5685, source Vercel AI SDK Releases
-- [@ai-sdk/langchain@2.0.152](https://github.com/vercel/ai/releases/tag/%40ai-sdk/langchain%402.0.152) — score 0.5685, source Vercel AI SDK Releases
-- [@ai-sdk/gateway@3.0.88](https://github.com/vercel/ai/releases/tag/%40ai-sdk/gateway%403.0.88) — score 0.5685, source Vercel AI SDK Releases
+- No accepted events in this run.
 
 ## Impact Mapping Summary
 
 ```json
 {
   "ok": true,
-  "generatedAt": "2026-04-04T06:34:48.512Z",
+  "generatedAt": "2026-04-04T06:48:24.462Z",
   "daysAnalyzed": 14,
   "mappings": 218,
   "summary": {

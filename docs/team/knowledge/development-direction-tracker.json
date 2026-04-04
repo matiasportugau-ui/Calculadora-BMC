@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-04-04T06:34:49.401Z",
+  "generatedAt": "2026-04-04T06:48:25.365Z",
   "generatedForDate": "2026-04-04",
   "source": "docs/team/knowledge/knowledge-db.json",
   "summary": {
@@ -28,7 +28,7 @@
       "nextStep": "Comparar spec con rutas reales y listar operationIds faltantes.",
       "evidence": "PR diff + smoke GPT actions",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.364Z"
     },
     {
       "id": "scripts-capabilities-snapshot-mjs-review-target-scripts-capabilities-snapshot-mj",
@@ -45,7 +45,7 @@
       "nextStep": "Regenerar snapshot y validar que no haya drift con /capabilities.",
       "evidence": "Snapshot generado + salida comando",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "server-gptactions-js-review-target-server-gptactions-js",
@@ -62,7 +62,7 @@
       "nextStep": "Alinear handlers con OpenAPI y validar errores 4xx/5xx.",
       "evidence": "Tests/contratos + ejemplos curl",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "server-index-js-review-target-server-index-js",
@@ -79,7 +79,7 @@
       "nextStep": "Verificar wiring de rutas y compatibilidad con capacidades publicas.",
       "evidence": "Checklist de rutas + health OK",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "dockerfile-bmc-dashboard-review-target-dockerfile-bmc-dashboard",
@@ -96,7 +96,7 @@
       "nextStep": "Revisar build args/env y endurecer pasos prebuild para deploy estable.",
       "evidence": "Build local + nota de cambios",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "scripts-deploy-cloud-run-sh-review-target-scripts-deploy-cloud-run-sh",
@@ -113,7 +113,7 @@
       "nextStep": "Agregar validaciones previas de env criticas y rollback hint.",
       "evidence": "Deploy dry-run / output validacion",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "scripts-deploy-vercel-sh-review-target-scripts-deploy-vercel-sh",
@@ -130,7 +130,7 @@
       "nextStep": "Confirmar variables obligatorias y smoke post-deploy.",
       "evidence": "URL deploy + smoke OK",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "scripts-smoke-prod-api-mjs-review-target-scripts-smoke-prod-api-mjs",
@@ -147,7 +147,7 @@
       "nextStep": "Priorizar chequeos criticos y salida JSON accionable para CI.",
       "evidence": "Reporte smoke con checks criticos",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "cross-cutting-domain-watch-llm-platforms",
@@ -164,7 +164,7 @@
       "nextStep": "Definir backlog de compatibilidad LLM/API para esta semana.",
       "evidence": "Top 3 tareas creadas en tracker",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "cross-cutting-domain-watch-deployment-stack",
@@ -181,7 +181,7 @@
       "nextStep": "Cerrar checklist unica de deploy Cloud Run + Vercel.",
       "evidence": "Checklist completado",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "cross-cutting-domain-watch-workflow-automation",
@@ -198,7 +198,7 @@
       "nextStep": "Proponer 2 automatizaciones de alto impacto y bajo esfuerzo.",
       "evidence": "2 propuestas priorizadas",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     },
     {
       "id": "cross-cutting-domain-watch-data-and-storage",
@@ -215,7 +215,7 @@
       "nextStep": "Revisar migraciones/rutas sensibles y riesgos de compatibilidad.",
       "evidence": "Informe de riesgo corto",
       "notes": "",
-      "updatedAt": "2026-04-04T06:34:49.401Z"
+      "updatedAt": "2026-04-04T06:48:25.365Z"
     }
   ]
 }
