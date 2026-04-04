@@ -3779,56 +3779,6 @@ export default function PanelinCalculadoraV3() {
                           ) : null}
                         </div>
                       )}
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-                        <button
-                          type="button"
-                          onClick={() => setRoofRealistic3dOn((v) => !v)}
-                          style={{
-                            padding: "8px 14px",
-                            borderRadius: 10,
-                            border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
-                            background: roofRealistic3dOn ? C.primarySoft : C.surface,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            color: roofRealistic3dOn ? C.primary : C.tp,
-                          }}
-                        >
-                          {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
-                        </button>
-                        <CollapsibleHint title="Vista 3D" style={{ flex: 1, minWidth: 200 }}>
-                          Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
-                        </CollapsibleHint>
-                      </div>
-                      {roofRealistic3dOn && techoPanelData ? (
-                        <div style={{ marginBottom: 14 }}>
-                          <Suspense
-                            fallback={
-                              <div
-                                style={{
-                                  padding: 40,
-                                  textAlign: "center",
-                                  color: C.ts,
-                                  fontSize: 13,
-                                  background: C.surfaceAlt,
-                                  borderRadius: 10,
-                                  border: `1px solid ${C.border}`,
-                                }}
-                              >
-                                Cargando vista 3D…
-                              </div>
-                            }
-                          >
-                            <RoofPanelRealisticScene
-                              validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
-                              tipoAguas={techo.tipoAguas}
-                              pendiente={techo.pendiente}
-                              familiaKey={techo.familia}
-                              espesorMm={techo.espesor}
-                            />
-                          </Suspense>
-                        </div>
-                      ) : null}
                       {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -3887,7 +3837,7 @@ export default function PanelinCalculadoraV3() {
                             }}
                           >
                             <Plus size={16} />
-                            Otra medida al costado (mismo techo · Zona {getRootZoneOrdinal(techo.zonas || [], idx)})
+                            Otra medida
                           </button>
                           )}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
@@ -3911,21 +3861,14 @@ export default function PanelinCalculadoraV3() {
                           )}
                         </div>
                       ))}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.45 }}>
-                          <strong style={{ color: C.tp }}>Anexo lateral</strong> (desde cada tarjeta): mismo cuerpo de techo, otro largo/paneles, solo costados en planta.
-                          {" "}
-                          <strong style={{ color: C.tp }}>Otro cuerpo</strong>: zona independiente (otro plano).
-                        </div>
-                        <button
-                          type="button"
-                          onClick={addZona}
-                          style={{ padding: "12px 20px", borderRadius: 12, border: `2px dashed ${C.border}`, background: C.surfaceAlt, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: TR }}
-                        >
-                          <Plus size={18} />
-                          Otro cuerpo de techo (zona independiente)
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={addZona}
+                        style={{ padding: "12px 20px", borderRadius: 12, border: `2px dashed ${C.border}`, background: C.surfaceAlt, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: TR }}
+                      >
+                        <Plus size={18} />
+                        Otro cuerpo de techo
+                      </button>
                       <RoofPreview
                         zonas={techo.zonas || []}
                         tipoAguas={techo.tipoAguas}
@@ -3936,6 +3879,56 @@ export default function PanelinCalculadoraV3() {
                         onAnnexLateralSideChange={(gi, side) => updateZonaPreview(gi, { lateralSide: side })}
                         onAnnexRankSwap={swapAnnexRank}
                       />
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                        <button
+                          type="button"
+                          onClick={() => setRoofRealistic3dOn((v) => !v)}
+                          style={{
+                            padding: "8px 14px",
+                            borderRadius: 10,
+                            border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
+                            background: roofRealistic3dOn ? C.primarySoft : C.surface,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            color: roofRealistic3dOn ? C.primary : C.tp,
+                          }}
+                        >
+                          {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
+                        </button>
+                        <CollapsibleHint title="Vista 3D" style={{ flex: 1, minWidth: 200 }}>
+                          Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
+                        </CollapsibleHint>
+                      </div>
+                      {roofRealistic3dOn && techoPanelData ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <Suspense
+                            fallback={
+                              <div
+                                style={{
+                                  padding: 40,
+                                  textAlign: "center",
+                                  color: C.ts,
+                                  fontSize: 13,
+                                  background: C.surfaceAlt,
+                                  borderRadius: 10,
+                                  border: `1px solid ${C.border}`,
+                                }}
+                              >
+                                Cargando vista 3D…
+                              </div>
+                            }
+                          >
+                            <RoofPanelRealisticScene
+                              validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
+                              tipoAguas={techo.tipoAguas}
+                              pendiente={techo.pendiente}
+                              familiaKey={techo.familia}
+                              espesorMm={techo.espesor}
+                            />
+                          </Suspense>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   {stepId === "pendiente" && (
