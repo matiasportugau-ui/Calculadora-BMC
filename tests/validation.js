@@ -3,7 +3,7 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre, calcPerfileriaTechoComercial, calcFijacionesVarilla } from "../src/utils/calculations.js";
+import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre, calcPerfileriaTechoComercial, calcFijacionesVarilla, calcTotalesSinIVA } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
@@ -74,6 +74,7 @@ import {
   encounterBorderPerfil,
 } from "../src/utils/roofEncounterModel.js";
 import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
+import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
 import {
   defaultPrincipalZonaIndex,
   previewPositionForTramoApiladoFrente,
@@ -1619,6 +1620,92 @@ assert(
   xsCand.join(","),
   "has parent right",
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 33: scenarioOrchestrator — guards y ramas de alto riesgo
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 33: scenarioOrchestrator ═══");
+
+{
+  const r = executeScenario("unknown_scenario", { techo: {}, pared: {}, camara: {} });
+  assert("executeScenario unknown scenario -> null", r === null, r, null);
+}
+
+{
+  const r = executeScenario("solo_techo", {
+    techo: { familia: "ISODEC_EPS", espesor: null },
+    pared: {},
+    camara: {},
+  });
+  assert("executeScenario solo_techo without espesor -> null", r === null, r, null);
+}
+
+{
+  const r = executeScenario("techo_fachada", {
+    techo: { familia: "", espesor: null },
+    pared: { familia: "", espesor: null },
+    camara: {},
+  });
+  assert("executeScenario techo_fachada without techo+pared -> null", r === null, r, null);
+}
+
+{
+  const paredOnly = {
+    familia: "ISOPANEL_EPS",
+    espesor: 100,
+    alto: 3.2,
+    perimetro: 30,
+    numEsqExt: 4,
+    numEsqInt: 0,
+    aberturas: [],
+    tipoEst: "metal",
+    inclSell: false,
+    incl5852: false,
+    color: "Blanco",
+  };
+  const r = executeScenario("techo_fachada", {
+    techo: { familia: "", espesor: null },
+    pared: paredOnly,
+    camara: {},
+  });
+  assert("executeScenario techo_fachada (pared only) returns result", !!r && Array.isArray(r.allItems), !!r, true);
+  assert("executeScenario techo_fachada (pared only) keeps paredResult", !!r?.paredResult, !!r?.paredResult, true);
+  assert(
+    "executeScenario techo_fachada (pared only) totals are computed from allItems",
+    r?.totales?.totalFinal === calcTotalesSinIVA(r?.allItems || []).totalFinal,
+    r?.totales?.totalFinal,
+    calcTotalesSinIVA(r?.allItems || []).totalFinal
+  );
+}
+
+{
+  const r = executeScenario("camara_frig", {
+    techo: {},
+    pared: {
+      familia: "ISOWALL_PIR",
+      espesor: 80,
+      tipoEst: "metal",
+      inclSell: true,
+      incl5852: false,
+      color: "Blanco",
+      aberturas: [],
+    },
+    camara: {
+      largo_int: 6,
+      ancho_int: 4,
+      alto_int: 3,
+    },
+  });
+  assert("executeScenario camara_frig returns result", !!r, !!r, true);
+  assert("executeScenario camara_frig computes wall perimeter from camara dims", r?.paneles?.cantPaneles === 19, r?.paneles?.cantPaneles, 19);
+  assert(
+    "executeScenario camara_frig warns about unavailable techo espesor fallback",
+    Array.isArray(r?.warnings) && r.warnings.some((w) => String(w).includes("se usó 100mm")),
+    r?.warnings,
+    "includes fallback warning"
+  );
+  assert("executeScenario camara_frig provides techoResult on valid dims", !!r?.techoResult, !!r?.techoResult, true);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE: Modo Transportista (token + webhook HMAC + FSM)
