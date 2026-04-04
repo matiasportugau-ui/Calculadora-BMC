@@ -32,8 +32,8 @@ function computeSceneBounds(zoneLayouts, theta, fovDeg = 36) {
   const sinT = Math.sin(theta);
   let mix = Infinity;
   let mxx = -Infinity;
-  let miy = 0;
-  let may = 0;
+  let miy = Infinity;
+  let may = -Infinity;
   let miz = Infinity;
   let maz = -Infinity;
   let ml = 0;
@@ -44,12 +44,14 @@ function computeSceneBounds(zoneLayouts, theta, fovDeg = 36) {
     const zFondo = r.oz - r.largo * cosT;
     miz = Math.min(miz, zFrente, zFondo);
     maz = Math.max(maz, zFrente, zFondo);
-    const peakY = r.largo * sinT;
-    may = Math.max(may, peakY);
+    const oy = r.oy ?? 0;
+    miy = Math.min(miy, oy);
+    may = Math.max(may, oy + r.largo * sinT);
     ml = Math.max(ml, r.largo);
   }
   const maxLargoVal = ml;
-  const maxHVal = may;
+  const spanY = Number.isFinite(miy) && Number.isFinite(may) ? Math.max(may - miy, 0) : 0;
+  const maxHVal = spanY > 1e-6 ? spanY : maxLargoVal * sinT;
   const maxDVal = maxLargoVal * cosT;
 
   const cx = (mix + mxx) / 2;
@@ -158,7 +160,7 @@ function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, map, pane
   );
 }
 
-function SlopeZoneStripedMeshes({ ancho, largo, ox, oz, thetaBase, slopeMark, profile, map, panelAu }) {
+function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slopeMark, profile, map, panelAu }) {
   const strips = useMemo(() => {
     if (!(ancho > 0)) return [];
     if (!(panelAu > 0)) return [{ x0: 0, width: ancho, idx: 0 }];
@@ -177,7 +179,7 @@ function SlopeZoneStripedMeshes({ ancho, largo, ox, oz, thetaBase, slopeMark, pr
   const auForUv = panelAu > 0 ? panelAu : ancho;
 
   return (
-    <group position={[ox, 0, oz]}>
+    <group position={[ox, oy, oz]}>
       {strips.map((s) => (
         <RoofStripMesh
           key={`${s.idx}-${s.x0}-${s.width}`}
@@ -289,6 +291,7 @@ function RoofRealisticSceneContent({
           ancho={z.ancho}
           largo={z.largo}
           ox={z.ox}
+          oy={z.oy ?? 0}
           oz={z.oz}
           thetaBase={theta}
           slopeMark={z.slopeMark}

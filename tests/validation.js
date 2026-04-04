@@ -1732,7 +1732,7 @@ assert("isAllowedDriverEventType rejects unknown", !isAllowedDriverEventType("no
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE: 3D lateral step infill (cosmético, referencial)
 // ═══════════════════════════════════════════════════════════════════════════
-console.log("\n═══ SUITE: roof3d lateral step infill ═══");
+console.log("\n═══ SUITE: roof3d coplanar layout + step infill vacío ═══");
 const thetaInfillDeg = (15 * Math.PI) / 180;
 const zRootInfill = { largo: 10.08, ancho: 10, preview: { x: 0, y: 0 } };
 const zAnnInfill = {
@@ -1743,13 +1743,17 @@ const zAnnInfill = {
 const vzInfill = [zRootInfill, zAnnInfill];
 const layInfill = buildZoneLayoutsForRoof3d(vzInfill, "una_agua", thetaInfillDeg);
 const infInfill = buildLateralStepInfillGeometries(layInfill, vzInfill, thetaInfillDeg);
-assert("lateral step infill: one mesh", infInfill.length === 1, infInfill.length, 1);
-const yTopInfill = infInfill[0]?.positions?.[7];
+assert("lateral step infill: vacío (coplanar)", infInfill.length === 0, infInfill.length, 0);
+const cosI = Math.cos(thetaInfillDeg);
+const rootLay = layInfill.find((l) => l.gi === 0);
+const annLay = layInfill.find((l) => l.gi === 1);
+const zFondoRoot = rootLay && rootLay.oz - rootLay.largo * cosI;
+const zFondoAnn = annLay && annLay.oz - annLay.largo * cosI;
 assert(
-  "lateral step infill: ridge corner above eave",
-  yTopInfill > 0.05,
-  yTopInfill,
-  ">0.05",
+  "coplanar: mismo z fondo (y=0)",
+  rootLay && annLay && Math.abs(zFondoRoot - zFondoAnn) < 0.02,
+  rootLay && annLay ? zFondoRoot - zFondoAnn : "missing",
+  "~0",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

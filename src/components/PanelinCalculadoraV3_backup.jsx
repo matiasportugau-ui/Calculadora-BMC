@@ -65,6 +65,7 @@ import {
   snapLateralAnnexPlanta,
   zonasToPlantRectsWithAutoGap,
 } from "../utils/roofLateralAnnexLayout.js";
+import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import {
   normalizeEncounter,
   resolveNeighborSharedSide,
@@ -629,7 +630,7 @@ const ROOF3D_DRAG_PLANE_Y = 0.22;
 
 /**
  * Discos violetas: afinan preview.x / preview.y (misma convención que RoofPreview: +y = hacia FRENTE).
- * delta mundo: dx → +x planta, dz → -y planta (coherente con oz = -(y+h)).
+ * delta mundo: dx → +x planta, dz → -y planta (coherente con RoofPreview: +y hacia frente).
  */
 function RoofPlanDragHandles({
   zoneLayouts,
@@ -793,7 +794,7 @@ function computeSideSegments(totalLen, intervals) {
  *   tipo "perfil"             → amber, visible → opens encounter picker
  * Free segments → blue → opens border accessory picker
  */
-function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetZ = 0, gi, multiZona, borders, zonasBorders,
+function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetY = 0, offsetZ = 0, gi, multiZona, borders, zonasBorders,
   sharedSidesMap, openSide, openEncounterSide, disabledSides,
   onEdgeClick, onEncounterClick, panelAu, zonaEncounters, slopeMark, onZonaPreviewChange }) {
   /** along_largo_neg (flecha hacia fondo en SVG) = invertir caída en 3D respecto al default. */
@@ -877,7 +878,7 @@ function RoofZoneMesh({ ancho, largo, theta, offsetX, offsetZ = 0, gi, multiZona
   }, [ancho, largo, sinT, cosT, ny, nz, panelAu]);
 
   return (
-    <group position={[offsetX, 0, offsetZ]}>
+    <group position={[offsetX, offsetY, offsetZ]}>
       {/* Front fascia */}
       <mesh position={[ancho/2, -FH/2, 0.002]} renderOrder={0}>
         <planeGeometry args={[ancho, FH]} />
@@ -1083,29 +1084,30 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     };
   }, [plantRects, plantEncounters, validZonas]);
 
-  const frontAnchorByGi = frontComponentModel?.byGi ?? new Map();
-
   /**
-   * oz: anclar el borde inferior del rect en planta (y + h, FRENTE en SVG) al pie de la cubierta.
-   * Si hay contacto en planta, comparten frente para mantenerse coplanares en 3D.
+   * Misma regla que RoofPanelRealisticScene / roofZoneLayouts3d.js: plano inclinado global desde planta
+   * (py → Y,Z con θ; sin anclar ejes ni usar el cuerpo raíz para posición). No solapamiento: layout 2D.
+   * `frontComponentModel` sigue usándose solo para el panel de debug (componentes conectados en planta).
    */
-  const zoneLayouts = useMemo(() => plantRects.map((r) => {
-    const front = frontAnchorByGi.get(r.gi) ?? (r.y + r.h);
-    const oz = -front;
-    return {
-      z: r.z,
-      gi: r.gi,
-      ancho: r.w,
-      ox: r.x,
-      oz,
-      largo: r.h,
-      slopeMark: r.z?.preview?.slopeMark,
-      plX: r.x,
-      plY: r.y,
-      wPl: r.w,
-      hPl: r.h,
-    };
-  }), [frontAnchorByGi, plantRects]);
+  const zoneLayouts = useMemo(() => {
+    let base;
+    try {
+      base = buildZoneLayoutsForRoof3d(validZonas, tipoAguasStr, theta);
+    } catch {
+      base = [];
+    }
+    const prByGi = new Map(plantRects.map((r) => [r.gi, r]));
+    return base.map((l) => {
+      const pr = prByGi.get(l.gi);
+      return {
+        ...l,
+        plX: pr?.x ?? l.ox,
+        plY: pr?.y ?? 0,
+        wPl: pr?.w ?? l.ancho,
+        hPl: pr?.h ?? l.largo,
+      };
+    });
+  }, [validZonas, tipoAguasStr, theta, plantRects]);
 
   const debugStats = useMemo(() => {
     const logicalShared = getSharedSidesPerZona(validZonas, tipoAguasStr);
@@ -1128,9 +1130,12 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       if (encounterByGi.has(b)) encounterByGi.set(b, encounterByGi.get(b) + (enc.length || 0));
     }
 
+    const cosDbg = Math.cos(theta);
     const zoneRows = zoneLayouts.map((zl) => {
       const rawFront = zl.plY + zl.hPl;
-      const anchorFront = -zl.oz;
+      const zFondo3d = zl.oz - zl.largo * cosDbg;
+      // Plano global Z ≈ py*cos(theta): en el fondo del rect, py = plY → zFondo3d ≈ plY*cos(theta)
+      const fondoAlignResidual = zFondo3d - zl.plY * cosDbg;
       const logicalSides = logicalShared.get(zl.gi);
       const sharedIntervals = (logicalSides?.get("frente")?.intervals?.length || 0)
         + (logicalSides?.get("fondo")?.intervals?.length || 0)
@@ -1139,8 +1144,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       return {
         gi: zl.gi,
         rawFront,
-        anchorFront,
-        frontDelta: anchorFront - rawFront,
+        anchorFront: rawFront,
+        frontDelta: fondoAlignResidual,
         area: zl.z.largo * zl.z.ancho,
         encounterLen: encounterByGi.get(zl.gi) || 0,
         sharedIntervals,
@@ -1211,10 +1216,10 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     push(["contact_len_delta_m", debugStats.diffLen.toFixed(4)]);
     push([]);
 
-    push(["section", "Delta summary (front 3D vs planta)"]);
+    push(["section", "Delta summary (fondo 3D vs plY·cos θ)"]);
     push([
       "note",
-      "zone_gi is 0-based. CSV zone_label Z1 = gi 0 (same index as canvas ZONA 0 when labels use 0-based). Export twice after moving zones and compare front_delta_m.",
+      "zone_gi is 0-based. fondo_align_residual_m = z_fondo_3d - plY*cos(theta); expect ~0 (coplanar plant → 3D).",
     ]);
     push(["front_delta_max_abs_m", debugStats.maxAbsFrontDelta.toFixed(4)]);
     push(["front_delta_max_abs_zone_gi", debugStats.maxAbsFrontDeltaGi ?? ""]);
@@ -1244,9 +1249,9 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       "zone_gi",
       "zone_label",
       "area_m2",
-      "front_raw_m",
-      "front_anchor_m",
-      "front_delta_m",
+      "front_planta_m",
+      "front_anchor_legacy_m",
+      "fondo_align_residual_m",
       "encounter_len_m",
       "shared_intervals_count",
     ]);
@@ -1293,7 +1298,11 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     return { totalWidth: tw, maxLargo: ml, minX: mix, maxX: mxx, minZ: miz, maxZ: maz };
   }, [zoneLayouts, cosT]);
 
-  const maxH = maxLargo * sinT, maxD = maxLargo * cosT;
+  const maxH =
+    zoneLayouts.length === 0
+      ? maxLargo * sinT
+      : Math.max(...zoneLayouts.map((r) => (r.oy ?? 0) + r.largo * sinT));
+  const maxD = maxLargo * cosT;
   const spanZ = Math.max(0.1, maxZ - minZ);
   const spanW = Math.max(0.1, maxX - minX);
   const sceneSize = Math.max(spanW, spanZ, totalWidth * 0.5 + spanZ * 0.5);
@@ -1344,9 +1353,9 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
         <directionalLight position={[sceneSize * 1.5 + 3, maxH * 2 + 5, maxD + 4]} intensity={0.55} castShadow />
         <directionalLight position={[-2, 4, 3]} intensity={0.22} />
 
-        {zoneLayouts.map(({ z, gi, ancho, ox, oz, slopeMark }) => (
+        {zoneLayouts.map(({ z, gi, ancho, ox, oy, oz, slopeMark }) => (
           <RoofZoneMesh key={gi} gi={gi} ancho={ancho} largo={z.largo} theta={theta}
-            offsetX={ox} offsetZ={oz} slopeMark={slopeMark} multiZona={multiZona} borders={borders} zonasBorders={zonasBorders}
+            offsetX={ox} offsetY={oy ?? 0} offsetZ={oz} slopeMark={slopeMark} multiZona={multiZona} borders={borders} zonasBorders={zonasBorders}
             sharedSidesMap={sharedSidesMap} openSide={openSide} openEncounterSide={openEncounterSide}
             disabledSides={disabledSides} onEdgeClick={onEdgeClick} onEncounterClick={onEncounterClick}
             panelAu={panelAu} zonaEncounters={zonaEncounters} onZonaPreviewChange={onZonaPreviewChange} />
@@ -1388,7 +1397,9 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
           const ny = EPSp * cosT;
           const nz = EPSp * sinT;
           const xw = xLine;
-          const ozL = -(rectL.y + rectL.h);
+          const pyAt = (m) => rectL.y + m;
+          const yAt = (m) => pyAt(m) * sinT + ny;
+          const zAt = (m) => pyAt(m) * cosT + nz;
           return intervals.map(({ startM, endM }, ii) => {
             if (endM - startM < 0.02) return null;
             const encDer = zonaEncounters?.[gi]?.latDer;
@@ -1398,8 +1409,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
               (encDer.desnivel && (encDer.desnivel.perfilBajo || encDer.desnivel.perfilAlto))
             ));
             const midM = (startM + endM) / 2;
-            const midY = midM * sinT + ny;
-            const midZ = ozL - midM * cosT + nz;
+            const midY = yAt(midM);
+            const midZ = zAt(midM);
             const bp = encDer ? encounterBorderPerfil(encDer) : "none";
             const pillLabel = hasPerfil
               ? (bp !== "none" ? String(bp).replace(/_/g, " ") : "Perfil")
@@ -1409,8 +1420,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
                 {hasPerfil && (
                   <Line
                     points={[
-                      [xw, startM * sinT + ny, ozL - startM * cosT + nz],
-                      [xw, endM * sinT + ny, ozL - endM * cosT + nz],
+                      [xw, yAt(startM), zAt(startM)],
+                      [xw, yAt(endM), zAt(endM)],
                     ]}
                     color="#f59e0b"
                     lineWidth={1.5}
@@ -1443,8 +1454,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
         })}
 
         {/* Zone dimension labels */}
-        {multiZona && zoneLayouts.map(({ z, gi, ancho, ox, oz }) => (
-          <Html key={gi} position={[ox + ancho / 2, z.largo * sinT / 2, oz - z.largo * cosT / 2]} center distanceFactor={7}>
+        {multiZona && zoneLayouts.map(({ z, gi, ancho, ox, oy, oz }) => (
+          <Html key={gi} position={[ox + ancho / 2, (oy ?? 0) + z.largo * sinT / 2, oz - z.largo * cosT / 2]} center distanceFactor={7}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#1e3a8a', fontFamily: FONT,
               whiteSpace: 'nowrap', pointerEvents: 'none',
               background: 'rgba(255,255,255,0.65)', padding: '1px 5px', borderRadius: 4 }}>
@@ -1540,7 +1551,7 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
               Delta geom vs lógico: {debugStats.diffLen.toFixed(3)} m {debugStats.diffLen <= 0.05 ? "(OK)" : "(CHECK)"}
             </div>
             <div style={{ gridColumn: "1 / -1", fontSize: 9, color: "#475569" }}>
-              <strong>Δ frente (planta → ancla 3D):</strong> máx{" "}
+              <strong>Residual fondo (3D vs plY·cos θ):</strong> máx{" "}
               <strong style={{ color: "#0f172a" }}>{debugStats.maxAbsFrontDelta.toFixed(3)} m</strong>
               {debugStats.maxAbsFrontDeltaGi != null ? (
                 <>
@@ -1549,8 +1560,7 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
                   {debugStats.maxAbsFrontDeltaGi + 1})
                 </>
               ) : null}
-              . Exportá dos veces y compará <code style={{ fontSize: 9 }}>front_delta_m</code> / sección{" "}
-              <em>Delta summary</em> del CSV.
+              . CSV: <code style={{ fontSize: 9 }}>front_delta_m</code> = ese residual (≈0 si fondo alineado).
             </div>
           </div>
 
@@ -1567,13 +1577,13 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
             </div>
           )}
 
-          <div style={{ fontWeight: 700, marginBottom: 2 }}>Zonas (orden por |Δ frente|, mayor primero)</div>
+          <div style={{ fontWeight: 700, marginBottom: 2 }}>Zonas (orden por |residual fondo|, mayor primero)</div>
           <div style={{ fontSize: 9, color: "#64748b", marginBottom: 4 }}>
             gi = índice 0-based (coincide con <strong>ZONA 0</strong>… en el lienzo si usás esa convención).
           </div>
           <div style={{ display: "grid", gap: 4 }}>
             {debugStats.zoneRowsByAbsFrontDelta.map((z) => {
-              const strongDelta = Math.abs(z.frontDelta) >= 2;
+              const strongDelta = Math.abs(z.frontDelta) >= 0.05;
               return (
                 <div
                   key={`zdbg-${z.gi}`}
@@ -1584,9 +1594,8 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
                     border: strongDelta ? "1px solid rgba(245,158,11,0.45)" : "1px solid transparent",
                   }}
                 >
-                  <strong>gi {z.gi}</strong> (Z{z.gi + 1}) · A {z.area.toFixed(2)} m² · raw {z.rawFront.toFixed(2)} → anchor{" "}
-                  {z.anchorFront.toFixed(2)} <strong>(Δ {z.frontDelta.toFixed(3)})</strong> · contacto {z.encounterLen.toFixed(3)} m ·
-                  iv {z.sharedIntervals}
+                  <strong>gi {z.gi}</strong> (Z{z.gi + 1}) · A {z.area.toFixed(2)} m² · frente planta {z.rawFront.toFixed(2)} m ·{" "}
+                  <strong>resid. fondo {z.frontDelta.toFixed(3)} m</strong> · contacto {z.encounterLen.toFixed(3)} m · iv {z.sharedIntervals}
                 </div>
               );
             })}
