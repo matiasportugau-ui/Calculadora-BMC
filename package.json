@@ -23,6 +23,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/validation.js",
+    "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
     "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
     "verify-tabs": "node scripts/verify-sheets-tabs.js",

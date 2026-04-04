@@ -266,8 +266,106 @@ async function main() {
     }
   }
 
+  // ── /api/agent/chat contract tests (3.4) ────────────────────────────────────
+  console.log("\n── /api/agent/chat ──");
+  await runChatContractTests({ passed: (n) => { console.log(`  ✅ ${n}`); passed++; }, failed: (n, r) => { console.log(`  ❌ ${n} — ${r}`); failed++; } });
+
   console.log(`\n${passed} passed, ${failed} failed\n`);
   process.exit(failed > 0 ? 1 : 0);
+}
+
+/**
+ * Read the first SSE event from an /api/agent/chat response.
+ * Aborts after first event to avoid consuming LLM tokens.
+ */
+async function readFirstSseEvent(res) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const parts = buf.split("\n\n");
+    for (const part of parts) {
+      const line = part.split("\n").find((l) => l.startsWith("data: "));
+      if (line) {
+        reader.cancel();
+        return JSON.parse(line.slice(6));
+      }
+    }
+    buf = parts[parts.length - 1];
+  }
+  return null;
+}
+
+async function runChatContractTests({ passed: pass, failed: fail }) {
+  const CHAT = `${BASE}/api/agent/chat`;
+
+  // 3.4a — Minimal valid POST → 200 + text/event-stream + first event has type
+  try {
+    const res = await fetch(CHAT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: "hola" }] }),
+    });
+    if (res.status !== 200) {
+      fail("POST /api/agent/chat (mínimo) → 200", `HTTP ${res.status}`);
+    } else if (!res.headers.get("content-type")?.includes("text/event-stream")) {
+      fail("POST /api/agent/chat → content-type: text/event-stream", res.headers.get("content-type"));
+    } else {
+      const evt = await readFirstSseEvent(res);
+      if (!evt || !["text", "error", "info", "kb_match", "done"].includes(evt.type)) {
+        fail("POST /api/agent/chat → first SSE event has known type", JSON.stringify(evt));
+      } else {
+        pass("POST /api/agent/chat (mínimo) → 200 + SSE + typed event");
+      }
+    }
+  } catch (err) {
+    fail("POST /api/agent/chat (mínimo)", err.message);
+  }
+
+  // 3.4b — Empty messages array → 400
+  try {
+    const res = await fetch(CHAT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [] }),
+    });
+    if (res.status === 400) pass("POST /api/agent/chat (messages=[]) → 400");
+    else fail("POST /api/agent/chat (messages=[]) → 400", `got HTTP ${res.status}`);
+  } catch (err) {
+    fail("POST /api/agent/chat (messages=[])", err.message);
+  }
+
+  // 3.4c — 61 messages → 400 (exceeds input cap)
+  try {
+    const msgs = Array.from({ length: 61 }, (_, i) => ({ role: i % 2 === 0 ? "user" : "assistant", content: "test" }));
+    const res = await fetch(CHAT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: msgs }),
+    });
+    if (res.status === 400) pass("POST /api/agent/chat (61 messages) → 400");
+    else fail("POST /api/agent/chat (61 messages) → 400", `got HTTP ${res.status}`);
+  } catch (err) {
+    fail("POST /api/agent/chat (61 messages)", err.message);
+  }
+
+  // 3.4d — Unknown action type should NOT reach client as action event
+  // We send a message designed to trigger an action, but can only verify endpoint responds
+  // (full action filtering is covered by unit tests)
+  try {
+    const res = await fetch(CHAT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: "quiero cotizar un techo ISODEC_EPS 100mm" }] }),
+    });
+    if (res.status === 200) pass("POST /api/agent/chat (cotización request) → 200");
+    else fail("POST /api/agent/chat (cotización request) → 200", `got HTTP ${res.status}`);
+  } catch (err) {
+    fail("POST /api/agent/chat (cotización request)", err.message);
+  }
 }
 
 main();

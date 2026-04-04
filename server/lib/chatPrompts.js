@@ -149,12 +149,13 @@ REGLAS DE ACCIONES (OBLIGATORIAS — incumplirlas arruina la UX):
 
 /**
  * 0.3 — Sanitize user-supplied strings before injecting into system prompt.
+ * Exported for testing.
  * Strips control characters, limits length, neutralizes prompt-injection patterns.
  * @param {unknown} val
  * @param {number} [maxLen=200]
  * @returns {string}
  */
-function sanitizeForPrompt(val, maxLen = 200) {
+export function sanitizeForPrompt(val, maxLen = 200) {
   if (val == null) return "";
   const str = String(val)
     // Remove control chars (except common whitespace)

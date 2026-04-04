@@ -20,15 +20,15 @@ import {
   PANELS_TECHO, PANELS_PARED, SERVICIOS,
   FIJACIONES, HERRAMIENTAS, SELLADORES,
   PERFIL_TECHO, PERFIL_PARED,
-  SCENARIOS_DEF, VIS, OBRA_PRESETS, BORDER_OPTIONS,
+  SCENARIOS_DEF, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
   PENDIENTES_PRESET, TIPO_AGUAS,
 } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
 import {
-  calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA,
-  calcFactorPendiente, calcLargoRealFromModo, mergeZonaResults, normalizarMedida,
+  calcTotalesSinIVA,
+  calcFactorPendiente, calcLargoRealFromModo, normalizarMedida,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -41,6 +41,7 @@ import {
 } from "../utils/budgetLog.js";
 import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
 import { htmlToPdfBlob, downloadPdf } from "../utils/pdfGenerator.js";
+import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
 import { capturePdfSnapshotTargets } from "../utils/captureDomToPng.js";
 import {
@@ -2025,86 +2026,9 @@ function RoofBorderSelector({
   );
 }
 
-// ── Wizard steps (Modo Vendedor — por escenario; excluye presupuesto_libre) ─────
-// Footer: wizardPrimaryActionStyle(isValid) para Siguiente en todos los flujos.
-const WIZARD_STEPS_SOLO_TECHO = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "tipoAguas", label: "Caída del techo" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel techo" },
-  { id: "espesor", label: "Espesor techo" },
-  { id: "color", label: "Color techo" },
-  { id: "dimensiones", label: "Dimensiones (metros o paneles)" },
-  { id: "pendiente", label: "Pendiente" },
-  { id: "estructura", label: "Estructura" },
-  { id: "bordes", label: "Accesorios perimetrales" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_SOLO_FACHADA = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia_pared", label: "Familia panel pared" },
-  { id: "espesor_pared", label: "Espesor pared" },
-  { id: "color_pared", label: "Color pared" },
-  { id: "dimensiones_pared", label: "Dimensiones pared" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "estructura", label: "Estructura" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_TECHO_FACHADA = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "tipoAguas", label: "Caída del techo" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel techo" },
-  { id: "espesor", label: "Espesor techo" },
-  { id: "color", label: "Color techo" },
-  { id: "dimensiones", label: "Dimensiones techo" },
-  { id: "pendiente", label: "Pendiente" },
-  { id: "estructura", label: "Estructura" },
-  { id: "bordes", label: "Accesorios perimetrales" },
-  { id: "selladores", label: "Selladores" },
-  { id: "familia_pared", label: "Familia panel pared" },
-  { id: "espesor_pared", label: "Espesor pared" },
-  { id: "color_pared", label: "Color pared" },
-  { id: "dimensiones_pared", label: "Dimensiones pared" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "perfil_5852", label: "Perfil 5852 aluminio" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_CAMARA_FRIG = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia_pared", label: "Familia panel" },
-  { id: "espesor_pared", label: "Espesor" },
-  { id: "color_pared", label: "Color" },
-  { id: "camara_dim", label: "Dimensiones cámara (interiores)" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "estructura", label: "Estructura" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-/** Pasos del wizard modo vendedor. `presupuesto_libre` → [] (sin wizard). */
-function getWizardStepsForScenario(scenarioId) {
-  switch (scenarioId) {
-    case "solo_techo": return WIZARD_STEPS_SOLO_TECHO;
-    case "solo_fachada": return WIZARD_STEPS_SOLO_FACHADA;
-    case "techo_fachada": return WIZARD_STEPS_TECHO_FACHADA;
-    case "camara_frig": return WIZARD_STEPS_CAMARA_FRIG;
-    case "presupuesto_libre":
-    default:
-      return [];
-  }
-}
+// ── Wizard steps — derived from SCENARIOS_DEF (single source of truth) ─────
+// Adding a new scenario only requires adding it to SCENARIOS_DEF in constants.js.
+const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardSteps ?? [];
 
 const TECHO_INITIAL_VENDEDOR = {
   familia: "", espesor: "", color: "", zonas: [{ largo: 0, ancho: 0 }],
@@ -2326,7 +2250,7 @@ export default function PanelinCalculadoraV3() {
   }, []);
 
   const advanceWizardStep = useCallback(() => {
-    setWizardStep((s) => (s < WIZARD_STEPS_SOLO_TECHO.length - 1 ? s + 1 : s));
+    setWizardStep((s) => (s < SOLO_TECHO_STEPS.length - 1 ? s + 1 : s));
   }, []);
 
   useEffect(() => {
@@ -2390,7 +2314,7 @@ export default function PanelinCalculadoraV3() {
   // Enter / ArrowRight → Siguiente | ArrowLeft → Anterior (all wizard scenarios)
   useEffect(() => {
     if (!modoVendedor) return;
-    const steps = getWizardStepsForScenario(scenario);
+    const steps = SCENARIOS_DEF.find(s => s.id === scenario)?.wizardSteps ?? [];
     if (!steps.length) return;
     const stepId = steps[wizardStep]?.id;
     const isValid = stepId ? isWizardStepValid(stepId) : false;
@@ -2413,11 +2337,11 @@ export default function PanelinCalculadoraV3() {
     return () => window.removeEventListener("keydown", handler);
   }, [modoVendedor, scenario, wizardStep, isWizardStepValid]);
 
-  const vis = VIS[scenario] || VIS.solo_techo;
+  const vis = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
   const activeWizardStepId =
     modoVendedor && scenario === "solo_techo"
-      ? WIZARD_STEPS_SOLO_TECHO[wizardStep]?.id ?? null
+      ? SOLO_TECHO_STEPS[wizardStep]?.id ?? null
       : null;
 
   const quoteVisorDimensionSummary = useMemo(() => {
@@ -2461,7 +2385,7 @@ export default function PanelinCalculadoraV3() {
     [techo.zonas],
   );
   const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isCompactLayout);
-  const soloTechoWizardDimStepIndex = useMemo(() => WIZARD_STEPS_SOLO_TECHO.findIndex((s) => s.id === "dimensiones"), []);
+  const soloTechoWizardDimStepIndex = useMemo(() => SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones"), []);
   const useDockedRoofBorderSelector = Boolean(
     modoVendedor
     && scenario === "solo_techo"
@@ -2783,94 +2707,7 @@ export default function PanelinCalculadoraV3() {
           catalog: libreCatalog || undefined,
         });
       }
-      if (sc === "solo_techo") {
-        if (!techo.familia || !techo.espesor) return null;
-        // For 2 aguas: each zona generates 2 faldones (half ancho each)
-        // Agua 1 keeps frente+latIzq+latDer borders, fondo=cumbrera
-        // Agua 2 keeps fondo(original)+latIzq+latDer borders, frente=cumbrera (shared, not double-counted)
-        const is2Aguas = techo.tipoAguas === "dos_aguas";
-        const emptyBorders = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
-        const sharedSidesMap = techo.inclAccesorios !== false
-          ? getSharedSidesPerZona(techo.zonas, techo.tipoAguas)
-          : new Map();
-        const zonaResults = techo.zonas.flatMap((zona, gi) => {
-          const inputs = { ...techo, largo: zona.largo, ancho: zona.ancho, pendienteModo: techo.pendienteModo || "calcular_pendiente", alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0 };
-          const globalBorders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
-          const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };
-          const sharedSideMap = sharedSidesMap.get(gi);
-          const effectiveBorders = sharedSideMap?.size > 0
-            ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => {
-                if (!sharedSideMap.get(k)?.fullySide) return [k, v];
-                const enc = zona.preview?.encounters?.[k];
-                return [k, encounterEsContinuo(enc) ? 'none' : encounterBorderPerfil(enc)];
-              }))
-            : mergedBorders;
-          if (is2Aguas) {
-            const halfAncho = +(zona.ancho / 2).toFixed(2);
-            const agua1 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { ...effectiveBorders, fondo: "cumbrera" } });
-            const agua2 = calcTechoCompleto({ ...inputs, ancho: halfAncho, borders: { frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo, fondo: "none", latIzq: effectiveBorders.latIzq, latDer: effectiveBorders.latDer } });
-            return [agua1, agua2];
-          }
-          return [calcTechoCompleto({ ...inputs, borders: effectiveBorders })];
-        });
-        return mergeZonaResults(zonaResults);
-      }
-      if (sc === "solo_fachada") {
-        if (!pared.familia || !pared.espesor) return null;
-        return calcParedCompleto(pared);
-      }
-      if (sc === "techo_fachada") {
-        let rT = null;
-        if (techo.familia && techo.espesor) {
-          const is2A = techo.tipoAguas === "dos_aguas";
-          const emptyBorders = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
-          const sharedSidesMapTF = techo.inclAccesorios !== false
-            ? getSharedSidesPerZona(techo.zonas, techo.tipoAguas)
-            : new Map();
-          const zonaResults = techo.zonas.flatMap((zona, gi) => {
-            const inputs = { ...techo, largo: zona.largo, ancho: zona.ancho, pendienteModo: techo.pendienteModo || "calcular_pendiente", alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0 };
-            const globalBorders = techo.inclAccesorios === false ? emptyBorders : techo.borders;
-            const mergedBorders = { ...globalBorders, ...(zona.preview?.borders ?? {}) };
-            const sharedSides = sharedSidesMapTF.get(gi) ?? new Set();
-            const effectiveBorders = sharedSides.size > 0
-              ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => [k, sharedSides.has(k) ? "none" : v]))
-              : mergedBorders;
-            if (is2A) {
-              const ha = +(zona.ancho / 2).toFixed(2);
-              const a1 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { ...effectiveBorders, fondo: "cumbrera" } });
-              const a2 = calcTechoCompleto({ ...inputs, ancho: ha, borders: { frente: effectiveBorders.fondo === "cumbrera" ? "cumbrera" : effectiveBorders.fondo, fondo: "none", latIzq: effectiveBorders.latIzq, latDer: effectiveBorders.latDer } });
-              return [a1, a2];
-            }
-            return [calcTechoCompleto({ ...inputs, borders: effectiveBorders })];
-          });
-          rT = mergeZonaResults(zonaResults);
-        }
-        const rP = pared.familia && pared.espesor ? calcParedCompleto(pared) : null;
-        if (!rT && !rP) return null;
-        const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
-        const totales = calcTotalesSinIVA(allItems);
-        return { ...rT, paredResult: rP, allItems, totales, warnings: [...(rT?.warnings || []), ...(rP?.warnings || [])] };
-      }
-      if (sc === "camara_frig") {
-        if (!pared.familia || !pared.espesor) return null;
-        const perim = 2 * (camara.largo_int + camara.ancho_int);
-        const rP = calcParedCompleto({ ...pared, perimetro: perim, alto: camara.alto_int, numEsqExt: 4, numEsqInt: 0 });
-        const techoFam = pared.familia in PANELS_TECHO ? pared.familia : "ISODEC_EPS";
-        const techoPanel = PANELS_TECHO[techoFam];
-        const extraW = [];
-        let techoEsp = pared.espesor;
-        if (!techoPanel.esp[techoEsp]) {
-          const available = Object.keys(techoPanel.esp).map(Number).sort((a, b) => a - b);
-          techoEsp = available.find(e => e >= techoEsp) || available[available.length - 1];
-          extraW.push(`Techo cámara: espesor ${pared.espesor}mm no disponible en ${techoFam}, se usó ${techoEsp}mm.`);
-        }
-        const rT = calcTechoCompleto({ familia: techoFam, espesor: techoEsp, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal", borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: pared.color });
-        if (rT?.error) extraW.push(`Techo cámara: ${rT.error}`);
-        const techoItems = rT?.error ? [] : (rT?.allItems || []);
-        const allItems = [...(rP?.allItems || []), ...techoItems];
-        const totales = calcTotalesSinIVA(allItems);
-        return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraW] };
-      }
+      return executeScenario(sc, { techo, pared, camara });
     } catch (e) { return { error: e.message }; }
     return null;
   }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
@@ -2967,7 +2804,7 @@ export default function PanelinCalculadoraV3() {
   const handleCopyTSV = useCallback(() => {
     if (!groups.length) return;
     const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
-    const vis_ = VIS[scenario] || VIS.solo_techo;
+    const vis_ = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
     const kpiPaneles = results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null;
     const kpiArea = results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null;
     const kpiApoyos = results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null;
@@ -2992,7 +2829,7 @@ export default function PanelinCalculadoraV3() {
         totalsEl: pdfCaptureTotalsRef.current,
         bordersEl: bordesRef.current,
       });
-      const vis_ = VIS[scenario] || VIS.solo_techo;
+      const vis_ = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
       const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
       const kpiPaneles = results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null;
       const kpiArea = results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null;
@@ -3574,18 +3411,18 @@ export default function PanelinCalculadoraV3() {
           {modoVendedor && scenario === "solo_techo" ? (
             /* ── WIZARD: una variable a la vez ── */
             (() => {
-              const step = WIZARD_STEPS_SOLO_TECHO[wizardStep];
+              const step = SOLO_TECHO_STEPS[wizardStep];
               const stepId = step?.id;
               const isValid = stepId && isWizardStepValid(stepId);
               const canPrev = wizardStep > 0;
-              const canNext = wizardStep < WIZARD_STEPS_SOLO_TECHO.length - 1;
+              const canNext = wizardStep < SOLO_TECHO_STEPS.length - 1;
               const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
               const uPr = (k, v) => setProyecto(p => ({ ...p, [k]: v }));
               return (
                 <div style={sectionS}>
                   {/* Step indicators */}
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
-                    {WIZARD_STEPS_SOLO_TECHO.map((s, i) => {
+                    {SOLO_TECHO_STEPS.map((s, i) => {
                       const isDone = i < wizardStep;
                       const isCurrent = i === wizardStep;
                       const isHovered = hoveredDotIdx === i;
@@ -3630,7 +3467,7 @@ export default function PanelinCalculadoraV3() {
                     })}
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Paso {wizardStep + 1} de {WIZARD_STEPS_SOLO_TECHO.length}
+                    Paso {wizardStep + 1} de {SOLO_TECHO_STEPS.length}
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, marginBottom: 20, overflow: "visible", minWidth: 0 }}>{step?.label}</div>
                   {stepId === "escenario" && (

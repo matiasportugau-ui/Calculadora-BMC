@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import { mapErrorMessage } from "../utils/chatErrors.js";
 
 const STORAGE_KEY = "panelin-chat-history";
 const MAX_STORED = 40; // keep last 40 messages in localStorage
@@ -29,21 +30,6 @@ function saveHistory(messages) {
   }
 }
 
-// 1.1 — Map HTTP/network errors to user-friendly Spanish messages
-function mapErrorMessage(err) {
-  if (err?.name === "AbortError") return null; // intentional abort
-  const status = err?._status;
-  if (status === 401) return "Token de desarrollador inválido.";
-  if (status === 403) return "Origen no permitido para este servicio.";
-  if (status === 429) return "Demasiadas consultas. Esperá un momento.";
-  if (status === 503) return "Servicio de IA no disponible en este momento.";
-  if (status >= 500) return `Error del servidor (${status}). Intentá de nuevo.`;
-  if (err instanceof TypeError || status === 0) {
-    return "No se puede conectar con el servidor. Verificá tu conexión.";
-  }
-  if (status) return `Error ${status}. Intentá de nuevo.`;
-  return "No se pudo conectar con Panelin. Intentá de nuevo.";
-}
 
 /**
  * Manages Panelin chat state and SSE streaming.
