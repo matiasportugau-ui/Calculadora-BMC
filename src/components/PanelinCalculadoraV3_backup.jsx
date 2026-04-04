@@ -1163,11 +1163,27 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
       components.sort((a, b) => a.root - b.root);
     }
 
+    let maxAbsFrontDelta = 0;
+    let maxAbsFrontDeltaGi = null;
+    for (const z of zoneRows) {
+      const a = Math.abs(z.frontDelta);
+      if (a > maxAbsFrontDelta) {
+        maxAbsFrontDelta = a;
+        maxAbsFrontDeltaGi = z.gi;
+      }
+    }
+    const zoneRowsByAbsFrontDelta = [...zoneRows].sort(
+      (a, b) => Math.abs(b.frontDelta) - Math.abs(a.frontDelta),
+    );
+
     return {
       encounterLen,
       logicalSharedLen,
       diffLen: Math.abs(encounterLen - logicalSharedLen),
       zoneRows,
+      zoneRowsByAbsFrontDelta,
+      maxAbsFrontDelta,
+      maxAbsFrontDeltaGi,
       components,
     };
   }, [frontComponentModel, plantEncounters, plantRects, tipoAguasStr, validZonas, zoneLayouts]);
@@ -1193,6 +1209,19 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
     push(["contact_len_geom_m", debugStats.encounterLen.toFixed(4)]);
     push(["contact_len_logical_m", debugStats.logicalSharedLen.toFixed(4)]);
     push(["contact_len_delta_m", debugStats.diffLen.toFixed(4)]);
+    push([]);
+
+    push(["section", "Delta summary (front 3D vs planta)"]);
+    push([
+      "note",
+      "zone_gi is 0-based. CSV zone_label Z1 = gi 0 (same index as canvas ZONA 0 when labels use 0-based). Export twice after moving zones and compare front_delta_m.",
+    ]);
+    push(["front_delta_max_abs_m", debugStats.maxAbsFrontDelta.toFixed(4)]);
+    push(["front_delta_max_abs_zone_gi", debugStats.maxAbsFrontDeltaGi ?? ""]);
+    push([
+      "zones_sorted_by_abs_front_delta_desc",
+      debugStats.zoneRowsByAbsFrontDelta.map((z) => `${z.gi}:${z.frontDelta.toFixed(4)}`).join("|") || "",
+    ]);
     push([]);
 
     push(["section", "Connected Components"]);
@@ -1510,6 +1539,19 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
             <div style={{ gridColumn: "1 / -1", color: debugStats.diffLen <= 0.05 ? "#166534" : "#b91c1c", fontWeight: 700 }}>
               Delta geom vs lógico: {debugStats.diffLen.toFixed(3)} m {debugStats.diffLen <= 0.05 ? "(OK)" : "(CHECK)"}
             </div>
+            <div style={{ gridColumn: "1 / -1", fontSize: 9, color: "#475569" }}>
+              <strong>Δ frente (planta → ancla 3D):</strong> máx{" "}
+              <strong style={{ color: "#0f172a" }}>{debugStats.maxAbsFrontDelta.toFixed(3)} m</strong>
+              {debugStats.maxAbsFrontDeltaGi != null ? (
+                <>
+                  {" "}
+                  en <strong style={{ color: "#0f172a" }}>gi {debugStats.maxAbsFrontDeltaGi}</strong> (etiq. Z
+                  {debugStats.maxAbsFrontDeltaGi + 1})
+                </>
+              ) : null}
+              . Exportá dos veces y compará <code style={{ fontSize: 9 }}>front_delta_m</code> / sección{" "}
+              <em>Delta summary</em> del CSV.
+            </div>
           </div>
 
           <div style={{ fontWeight: 700, marginBottom: 4 }}>Componentes conectadas</div>
@@ -1525,13 +1567,29 @@ function RoofBorderCanvas({ validZonas, is2A, theta, panelAu, borders, zonasBord
             </div>
           )}
 
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>Zonas</div>
+          <div style={{ fontWeight: 700, marginBottom: 2 }}>Zonas (orden por |Δ frente|, mayor primero)</div>
+          <div style={{ fontSize: 9, color: "#64748b", marginBottom: 4 }}>
+            gi = índice 0-based (coincide con <strong>ZONA 0</strong>… en el lienzo si usás esa convención).
+          </div>
           <div style={{ display: "grid", gap: 4 }}>
-            {debugStats.zoneRows.map((z) => (
-              <div key={`zdbg-${z.gi}`} style={{ padding: "4px 6px", background: "rgba(255,255,255,0.7)", borderRadius: 6 }}>
-                Z{z.gi + 1} · A {z.area.toFixed(2)} m² · front raw {z.rawFront.toFixed(2)} → anchor {z.anchorFront.toFixed(2)} (Δ {z.frontDelta.toFixed(3)}) · contacto {z.encounterLen.toFixed(3)} m · shared iv {z.sharedIntervals}
-              </div>
-            ))}
+            {debugStats.zoneRowsByAbsFrontDelta.map((z) => {
+              const strongDelta = Math.abs(z.frontDelta) >= 2;
+              return (
+                <div
+                  key={`zdbg-${z.gi}`}
+                  style={{
+                    padding: "4px 6px",
+                    background: strongDelta ? "rgba(254,243,199,0.95)" : "rgba(255,255,255,0.7)",
+                    borderRadius: 6,
+                    border: strongDelta ? "1px solid rgba(245,158,11,0.45)" : "1px solid transparent",
+                  }}
+                >
+                  <strong>gi {z.gi}</strong> (Z{z.gi + 1}) · A {z.area.toFixed(2)} m² · raw {z.rawFront.toFixed(2)} → anchor{" "}
+                  {z.anchorFront.toFixed(2)} <strong>(Δ {z.frontDelta.toFixed(3)})</strong> · contacto {z.encounterLen.toFixed(3)} m ·
+                  iv {z.sharedIntervals}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -4012,6 +4070,7 @@ export default function PanelinCalculadoraV3() {
                               familiaKey={techo.familia}
                               espesorMm={techo.espesor}
                               panelAu={techoPanelData?.au ?? 1.12}
+                              techoColor={techo.color || ""}
                             />
                           </Suspense>
                         </div>
@@ -4474,6 +4533,7 @@ export default function PanelinCalculadoraV3() {
                     familiaKey={techo.familia}
                     espesorMm={techo.espesor}
                     panelAu={techoPanelData?.au ?? 1.12}
+                    techoColor={techo.color || ""}
                   />
                 </Suspense>
               </div>

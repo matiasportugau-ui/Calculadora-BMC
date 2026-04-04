@@ -1,4 +1,5 @@
-import shopifyFamiliesMap from "./quoteVisorShopifyFamilies.json";
+import shopifyFamiliesMap from "./quoteVisorShopifyFamilies.json" with { type: "json" };
+import { ROOF_CATALOG_MAP_URL_BY_FAMILIA } from "./roofPanelCatalogMapUrls.js";
 
 /**
  * Medios del visor de cotización — imágenes desde CDN Shopify (bmcuruguay.com.uy).
@@ -27,35 +28,35 @@ export const QUOTE_VISOR_SHOP_URLS = {
 /** Paneles de cubierta (ISODEC EPS/PIR, ISOROOF, Hiansa) — colección paneles aislantes */
 export const SLIDES_SOLO_TECHO = /** @type {QuoteVisorSlide[]} */ ([
   {
-    src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/ISODEC_GRIS.png?v=1756747335",
+    src: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISODEC_EPS,
     title: "ISODEC EPS",
     subtitle: "Techos y cubiertas — 100 a 250 mm",
     description:
       "Panel aislante para cubiertas de alta resistencia. Núcleo EPS con terminación prepintada, pensado para obra rápida, buen comportamiento térmico y soluciones industriales o residenciales.",
   },
   {
-    src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isodec_PIR.png?v=1755503238",
+    src: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISODEC_PIR,
     title: "ISODEC PIR",
     subtitle: "Techos y cubiertas — 50, 80, 120 mm",
     description:
       "Panel de cubierta con núcleo PIR para mayor eficiencia térmica. Opción premium para proyectos que priorizan aislación, rendimiento energético y control de temperatura interior.",
   },
   {
-    src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+    src: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_3G,
     title: "ISOROOF 3G",
     subtitle: "Techos livianos",
     description:
       "Sistema de cubierta liviana tipo Isoroof con estética moderna y rápida instalación. Recomendado para galpones, ampliaciones y soluciones de techo con buena performance térmica.",
   },
   {
-    src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+    src: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_PLUS,
     title: "ISOROOF PLUS 3G",
     subtitle: "Línea premium",
     description:
       "Versión premium de la línea Isoroof, orientada a proyectos que buscan mejor terminación y prestaciones superiores en techos livianos de panel aislante.",
   },
   {
-    src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+    src: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_FOIL,
     title: "ISOROOF FOIL 3G",
     subtitle: "Membrana foil",
     description:

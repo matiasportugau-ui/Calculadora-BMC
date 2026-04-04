@@ -3,49 +3,44 @@
  * Clave = familia en PANELS_TECHO (constants.js).
  */
 
-import { SLIDES_SOLO_TECHO } from "./quoteVisorMedia.js";
-
-function slideSrc(index) {
-  const s = SLIDES_SOLO_TECHO[index]?.src;
-  return s || SLIDES_SOLO_TECHO[0]?.src || "";
-}
+import { ROOF_CATALOG_MAP_URL_BY_FAMILIA } from "./roofPanelCatalogMapUrls.js";
 
 /** @typedef {{ mapUrl: string; roughness: number; metalness: number; thicknessMm: number }} RoofPanelVisualProfile */
 
 /** @type {Record<string, RoofPanelVisualProfile>} */
 export const ROOF_PANEL_VISUAL_PROFILES = {
   ISODEC_EPS: {
-    mapUrl: slideSrc(0),
+    mapUrl: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISODEC_EPS,
     roughness: 0.62,
     metalness: 0.08,
     thicknessMm: 150,
   },
   ISODEC_PIR: {
-    mapUrl: slideSrc(1),
+    mapUrl: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISODEC_PIR,
     roughness: 0.58,
     metalness: 0.1,
     thicknessMm: 80,
   },
   ISOROOF_3G: {
-    mapUrl: slideSrc(2),
+    mapUrl: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_3G,
     roughness: 0.55,
     metalness: 0.15,
     thicknessMm: 40,
   },
   ISOROOF_PLUS: {
-    mapUrl: slideSrc(3),
+    mapUrl: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_PLUS,
     roughness: 0.48,
     metalness: 0.18,
     thicknessMm: 50,
   },
   ISOROOF_FOIL: {
-    mapUrl: slideSrc(4),
+    mapUrl: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_FOIL,
     roughness: 0.42,
     metalness: 0.22,
     thicknessMm: 50,
   },
   ISOROOF_COLONIAL: {
-    mapUrl: slideSrc(2),
+    mapUrl: ROOF_CATALOG_MAP_URL_BY_FAMILIA.ISOROOF_COLONIAL,
     roughness: 0.68,
     metalness: 0.06,
     thicknessMm: 40,

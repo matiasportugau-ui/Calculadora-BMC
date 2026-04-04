@@ -89,6 +89,7 @@ import {
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../src/utils/roofPanelStripsPlanta.js";
+import { getRoofPanelMapUrl, pickBestMapUrlFromSlides } from "../src/data/roofPanelMapUrl.js";
 import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
@@ -1630,6 +1631,54 @@ assert(
   xsCand.some((x) => Math.abs(x - (r0s.x + r0s.w)) < 1e-5),
   xsCand.join(","),
   "has parent right",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32f: roofPanelMapUrl (Vista 3D textura catálogo)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32f: roofPanelMapUrl ═══");
+
+const bestPick = pickBestMapUrlFromSlides([
+  { src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338" },
+  { src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781" },
+]);
+assert(
+  "pickBestMapUrlFromSlides prefiere Isoroof.jpg sobre file.jpg",
+  bestPick.includes("Isoroof.jpg"),
+  bestPick,
+  "Isoroof.jpg",
+);
+
+const map3g = getRoofPanelMapUrl("ISOROOF_3G", "Gris");
+assert(
+  "getRoofPanelMapUrl ISOROOF_3G Gris evita file.jpg",
+  !map3g.includes("/file.jpg"),
+  map3g,
+  "not file.jpg",
+);
+
+const mapPlus = getRoofPanelMapUrl("ISOROOF_PLUS", "");
+assert(
+  "getRoofPanelMapUrl ISOROOF_PLUS elige asset PLUS",
+  mapPlus.includes("Isoroof_PLUS"),
+  mapPlus,
+  "Isoroof_PLUS",
+);
+
+const mapFoil = getRoofPanelMapUrl("ISOROOF_FOIL", "Gris");
+assert(
+  "getRoofPanelMapUrl ISOROOF_FOIL Gris evita file.jpg",
+  !mapFoil.includes("/file.jpg"),
+  mapFoil,
+  "not file.jpg",
+);
+
+const mapEpsGris = getRoofPanelMapUrl("ISODEC_EPS", "Gris");
+assert(
+  "getRoofPanelMapUrl ISODEC_EPS Gris incluye ISODEC_GRIS",
+  mapEpsGris.includes("ISODEC_GRIS"),
+  mapEpsGris,
+  "ISODEC_GRIS",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

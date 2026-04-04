@@ -10,6 +10,7 @@ import * as THREE from "three";
 import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import { buildAnchoStripsPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
+import { getRoofPanelMapUrl } from "../data/roofPanelMapUrl.js";
 import { C } from "../data/constants.js";
 
 function computeSceneBounds(zoneLayouts, theta, fovDeg = 36) {
@@ -281,6 +282,7 @@ function RoofRealisticSceneContent({
  *   familiaKey: string,
  *   espesorMm?: number|string,
  *   panelAu?: number,
+ *   techoColor?: string,
  * }} props
  */
 export default function RoofPanelRealisticScene({
@@ -290,10 +292,15 @@ export default function RoofPanelRealisticScene({
   familiaKey = "",
   espesorMm,
   panelAu = 1.12,
+  techoColor = "",
 }) {
   const tipoAguasStr = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
   const theta = Math.max(0.05, (Number(pendiente) || 15) * (Math.PI / 180));
   const profile = useMemo(() => getRoofPanelVisualProfile(familiaKey, espesorMm), [familiaKey, espesorMm]);
+  const mapUrl = useMemo(
+    () => getRoofPanelMapUrl(familiaKey, techoColor),
+    [familiaKey, techoColor],
+  );
 
   const zoneLayouts = useMemo(() => {
     try {
@@ -358,7 +365,7 @@ export default function RoofPanelRealisticScene({
             zoneLayouts={zoneLayouts}
             theta={theta}
             profile={profile}
-            mapUrl={profile.mapUrl}
+            mapUrl={mapUrl}
             bounds={bounds}
             panelAu={panelAu}
           />

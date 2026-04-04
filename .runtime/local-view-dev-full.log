@@ -33,3 +33,20 @@
 [api] {"level":30,"time":1775314595719,"pid":7757,"hostname":"192.168.1.2","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
 [api] {"level":30,"time":1775314596975,"pid":7757,"hostname":"192.168.1.2","req":{"id":"5e75c94c-a0d5-4220-b9da-c820e0f4311e","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49447},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":10,"msg":"request completed"}
 [api] {"level":30,"time":1775314599389,"pid":7757,"hostname":"192.168.1.2","req":{"id":"536daa0c-59c9-4e5c-8d5e-13758c4a2478","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49457},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":1,"msg":"request completed"}
+[vite] 12:02:15 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
+[vite] 12:02:17 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
+[vite] 12:02:23 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:03:20 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:18 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:20 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:21 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:23 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:24 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:24 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:04:31 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:05:33 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx, /src/components/RoofPreview.jsx, /src/components/ConfigPanel.jsx, /src/components/DimensioningFormulasEditor.jsx, /src/components/PricingEditor.jsx, /src/components/CollapsibleHint.jsx, /src/components/FloorPlanEditor.jsx, /src/components/QuoteVisualVisor.jsx
+[vite] 12:05:54 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
+[vite] 12:05:57 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
+[vite] 12:05:57 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
+[vite] 12:06:01 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
+[vite] 12:06:09 PM [vite] (client) hmr update /src/components/PanelinCalculadoraV3_backup.jsx
