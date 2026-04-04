@@ -2055,6 +2055,10 @@ const PENDIENTE_MODOS = [
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function PanelinCalculadoraV3() {
+  const isDetachedChatWindow = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("panelinDetached") === "1";
+  }, []);
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
@@ -2072,7 +2076,8 @@ export default function PanelinCalculadoraV3() {
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [chatOpen, setChatOpen] = useState(() => {
     if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("chat") === "1";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("chat") === "1" || params.get("panelinDetached") === "1";
   });
   const [devMode, setDevMode] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -2228,6 +2233,22 @@ export default function PanelinCalculadoraV3() {
     chat.reloadPromptSections?.().catch(() => {});
     chat.reloadPromptPreview?.().catch(() => {});
   }, [devMode, chat.reloadTrainingKB, chat.reloadPromptSections, chat.reloadPromptPreview]);
+
+  useEffect(() => {
+    if (isDetachedChatWindow) setChatOpen(true);
+  }, [isDetachedChatWindow]);
+
+  const openDetachedChatWindow = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("chat", "1");
+    url.searchParams.set("panelinDetached", "1");
+    window.open(
+      url.toString(),
+      "panelin-chat-detached",
+      "popup=yes,width=1280,height=900,resizable=yes,scrollbars=yes"
+    );
+  }, []);
 
   // Section refs for auto-scroll
   const panelRef = useRef(null);
@@ -4659,10 +4680,18 @@ export default function PanelinCalculadoraV3() {
 
       <PanelinChatPanel
         isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
+        onClose={() => {
+          if (isDetachedChatWindow && typeof window !== "undefined") {
+            window.close();
+            return;
+          }
+          setChatOpen(false);
+        }}
         {...chat}
         devMode={devMode}
         onToggleDevMode={toggleDevMode}
+        detachedMode={isDetachedChatWindow}
+        onOpenDetachedWindow={openDetachedChatWindow}
         devMeta={chat.devMeta}
         trainingEntries={chat.trainingEntries}
         trainingStats={chat.trainingStats}

@@ -11,6 +11,7 @@ const BORDER = "#e5e5ea";
 const TEXT = "#1d1d1f";
 const SUBTEXT = "#6e6e73";
 const VIDEO_SRC = `${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}video/panelin-lista-loop.mp4`;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const ACTION_LABELS = {
   setScenario:   (p) => `Escenario → ${p}`,
@@ -92,6 +93,8 @@ function Avatar({ size = 28 }) {
  *   onReloadPromptSections?: () => Promise<void>,
  *   onSavePromptSection?: (payload: object) => Promise<void>,
  *   onVerifyCalculation?: (text: string) => Promise<void>,
+ *   detachedMode?: boolean,
+ *   onOpenDetachedWindow?: () => void,
  * }} props
  */
 export default function PanelinChatPanel({
@@ -117,6 +120,8 @@ export default function PanelinChatPanel({
   onReloadPromptSections,
   onSavePromptSection,
   onVerifyCalculation,
+  detachedMode = false,
+  onOpenDetachedWindow,
 }) {
   const [input, setInput] = useState("");
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
@@ -125,12 +130,24 @@ export default function PanelinChatPanel({
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [devDrawerWidth, setDevDrawerWidth] = useState(() => {
+    if (typeof window === "undefined") return 460;
+    const raw = Number(sessionStorage.getItem("panelin-dev-drawer-width"));
+    return Number.isFinite(raw) && raw > 0 ? raw : 460;
+  });
+  const [devInputLift, setDevInputLift] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = Number(sessionStorage.getItem("panelin-dev-input-lift"));
+    return Number.isFinite(raw) && raw >= 0 ? raw : 0;
+  });
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const openerRef = useRef(null);
   const recognitionRef = useRef(null);
   const prevMsgCountRef = useRef(0);
+  const drawerResizeActiveRef = useRef(false);
+  const inputLiftDragActiveRef = useRef(false);
 
   // 2.5 — Smart auto-scroll: only scroll if near bottom
   useEffect(() => {
@@ -236,6 +253,44 @@ export default function PanelinChatPanel({
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !devMode) return;
+    sessionStorage.setItem("panelin-dev-drawer-width", String(devDrawerWidth));
+  }, [devDrawerWidth, devMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !devMode) return;
+    sessionStorage.setItem("panelin-dev-input-lift", String(devInputLift));
+  }, [devInputLift, devMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || (!drawerResizeActiveRef.current && !inputLiftDragActiveRef.current)) return;
+    const onMouseMove = (e) => {
+      if (drawerResizeActiveRef.current) {
+        const nextWidth = window.innerWidth - e.clientX;
+        const hardMax = Math.min(980, Math.floor(window.innerWidth * 0.98));
+        setDevDrawerWidth(clamp(nextWidth, 320, hardMax));
+      }
+      if (inputLiftDragActiveRef.current) {
+        const viewportHeight = window.innerHeight || 900;
+        const nextLift = viewportHeight - e.clientY - 56;
+        setDevInputLift(clamp(nextLift, 0, 260));
+      }
+    };
+    const onMouseUp = () => {
+      drawerResizeActiveRef.current = false;
+      inputLiftDragActiveRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [devMode]);
+
   const speakMessage = useCallback((text) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     const speak = () => {
@@ -324,6 +379,23 @@ export default function PanelinChatPanel({
   };
 
   const isEmpty = messages.length === 0;
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
+  const devDrawerMax = Math.min(860, Math.floor(viewportWidth * 0.95));
+  const drawerMaxWidth = devMode ? clamp(devDrawerWidth, 320, devDrawerMax) : 380;
+  const startDrawerResize = (e) => {
+    if (!devMode || detachedMode) return;
+    e.preventDefault();
+    drawerResizeActiveRef.current = true;
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+  };
+  const startInputLiftDrag = (e) => {
+    if (!devMode) return;
+    e.preventDefault();
+    inputLiftDragActiveRef.current = true;
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+  };
 
   return (
     <>
@@ -334,9 +406,9 @@ export default function PanelinChatPanel({
           position: "fixed",
           inset: 0,
           zIndex: 299,
-          background: "rgba(0,0,0,0.35)",
+          background: detachedMode ? "transparent" : "rgba(0,0,0,0.35)",
           opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? "auto" : "none",
+          pointerEvents: isOpen && !detachedMode ? "auto" : "none",
           transition: "opacity 200ms ease",
         }}
       />
@@ -350,21 +422,40 @@ export default function PanelinChatPanel({
         style={{
           position: "fixed",
           top: 0,
-          right: 0,
+          right: detachedMode ? "auto" : 0,
+          left: detachedMode ? 0 : "auto",
           height: "100dvh",
           zIndex: 300,
           width: "100%",
-          maxWidth: 380,
+          maxWidth: detachedMode ? "100%" : drawerMaxWidth,
           background: "#fff",
-          boxShadow: "-4px 0 32px rgba(0,0,0,0.18)",
+          boxShadow: detachedMode ? "none" : "-4px 0 32px rgba(0,0,0,0.18)",
           display: "flex",
           flexDirection: "column",
-          transform: isOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 280ms cubic-bezier(0.4,0,0.2,1)",
+          transform: detachedMode ? "translateX(0)" : (isOpen ? "translateX(0)" : "translateX(100%)"),
+          transition: detachedMode ? "none" : "transform 280ms cubic-bezier(0.4,0,0.2,1)",
           fontFamily: FONT,
           willChange: "transform",
         }}
       >
+        {devMode && !detachedMode && (
+          <div
+            onMouseDown={startDrawerResize}
+            title="Arrastrar para redimensionar panel"
+            style={{
+              position: "absolute",
+              left: -6,
+              top: 0,
+              width: 12,
+              height: "100%",
+              borderLeft: "2px solid rgba(0,113,227,0.35)",
+              background:
+                "linear-gradient(to right, rgba(0,113,227,0.16), rgba(0,113,227,0.06), transparent)",
+              cursor: "ew-resize",
+              zIndex: 5,
+            }}
+          />
+        )}
         {/* ── Header ── */}
         <div
           style={{
@@ -400,6 +491,24 @@ export default function PanelinChatPanel({
               aria-label={devMode ? "Developer mode activo" : "Activar Developer mode"}
             >
               DEV
+            </button>
+          )}
+          {devMode && onOpenDetachedWindow && (
+            <button
+              onClick={onOpenDetachedWindow}
+              title="Abrir en ventana separada"
+              style={{
+                ...ghostBtn,
+                border: "1px solid rgba(255,255,255,0.35)",
+                borderRadius: 999,
+                padding: "4px 8px",
+                fontSize: 11,
+                color: "#fff",
+                background: "transparent",
+              }}
+              aria-label="Abrir en ventana separada"
+            >
+              Ventana
             </button>
           )}
           <button
@@ -725,9 +834,12 @@ export default function PanelinChatPanel({
         {/* ── Input ── */}
         <div
           style={{
+            position: "relative",
             borderTop: `1px solid ${BORDER}`,
             padding: "10px 12px",
             paddingBottom: "max(10px, env(safe-area-inset-bottom, 0px))",
+            marginBottom: devMode ? devInputLift : 0,
+            transition: "margin-bottom 120ms ease",
             display: "flex",
             alignItems: "flex-end",
             gap: 8,
@@ -735,6 +847,25 @@ export default function PanelinChatPanel({
             flexShrink: 0,
           }}
         >
+          {devMode && (
+            <div
+              onMouseDown={startInputLiftDrag}
+              title="Arrastrar para mover bloque de input"
+              style={{
+                position: "absolute",
+                left: "50%",
+                transform: "translateX(-50%)",
+                marginTop: -18,
+                width: 64,
+                height: 12,
+                borderRadius: 999,
+                border: "1px solid rgba(0,113,227,0.28)",
+                background: "linear-gradient(180deg, #f4f6ff, #d7e6ff)",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                cursor: "ns-resize",
+              }}
+            />
+          )}
           <button
             onClick={toggleListening}
             title={isListening ? "Escuchando..." : "Hablar"}
