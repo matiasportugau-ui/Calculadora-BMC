@@ -3,7 +3,7 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre, calcPerfileriaTechoComercial, calcFijacionesVarilla } from "../src/utils/calculations.js";
+import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre, calcPerfileriaTechoComercial, calcFijacionesVarilla, calcTotalesSinIVA } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
