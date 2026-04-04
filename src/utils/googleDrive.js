@@ -16,6 +16,25 @@ let _tokenClient = null;
 let _accessToken = null;
 let _tokenExpiry = 0;
 let _onAuthChange = null;
+let _gsiLoadPromise = null;
+
+/**
+ * Load GIS script on demand — removed from index.html <head> to avoid
+ * blocking the critical render path on mobile.
+ */
+export function loadGsiScript() {
+  if (isGisLoaded()) return Promise.resolve();
+  if (_gsiLoadPromise) return _gsiLoadPromise;
+  _gsiLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+    document.head.appendChild(s);
+  });
+  return _gsiLoadPromise;
+}
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 

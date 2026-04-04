@@ -76,7 +76,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
-  initGoogleAuth, signIn as gdriveSignIn, signOut as gdriveSignOut,
+  initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
@@ -3134,7 +3134,7 @@ export default function PanelinCalculadoraV3() {
 
   useEffect(() => {
     setAuthChangeCallback(setDriveAuth);
-    const timer = setTimeout(() => { initGoogleAuth(); setDriveAuth(gdriveIsAuth()); }, 500);
+    const timer = setTimeout(() => { loadGsiScript().then(() => { initGoogleAuth(); setDriveAuth(gdriveIsAuth()); }).catch(() => {}); }, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -3789,16 +3789,6 @@ export default function PanelinCalculadoraV3() {
                           </Suspense>
                         </div>
                       ) : null}
-                      <RoofPreview
-                        zonas={techo.zonas || []}
-                        tipoAguas={techo.tipoAguas}
-                        pendiente={techo.pendiente}
-                        panelAu={techoPanelData?.au ?? 1.12}
-                        onZonaPreviewChange={updateZonaPreview}
-                        onResetLayout={resetRoofPreviewLayout}
-                        onAnnexLateralSideChange={(gi, side) => updateZonaPreview(gi, { lateralSide: side })}
-                        onAnnexRankSwap={swapAnnexRank}
-                      />
                       {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -3896,6 +3886,16 @@ export default function PanelinCalculadoraV3() {
                           Otro cuerpo de techo (zona independiente)
                         </button>
                       </div>
+                      <RoofPreview
+                        zonas={techo.zonas || []}
+                        tipoAguas={techo.tipoAguas}
+                        pendiente={techo.pendiente}
+                        panelAu={techoPanelData?.au ?? 1.12}
+                        onZonaPreviewChange={updateZonaPreview}
+                        onResetLayout={resetRoofPreviewLayout}
+                        onAnnexLateralSideChange={(gi, side) => updateZonaPreview(gi, { lateralSide: side })}
+                        onAnnexRankSwap={swapAnnexRank}
+                      />
                     </div>
                   )}
                   {stepId === "pendiente" && (

@@ -370,7 +370,7 @@ function getGeneratedFamilyGallery(familyKey) {
   return normalizeFamilySlides(generated);
 }
 
-function getGeneratedColorGallery(familyKey, color) {
+export function getGeneratedColorGallery(familyKey, color) {
   const generated = shopifyFamiliesMap?.byFamily?.[familyKey]?.byColor?.[color];
   return normalizeFamilySlides(generated);
 }
