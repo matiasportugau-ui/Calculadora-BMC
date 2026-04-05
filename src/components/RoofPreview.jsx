@@ -345,6 +345,20 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
   );
 }
 
+/**
+ * Posición Y de una fila de fijación en planta: filas **perimetrales** (1.ª y última) se desplazan **hacia adentro**
+ * del rectángulo del techo (~30 cm desde el borde), no sobre la línea azul del perímetro.
+ */
+function yForFijacionRowPlanta(r, rows, ri) {
+  if (rows <= 1) return r.y + r.h / 2;
+  const base = r.y + (ri / (rows - 1)) * r.h;
+  const isPerimeter = ri === 0 || ri === rows - 1;
+  if (!isPerimeter) return base;
+  const insetNominalM = 0.3;
+  const yInset = Math.min(insetNominalM, Math.max(0.04, r.h * 0.5 - 0.02));
+  return ri === 0 ? base + yInset : base - yInset;
+}
+
 /** Reparto de puntos de fijación por filas alineadas a ejes de apoyo (modo legado: reparte P en N filas). */
 function fijacionDotsLayoutDistributeTotal(r, hints) {
   const P = Math.round(Number(hints.puntosFijacion));
@@ -359,10 +373,6 @@ function fijacionDotsLayoutDistributeTotal(r, hints) {
     counts.push(base + (extra > 0 ? 1 : 0));
     if (extra > 0) extra -= 1;
   }
-  const yForRow = (ri) => {
-    if (rows <= 1) return r.y + r.h / 2;
-    return r.y + (ri / (rows - 1)) * r.h;
-  };
   const mx = Math.min(r.w, Math.max(0.12, r.w * 0.06));
   const x0 = r.x + mx;
   const x1 = r.x + r.w - mx;
@@ -371,7 +381,7 @@ function fijacionDotsLayoutDistributeTotal(r, hints) {
   let key = 0;
   for (let ri = 0; ri < rows; ri++) {
     const nInRow = counts[ri] || 0;
-    const yy = yForRow(ri);
+    const yy = yForFijacionRowPlanta(r, rows, ri);
     for (let j = 0; j < nInRow; j++) {
       const t = nInRow === 1 ? 0.5 : (j + 1) / (nInRow + 1);
       const cx = x0 + t * usableW;
@@ -382,8 +392,9 @@ function fijacionDotsLayoutDistributeTotal(r, hints) {
 }
 
 /**
- * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel (~30 cm del borde del panel);
- * en **intermedios**, **1** punto centrado en cada panel.
+ * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel (~30 cm del borde del panel en X);
+ * esas filas se desplazan **~30 cm hacia adentro** del borde del techo en Y (no sobre la línea azul del perímetro).
+ * En **intermedios**, **1** punto centrado en cada panel.
  */
 function fijacionDotsLayoutIsodecGrid(r, hints) {
   const cantP = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
@@ -392,15 +403,11 @@ function fijacionDotsLayoutIsodecGrid(r, hints) {
   const rows =
     Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
   const panelW = r.w / cantP;
-  const yForRow = (ri) => {
-    if (rows <= 1) return r.y + r.h / 2;
-    return r.y + (ri / (rows - 1)) * r.h;
-  };
   const out = [];
   let key = 0;
   const insetNominal = 0.3;
   for (let ri = 0; ri < rows; ri++) {
-    const yy = yForRow(ri);
+    const yy = yForFijacionRowPlanta(r, rows, ri);
     const isPerimeter = ri === 0 || ri === rows - 1;
     for (let pi = 0; pi < cantP; pi++) {
       const xL = r.x + pi * panelW;
@@ -1175,7 +1182,8 @@ export function RoofPreviewMetricsSidebar({
 
 /**
  * Vista previa 2D del techo en planta (rejilla, arrastre, encuentros).
- * @param {Record<number, object>|null} [props.estructuraHintsByGi] - overlay Estructura (cotas, apoyos, fijaciones)
+ * @param {Record<number, object>|null} [props.estructuraHintsByGi] - overlay Estructura (apoyos, fijaciones; requiere hints por zona)
+ * @param {boolean} [props.showPlantaExteriorCotas] - cotas rojas globales (perímetro + encuentros) sin paso Estructura; p. ej. desde paso Dimensiones del wizard
  * @param {boolean} [props.embedMetricsSidebar] - false = sin columna de métricas (mostrar `RoofPreviewMetricsSidebar` en el wizard)
  * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
  * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
@@ -1193,6 +1201,7 @@ export default function RoofPreview({
   onEncounterPairChange,
   onZonaDimensionPatch,
   estructuraHintsByGi = null,
+  showPlantaExteriorCotas = false,
   embedMetricsSidebar = true,
   selectedZonaGi: selectedZonaGiProp,
   onSelectedZonaGiChange,
@@ -1220,10 +1229,13 @@ export default function RoofPreview({
 
   const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
 
-  /** Espacio extra para cotas exteriores + chip (solo paso Estructura). */
+  /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
+  const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
+
+  /** Espacio extra para cotas exteriores (+ chip apoyos/fijación si paso Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
-    if (estructuraHintsByGi == null || layout.entries.length === 0) return layout.viewBox;
+    if (!plantaCotaChromeActive || layout.entries.length === 0) return layout.viewBox;
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
@@ -1236,7 +1248,7 @@ export default function RoofPreview({
     const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chipSlack;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale + chipSlack;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi, planEdges?.exterior, svgTy.m]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
 
   const estructuraViewBounds = useMemo(() => {
     const parts = String(svgViewBox).trim().split(/\s+/).map(Number);
@@ -1520,7 +1532,7 @@ export default function RoofPreview({
           )}
         </div>
       </div>
-      {estructuraHintsByGi != null && (
+      {plantaCotaChromeActive && (
         <div
           style={{
             fontSize: 11,
@@ -1531,8 +1543,17 @@ export default function RoofPreview({
             lineHeight: 1.35,
           }}
         >
-          <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
-          cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = puntos de fijación (mismo criterio que el presupuesto).
+          {estructuraHintsByGi != null ? (
+            <>
+              <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
+              cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = puntos de fijación (mismo criterio que el presupuesto).
+            </>
+          ) : (
+            <>
+              <strong style={{ color: C.tp }}>Planta:</strong> cotas rojas = perímetro libre y longitud en cada encuentro. Arrastrá las zonas para ubicarlas
+              correctamente antes de bordes y estructura.
+            </>
+          )}
         </div>
       )}
       {encounterPrompt && onEncounterPairChange && (
@@ -1649,7 +1670,7 @@ export default function RoofPreview({
           <div
             style={{
               flex: embedMetricsSidebar
-                ? estructuraHintsByGi != null
+                ? plantaCotaChromeActive
                   ? "2 1 300px"
                   : "1 1 280px"
                 : "1 1 100%",
@@ -1659,15 +1680,15 @@ export default function RoofPreview({
               ...(denseChrome
                 ? {
                     flex: "1 1 0%",
-                    minHeight: estructuraHintsByGi != null ? 260 : 200,
+                    minHeight: plantaCotaChromeActive ? 260 : 200,
                     height: "100%",
                   }
                 : {
                     height:
-                      estructuraHintsByGi != null
+                      plantaCotaChromeActive
                         ? "clamp(min(360px, 72vw), min(62vh, 820px), 920px)"
                         : "clamp(240px, min(48vh, 520px), 560px)",
-                    minHeight: estructuraHintsByGi != null ? 300 : 240,
+                    minHeight: plantaCotaChromeActive ? 300 : 240,
                   }),
               flexShrink: 0,
               order: embedMetricsSidebar ? 1 : undefined,
@@ -1913,7 +1934,7 @@ export default function RoofPreview({
                 </g>
               );
             })}
-            {estructuraHintsByGi != null && planEdges?.exterior?.length ? (
+            {plantaCotaChromeActive && planEdges?.exterior?.length ? (
               <EstructuraGlobalExteriorOverlay
                 exterior={planEdges.exterior}
                 encounters={planEdges.encounters ?? []}
@@ -1928,10 +1949,10 @@ export default function RoofPreview({
             style={{
               minWidth: 0,
               flex: denseChrome
-                ? estructuraHintsByGi != null
+                ? plantaCotaChromeActive
                   ? "0 1 min(220px, 34vw)"
                   : "0 1 min(200px, 32vw)"
-                : estructuraHintsByGi != null
+                : plantaCotaChromeActive
                   ? "1 1 200px"
                   : "1 1 160px",
               order: 2,

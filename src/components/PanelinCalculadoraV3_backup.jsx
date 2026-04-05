@@ -2997,6 +2997,7 @@ export default function PanelinCalculadoraV3() {
         onEncounterPairChange={onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
         estructuraHintsByGi={roofEstructuraHintsByGi}
+        showPlantaExteriorCotas={showRoof2dInQuoteVisor}
         embedMetricsSidebar={embedMetrics}
         selectedZonaGi={embedMetrics ? undefined : estructuraMetricsSelectedGi}
         onSelectedZonaGiChange={embedMetrics ? undefined : setEstructuraMetricsSelectedGi}

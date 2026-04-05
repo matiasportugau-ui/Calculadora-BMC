@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-05 (Estructura — fijaciones Isodec: grilla 2/1 por apoyo alineada al motor)
+**Última actualización:** 2026-04-05 (UX — cotas rojas en planta desde paso Dimensiones / visor 2D)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-05 (UX — Planta: cotas rojas desde paso 7 Dimensiones, 13 pasos Solo techo):** Pedido: ver **cotas rojas** (perímetro libre + encuentros) al ubicar techo en planta, no solo en paso **Estructura**. [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): prop opcional `showPlantaExteriorCotas`; con `plantaCotaChromeActive` se amplía `viewBox`, leyenda breve y `EstructuraGlobalExteriorOverlay` **sin** apoyos/fijación por zona. [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): `showPlantaExteriorCotas={showRoof2dInQuoteVisor}` (mismo alcance que `ROOF_2D_QUOTE_VISOR_STEP_IDS`, primer paso `dimensiones`). Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-cotas-desde-paso7-dimensiones.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-cotas-desde-paso7-dimensiones.md). `npm run lint` + `npm test` OK.
+
+**2026-04-05 (UX — Estructura: puntos fijación perimetrales no sobre el borde azul):** Las filas de fijación en **1.ª y última línea de apoyo** se dibujan **hacia adentro** del rectángulo del techo (~**0,3 m** en coordenadas de planta), alineado al criterio de ~30 cm desde el borde; si el vano es muy bajo, el desplazamiento se reduce para no cruzar filas. [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): `yForFijacionRowPlanta` compartido entre grilla Isodec y modo `distribute`. `npm run lint` + `npm test` OK.
 
 **2026-04-05 (Motor + UX — fijaciones varilla Isodec: perímetro 2/panel, intermedio 1/panel):** Pedido paso **Estructura**: misma lógica en **presupuesto** y **plano 2D**. [`calculations.js`](../../src/utils/calculations.js): `countPuntosFijacionVarillaGrilla` → grilla `cantP × (apoyos + 2)` para `apoyos ≥ 2` (2 fij. por panel en 1.ª y última línea de apoyo, 1 en intermedias; `apoyos === 1` → `2 × cantP`); `puntosFijacion = ceil(grilla + largo×2/espPerim)`; retorno `puntosFijacionGrilla`; hints `fijacionDotsMode` + `puntosFijacionGrilla` en [`computeRoofEstructuraHintsByGi`](../../src/utils/calculations.js); merge de `puntosFijacionGrilla` en [`mergeZonaResults`](../../src/utils/calculations.js). [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): `fijacionDotsLayoutIsodecGrid` (inset ~**0,3 m** por borde de panel en filas perimetrales); modo `distribute` para caballete / override / combinada / estructura combinada. [`calc.js`](../../server/routes/calc.js) fórmula expuesta; [`PanelinCalculadoraV3_legacy_inline.jsx`](../../src/components/PanelinCalculadoraV3_legacy_inline.jsx) alineado. Tests [`validation.js`](../../tests/validation.js) §24.7b. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-estructura-fijaciones-isodec-grilla.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-estructura-fijaciones-isodec-grilla.md). `npm run lint` + `npm test` OK.
 
