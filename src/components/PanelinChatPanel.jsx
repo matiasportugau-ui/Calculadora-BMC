@@ -1299,6 +1299,8 @@ export default function PanelinChatPanel({
             <Mic size={18} />
           </button>
           <textarea
+            id="panelin-chat-message"
+            name="panelinMessage"
             ref={textareaRef}
             value={input}
             onChange={handleInput}
