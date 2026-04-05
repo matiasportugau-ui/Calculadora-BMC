@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-04 (Investigación cotización visual precisa + tests alineación planta)
+**Última actualización:** 2026-04-04 (Solo techo paso 7 — visor 2D + 3D «Próximamente»)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-04 (UX — Solo techo paso 7: visor 2D + 3D «Próximamente»):** En **`dimensiones`** (paso 7/13), la **vista previa 2D** (`RoofPreview`) pasa al panel derecho vía prop `roof2DPreview` en [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx); el acordeón principal del visor inicia **cerrado** al entrar al paso; la **Visualización 3D** queda en **subacordeón** (cerrado por defecto) con badge y overlay **Próximamente**. En [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx) se evita duplicar `RoofPreview` en la columna izquierda cuando `showRoof2dInQuoteVisor` (layout no compacto con host 3D). Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-solo-techo-paso7-visor-2d.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-solo-techo-paso7-visor-2d.md). `npm run lint` + `npm test` OK.
+
+**2026-04-05 (Assets — colonial Texas panel fondo #FFF):** `public/images/isoroof-colonial-texas-panel.png` blanqueado con [`scripts/whiten-png-background.py`](../../scripts/whiten-png-background.py) (flood desde bordes, `step-tol` + `chroma-max`). Doc en [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-roof-visor-media.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-roof-visor-media.md) §10.
+
+**2026-04-05 (UX — transcripción + visor techo / colonial / FOIL):** Informe [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-roof-visor-media.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-roof-visor-media.md). Asset `public/images/isoroof-colonial-texas-panel.png`; [`quoteVisorMedia.js`](../../src/data/quoteVisorMedia.js) colonial + color **Simil teja / Blanco**; [`roofPanelCatalogMapUrls.js`](../../src/data/roofPanelCatalogMapUrls.js) textura 3D colonial; [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx) tarjeta **FOIL** (imagen 3G, texto FOIL) y colonial; [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx) tope altura diagramas **una/dos aguas**. Skill repetible [`.cursor/skills/live-devtools-transcript-action-plan/SKILL.md`](../../.cursor/skills/live-devtools-transcript-action-plan/SKILL.md). Hallazgos **LDN-2026-04-05-03** … **06**.
+
+**2026-04-05 (Live DevTools — sesión colaborativa local):** Arranque `npm run dev:full` + MCP en `http://localhost:5173/`. Informe vivo [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-local-collab.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-local-collab.md). Línea base: warnings React Router v7; error React por `fetchPriority` en `<img>` → corregido en [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx) (`fetchpriority` + eslint inline). Hallazgo **LDN-2026-04-05-01**.
 
 **2026-04-04 (Live DevTools — prod continue + fixes vitals/a11y/PWA meta + deploy):** Sesión MCP contra [Calculadora BMC prod](https://calculadora-bmc.vercel.app): informe [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-prod-continue-optimization.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-prod-continue-optimization.md). Pre-deploy: **POST `/api/vitals` → 405** + issue textarea + warn PWA. Repo: [`api/vitals.js`](../../api/vitals.js) (204), [`PanelinChatPanel.jsx`](../../src/components/PanelinChatPanel.jsx) `id`/`name`, [`index.html`](../../index.html) `mobile-web-app-capable`. **Deploy producción** `npx vercel deploy --prod --yes` → alias actualizado. Post-deploy: **`curl -X POST /api/vitals` → 204**; MCP `reload` sin `error`/`warn`/`issue` en consola. Hallazgos **LDN-2026-04-04-07** … **10**.
 

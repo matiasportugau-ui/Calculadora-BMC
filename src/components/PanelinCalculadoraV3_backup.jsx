@@ -2562,11 +2562,19 @@ export default function PanelinCalculadoraV3() {
       ISODEC_PIR: SLIDES_SOLO_TECHO[1],
       ISOROOF_3G: SLIDES_SOLO_TECHO[2],
       ISOROOF_PLUS: SLIDES_SOLO_TECHO[3],
-      ISOROOF_FOIL: SLIDES_SOLO_TECHO[4],
-      ISOROOF_COLONIAL: {
+      /* FOIL: miniatura del carrusel Shopify a veces “fea”; usar referencia 3G limpia en la tarjeta (copy FOIL intacta). */
+      ISOROOF_FOIL: {
         ...SLIDES_SOLO_TECHO[2],
+        title: SLIDES_SOLO_TECHO[4].title,
+        subtitle: SLIDES_SOLO_TECHO[4].subtitle,
+        description: SLIDES_SOLO_TECHO[4].description,
+      },
+      ISOROOF_COLONIAL: {
+        src: `${import.meta.env.BASE_URL}images/isoroof-colonial-texas-panel.png`,
         title: "Isoroof Colonial",
         subtitle: "Teja exterior · interior blanco",
+        description:
+          "Panel estilo teja colonial con interior blanco. Alternativa para cubiertas con imagen residencial tradicional y montaje en sistema de panel aislante.",
       },
     }),
     [],
@@ -2594,6 +2602,7 @@ export default function PanelinCalculadoraV3() {
     [techo.zonas],
   );
   const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isCompactLayout);
+  const showRoof2dInQuoteVisor = activeWizardStepId === "dimensiones" && showRoof3DHost;
   const soloTechoWizardDimStepIndex = useMemo(() => SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones"), []);
   const useDockedRoofBorderSelector = Boolean(
     modoVendedor
@@ -2896,6 +2905,36 @@ export default function PanelinCalculadoraV3() {
       }),
     }));
   }, [setTecho]);
+
+  const roof2DPreviewForVisor = useMemo(() => {
+    if (!showRoof2dInQuoteVisor) return null;
+    return (
+      <RoofPreview
+        zonas={techo.zonas || []}
+        tipoAguas={techo.tipoAguas}
+        pendiente={techo.pendiente}
+        panelAu={techoPanelData?.au ?? 1.12}
+        onZonaPreviewChange={updateZonaPreview}
+        onResetLayout={resetRoofPreviewLayout}
+        onAnnexRankSwap={swapAnnexRank}
+        onAddZona={addZona}
+        onEncounterPairChange={onRoofEncounterPairChange}
+        onZonaDimensionPatch={onRoofZonaDimensionPatch}
+      />
+    );
+  }, [
+    showRoof2dInQuoteVisor,
+    techo.zonas,
+    techo.tipoAguas,
+    techo.pendiente,
+    techoPanelData?.au,
+    updateZonaPreview,
+    resetRoofPreviewLayout,
+    swapAnnexRank,
+    addZona,
+    onRoofEncounterPairChange,
+    onRoofZonaDimensionPatch,
+  ]);
 
   /** Índice de zona “techo principal” (presupuesto): manual `techo.zonaPrincipalGi`; si no, siempre la primera (no roba atención un tramo nuevo aunque tenga más m²). */
   const effectivePrincipalZonaGi = useMemo(() => {
@@ -4020,18 +4059,20 @@ export default function PanelinCalculadoraV3() {
                         <Plus size={18} />
                         Otro cuerpo de techo
                       </button>
-                      <RoofPreview
-                        zonas={techo.zonas || []}
-                        tipoAguas={techo.tipoAguas}
-                        pendiente={techo.pendiente}
-                        panelAu={techoPanelData?.au ?? 1.12}
-                        onZonaPreviewChange={updateZonaPreview}
-                        onResetLayout={resetRoofPreviewLayout}
-                        onAnnexRankSwap={swapAnnexRank}
-                        onAddZona={addZona}
-                        onEncounterPairChange={onRoofEncounterPairChange}
-                        onZonaDimensionPatch={onRoofZonaDimensionPatch}
-                      />
+                      {!showRoof2dInQuoteVisor ? (
+                        <RoofPreview
+                          zonas={techo.zonas || []}
+                          tipoAguas={techo.tipoAguas}
+                          pendiente={techo.pendiente}
+                          panelAu={techoPanelData?.au ?? 1.12}
+                          onZonaPreviewChange={updateZonaPreview}
+                          onResetLayout={resetRoofPreviewLayout}
+                          onAnnexRankSwap={swapAnnexRank}
+                          onAddZona={addZona}
+                          onEncounterPairChange={onRoofEncounterPairChange}
+                          onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                        />
+                      ) : null}
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
                         <button
                           type="button"
@@ -4906,6 +4947,7 @@ export default function PanelinCalculadoraV3() {
             techoBorders={techo.borders}
             techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
             dimensionSummary={quoteVisorDimensionSummary}
+            roof2DPreview={roof2DPreviewForVisor}
             onSelectAgua={activeWizardStepId === "tipoAguas" ? (v) => {
               if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
               else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));

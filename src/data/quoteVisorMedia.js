@@ -1,6 +1,9 @@
 import shopifyFamiliesMap from "./quoteVisorShopifyFamilies.json" with { type: "json" };
 import { ROOF_CATALOG_MAP_URL_BY_FAMILIA } from "./roofPanelCatalogMapUrls.js";
 
+/** Render colonial / Texas panel (teja) — `public/images/isoroof-colonial-texas-panel.png`. */
+const COLONIAL_TEXAS_PANEL_SRC = `${import.meta.env.BASE_URL}images/isoroof-colonial-texas-panel.png`;
+
 /**
  * Medios del visor de cotización — imágenes desde CDN Shopify (bmcuruguay.com.uy).
  * URLs alineadas a la colección Paneles Aislantes y productos vinculados en tienda.
@@ -158,9 +161,9 @@ const FAMILIA_TECHO_SLIDE = {
   ISOROOF_3G: SLIDES_SOLO_TECHO[2],
   ISOROOF_PLUS: SLIDES_SOLO_TECHO[3],
   ISOROOF_FOIL: SLIDES_SOLO_TECHO[4],
-  /** Colonial: misma referencia visual que línea ISOROOF en tienda hasta asset dedicado */
+  /** Colonial: asset local teja tipo Texas / colonial (no reutilizar miniatura genérica 3G). */
   ISOROOF_COLONIAL: {
-    src: SLIDES_SOLO_TECHO[2].src,
+    src: COLONIAL_TEXAS_PANEL_SRC,
     title: "Isoroof Colonial",
     subtitle: "Teja exterior · interior blanco",
     description:
@@ -227,9 +230,9 @@ const FAMILIA_TECHO_GALLERY = {
   ISOROOF_COLONIAL: [
     FAMILIA_TECHO_SLIDE.ISOROOF_COLONIAL,
     {
-      src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
-      title: "Isoroof Colonial · Perfil",
-      subtitle: "Línea estilo teja",
+      src: COLONIAL_TEXAS_PANEL_SRC,
+      title: "Isoroof Colonial · Vista producto",
+      subtitle: "Línea estilo teja / Texas panel",
     },
   ],
 };
@@ -346,7 +349,7 @@ const FAMILIA_COLOR_GALLERY = {
   ISOROOF_COLONIAL: {
     "Simil teja / Blanco": [
       {
-        src: "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/file.jpg?v=1752178338",
+        src: COLONIAL_TEXAS_PANEL_SRC,
         title: "Isoroof Colonial · Simil teja / Blanco",
         subtitle: "Selección de color",
       },

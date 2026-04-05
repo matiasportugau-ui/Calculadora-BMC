@@ -32,6 +32,7 @@ const PANELIN_LISTA_VIDEO_SRC = `${import.meta.env.BASE_URL}video/panelin-lista-
  * @param {string | null} [props.dimensionSummary] — resumen L×W (paso dimensiones)
  * @param {(key: "una_agua"|"dos_aguas") => void} [props.onSelectAgua] — selecciona tipo de aguas desde el visor
  * @param {() => void} [props.onNext] — avanza al siguiente paso desde el visor
+ * @param {import("react").ReactNode} [props.roof2DPreview] — paso dimensiones: vista 2D en el panel derecho; la 3D pasa a subacordeón “Próximamente”
  */
 export default function QuoteVisualVisor({
   scenarioId,
@@ -51,8 +52,11 @@ export default function QuoteVisualVisor({
   dimensionSummary = null,
   onSelectAgua = null,
   onNext = null,
+  roof2DPreview = null,
 }) {
-  const [open, setOpen] = useState(true);
+  const dimensiones2dInVisor = Boolean(roof2DPreview);
+  const [open, setOpen] = useState(() => !(stepId === "dimensiones" && Boolean(roof2DPreview)));
+  const [roof3dOpen, setRoof3dOpen] = useState(() => !(stepId === "dimensiones" && Boolean(roof2DPreview)));
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [overrideDraft, setOverrideDraft] = useState("");
@@ -61,6 +65,7 @@ export default function QuoteVisualVisor({
   const timerRef = useRef(null);
   const touchUnpauseRef = useRef(null);
   const panelinVideoRef = useRef(null);
+  const prevStepIdRef = useRef(stepId);
 
   const effectiveScenario = hoverScenarioId || scenarioId;
 
@@ -118,6 +123,19 @@ export default function QuoteVisualVisor({
 
   const showListaStep = stepId === "lista";
   const showRoof3DInVisor = showRoof3DStage && !showListaStep;
+
+  useEffect(() => {
+    const prev = prevStepIdRef.current;
+    if (prev === stepId) return;
+    prevStepIdRef.current = stepId;
+    if (stepId === "dimensiones" && roof2DPreview) {
+      setOpen(false);
+      setRoof3dOpen(false);
+    } else if (stepId !== "dimensiones") {
+      setOpen(true);
+      setRoof3dOpen(true);
+    }
+  }, [stepId, roof2DPreview]);
 
   useEffect(() => {
     setIdx(0);
@@ -220,88 +238,260 @@ export default function QuoteVisualVisor({
         {open ? <ChevronUp size={18} color={C.ts} /> : <ChevronDown size={18} color={C.ts} />}
       </button>
 
+      {roof2DPreview ? (
+        <div
+          style={{
+            paddingLeft: 16,
+            paddingRight: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: C.ts,
+              marginBottom: 8,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            Vista previa del techo (2D)
+          </div>
+          <div
+            style={{
+              borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              background: "#fff",
+              minWidth: 0,
+              overflow: "hidden",
+            }}
+          >
+            {roof2DPreview}
+          </div>
+        </div>
+      ) : null}
+
       {/* Visualización 3D: host del portal RoofBorderCanvas; fuera de `{open && …}` para no desmontar al colapsar (evita React #200). */}
       {showRoof3DInVisor && (
         <div
           style={{
             paddingLeft: 16,
             paddingRight: 16,
-            marginBottom: open ? 16 : 0,
+            marginBottom: dimensiones2dInVisor ? (roof3dOpen ? 16 : 8) : open ? 16 : 0,
           }}
         >
-          {open && (
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: C.ts,
-                marginBottom: 8,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-              }}
-            >
-              Visualización 3D
-            </div>
-          )}
-          <div style={{ position: "relative", width: "100%" }}>
-            <div
-              ref={setHostRef}
-              data-bmc-roof-3d-host
-              data-bmc-view="visualizacion-3d"
-              data-bmc-view-legacy="roof-border-canvas-host"
-              data-bmc-component="RoofBorderCanvas-portal-host"
-              role="region"
-              aria-label="Visualización 3D: planta y bordes del techo"
-              title="Visualización 3D — planta y bordes (RoofBorderCanvas vía portal)"
-              style={{
-                width: "100%",
-                /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
-                height: "clamp(360px, min(72vh, 820px), 900px)",
-                minHeight: "clamp(360px, min(72vh, 820px), 900px)",
-                borderRadius: 12,
-                border: `1px solid ${C.border}`,
-                background: "#eef2f9",
-                minWidth: 0,
-                overflow: "hidden",
-                boxSizing: "border-box",
-                /* Colapsado: el nodo sigue en el DOM (portal válido); oculto visualmente */
-                display: open ? "block" : "none",
-              }}
-            />
-            {open && (
-              <div
-                aria-hidden
+          {dimensiones2dInVisor ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setRoof3dOpen((v) => !v)}
+                aria-expanded={roof3dOpen}
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  pointerEvents: "none",
+                  width: "100%",
                   display: "flex",
-                  alignItems: "flex-end",
-                  justifyContent: "center",
-                  paddingBottom: 10,
-                  zIndex: 2,
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: `1px solid ${C.border}`,
+                  background: C.surfaceAlt,
+                  cursor: "pointer",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: C.tp,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
                 }}
               >
-                <span
+                <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span>Visualización 3D</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: C.primary,
+                      textTransform: "none",
+                      letterSpacing: "0.04em",
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      background: C.primarySoft,
+                      border: `1px solid ${C.primary}`,
+                    }}
+                  >
+                    Próximamente
+                  </span>
+                </span>
+                {roof3dOpen ? <ChevronUp size={18} color={C.ts} /> : <ChevronDown size={18} color={C.ts} />}
+              </button>
+              <div style={{ position: "relative", width: "100%", marginTop: 8 }}>
+                <div
+                  ref={setHostRef}
+                  data-bmc-roof-3d-host
+                  data-bmc-view="visualizacion-3d"
+                  data-bmc-view-legacy="roof-border-canvas-host"
+                  data-bmc-component="RoofBorderCanvas-portal-host"
+                  role="region"
+                  aria-label="Visualización 3D: planta y bordes del techo"
+                  title="Visualización 3D — planta y bordes (RoofBorderCanvas vía portal)"
                   style={{
-                    fontSize: 8,
-                    fontWeight: 600,
-                    color: C.ts,
-                    letterSpacing: "0.04em",
-                    fontFamily: FONT,
-                    lineHeight: 1.2,
-                    padding: "2px 7px",
-                    borderRadius: 5,
-                    background: "rgba(255,255,255,0.78)",
+                    width: "100%",
+                    height: "clamp(360px, min(72vh, 820px), 900px)",
+                    minHeight: "clamp(360px, min(72vh, 820px), 900px)",
+                    borderRadius: 12,
                     border: `1px solid ${C.border}`,
-                    boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+                    background: "#eef2f9",
+                    minWidth: 0,
+                    overflow: "hidden",
+                    boxSizing: "border-box",
+                    display: roof3dOpen ? "block" : "none",
+                  }}
+                />
+                {roof3dOpen && (
+                  <>
+                    <div
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        pointerEvents: "none",
+                        display: "flex",
+                        alignItems: "flex-end",
+                        justifyContent: "center",
+                        paddingBottom: 10,
+                        zIndex: 2,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 8,
+                          fontWeight: 600,
+                          color: C.ts,
+                          letterSpacing: "0.04em",
+                          fontFamily: FONT,
+                          lineHeight: 1.2,
+                          padding: "2px 7px",
+                          borderRadius: 5,
+                          background: "rgba(255,255,255,0.78)",
+                          border: `1px solid ${C.border}`,
+                          boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+                        }}
+                      >
+                        Frente
+                      </span>
+                    </div>
+                    <div
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        pointerEvents: "none",
+                        zIndex: 3,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(255,255,255,0.72)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 800,
+                          color: C.tp,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          padding: "12px 20px",
+                          borderRadius: 12,
+                          border: `2px dashed ${C.border}`,
+                          background: "rgba(255,255,255,0.95)",
+                          boxShadow: SHC,
+                        }}
+                      >
+                        Próximamente
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {open && (
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: C.ts,
+                    marginBottom: 8,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
                   }}
                 >
-                  Frente
-                </span>
+                  Visualización 3D
+                </div>
+              )}
+              <div style={{ position: "relative", width: "100%" }}>
+                <div
+                  ref={setHostRef}
+                  data-bmc-roof-3d-host
+                  data-bmc-view="visualizacion-3d"
+                  data-bmc-view-legacy="roof-border-canvas-host"
+                  data-bmc-component="RoofBorderCanvas-portal-host"
+                  role="region"
+                  aria-label="Visualización 3D: planta y bordes del techo"
+                  title="Visualización 3D — planta y bordes (RoofBorderCanvas vía portal)"
+                  style={{
+                    width: "100%",
+                    /* Altura explícita: solo min-height no estira hijos height:100% → canvas 3D quedaba bajo/recortado */
+                    height: "clamp(360px, min(72vh, 820px), 900px)",
+                    minHeight: "clamp(360px, min(72vh, 820px), 900px)",
+                    borderRadius: 12,
+                    border: `1px solid ${C.border}`,
+                    background: "#eef2f9",
+                    minWidth: 0,
+                    overflow: "hidden",
+                    boxSizing: "border-box",
+                    /* Colapsado: el nodo sigue en el DOM (portal válido); oculto visualmente */
+                    display: open ? "block" : "none",
+                  }}
+                />
+                {open && (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      pointerEvents: "none",
+                      display: "flex",
+                      alignItems: "flex-end",
+                      justifyContent: "center",
+                      paddingBottom: 10,
+                      zIndex: 2,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 600,
+                        color: C.ts,
+                        letterSpacing: "0.04em",
+                        fontFamily: FONT,
+                        lineHeight: 1.2,
+                        padding: "2px 7px",
+                        borderRadius: 5,
+                        background: "rgba(255,255,255,0.78)",
+                        border: `1px solid ${C.border}`,
+                        boxShadow: "0 1px 2px rgba(15,23,42,0.06)",
+                      }}
+                    >
+                      Frente
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       )}
 
@@ -455,7 +645,15 @@ export default function QuoteVisualVisor({
                       <img
                         src={src}
                         alt={label}
-                        style={{ maxWidth: "100%", maxHeight: "min(36vh, 240px)", objectFit: "contain", display: "block" }}
+                        style={{
+                          maxWidth: "100%",
+                          /* Mantener diagramas completos visibles con cabecera BMC: cap más bajo que 36vh. */
+                          maxHeight: "min(200px, calc((100dvh - 200px) / 2.2))",
+                          width: "auto",
+                          height: "auto",
+                          objectFit: "contain",
+                          display: "block",
+                        }}
                       />
                     </div>
                   </div>
@@ -500,7 +698,9 @@ export default function QuoteVisualVisor({
                   width={800}
                   height={600}
                   decoding="async"
-                  fetchPriority={idx === 0 ? "high" : "auto"}
+                  // DOM: `fetchpriority` (HTML); React warns on `fetchPriority` passthrough to DOM.
+                  // eslint-disable-next-line react/no-unknown-property -- intentional HTML attribute casing
+                  fetchpriority={idx === 0 ? "high" : "auto"}
                   style={{
                     width: "100%",
                     maxHeight: "min(42vh, 420px)",

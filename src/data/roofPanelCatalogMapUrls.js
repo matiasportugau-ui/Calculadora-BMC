@@ -15,6 +15,6 @@ export const ROOF_CATALOG_MAP_URL_BY_FAMILIA = {
     "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_PLUS_445b3ab8-b139-4d10-b421-66cb49acb755.png?v=1752180781",
   ISOROOF_FOIL:
     "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof_FOIL.png?v=1752175101",
-  ISOROOF_COLONIAL:
-    "https://cdn.shopify.com/s/files/1/0946/4915/5898/files/Isoroof.jpg?v=1752180781",
+  /** Teja colonial / Texas panel — asset local (alta calidad, coherente con selector y paso color). */
+  ISOROOF_COLONIAL: "/images/isoroof-colonial-texas-panel.png",
 };
