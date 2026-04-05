@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-05 (Doc: presentación Matrix terminal agentes)
+**Última actualización:** 2026-04-05 (Live DevTools baseline local + informe UX)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-05 (Live DevTools — arranque local + línea base MCP):** Levantado **`npm run dev:full`** (API **:3001** `GET /health` **200**, Vite **:5173** **200**). MCP **`navigate_page`** → `http://localhost:5173/`; **`list_console_messages`**: solo warnings React Router v7 future flags; **`list_network_requests`**: 90 reqs sin 4xx/5xx en carga inicial; **`take_snapshot`**: Calculadora paso 1/13 + modal Panelin en árbol a11y. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-local-stack-baseline.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-local-stack-baseline.md).
 
 **2026-04-05 (Deploy — Cloud Run `panelin-calc` + Vercel producción):** Cloud Build + deploy revisión **`panelin-calc-00118-tx8`**. URL servicio: `https://panelin-calc-642127786762.us-central1.run.app` (calculadora embebida `/calculadora/`, API `/health`, MATRIZ CSV OK). Vercel producción **https://calculadora-bmc.vercel.app** desplegado con `VITE_API_URL=https://panelin-calc-642127786762.us-central1.run.app` (conviene fijar la misma variable en el dashboard del proyecto para builds futuros). Post-deploy: `BMC_API_BASE` anterior + `npm run smoke:prod` OK. Pendiente opcional: alinear `PUBLIC_BASE_URL` en Cloud Run con el hostname actual si se quiere que `/capabilities` coincida con el que usa el smoke (hoy el manifiesto aún referencia el hostname largo anterior).
 
