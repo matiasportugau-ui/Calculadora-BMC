@@ -266,6 +266,9 @@ export default function QuoteVisualVisor({
               background: "#fff",
               minWidth: 0,
               overflow: "hidden",
+              ...(stepId === "estructura"
+                ? { minHeight: "clamp(380px, 58vh, 880px)" }
+                : {}),
             }}
           >
             {roof2DPreview}

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-04 (Estructura 2D: cotas arquitectónicas + puntos fijación)
+**Última actualización:** 2026-04-04 (Estructura paso 9: layout izquierda + cotas perímetro libre)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,14 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-04 (Transcripción paso 9 Estructura — layout + cotas perímetro libre):** Pedido UX: vista 2D **más grande**; bloque **superficie / extensión / planta (encuentros)** a la **izquierda** del layout 2D; **cotas rojas** solo en **aristas exteriores libres** (`buildRoofPlanEdges.exterior`) + **longitud en cada encuentro** (`encounters`), sin dibujar cotas completas por zona sobre el relleno del panel (evita solapes multizona). [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): `EstructuraGlobalExteriorOverlay`, `EstructuraZonaOverlay` reducido a apoyos/chip/puntos; `svgViewBox` con margen según cantidad de segmentos; `order`/`flex`/altura en modo estructura. [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx): `minHeight` en paso `estructura`. [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): KPI fila derecha oculta en `estructura`. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-transcript-estructura-paso9-perimetro-cotas.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-transcript-estructura-paso9-perimetro-cotas.md). `npm run lint` + `npm test` OK.
+
+**2026-04-05 (Live DevTools — MCP `--isolated` para sesión colaborativa local):** En [`.cursor/mcp.json`](../../.cursor/mcp.json) se añadió **`--isolated`** a `chrome-devtools-mcp` para evitar el error *browser is already running* con el perfil en `~/.cache/chrome-devtools-mcp/chrome-profile`, y poder usar **Live DevTools narrative** mientras se navega en `http://localhost:5173/`. **Requiere reiniciar servidores MCP** (o reload window) en Cursor. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-mcp-isolated-collab-local.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-mcp-isolated-collab-local.md).
+
+**2026-04-04 (Live DevTools — eval local, MCP bloqueado):** Pedido correr **local** para evaluar con narrativa MCP: levantado **`npm run dev`** (Vite `http://localhost:5173/`, `curl` → **200**). **`navigate_page`** en `project-0-Calculadora-BMC-chrome-devtools` falló otra vez por perfil `chrome-devtools-mcp` ya en uso; sin consola/red/snapshot del navegador en esta corrida. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-local-mcp-eval.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-local-mcp-eval.md). Hallazgos **LDN-2026-04-04-16**, **17**.
+
+**2026-04-04 (UX — transcripción: wizard Solo techo presets + Enter):** Pedido por voz: paso **lista** con default **Precio BMC** (`getListaDefault()` → `venta`), **familia** **ISODEC_EPS** y **color** **Blanco** al iniciar modo vendedor; al cambiar a **ISOROOF***, color por defecto **Gris** si el catálogo lo lista (Colonial: primera opción sin Gris). [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): `defaultTechoColorForPanelFamilia`, `TECHO_INITIAL_VENDEDOR`, `listaPrecios` inicial, reset, botón **Vendedor** y paso `lista` del wizard. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-transcript-wizard-presets-enter.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-transcript-wizard-presets-enter.md). MCP `navigate_page` no corrido (perfil chrome-devtools-mcp en uso). `npm run lint` + `npm test` OK.
 
 **2026-04-04 (Live DevTools — local seguir revisando):** MCP `chrome-devtools` en `http://localhost:5173/`: carga OK; en **paso 7/13 Dimensiones** el árbol de accesibilidad muestra el **textbox de Largo (m)** como **focused** (validación UX del autofocus). **`POST /api/vitals` → 404** contra el origen Vite si no hay proxy/API (`npm run dev:full` recomendado). Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-local-continue-review.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-local-continue-review.md). Hallazgos **LDN-2026-04-04-12**, **13**.
 

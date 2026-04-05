@@ -35,6 +35,61 @@ function zonaLabelPlanta(r) {
   return `${fmt(L)}×${fmt(W)}m`;
 }
 
+/**
+ * Planta 2D + `planEdges` compartidos entre `RoofPreview` y `RoofPreviewMetricsSidebar`.
+ * @param {Array} zonas
+ * @param {string} tipoAguas
+ */
+export function useRoofPreviewPlanLayout(zonas, tipoAguas) {
+  const tipoPlanta = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
+  const planEdges = useMemo(() => {
+    if (!zonas?.length) return null;
+    try {
+      return buildRoofPlanEdges(zonas, tipoPlanta);
+    } catch {
+      return null;
+    }
+  }, [zonas, tipoPlanta]);
+
+  const layout = useMemo(() => {
+    const entries = planEdges?.rects ?? [];
+    let curMinX = Infinity;
+    let curMinY = Infinity;
+    let curMaxX = -Infinity;
+    let curMaxY = -Infinity;
+    for (const r of entries) {
+      curMinX = Math.min(curMinX, r.x);
+      curMinY = Math.min(curMinY, r.y);
+      curMaxX = Math.max(curMaxX, r.x + r.w);
+      curMaxY = Math.max(curMaxY, r.y + r.h);
+    }
+    const pad = 0.45;
+    const slack = VIEWBOX_SLACK_M;
+    const totalArea = entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0);
+    if (!entries.length) {
+      return {
+        entries: [],
+        viewBox: "0 0 10 6",
+        totalArea: 0,
+        viewMetrics: null,
+      };
+    }
+    const vbW = curMaxX - curMinX + 2 * (pad + slack);
+    const vbH = curMaxY - curMinY + 2 * (pad + slack);
+    const vbX = curMinX - pad - slack;
+    const vbY = curMinY - pad - slack;
+    const margin = pad * 0.35;
+    return {
+      entries,
+      viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
+      totalArea,
+      viewMetrics: { vbX, vbY, vbW, vbH, margin },
+    };
+  }, [planEdges]);
+
+  return { tipoPlanta, planEdges, layout };
+}
+
 function clientToSvg(svgEl, cx, cy) {
   if (!svgEl) return { x: 0, y: 0 };
   const pt = svgEl.createSVGPoint();
@@ -208,6 +263,61 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine }) {
   );
 }
 
+/** Cota horizontal sobre el borde superior (yEdge = arista del techo; yDimLine más arriba). */
+function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine }) {
+  const w = widthM;
+  const tick = 0.075;
+  const label = `${fmtArchMeters(w)} m`;
+  return (
+    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
+      <line x1={x0} y1={yEdge} x2={x0} y2={yDimLine} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
+      <line x1={x0 + w} y1={yEdge} x2={x0 + w} y2={yDimLine} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
+      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={0.032} />
+      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={0.035} />
+      <line x1={x0 + w} y1={yDimLine - tick / 2} x2={x0 + w} y2={yDimLine + tick / 2} strokeWidth={0.035} />
+      <text
+        x={x0 + w / 2}
+        y={yDimLine - ARCH_DIM_FONT * 0.35}
+        textAnchor="middle"
+        fontSize={ARCH_DIM_FONT}
+        fontWeight={700}
+        fontFamily={FONT}
+        stroke="none"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/** Cota vertical a la derecha del borde (xRef = arista exterior; xDim más afuera). */
+function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM }) {
+  const tick = 0.075;
+  const ym = (y1 + y2) / 2;
+  const label = `${fmtArchMeters(spanM)} m`;
+  return (
+    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
+      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={0.032} />
+      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={0.035} />
+      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={0.035} />
+      <text
+        x={xDim + ARCH_DIM_FONT * 0.85}
+        y={ym}
+        textAnchor="middle"
+        fontSize={ARCH_DIM_FONT * 0.95}
+        fontWeight={700}
+        fontFamily={FONT}
+        stroke="none"
+        transform={`rotate(-90 ${xDim + ARCH_DIM_FONT * 0.85} ${ym})`}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
 /** Cota vertical entre y1 e y2 (y1 < y2), línea de cota a la izquierda de xRef. */
 function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM }) {
   const tick = 0.075;
@@ -273,10 +383,119 @@ function fijacionDotsLayout(r, hints) {
 }
 
 /**
- * Paso Estructura: apoyos (líneas violetas), cotas rojas exteriores, chip fuera del techo,
- * resumen largo×ancho/paneles fuera, puntos de fijación con tooltip BOM (elemento SVG title).
+ * Cotas en **aristas exteriores expuestas** (tras restar encuentros) + longitud registrada en cada encuentro.
+ * Las líneas quedan **afuera** del rectángulo de techo (sin solapar el relleno del panel).
  */
-function EstructuraZonaOverlay({ r, hints, panelAu }) {
+function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
+  const bump = () => {
+    const m = new Map();
+    return (k) => {
+      const n = m.get(k) || 0;
+      m.set(k, n + 1);
+      return n;
+    };
+  };
+  const nextBottom = bump();
+  const nextTop = bump();
+  const nextLeft = bump();
+  const nextRight = bump();
+
+  const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
+  const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
+  const lefts = exterior.filter((s) => s.side === "left").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+  const rights = exterior.filter((s) => s.side === "right").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+
+  const encLabels = encounters.map((enc, i) => {
+    const mx = (enc.x1 + enc.x2) / 2;
+    const my = (enc.y1 + enc.y2) / 2;
+    const len = enc.length;
+    const isVert = enc.orientation === "vertical";
+    const tx = isVert ? mx + 0.22 : mx;
+    const ty = isVert ? my : my - 0.2;
+    return (
+      <g key={`enc-len-${enc.id || i}`} pointerEvents="none">
+        <text
+          x={tx}
+          y={ty}
+          textAnchor="middle"
+          fontSize={0.11}
+          fontWeight={800}
+          fontFamily={FONT}
+          fill="#0f172a"
+          stroke="#ffffff"
+          strokeWidth={0.028}
+          paintOrder="stroke"
+        >
+          {`${fmtArchMeters(len)} m`}
+        </text>
+      </g>
+    );
+  });
+
+  return (
+    <g data-bmc-layer="estructura-global-cotas">
+      {bottoms.map((s) => {
+        const idx = nextBottom(+s.y1.toFixed(3));
+        return (
+          <ArchDimHorizontal
+            key={s.id}
+            x0={s.x1}
+            yBottom={s.y1}
+            widthM={s.length}
+            yDimLine={s.y1 + 0.24 + idx * 0.14}
+          />
+        );
+      })}
+      {tops.map((s) => {
+        const idx = nextTop(+s.y1.toFixed(3));
+        return (
+          <ArchDimHorizontalTop
+            key={s.id}
+            x0={s.x1}
+            yEdge={s.y1}
+            widthM={s.length}
+            yDimLine={s.y1 - 0.24 - idx * 0.14}
+          />
+        );
+      })}
+      {lefts.map((s) => {
+        const idx = nextLeft(+s.x1.toFixed(3));
+        const xDim = s.x1 - 0.42 - idx * 0.14;
+        return (
+          <ArchDimVerticalSegment
+            key={s.id}
+            xRef={s.x1}
+            xDim={xDim}
+            y1={s.y1}
+            y2={s.y2}
+            spanM={s.length}
+          />
+        );
+      })}
+      {rights.map((s) => {
+        const idx = nextRight(+s.x1.toFixed(3));
+        const xDim = s.x1 + 0.42 + idx * 0.14;
+        return (
+          <ArchDimVerticalSegmentRight
+            key={s.id}
+            xRef={s.x1}
+            xDim={xDim}
+            y1={s.y1}
+            y2={s.y2}
+            spanM={s.length}
+          />
+        );
+      })}
+      {encLabels}
+    </g>
+  );
+}
+
+/**
+ * Paso Estructura: apoyos (líneas violetas), chip fuera del techo, puntos de fijación (tooltip BOM).
+ * Las cotas rojas globales van en `EstructuraGlobalExteriorOverlay` (perímetro libre + encuentros).
+ */
+function EstructuraZonaOverlay({ r, hints }) {
   if (!hints) return null;
   const nAp = hints.apoyos;
   const supportLines = [];
@@ -315,58 +534,6 @@ function EstructuraZonaOverlay({ r, hints, panelAu }) {
   const chipX = r.x + (r.w - chipW) / 2;
   const chipY = r.y - chipH - 0.14;
   const chipFs = Math.max(0.11, Math.min(0.14, chipW * 0.065));
-
-  const yBottom = r.y + r.h;
-  const yDimAncho = yBottom + 0.2;
-  const yCaption = yDimAncho + ARCH_DIM_FONT * 2.35;
-  const nPan = panelCountAcrossAnchoPlanta(r.w, panelAu);
-  const caption = `${zonaLabelPlanta(r)} · ${nPan} ${nPan === 1 ? "panel" : "paneles"}`;
-
-  const xRefLeft = r.x;
-  /** Cota total largo más al exterior; vanos entre apoyos en franja interior (nomenclatura tipo plano). */
-  const xDimSpans = r.x - 0.38;
-  const xDimTotal = r.x - 0.88;
-
-  const spanSegments = [];
-  let spanSummary = null;
-  if (Number.isFinite(nAp) && nAp >= 2 && r.h > 1e-6) {
-    const n = Math.min(32, Math.round(nAp));
-    const spanM = r.h / (n - 1);
-    const numSpans = n - 1;
-    const maxSpanDims = 12;
-    if (numSpans <= maxSpanDims) {
-      for (let i = 0; i < numSpans; i++) {
-        const y1 = r.y + (i / (n - 1)) * r.h;
-        const y2 = r.y + ((i + 1) / (n - 1)) * r.h;
-        spanSegments.push(
-          <ArchDimVerticalSegment
-            key={`est-span-${r.gi}-${i}`}
-            xRef={xRefLeft}
-            xDim={xDimSpans}
-            y1={y1}
-            y2={y2}
-            spanM={spanM}
-          />,
-        );
-      }
-    } else {
-      spanSummary = (
-        <text
-          x={xDimSpans - 0.06}
-          y={r.y + r.h / 2}
-          textAnchor="middle"
-          fontSize={ARCH_DIM_FONT * 0.9}
-          fontWeight={700}
-          fontFamily={FONT}
-          fill={ARCH_DIM_STROKE}
-          stroke="none"
-          transform={`rotate(-90 ${xDimSpans - 0.06} ${r.y + r.h / 2})`}
-        >
-          {`${numSpans} vanos × ${fmtArchMeters(spanM)} m`}
-        </text>
-      );
-    }
-  }
 
   const sysLabel =
     hints.fijacionSistema === "caballete"
@@ -418,32 +585,6 @@ function EstructuraZonaOverlay({ r, hints, panelAu }) {
           </text>
         ) : null}
       </g>
-      <g pointerEvents="none">
-        <ArchDimHorizontal x0={r.x} yBottom={yBottom} widthM={r.w} yDimLine={yDimAncho} />
-        <text
-          x={r.x + r.w / 2}
-          y={yCaption}
-          textAnchor="middle"
-          fontSize={Math.max(0.12, Math.min(0.17, r.w * 0.045))}
-          fill={C.primary}
-          fontWeight={700}
-          fontFamily={FONT}
-          stroke="none"
-        >
-          {caption}
-        </text>
-      </g>
-      <g pointerEvents="none">
-        <ArchDimVerticalSegment
-          xRef={xRefLeft}
-          xDim={xDimTotal}
-          y1={r.y}
-          y2={yBottom}
-          spanM={r.h}
-        />
-      </g>
-      {spanSegments.length ? <g pointerEvents="none">{spanSegments}</g> : null}
-      {spanSummary ? <g pointerEvents="none">{spanSummary}</g> : null}
       <g pointerEvents="auto">
         {dotPts.map((d) => (
           <g key={`fij-dot-${r.gi}-${d.key}`}>
@@ -564,7 +705,185 @@ function SlopeArrow({ cx, cy, h, dir }) {
  * @param {function} [props.onEncounterPairChange] - (pairKey, encounterPatch|null) guarda en `preview.encounterByPair`; null = desconectar
  * @param {function} [props.onZonaDimensionPatch] - (gi, { largo?, ancho? }) edición inline al seleccionar zona
  * @param {Record<number, object>|null} [props.estructuraHintsByGi] - si no es null, overlay Estructura (cotas, apoyos, fijaciones)
+ * @param {boolean} [props.embedMetricsSidebar] - si es false, no dibuja la columna de métricas (p. ej. métricas en columna del wizard)
+ * @param {number|null} [props.selectedZonaGi] - índice de zona seleccionada (modo controlado con `embedMetricsSidebar` false)
+ * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG
  */
+export function RoofPreviewMetricsSidebar({
+  zonas = [],
+  tipoAguas = "una_agua",
+  pendiente = 0,
+  panelAu = 1.12,
+  selectedGi = null,
+  onZonaDimensionPatch,
+  compact = false,
+}) {
+  const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas);
+  const fp = calcFactorPendiente(pendiente);
+  return (
+    <div
+      data-bmc-view="roof-preview-metrics-sidebar"
+      style={{
+        minWidth: 0,
+        flex: compact ? undefined : "1 1 200px",
+        width: compact ? "100%" : undefined,
+        fontSize: compact ? 13 : 12.5,
+        marginTop: compact ? 12 : 0,
+      }}
+    >
+      <div style={{ fontSize: compact ? 16 : 14, fontWeight: 600, color: C.tp }}>
+        <strong style={{ fontSize: compact ? 18 : 17 }}>{layout.totalArea.toFixed(1)} m²</strong>
+        <span style={{ fontWeight: 500, color: C.ts }}> total</span>
+      </div>
+      {typeof onZonaDimensionPatch === "function" && selectedGi != null && zonas[selectedGi] && (
+        <div
+          style={{
+            marginTop: 10,
+            padding: 10,
+            borderRadius: 10,
+            border: `1px solid ${C.border}`,
+            background: C.surface,
+            fontSize: 11,
+            color: C.ts,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: C.tp, marginBottom: 8 }}>
+            Zona {formatZonaDisplayTitle(zonas, selectedGi)}
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ width: 72 }}>Largo (m)</span>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={zonas[selectedGi].largo ?? 0}
+              onChange={(ev) => {
+                const v = Number(ev.target.value);
+                if (!Number.isFinite(v)) return;
+                onZonaDimensionPatch(selectedGi, { largo: v });
+              }}
+              style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }}
+            />
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 72 }}>Ancho (m)</span>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={zonas[selectedGi].ancho ?? 0}
+              onChange={(ev) => {
+                const v = Number(ev.target.value);
+                if (!Number.isFinite(v)) return;
+                onZonaDimensionPatch(selectedGi, { ancho: v });
+              }}
+              style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }}
+            />
+          </label>
+        </div>
+      )}
+      {layout.entries.length > 0 && (
+        <div
+          style={{
+            fontSize: 11,
+            color: C.ts,
+            marginTop: 8,
+            lineHeight: 1.45,
+            padding: "8px 10px",
+            background: C.surface,
+            borderRadius: 8,
+            border: `1px solid ${C.border}`,
+          }}
+          aria-label="Desglose de superficie por zona"
+        >
+          <div
+            style={{
+              fontWeight: 600,
+              color: C.tp,
+              marginBottom: 4,
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Por superficie / extensión
+          </div>
+          {layout.entries.map((r) => {
+            const a = r.z.largo * r.z.ancho;
+            const label = formatZonaDisplayTitle(zonas, r.gi);
+            return (
+              <div key={r.gi} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                <span style={{ color: C.ts }}>
+                  {label}
+                  <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>{zonaLabelPlanta(r)} en planta</span>
+                </span>
+                <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
+              </div>
+            );
+          })}
+          <div
+            style={{
+              marginTop: 8,
+              paddingTop: 8,
+              borderTop: `1px dashed ${C.border}`,
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 11,
+              fontWeight: 700,
+              color: C.tp,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            <span>Suma tramos</span>
+            <span>{layout.entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0).toFixed(1)} m²</span>
+          </div>
+          {planEdges && planEdges.rects.length > 0 && (
+            <div
+              style={{
+                marginTop: 10,
+                paddingTop: 10,
+                borderTop: `1px dashed ${C.border}`,
+                fontSize: 10,
+                color: C.ts,
+                lineHeight: 1.45,
+              }}
+              aria-label="Perímetro en planta y encuentros entre zonas"
+            >
+              <div
+                style={{
+                  fontWeight: 600,
+                  color: C.tp,
+                  marginBottom: 4,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Planta (encuentros)
+              </div>
+              <div>
+                Perímetro exterior (estim.):{" "}
+                <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums" }}>{planEdges.totals.exteriorLength} m</strong>
+              </div>
+              <div style={{ marginTop: 2 }}>
+                Encuentros: <strong style={{ color: C.tp }}>{planEdges.encounters.length}</strong> tramo
+                {planEdges.encounters.length === 1 ? "" : "s"} ·{" "}
+                <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums" }}>{planEdges.totals.encounterLength} m</strong>{" "}
+                compartido
+              </div>
+              <div style={{ marginTop: 6, fontSize: 9, opacity: 0.92 }}>
+                Perímetro y encuentros alimentan accesorios (una agua, multizona) vía geometría de planta y tipo de encuentro.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {pendiente > 0 && (
+        <div style={{ fontSize: 11, color: C.ts, marginTop: 8 }}>Largo real (pendiente): ×{fp.toFixed(2)}</div>
+      )}
+    </div>
+  );
+}
+
 export default function RoofPreview({
   zonas = [],
   tipoAguas = "una_agua",
@@ -577,6 +896,9 @@ export default function RoofPreview({
   onEncounterPairChange,
   onZonaDimensionPatch,
   estructuraHintsByGi = null,
+  embedMetricsSidebar = true,
+  selectedZonaGi: selectedZonaGiProp,
+  onSelectedZonaGiChange,
 }) {
   const fp = calcFactorPendiente(pendiente);
   const svgRef = useRef(null);
@@ -584,67 +906,34 @@ export default function RoofPreview({
   const tapRef = useRef(null);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
-  const [selectedGi, setSelectedGi] = useState(null);
+  const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
 
-  const tipoPlanta = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
+  const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
+  const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
+  const setSelectedGi = useCallback(
+    (gi) => {
+      if (metricsExternal) onSelectedZonaGiChange(gi);
+      else setInternalSelectedGi(gi);
+    },
+    [metricsExternal, onSelectedZonaGiChange],
+  );
 
-  /** Perímetro / encuentros + rectángulos (incluye anexos laterales vía roofLateralAnnexLayout). */
-  const planEdges = useMemo(() => {
-    if (!zonas?.length) return null;
-    try {
-      return buildRoofPlanEdges(zonas, tipoPlanta);
-    } catch {
-      return null;
-    }
-  }, [zonas, tipoPlanta]);
-
-  const layout = useMemo(() => {
-    const entries = planEdges?.rects ?? [];
-    let curMinX = Infinity;
-    let curMinY = Infinity;
-    let curMaxX = -Infinity;
-    let curMaxY = -Infinity;
-    for (const r of entries) {
-      curMinX = Math.min(curMinX, r.x);
-      curMinY = Math.min(curMinY, r.y);
-      curMaxX = Math.max(curMaxX, r.x + r.w);
-      curMaxY = Math.max(curMaxY, r.y + r.h);
-    }
-    const pad = 0.45;
-    const slack = VIEWBOX_SLACK_M;
-    const totalArea = entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0);
-    if (!entries.length) {
-      return {
-        entries: [],
-        viewBox: "0 0 10 6",
-        totalArea: 0,
-        viewMetrics: null,
-      };
-    }
-    const vbW = curMaxX - curMinX + 2 * (pad + slack);
-    const vbH = curMaxY - curMinY + 2 * (pad + slack);
-    const vbX = curMinX - pad - slack;
-    const vbY = curMinY - pad - slack;
-    const margin = pad * 0.35;
-    return {
-      entries,
-      viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
-      totalArea,
-      viewMetrics: { vbX, vbY, vbW, vbH, margin },
-    };
-  }, [planEdges]);
+  const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas);
 
   /** Espacio extra para cotas exteriores + chip (solo paso Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
     if (estructuraHintsByGi == null || layout.entries.length === 0) return layout.viewBox;
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
-    const padL = 1.05;
-    const padT = 0.55;
-    const padB = 0.68;
-    return `${vbX - padL} ${vbY - padT} ${vbW + padL} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi]);
+    const ext = planEdges?.exterior ?? [];
+    const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
+    const padL = 1.05 + nSide("left") * 0.14;
+    const padT = 0.55 + nSide("top") * 0.14;
+    const padB = 0.68 + nSide("bottom") * 0.14;
+    const padR = 0.45 + nSide("right") * 0.14;
+    return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi, planEdges?.exterior]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -916,7 +1205,7 @@ export default function RoofPreview({
           }}
         >
           <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
-          etiqueta en cada zona = puntos de fijación (mismo criterio que el presupuesto).
+          cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = puntos de fijación (mismo criterio que el presupuesto).
         </div>
       )}
       {encounterPrompt && onEncounterPairChange && (
@@ -1024,13 +1313,17 @@ export default function RoofPreview({
         ) : (
           <div
             style={{
-              flex: "1 1 280px",
+              flex: estructuraHintsByGi != null ? "2 1 300px" : "1 1 280px",
               width: "100%",
               minWidth: 200,
               maxWidth: "100%",
-              height: "clamp(220px, min(42vh, 440px), 520px)",
-              minHeight: 220,
+              height:
+                estructuraHintsByGi != null
+                  ? "clamp(300px, min(55vh, 720px), 860px)"
+                  : "clamp(220px, min(42vh, 440px), 520px)",
+              minHeight: estructuraHintsByGi != null ? 280 : 220,
               flexShrink: 0,
+              order: estructuraHintsByGi != null ? 2 : 1,
             }}
           >
             <svg
@@ -1161,7 +1454,7 @@ export default function RoofPreview({
                     {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
                   </g>
                   {estructuraHintsByGi != null && estructuraHintsByGi[r.gi] ? (
-                    <EstructuraZonaOverlay r={r} hints={estructuraHintsByGi[r.gi]} panelAu={panelAu} />
+                    <EstructuraZonaOverlay r={r} hints={estructuraHintsByGi[r.gi]} />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
                     <g pointerEvents="none">
@@ -1265,12 +1558,25 @@ export default function RoofPreview({
                 </g>
               );
             })}
+            {estructuraHintsByGi != null && planEdges?.exterior?.length ? (
+              <EstructuraGlobalExteriorOverlay
+                exterior={planEdges.exterior}
+                encounters={planEdges.encounters ?? []}
+              />
+            ) : null}
             </svg>
           </div>
         )}
-        <div style={{ minWidth: 0, flex: "1 1 160px" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>
-            <strong style={{ fontSize: 15 }}>{layout.totalArea.toFixed(1)} m²</strong>
+        <div
+          style={{
+            minWidth: 0,
+            flex: estructuraHintsByGi != null ? "1 1 200px" : "1 1 160px",
+            order: estructuraHintsByGi != null ? 1 : 2,
+            fontSize: estructuraHintsByGi != null ? 12.5 : undefined,
+          }}
+        >
+          <div style={{ fontSize: estructuraHintsByGi != null ? 14 : 13, fontWeight: 600, color: C.tp }}>
+            <strong style={{ fontSize: estructuraHintsByGi != null ? 17 : 15 }}>{layout.totalArea.toFixed(1)} m²</strong>
             <span style={{ fontWeight: 500, color: C.ts }}> total</span>
           </div>
           {typeof onZonaDimensionPatch === "function" && selectedGi != null && zonas[selectedGi] && (

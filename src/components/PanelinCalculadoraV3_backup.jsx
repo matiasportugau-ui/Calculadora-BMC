@@ -5059,7 +5059,7 @@ export default function PanelinCalculadoraV3() {
             onNext={activeWizardStepId === "tipoAguas" ? advanceWizardStep : null}
           />
           {/* KPI Row */}
-          {results && !results.error && !scenarioDef?.isLibre && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
+          {results && !results.error && !scenarioDef?.isLibre && activeWizardStepId !== "estructura" && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
             <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
             <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
