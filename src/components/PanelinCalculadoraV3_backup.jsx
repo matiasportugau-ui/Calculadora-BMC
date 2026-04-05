@@ -87,7 +87,7 @@ import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
-import RoofPreview from "./RoofPreview.jsx";
+import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
@@ -2232,6 +2232,8 @@ export default function PanelinCalculadoraV3() {
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
+  /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
+  const [estructuraMetricsSelectedGi, setEstructuraMetricsSelectedGi] = useState(0);
   const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
@@ -2659,6 +2661,15 @@ export default function PanelinCalculadoraV3() {
     showRoof3DHost && activeWizardStepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(activeWizardStepId),
   );
 
+  useEffect(() => {
+    const n = techo.zonas?.length ?? 0;
+    if (n <= 0) return;
+    setEstructuraMetricsSelectedGi((g) => {
+      const cur = typeof g === "number" && Number.isFinite(g) ? g : 0;
+      return Math.max(0, Math.min(cur, n - 1));
+    });
+  }, [techo.zonas?.length]);
+
   /** Overlay 2D apoyos + puntos fijación (mismo criterio que `calcTechoCompleto`), solo paso Estructura wizard solo techo. */
   const roofEstructuraHintsByGi = useMemo(() => {
     if (activeWizardStepId !== "estructura") return null;
@@ -2972,6 +2983,7 @@ export default function PanelinCalculadoraV3() {
 
   const roof2DPreviewForVisor = useMemo(() => {
     if (!showRoof2dInQuoteVisor) return null;
+    const embedMetrics = activeWizardStepId !== "estructura";
     return (
       <RoofPreview
         zonas={techo.zonas || []}
@@ -2985,10 +2997,15 @@ export default function PanelinCalculadoraV3() {
         onEncounterPairChange={onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
         estructuraHintsByGi={roofEstructuraHintsByGi}
+        embedMetricsSidebar={embedMetrics}
+        selectedZonaGi={embedMetrics ? undefined : estructuraMetricsSelectedGi}
+        onSelectedZonaGiChange={embedMetrics ? undefined : setEstructuraMetricsSelectedGi}
       />
     );
   }, [
     showRoof2dInQuoteVisor,
+    activeWizardStepId,
+    estructuraMetricsSelectedGi,
     techo.zonas,
     techo.tipoAguas,
     techo.pendiente,
@@ -4240,6 +4257,17 @@ export default function PanelinCalculadoraV3() {
                           </div>
                         </div>
                       )}
+                      {showRoof2dInQuoteVisor ? (
+                        <RoofPreviewMetricsSidebar
+                          compact
+                          emphasize
+                          zonas={techo.zonas || []}
+                          tipoAguas={techo.tipoAguas}
+                          pendiente={techo.pendiente}
+                          selectedGi={estructuraMetricsSelectedGi}
+                          onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                        />
+                      ) : null}
                     </div>
                   )}
                   {stepId === "bordes" && (

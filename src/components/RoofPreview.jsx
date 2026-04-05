@@ -9,7 +9,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { C, FONT } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente } from "../utils/calculations.js";
-import { buildRoofPlanEdges, encounterPairKey, findEncounters } from "../utils/roofPlanGeometry.js";
+import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
+import { encounterPairKey, findEncounters } from "../utils/roofPlanGeometry.js";
 import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import {
   formatZonaDisplayTitle,
@@ -19,8 +20,7 @@ import {
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 
-/** Margen extra (m) alrededor del layout en fila: el viewBox no depende de preview.x/y → no “salta” el layout al arrastrar. */
-const VIEWBOX_SLACK_M = 2.8;
+/** ViewBox slack: `useRoofPreviewPlanLayout.js` (mismo valor que al calcular `layout.viewBox`). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
 const DRAG_SENSITIVITY = 0.52;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
@@ -33,61 +33,6 @@ function zonaLabelPlanta(r) {
   if (!Number.isFinite(L) || !Number.isFinite(W)) return "—";
   const fmt = (x) => (Math.abs(x - Math.round(x)) < 1e-6 ? String(Math.round(x)) : x.toFixed(2).replace(/\.?0+$/, ""));
   return `${fmt(L)}×${fmt(W)}m`;
-}
-
-/**
- * Planta 2D + `planEdges` compartidos entre `RoofPreview` y `RoofPreviewMetricsSidebar`.
- * @param {Array} zonas
- * @param {string} tipoAguas
- */
-export function useRoofPreviewPlanLayout(zonas, tipoAguas) {
-  const tipoPlanta = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
-  const planEdges = useMemo(() => {
-    if (!zonas?.length) return null;
-    try {
-      return buildRoofPlanEdges(zonas, tipoPlanta);
-    } catch {
-      return null;
-    }
-  }, [zonas, tipoPlanta]);
-
-  const layout = useMemo(() => {
-    const entries = planEdges?.rects ?? [];
-    let curMinX = Infinity;
-    let curMinY = Infinity;
-    let curMaxX = -Infinity;
-    let curMaxY = -Infinity;
-    for (const r of entries) {
-      curMinX = Math.min(curMinX, r.x);
-      curMinY = Math.min(curMinY, r.y);
-      curMaxX = Math.max(curMaxX, r.x + r.w);
-      curMaxY = Math.max(curMaxY, r.y + r.h);
-    }
-    const pad = 0.45;
-    const slack = VIEWBOX_SLACK_M;
-    const totalArea = entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0);
-    if (!entries.length) {
-      return {
-        entries: [],
-        viewBox: "0 0 10 6",
-        totalArea: 0,
-        viewMetrics: null,
-      };
-    }
-    const vbW = curMaxX - curMinX + 2 * (pad + slack);
-    const vbH = curMaxY - curMinY + 2 * (pad + slack);
-    const vbX = curMinX - pad - slack;
-    const vbY = curMinY - pad - slack;
-    const margin = pad * 0.35;
-    return {
-      entries,
-      viewBox: `${vbX} ${vbY} ${vbW} ${vbH}`,
-      totalArea,
-      viewMetrics: { vbX, vbY, vbW, vbH, margin },
-    };
-  }, [planEdges]);
-
-  return { tipoPlanta, planEdges, layout };
 }
 
 function clientToSvg(svgEl, cx, cy) {
@@ -693,46 +638,39 @@ function SlopeArrow({ cx, cy, h, dir }) {
 }
 
 /**
- * @param {object} props
- * @param {Array} props.zonas - techo.zonas (largo, ancho en m; optional preview)
- * @param {string} props.tipoAguas
- * @param {number} props.pendiente - grados (solo texto factor)
- * @param {number} props.panelAu - ancho útil panel (m)
- * @param {function} [props.onZonaPreviewChange] - (globalIndex, patch) => void
- * @param {function} [props.onResetLayout] - limpia posiciones; conserva slopeMark si aplica
- * @param {function} [props.onAnnexRankSwap] - (gi, dir: -1|1) intercambia orden en cadena lateral
- * @param {function} [props.onAddZona] - agrega una zona nueva (toolbar)
- * @param {function} [props.onEncounterPairChange] - (pairKey, encounterPatch|null) guarda en `preview.encounterByPair`; null = desconectar
- * @param {function} [props.onZonaDimensionPatch] - (gi, { largo?, ancho? }) edición inline al seleccionar zona
- * @param {Record<number, object>|null} [props.estructuraHintsByGi] - si no es null, overlay Estructura (cotas, apoyos, fijaciones)
- * @param {boolean} [props.embedMetricsSidebar] - si es false, no dibuja la columna de métricas (p. ej. métricas en columna del wizard)
- * @param {number|null} [props.selectedZonaGi] - índice de zona seleccionada (modo controlado con `embedMetricsSidebar` false)
- * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG
+ * Bloque de métricas (m², L/A zona, desglose, planta/encuentros) reutilizable en columna del wizard o junto al SVG.
  */
 export function RoofPreviewMetricsSidebar({
   zonas = [],
   tipoAguas = "una_agua",
   pendiente = 0,
-  panelAu = 1.12,
   selectedGi = null,
   onZonaDimensionPatch,
+  /** Métricas bajo el wizard (columna izquierda): ancho completo y tipografía un poco mayor */
   compact = false,
+  /** Cuando va junto a `RoofPreview` en fila y el padre ya define `flex` */
+  noRootFlex = false,
+  /** Paso Estructura / overlay: resalta cifras como en la fila embebida previa */
+  emphasize = false,
 }) {
   const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas);
   const fp = calcFactorPendiente(pendiente);
+  const headFs = compact ? 16 : emphasize ? 14 : 13;
+  const headStrong = compact ? 18 : emphasize ? 17 : 15;
+  const rootFs = compact ? 13 : emphasize ? 12.5 : undefined;
   return (
     <div
       data-bmc-view="roof-preview-metrics-sidebar"
       style={{
         minWidth: 0,
-        flex: compact ? undefined : "1 1 200px",
-        width: compact ? "100%" : undefined,
-        fontSize: compact ? 13 : 12.5,
+        flex: noRootFlex || compact ? undefined : "1 1 200px",
+        width: compact || noRootFlex ? "100%" : undefined,
+        fontSize: rootFs,
         marginTop: compact ? 12 : 0,
       }}
     >
-      <div style={{ fontSize: compact ? 16 : 14, fontWeight: 600, color: C.tp }}>
-        <strong style={{ fontSize: compact ? 18 : 17 }}>{layout.totalArea.toFixed(1)} m²</strong>
+      <div style={{ fontSize: headFs, fontWeight: 600, color: C.tp }}>
+        <strong style={{ fontSize: headStrong }}>{layout.totalArea.toFixed(1)} m²</strong>
         <span style={{ fontWeight: 500, color: C.ts }}> total</span>
       </div>
       {typeof onZonaDimensionPatch === "function" && selectedGi != null && zonas[selectedGi] && (
@@ -884,6 +822,13 @@ export function RoofPreviewMetricsSidebar({
   );
 }
 
+/**
+ * Vista previa 2D del techo en planta (rejilla, arrastre, encuentros).
+ * @param {Record<number, object>|null} [props.estructuraHintsByGi] - overlay Estructura (cotas, apoyos, fijaciones)
+ * @param {boolean} [props.embedMetricsSidebar] - false = sin columna de métricas (mostrar `RoofPreviewMetricsSidebar` en el wizard)
+ * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
+ * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
+ */
 export default function RoofPreview({
   zonas = [],
   tipoAguas = "una_agua",
@@ -900,7 +845,6 @@ export default function RoofPreview({
   selectedZonaGi: selectedZonaGiProp,
   onSelectedZonaGiChange,
 }) {
-  const fp = calcFactorPendiente(pendiente);
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
@@ -999,7 +943,7 @@ export default function RoofPreview({
         snapshotSaved: false,
       };
     },
-    [onZonaPreviewChange, zonas],
+    [onZonaPreviewChange, zonas, setSelectedGi],
   );
 
   const handlePointerMove = useCallback(
@@ -1313,7 +1257,11 @@ export default function RoofPreview({
         ) : (
           <div
             style={{
-              flex: estructuraHintsByGi != null ? "2 1 300px" : "1 1 280px",
+              flex: embedMetricsSidebar
+                ? estructuraHintsByGi != null
+                  ? "2 1 300px"
+                  : "1 1 280px"
+                : "1 1 100%",
               width: "100%",
               minWidth: 200,
               maxWidth: "100%",
@@ -1323,7 +1271,7 @@ export default function RoofPreview({
                   : "clamp(220px, min(42vh, 440px), 520px)",
               minHeight: estructuraHintsByGi != null ? 280 : 220,
               flexShrink: 0,
-              order: estructuraHintsByGi != null ? 2 : 1,
+              order: embedMetricsSidebar ? 1 : undefined,
             }}
           >
             <svg
@@ -1567,150 +1515,25 @@ export default function RoofPreview({
             </svg>
           </div>
         )}
-        <div
-          style={{
-            minWidth: 0,
-            flex: estructuraHintsByGi != null ? "1 1 200px" : "1 1 160px",
-            order: estructuraHintsByGi != null ? 1 : 2,
-            fontSize: estructuraHintsByGi != null ? 12.5 : undefined,
-          }}
-        >
-          <div style={{ fontSize: estructuraHintsByGi != null ? 14 : 13, fontWeight: 600, color: C.tp }}>
-            <strong style={{ fontSize: estructuraHintsByGi != null ? 17 : 15 }}>{layout.totalArea.toFixed(1)} m²</strong>
-            <span style={{ fontWeight: 500, color: C.ts }}> total</span>
+        {embedMetricsSidebar ? (
+          <div
+            style={{
+              minWidth: 0,
+              flex: estructuraHintsByGi != null ? "1 1 200px" : "1 1 160px",
+              order: 2,
+            }}
+          >
+            <RoofPreviewMetricsSidebar
+              zonas={zonas}
+              tipoAguas={tipoAguas}
+              pendiente={pendiente}
+              selectedGi={selectedGi}
+              onZonaDimensionPatch={onZonaDimensionPatch}
+              emphasize={estructuraHintsByGi != null}
+              noRootFlex
+            />
           </div>
-          {typeof onZonaDimensionPatch === "function" && selectedGi != null && zonas[selectedGi] && (
-            <div
-              style={{
-                marginTop: 10,
-                padding: 10,
-                borderRadius: 10,
-                border: `1px solid ${C.border}`,
-                background: C.surface,
-                fontSize: 11,
-                color: C.ts,
-              }}
-            >
-              <div style={{ fontWeight: 700, color: C.tp, marginBottom: 8 }}>
-                Zona {formatZonaDisplayTitle(zonas, selectedGi)}
-              </div>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span style={{ width: 72 }}>Largo (m)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={zonas[selectedGi].largo ?? 0}
-                  onChange={(ev) => {
-                    const v = Number(ev.target.value);
-                    if (!Number.isFinite(v)) return;
-                    onZonaDimensionPatch(selectedGi, { largo: v });
-                  }}
-                  style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }}
-                />
-              </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 72 }}>Ancho (m)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={zonas[selectedGi].ancho ?? 0}
-                  onChange={(ev) => {
-                    const v = Number(ev.target.value);
-                    if (!Number.isFinite(v)) return;
-                    onZonaDimensionPatch(selectedGi, { ancho: v });
-                  }}
-                  style={{ flex: 1, padding: "6px 8px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12 }}
-                />
-              </label>
-            </div>
-          )}
-          {layout.entries.length > 0 && (
-            <div
-              style={{
-                fontSize: 11,
-                color: C.ts,
-                marginTop: 8,
-                lineHeight: 1.45,
-                padding: "8px 10px",
-                background: C.surface,
-                borderRadius: 8,
-                border: `1px solid ${C.border}`,
-              }}
-              aria-label="Desglose de superficie por zona"
-            >
-              <div style={{ fontWeight: 600, color: C.tp, marginBottom: 4, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                Por superficie / extensión
-              </div>
-              {layout.entries.map((r) => {
-                const a = r.z.largo * r.z.ancho;
-                const label = formatZonaDisplayTitle(zonas, r.gi);
-                return (
-                  <div key={r.gi} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                    <span style={{ color: C.ts }}>
-                      {label}
-                      <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>
-                        {zonaLabelPlanta(r)} en planta
-                      </span>
-                    </span>
-                    <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
-                  </div>
-                );
-              })}
-              <div
-                style={{
-                  marginTop: 8,
-                  paddingTop: 8,
-                  borderTop: `1px dashed ${C.border}`,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: C.tp,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                <span>Suma tramos</span>
-                <span>{layout.entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0).toFixed(1)} m²</span>
-              </div>
-              {planEdges && planEdges.rects.length > 0 && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTop: `1px dashed ${C.border}`,
-                    fontSize: 10,
-                    color: C.ts,
-                    lineHeight: 1.45,
-                  }}
-                  aria-label="Perímetro en planta y encuentros entre zonas"
-                >
-                  <div style={{ fontWeight: 600, color: C.tp, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                    Planta (encuentros)
-                  </div>
-                  <div>
-                    Perímetro exterior (estim.):{" "}
-                    <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums" }}>{planEdges.totals.exteriorLength} m</strong>
-                  </div>
-                  <div style={{ marginTop: 2 }}>
-                    Encuentros:{" "}
-                    <strong style={{ color: C.tp }}>{planEdges.encounters.length}</strong> tramo
-                    {planEdges.encounters.length === 1 ? "" : "s"} ·{" "}
-                    <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums" }}>{planEdges.totals.encounterLength} m</strong>{" "}
-                    compartido
-                  </div>
-                  <div style={{ marginTop: 6, fontSize: 9, opacity: 0.92 }}>
-                    Perímetro y encuentros alimentan accesorios (una agua, multizona) vía geometría de planta y tipo de encuentro.
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {pendiente > 0 && (
-            <div style={{ fontSize: 11, color: C.ts, marginTop: 8 }}>Largo real (pendiente): ×{fp.toFixed(2)}</div>
-          )}
-        </div>
+        ) : null}
       </div>
     </div>
   );
