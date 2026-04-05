@@ -170,6 +170,8 @@ export const FIJACIONES = {
   varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.69, unidad: "unid" },
   tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12,web: 0.07, costo: 0.05, unidad: "unid" },
   arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.64, costo: 0.48, unidad: "unid" },
+  /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
+  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.09, web: 0.11, costo: 0.045, unidad: "unid" },
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
   arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.83, unidad: "unid" },

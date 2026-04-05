@@ -19,6 +19,8 @@ import { downloadPdf } from "../utils/pdfGenerator.js";
 import { pdfFileName } from "../utils/projectFile.js";
 import { capturePdfSnapshotTargets } from "../utils/captureDomToPng.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
+import { countVarillasRoscadasDesdeBarras1m } from "../utils/calculations.js";
+import { getDimensioningParam } from "../utils/dimensioningFormulas.js";
 import RoofPreview from "./RoofPreview.jsx";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -393,10 +395,17 @@ function countPuntosFijacionVarillaGrilla(cantP, apoyos) {
   return p * (n + 2);
 }
 
-function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm) {
+function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, espesorMm = 100) {
   const grilla = countPuntosFijacionVarillaGrilla(cantP, apoyos);
   const puntosFijacion = Math.ceil(grilla + (largo * 2 / 2.5));
-  const varillas = Math.ceil(puntosFijacion / 4);
+  const espM = Math.max(0, Number(espesorMm) || 0) / 1000;
+  const rodLen = getDimensioningParam("FIJACIONES_VARILLA.largo_comercial_m", 1);
+  const exMetalHorm = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", 0.1);
+  const tramoM = espM > 0 ? espM + exMetalHorm : null;
+  const varillas =
+    tramoM != null && tramoM > 0
+      ? countVarillasRoscadasDesdeBarras1m(puntosFijacion, tramoM, rodLen)
+      : Math.ceil(puntosFijacion / getDimensioningParam("FIJACIONES_VARILLA.varillas_por_punto", 4));
   let pMetal, pH;
   if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; }
   else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; }
@@ -414,6 +423,18 @@ function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm) {
   }
   const puArand = p(FIJACIONES.arandela_carrocero);
   items.push({ label: FIJACIONES.arandela_carrocero.label, sku: "arandela_carrocero", cant: puntosFijacion, unidad: "unid", pu: puArand, total: +(puntosFijacion * puArand).toFixed(2) });
+  const puntosArandelaPlana = puntosFijacion - pH;
+  if (puntosArandelaPlana > 0 && FIJACIONES.arandela_plana) {
+    const puPlana = p(FIJACIONES.arandela_plana);
+    items.push({
+      label: FIJACIONES.arandela_plana.label,
+      sku: "arandela_plana",
+      cant: puntosArandelaPlana,
+      unidad: "unid",
+      pu: puPlana,
+      total: +(puntosArandelaPlana * puPlana).toFixed(2),
+    });
+  }
   const puPP = p(FIJACIONES.arandela_pp);
   items.push({ label: FIJACIONES.arandela_pp.label, sku: "arandela_pp", cant: puntosFijacion, unidad: "unid", pu: puPP, total: +(puntosFijacion * puPP).toFixed(2) });
   const total = items.reduce((s, i) => s + i.total, 0);
@@ -527,7 +548,7 @@ function calcTechoCompleto(inputs) {
   if (!autoportancia.largoMaxOK) warnings.push(`Largo ${largo}m > máximo fabricable ${panel.lmax}m`);
   let fijaciones;
   if (panel.sist === "varilla_tuerca") {
-    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largo, tipoEst || "metal", ptsHorm || 0);
+    fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largo, tipoEst || "metal", ptsHorm || 0, espesor);
   } else {
     fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largo);
   }

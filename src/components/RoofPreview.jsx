@@ -1,11 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // RoofPreview.jsx — Vista previa del techo (rejilla de paneles, drag, pendiente)
 // Coordenadas del SVG en metros (planta). preview.x/y alimenta encuentros y (con geometría) el BOM;
-// buildRoofPlanEdges muestra perímetro/encuentros. Rejilla en planta: largo del panel = largo del techo (h en SVG);
+// buildRoofPlanEdges muestra perímetro/encuentros. Cotas: `roofPlan/RoofPlanDimensions.jsx`, `utils/roofPlanSvgTypography.js`,
+// `utils/roofPlanCotaObstacles.js`, `utils/roofPlanDrawingTheme.js`.
+// Rejilla en planta: largo del panel = largo del techo (h en SVG);
 // cantidad de paneles reparte el ancho en planta (w) cada au → columnas verticales / juntas verticales (alineado a calcPanelesTecho).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { C, FONT } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente } from "../utils/calculations.js";
@@ -19,6 +22,9 @@ import {
 } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
+import { buildEstructuraCotaObstacleRects } from "../utils/roofPlanCotaObstacles.js";
+import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
+import { EstructuraGlobalExteriorOverlay } from "./roofPlan/RoofPlanDimensions.jsx";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
@@ -150,201 +156,6 @@ function encounterStrokeForModo(modo) {
   return "#f59e0b";
 }
 
-const ARCH_DIM_STROKE = "#dc2626";
-/** Tamaño base (m en coords SVG) usado como referencia para escalar cotas respecto al span del plano. */
-const ARCH_DIM_FONT = 0.13;
-const ARCH_EXT_OPACITY = 0.75;
-
-/**
- * Escala tipografía y grosores de cotas al **span del viewBox** para que sigan legibles en pantalla
- * (planos grandes: antes ~0.13 m quedaba ~pocos px; móvil: más altura útil en el contenedor).
- * @param {{ vbW: number, vbH: number }|null|undefined} viewMetrics
- */
-function buildRoofPlanSvgTypography(viewMetrics) {
-  const base = ARCH_DIM_FONT;
-  if (!viewMetrics || !(viewMetrics.vbW > 0) || !(viewMetrics.vbH > 0)) {
-    const m = 1;
-    return {
-      dimFont: base,
-      m,
-      tickLen: 0.075 * m,
-      strokeExt: 0.022 * m,
-      strokeMain: 0.032 * m,
-      strokeTick: 0.035 * m,
-      encFont: 0.11 * m,
-      encStroke: 0.028 * m,
-      dimStackBottom: 0.24 * m,
-      dimStackTop: 0.24 * m,
-      dimStackStep: 0.14 * m,
-      sideOffset: 0.42 * m,
-      sideStep: 0.14 * m,
-      encOffX: 0.22 * m,
-      encOffY: 0.2 * m,
-    };
-  }
-  const span = Math.max(viewMetrics.vbW, viewMetrics.vbH, 2.5);
-  // ~2.4% del span del diagrama → proporción estable en px al hacer meet del SVG
-  let dimFont = span * 0.024;
-  dimFont = Math.min(0.5, Math.max(0.19, dimFont));
-  const m = dimFont / base;
-  return {
-    dimFont,
-    m,
-    tickLen: 0.075 * m,
-    strokeExt: 0.022 * m,
-    strokeMain: 0.032 * m,
-    strokeTick: 0.035 * m,
-    encFont: Math.min(0.42, Math.max(0.15, dimFont * 0.9)),
-    encStroke: 0.028 * m,
-    dimStackBottom: 0.24 * m,
-    dimStackTop: 0.24 * m,
-    dimStackStep: 0.14 * m,
-    sideOffset: 0.42 * m,
-    sideStep: 0.14 * m,
-    encOffX: 0.22 * m,
-    encOffY: 0.2 * m,
-  };
-}
-
-function fmtArchMeters(m) {
-  if (!Number.isFinite(m)) return "—";
-  if (Math.abs(m - Math.round(m)) < 1e-6) return `${Math.round(m)}`;
-  const s = `${+m.toFixed(2)}`;
-  return s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
-}
-
-/** Cota horizontal (estilo arquitectura): debajo del borde inferior del rectángulo. */
-function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
-  const w = widthM;
-  const tick = svgTy.tickLen;
-  const label = `${fmtArchMeters(w)} m`;
-  return (
-    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line
-        x1={x0}
-        y1={yBottom}
-        x2={x0}
-        y2={yDimLine}
-        strokeWidth={svgTy.strokeExt}
-        opacity={ARCH_EXT_OPACITY}
-      />
-      <line
-        x1={x0 + w}
-        y1={yBottom}
-        x2={x0 + w}
-        y2={yDimLine}
-        strokeWidth={svgTy.strokeExt}
-        opacity={ARCH_EXT_OPACITY}
-      />
-      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeMain} />
-      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
-      <line
-        x1={x0 + w}
-        y1={yDimLine - tick / 2}
-        x2={x0 + w}
-        y2={yDimLine + tick / 2}
-        strokeWidth={svgTy.strokeTick}
-      />
-      <text
-        x={x0 + w / 2}
-        y={yDimLine + svgTy.dimFont * 1.05}
-        textAnchor="middle"
-        fontSize={svgTy.dimFont}
-        fontWeight={700}
-        fontFamily={FONT}
-        stroke="none"
-      >
-        {label}
-      </text>
-    </g>
-  );
-}
-
-/** Cota horizontal sobre el borde superior (yEdge = arista del techo; yDimLine más arriba). */
-function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
-  const w = widthM;
-  const tick = svgTy.tickLen;
-  const label = `${fmtArchMeters(w)} m`;
-  return (
-    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line x1={x0} y1={yEdge} x2={x0} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
-      <line x1={x0 + w} y1={yEdge} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
-      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeMain} />
-      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
-      <line x1={x0 + w} y1={yDimLine - tick / 2} x2={x0 + w} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
-      <text
-        x={x0 + w / 2}
-        y={yDimLine - svgTy.dimFont * 0.35}
-        textAnchor="middle"
-        fontSize={svgTy.dimFont}
-        fontWeight={700}
-        fontFamily={FONT}
-        stroke="none"
-      >
-        {label}
-      </text>
-    </g>
-  );
-}
-
-/** Cota vertical a la derecha del borde (xRef = arista exterior; xDim más afuera). */
-function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
-  const tick = svgTy.tickLen;
-  const ym = (y1 + y2) / 2;
-  const label = `${fmtArchMeters(spanM)} m`;
-  const tx = xDim + svgTy.dimFont * 0.85;
-  return (
-    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={svgTy.strokeMain} />
-      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={svgTy.strokeTick} />
-      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={svgTy.strokeTick} />
-      <text
-        x={tx}
-        y={ym}
-        textAnchor="middle"
-        fontSize={svgTy.dimFont * 0.95}
-        fontWeight={700}
-        fontFamily={FONT}
-        stroke="none"
-        transform={`rotate(-90 ${tx} ${ym})`}
-      >
-        {label}
-      </text>
-    </g>
-  );
-}
-
-/** Cota vertical entre y1 e y2 (y1 < y2), línea de cota a la izquierda de xRef. */
-function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
-  const tick = svgTy.tickLen;
-  const ym = (y1 + y2) / 2;
-  const label = `${fmtArchMeters(spanM)} m`;
-  const tx = xDim - svgTy.dimFont * 0.85;
-  return (
-    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={svgTy.strokeMain} />
-      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={svgTy.strokeTick} />
-      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={svgTy.strokeTick} />
-      <text
-        x={tx}
-        y={ym}
-        textAnchor="middle"
-        fontSize={svgTy.dimFont * 0.95}
-        fontWeight={700}
-        fontFamily={FONT}
-        stroke="none"
-        transform={`rotate(-90 ${tx} ${ym})`}
-      >
-        {label}
-      </text>
-    </g>
-  );
-}
-
 /**
  * Posición Y de una fila de fijación en planta: filas **perimetrales** (1.ª y última) se desplazan **hacia adentro**
  * del rectángulo del techo (~30 cm desde el borde), no sobre la línea azul del perímetro.
@@ -357,6 +168,45 @@ function yForFijacionRowPlanta(r, rows, ri) {
   const insetNominalM = 0.3;
   const yInset = Math.min(insetNominalM, Math.max(0.04, r.h * 0.5 - 0.02));
   return ri === 0 ? base + yInset : base - yInset;
+}
+
+/**
+ * Dos fijaciones en **un panel** [xL, xR] (bordes = juntas verticales): **nunca** sobre la junta.
+ * Preferencia: **tercios** (misma distancia al borde izq., entre puntos y borde der.) — alineado a “equidistantes”.
+ * Paneles angostos: par simétrico con margen mínimo a juntas y separación mínima entre puntos.
+ */
+function xPairFijacionPerimeterInPanel(xL, xR, insetNominalM = 0.3) {
+  const w = xR - xL;
+  if (!(w > 1e-9)) {
+    const x = (xL + xR) / 2;
+    return { xa: x, xb: x };
+  }
+  const minBetween = Math.max(0.045, w * 0.07);
+  const minFromJoint = Math.min(insetNominalM, Math.max(0.04, w * 0.11));
+  const third = w / 3;
+  if (third >= minFromJoint && third >= minBetween) {
+    return { xa: xL + third, xb: xL + 2 * third };
+  }
+  const innerL = xL + minFromJoint;
+  const innerR = xR - minFromJoint;
+  const innerW = innerR - innerL;
+  if (innerW >= minBetween) {
+    const mid = (innerL + innerR) / 2;
+    const half = Math.min(innerW * 0.42, Math.max(minBetween / 2, innerW / 3));
+    let xa = mid - half;
+    let xb = mid + half;
+    if (xb - xa < minBetween) {
+      const pad = (minBetween - (xb - xa)) / 2;
+      xa -= pad;
+      xb += pad;
+      xa = Math.max(innerL, Math.min(xa, xb - minBetween));
+      xb = Math.min(innerR, Math.max(xb, xa + minBetween));
+    }
+    return { xa, xb };
+  }
+  const mid = (xL + xR) / 2;
+  const eps = Math.max(0.02, w * 0.08);
+  return { xa: mid - eps, xb: mid + eps };
 }
 
 /** Reparto de puntos de fijación por filas alineadas a ejes de apoyo (modo legado: reparte P en N filas). */
@@ -392,9 +242,10 @@ function fijacionDotsLayoutDistributeTotal(r, hints) {
 }
 
 /**
- * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel (~30 cm del borde del panel en X);
- * esas filas se desplazan **~30 cm hacia adentro** del borde del techo en Y (no sobre la línea azul del perímetro).
- * En **intermedios**, **1** punto centrado en cada panel.
+ * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel en **tercios** del ancho del panel
+ * (equidistantes respecto de juntas y entre sí; nunca sobre juntas verticales ni bordes del panel).
+ * Filas perimetrales en Y: **~30 cm hacia adentro** del borde del techo (no sobre la línea azul del perímetro).
+ * En **intermedios**, **1** punto centrado en cada panel (lejos de juntas).
  */
 function fijacionDotsLayoutIsodecGrid(r, hints) {
   const cantP = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
@@ -413,15 +264,7 @@ function fijacionDotsLayoutIsodecGrid(r, hints) {
       const xL = r.x + pi * panelW;
       const xR = r.x + (pi + 1) * panelW;
       if (isPerimeter) {
-        const inset = Math.min(insetNominal, Math.max(0.05, panelW * 0.14));
-        let xa = xL + inset;
-        let xb = xR - inset;
-        if (xb - xa < Math.max(0.04, panelW * 0.12)) {
-          const mid = (xL + xR) / 2;
-          const half = Math.max(0.02, Math.min(panelW * 0.35, 0.12));
-          xa = mid - half;
-          xb = mid + half;
-        }
+        const { xa, xb } = xPairFijacionPerimeterInPanel(xL, xR, insetNominal);
         out.push({ cx: xa, cy: yy, key: key++ });
         out.push({ cx: xb, cy: yy, key: key++ });
       } else {
@@ -450,107 +293,6 @@ function obstacleRectsOverlap(a, b, gap = 0) {
     a.maxY + gap <= b.minY ||
     a.minY - gap >= b.maxY
   );
-}
-
-/** Rectángulos aproximados de cotas globales + textos de encuentro (mismas reglas que `EstructuraGlobalExteriorOverlay`). */
-function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
-  if (!exterior?.length && !(encounters?.length > 0)) return [];
-  const pad = Math.max(svgTy.dimFont * 0.32, svgTy.tickLen * 0.45);
-  const bump = () => {
-    const m = new Map();
-    return (k) => {
-      const n = m.get(k) || 0;
-      m.set(k, n + 1);
-      return n;
-    };
-  };
-  const nextBottom = bump();
-  const nextTop = bump();
-  const nextLeft = bump();
-  const nextRight = bump();
-
-  const out = [];
-
-  const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
-  for (const s of bottoms) {
-    const idx = nextBottom(+s.y1.toFixed(3));
-    const yDimLine = s.y1 + svgTy.dimStackBottom + idx * svgTy.dimStackStep;
-    const x0 = s.x1;
-    const w = s.length;
-    const yText = yDimLine + svgTy.dimFont * 1.05;
-    out.push({
-      minX: Math.min(x0, x0 + w) - pad,
-      maxX: Math.max(x0, x0 + w) + pad,
-      minY: Math.min(s.y1, yDimLine) - svgTy.tickLen - pad,
-      maxY: yText + svgTy.dimFont * 0.8 + pad,
-    });
-  }
-
-  const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
-  for (const s of tops) {
-    const idx = nextTop(+s.y1.toFixed(3));
-    const yDimLine = s.y1 - svgTy.dimStackTop - idx * svgTy.dimStackStep;
-    const yText = yDimLine - svgTy.dimFont * 0.35;
-    const x0 = s.x1;
-    const w = s.length;
-    out.push({
-      minX: Math.min(x0, x0 + w) - pad,
-      maxX: Math.max(x0, x0 + w) + pad,
-      minY: yText - svgTy.dimFont * 0.95 - pad,
-      maxY: Math.max(s.y1, yDimLine) + svgTy.tickLen + pad,
-    });
-  }
-
-  const lefts = exterior.filter((s) => s.side === "left").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-  for (const s of lefts) {
-    const idx = nextLeft(+s.x1.toFixed(3));
-    const xDim = s.x1 - svgTy.sideOffset - idx * svgTy.sideStep;
-    const tx = xDim - svgTy.dimFont * 0.85;
-    const y1 = Math.min(s.y1, s.y2);
-    const y2 = Math.max(s.y1, s.y2);
-    out.push({
-      minX: Math.min(tx, xDim, s.x1) - svgTy.dimFont * 1.35,
-      maxX: s.x1 + svgTy.tickLen * 2 + pad,
-      minY: y1 - svgTy.dimFont * 1.4,
-      maxY: y2 + svgTy.dimFont * 1.4,
-    });
-  }
-
-  const rights = exterior.filter((s) => s.side === "right").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-  for (const s of rights) {
-    const idx = nextRight(+s.x1.toFixed(3));
-    const xDim = s.x1 + svgTy.sideOffset + idx * svgTy.sideStep;
-    const tx = xDim + svgTy.dimFont * 0.85;
-    const y1 = Math.min(s.y1, s.y2);
-    const y2 = Math.max(s.y1, s.y2);
-    out.push({
-      minX: s.x1 - svgTy.tickLen * 2 - pad,
-      maxX: Math.max(tx, xDim, s.x1) + svgTy.dimFont * 1.35,
-      minY: y1 - svgTy.dimFont * 1.4,
-      maxY: y2 + svgTy.dimFont * 1.4,
-    });
-  }
-
-  const encList = encounters ?? [];
-  for (let i = 0; i < encList.length; i++) {
-    const enc = encList[i];
-    const mx = (enc.x1 + enc.x2) / 2;
-    const my = (enc.y1 + enc.y2) / 2;
-    const isVert = enc.orientation === "vertical";
-    const tx = isVert ? mx + svgTy.encOffX : mx;
-    const ty = isVert ? my : my - svgTy.encOffY;
-    const label = `${fmtArchMeters(enc.length)} m`;
-    const ew = Math.max(svgTy.encFont * 1.15, label.length * svgTy.encFont * 0.52);
-    const eh = svgTy.encFont * 1.4;
-    out.push({
-      minX: tx - ew / 2 - pad * 0.45,
-      maxX: tx + ew / 2 + pad * 0.45,
-      minY: ty - eh,
-      maxY: ty + pad,
-    });
-  }
-
-  return out;
 }
 
 function chipClearOfObstacles(chipX, chipY, chipW, chipH, obstacles, gap) {
@@ -667,125 +409,107 @@ function pickEstructuraChipPlacement(r, chipW, chipH, zm, cotaObstacles, viewBou
   return { chipX: xTop, chipY: yTop };
 }
 
-/**
- * Cotas en **aristas exteriores expuestas** (tras restar encuentros) + longitud registrada en cada encuentro.
- * Las líneas quedan **afuera** del rectángulo de techo (sin solapar el relleno del panel).
- */
-function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [], svgTy }) {
-  const bump = () => {
-    const m = new Map();
-    return (k) => {
-      const n = m.get(k) || 0;
-      m.set(k, n + 1);
-      return n;
-    };
-  };
-  const nextBottom = bump();
-  const nextTop = bump();
-  const nextLeft = bump();
-  const nextRight = bump();
-
-  const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
-  const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
-  const lefts = exterior.filter((s) => s.side === "left").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-  const rights = exterior.filter((s) => s.side === "right").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-
-  const encLabels = encounters.map((enc, i) => {
-    const mx = (enc.x1 + enc.x2) / 2;
-    const my = (enc.y1 + enc.y2) / 2;
-    const len = enc.length;
-    const isVert = enc.orientation === "vertical";
-    const tx = isVert ? mx + svgTy.encOffX : mx;
-    const tyPos = isVert ? my : my - svgTy.encOffY;
-    return (
-      <g key={`enc-len-${enc.id || i}`} pointerEvents="none">
-        <text
-          x={tx}
-          y={tyPos}
-          textAnchor="middle"
-          fontSize={svgTy.encFont}
-          fontWeight={800}
-          fontFamily={FONT}
-          fill="#0f172a"
-          stroke="#ffffff"
-          strokeWidth={svgTy.encStroke}
-          paintOrder="stroke"
-        >
-          {`${fmtArchMeters(len)} m`}
-        </text>
-      </g>
-    );
-  });
-
-  return (
-    <g data-bmc-layer="estructura-global-cotas">
-      {bottoms.map((s) => {
-        const idx = nextBottom(+s.y1.toFixed(3));
-        return (
-          <ArchDimHorizontal
-            key={s.id}
-            x0={s.x1}
-            yBottom={s.y1}
-            widthM={s.length}
-            yDimLine={s.y1 + svgTy.dimStackBottom + idx * svgTy.dimStackStep}
-            svgTy={svgTy}
-          />
-        );
-      })}
-      {tops.map((s) => {
-        const idx = nextTop(+s.y1.toFixed(3));
-        return (
-          <ArchDimHorizontalTop
-            key={s.id}
-            x0={s.x1}
-            yEdge={s.y1}
-            widthM={s.length}
-            yDimLine={s.y1 - svgTy.dimStackTop - idx * svgTy.dimStackStep}
-            svgTy={svgTy}
-          />
-        );
-      })}
-      {lefts.map((s) => {
-        const idx = nextLeft(+s.x1.toFixed(3));
-        const xDim = s.x1 - svgTy.sideOffset - idx * svgTy.sideStep;
-        return (
-          <ArchDimVerticalSegment
-            key={s.id}
-            xRef={s.x1}
-            xDim={xDim}
-            y1={s.y1}
-            y2={s.y2}
-            spanM={s.length}
-            svgTy={svgTy}
-          />
-        );
-      })}
-      {rights.map((s) => {
-        const idx = nextRight(+s.x1.toFixed(3));
-        const xDim = s.x1 + svgTy.sideOffset + idx * svgTy.sideStep;
-        return (
-          <ArchDimVerticalSegmentRight
-            key={s.id}
-            xRef={s.x1}
-            xDim={xDim}
-            y1={s.y1}
-            y2={s.y2}
-            spanM={s.length}
-            svgTy={svgTy}
-          />
-        );
-      })}
-      {encLabels}
-    </g>
+/** Popover fijo al viewport: productos de fijación que entran al presupuesto (BOM). */
+function FijacionBomHoverPopover({ anchor, onMouseEnter, onMouseLeave, zonaLabel, sysLabel, gridExpl, productLines }) {
+  if (!anchor) return null;
+  const rawLeft = anchor.left;
+  const rawTop = anchor.top;
+  const estW = 292;
+  const estH = 248;
+  let left = rawLeft;
+  let top = rawTop;
+  if (typeof window !== "undefined") {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
+    if (left + estW > vw - pad) left = Math.max(pad, vw - estW - pad);
+    if (top + estH > vh - pad) top = Math.max(pad, vh - estH - pad);
+    left = Math.max(pad, left);
+    top = Math.max(pad, top);
+  }
+  const lines = Array.isArray(productLines) ? productLines.filter(Boolean) : [];
+  const body = (
+    <div
+      role="tooltip"
+      style={{
+        position: "fixed",
+        left,
+        top,
+        zIndex: 10060,
+        maxWidth: 288,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "rgba(255,255,255,0.98)",
+        border: "1px solid #c4b5fd",
+        boxShadow: "0 10px 28px rgba(15,23,42,0.14)",
+        fontFamily: FONT,
+        fontSize: 12,
+        lineHeight: 1.45,
+        color: C.tp,
+        pointerEvents: "auto",
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <div style={{ fontWeight: 700, color: "#5b21b6", marginBottom: 6 }}>Fijación — {zonaLabel}</div>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#334155" }}>{sysLabel}</div>
+      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 10 }}>{gridExpl}</div>
+      <div style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", color: "#64748b", marginBottom: 6 }}>
+        Incluye en la cotización
+      </div>
+      {lines.length ? (
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          {lines.map((t, i) => (
+            <li key={i} style={{ marginBottom: 4 }}>
+              {t}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div style={{ fontSize: 11, color: "#94a3b8" }}>Sin líneas de fijación en el BOM para esta zona.</div>
+      )}
+    </div>
   );
+  return typeof document !== "undefined" ? createPortal(body, document.body) : null;
 }
 
 /**
- * Paso Estructura: apoyos (líneas violetas), chip fuera del techo, puntos de fijación (tooltip BOM).
+ * Paso Estructura: apoyos (líneas violetas), chip fuera del techo, puntos de fijación (hover → BOM).
  * Las cotas rojas globales van en `EstructuraGlobalExteriorOverlay` (perímetro libre + encuentros).
  */
 function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds = null }) {
+  const [fijPopAnchor, setFijPopAnchor] = useState(null);
+  const hidePopTimer = useRef(null);
+
+  const clearHideTimer = useCallback(() => {
+    if (hidePopTimer.current != null) {
+      window.clearTimeout(hidePopTimer.current);
+      hidePopTimer.current = null;
+    }
+  }, []);
+
+  const scheduleHidePopover = useCallback(() => {
+    clearHideTimer();
+    hidePopTimer.current = window.setTimeout(() => {
+      setFijPopAnchor(null);
+      hidePopTimer.current = null;
+    }, 120);
+  }, [clearHideTimer]);
+
+  const showPopoverAt = useCallback(
+    (e) => {
+      clearHideTimer();
+      const x = e.clientX + 12;
+      const y = e.clientY + 12;
+      setFijPopAnchor({ left: x, top: y });
+    },
+    [clearHideTimer],
+  );
+
+  useEffect(() => () => clearHideTimer(), [clearHideTimer]);
+
   if (!hints) return null;
+
   const nAp = hints.apoyos;
   const zm = svgTy?.m ?? 1;
   const supportLines = [];
@@ -837,18 +561,17 @@ function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds
     hints.fijacionSistema === "caballete"
       ? "Sistema caballete / tornillo aguja (presupuesto)"
       : "Sistema varilla/tuerca (presupuesto)";
-  const lines = hints.fijacionProductLines?.length
-    ? hints.fijacionProductLines.join("\n")
-    : "Sin líneas de fijación en el BOM para esta zona.";
   const totalFij = Math.round(Number(hints.puntosFijacion) || 0);
   const grillaFij = Math.round(Number(hints.puntosFijacionGrilla ?? hints.puntosFijacion) || 0);
   const gridExpl =
     hints.fijacionDotsMode === "isodec_grid"
-      ? `Puntos dibujados: ${dotPts.length} en líneas de apoyo (2/panel en perímetro, 1/panel en intermedios). Total presupuesto: ${totalFij} (incluye refuerzos según largo si aplica; grilla base ${grillaFij}).`
+      ? `Puntos dibujados: ${dotPts.length} en líneas de apoyo (2/panel en perímetro en tercios del ancho de cada panel, 1/panel centrado en intermedios). Total presupuesto: ${totalFij} (incluye refuerzos según largo si aplica; grilla base ${grillaFij}).`
       : `Cada punto ≈ 1 unidad del cómputo (${totalFij} total).`;
-  const dotTitle = `${sysLabel}\n${gridExpl}\n\n${lines}`;
+  const dotR = 0.032 * zm;
+  const hitR = Math.max(0.048 * zm, dotR * 2.35);
 
   return (
+    <>
     <g data-bmc-layer="estructura-overlay">
       <g pointerEvents="none">{supportLines}</g>
       <g pointerEvents="none">
@@ -893,19 +616,37 @@ function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds
             <circle
               cx={d.cx}
               cy={d.cy}
-              r={0.052 * zm}
-              fill="#0f172a"
-              stroke="#ffffff"
-              strokeWidth={0.024 * zm}
-              opacity={0.92}
-              style={{ cursor: "help" }}
-            >
-              <title>{dotTitle}</title>
-            </circle>
+              r={hitR}
+              fill="transparent"
+              style={{ cursor: "pointer" }}
+              onMouseEnter={showPopoverAt}
+              onMouseLeave={scheduleHidePopover}
+              aria-label="Ver productos de fijación incluidos en la cotización"
+            />
+            <circle
+              cx={d.cx}
+              cy={d.cy}
+              r={dotR}
+              fill="#1e293b"
+              stroke="#f8fafc"
+              strokeWidth={0.012 * zm}
+              opacity={0.9}
+              pointerEvents="none"
+            />
           </g>
         ))}
       </g>
     </g>
+    <FijacionBomHoverPopover
+      anchor={fijPopAnchor}
+      onMouseEnter={clearHideTimer}
+      onMouseLeave={scheduleHidePopover}
+      zonaLabel={`Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`}
+      sysLabel={sysLabel}
+      gridExpl={gridExpl}
+      productLines={hints.fijacionProductLines}
+    />
+    </>
   );
 }
 
@@ -1546,7 +1287,7 @@ export default function RoofPreview({
           {estructuraHintsByGi != null ? (
             <>
               <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
-              cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = puntos de fijación (mismo criterio que el presupuesto).
+              cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
             </>
           ) : (
             <>

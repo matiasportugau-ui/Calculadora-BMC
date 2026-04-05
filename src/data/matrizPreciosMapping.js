@@ -124,6 +124,8 @@ export const MATRIZ_SKU_TO_PATH = {
   T2FACH: "FIJACIONES.tornillo_t2",
   TAGU14X5: "FIJACIONES.tornillo_aguja",
   ANC100MM: "FIJACIONES.anclaje_h",
+  /** Arandela plana 3/8" — fijación varilla pasante (lado inferior). Confirmar col D en MATRIZ si difiere. */
+  ARPLA38: "FIJACIONES.arandela_plana",
 
   // Herramientas
   APLDX03: "HERRAMIENTAS.pistola_apl_dx03",

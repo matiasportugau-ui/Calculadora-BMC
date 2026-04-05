@@ -80,7 +80,7 @@ varillas       = ceil(puntos / 4)      — 1 varilla de 1m rinde 4 fijaciones
 | Hormigón | puntos × 1 | puntos |
 | Mixto | (pMetal × 2) + (pH × 1) | pH |
 
-Items generados: varilla 3/8", tuerca 3/8", taco expansivo (si H°), arandela carrocero, tortuga PVC.
+Items generados: varilla 3/8", tuerca 3/8", taco expansivo (si H°), arandela carrocero, arandela plana (lado inferior, por punto metal o madera; no en solo hormigón), tortuga PVC.
 
 ### 4. `calcFijacionesCaballete(cantP, largo)`
 

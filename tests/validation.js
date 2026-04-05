@@ -13,6 +13,7 @@ import {
   calcPerfileriaTechoComercial,
   calcFijacionesVarilla,
   countPuntosFijacionVarillaGrilla,
+  countVarillasRoscadasDesdeBarras1m,
 } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
@@ -213,18 +214,22 @@ assert("Apoyos needed = 3", apoyos === 3, apoyos, 3);
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 4: Fijaciones Techo ═══");
 
-const cantP = 5, apoyosT = 3, largoT = 6.5;
-const puntosFij = Math.ceil(((cantP * apoyosT) * 2) + (largoT * 2 / 2.5));
-assert("Puntos fijación = 36", puntosFij === 36, puntosFij, 36);
+const cantP = 5,
+  apoyosT = 3,
+  largoT = 6.5;
+const grillaSuite4 = countPuntosFijacionVarillaGrilla(cantP, apoyosT);
+const puntosFij = Math.ceil(grillaSuite4 + (largoT * 2 / 2.5));
+assert("Puntos fijación (grilla+perím) = 31", puntosFij === 31, puntosFij, 31);
 
-const varillas = Math.ceil(puntosFij / 4);
-assert("Varillas = 9", varillas === 9, varillas, 9);
+const tramoVar100Metal = 0.1 + 0.1;
+const varillas = countVarillasRoscadasDesdeBarras1m(puntosFij, tramoVar100Metal, 1);
+assert("Varillas 1 m (corte 0,20 m) = 7", varillas === 7, varillas, 7);
 
 const tuercas_metal = puntosFij * 2;
-assert("Tuercas metal = 72", tuercas_metal === 72, tuercas_metal, 72);
+assert("Tuercas metal = 62 (31 pts × 2)", tuercas_metal === 62, tuercas_metal, 62);
 
 const tuercas_horm = puntosFij * 1;
-assert("Tuercas hormigón = 36", tuercas_horm === 36, tuercas_horm, 36);
+assert("Tuercas hormigón = 31", tuercas_horm === 31, tuercas_horm, 31);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 5: Fijaciones Pared (NUEVO sistema v3)
@@ -967,7 +972,7 @@ assert(
 
 // 24.7 calcFijacionesVarilla with overridePuntosFijacion
 {
-  const r = calcFijacionesVarilla(10, 2, 20, "metal", 0, 0, 0, { overridePuntosFijacion: 50 });
+  const r = calcFijacionesVarilla(10, 2, 20, "metal", 0, 0, 0, { overridePuntosFijacion: 50, espesorMm: 100 });
   assert(
     "calcFijacionesVarilla overridePuntosFijacion=50 → puntosFijacion===50",
     r?.puntosFijacion === 50,
@@ -979,6 +984,42 @@ assert(
     r?.items?.length > 0,
     r?.items?.length,
     ">0",
+  );
+  const vItem = r?.items?.find((it) => it.sku === "varilla_38");
+  assert(
+    "calcFijacionesVarilla 50 pts, 100 mm metal → varillas=10 (5 tramos/barra 1 m)",
+    vItem && vItem.cant === 10,
+    vItem?.cant,
+    10,
+  );
+  const plItem = r?.items?.find((it) => it.sku === "arandela_plana");
+  assert(
+    "calcFijacionesVarilla metal → arandela_plana cant = puntosFijacion",
+    plItem && plItem.cant === 50,
+    plItem?.cant,
+    50,
+  );
+}
+
+// 24.7a arandela plana: no en solo hormigón
+{
+  const r = calcFijacionesVarilla(10, 2, 20, "hormigon", 0, 0, 0, { espesorMm: 100 });
+  assert(
+    "calcFijacionesVarilla hormigón → sin línea arandela_plana",
+    !r?.items?.some((it) => it.sku === "arandela_plana"),
+    r?.items?.some((it) => it.sku === "arandela_plana"),
+    false,
+  );
+}
+
+{
+  const r = calcFijacionesVarilla(10, 2, 20, "madera", 0, 0, 0, { overridePuntosFijacion: 30, espesorMm: 100 });
+  const pl = r?.items?.find((it) => it.sku === "arandela_plana");
+  assert(
+    "calcFijacionesVarilla madera → arandela_plana cant = puntos",
+    pl && pl.cant === 30,
+    pl?.cant,
+    30,
   );
 }
 
@@ -996,7 +1037,7 @@ assert(
   50,
 );
 {
-  const r = calcFijacionesVarilla(10, 3, 20, "metal", 0, 0, 0);
+  const r = calcFijacionesVarilla(10, 3, 20, "metal", 0, 0, 0, { espesorMm: 100 });
   assert(
     "calcFijacionesVarilla default grilla 10×3 apoyos → puntosFijacionGrilla===50",
     r?.puntosFijacionGrilla === 50,
@@ -1009,7 +1050,33 @@ assert(
     r?.puntosFijacion,
     66,
   );
+  const vItem = r?.items?.find((it) => it.sku === "varilla_38");
+  assert(
+    "calcFijacionesVarilla 66 pts, 100 mm metal → varillas=14 (ceil(66/5))",
+    vItem && vItem.cant === 14,
+    vItem?.cant,
+    14,
+  );
 }
+
+assert(
+  "countVarillasRoscadasDesdeBarras1m: 10×0,20 m → 2 barras",
+  countVarillasRoscadasDesdeBarras1m(10, 0.2, 1) === 2,
+  countVarillasRoscadasDesdeBarras1m(10, 0.2, 1),
+  2,
+);
+assert(
+  "countVarillasRoscadasDesdeBarras1m: 11×0,20 m → 3 barras",
+  countVarillasRoscadasDesdeBarras1m(11, 0.2, 1) === 3,
+  countVarillasRoscadasDesdeBarras1m(11, 0.2, 1),
+  3,
+);
+assert(
+  "countVarillasRoscadasDesdeBarras1m: tramo > 1 m → barras por punto",
+  countVarillasRoscadasDesdeBarras1m(3, 1.2, 1) === 6,
+  countVarillasRoscadasDesdeBarras1m(3, 1.2, 1),
+  6,
+);
 
 // 24.8 ISOROOF_COLONIAL cumbrera in PERFIL_TECHO
 assert(

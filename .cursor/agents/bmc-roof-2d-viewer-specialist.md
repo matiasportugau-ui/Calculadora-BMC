@@ -16,6 +16,10 @@ You are the **2D roof/structure viewer specialist** for **Calculadora BMC** (Rea
 | Concern | Primary files |
 |--------|----------------|
 | SVG viewer, drag, rejilla, overlays Estructura | `src/components/RoofPreview.jsx` |
+| Overlay cotas globales (`EstructuraGlobalExteriorOverlay`) | `src/components/roofPlan/RoofPlanDimensions.jsx` |
+| `svgTy`, `fmtArchMeters` | `src/utils/roofPlanSvgTypography.js` |
+| AABB cotas para chips (`buildEstructuraCotaObstacleRects`) | `src/utils/roofPlanCotaObstacles.js` |
+| Colores / capa cotas (tema dibujo, futuro alto contraste) | `src/utils/roofPlanDrawingTheme.js` |
 | Planta: rects, `planEdges`, exterior + encuentros | `src/utils/roofPlanGeometry.js`, `src/utils/roofEncounterModel.js`, `src/utils/roofLateralAnnexLayout.js` |
 | `viewBox`, slack, shared layout | `src/hooks/useRoofPreviewPlanLayout.js` |
 | Paneles en planta (tiras, conteos) | `src/utils/roofPanelStripsPlanta.js` |

@@ -748,7 +748,7 @@ router.get("/informe", (req, res) => {
       paneles_techo: "cantPaneles = ceil(ancho / ancho_util). area = cantPaneles × largo × ancho_util. costo = area × precio_m2.",
       autoportancia: "apoyos = ceil(largo / autoportancia_m) + 1. Si largo > autoportancia_m → requiere estructura adicional.",
       fijaciones_varilla:
-        "grilla = cantP × (apoyos + 2) con apoyos≥2 (2 fij/panel en 1.ª y última línea de apoyo, 1 fij/panel en intermedias; apoyos=1 → 2×cantP). puntosFijacion = ceil(grilla + (largo × 2 / espPerim)). varillas = ceil(puntos / 4).",
+        "grilla = cantP × (apoyos + 2) con apoyos≥2 (2 fij/panel en 1.ª y última línea de apoyo, 1 fij/panel en intermedias; apoyos=1 → 2×cantP). puntosFijacion = ceil(grilla + (largo × 2 / espPerim)). Varillas 1 m: tramo = espesor(mm)/1000 + 0,10 m (metal/hormigón) o + 0,05 m (madera); tramos por barra = floor(1/tramo); barras = ceil(puntos/tramos_por_barra) sin reusar recortes < tramo. Fallback sin espesor: ceil(puntos/4). BOM: arandela plana 3/8\" = puntos metal + puntos madera (anclaje pasante, lado inferior); no en solo hormigón.",
       fijaciones_caballete: "Para ISOROOF. caballetes = ceil((cantP × 3 × (largo / 2.9 + 1)) + ((largo × 2) / 0.3)).",
       perfileria: "barras = ceil(dimension / largo_barra). Tornillo T1: 1 por cada 0.30m lineal de perfilería.",
       selladores_techo: "siliconas = ceil(cantP × 0.5). cintas_butilo = ceil(cantP / 10).",

@@ -16,9 +16,12 @@ export function getDimensioningParam(path, defaultValue) {
 
 /** Schema base: factores de fórmula (no dependen de paneles) */
 const FORMULA_FACTORS = [
-  { path: "FIJACIONES_VARILLA.espaciado_perimetro", label: "Espaciado perímetro fijación varilla (m)", default: 2.5, formula: "puntos = (cantP*apoyos)*2 + (largo*2/valor)", unidad: "m", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.espaciado_perimetro", label: "Espaciado perímetro fijación varilla (m)", default: 2.5, formula: "puntos = grilla + (largo*2/valor); grilla = cantP×(apoyos+2) (apoyos≥2)", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_VARILLA.puntos_comercial_default", label: "Puntos fijación (BOM comercial ISODEC PIR)", default: 22, formula: "override cuando opciones.bomComercial", unidad: "unid", categoria: "Fijaciones Techo" },
-  { path: "FIJACIONES_VARILLA.varillas_por_punto", label: "Varillas por punto de fijación", default: 4, formula: "varillas = ceil(puntos/valor)", unidad: "unid", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.largo_comercial_m", label: "Largo barra varilla roscada comercial (m)", default: 1, formula: "barras = ceil(puntos / floor(valor / tramo_m)); tramo = espesor_m + extra sustrato", unidad: "m", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", label: "Rosca útil extra metal/hormigón (m)", default: 0.1, formula: "tramo varilla = espesor panel (m) + valor (Isodec varilla/tuerca)", unidad: "m", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.rosca_extra_madera_m", label: "Rosca útil extra madera (m)", default: 0.05, formula: "tramo varilla = espesor panel (m) + valor (combinada/madera)", unidad: "m", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.varillas_por_punto", label: "Varillas por punto (fallback sin espesor_mm)", default: 4, formula: "solo si opts.espesorMm ausente: varillas = ceil(puntos/valor)", unidad: "unid", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_CABALETE.factor_largo", label: "Factor largo caballete (m)", default: 2.9, formula: "caballetes por tramo = largo/valor + 1", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_CABALETE.factor_ancho", label: "Factor ancho caballete (m)", default: 0.3, formula: "caballetes perim = (largo*2)/valor", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "PERFILERIA.espaciado_fijacion_ml", label: "Espaciado fijación perfilería (m/ml)", default: 0.30, formula: "fijPerf = ceil(totalML/valor)", unidad: "m", categoria: "Perfilería" },
