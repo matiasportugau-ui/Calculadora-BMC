@@ -3000,6 +3000,7 @@ export default function PanelinCalculadoraV3() {
         embedMetricsSidebar={embedMetrics}
         selectedZonaGi={embedMetrics ? undefined : estructuraMetricsSelectedGi}
         onSelectedZonaGiChange={embedMetrics ? undefined : setEstructuraMetricsSelectedGi}
+        denseChrome
       />
     );
   }, [

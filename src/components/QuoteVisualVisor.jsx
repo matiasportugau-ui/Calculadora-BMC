@@ -214,6 +214,11 @@ export default function QuoteVisualVisor({
         boxShadow: SHC,
         marginBottom: 16,
         overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        ...(stepId === "estructura" && roof2DPreview
+          ? { minHeight: "min(90dvh, 1180px)" }
+          : {}),
       }}
     >
       <button
@@ -245,6 +250,10 @@ export default function QuoteVisualVisor({
             paddingLeft: 16,
             paddingRight: 16,
             marginBottom: 16,
+            display: "flex",
+            flexDirection: "column",
+            flex: stepId === "estructura" ? 1 : undefined,
+            minHeight: stepId === "estructura" ? 0 : undefined,
           }}
         >
           <div
@@ -255,6 +264,7 @@ export default function QuoteVisualVisor({
               marginBottom: 8,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
+              flexShrink: 0,
             }}
           >
             Vista previa del techo (2D)
@@ -266,12 +276,30 @@ export default function QuoteVisualVisor({
               background: "#fff",
               minWidth: 0,
               overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              flex: stepId === "estructura" ? 1 : undefined,
+              minHeight: stepId === "estructura" ? 0 : undefined,
               ...(stepId === "estructura"
-                ? { minHeight: "clamp(380px, 58vh, 880px)" }
-                : {}),
+                ? {
+                    minHeight: "clamp(420px, calc(100dvh - 200px), min(1200px, 96dvh))",
+                    maxHeight: "min(96dvh, 1200px)",
+                  }
+                : {
+                    minHeight: "clamp(300px, min(52dvh, 560px), 640px)",
+                  }),
             }}
           >
-            {roof2DPreview}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {roof2DPreview}
+            </div>
           </div>
         </div>
       ) : null}

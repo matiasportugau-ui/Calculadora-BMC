@@ -1,8 +1,16 @@
 import { useMemo } from "react";
 import { buildRoofPlanEdges } from "../utils/roofPlanGeometry.js";
 
-/** Igual que `RoofPreview.jsx`: margen alrededor del layout en fila. */
-const VIEWBOX_SLACK_M = 2.8;
+/**
+ * Margen alrededor del bounding box del layout (metros).
+ * Antes era fijo 2.8 m por lado → en techos chicos el dibujo ocupaba ~25–35 % del viewBox.
+ * Ahora escala con el tamaño del plano (≈5.2 % del mayor lado), acotado para drag/snap cómodos.
+ */
+function viewBoxSlackMeters(spanM) {
+  const s = Number(spanM);
+  if (!Number.isFinite(s) || s <= 0) return 0.85;
+  return Math.min(1.85, Math.max(0.22, s * 0.052));
+}
 
 /**
  * Planta 2D + `planEdges` compartidos entre `RoofPreview` y `RoofPreviewMetricsSidebar`.
@@ -32,8 +40,10 @@ export function useRoofPreviewPlanLayout(zonas, tipoAguas) {
       curMaxX = Math.max(curMaxX, r.x + r.w);
       curMaxY = Math.max(curMaxY, r.y + r.h);
     }
-    const pad = 0.45;
-    const slack = VIEWBOX_SLACK_M;
+    const pad = 0.42;
+    const cw = Math.max(0, curMaxX - curMinX);
+    const ch = Math.max(0, curMaxY - curMinY);
+    const slack = viewBoxSlackMeters(Math.max(cw, ch, 0.01));
     const totalArea = entries.reduce((s, r) => s + r.z.largo * r.z.ancho, 0);
     if (!entries.length) {
       return {

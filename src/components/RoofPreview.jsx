@@ -20,7 +20,7 @@ import {
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 
-/** ViewBox slack: `useRoofPreviewPlanLayout.js` (mismo valor que al calcular `layout.viewBox`). */
+/** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
 const DRAG_SENSITIVITY = 0.52;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
@@ -888,6 +888,7 @@ export function RoofPreviewMetricsSidebar({
  * @param {boolean} [props.embedMetricsSidebar] - false = sin columna de métricas (mostrar `RoofPreviewMetricsSidebar` en el wizard)
  * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
  * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
+ * @param {boolean} [props.denseChrome] - true en visor embebido: menos padding y el bloque SVG crece con el host (flex + altura máxima)
  */
 export default function RoofPreview({
   zonas = [],
@@ -904,6 +905,7 @@ export default function RoofPreview({
   embedMetricsSidebar = true,
   selectedZonaGi: selectedZonaGiProp,
   onSelectedZonaGiChange,
+  denseChrome = false,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
@@ -934,11 +936,12 @@ export default function RoofPreview({
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
-    const m = svgTy.m;
-    const padL = (1.05 + nSide("left") * 0.14) * m;
-    const padT = (0.55 + nSide("top") * 0.14) * m;
-    const padB = (0.68 + nSide("bottom") * 0.14) * m;
-    const padR = (0.45 + nSide("right") * 0.14) * m;
+    // No usar `svgTy.m` completo: inflaba el viewBox y achicaba el techo en pantalla. Cotas siguen en coords ampliadas.
+    const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
+    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
+    const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
   }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi, planEdges?.exterior, svgTy.m]);
 
@@ -1117,14 +1120,23 @@ export default function RoofPreview({
       data-bmc-component="RoofPreview"
       title="Vista previa 2D techo (planta, rejilla au)"
       style={{
-        padding: 16,
+        padding: denseChrome ? 8 : 16,
         background: C.surfaceAlt,
-        borderRadius: 12,
-        marginBottom: 12,
+        borderRadius: denseChrome ? 10 : 12,
+        marginBottom: denseChrome ? 0 : 12,
         border: `1px solid ${C.border}`,
         userSelect: "none",
         touchAction: "none",
         fontFamily: FONT,
+        ...(denseChrome
+          ? {
+              display: "flex",
+              flexDirection: "column",
+              flex: 1,
+              minHeight: 0,
+              height: "100%",
+            }
+          : {}),
       }}
     >
       <div
@@ -1298,7 +1310,15 @@ export default function RoofPreview({
         suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
         independiente en planta.
       </CollapsibleHint>
-      <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          gap: denseChrome ? 12 : 20,
+          flexWrap: "wrap",
+          ...(denseChrome ? { flex: 1, minHeight: 0 } : {}),
+        }}
+      >
         {layout.entries.length === 0 ? (
           <div
             style={{
@@ -1328,11 +1348,19 @@ export default function RoofPreview({
               width: "100%",
               minWidth: 200,
               maxWidth: "100%",
-              height:
-                estructuraHintsByGi != null
-                  ? "clamp(min(360px, 72vw), min(62vh, 820px), 920px)"
-                  : "clamp(240px, min(48vh, 520px), 560px)",
-              minHeight: estructuraHintsByGi != null ? 300 : 240,
+              ...(denseChrome
+                ? {
+                    flex: "1 1 0%",
+                    minHeight: estructuraHintsByGi != null ? 260 : 200,
+                    height: "100%",
+                  }
+                : {
+                    height:
+                      estructuraHintsByGi != null
+                        ? "clamp(min(360px, 72vw), min(62vh, 820px), 920px)"
+                        : "clamp(240px, min(48vh, 520px), 560px)",
+                    minHeight: estructuraHintsByGi != null ? 300 : 240,
+                  }),
               flexShrink: 0,
               order: embedMetricsSidebar ? 1 : undefined,
             }}
@@ -1585,7 +1613,13 @@ export default function RoofPreview({
           <div
             style={{
               minWidth: 0,
-              flex: estructuraHintsByGi != null ? "1 1 200px" : "1 1 160px",
+              flex: denseChrome
+                ? estructuraHintsByGi != null
+                  ? "0 1 min(220px, 34vw)"
+                  : "0 1 min(200px, 32vw)"
+                : estructuraHintsByGi != null
+                  ? "1 1 200px"
+                  : "1 1 160px",
               order: 2,
             }}
           >
