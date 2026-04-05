@@ -14,6 +14,18 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## Visor 2D techo / Estructura (Panelin)
+
+**Agente Cursor:** [`.cursor/agents/bmc-roof-2d-viewer-specialist.md`](../.cursor/agents/bmc-roof-2d-viewer-specialist.md)
+
+**Rol:** Especialista en la vista SVG del techo y del paso **Estructura** (multizona, cotas, encuentros, apoyos, fijación, chips, viewBox). Conoce `RoofPreview.jsx`, geometría de planta (`roofPlanGeometry.js`), hints desde `calculations.js`, límites del visor y buenas prácticas de nomenclatura tipo planta estructural para mejorar cómo se **presentan** los datos (sin sustituir normativa oficial).
+
+**Cuándo usar:** UX del plano 2D, legibilidad de cotas, colocación de carteles, coherencia dibujo vs BOM, advertencias de autoportancia en pantalla.
+
+**Complemento:** skill **bmc-calculadora-specialist** para lógica profunda de cotización; **navigation-user-feedback** / **live-devtools-narrative** para informes desde sesión usuario.
+
+---
+
 ## BMC Project Team Sync
 
 **Skill:** `.cursor/skills/bmc-project-team-sync/`

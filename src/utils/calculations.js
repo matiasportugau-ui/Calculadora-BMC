@@ -91,24 +91,41 @@ export function calcAutoportancia(panel, espesor, largo) {
   return { ok, apoyos, maxSpan, largoMinOK, largoMaxOK };
 }
 
+/**
+ * Puntos de fijación en la grilla **líneas de apoyo × paneles en ancho** (sin término de refuerzo por largo).
+ * Criterio Isodec / varilla: en la **primera y última** línea de apoyo (perímetro) van **2** fijaciones por panel;
+ * en líneas **intermedias**, **1** por panel al centro. Con una sola línea de apoyo se asume perímetro: 2/panel.
+ */
+export function countPuntosFijacionVarillaGrilla(cantP, apoyos) {
+  const p = Math.max(0, Math.floor(Number(cantP) || 0));
+  const n = Math.max(0, Math.round(Number(apoyos) || 0));
+  if (p <= 0 || n <= 0) return 0;
+  if (n === 1) return 2 * p;
+  return p * (n + 2);
+}
+
 export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, ptsMetal, ptsMadera, opts = {}) {
   const { FIJACIONES } = getPricing();
   let puntosFijacion, pMetal, pH, pMadera;
   const overridePts = opts.overridePuntosFijacion;
+  let puntosFijacionGrilla = 0;
   if (tipoEst === "combinada") {
     pH = Math.max(0, Math.floor(ptsHorm || 0));
     pMetal = Math.max(0, Math.floor(ptsMetal || 0));
     pMadera = Math.max(0, Math.floor(ptsMadera || 0));
     puntosFijacion = pH + pMetal + pMadera;
+    puntosFijacionGrilla = puntosFijacion;
   } else if (overridePts != null && overridePts > 0) {
     puntosFijacion = Math.round(overridePts);
+    puntosFijacionGrilla = puntosFijacion;
     if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
     else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
     else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
     else { pH = Math.min(ptsHorm || 0, puntosFijacion); pMetal = puntosFijacion - pH; pMadera = 0; }
   } else {
     const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
-    puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / espPerim));
+    puntosFijacionGrilla = countPuntosFijacionVarillaGrilla(cantP, apoyos);
+    puntosFijacion = Math.ceil(puntosFijacionGrilla + (largo * 2 / espPerim));
     if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
     else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
     else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
@@ -133,7 +150,7 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   const puPP = p(FIJACIONES.arandela_pp);
   items.push({ label: FIJACIONES.arandela_pp.label, sku: "arandela_pp", cant: puntosFijacion, unidad: "unid", pu: puPP, costo: c(FIJACIONES.arandela_pp), total: +(puntosFijacion * puPP).toFixed(2) });
   const total = items.reduce((s, i) => s + i.total, 0);
-  return { items, total: +total.toFixed(2), puntosFijacion };
+  return { items, total: +total.toFixed(2), puntosFijacion, puntosFijacionGrilla };
 }
 
 export function calcFijacionesCaballete(cantP, largo) {
@@ -500,6 +517,8 @@ export function calcTechoCompleto(inputs) {
  * @returns {Record<number, {
  *   apoyos: number|null,
  *   puntosFijacion: number,
+ *   puntosFijacionGrilla: number,
+ *   fijacionDotsMode: "isodec_grid"|"distribute",
  *   cantPaneles: number,
  *   maxSpan: number|null,
  *   largoProyectado: number,
@@ -536,6 +555,8 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
     if (!paneles) continue;
     const autop = calcAutoportancia(panel, techo.espesor, largo);
     let fij;
+    const fijacionDotsMode =
+      panel.sist === "varilla_tuerca" && tipoEst !== "combinada" && !bomComercial ? "isodec_grid" : "distribute";
     if (panel.sist === "varilla_tuerca") {
       const ptsComercial = bomComercial
         ? getDimensioningParam("FIJACIONES_VARILLA.puntos_comercial_default", 22)
@@ -560,11 +581,13 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
     out[gi] = {
       apoyos: autop.apoyos,
       puntosFijacion: fij.puntosFijacion,
+      puntosFijacionGrilla: fij.puntosFijacionGrilla ?? fij.puntosFijacion,
       cantPaneles: paneles.cantPaneles,
       maxSpan: autop.maxSpan,
       largoProyectado: largo,
       anchoPlantaM: anchoPlanta,
       fijacionSistema: panel.sist === "varilla_tuerca" ? "varilla_tuerca" : "caballete",
+      fijacionDotsMode,
       fijacionProductLines,
     };
   }
@@ -614,6 +637,10 @@ export function mergeZonaResults(zonaResults) {
       combined.fijaciones.total = +(combined.fijaciones.total + r.fijaciones.total).toFixed(2);
       if (r.fijaciones.puntosFijacion) {
         combined.fijaciones.puntosFijacion = (combined.fijaciones.puntosFijacion || 0) + r.fijaciones.puntosFijacion;
+      }
+      if (r.fijaciones.puntosFijacionGrilla != null) {
+        combined.fijaciones.puntosFijacionGrilla =
+          (combined.fijaciones.puntosFijacionGrilla || 0) + r.fijaciones.puntosFijacionGrilla;
       }
     }
 

@@ -747,7 +747,8 @@ router.get("/informe", (req, res) => {
     const formulasCalculo = {
       paneles_techo: "cantPaneles = ceil(ancho / ancho_util). area = cantPaneles × largo × ancho_util. costo = area × precio_m2.",
       autoportancia: "apoyos = ceil(largo / autoportancia_m) + 1. Si largo > autoportancia_m → requiere estructura adicional.",
-      fijaciones_varilla: "puntosFijacion = ceil((cantP × apoyos) × 2 + (largo × 2 / 2.5)). varillas = ceil(puntos / 4).",
+      fijaciones_varilla:
+        "grilla = cantP × (apoyos + 2) con apoyos≥2 (2 fij/panel en 1.ª y última línea de apoyo, 1 fij/panel en intermedias; apoyos=1 → 2×cantP). puntosFijacion = ceil(grilla + (largo × 2 / espPerim)). varillas = ceil(puntos / 4).",
       fijaciones_caballete: "Para ISOROOF. caballetes = ceil((cantP × 3 × (largo / 2.9 + 1)) + ((largo × 2) / 0.3)).",
       perfileria: "barras = ceil(dimension / largo_barra). Tornillo T1: 1 por cada 0.30m lineal de perfilería.",
       selladores_techo: "siliconas = ceil(cantP × 0.5). cintas_butilo = ceil(cantP / 10).",

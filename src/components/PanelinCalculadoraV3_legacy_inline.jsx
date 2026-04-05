@@ -385,8 +385,17 @@ function calcAutoportancia(panel, espesor, largo) {
   return { ok, apoyos, maxSpan, largoMinOK, largoMaxOK };
 }
 
+function countPuntosFijacionVarillaGrilla(cantP, apoyos) {
+  const p = Math.max(0, Math.floor(Number(cantP) || 0));
+  const n = Math.max(0, Math.round(Number(apoyos) || 0));
+  if (p <= 0 || n <= 0) return 0;
+  if (n === 1) return 2 * p;
+  return p * (n + 2);
+}
+
 function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm) {
-  const puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / 2.5));
+  const grilla = countPuntosFijacionVarillaGrilla(cantP, apoyos);
+  const puntosFijacion = Math.ceil(grilla + (largo * 2 / 2.5));
   const varillas = Math.ceil(puntosFijacion / 4);
   let pMetal, pH;
   if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; }

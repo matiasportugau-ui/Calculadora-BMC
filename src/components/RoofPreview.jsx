@@ -345,8 +345,8 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
   );
 }
 
-/** Reparto de puntos de fijación por filas alineadas a ejes de apoyo. */
-function fijacionDotsLayout(r, hints) {
+/** Reparto de puntos de fijación por filas alineadas a ejes de apoyo (modo legado: reparte P en N filas). */
+function fijacionDotsLayoutDistributeTotal(r, hints) {
   const P = Math.round(Number(hints.puntosFijacion));
   if (!(P > 0) || !(r.w > 0) || !(r.h > 0)) return [];
   const nAp = Number(hints.apoyos);
@@ -379,6 +379,285 @@ function fijacionDotsLayout(r, hints) {
     }
   }
   return out;
+}
+
+/**
+ * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel (~30 cm del borde del panel);
+ * en **intermedios**, **1** punto centrado en cada panel.
+ */
+function fijacionDotsLayoutIsodecGrid(r, hints) {
+  const cantP = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
+  if (!(r.w > 0) || !(r.h > 0)) return [];
+  const nAp = Number(hints.apoyos);
+  const rows =
+    Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
+  const panelW = r.w / cantP;
+  const yForRow = (ri) => {
+    if (rows <= 1) return r.y + r.h / 2;
+    return r.y + (ri / (rows - 1)) * r.h;
+  };
+  const out = [];
+  let key = 0;
+  const insetNominal = 0.3;
+  for (let ri = 0; ri < rows; ri++) {
+    const yy = yForRow(ri);
+    const isPerimeter = ri === 0 || ri === rows - 1;
+    for (let pi = 0; pi < cantP; pi++) {
+      const xL = r.x + pi * panelW;
+      const xR = r.x + (pi + 1) * panelW;
+      if (isPerimeter) {
+        const inset = Math.min(insetNominal, Math.max(0.05, panelW * 0.14));
+        let xa = xL + inset;
+        let xb = xR - inset;
+        if (xb - xa < Math.max(0.04, panelW * 0.12)) {
+          const mid = (xL + xR) / 2;
+          const half = Math.max(0.02, Math.min(panelW * 0.35, 0.12));
+          xa = mid - half;
+          xb = mid + half;
+        }
+        out.push({ cx: xa, cy: yy, key: key++ });
+        out.push({ cx: xb, cy: yy, key: key++ });
+      } else {
+        out.push({ cx: (xL + xR) / 2, cy: yy, key: key++ });
+      }
+    }
+  }
+  return out;
+}
+
+function fijacionDotsLayout(r, hints) {
+  if (!hints || !(r.w > 0) || !(r.h > 0)) return [];
+  const useGrid =
+    hints.fijacionSistema === "varilla_tuerca" && hints.fijacionDotsMode === "isodec_grid";
+  if (useGrid) return fijacionDotsLayoutIsodecGrid(r, hints);
+  const P = Math.round(Number(hints.puntosFijacion));
+  if (!(P > 0)) return [];
+  return fijacionDotsLayoutDistributeTotal(r, hints);
+}
+
+/** AABB solapada (gap positivo = inflar el primer rect). */
+function obstacleRectsOverlap(a, b, gap = 0) {
+  return !(
+    a.maxX + gap <= b.minX ||
+    a.minX - gap >= b.maxX ||
+    a.maxY + gap <= b.minY ||
+    a.minY - gap >= b.maxY
+  );
+}
+
+/** Rectángulos aproximados de cotas globales + textos de encuentro (mismas reglas que `EstructuraGlobalExteriorOverlay`). */
+function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
+  if (!exterior?.length && !(encounters?.length > 0)) return [];
+  const pad = Math.max(svgTy.dimFont * 0.32, svgTy.tickLen * 0.45);
+  const bump = () => {
+    const m = new Map();
+    return (k) => {
+      const n = m.get(k) || 0;
+      m.set(k, n + 1);
+      return n;
+    };
+  };
+  const nextBottom = bump();
+  const nextTop = bump();
+  const nextLeft = bump();
+  const nextRight = bump();
+
+  const out = [];
+
+  const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
+  for (const s of bottoms) {
+    const idx = nextBottom(+s.y1.toFixed(3));
+    const yDimLine = s.y1 + svgTy.dimStackBottom + idx * svgTy.dimStackStep;
+    const x0 = s.x1;
+    const w = s.length;
+    const yText = yDimLine + svgTy.dimFont * 1.05;
+    out.push({
+      minX: Math.min(x0, x0 + w) - pad,
+      maxX: Math.max(x0, x0 + w) + pad,
+      minY: Math.min(s.y1, yDimLine) - svgTy.tickLen - pad,
+      maxY: yText + svgTy.dimFont * 0.8 + pad,
+    });
+  }
+
+  const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
+  for (const s of tops) {
+    const idx = nextTop(+s.y1.toFixed(3));
+    const yDimLine = s.y1 - svgTy.dimStackTop - idx * svgTy.dimStackStep;
+    const yText = yDimLine - svgTy.dimFont * 0.35;
+    const x0 = s.x1;
+    const w = s.length;
+    out.push({
+      minX: Math.min(x0, x0 + w) - pad,
+      maxX: Math.max(x0, x0 + w) + pad,
+      minY: yText - svgTy.dimFont * 0.95 - pad,
+      maxY: Math.max(s.y1, yDimLine) + svgTy.tickLen + pad,
+    });
+  }
+
+  const lefts = exterior.filter((s) => s.side === "left").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+  for (const s of lefts) {
+    const idx = nextLeft(+s.x1.toFixed(3));
+    const xDim = s.x1 - svgTy.sideOffset - idx * svgTy.sideStep;
+    const tx = xDim - svgTy.dimFont * 0.85;
+    const y1 = Math.min(s.y1, s.y2);
+    const y2 = Math.max(s.y1, s.y2);
+    out.push({
+      minX: Math.min(tx, xDim, s.x1) - svgTy.dimFont * 1.35,
+      maxX: s.x1 + svgTy.tickLen * 2 + pad,
+      minY: y1 - svgTy.dimFont * 1.4,
+      maxY: y2 + svgTy.dimFont * 1.4,
+    });
+  }
+
+  const rights = exterior.filter((s) => s.side === "right").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+  for (const s of rights) {
+    const idx = nextRight(+s.x1.toFixed(3));
+    const xDim = s.x1 + svgTy.sideOffset + idx * svgTy.sideStep;
+    const tx = xDim + svgTy.dimFont * 0.85;
+    const y1 = Math.min(s.y1, s.y2);
+    const y2 = Math.max(s.y1, s.y2);
+    out.push({
+      minX: s.x1 - svgTy.tickLen * 2 - pad,
+      maxX: Math.max(tx, xDim, s.x1) + svgTy.dimFont * 1.35,
+      minY: y1 - svgTy.dimFont * 1.4,
+      maxY: y2 + svgTy.dimFont * 1.4,
+    });
+  }
+
+  const encList = encounters ?? [];
+  for (let i = 0; i < encList.length; i++) {
+    const enc = encList[i];
+    const mx = (enc.x1 + enc.x2) / 2;
+    const my = (enc.y1 + enc.y2) / 2;
+    const isVert = enc.orientation === "vertical";
+    const tx = isVert ? mx + svgTy.encOffX : mx;
+    const ty = isVert ? my : my - svgTy.encOffY;
+    const label = `${fmtArchMeters(enc.length)} m`;
+    const ew = Math.max(svgTy.encFont * 1.15, label.length * svgTy.encFont * 0.52);
+    const eh = svgTy.encFont * 1.4;
+    out.push({
+      minX: tx - ew / 2 - pad * 0.45,
+      maxX: tx + ew / 2 + pad * 0.45,
+      minY: ty - eh,
+      maxY: ty + pad,
+    });
+  }
+
+  return out;
+}
+
+function chipClearOfObstacles(chipX, chipY, chipW, chipH, obstacles, gap) {
+  const chip = { minX: chipX - gap, minY: chipY - gap, maxX: chipX + chipW + gap, maxY: chipY + chipH + gap };
+  return !obstacles.some((o) => obstacleRectsOverlap(chip, o, 0));
+}
+
+/** Solape AABB con el rectángulo de zona (techo / paneles), con separación mínima. */
+function chipOverlapsRoofPanel(chipX, chipY, chipW, chipH, r, eps) {
+  const rx0 = r.x - eps;
+  const ry0 = r.y - eps;
+  const rx1 = r.x + r.w + eps;
+  const ry1 = r.y + r.h + eps;
+  return chipX < rx1 && chipX + chipW > rx0 && chipY < ry1 && chipY + chipH > ry0;
+}
+
+function chipInsideViewBox(chipX, chipY, chipW, chipH, vb, vm) {
+  if (!vb || !Number.isFinite(vb.minX)) return true;
+  return (
+    chipX >= vb.minX + vm &&
+    chipY >= vb.minY + vm &&
+    chipX + chipW <= vb.maxX - vm &&
+    chipY + chipH <= vb.maxY - vm
+  );
+}
+
+/**
+ * Coloca el chip **solo fuera** del rectángulo de techo (nunca sobre paneles), dentro del viewBox,
+ * evitando cotas / etiquetas de encuentro.
+ */
+function pickEstructuraChipPlacement(r, chipW, chipH, zm, cotaObstacles, viewBounds) {
+  const obs = [...(cotaObstacles ?? [])];
+  const vb =
+    viewBounds && Number.isFinite(viewBounds.minX)
+      ? viewBounds
+      : { minX: -1e9, minY: -1e9, maxX: 1e9, maxY: 1e9 };
+  const vm = Math.max(0.055 * zm, 0.042);
+  const mg = Math.max(0.16 * zm, 0.1);
+  const roofGap = Math.max(0.045 * zm, 0.034);
+  const gap = Math.max(0.07 * zm, 0.045);
+  const cx = r.x + r.w / 2;
+  const cy = r.y + r.h / 2;
+
+  const tryPos = (x, y) => {
+    if (!chipInsideViewBox(x, y, chipW, chipH, vb, vm)) return false;
+    if (chipOverlapsRoofPanel(x, y, chipW, chipH, r, roofGap)) return false;
+    return chipClearOfObstacles(x, y, chipW, chipH, obs, gap);
+  };
+
+  const clampX = (x) => Math.min(Math.max(x, vb.minX + vm), vb.maxX - vm - chipW);
+  const clampY = (y) => Math.min(Math.max(y, vb.minY + vm), vb.maxY - vm - chipH);
+
+  const nudgeBelowRoof = (x) => {
+    let y = r.y + r.h + mg;
+    for (let iter = 0; iter < 22; iter++) {
+      if (tryPos(x, y)) return { chipX: x, chipY: y };
+      const chip = { minX: x - gap, minY: y - gap, maxX: x + chipW + gap, maxY: y + chipH + gap };
+      let nextY = y;
+      for (const o of obs) {
+        if (obstacleRectsOverlap(chip, o, 0)) nextY = Math.max(nextY, o.maxY + gap);
+      }
+      if (nextY <= y + 1e-9) break;
+      y = nextY;
+    }
+    return tryPos(x, y) ? { chipX: x, chipY: y } : null;
+  };
+
+  const candidates = [
+    () => {
+      const y = r.y - chipH - mg;
+      const x = clampX(cx - chipW / 2);
+      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
+    },
+    () => {
+      const y = r.y - chipH - mg;
+      const x = clampX(r.x - chipW - mg);
+      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
+    },
+    () => {
+      const y = r.y - chipH - mg;
+      const x = clampX(r.x + r.w + mg);
+      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
+    },
+    () => {
+      const x = r.x - chipW - mg;
+      const y = clampY(cy - chipH / 2);
+      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
+    },
+    () => {
+      const x = r.x + r.w + mg;
+      const y = clampY(cy - chipH / 2);
+      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
+    },
+    () => nudgeBelowRoof(clampX(cx - chipW / 2)),
+    () => nudgeBelowRoof(clampX(r.x - chipW - mg)),
+    () => nudgeBelowRoof(clampX(r.x + r.w + mg)),
+  ];
+
+  for (const c of candidates) {
+    const p = c();
+    if (p) return p;
+  }
+
+  const xTop = clampX(cx - chipW / 2);
+  const yTop = clampY(r.y - chipH - mg);
+  if (!chipOverlapsRoofPanel(xTop, yTop, chipW, chipH, r, roofGap) && chipInsideViewBox(xTop, yTop, chipW, chipH, vb, vm)) {
+    return { chipX: xTop, chipY: yTop };
+  }
+  const xL = clampX(r.x - chipW - mg);
+  const yL = clampY(cy - chipH / 2);
+  if (!chipOverlapsRoofPanel(xL, yL, chipW, chipH, r, roofGap) && chipInsideViewBox(xL, yL, chipW, chipH, vb, vm)) {
+    return { chipX: xL, chipY: yL };
+  }
+  return { chipX: xTop, chipY: yTop };
 }
 
 /**
@@ -498,7 +777,7 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [], svgTy
  * Paso Estructura: apoyos (líneas violetas), chip fuera del techo, puntos de fijación (tooltip BOM).
  * Las cotas rojas globales van en `EstructuraGlobalExteriorOverlay` (perímetro libre + encuentros).
  */
-function EstructuraZonaOverlay({ r, hints, svgTy }) {
+function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds = null }) {
   if (!hints) return null;
   const nAp = hints.apoyos;
   const zm = svgTy?.m ?? 1;
@@ -533,11 +812,19 @@ function EstructuraZonaOverlay({ r, hints, svgTy }) {
       ? `${Math.round(hints.puntosFijacion)} pts fij.`
       : "";
 
-  const chipW = Math.min(Math.max(r.w * 0.88, 1.1), 2.4);
-  const chipH = (fijTxt ? 0.4 : 0.28) * zm;
-  const chipX = r.x + (r.w - chipW) / 2;
-  const chipY = r.y - chipH - 0.14 * zm;
-  const chipFs = Math.max(0.11 * zm, Math.min(0.16 * zm, chipW * 0.072 * zm));
+  const secondFsMult = 0.92;
+  const fsCap = Math.max(0.115 * zm, Math.min(0.2 * zm, 3.35 * 0.066 * zm));
+  const minWFromText =
+    apTxt.length * fsCap * 0.56 + (fijTxt ? fijTxt.length * fsCap * secondFsMult * 0.53 : 0) + 0.55 * zm;
+  const chipW = Math.min(3.9, Math.max(1.24, r.w * 0.92, minWFromText));
+  const chipFs = Math.max(0.115 * zm, Math.min(0.2 * zm, chipW * 0.066 * zm));
+  const secondFs = fijTxt ? chipFs * secondFsMult : 0;
+  const padY = 0.19 * zm;
+  const chipH =
+    padY * 2 + chipFs * 1.22 + (fijTxt ? 0.15 * zm + secondFs * 1.45 : chipFs * 0.22);
+
+  const dotPts = fijacionDotsLayout(r, hints);
+  const { chipX, chipY } = pickEstructuraChipPlacement(r, chipW, chipH, zm, cotaObstacles, viewBounds);
 
   const sysLabel =
     hints.fijacionSistema === "caballete"
@@ -546,9 +833,13 @@ function EstructuraZonaOverlay({ r, hints, svgTy }) {
   const lines = hints.fijacionProductLines?.length
     ? hints.fijacionProductLines.join("\n")
     : "Sin líneas de fijación en el BOM para esta zona.";
-  const dotTitle = `${sysLabel}\nCada punto ≈ 1 punto de fijación del cómputo (${Math.round(Number(hints.puntosFijacion) || 0)} total).\n\n${lines}`;
-
-  const dotPts = fijacionDotsLayout(r, hints);
+  const totalFij = Math.round(Number(hints.puntosFijacion) || 0);
+  const grillaFij = Math.round(Number(hints.puntosFijacionGrilla ?? hints.puntosFijacion) || 0);
+  const gridExpl =
+    hints.fijacionDotsMode === "isodec_grid"
+      ? `Puntos dibujados: ${dotPts.length} en líneas de apoyo (2/panel en perímetro, 1/panel en intermedios). Total presupuesto: ${totalFij} (incluye refuerzos según largo si aplica; grilla base ${grillaFij}).`
+      : `Cada punto ≈ 1 unidad del cómputo (${totalFij} total).`;
+  const dotTitle = `${sysLabel}\n${gridExpl}\n\n${lines}`;
 
   return (
     <g data-bmc-layer="estructura-overlay">
@@ -566,7 +857,7 @@ function EstructuraZonaOverlay({ r, hints, svgTy }) {
         />
         <text
           x={chipX + chipW / 2}
-          y={chipY + chipFs * 1.25}
+          y={chipY + padY + chipFs * 0.98}
           textAnchor="middle"
           fontSize={chipFs}
           fill="#5b21b6"
@@ -578,9 +869,9 @@ function EstructuraZonaOverlay({ r, hints, svgTy }) {
         {fijTxt ? (
           <text
             x={chipX + chipW / 2}
-            y={chipY + chipFs * 2.45}
+            y={chipY + padY + chipFs * 1.22 + secondFs * 1.06}
             textAnchor="middle"
-            fontSize={chipFs * 0.9}
+            fontSize={secondFs}
             fill={C.tp}
             fontWeight={600}
             fontFamily={FONT}
@@ -938,14 +1229,31 @@ export default function RoofPreview({
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
     // No usar `svgTy.m` completo: inflaba el viewBox y achicaba el techo en pantalla. Cotas siguen en coords ampliadas.
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
-    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
-    const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
-    const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
+    // Margen extra para carteles apoyos/fijación **fuera** del techo (evita clip del SVG).
+    const chipSlack = Math.max(0.72, 0.42 * svgTy.m) * vbPadScale;
+    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale + chipSlack;
+    const padT = (0.55 + nSide("top") * 0.14) * vbPadScale + chipSlack;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chipSlack;
+    const padR = (0.45 + nSide("right") * 0.14) * vbPadScale + chipSlack;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
   }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi, planEdges?.exterior, svgTy.m]);
 
+  const estructuraViewBounds = useMemo(() => {
+    const parts = String(svgViewBox).trim().split(/\s+/).map(Number);
+    if (parts.length < 4 || parts.some((n) => !Number.isFinite(n))) return null;
+    const [vx, vy, vw, vh] = parts;
+    return { minX: vx, minY: vy, maxX: vx + vw, maxY: vy + vh };
+  }, [svgViewBox]);
+
   const encounters = planEdges?.encounters ?? [];
+
+  const estructuraCotaObstacles = useMemo(() => {
+    if (estructuraHintsByGi == null) return [];
+    const ext = planEdges?.exterior ?? [];
+    const enc = planEdges?.encounters ?? [];
+    if (!ext.length && !enc.length) return [];
+    return buildEstructuraCotaObstacleRects(ext, enc, svgTy);
+  }, [estructuraHintsByGi, planEdges?.exterior, planEdges?.encounters, svgTy]);
 
   const cycleSlope = useCallback(
     (gi) => {
@@ -1494,7 +1802,13 @@ export default function RoofPreview({
                     {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
                   </g>
                   {estructuraHintsByGi != null && estructuraHintsByGi[r.gi] ? (
-                    <EstructuraZonaOverlay r={r} hints={estructuraHintsByGi[r.gi]} svgTy={svgTy} />
+                    <EstructuraZonaOverlay
+                      r={r}
+                      hints={estructuraHintsByGi[r.gi]}
+                      svgTy={svgTy}
+                      cotaObstacles={estructuraCotaObstacles}
+                      viewBounds={estructuraViewBounds}
+                    />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
                     <g pointerEvents="none">

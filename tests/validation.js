@@ -3,7 +3,17 @@
 // Ejecutar: node tests/validation.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto, calcFactorPendiente, calcLargoReal, mergeZonaResults, calcPresupuestoLibre, calcPerfileriaTechoComercial, calcFijacionesVarilla } from "../src/utils/calculations.js";
+import {
+  calcTechoCompleto,
+  calcParedCompleto,
+  calcFactorPendiente,
+  calcLargoReal,
+  mergeZonaResults,
+  calcPresupuestoLibre,
+  calcPerfileriaTechoComercial,
+  calcFijacionesVarilla,
+  countPuntosFijacionVarillaGrilla,
+} from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
@@ -969,6 +979,35 @@ assert(
     r?.items?.length > 0,
     r?.items?.length,
     ">0",
+  );
+}
+
+// 24.7b Isodec grilla: 2/panel en perímetro, 1/panel en intermedios
+assert(
+  "countPuntosFijacionVarillaGrilla(10,2)===40",
+  countPuntosFijacionVarillaGrilla(10, 2) === 40,
+  countPuntosFijacionVarillaGrilla(10, 2),
+  40,
+);
+assert(
+  "countPuntosFijacionVarillaGrilla(10,3)===50",
+  countPuntosFijacionVarillaGrilla(10, 3) === 50,
+  countPuntosFijacionVarillaGrilla(10, 3),
+  50,
+);
+{
+  const r = calcFijacionesVarilla(10, 3, 20, "metal", 0, 0, 0);
+  assert(
+    "calcFijacionesVarilla default grilla 10×3 apoyos → puntosFijacionGrilla===50",
+    r?.puntosFijacionGrilla === 50,
+    r?.puntosFijacionGrilla,
+    50,
+  );
+  assert(
+    "calcFijacionesVarilla default total con perímetro largo → puntosFijacion===66",
+    r?.puntosFijacion === 66,
+    r?.puntosFijacion,
+    66,
   );
 }
 
