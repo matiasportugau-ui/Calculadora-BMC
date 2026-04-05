@@ -541,9 +541,17 @@ assert("calcLargoReal(10m, 15°) ≈ 10.353", approx(lr, 10.353, 0.01), lr, 10.3
 
 assert("calcLargoReal(10m, 0) = 10", calcLargoReal(10, 0) === 10, calcLargoReal(10, 0), 10);
 
-const techoP15 = calcTechoCompleto({ ...techoInput, pendiente: 15 });
-assert("calcTechoCompleto(15°): pendienteInfo exists", techoP15.pendienteInfo !== null, !!techoP15.pendienteInfo, true);
-assert("calcTechoCompleto(15°): largoReal > largo", techoP15.pendienteInfo.largoReal > techoInput.largo, techoP15.pendienteInfo?.largoReal, ">" + techoInput.largo);
+const techoP15 = calcTechoCompleto({ ...techoInput, pendiente: 15, pendienteModo: "calcular_pendiente" });
+assert("calcTechoCompleto(15°, calcular_pendiente): pendienteInfo exists", techoP15.pendienteInfo !== null, !!techoP15.pendienteInfo, true);
+assert("calcTechoCompleto(15°, calcular_pendiente): largoReal > largo", techoP15.pendienteInfo.largoReal > techoInput.largo, techoP15.pendienteInfo?.largoReal, ">" + techoInput.largo);
+
+const techoIncluye = calcTechoCompleto({ ...techoInput, pendiente: 15, pendienteModo: "incluye_pendiente" });
+assert(
+  "calcTechoCompleto(15°, incluye_pendiente): sin alargar largo",
+  techoIncluye.pendienteInfo === null || approx(techoIncluye.pendienteInfo?.largoReal ?? techoInput.largo, techoInput.largo, 0.02),
+  techoIncluye.pendienteInfo?.largoReal ?? techoInput.largo,
+  "~" + techoInput.largo
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 16: bomToGroups

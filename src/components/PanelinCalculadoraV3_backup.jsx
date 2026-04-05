@@ -24,12 +24,14 @@ import {
   SCENARIOS_DEF, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
   PENDIENTES_PRESET, TIPO_AGUAS,
+  ROOF_2D_QUOTE_VISOR_STEP_IDS,
 } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
 import {
   calcTotalesSinIVA,
   calcFactorPendiente, calcLargoRealFromModo, normalizarMedida,
+  computeRoofEstructuraHintsByGi,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -178,6 +180,8 @@ function StepperInput({
   unit = "",
   decimals = 2,
   chainFocus = false,
+  /** Ref al `<input>` interno (p. ej. autofocus al entrar a un paso del asistente). */
+  inputRef = null,
 }) {
   const [draft, setDraft] = useState(null);
   const skipNextBlurCommitRef = useRef(false);
@@ -223,6 +227,7 @@ function StepperInput({
       <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", flexWrap: "nowrap" }}>
         <button type="button" style={btnS(effective <= min)} onClick={() => bump(-1)}><Minus size={16} color={C.tp} /></button>
         <input
+          ref={inputRef}
           type="text"
           inputMode="decimal"
           autoComplete="off"
@@ -2178,9 +2183,26 @@ function RoofBorderSelector({
 // Adding a new scenario only requires adding it to SCENARIOS_DEF in constants.js.
 const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardSteps ?? [];
 
+/** Default roof color by panel line: ISODEC → Blanco, ISOROOF* → Gris when available (transcript preset / Enter-through wizard). */
+function defaultTechoColorForPanelFamilia(fam) {
+  const pd = PANELS_TECHO[fam];
+  if (!pd?.col?.length) return "";
+  if (String(fam).startsWith("ISOROOF")) {
+    if (pd.col.includes("Gris")) return "Gris";
+    return pd.col[0];
+  }
+  if (pd.col.includes("Blanco")) return "Blanco";
+  return pd.col[0];
+}
+
+const FIRST_ISODEC_EPS_ESP = Number(Object.keys(PANELS_TECHO.ISODEC_EPS.esp)[0]);
+
 const TECHO_INITIAL_VENDEDOR = {
-  familia: "", espesor: "", color: "", zonas: [{ largo: 0, ancho: 0 }],
-  pendiente: 0, pendienteModo: "calcular_pendiente", alturaDif: 0,
+  familia: "ISODEC_EPS",
+  espesor: FIRST_ISODEC_EPS_ESP,
+  color: "Blanco",
+  zonas: [{ largo: 0, ancho: 0 }],
+  pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0,
   tipoAguas: "", tipoEst: "", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
   borders: { frente: "", fondo: "", latIzq: "", latDer: "" },
   inclAccesorios: true,
@@ -2210,7 +2232,7 @@ export default function PanelinCalculadoraV3() {
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
-  const [listaPrecios, _setLP] = useState("");
+  const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
@@ -2404,6 +2426,8 @@ export default function PanelinCalculadoraV3() {
   // Section refs for auto-scroll
   const panelRef = useRef(null);
   const dimensionesRef = useRef(null);
+  /** Primer campo Largo (m) del paso dimensiones — autofocus paso 7/13 Solo techo. */
+  const dimensionesLargoInputRef = useRef(null);
   const bordesRef = useRef(null);
   const opcionesRef = useRef(null);
   /** Ref al host DOM de la **Visualización 3D** en `QuoteVisualVisor` (`[data-bmc-view="visualizacion-3d"]`) para portal de `RoofBorderCanvas`. */
@@ -2528,6 +2552,35 @@ export default function PanelinCalculadoraV3() {
     }
   }, [activeWizardStepId]);
 
+  /** Al entrar a Dimensiones (paso 7/13 Solo techo), foco en Largo de la zona principal para escribir sin clic. */
+  useEffect(() => {
+    if (activeWizardStepId !== "dimensiones") return;
+    let raf = 0;
+    let t = 0;
+    raf = requestAnimationFrame(() => {
+      t = window.setTimeout(() => {
+        const el = dimensionesLargoInputRef.current;
+        if (!el || typeof el.focus !== "function") return;
+        try {
+          el.focus({ preventScroll: false });
+        } catch {
+          el.focus();
+        }
+        if (typeof el.select === "function") {
+          try {
+            el.select();
+          } catch {
+            /* ignore */
+          }
+        }
+      }, 0);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+    };
+  }, [activeWizardStepId, wizardStep]);
+
   const quoteVisorDimensionSummary = useMemo(() => {
     if (activeWizardStepId !== "dimensiones" || !scenarioDef?.hasTecho) return null;
     const zs = techo.zonas || [];
@@ -2602,7 +2655,18 @@ export default function PanelinCalculadoraV3() {
     [techo.zonas],
   );
   const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isCompactLayout);
-  const showRoof2dInQuoteVisor = activeWizardStepId === "dimensiones" && showRoof3DHost;
+  const showRoof2dInQuoteVisor = Boolean(
+    showRoof3DHost && activeWizardStepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(activeWizardStepId),
+  );
+
+  /** Overlay 2D apoyos + puntos fijación (mismo criterio que `calcTechoCompleto`), solo paso Estructura wizard solo techo. */
+  const roofEstructuraHintsByGi = useMemo(() => {
+    if (activeWizardStepId !== "estructura") return null;
+    if (!scenarioDef?.hasTecho || !techoPanelData || !techo.espesor) return null;
+    const hints = computeRoofEstructuraHintsByGi(techo, techoPanelData);
+    return Object.keys(hints).length ? hints : null;
+  }, [activeWizardStepId, scenarioDef?.hasTecho, techoPanelData, techo]);
+
   const soloTechoWizardDimStepIndex = useMemo(() => SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones"), []);
   const useDockedRoofBorderSelector = Boolean(
     modoVendedor
@@ -2920,6 +2984,7 @@ export default function PanelinCalculadoraV3() {
         onAddZona={addZona}
         onEncounterPairChange={onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
+        estructuraHintsByGi={roofEstructuraHintsByGi}
       />
     );
   }, [
@@ -2934,6 +2999,7 @@ export default function PanelinCalculadoraV3() {
     addZona,
     onRoofEncounterPairChange,
     onRoofZonaDimensionPatch,
+    roofEstructuraHintsByGi,
   ]);
 
   /** Índice de zona “techo principal” (presupuesto): manual `techo.zonaPrincipalGi`; si no, siempre la primera (no roba atención un tramo nuevo aunque tenga más m²). */
@@ -3240,9 +3306,9 @@ export default function PanelinCalculadoraV3() {
 
   const handleReset = () => {
     setScenario("solo_techo");
-    setLP(modoVendedor ? "" : getListaDefault());
+    setLP(getListaDefault());
     setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
-    setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "calcular_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false } });
+    setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setTechoAnchoModo("metros");
     setCamara({ largo_int: 6, ancho_int: 4, alto_int: 3 });
@@ -3296,6 +3362,7 @@ export default function PanelinCalculadoraV3() {
     const newFam = pd.fam;
 
     // Clear incompatible borders when switching families
+    const preferredColor = defaultTechoColorForPanelFamilia(fam);
     setTecho(t => {
       const newBorders = { ...t.borders };
       Object.entries(BORDER_OPTIONS).forEach(([side, opts]) => {
@@ -3307,7 +3374,10 @@ export default function PanelinCalculadoraV3() {
           newBorders[side] = firstValid?.id || "none";
         }
       });
-      return { ...t, familia: fam, espesor: firstEsp, borders: newBorders };
+      const nextColor = preferredColor && pd.col.includes(preferredColor)
+        ? preferredColor
+        : (pd.col.includes(t.color) ? t.color : (pd.col[0] || ""));
+      return { ...t, familia: fam, espesor: firstEsp, borders: newBorders, color: nextColor };
     });
     // Auto-scroll to dimensiones after selecting family
     setTimeout(() => scrollToSection("dimensiones"), 100);
@@ -3626,7 +3696,7 @@ export default function PanelinCalculadoraV3() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", width: isCompactLayout ? "100%" : "auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
-            <button onClick={() => { setModoVendedor(true); setTecho(TECHO_INITIAL_VENDEDOR); setWizardStep(0); setLP(""); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
+            <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
             <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
           </div>
           <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
@@ -3704,6 +3774,7 @@ export default function PanelinCalculadoraV3() {
               const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
               const uPr = (k, v) => setProyecto(p => ({ ...p, [k]: v }));
               return (
+                <>
                 <div style={sectionS}>
                   {/* Step indicators */}
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
@@ -3788,7 +3859,7 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "lista" && (
-                    <SegmentedControl value={listaPrecios} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
+                    <SegmentedControl value={listaPrecios || getListaDefault()} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
                   )}
                   {stepId === "familia" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setHoverTechoFamilia("")}>
@@ -3999,7 +4070,7 @@ export default function PanelinCalculadoraV3() {
                             )}
                           </div>
                           <div data-stepper-group style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
-                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus />
+                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
                             {techoAnchoModo === "paneles" && techoPanelData ? (
                               <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
                             ) : (
@@ -4071,6 +4142,7 @@ export default function PanelinCalculadoraV3() {
                           onAddZona={addZona}
                           onEncounterPairChange={onRoofEncounterPairChange}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                          estructuraHintsByGi={roofEstructuraHintsByGi}
                         />
                       ) : null}
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
@@ -4133,8 +4205,8 @@ export default function PanelinCalculadoraV3() {
                         <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Modo de cálculo del largo</div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {PENDIENTE_MODOS.map(m => (
-                            <button key={m.id} onClick={() => uT("pendienteModo", m.id)} style={{ padding: 12, borderRadius: 12, border: `2px solid ${techo.pendienteModo === m.id ? C.primary : C.border}`, background: techo.pendienteModo === m.id ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: techo.pendienteModo === m.id ? C.primary : C.tp }}>{m.label}</div>
+                            <button key={m.id} onClick={() => uT("pendienteModo", m.id)} style={{ padding: 12, borderRadius: 12, border: `2px solid ${(techo.pendienteModo || "incluye_pendiente") === m.id ? C.primary : C.border}`, background: (techo.pendienteModo || "incluye_pendiente") === m.id ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: (techo.pendienteModo || "incluye_pendiente") === m.id ? C.primary : C.tp }}>{m.label}</div>
                               <div style={{ fontSize: 11, color: C.ts, marginTop: 2 }}>{m.desc}</div>
                             </button>
                           ))}
@@ -4247,6 +4319,38 @@ export default function PanelinCalculadoraV3() {
                     )}
                   </div>
                 </div>
+                {stepId === "espesor" && (
+                  <div
+                    className="bmc-espesor-advisor-wrap"
+                    style={{
+                      marginTop: 14,
+                      width: "100%",
+                      minWidth: 0,
+                      boxSizing: "border-box",
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <img
+                      src="/images/panelin-advisor-plan.png"
+                      alt="Panelín asesor técnico con plano de cubierta"
+                      loading="lazy"
+                      decoding="async"
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        maxWidth: "100%",
+                        height: "auto",
+                        objectFit: "contain",
+                        borderRadius: 12,
+                        border: `1px solid ${C.border}`,
+                        background: "#fff",
+                      }}
+                    />
+                  </div>
+                )}
+                </>
               );
             })()
           ) : (
@@ -4489,7 +4593,7 @@ export default function PanelinCalculadoraV3() {
           {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && !(scenario === "techo_fachada" && usePlanoTechoFachada) && (() => {
             const fp = calcFactorPendiente(techo.pendiente);
-            const pm = techo.pendienteModo || "calcular_pendiente";
+            const pm = techo.pendienteModo || "incluye_pendiente";
             const is2A = techo.tipoAguas === "dos_aguas";
             const baseArea = zonasTotales.area;
             const areaReal = techo.zonas?.reduce((s, z) => {
@@ -4685,13 +4789,13 @@ export default function PanelinCalculadoraV3() {
               <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Modo de cálculo del largo</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
                 {PENDIENTE_MODOS.map(m => (
-                  <button key={m.id} onClick={() => uT("pendienteModo", m.id)} style={{ padding: 10, borderRadius: 10, border: `2px solid ${(techo.pendienteModo || "calcular_pendiente") === m.id ? C.primary : C.border}`, background: (techo.pendienteModo || "calcular_pendiente") === m.id ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: (techo.pendienteModo || "calcular_pendiente") === m.id ? C.primary : C.tp }}>{m.label}</span>
+                  <button key={m.id} onClick={() => uT("pendienteModo", m.id)} style={{ padding: 10, borderRadius: 10, border: `2px solid ${(techo.pendienteModo || "incluye_pendiente") === m.id ? C.primary : C.border}`, background: (techo.pendienteModo || "incluye_pendiente") === m.id ? C.primarySoft : C.surface, textAlign: "left", cursor: "pointer", transition: TR }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: (techo.pendienteModo || "incluye_pendiente") === m.id ? C.primary : C.tp }}>{m.label}</span>
                     <span style={{ display: "block", fontSize: 10, color: C.ts, marginTop: 2 }}>{m.desc}</span>
                   </button>
                 ))}
               </div>
-              {(techo.pendienteModo || "calcular_pendiente") === "calcular_pendiente" && (
+              {(techo.pendienteModo || "incluye_pendiente") === "calcular_pendiente" && (
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 16, marginBottom: 8 }}>
                   <StepperInput label="Pendiente" value={techo.pendiente} onChange={v => uT("pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
                   <div style={{ flex: 1, paddingBottom: 4 }}>
@@ -4713,37 +4817,37 @@ export default function PanelinCalculadoraV3() {
                   </div>
                 </div>
               )}
-              {(techo.pendienteModo || "calcular_pendiente") === "calcular_altura" && (
+              {(techo.pendienteModo || "incluye_pendiente") === "calcular_altura" && (
                 <div style={{ marginBottom: 8 }}>
                   <StepperInput label="Diferencia de altura (apoyo sup. − inf.)" value={techo.alturaDif ?? 0} onChange={v => uT("alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
                 </div>
               )}
-              {((techo.pendienteModo || "calcular_pendiente") === "calcular_pendiente" && techo.pendiente > 0) || ((techo.pendienteModo || "calcular_pendiente") === "calcular_altura" && (techo.alturaDif ?? 0) > 0) ? (
+              {((techo.pendienteModo || "incluye_pendiente") === "calcular_pendiente" && techo.pendiente > 0) || ((techo.pendienteModo || "incluye_pendiente") === "calcular_altura" && (techo.alturaDif ?? 0) > 0) ? (
                 <div style={{ marginTop: 8, fontSize: 11, color: C.ts, display: "flex", gap: 16, flexWrap: "wrap", ...TN }}>
-                  {(techo.pendienteModo || "calcular_pendiente") === "calcular_pendiente" && techo.pendiente > 0 && (
+                  {(techo.pendienteModo || "incluye_pendiente") === "calcular_pendiente" && techo.pendiente > 0 && (
                     <>
                       <span>Factor: <b style={{ color: C.tp }}>×{fp.toFixed(4)}</b></span>
                       <span>Incremento: <b style={{ color: C.primary }}>+{((fp - 1) * 100).toFixed(1)}%</b></span>
                     </>
                   )}
                   {techo.zonas?.[0] && (
-                    <span>Largo real zona 1: <b style={{ color: C.tp }}>{calcLargoRealFromModo(techo.zonas[0].largo, techo.pendienteModo || "calcular_pendiente", techo.pendiente, techo.zonas[0].alturaDif ?? techo.alturaDif ?? 0).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
+                    <span>Largo real zona 1: <b style={{ color: C.tp }}>{calcLargoRealFromModo(techo.zonas[0].largo, techo.pendienteModo || "incluye_pendiente", techo.pendiente, techo.zonas[0].alturaDif ?? techo.alturaDif ?? 0).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
                   )}
                 </div>
               ) : null}
             </div>
 
             {techoPanelData && techo.zonas?.some(z => {
-              const pm = techo.pendienteModo || "calcular_pendiente";
+              const pm = techo.pendienteModo || "incluye_pendiente";
               const lr = calcLargoRealFromModo(z.largo, pm, techo.pendiente, z.alturaDif ?? techo.alturaDif ?? 0);
               return lr < techoPanelData.lmin || lr > techoPanelData.lmax;
             }) && (
               <div style={{ marginTop: 8 }}>
                 <AlertBanner
                   type="warning"
-                  message={(techo.pendienteModo || "calcular_pendiente") === "calcular_pendiente" && techo.pendiente > 0
+                  message={(techo.pendienteModo || "incluye_pendiente") === "calcular_pendiente" && techo.pendiente > 0
                     ? `Algún largo real (con pendiente ${techo.pendiente}°) está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`
-                    : (techo.pendienteModo || "calcular_pendiente") === "calcular_altura"
+                    : (techo.pendienteModo || "incluye_pendiente") === "calcular_altura"
                     ? `Algún largo real (según altura) está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`
                     : `Algún largo está fuera del rango fabricable (${techoPanelData.lmin}m - ${techoPanelData.lmax}m)`}
                 />

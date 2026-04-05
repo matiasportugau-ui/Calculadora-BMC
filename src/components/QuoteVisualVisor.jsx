@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react";
-import { C, FONT, SHC, TR } from "../data/constants.js";
+import { C, FONT, ROOF_2D_QUOTE_VISOR_STEP_IDS, SHC, TR } from "../data/constants.js";
 import { DEFAULT_AGUA_REFERENCE_IMAGES, getQuoteVisorContext, QUOTE_VISOR_SHOP_URLS } from "../data/quoteVisorMedia.js";
 import { getBorderAccentSlides, readShopifyImageOverrides, writeShopifyImageOverride } from "../data/quoteVisorShopifyResolve.js";
 
@@ -32,7 +32,7 @@ const PANELIN_LISTA_VIDEO_SRC = `${import.meta.env.BASE_URL}video/panelin-lista-
  * @param {string | null} [props.dimensionSummary] — resumen L×W (paso dimensiones)
  * @param {(key: "una_agua"|"dos_aguas") => void} [props.onSelectAgua] — selecciona tipo de aguas desde el visor
  * @param {() => void} [props.onNext] — avanza al siguiente paso desde el visor
- * @param {import("react").ReactNode} [props.roof2DPreview] — paso dimensiones: vista 2D en el panel derecho; la 3D pasa a subacordeón “Próximamente”
+ * @param {import("react").ReactNode} [props.roof2DPreview] — pasos en `ROOF_2D_QUOTE_VISOR_STEP_IDS`: vista 2D en el panel derecho; la 3D en subacordeón «Próximamente»
  */
 export default function QuoteVisualVisor({
   scenarioId,
@@ -54,9 +54,9 @@ export default function QuoteVisualVisor({
   onNext = null,
   roof2DPreview = null,
 }) {
-  const dimensiones2dInVisor = Boolean(roof2DPreview);
-  const [open, setOpen] = useState(() => !(stepId === "dimensiones" && Boolean(roof2DPreview)));
-  const [roof3dOpen, setRoof3dOpen] = useState(() => !(stepId === "dimensiones" && Boolean(roof2DPreview)));
+  const roof2dQuoteVisorLayout = Boolean(roof2DPreview) && Boolean(stepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(stepId));
+  const [open, setOpen] = useState(() => !roof2dQuoteVisorLayout);
+  const [roof3dOpen, setRoof3dOpen] = useState(() => !roof2dQuoteVisorLayout);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [overrideDraft, setOverrideDraft] = useState("");
@@ -128,10 +128,11 @@ export default function QuoteVisualVisor({
     const prev = prevStepIdRef.current;
     if (prev === stepId) return;
     prevStepIdRef.current = stepId;
-    if (stepId === "dimensiones" && roof2DPreview) {
+    const slotOn = Boolean(roof2DPreview) && Boolean(stepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(stepId));
+    if (slotOn) {
       setOpen(false);
       setRoof3dOpen(false);
-    } else if (stepId !== "dimensiones") {
+    } else {
       setOpen(true);
       setRoof3dOpen(true);
     }
@@ -278,10 +279,10 @@ export default function QuoteVisualVisor({
           style={{
             paddingLeft: 16,
             paddingRight: 16,
-            marginBottom: dimensiones2dInVisor ? (roof3dOpen ? 16 : 8) : open ? 16 : 0,
+            marginBottom: roof2dQuoteVisorLayout ? (roof3dOpen ? 16 : 8) : open ? 16 : 0,
           }}
         >
-          {dimensiones2dInVisor ? (
+          {roof2dQuoteVisorLayout ? (
             <>
               <button
                 type="button"

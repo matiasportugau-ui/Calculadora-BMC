@@ -150,6 +150,322 @@ function encounterStrokeForModo(modo) {
   return "#f59e0b";
 }
 
+const ARCH_DIM_STROKE = "#dc2626";
+const ARCH_DIM_FONT = 0.13;
+const ARCH_EXT_OPACITY = 0.75;
+
+function fmtArchMeters(m) {
+  if (!Number.isFinite(m)) return "—";
+  if (Math.abs(m - Math.round(m)) < 1e-6) return `${Math.round(m)}`;
+  const s = `${+m.toFixed(2)}`;
+  return s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+}
+
+/** Cota horizontal (estilo arquitectura): debajo del borde inferior del rectángulo. */
+function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine }) {
+  const w = widthM;
+  const tick = 0.075;
+  const label = `${fmtArchMeters(w)} m`;
+  return (
+    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
+      <line
+        x1={x0}
+        y1={yBottom}
+        x2={x0}
+        y2={yDimLine}
+        strokeWidth={0.022}
+        opacity={ARCH_EXT_OPACITY}
+      />
+      <line
+        x1={x0 + w}
+        y1={yBottom}
+        x2={x0 + w}
+        y2={yDimLine}
+        strokeWidth={0.022}
+        opacity={ARCH_EXT_OPACITY}
+      />
+      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={0.032} />
+      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={0.035} />
+      <line
+        x1={x0 + w}
+        y1={yDimLine - tick / 2}
+        x2={x0 + w}
+        y2={yDimLine + tick / 2}
+        strokeWidth={0.035}
+      />
+      <text
+        x={x0 + w / 2}
+        y={yDimLine + ARCH_DIM_FONT * 1.05}
+        textAnchor="middle"
+        fontSize={ARCH_DIM_FONT}
+        fontWeight={700}
+        fontFamily={FONT}
+        stroke="none"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/** Cota vertical entre y1 e y2 (y1 < y2), línea de cota a la izquierda de xRef. */
+function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM }) {
+  const tick = 0.075;
+  const ym = (y1 + y2) / 2;
+  const label = `${fmtArchMeters(spanM)} m`;
+  return (
+    <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
+      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={0.032} />
+      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={0.035} />
+      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={0.035} />
+      <text
+        x={xDim - ARCH_DIM_FONT * 0.85}
+        y={ym}
+        textAnchor="middle"
+        fontSize={ARCH_DIM_FONT * 0.95}
+        fontWeight={700}
+        fontFamily={FONT}
+        stroke="none"
+        transform={`rotate(-90 ${xDim - ARCH_DIM_FONT * 0.85} ${ym})`}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+/** Reparto de puntos de fijación por filas alineadas a ejes de apoyo. */
+function fijacionDotsLayout(r, hints) {
+  const P = Math.round(Number(hints.puntosFijacion));
+  if (!(P > 0) || !(r.w > 0) || !(r.h > 0)) return [];
+  const nAp = Number(hints.apoyos);
+  const rows =
+    Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
+  const counts = [];
+  const base = Math.floor(P / rows);
+  let extra = P - base * rows;
+  for (let i = 0; i < rows; i++) {
+    counts.push(base + (extra > 0 ? 1 : 0));
+    if (extra > 0) extra -= 1;
+  }
+  const yForRow = (ri) => {
+    if (rows <= 1) return r.y + r.h / 2;
+    return r.y + (ri / (rows - 1)) * r.h;
+  };
+  const mx = Math.min(r.w, Math.max(0.12, r.w * 0.06));
+  const x0 = r.x + mx;
+  const x1 = r.x + r.w - mx;
+  const usableW = Math.max(1e-6, x1 - x0);
+  const out = [];
+  let key = 0;
+  for (let ri = 0; ri < rows; ri++) {
+    const nInRow = counts[ri] || 0;
+    const yy = yForRow(ri);
+    for (let j = 0; j < nInRow; j++) {
+      const t = nInRow === 1 ? 0.5 : (j + 1) / (nInRow + 1);
+      const cx = x0 + t * usableW;
+      out.push({ cx, cy: yy, key: key++ });
+    }
+  }
+  return out;
+}
+
+/**
+ * Paso Estructura: apoyos (líneas violetas), cotas rojas exteriores, chip fuera del techo,
+ * resumen largo×ancho/paneles fuera, puntos de fijación con tooltip BOM (elemento SVG title).
+ */
+function EstructuraZonaOverlay({ r, hints, panelAu }) {
+  if (!hints) return null;
+  const nAp = hints.apoyos;
+  const supportLines = [];
+  if (Number.isFinite(nAp) && nAp >= 2 && r.h > 1e-6) {
+    const n = Math.min(32, Math.round(nAp));
+    for (let i = 0; i < n; i++) {
+      const yy = r.y + (i / (n - 1)) * r.h;
+      supportLines.push(
+        <line
+          key={`est-ap-${r.gi}-${i}`}
+          x1={r.x}
+          y1={yy}
+          x2={r.x + r.w}
+          y2={yy}
+          stroke="#7c3aed"
+          strokeWidth={0.048}
+          strokeDasharray="0.16 0.1"
+          opacity={0.88}
+          pointerEvents="none"
+        />,
+      );
+    }
+  }
+
+  const apTxt =
+    Number.isFinite(nAp) && nAp >= 1
+      ? `${Math.round(nAp)} apoyo${Math.round(nAp) === 1 ? "" : "s"}`
+      : "Apoyos N/D";
+  const fijTxt =
+    Number.isFinite(hints.puntosFijacion) && hints.puntosFijacion >= 0
+      ? `${Math.round(hints.puntosFijacion)} pts fij.`
+      : "";
+
+  const chipW = Math.min(Math.max(r.w * 0.88, 1.1), 2.4);
+  const chipH = fijTxt ? 0.4 : 0.28;
+  const chipX = r.x + (r.w - chipW) / 2;
+  const chipY = r.y - chipH - 0.14;
+  const chipFs = Math.max(0.11, Math.min(0.14, chipW * 0.065));
+
+  const yBottom = r.y + r.h;
+  const yDimAncho = yBottom + 0.2;
+  const yCaption = yDimAncho + ARCH_DIM_FONT * 2.35;
+  const nPan = panelCountAcrossAnchoPlanta(r.w, panelAu);
+  const caption = `${zonaLabelPlanta(r)} · ${nPan} ${nPan === 1 ? "panel" : "paneles"}`;
+
+  const xRefLeft = r.x;
+  /** Cota total largo más al exterior; vanos entre apoyos en franja interior (nomenclatura tipo plano). */
+  const xDimSpans = r.x - 0.38;
+  const xDimTotal = r.x - 0.88;
+
+  const spanSegments = [];
+  let spanSummary = null;
+  if (Number.isFinite(nAp) && nAp >= 2 && r.h > 1e-6) {
+    const n = Math.min(32, Math.round(nAp));
+    const spanM = r.h / (n - 1);
+    const numSpans = n - 1;
+    const maxSpanDims = 12;
+    if (numSpans <= maxSpanDims) {
+      for (let i = 0; i < numSpans; i++) {
+        const y1 = r.y + (i / (n - 1)) * r.h;
+        const y2 = r.y + ((i + 1) / (n - 1)) * r.h;
+        spanSegments.push(
+          <ArchDimVerticalSegment
+            key={`est-span-${r.gi}-${i}`}
+            xRef={xRefLeft}
+            xDim={xDimSpans}
+            y1={y1}
+            y2={y2}
+            spanM={spanM}
+          />,
+        );
+      }
+    } else {
+      spanSummary = (
+        <text
+          x={xDimSpans - 0.06}
+          y={r.y + r.h / 2}
+          textAnchor="middle"
+          fontSize={ARCH_DIM_FONT * 0.9}
+          fontWeight={700}
+          fontFamily={FONT}
+          fill={ARCH_DIM_STROKE}
+          stroke="none"
+          transform={`rotate(-90 ${xDimSpans - 0.06} ${r.y + r.h / 2})`}
+        >
+          {`${numSpans} vanos × ${fmtArchMeters(spanM)} m`}
+        </text>
+      );
+    }
+  }
+
+  const sysLabel =
+    hints.fijacionSistema === "caballete"
+      ? "Sistema caballete / tornillo aguja (presupuesto)"
+      : "Sistema varilla/tuerca (presupuesto)";
+  const lines = hints.fijacionProductLines?.length
+    ? hints.fijacionProductLines.join("\n")
+    : "Sin líneas de fijación en el BOM para esta zona.";
+  const dotTitle = `${sysLabel}\nCada punto ≈ 1 punto de fijación del cómputo (${Math.round(Number(hints.puntosFijacion) || 0)} total).\n\n${lines}`;
+
+  const dotPts = fijacionDotsLayout(r, hints);
+
+  return (
+    <g data-bmc-layer="estructura-overlay">
+      <g pointerEvents="none">{supportLines}</g>
+      <g pointerEvents="none">
+        <rect
+          x={chipX}
+          y={chipY}
+          width={chipW}
+          height={chipH}
+          rx={0.07}
+          fill="rgba(255,255,255,0.96)"
+          stroke="#7c3aed"
+          strokeWidth={0.03}
+        />
+        <text
+          x={chipX + chipW / 2}
+          y={chipY + chipFs * 1.25}
+          textAnchor="middle"
+          fontSize={chipFs}
+          fill="#5b21b6"
+          fontWeight={700}
+          fontFamily={FONT}
+        >
+          {apTxt}
+        </text>
+        {fijTxt ? (
+          <text
+            x={chipX + chipW / 2}
+            y={chipY + chipFs * 2.45}
+            textAnchor="middle"
+            fontSize={chipFs * 0.9}
+            fill={C.tp}
+            fontWeight={600}
+            fontFamily={FONT}
+          >
+            {fijTxt}
+          </text>
+        ) : null}
+      </g>
+      <g pointerEvents="none">
+        <ArchDimHorizontal x0={r.x} yBottom={yBottom} widthM={r.w} yDimLine={yDimAncho} />
+        <text
+          x={r.x + r.w / 2}
+          y={yCaption}
+          textAnchor="middle"
+          fontSize={Math.max(0.12, Math.min(0.17, r.w * 0.045))}
+          fill={C.primary}
+          fontWeight={700}
+          fontFamily={FONT}
+          stroke="none"
+        >
+          {caption}
+        </text>
+      </g>
+      <g pointerEvents="none">
+        <ArchDimVerticalSegment
+          xRef={xRefLeft}
+          xDim={xDimTotal}
+          y1={r.y}
+          y2={yBottom}
+          spanM={r.h}
+        />
+      </g>
+      {spanSegments.length ? <g pointerEvents="none">{spanSegments}</g> : null}
+      {spanSummary ? <g pointerEvents="none">{spanSummary}</g> : null}
+      <g pointerEvents="auto">
+        {dotPts.map((d) => (
+          <g key={`fij-dot-${r.gi}-${d.key}`}>
+            <circle
+              cx={d.cx}
+              cy={d.cy}
+              r={0.052}
+              fill="#0f172a"
+              stroke="#ffffff"
+              strokeWidth={0.024}
+              opacity={0.92}
+              style={{ cursor: "help" }}
+            >
+              <title>{dotTitle}</title>
+            </circle>
+          </g>
+        ))}
+      </g>
+    </g>
+  );
+}
+
 function getEncounterConfigFromZonas(zonas, ga, gb) {
   const pk = encounterPairKey(ga, gb);
   const low = Math.min(ga, gb);
@@ -247,6 +563,7 @@ function SlopeArrow({ cx, cy, h, dir }) {
  * @param {function} [props.onAddZona] - agrega una zona nueva (toolbar)
  * @param {function} [props.onEncounterPairChange] - (pairKey, encounterPatch|null) guarda en `preview.encounterByPair`; null = desconectar
  * @param {function} [props.onZonaDimensionPatch] - (gi, { largo?, ancho? }) edición inline al seleccionar zona
+ * @param {Record<number, object>|null} [props.estructuraHintsByGi] - si no es null, overlay Estructura (cotas, apoyos, fijaciones)
  */
 export default function RoofPreview({
   zonas = [],
@@ -259,6 +576,7 @@ export default function RoofPreview({
   onAddZona,
   onEncounterPairChange,
   onZonaDimensionPatch,
+  estructuraHintsByGi = null,
 }) {
   const fp = calcFactorPendiente(pendiente);
   const svgRef = useRef(null);
@@ -316,6 +634,17 @@ export default function RoofPreview({
       viewMetrics: { vbX, vbY, vbW, vbH, margin },
     };
   }, [planEdges]);
+
+  /** Espacio extra para cotas exteriores + chip (solo paso Estructura). */
+  const svgViewBox = useMemo(() => {
+    if (!layout.viewMetrics) return layout.viewBox;
+    if (estructuraHintsByGi == null || layout.entries.length === 0) return layout.viewBox;
+    const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
+    const padL = 1.05;
+    const padT = 0.55;
+    const padB = 0.68;
+    return `${vbX - padL} ${vbY - padT} ${vbW + padL} ${vbH + padT + padB}`;
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -575,6 +904,21 @@ export default function RoofPreview({
           )}
         </div>
       </div>
+      {estructuraHintsByGi != null && (
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: C.ts,
+            marginTop: -4,
+            marginBottom: 8,
+            lineHeight: 1.35,
+          }}
+        >
+          <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
+          etiqueta en cada zona = puntos de fijación (mismo criterio que el presupuesto).
+        </div>
+      )}
       {encounterPrompt && onEncounterPairChange && (
         <div
           style={{
@@ -691,7 +1035,7 @@ export default function RoofPreview({
           >
             <svg
               ref={svgRef}
-              viewBox={layout.viewBox}
+              viewBox={svgViewBox}
               width="100%"
               height="100%"
               preserveAspectRatio="xMidYMid meet"
@@ -816,33 +1160,38 @@ export default function RoofPreview({
                     {!supV.left && <line x1={r.x} y1={r.y} x2={r.x} y2={r.y + r.h} />}
                     {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
                   </g>
-                  <text
-                    x={r.x + r.w / 2}
-                    y={r.y + r.h / 2 - fs * 0.35}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize={fs}
-                    fill={C.primary}
-                    fontWeight={600}
-                    fontFamily={FONT}
-                    pointerEvents="none"
-                  >
-                    {zonaLabelPlanta(r)}
-                  </text>
-                  <text
-                    x={r.x + r.w / 2}
-                    y={r.y + r.h / 2 + fs * 0.55}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize={Math.max(0.11, fs * 0.42)}
-                    fill={C.ts}
-                    fontWeight={600}
-                    fontFamily={FONT}
-                    pointerEvents="none"
-                  >
-                    {panelCountAcrossAnchoPlanta(r.w, panelAu)}{" "}
-                    {panelCountAcrossAnchoPlanta(r.w, panelAu) === 1 ? "panel" : "paneles"}
-                  </text>
+                  {estructuraHintsByGi != null && estructuraHintsByGi[r.gi] ? (
+                    <EstructuraZonaOverlay r={r} hints={estructuraHintsByGi[r.gi]} panelAu={panelAu} />
+                  ) : null}
+                  {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
+                    <g pointerEvents="none">
+                      <text
+                        x={r.x + r.w / 2}
+                        y={r.y + r.h / 2 - fs * 0.35}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize={fs}
+                        fill={C.primary}
+                        fontWeight={600}
+                        fontFamily={FONT}
+                      >
+                        {zonaLabelPlanta(r)}
+                      </text>
+                      <text
+                        x={r.x + r.w / 2}
+                        y={r.y + r.h / 2 + fs * 0.55}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontSize={Math.max(0.11, fs * 0.42)}
+                        fill={C.ts}
+                        fontWeight={600}
+                        fontFamily={FONT}
+                      >
+                        {panelCountAcrossAnchoPlanta(r.w, panelAu)}{" "}
+                        {panelCountAcrossAnchoPlanta(r.w, panelAu) === 1 ? "panel" : "paneles"}
+                      </text>
+                    </g>
+                  ) : null}
                   {showSlope && (
                     <SlopeArrow
                       cx={r.x + r.w * 0.82}

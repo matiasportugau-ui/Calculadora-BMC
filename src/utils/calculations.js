@@ -410,7 +410,7 @@ export function calcTotalesSinIVA(allItems) {
 
 export function calcTechoCompleto(inputs) {
   const { PANELS_TECHO } = getPricing();
-  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "calcular_pendiente", alturaDif = 0 } = inputs;
+  const { familia, espesor, largo, ancho, tipoEst, ptsHorm, ptsMetal, ptsMadera, borders, opciones, color, pendiente = 0, pendienteModo = "incluye_pendiente", alturaDif = 0 } = inputs;
   const panel = PANELS_TECHO[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -492,6 +492,83 @@ export function calcTechoCompleto(inputs) {
   } : null;
 
   return { paneles, autoportancia, fijaciones, perfileria, selladores, totales, warnings, allItems, pendienteInfo };
+}
+
+/**
+ * Por índice de zona (`gi`), apoyos (autoportancia) y puntos de fijación alineados a `calcTechoCompleto`
+ * (misma ancho en planta, largo real, tipo estructura y BOM comercial si aplica). Para overlay 2D en paso Estructura.
+ * @returns {Record<number, {
+ *   apoyos: number|null,
+ *   puntosFijacion: number,
+ *   cantPaneles: number,
+ *   maxSpan: number|null,
+ *   largoProyectado: number,
+ *   anchoPlantaM: number,
+ *   fijacionSistema: "varilla_tuerca"|"caballete",
+ *   fijacionProductLines: string[],
+ * }>}
+ */
+export function computeRoofEstructuraHintsByGi(techo, panel) {
+  const out = {};
+  if (!techo?.zonas?.length || !panel || !techo.espesor) return out;
+  const espData = panel.esp[techo.espesor];
+  if (!espData) return out;
+  const bomComercial =
+    techo.opciones?.bomComercial === true &&
+    techo.familia === "ISODEC_PIR" &&
+    panel.sist === "varilla_tuerca";
+  const pendienteModo = techo.pendienteModo ?? "incluye_pendiente";
+  const pendiente = techo.pendiente ?? 0;
+  const tipoEst = techo.tipoEst || "metal";
+  const ptsHorm = techo.ptsHorm ?? 0;
+  const ptsMetal = techo.ptsMetal ?? 0;
+  const ptsMadera = techo.ptsMadera ?? 0;
+
+  for (let gi = 0; gi < techo.zonas.length; gi++) {
+    const z = techo.zonas[gi];
+    const largo = Number(z?.largo);
+    const ancho = Number(z?.ancho);
+    if (!(largo > 0) || !(ancho > 0)) continue;
+    const alturaDif = z.alturaDif ?? techo.alturaDif ?? 0;
+    const largoReal = calcLargoRealFromModo(largo, pendienteModo, pendiente, alturaDif);
+    const anchoPlanta = techo.tipoAguas === "dos_aguas" ? ancho / 2 : ancho;
+    const paneles = calcPanelesTecho(panel, techo.espesor, largoReal, anchoPlanta);
+    if (!paneles) continue;
+    const autop = calcAutoportancia(panel, techo.espesor, largo);
+    let fij;
+    if (panel.sist === "varilla_tuerca") {
+      const ptsComercial = bomComercial
+        ? getDimensioningParam("FIJACIONES_VARILLA.puntos_comercial_default", 22)
+        : null;
+      const fijOpts = ptsComercial != null ? { overridePuntosFijacion: ptsComercial } : {};
+      fij = calcFijacionesVarilla(
+        paneles.cantPaneles,
+        autop.apoyos || 2,
+        largoReal,
+        tipoEst,
+        ptsHorm,
+        ptsMetal,
+        ptsMadera,
+        fijOpts,
+      );
+    } else {
+      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
+    }
+    const fijacionProductLines = (fij.items || []).map(
+      (it) => `${it.label} — ${it.cant} ${it.unidad || "unid"}`,
+    );
+    out[gi] = {
+      apoyos: autop.apoyos,
+      puntosFijacion: fij.puntosFijacion,
+      cantPaneles: paneles.cantPaneles,
+      maxSpan: autop.maxSpan,
+      largoProyectado: largo,
+      anchoPlantaM: anchoPlanta,
+      fijacionSistema: panel.sist === "varilla_tuerca" ? "varilla_tuerca" : "caballete",
+      fijacionProductLines,
+    };
+  }
+  return out;
 }
 
 // ── §1b MULTI-ZONE MERGE ──────────────────────────────────────────────────────

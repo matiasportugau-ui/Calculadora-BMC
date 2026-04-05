@@ -482,6 +482,27 @@ export const SCENARIOS_DEF = [
   },
 ];
 
+/**
+ * Pasos del asistente (flujo con techo) donde el panel derecho prioriza **RoofPreview 2D** y la **Visualización 3D**
+ * queda en subacordeón «Próximamente». Incluye **Solo techo** (dimensiones → proyecto) y el tramo **Techo + Fachada**
+ * posterior a selladores techo para mantener la planta visible hasta proyecto.
+ */
+export const ROOF_2D_QUOTE_VISOR_STEP_IDS = new Set([
+  "dimensiones",
+  "pendiente",
+  "estructura",
+  "bordes",
+  "selladores",
+  "flete",
+  "proyecto",
+  "familia_pared",
+  "espesor_pared",
+  "color_pared",
+  "dimensiones_pared",
+  "aberturas",
+  "perfil_5852",
+]);
+
 // Derived backward-compatible object — visibility per scenario id
 export const VIS = Object.fromEntries(SCENARIOS_DEF.map(s => [s.id, s.visibility]));
 
