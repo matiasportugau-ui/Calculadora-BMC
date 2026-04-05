@@ -151,8 +151,60 @@ function encounterStrokeForModo(modo) {
 }
 
 const ARCH_DIM_STROKE = "#dc2626";
+/** Tamaño base (m en coords SVG) usado como referencia para escalar cotas respecto al span del plano. */
 const ARCH_DIM_FONT = 0.13;
 const ARCH_EXT_OPACITY = 0.75;
+
+/**
+ * Escala tipografía y grosores de cotas al **span del viewBox** para que sigan legibles en pantalla
+ * (planos grandes: antes ~0.13 m quedaba ~pocos px; móvil: más altura útil en el contenedor).
+ * @param {{ vbW: number, vbH: number }|null|undefined} viewMetrics
+ */
+function buildRoofPlanSvgTypography(viewMetrics) {
+  const base = ARCH_DIM_FONT;
+  if (!viewMetrics || !(viewMetrics.vbW > 0) || !(viewMetrics.vbH > 0)) {
+    const m = 1;
+    return {
+      dimFont: base,
+      m,
+      tickLen: 0.075 * m,
+      strokeExt: 0.022 * m,
+      strokeMain: 0.032 * m,
+      strokeTick: 0.035 * m,
+      encFont: 0.11 * m,
+      encStroke: 0.028 * m,
+      dimStackBottom: 0.24 * m,
+      dimStackTop: 0.24 * m,
+      dimStackStep: 0.14 * m,
+      sideOffset: 0.42 * m,
+      sideStep: 0.14 * m,
+      encOffX: 0.22 * m,
+      encOffY: 0.2 * m,
+    };
+  }
+  const span = Math.max(viewMetrics.vbW, viewMetrics.vbH, 2.5);
+  // ~2.4% del span del diagrama → proporción estable en px al hacer meet del SVG
+  let dimFont = span * 0.024;
+  dimFont = Math.min(0.5, Math.max(0.19, dimFont));
+  const m = dimFont / base;
+  return {
+    dimFont,
+    m,
+    tickLen: 0.075 * m,
+    strokeExt: 0.022 * m,
+    strokeMain: 0.032 * m,
+    strokeTick: 0.035 * m,
+    encFont: Math.min(0.42, Math.max(0.15, dimFont * 0.9)),
+    encStroke: 0.028 * m,
+    dimStackBottom: 0.24 * m,
+    dimStackTop: 0.24 * m,
+    dimStackStep: 0.14 * m,
+    sideOffset: 0.42 * m,
+    sideStep: 0.14 * m,
+    encOffX: 0.22 * m,
+    encOffY: 0.2 * m,
+  };
+}
 
 function fmtArchMeters(m) {
   if (!Number.isFinite(m)) return "—";
@@ -162,9 +214,9 @@ function fmtArchMeters(m) {
 }
 
 /** Cota horizontal (estilo arquitectura): debajo del borde inferior del rectángulo. */
-function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine }) {
+function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
   const w = widthM;
-  const tick = 0.075;
+  const tick = svgTy.tickLen;
   const label = `${fmtArchMeters(w)} m`;
   return (
     <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
@@ -173,7 +225,7 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine }) {
         y1={yBottom}
         x2={x0}
         y2={yDimLine}
-        strokeWidth={0.022}
+        strokeWidth={svgTy.strokeExt}
         opacity={ARCH_EXT_OPACITY}
       />
       <line
@@ -181,23 +233,23 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine }) {
         y1={yBottom}
         x2={x0 + w}
         y2={yDimLine}
-        strokeWidth={0.022}
+        strokeWidth={svgTy.strokeExt}
         opacity={ARCH_EXT_OPACITY}
       />
-      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={0.032} />
-      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={0.035} />
+      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeMain} />
+      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
       <line
         x1={x0 + w}
         y1={yDimLine - tick / 2}
         x2={x0 + w}
         y2={yDimLine + tick / 2}
-        strokeWidth={0.035}
+        strokeWidth={svgTy.strokeTick}
       />
       <text
         x={x0 + w / 2}
-        y={yDimLine + ARCH_DIM_FONT * 1.05}
+        y={yDimLine + svgTy.dimFont * 1.05}
         textAnchor="middle"
-        fontSize={ARCH_DIM_FONT}
+        fontSize={svgTy.dimFont}
         fontWeight={700}
         fontFamily={FONT}
         stroke="none"
@@ -209,22 +261,22 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine }) {
 }
 
 /** Cota horizontal sobre el borde superior (yEdge = arista del techo; yDimLine más arriba). */
-function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine }) {
+function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
   const w = widthM;
-  const tick = 0.075;
+  const tick = svgTy.tickLen;
   const label = `${fmtArchMeters(w)} m`;
   return (
     <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line x1={x0} y1={yEdge} x2={x0} y2={yDimLine} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
-      <line x1={x0 + w} y1={yEdge} x2={x0 + w} y2={yDimLine} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
-      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={0.032} />
-      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={0.035} />
-      <line x1={x0 + w} y1={yDimLine - tick / 2} x2={x0 + w} y2={yDimLine + tick / 2} strokeWidth={0.035} />
+      <line x1={x0} y1={yEdge} x2={x0} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
+      <line x1={x0 + w} y1={yEdge} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
+      <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeMain} />
+      <line x1={x0} y1={yDimLine - tick / 2} x2={x0} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
+      <line x1={x0 + w} y1={yDimLine - tick / 2} x2={x0 + w} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
       <text
         x={x0 + w / 2}
-        y={yDimLine - ARCH_DIM_FONT * 0.35}
+        y={yDimLine - svgTy.dimFont * 0.35}
         textAnchor="middle"
-        fontSize={ARCH_DIM_FONT}
+        fontSize={svgTy.dimFont}
         fontWeight={700}
         fontFamily={FONT}
         stroke="none"
@@ -236,26 +288,27 @@ function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine }) {
 }
 
 /** Cota vertical a la derecha del borde (xRef = arista exterior; xDim más afuera). */
-function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM }) {
-  const tick = 0.075;
+function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
+  const tick = svgTy.tickLen;
   const ym = (y1 + y2) / 2;
   const label = `${fmtArchMeters(spanM)} m`;
+  const tx = xDim + svgTy.dimFont * 0.85;
   return (
     <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={0.032} />
-      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={0.035} />
-      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={0.035} />
+      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={svgTy.strokeMain} />
+      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={svgTy.strokeTick} />
+      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={svgTy.strokeTick} />
       <text
-        x={xDim + ARCH_DIM_FONT * 0.85}
+        x={tx}
         y={ym}
         textAnchor="middle"
-        fontSize={ARCH_DIM_FONT * 0.95}
+        fontSize={svgTy.dimFont * 0.95}
         fontWeight={700}
         fontFamily={FONT}
         stroke="none"
-        transform={`rotate(-90 ${xDim + ARCH_DIM_FONT * 0.85} ${ym})`}
+        transform={`rotate(-90 ${tx} ${ym})`}
       >
         {label}
       </text>
@@ -264,26 +317,27 @@ function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM }) {
 }
 
 /** Cota vertical entre y1 e y2 (y1 < y2), línea de cota a la izquierda de xRef. */
-function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM }) {
-  const tick = 0.075;
+function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
+  const tick = svgTy.tickLen;
   const ym = (y1 + y2) / 2;
   const label = `${fmtArchMeters(spanM)} m`;
+  const tx = xDim - svgTy.dimFont * 0.85;
   return (
     <g pointerEvents="none" stroke={ARCH_DIM_STROKE} fill={ARCH_DIM_STROKE}>
-      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={0.022} opacity={ARCH_EXT_OPACITY} />
-      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={0.032} />
-      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={0.035} />
-      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={0.035} />
+      <line x1={xRef} y1={y1} x2={xDim} y2={y1} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xRef} y1={y2} x2={xDim} y2={y2} strokeWidth={svgTy.strokeExt} opacity={ARCH_EXT_OPACITY} />
+      <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={svgTy.strokeMain} />
+      <line x1={xDim - tick / 2} y1={y1} x2={xDim + tick / 2} y2={y1} strokeWidth={svgTy.strokeTick} />
+      <line x1={xDim - tick / 2} y1={y2} x2={xDim + tick / 2} y2={y2} strokeWidth={svgTy.strokeTick} />
       <text
-        x={xDim - ARCH_DIM_FONT * 0.85}
+        x={tx}
         y={ym}
         textAnchor="middle"
-        fontSize={ARCH_DIM_FONT * 0.95}
+        fontSize={svgTy.dimFont * 0.95}
         fontWeight={700}
         fontFamily={FONT}
         stroke="none"
-        transform={`rotate(-90 ${xDim - ARCH_DIM_FONT * 0.85} ${ym})`}
+        transform={`rotate(-90 ${tx} ${ym})`}
       >
         {label}
       </text>
@@ -331,7 +385,7 @@ function fijacionDotsLayout(r, hints) {
  * Cotas en **aristas exteriores expuestas** (tras restar encuentros) + longitud registrada en cada encuentro.
  * Las líneas quedan **afuera** del rectángulo de techo (sin solapar el relleno del panel).
  */
-function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
+function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [], svgTy }) {
   const bump = () => {
     const m = new Map();
     return (k) => {
@@ -355,20 +409,20 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
     const my = (enc.y1 + enc.y2) / 2;
     const len = enc.length;
     const isVert = enc.orientation === "vertical";
-    const tx = isVert ? mx + 0.22 : mx;
-    const ty = isVert ? my : my - 0.2;
+    const tx = isVert ? mx + svgTy.encOffX : mx;
+    const tyPos = isVert ? my : my - svgTy.encOffY;
     return (
       <g key={`enc-len-${enc.id || i}`} pointerEvents="none">
         <text
           x={tx}
-          y={ty}
+          y={tyPos}
           textAnchor="middle"
-          fontSize={0.11}
+          fontSize={svgTy.encFont}
           fontWeight={800}
           fontFamily={FONT}
           fill="#0f172a"
           stroke="#ffffff"
-          strokeWidth={0.028}
+          strokeWidth={svgTy.encStroke}
           paintOrder="stroke"
         >
           {`${fmtArchMeters(len)} m`}
@@ -387,7 +441,8 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
             x0={s.x1}
             yBottom={s.y1}
             widthM={s.length}
-            yDimLine={s.y1 + 0.24 + idx * 0.14}
+            yDimLine={s.y1 + svgTy.dimStackBottom + idx * svgTy.dimStackStep}
+            svgTy={svgTy}
           />
         );
       })}
@@ -399,13 +454,14 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
             x0={s.x1}
             yEdge={s.y1}
             widthM={s.length}
-            yDimLine={s.y1 - 0.24 - idx * 0.14}
+            yDimLine={s.y1 - svgTy.dimStackTop - idx * svgTy.dimStackStep}
+            svgTy={svgTy}
           />
         );
       })}
       {lefts.map((s) => {
         const idx = nextLeft(+s.x1.toFixed(3));
-        const xDim = s.x1 - 0.42 - idx * 0.14;
+        const xDim = s.x1 - svgTy.sideOffset - idx * svgTy.sideStep;
         return (
           <ArchDimVerticalSegment
             key={s.id}
@@ -414,12 +470,13 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
             y1={s.y1}
             y2={s.y2}
             spanM={s.length}
+            svgTy={svgTy}
           />
         );
       })}
       {rights.map((s) => {
         const idx = nextRight(+s.x1.toFixed(3));
-        const xDim = s.x1 + 0.42 + idx * 0.14;
+        const xDim = s.x1 + svgTy.sideOffset + idx * svgTy.sideStep;
         return (
           <ArchDimVerticalSegmentRight
             key={s.id}
@@ -428,6 +485,7 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
             y1={s.y1}
             y2={s.y2}
             spanM={s.length}
+            svgTy={svgTy}
           />
         );
       })}
@@ -440,9 +498,10 @@ function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [] }) {
  * Paso Estructura: apoyos (líneas violetas), chip fuera del techo, puntos de fijación (tooltip BOM).
  * Las cotas rojas globales van en `EstructuraGlobalExteriorOverlay` (perímetro libre + encuentros).
  */
-function EstructuraZonaOverlay({ r, hints }) {
+function EstructuraZonaOverlay({ r, hints, svgTy }) {
   if (!hints) return null;
   const nAp = hints.apoyos;
+  const zm = svgTy?.m ?? 1;
   const supportLines = [];
   if (Number.isFinite(nAp) && nAp >= 2 && r.h > 1e-6) {
     const n = Math.min(32, Math.round(nAp));
@@ -456,8 +515,8 @@ function EstructuraZonaOverlay({ r, hints }) {
           x2={r.x + r.w}
           y2={yy}
           stroke="#7c3aed"
-          strokeWidth={0.048}
-          strokeDasharray="0.16 0.1"
+          strokeWidth={0.048 * zm}
+          strokeDasharray={`${0.16 * zm} ${0.1 * zm}`}
           opacity={0.88}
           pointerEvents="none"
         />,
@@ -475,10 +534,10 @@ function EstructuraZonaOverlay({ r, hints }) {
       : "";
 
   const chipW = Math.min(Math.max(r.w * 0.88, 1.1), 2.4);
-  const chipH = fijTxt ? 0.4 : 0.28;
+  const chipH = (fijTxt ? 0.4 : 0.28) * zm;
   const chipX = r.x + (r.w - chipW) / 2;
-  const chipY = r.y - chipH - 0.14;
-  const chipFs = Math.max(0.11, Math.min(0.14, chipW * 0.065));
+  const chipY = r.y - chipH - 0.14 * zm;
+  const chipFs = Math.max(0.11 * zm, Math.min(0.16 * zm, chipW * 0.072 * zm));
 
   const sysLabel =
     hints.fijacionSistema === "caballete"
@@ -500,10 +559,10 @@ function EstructuraZonaOverlay({ r, hints }) {
           y={chipY}
           width={chipW}
           height={chipH}
-          rx={0.07}
+          rx={0.07 * zm}
           fill="rgba(255,255,255,0.96)"
           stroke="#7c3aed"
-          strokeWidth={0.03}
+          strokeWidth={0.03 * zm}
         />
         <text
           x={chipX + chipW / 2}
@@ -536,10 +595,10 @@ function EstructuraZonaOverlay({ r, hints }) {
             <circle
               cx={d.cx}
               cy={d.cy}
-              r={0.052}
+              r={0.052 * zm}
               fill="#0f172a"
               stroke="#ffffff"
-              strokeWidth={0.024}
+              strokeWidth={0.024 * zm}
               opacity={0.92}
               style={{ cursor: "help" }}
             >
@@ -616,14 +675,15 @@ function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "
   );
 }
 
-function SlopeArrow({ cx, cy, h, dir }) {
+function SlopeArrow({ cx, cy, h, dir, scaleM = 1 }) {
   const half = Math.min(h * 0.22, 0.9);
   const yTip = dir === "along_largo_pos" ? cy + half : cy - half;
   const yTail = dir === "along_largo_pos" ? cy - half : cy + half;
   const tipW = Math.min(h * 0.12, 0.35);
   const col = C.danger;
+  const sw = 0.05 * scaleM;
   return (
-    <g pointerEvents="none" stroke={col} strokeWidth={0.05} strokeLinecap="round" strokeLinejoin="round" fill={col}>
+    <g pointerEvents="none" stroke={col} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" fill={col}>
       <line x1={cx} y1={yTail} x2={cx} y2={yTip - (dir === "along_largo_pos" ? tipW : -tipW)} />
       <polygon
         points={
@@ -865,6 +925,8 @@ export default function RoofPreview({
 
   const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas);
 
+  const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
+
   /** Espacio extra para cotas exteriores + chip (solo paso Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
@@ -872,12 +934,13 @@ export default function RoofPreview({
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
-    const padL = 1.05 + nSide("left") * 0.14;
-    const padT = 0.55 + nSide("top") * 0.14;
-    const padB = 0.68 + nSide("bottom") * 0.14;
-    const padR = 0.45 + nSide("right") * 0.14;
+    const m = svgTy.m;
+    const padL = (1.05 + nSide("left") * 0.14) * m;
+    const padT = (0.55 + nSide("top") * 0.14) * m;
+    const padB = (0.68 + nSide("bottom") * 0.14) * m;
+    const padR = (0.45 + nSide("right") * 0.14) * m;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi, planEdges?.exterior]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, estructuraHintsByGi, planEdges?.exterior, svgTy.m]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -1267,9 +1330,9 @@ export default function RoofPreview({
               maxWidth: "100%",
               height:
                 estructuraHintsByGi != null
-                  ? "clamp(300px, min(55vh, 720px), 860px)"
-                  : "clamp(220px, min(42vh, 440px), 520px)",
-              minHeight: estructuraHintsByGi != null ? 280 : 220,
+                  ? "clamp(min(360px, 72vw), min(62vh, 820px), 920px)"
+                  : "clamp(240px, min(48vh, 520px), 560px)",
+              minHeight: estructuraHintsByGi != null ? 300 : 240,
               flexShrink: 0,
               order: embedMetricsSidebar ? 1 : undefined,
             }}
@@ -1299,8 +1362,8 @@ export default function RoofPreview({
                     y1={layout.viewMetrics.vbY}
                     y2={layout.viewMetrics.vbY + layout.viewMetrics.vbH}
                     stroke="#64748b"
-                    strokeWidth={0.035}
-                    strokeDasharray="0.12 0.08"
+                    strokeWidth={0.035 * svgTy.m}
+                    strokeDasharray={`${0.12 * svgTy.m} ${0.08 * svgTy.m}`}
                   />
                 ))}
                 {dragOverlay.guides.hy.map((yv) => (
@@ -1311,8 +1374,8 @@ export default function RoofPreview({
                     y1={yv}
                     y2={yv}
                     stroke="#64748b"
-                    strokeWidth={0.035}
-                    strokeDasharray="0.12 0.08"
+                    strokeWidth={0.035 * svgTy.m}
+                    strokeDasharray={`${0.12 * svgTy.m} ${0.08 * svgTy.m}`}
                   />
                 ))}
               </g>
@@ -1329,8 +1392,8 @@ export default function RoofPreview({
                   x2={enc.x2}
                   y2={enc.y2}
                   stroke={stroke}
-                  strokeWidth={0.09}
-                  strokeDasharray="0.16 0.1"
+                  strokeWidth={0.09 * svgTy.m}
+                  strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
                   pointerEvents="stroke"
                   opacity={0.95}
                   style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
@@ -1345,7 +1408,8 @@ export default function RoofPreview({
             {layout.entries.map((r) => {
               const sm = r.z.preview?.slopeMark;
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
-              const fs = Math.max(0.16, Math.min(0.32, r.w * 0.11));
+              const zm = svgTy.m;
+              const fs = Math.max(0.2 * zm, Math.min(0.38 * zm, r.w * 0.125 * Math.min(zm, 1.2)));
               const annex = isLateralAnnexZona(r.z);
               const canDrag = Boolean(onZonaPreviewChange);
               const supV = suppressSharedVerticalStroke(r, layout.entries, zonas);
@@ -1373,7 +1437,7 @@ export default function RoofPreview({
                       rx={0.14}
                       fill="none"
                       stroke="#22c55e"
-                      strokeWidth={0.09}
+                      strokeWidth={0.09 * svgTy.m}
                       opacity={0.9}
                       pointerEvents="none"
                     />
@@ -1385,13 +1449,13 @@ export default function RoofPreview({
                     h={r.h}
                     au={panelAu}
                     stroke={C.brand}
-                    strokeW={0.032}
+                    strokeW={0.032 * svgTy.m}
                     gradKey={`z-${r.gi}`}
                   />
                   <g
                     pointerEvents="none"
                     stroke={C.primary}
-                    strokeWidth={0.072}
+                    strokeWidth={0.072 * svgTy.m}
                     fill="none"
                     strokeLinecap="square"
                     opacity={0.92}
@@ -1402,7 +1466,7 @@ export default function RoofPreview({
                     {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
                   </g>
                   {estructuraHintsByGi != null && estructuraHintsByGi[r.gi] ? (
-                    <EstructuraZonaOverlay r={r} hints={estructuraHintsByGi[r.gi]} />
+                    <EstructuraZonaOverlay r={r} hints={estructuraHintsByGi[r.gi]} svgTy={svgTy} />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
                     <g pointerEvents="none">
@@ -1423,7 +1487,7 @@ export default function RoofPreview({
                         y={r.y + r.h / 2 + fs * 0.55}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fontSize={Math.max(0.11, fs * 0.42)}
+                        fontSize={Math.max(0.13 * zm, fs * 0.44)}
                         fill={C.ts}
                         fontWeight={600}
                         fontFamily={FONT}
@@ -1439,6 +1503,7 @@ export default function RoofPreview({
                       cy={r.y + r.h / 2}
                       h={r.h}
                       dir={sm}
+                      scaleM={svgTy.m}
                     />
                   )}
                   {showAnnexCtl && (
@@ -1510,6 +1575,7 @@ export default function RoofPreview({
               <EstructuraGlobalExteriorOverlay
                 exterior={planEdges.exterior}
                 encounters={planEdges.encounters ?? []}
+                svgTy={svgTy}
               />
             ) : null}
             </svg>

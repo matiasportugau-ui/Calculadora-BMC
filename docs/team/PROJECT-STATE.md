@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-04 (Estructura paso 9: layout izquierda + cotas perímetro libre)
+**Última actualización:** 2026-04-05 (Vista 2D techo — legibilidad cotas en todos los dispositivos)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-05 (UX — vista 2D techo legible en móvil/desktop):** Captura usuario: cotas rojas y números casi ilegibles en multizona. [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): `buildRoofPlanSvgTypography(viewMetrics)` escala **font** y **trazos** de cotas (`ArchDim*`, `EstructuraGlobalExteriorOverlay`, chip apoyos/fijación, rejilla, encuentros, flecha pendiente) según el **span del viewBox** (~2.4% del mayor lado, tope 0.5 m en coords SVG); padding extra del `svgViewBox` en Estructura × `m`; contenedor SVG más alto (`clamp` / `minHeight`). Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-roof-2d-legibility.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-transcript-roof-2d-legibility.md). `npm run lint` + `npm test` OK.
 
 **2026-04-04 (Transcripción paso 9 Estructura — layout + cotas perímetro libre):** Pedido UX: vista 2D **más grande**; bloque **superficie / extensión / planta (encuentros)** a la **izquierda** del layout 2D; **cotas rojas** solo en **aristas exteriores libres** (`buildRoofPlanEdges.exterior`) + **longitud en cada encuentro** (`encounters`), sin dibujar cotas completas por zona sobre el relleno del panel (evita solapes multizona). [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): `EstructuraGlobalExteriorOverlay`, `EstructuraZonaOverlay` reducido a apoyos/chip/puntos; `svgViewBox` con margen según cantidad de segmentos; `order`/`flex`/altura en modo estructura. [`QuoteVisualVisor.jsx`](../../src/components/QuoteVisualVisor.jsx): `minHeight` en paso `estructura`. [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): KPI fila derecha oculta en `estructura`. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-transcript-estructura-paso9-perimetro-cotas.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-04-transcript-estructura-paso9-perimetro-cotas.md). `npm run lint` + `npm test` OK.
 
