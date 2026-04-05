@@ -11,9 +11,11 @@ import {
   mergeZonaResults,
   calcPresupuestoLibre,
   calcPerfileriaTechoComercial,
+  calcSelladoresTecho,
   calcFijacionesVarilla,
   countPuntosFijacionVarillaGrilla,
   countVarillasRoscadasDesdeBarras1m,
+  perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
@@ -348,6 +350,24 @@ assert("Siliconas techo = 5 para 10 paneles", siliconas_t === 5, siliconas_t, 5)
 const cintas_t = Math.ceil(cantP_st / 10);
 assert("Cintas butilo techo = 1 para 10 paneles", cintas_t === 1, cintas_t, 1);
 
+const sellTechoSample = calcSelladoresTecho(10, {
+  panel: { au: 1 },
+  largoReal: 6.5,
+  anchoTotal: 5.6,
+  borders: {},
+  familiaP: "ISOROOF",
+  espesor: 30,
+});
+const sil600 = sellTechoSample.items.find((i) => i.sku === "silicona");
+const sil300 = sellTechoSample.items.find((i) => i.sku === "silicona_300_neutra");
+assert("Selladores techo: incluye silicona 300 (2× 600)", !!sil600 && !!sil300, { sil600: !!sil600, sil300: !!sil300 }, "both");
+assert(
+  "Selladores techo: cant 300 = 2 × cant 600",
+  sil600 && sil300 && sil300.cant === sil600.cant * 2,
+  sil300?.cant,
+  sil600 ? sil600.cant * 2 : null,
+);
+
 // 20 panels
 const sil_20 = Math.ceil(20 * 0.5);
 assert("Siliconas techo = 10 para 20 paneles", sil_20 === 10, sil_20, 10);
@@ -491,18 +511,20 @@ assert(
 );
 const hasCintaDef = paredResult.allItems.some((i) => i.sku === "cinta_butilo");
 assert("calcParedCompleto: sin cinta butilo por defecto", !hasCintaDef, hasCintaDef, false);
+const sil600P = paredResult.allItems.find((i) => i.sku === "silicona");
+const sil300P = paredResult.allItems.find((i) => i.sku === "silicona_300_neutra");
+assert("calcParedCompleto: incluye silicona 300 junto a 600", !!sil600P && !!sil300P, { sil600P: !!sil600P, sil300P: !!sil300P }, "both");
+assert(
+  "calcParedCompleto: cant silicona 300 = 2 × cant 600",
+  sil600P && sil300P && sil300P.cant === sil600P.cant * 2,
+  sil300P?.cant,
+  sil600P ? sil600P.cant * 2 : null,
+);
 const paredConCinta = calcParedCompleto({ ...paredInput, inclCintaButilo: true });
 assert(
   "calcParedCompleto + inclCintaButilo: incluye cinta",
   paredConCinta.allItems.some((i) => i.sku === "cinta_butilo"),
   paredConCinta.allItems.filter((i) => i.sku === "cinta_butilo").length,
-  ">=1"
-);
-const paredConSil300 = calcParedCompleto({ ...paredInput, inclSilicona300Neutra: true });
-assert(
-  "calcParedCompleto + inclSilicona300Neutra: incluye silicona 300",
-  paredConSil300.allItems.some((i) => i.sku === "silicona_300_neutra"),
-  paredConSil300.allItems.filter((i) => i.sku === "silicona_300_neutra").length,
   ">=1"
 );
 
@@ -529,6 +551,14 @@ assert(
   techoComercial.allItems.some((i) => String(i.label || "").includes("(kit comercial)")),
   techoComercial.allItems.map((i) => i.label).join(" | "),
   "kit comercial"
+);
+const kitSil600 = techoComercial.allItems.find((i) => i.sku === "silicona" && String(i.label || "").includes("kit comercial"));
+const kitSil300 = techoComercial.allItems.find((i) => i.sku === "silicona_300_neutra" && String(i.label || "").includes("kit comercial"));
+assert(
+  "calcTechoCompleto BOM comercial: silicona 300 = 2 × silicona 600",
+  kitSil600 && kitSil300 && kitSil300.cant === kitSil600.cant * 2,
+  kitSil300?.cant,
+  kitSil600 ? kitSil600.cant * 2 : null,
 );
 assert(
   "calcTechoCompleto BOM comercial: gotero comercial",
@@ -1045,19 +1075,26 @@ assert(
     50,
   );
   assert(
-    "calcFijacionesVarilla default total con perímetro largo → puntosFijacion===66",
-    r?.puntosFijacion === 66,
+    "calcFijacionesVarilla default total con refuerzo lateral largo → puntosFijacion===64 (50+2×7)",
+    r?.puntosFijacion === 64,
     r?.puntosFijacion,
-    66,
+    64,
   );
   const vItem = r?.items?.find((it) => it.sku === "varilla_38");
   assert(
-    "calcFijacionesVarilla 66 pts, 100 mm metal → varillas=14 (ceil(66/5))",
-    vItem && vItem.cant === 14,
+    "calcFijacionesVarilla 64 pts, 100 mm metal → varillas=13 (ceil(64/5) tramos 0,20 m)",
+    vItem && vItem.cant === 13,
     vItem?.cant,
-    14,
+    13,
   );
 }
+
+assert(
+  "perimetroVerticalInteriorPuntosDesdePlanta zona 6×5,6 una agua → 4 (2 por lateral 6 m / 2,5)",
+  perimetroVerticalInteriorPuntosDesdePlanta([{ largo: 6, ancho: 5.6 }], "una_agua", 0) === 4,
+  perimetroVerticalInteriorPuntosDesdePlanta([{ largo: 6, ancho: 5.6 }], "una_agua", 0),
+  4,
+);
 
 assert(
   "countVarillasRoscadasDesdeBarras1m: 10×0,20 m → 2 barras",

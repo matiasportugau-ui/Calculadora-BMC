@@ -68,8 +68,10 @@ ok      = largo <= maxSpan
 Para paneles con sistema `varilla_tuerca` (ISODEC, ISODEC PIR).
 
 ```
-puntosFijación = ceil((cantP × apoyos × 2) + (largo × 2 / 2.5))
-varillas       = ceil(puntos / 4)      — 1 varilla de 1m rinde 4 fijaciones
+grilla = cantP × (apoyos + 2) (apoyos ≥ 2; ver motor)
+lateral_perímetro = Σ en planta (laterales verticales exteriores libres) max(0, ceil(L / espPerim) − 1) por tramo; sin multizona: 2 × max(0, ceil(largo / espPerim) − 1)
+puntosFijación = grilla + lateral_perímetro
+varillas (con espesor mm) = barras 1 m según tramo = espesor + extra sustrato; fallback sin espesor: ceil(puntos / 4)
 ```
 
 **Por tipo de estructura:**
@@ -124,12 +126,9 @@ fijPerfileria = ceil(totalML / 0.30)
 paquetesT1    = ceil(fijPerfileria / 100)
 ```
 
-### 6. `calcSelladoresTecho(cantP)`
+### 6. `calcSelladoresTecho(cantP, opts)`
 
-```
-siliconas = ceil(cantP × 0.5)
-cintas    = ceil(cantP / 10)
-```
+Bromplast **600 ml**: `siliconas_600 = ceil(mlSilicona / ml_por_unid)` (ver motor: juntas, solapes, babetas, empalmes canalón). **300 ml neutra:** en paralelo, `cant_300 = siliconas_600 × ratio` (default **2**, parámetro `SELLADORES_TECHO.silicona_300_por_unid_600`). Cinta butilo: `cintas = ceil(cantP / paneles_por_rollo)` (default 10).
 
 ## Validaciones y Warnings
 

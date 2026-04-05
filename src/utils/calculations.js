@@ -6,6 +6,7 @@ import { p } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
+import { buildRoofPlanEdges, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -109,6 +110,15 @@ export function countPuntosFijacionVarillaGrilla(cantP, apoyos) {
  * Los recortes **no** se empotran entre sí: de cada barra nueva solo cuentan hasta `floor(rodLengthM / cutLengthM)` tramos;
  * el remanente se descarta salvo que otro tramo completo quepa en él (modelo greedy por barra = máximo de tramos iguales por metro).
  */
+/**
+ * Puntos de refuerzo en **laterales verticales** expuestos al perímetro (planta), alineado al visor 2D / `buildRoofPlanEdges`.
+ */
+export function perimetroVerticalInteriorPuntosDesdePlanta(zonas, tipoAguas, gi) {
+  const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
+  const { exterior } = buildRoofPlanEdges(zonas || [], tipoAguas ?? "una_agua");
+  return countExposedVerticalPerimeterFixingInteriorPointsForZona(exterior, gi, espPerim);
+}
+
 export function countVarillasRoscadasDesdeBarras1m(nCuts, cutLengthM, rodLengthM = 1) {
   const n = Math.max(0, Math.floor(Number(nCuts) || 0));
   if (n <= 0) return 0;
@@ -128,12 +138,14 @@ export function countVarillasRoscadasDesdeBarras1m(nCuts, cutLengthM, rodLengthM
  * @param {object} [opts]
  * @param {number} [opts.overridePuntosFijacion]
  * @param {number} [opts.espesorMm] espesor panel en mm (ISODEC/PIR); si falta o ≤0, se usa `varillas_por_punto` legacy.
+ * @param {number} [opts.perimetroVerticalInteriorPuntos] refuerzo lateral perímetro (planta); si falta, `2×max(0,ceil(largo/s)-1)` con `s=espaciado_perimetro`.
  */
 export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, ptsMetal, ptsMadera, opts = {}) {
   const { FIJACIONES } = getPricing();
   let puntosFijacion, pMetal, pH, pMadera;
   const overridePts = opts.overridePuntosFijacion;
   let puntosFijacionGrilla = 0;
+  let puntosFijacionPerimetroVertical = 0;
   if (tipoEst === "combinada") {
     pH = Math.max(0, Math.floor(ptsHorm || 0));
     pMetal = Math.max(0, Math.floor(ptsMetal || 0));
@@ -150,7 +162,12 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   } else {
     const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
     puntosFijacionGrilla = countPuntosFijacionVarillaGrilla(cantP, apoyos);
-    puntosFijacion = Math.ceil(puntosFijacionGrilla + (largo * 2 / espPerim));
+    const pvOpt = opts.perimetroVerticalInteriorPuntos;
+    puntosFijacionPerimetroVertical =
+      pvOpt != null && Number.isFinite(pvOpt) && pvOpt >= 0
+        ? Math.round(pvOpt)
+        : 2 * Math.max(0, Math.ceil(largo / espPerim) - 1);
+    puntosFijacion = puntosFijacionGrilla + puntosFijacionPerimetroVertical;
     if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
     else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
     else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
@@ -211,7 +228,13 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   const puPP = p(FIJACIONES.arandela_pp);
   items.push({ label: FIJACIONES.arandela_pp.label, sku: "arandela_pp", cant: puntosFijacion, unidad: "unid", pu: puPP, costo: c(FIJACIONES.arandela_pp), total: +(puntosFijacion * puPP).toFixed(2) });
   const total = items.reduce((s, i) => s + i.total, 0);
-  return { items, total: +total.toFixed(2), puntosFijacion, puntosFijacionGrilla };
+  return {
+    items,
+    total: +total.toFixed(2),
+    puntosFijacion,
+    puntosFijacionGrilla,
+    puntosFijacionPerimetroVertical,
+  };
 }
 
 export function calcFijacionesCaballete(cantP, largo) {
@@ -366,6 +389,24 @@ export function calcSelladoresTecho(cantP, { panel, borders = {}, anchoTotal = 0
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, costo: c(SELLADORES.silicona), total: +(siliconas * puSil).toFixed(2) });
 
+  const sil300 = SELLADORES.silicona_300_neutra;
+  const ratio300 = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
+  if (sil300 && siliconas > 0 && ratio300 > 0) {
+    const cant300 = Math.max(0, Math.round(siliconas * ratio300));
+    if (cant300 > 0) {
+      const pu3 = p(sil300);
+      items.push({
+        label: sil300.label,
+        sku: "silicona_300_neutra",
+        cant: cant300,
+        unidad: "unid",
+        pu: pu3,
+        costo: c(sil300),
+        total: +(cant300 * pu3).toFixed(2),
+      });
+    }
+  }
+
   const panelesPorRollo = getDimensioningParam("SELLADORES_TECHO.cinta_paneles_por_rollo", 10);
   const cintas = Math.ceil(cantP / panelesPorRollo);
   const puCinta = p(SELLADORES.cinta_butilo);
@@ -453,6 +494,23 @@ export function calcSelladoresTechoComercial() {
     costo: c(SELLADORES.silicona),
     total: +(nSil * puSi).toFixed(2),
   });
+  const sil300Kit = SELLADORES.silicona_300_neutra;
+  const ratio300Kit = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
+  if (sil300Kit && nSil > 0 && ratio300Kit > 0) {
+    const nSil300 = Math.max(0, Math.round(nSil * ratio300Kit));
+    if (nSil300 > 0) {
+      const pu3k = p(sil300Kit);
+      items.push({
+        label: `${sil300Kit.label} (kit comercial)`,
+        sku: "silicona_300_neutra",
+        cant: nSil300,
+        unidad: "unid",
+        pu: pu3k,
+        costo: c(sil300Kit),
+        total: +(nSil300 * pu3k).toFixed(2),
+      });
+    }
+  }
   const puMe = p(SELLADORES.membrana);
   items.push({
     label: `${SELLADORES.membrana.label} (kit comercial)`,
@@ -524,10 +582,27 @@ export function calcTechoCompleto(inputs) {
     warnings.push("BOM comercial ISODEC PIR: 2 goteros + 6 babetas + kit selladores + puntos fijación fijos (ajustable en dimensionamiento). Ignora bordes perimetrales para accesorios.");
   }
 
+  let perimetroVerticalInteriorPuntosResolved = inputs.perimetroVerticalInteriorPuntos;
+  if (
+    perimetroVerticalInteriorPuntosResolved == null &&
+    Array.isArray(inputs.zonas) &&
+    inputs.zonas.length > 0 &&
+    inputs.zonaGi != null
+  ) {
+    perimetroVerticalInteriorPuntosResolved = perimetroVerticalInteriorPuntosDesdePlanta(
+      inputs.zonas,
+      inputs.tipoAguas ?? "una_agua",
+      inputs.zonaGi,
+    );
+  }
+
   let fijaciones;
   if (panel.sist === "varilla_tuerca") {
     const ptsComercial = bomComercial ? getDimensioningParam("FIJACIONES_VARILLA.puntos_comercial_default", 22) : null;
     const fijOpts = ptsComercial != null ? { overridePuntosFijacion: ptsComercial } : {};
+    if (ptsComercial == null && perimetroVerticalInteriorPuntosResolved != null) {
+      fijOpts.perimetroVerticalInteriorPuntos = perimetroVerticalInteriorPuntosResolved;
+    }
     fijaciones = calcFijacionesVarilla(paneles.cantPaneles, autoportancia.apoyos || 2, largoReal, tipoEst || "metal", ptsHorm || 0, ptsMetal || 0, ptsMadera || 0, {
       ...fijOpts,
       espesorMm: espesor,
@@ -589,6 +664,8 @@ export function calcTechoCompleto(inputs) {
  *   anchoPlantaM: number,
  *   fijacionSistema: "varilla_tuerca"|"caballete",
  *   fijacionProductLines: string[],
+ *   puntosFijacionPerimetroVertical?: number,
+ *   fijacionEspaciadoPerimetroM?: number,
  * }>}
  */
 export function computeRoofEstructuraHintsByGi(techo, panel) {
@@ -628,6 +705,15 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
       const fijOpts = {
         ...(ptsComercial != null ? { overridePuntosFijacion: ptsComercial } : {}),
         espesorMm: techo.espesor,
+        ...(ptsComercial == null
+          ? {
+              perimetroVerticalInteriorPuntos: perimetroVerticalInteriorPuntosDesdePlanta(
+                techo.zonas,
+                techo.tipoAguas ?? "una_agua",
+                gi,
+              ),
+            }
+          : {}),
       };
       fij = calcFijacionesVarilla(
         paneles.cantPaneles,
@@ -649,6 +735,8 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
       apoyos: autop.apoyos,
       puntosFijacion: fij.puntosFijacion,
       puntosFijacionGrilla: fij.puntosFijacionGrilla ?? fij.puntosFijacion,
+      puntosFijacionPerimetroVertical: fij.puntosFijacionPerimetroVertical ?? 0,
+      fijacionEspaciadoPerimetroM: getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5),
       cantPaneles: paneles.cantPaneles,
       maxSpan: autop.maxSpan,
       largoProyectado: largo,
@@ -708,6 +796,10 @@ export function mergeZonaResults(zonaResults) {
       if (r.fijaciones.puntosFijacionGrilla != null) {
         combined.fijaciones.puntosFijacionGrilla =
           (combined.fijaciones.puntosFijacionGrilla || 0) + r.fijaciones.puntosFijacionGrilla;
+      }
+      if (r.fijaciones.puntosFijacionPerimetroVertical != null) {
+        combined.fijaciones.puntosFijacionPerimetroVertical =
+          (combined.fijaciones.puntosFijacionPerimetroVertical || 0) + r.fijaciones.puntosFijacionPerimetroVertical;
       }
     }
 
@@ -860,12 +952,11 @@ export function calcPerfilesParedExtra(panel, espesor, cantP, alto, opts) {
   return { items, total: +total.toFixed(2) };
 }
 
-// §D SELLADORES PARED: silicona + (opc.) cinta butilo + membrana + espuma PU + (opc.) silicona 300 ml
+// §D SELLADORES PARED: silicona 600 ml + silicona 300 ml (ratio × unid. 600) + (opc.) cinta butilo + membrana + espuma PU
 export function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
   const { SELLADORES } = getPricing();
   const items = [];
   const inclCintaButilo = opts.inclCintaButilo === true;
-  const inclSil300 = opts.inclSilicona300Neutra === true;
   const juntasV = cantPaneles - 1;
   const mlJuntas = +(juntasV * alto + perimetro * 2).toFixed(2);
   const c = (x) => (x?.costo ?? 0);
@@ -873,12 +964,22 @@ export function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
   const siliconas = Math.ceil(mlJuntas / silMlUnid);
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, costo: c(SELLADORES.silicona), total: +(siliconas * puSil).toFixed(2) });
-  if (inclSil300 && SELLADORES.silicona_300_neutra) {
-    const sil3 = SELLADORES.silicona_300_neutra;
-    const mPorUnid = Number(sil3.metros_cobertura_por_unid) > 0 ? Number(sil3.metros_cobertura_por_unid) : 8;
-    const cant3 = Math.ceil(mlJuntas / mPorUnid);
-    const pu3 = p(sil3);
-    items.push({ label: sil3.label, sku: "silicona_300_neutra", cant: cant3, unidad: "unid", pu: pu3, costo: c(sil3), total: +(cant3 * pu3).toFixed(2) });
+  const sil300P = SELLADORES.silicona_300_neutra;
+  const ratio300P = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
+  if (sil300P && siliconas > 0 && ratio300P > 0) {
+    const cant3 = Math.max(0, Math.round(siliconas * ratio300P));
+    if (cant3 > 0) {
+      const pu3 = p(sil300P);
+      items.push({
+        label: sil300P.label,
+        sku: "silicona_300_neutra",
+        cant: cant3,
+        unidad: "unid",
+        pu: pu3,
+        costo: c(sil300P),
+        total: +(cant3 * pu3).toFixed(2),
+      });
+    }
   }
   if (inclCintaButilo) {
     const cintaMlRollo = getDimensioningParam("SELLADORES_PARED.cinta_ml_por_rollo", 22.5);
@@ -901,7 +1002,7 @@ export function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
 
 export function calcParedCompleto(inputs) {
   const { PANELS_PARED } = getPricing();
-  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false, inclSilicona300Neutra = false } = inputs;
+  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false } = inputs;
   const panel = PANELS_PARED[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -919,7 +1020,7 @@ export function calcParedCompleto(inputs) {
   const fijaciones = calcFijacionesPared(panel, espesor, paneles.cantPaneles, alto, perimetro, tipoEst || "metal");
   const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, { incl5852 });
   let sellador = { items: [], total: 0 };
-  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto, { inclCintaButilo, inclSilicona300Neutra });
+  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto, { inclCintaButilo });
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, costo: espData.costo ?? 0, total: paneles.costoPaneles, cantPaneles: paneles.cantPaneles, largoPanel: alto };
   const allItems = [panelItem, ...perfilesU.items, ...esquineros.items, ...perfilesExtra.items, ...fijaciones.items, ...sellador.items];
   const totales = calcTotalesSinIVA(allItems);

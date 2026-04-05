@@ -12,6 +12,7 @@ import {
   calcParedCompleto,
   calcTotalesSinIVA,
   mergeZonaResults,
+  perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import {
@@ -272,7 +273,11 @@ function runCalcTecho(techo) {
   const is2A = techo.tipoAguas === "dos_aguas";
   const zonas = techo.zonas || [{ largo: techo.largo || 6, ancho: techo.ancho || 5 }];
 
-  const zonaResults = zonas.flatMap(zona => {
+  const zonaResults = zonas.flatMap((zona, gi) => {
+    const perimVertPts =
+      !is2A && zonas.length
+        ? perimetroVerticalInteriorPuntosDesdePlanta(zonas, techo.tipoAguas, gi)
+        : undefined;
     if (is2A) {
       const ha = +(zona.ancho / 2).toFixed(2);
       const a1 = calcTechoCompleto({
@@ -290,7 +295,14 @@ function runCalcTecho(techo) {
       });
       return [a1, a2];
     }
-    return [calcTechoCompleto({ ...techo, largo: zona.largo, ancho: zona.ancho })];
+    return [
+      calcTechoCompleto({
+        ...techo,
+        largo: zona.largo,
+        ancho: zona.ancho,
+        ...(perimVertPts != null ? { perimetroVerticalInteriorPuntos: perimVertPts } : {}),
+      }),
+    ];
   });
   return mergeZonaResults(zonaResults);
 }
@@ -748,10 +760,11 @@ router.get("/informe", (req, res) => {
       paneles_techo: "cantPaneles = ceil(ancho / ancho_util). area = cantPaneles × largo × ancho_util. costo = area × precio_m2.",
       autoportancia: "apoyos = ceil(largo / autoportancia_m) + 1. Si largo > autoportancia_m → requiere estructura adicional.",
       fijaciones_varilla:
-        "grilla = cantP × (apoyos + 2) con apoyos≥2 (2 fij/panel en 1.ª y última línea de apoyo, 1 fij/panel en intermedias; apoyos=1 → 2×cantP). puntosFijacion = ceil(grilla + (largo × 2 / espPerim)). Varillas 1 m: tramo = espesor(mm)/1000 + 0,10 m (metal/hormigón) o + 0,05 m (madera); tramos por barra = floor(1/tramo); barras = ceil(puntos/tramos_por_barra) sin reusar recortes < tramo. Fallback sin espesor: ceil(puntos/4). BOM: arandela plana 3/8\" = puntos metal + puntos madera (anclaje pasante, lado inferior); no en solo hormigón.",
+        "grilla = cantP × (apoyos + 2) con apoyos≥2 (2 fij/panel en 1.ª y última línea de apoyo, 1 fij/panel en intermedias; apoyos=1 → 2×cantP). Refuerzo lateral perímetro (planta): en cada tramo exterior vertical left/right libre, puntos_intermedios = max(0, ceil(longitud_tramo/espPerim)−1); multizona según geometría de planta. Sin planta: 2×max(0, ceil(largo/espPerim)−1). puntosFijacion = grilla + refuerzo_lateral. Varillas 1 m: tramo = espesor(mm)/1000 + 0,10 m (metal/hormigón) o + 0,05 m (madera); tramos por barra = floor(1/tramo); barras = ceil(puntos/tramos_por_barra) sin reusar recortes < tramo. Fallback sin espesor: ceil(puntos/4). BOM: arandela plana 3/8\" = puntos metal + puntos madera (anclaje pasante, lado inferior); no en solo hormigón.",
       fijaciones_caballete: "Para ISOROOF. caballetes = ceil((cantP × 3 × (largo / 2.9 + 1)) + ((largo × 2) / 0.3)).",
       perfileria: "barras = ceil(dimension / largo_barra). Tornillo T1: 1 por cada 0.30m lineal de perfilería.",
-      selladores_techo: "siliconas = ceil(cantP × 0.5). cintas_butilo = ceil(cantP / 10).",
+      selladores_techo:
+        "siliconas_600 (Bromplast) = ceil(mlSilicona / ml_por_unid). silicona_300_neutra = siliconas_600 × ratio (default 2, parámetro SELLADORES_TECHO.silicona_300_por_unid_600). cintas_butilo = ceil(cantP / 10).",
       paneles_pared: "cantPaneles = ceil(perimetro / ancho_util). areaBruta = cantP × alto × au. areaNeta = areaBruta − aberturas.",
       descarte: "descarteAncho = (cantP × au) − ancho_solicitado. descarteArea = descarteAncho × largo.",
       iva: "subtotal = sum(items.total). IVA = subtotal × 0.22. total = subtotal + IVA.",

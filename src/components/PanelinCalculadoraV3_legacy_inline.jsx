@@ -184,7 +184,7 @@ const PANELS_PARED = {
 
 const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.49, web: 11.07, costo: 8.17, unidad: "unid", ml_por_unid: 10.27 },
-  silicona_300_neutra: { label: "Silicona Neutra Premium Silva Selantes", venta: 4.00, web: 4.88, costo: 2.57, unidad: "unid", metros_cobertura_por_unid: 8 },
+  silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 4.00, web: 4.88, costo: 2.57, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 14.89, web: 18.13, costo: 13.38, unidad: "unid" },
   membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
   espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
@@ -204,9 +204,9 @@ const PERFIL_TECHO = {
       250: { sku: "6841", venta: 23.80, web: 29.03, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GF80DC",  venta: 19.97, web: 23.30, largo: 3.03 },
-      80:  { sku: "GF120DC", venta: 20.87, web: 24.34, largo: 3.03 },
-      120: { sku: "GF120DC", venta: 24.69, web: 28.81, largo: 3.03 },
+      50:  { sku: "GFFPIR50",  venta: 19.97, web: 23.30, largo: 3.03 },
+      80:  { sku: "GFFPIR80", venta: 20.87, web: 24.34, largo: 3.03 },
+      120: { sku: "GFFPIR120", venta: 24.69, web: 28.81, largo: 3.03 },
     },
   },
   gotero_frontal_greca: {
@@ -230,9 +230,9 @@ const PERFIL_TECHO = {
       250: { sku: "6845", venta: 31.75, web: 38.74, largo: 3.0 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
-      80:  { sku: "GL80DC",  venta: 26.51, web: 30.92, largo: 3.0 },
-      120: { sku: "GL120DC", venta: 31.08, web: 36.26, largo: 3.0 },
+      50:  { sku: "GLLPIR50",  venta: 26.51, web: 30.92, largo: 3.0 },
+      80:  { sku: "GLLPIR80",  venta: 26.51, web: 30.92, largo: 3.0 },
+      120: { sku: "GLLPIR120", venta: 31.08, web: 36.26, largo: 3.0 },
     },
   },
   gotero_lateral_camara: {
@@ -397,7 +397,9 @@ function countPuntosFijacionVarillaGrilla(cantP, apoyos) {
 
 function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, espesorMm = 100) {
   const grilla = countPuntosFijacionVarillaGrilla(cantP, apoyos);
-  const puntosFijacion = Math.ceil(grilla + (largo * 2 / 2.5));
+  const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
+  const lateral = 2 * Math.max(0, Math.ceil(largo / espPerim) - 1);
+  const puntosFijacion = grilla + lateral;
   const espM = Math.max(0, Number(espesorMm) || 0) / 1000;
   const rodLen = getDimensioningParam("FIJACIONES_VARILLA.largo_comercial_m", 1);
   const exMetalHorm = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", 0.1);
@@ -678,22 +680,23 @@ function calcPerfilesParedExtra(panel, espesor, cantP, alto, perimetro, opts) {
   return { items, total: +total.toFixed(2) };
 }
 
-// §D SELLADORES PARED: silicona + (opc.) cinta butilo + membrana + espuma PU + (opc.) silicona 300 ml
+// §D SELLADORES PARED: silicona 600 ml + silicona 300 ml (ratio × unid. 600) + (opc.) cinta butilo + membrana + espuma PU
 function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
   const items = [];
   const inclCintaButilo = opts.inclCintaButilo === true;
-  const inclSil300 = opts.inclSilicona300Neutra === true;
   const juntasV = cantPaneles - 1;
   const mlJuntas = +(juntasV * alto + perimetro * 2).toFixed(2);
   const siliconas = Math.ceil(mlJuntas / 8);
   const puSil = p(SELLADORES.silicona);
   items.push({ label: SELLADORES.silicona.label, sku: "silicona", cant: siliconas, unidad: "unid", pu: puSil, total: +(siliconas * puSil).toFixed(2) });
-  if (inclSil300 && SELLADORES.silicona_300_neutra) {
-    const sil3 = SELLADORES.silicona_300_neutra;
-    const mPorUnid = Number(sil3.metros_cobertura_por_unid) > 0 ? Number(sil3.metros_cobertura_por_unid) : 8;
-    const cant3 = Math.ceil(mlJuntas / mPorUnid);
-    const pu3 = p(sil3);
-    items.push({ label: sil3.label, sku: "silicona_300_neutra", cant: cant3, unidad: "unid", pu: pu3, total: +(cant3 * pu3).toFixed(2) });
+  const sil300P = SELLADORES.silicona_300_neutra;
+  const ratio300P = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
+  if (sil300P && siliconas > 0 && ratio300P > 0) {
+    const cant3 = Math.max(0, Math.round(siliconas * ratio300P));
+    if (cant3 > 0) {
+      const pu3 = p(sil300P);
+      items.push({ label: sil300P.label, sku: "silicona_300_neutra", cant: cant3, unidad: "unid", pu: pu3, total: +(cant3 * pu3).toFixed(2) });
+    }
   }
   if (inclCintaButilo) {
     const cintas = Math.ceil(mlJuntas / 22.5);
@@ -714,7 +717,7 @@ function calcSelladorPared(perimetro, cantPaneles, alto, opts = {}) {
 }
 
 function calcParedCompleto(inputs) {
-  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false, inclSilicona300Neutra = false } = inputs;
+  const { familia, espesor, alto, perimetro, numEsqExt, numEsqInt, aberturas, tipoEst, inclSell, incl5852, color, inclCintaButilo = false } = inputs;
   const panel = PANELS_PARED[familia];
   if (!panel) return { error: `Familia "${familia}" no encontrada` };
   const espData = panel.esp[espesor];
@@ -732,7 +735,7 @@ function calcParedCompleto(inputs) {
   const fijaciones = calcFijacionesPared(panel, espesor, paneles.cantPaneles, alto, perimetro, tipoEst || "metal");
   const perfilesExtra = calcPerfilesParedExtra(panel, espesor, paneles.cantPaneles, alto, perimetro, { incl5852 });
   let sellador = { items: [], total: 0 };
-  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto, { inclCintaButilo, inclSilicona300Neutra });
+  if (inclSell !== false) sellador = calcSelladorPared(perimetro, paneles.cantPaneles, alto, { inclCintaButilo });
   const panelItem = { label: panel.label + ` ${espesor}mm`, sku: `${familia}-${espesor}`, cant: paneles.areaNeta, unidad: "m²", pu: paneles.precioM2, total: paneles.costoPaneles };
   const allItems = [panelItem, ...perfilesU.items, ...esquineros.items, ...perfilesExtra.items, ...fijaciones.items, ...sellador.items];
   const totales = calcTotalesSinIVA(allItems);
@@ -2157,7 +2160,9 @@ export default function PanelinCalculadoraV3() {
               <Toggle label="Selladores" value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.opciones.inclSell : pared.inclSell} onChange={v => { setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } })); uP("inclSell", v); }} />
               {scenarioDef?.hasPared && pared.inclSell !== false && <>
                 <Toggle label="Cinta butilo (fachada)" value={!!pared.inclCintaButilo} onChange={v => uP("inclCintaButilo", v)} />
-                <Toggle label="Silicona 300 ml neutra (fachada)" value={!!pared.inclSilicona300Neutra} onChange={v => uP("inclSilicona300Neutra", v)} />
+                <div style={{ fontSize: 11, opacity: 0.85, lineHeight: 1.35 }}>
+                  Con selladores: silicona 300 ml neutra va en paralelo a Bromplast 600 ml (cantidad = 2× la de 600 ml; ajustable en dimensionamiento).
+                </div>
               </>}
               {vis.p5852 && <Toggle label="Perfil 5852 aluminio" value={pared.incl5852} onChange={v => uP("incl5852", v)} />}
               <div style={{ marginTop: 8 }}>

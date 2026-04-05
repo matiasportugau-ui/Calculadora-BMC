@@ -5,7 +5,13 @@
 // Adding a new scenario = add 1 entry to SCENARIOS_DEF (no changes here).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "./calculations.js";
+import {
+  calcTechoCompleto,
+  calcParedCompleto,
+  calcTotalesSinIVA,
+  mergeZonaResults,
+  perimetroVerticalInteriorPuntosDesdePlanta,
+} from "./calculations.js";
 import { buildEdgeBOM, encounterPairKey, getSharedSidesPerZona, layoutZonasLogico } from "./roofPlanGeometry.js";
 import { encounterEsContinuo, encounterBorderPerfil, resolveNeighborSharedSide } from "./roofEncounterModel.js";
 import { getPricing } from "../data/pricing.js";
@@ -102,6 +108,11 @@ function computeTechoZonas(techo, useEncounterBorders) {
       ...(encounterJunctions.length ? { encounterJunctions } : {}),
     };
 
+    const perimVertPts =
+      !is2Aguas && Array.isArray(techo.zonas) && techo.zonas.length
+        ? perimetroVerticalInteriorPuntosDesdePlanta(techo.zonas, techo.tipoAguas, gi)
+        : undefined;
+
     if (is2Aguas) {
       const halfAncho = +(zona.ancho / 2).toFixed(2);
       return [
@@ -124,7 +135,14 @@ function computeTechoZonas(techo, useEncounterBorders) {
         }),
       ];
     }
-    return [calcTechoCompleto({ ...inputs, borders: effectiveBorders, opciones: opcionesMerged })];
+    return [
+      calcTechoCompleto({
+        ...inputs,
+        borders: effectiveBorders,
+        opciones: opcionesMerged,
+        ...(perimVertPts != null ? { perimetroVerticalInteriorPuntos: perimVertPts } : {}),
+      }),
+    ];
   });
 
   return mergeZonaResults(zonaResults);

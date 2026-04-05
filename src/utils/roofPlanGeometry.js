@@ -344,6 +344,28 @@ export function buildRoofPlanEdges(zonas, tipoAguas = "una_agua") {
 }
 
 /**
+ * Puntos **adicionales** de fijación en **laterales verticales** en planta (`left`/`right`) donde el borde es
+ * **perímetro exterior** (segmentos de `buildRoofPlanEdges`), con separación máxima ~`espPerim` m a lo largo de cada tramo:
+ * por segmento de longitud L, `max(0, ceil(L/espPerim) - 1)` (intermedios; esquinas cubiertas por la grilla de apoyos).
+ * @param {object[]} exterior - `buildRoofPlanEdges(...).exterior`
+ * @param {number} gi - índice de zona (`zoneIndex`)
+ * @param {number} espPerim - espaciado nominal (m), p. ej. `FIJACIONES_VARILLA.espaciado_perimetro`
+ */
+export function countExposedVerticalPerimeterFixingInteriorPointsForZona(exterior, gi, espPerim) {
+  const s = Number(espPerim);
+  if (!(s > 0)) return 0;
+  let sum = 0;
+  for (const e of exterior || []) {
+    if (e.zoneIndex !== gi) continue;
+    if (e.side !== "left" && e.side !== "right") continue;
+    const L = Number(e.length);
+    if (!(L > 0)) continue;
+    sum += Math.max(0, Math.ceil(L / s) - 1);
+  }
+  return sum;
+}
+
+/**
  * Layout for BOM encounter detection: zones placed adjacent (no visual gap).
  * Use this for BOM calculations, not for visual display.
  */

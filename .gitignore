@@ -37,6 +37,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Runtime exports (MATRIZ CSV pull, logs locales)
+.runtime/
+
 # Cache
 .eslintcache
 .parcel-cache

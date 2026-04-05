@@ -86,6 +86,18 @@ export const MATRIZ_SKU_TO_PATH = {
   GLDCAM80: "PERFIL_TECHO.gotero_lateral_camara.ISOROOF.80",
   GFCGR30: "PERFIL_TECHO.gotero_frontal_greca.ISOROOF.30",
 
+  // Goteros / perfiles ISODEC EPS (códigos numéricos col D — ver MATRIZ-SKU-GAP-Y-PLAN.md)
+  6838: "PERFIL_TECHO.gotero_frontal.ISODEC.100",
+  6839: "PERFIL_TECHO.gotero_frontal.ISODEC.150",
+  6840: "PERFIL_TECHO.gotero_frontal.ISODEC.200",
+  6841: "PERFIL_TECHO.gotero_frontal.ISODEC.250",
+  6842: "PERFIL_TECHO.gotero_lateral.ISODEC.100",
+  6843: "PERFIL_TECHO.gotero_lateral.ISODEC.150",
+  6844: "PERFIL_TECHO.gotero_lateral.ISODEC.200",
+  6845: "PERFIL_TECHO.gotero_lateral.ISODEC.250",
+  /** Lateral cámara Isodec / PIR — mismo precio hoy; import toca solo path ISODEC._all */
+  GLDCAMDC: "PERFIL_TECHO.gotero_lateral_camara.ISODEC._all",
+
   // Babetas, cumbrera, canalón
   BBAS3G: "PERFIL_TECHO.babeta_adosar.ISOROOF._all",
   BBESUP: "PERFIL_TECHO.babeta_empotrar.ISOROOF._all",
@@ -98,14 +110,39 @@ export const MATRIZ_SKU_TO_PATH = {
   CD50: "PERFIL_TECHO.canalon.ISOROOF.50",
   CD80: "PERFIL_TECHO.canalon.ISOROOF.80",
   SOPCAN3M: "PERFIL_TECHO.soporte_canalon.ISOROOF._all",
+  /** Isodec EPS — canalón / soporte / babetas / cumbrera (PIR puede compartir precio; ver doc SKU gap) */
+  6801: "PERFIL_TECHO.canalon.ISODEC.100",
+  6802: "PERFIL_TECHO.canalon.ISODEC.150",
+  6803: "PERFIL_TECHO.canalon.ISODEC.200",
+  6804: "PERFIL_TECHO.canalon.ISODEC.250",
+  6805: "PERFIL_TECHO.soporte_canalon.ISODEC._all",
+  6828: "PERFIL_TECHO.babeta_adosar.ISODEC._all",
+  6865: "PERFIL_TECHO.babeta_empotrar.ISODEC._all",
+  6847: "PERFIL_TECHO.cumbrera.ISODEC._all",
+  /** Canalón 120 mm — alias sin punto: CANISDC120 */
+  CANISDC120: "PERFIL_TECHO.canalon.ISODEC.120",
+  /** Misma ruta; col D con punto en planilla */
+  "CAN.ISDC120": "PERFIL_TECHO.canalon.ISODEC.120",
+  /** Recomendado si PIR 50/80 debe importar aparte de 6801 (Isodec 100) */
+  CANPIR50: "PERFIL_TECHO.canalon.ISODEC_PIR.50",
+  CANPIR80: "PERFIL_TECHO.canalon.ISODEC_PIR.80",
 
   // Selladores
   CBUT: "SELLADORES.cinta_butilo",
   BROMPLAST: "SELLADORES.silicona",
   SIL300N: "SELLADORES.silicona_300_neutra",
+  MEMB3010: "SELLADORES.membrana",
+  ESPPUGR: "SELLADORES.espuma_pu",
 
   // Fijaciones
   CABROJ: "FIJACIONES.caballete",
+  /** Kit varilla/tuerca Isodec — col D BROMYROS ~161–166 (scripts sync si col D vacía) */
+  VAR381ML: "FIJACIONES.varilla_38",
+  TUE38BSW: "FIJACIONES.tuerca_38",
+  ARDC38: "FIJACIONES.arandela_carrocero",
+  TORTPPBC: "FIJACIONES.arandela_pp",
+  TORTPPGR: "FIJACIONES.arandela_pp_gris",
+  TACEX38: "FIJACIONES.taco_expansivo",
   /** Presupuesto libre / catálogo — SKU col.D: confirmar en MATRIZ 2026 si difiere */
   ANCISOTER: "FIJACIONES.anclaje_isoroof_terracota",
   ANCISOGR: "FIJACIONES.anclaje_isoroof_gris",
@@ -132,6 +169,35 @@ export const MATRIZ_SKU_TO_PATH = {
 
   // Servicios
   FLETEBRO: "SERVICIOS.flete",
+
+  // ── Goteros ISODEC PIR (retrocompat + SKU disjuntos recomendados — ver MATRIZ-SKU-GAP-Y-PLAN.md)
+  /** Solo actualiza frontal 50; lateral 50/80 comparten precio en constants — usar GLLPIR50/GLLPIR80 en col D para import completo */
+  GF80DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
+  /** En constants también en frontal 80; usar GFFPIR80 para frontal 80 sin colisión */
+  GF120DC: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.120",
+  GFFPIR50: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.50",
+  GFFPIR80: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.80",
+  GFFPIR120: "PERFIL_TECHO.gotero_frontal.ISODEC_PIR.120",
+  /** Retrocompat lateral; mismo SKU en 50 y 80 en constants — preferir GLLPIR50 / GLLPIR80 */
+  GL80DC: "PERFIL_TECHO.gotero_lateral.ISODEC_PIR.50",
+  GL120DC: "PERFIL_TECHO.gotero_lateral.ISODEC_PIR.120",
+  GLLPIR50: "PERFIL_TECHO.gotero_lateral.ISODEC_PIR.50",
+  GLLPIR80: "PERFIL_TECHO.gotero_lateral.ISODEC_PIR.80",
+  GLLPIR120: "PERFIL_TECHO.gotero_lateral.ISODEC_PIR.120",
+
+  // Perfiles pared (PERFIL_PARED)
+  PU50MM: "PERFIL_PARED.perfil_u.ISOPANEL.50",
+  PU100MM: "PERFIL_PARED.perfil_u.ISOPANEL.100",
+  PU150MM: "PERFIL_PARED.perfil_u.ISOPANEL.150",
+  PU200MM: "PERFIL_PARED.perfil_u.ISOPANEL.200",
+  G2100: "PERFIL_PARED.perfil_g2.ISOPANEL.100",
+  G2150: "PERFIL_PARED.perfil_g2.ISOPANEL.150",
+  G2200: "PERFIL_PARED.perfil_g2.ISOPANEL.200",
+  G2250: "PERFIL_PARED.perfil_g2.ISOPANEL.250",
+  K2: "PERFIL_PARED.perfil_k2._all",
+  ESQEXT: "PERFIL_PARED.esquinero_ext._all",
+  ESQINT: "PERFIL_PARED.esquinero_int._all",
+  PLECHU98: "PERFIL_PARED.perfil_5852._all",
 };
 
 /** Obtener path para un SKU de la MATRIZ (normalizado) */

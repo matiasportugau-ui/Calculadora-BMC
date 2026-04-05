@@ -58,10 +58,10 @@ Busca perfil en `PERFIL_PARED`.
 **v3 NUEVA**: K2 + G2 + 5852.
 
 ### `calcSelladorPared(perimetro, cantPaneles, alto, opts?) → { items, total, mlJuntas }`
-**v3 AMPLIADA**: silicona base + membrana + espuma PU. **opts** (opcional): `{ inclCintaButilo?: boolean, inclSilicona300Neutra?: boolean }` — cinta butilo y silicona 300 ml neutra solo si `true`.
+**v3 AMPLIADA**: silicona Bromplast **600 ml** + silicona **300 ml neutra** en paralelo (`cant_300 = cant_600 × ratio`, default ratio **2**, parámetro `SELLADORES_TECHO.silicona_300_por_unid_600`) + membrana + espuma PU. **opts** (opcional): `{ inclCintaButilo?: boolean }` — cinta butilo solo si `true`.
 
 ### `calcParedCompleto(inputs) → { paneles, perfilesU, esquineros, perfilesExtra, fijaciones, sellador, totales, warnings, allItems }`
-**inputs** puede incluir `inclCintaButilo` (default `false`) e `inclSilicona300Neutra` (default `false`) además de `inclSell`, `incl5852`, etc.
+**inputs** puede incluir `inclCintaButilo` (default `false`) además de `inclSell`, `incl5852`, etc. El campo histórico `inclSilicona300Neutra` en proyectos antiguos se ignora: la 300 ml va siempre con la 600 ml cuando hay selladores.
 
 ---
 

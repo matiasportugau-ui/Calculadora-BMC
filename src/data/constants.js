@@ -167,14 +167,14 @@ export const PANELS_PARED = {
  * Pack/promo web = otra capa. Valores anclajes/remaches/tornillos exagonales: planillas usuario c/IVA ÷ 1,22.
  */
 export const FIJACIONES = {
-  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.69, unidad: "unid" },
+  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.6, unidad: "unid" },
   tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12,web: 0.07, costo: 0.05, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.64, costo: 0.48, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.644, costo: 0.46, unidad: "unid" },
   /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
-  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.09, web: 0.11, costo: 0.045, unidad: "unid" },
-  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.27, web: 1.48, costo: 1.10, unidad: "unid" },
-  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.37, web: 1.60, costo: 1.18, unidad: "unid" },
-  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.83, unidad: "unid" },
+  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.2, web: 0.24, costo: 0.068, unidad: "unid" },
+  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.272, web: 1.484, costo: 1.06, unidad: "unid" },
+  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.368, web: 1.596, costo: 1.14, unidad: "unid" },
+  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.8, unidad: "unid" },
   caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
   anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
@@ -228,8 +228,8 @@ export const PRESUPUESTO_LIBRE_IDS = [
 
 export const SELLADORES = {
   silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.49, web: 11.07, costo: 8.17, unidad: "unid", ml_por_unid: 10.27 },
-  /** Silicona Neutra Premium Silva Selantes (planilla c/IVA → sin IVA). */
-  silicona_300_neutra: { label: "Silicona Neutra Premium Silva Selantes", venta: 4.00, web: 4.88, costo: 2.57, unidad: "unid", metros_cobertura_por_unid: 8 },
+  /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
+  silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.0, web: 8.4, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
   cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 14.89, web: 18.13, costo: 13.38, unidad: "unid" },
   membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
   espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
@@ -249,9 +249,9 @@ export const PERFIL_TECHO = {
       250: { sku: "6841", venta: 23.80, web: 29.03, costo: 21.42, largo: 3.03 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GF80DC",  venta: 19.97, web: 23.30, costo: 17.97, largo: 3.03 },
-      80:  { sku: "GF120DC", venta: 20.87, web: 24.34, costo: 18.78, largo: 3.03 },
-      120: { sku: "GF120DC", venta: 24.69, web: 28.81, costo: 22.22, largo: 3.03 },
+      50:  { sku: "GFFPIR50",  venta: 19.97, web: 23.30, costo: 17.97, largo: 3.03 },
+      80:  { sku: "GFFPIR80", venta: 20.87, web: 24.34, costo: 18.78, largo: 3.03 },
+      120: { sku: "GFFPIR120", venta: 24.69, web: 28.81, costo: 22.22, largo: 3.03 },
     },
   },
   gotero_frontal_greca: {
@@ -275,9 +275,9 @@ export const PERFIL_TECHO = {
       250: { sku: "6845", venta: 31.75, web: 38.74, costo: 28.58, largo: 3.0 },
     },
     ISODEC_PIR: {
-      50:  { sku: "GL80DC",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
-      80:  { sku: "GL80DC",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
-      120: { sku: "GL120DC", venta: 31.08, web: 36.26, costo: 27.97, largo: 3.0 },
+      50:  { sku: "GLLPIR50",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
+      80:  { sku: "GLLPIR80",  venta: 26.51, web: 30.92, costo: 23.86, largo: 3.0 },
+      120: { sku: "GLLPIR120", venta: 31.08, web: 36.26, costo: 27.97, largo: 3.0 },
     },
   },
   gotero_lateral_camara: {

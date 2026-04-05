@@ -21,6 +21,7 @@ import {
   calcTechoCompleto,
   calcTotalesSinIVA,
   mergeZonaResults,
+  perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
@@ -98,7 +99,11 @@ function runCalcTecho(techo = {}) {
     ? techo.zonas
     : [{ largo: Number(techo.largo) || 0, ancho: Number(techo.ancho) || 0 }];
 
-  const zonaResults = zonas.flatMap((zona) => {
+  const zonaResults = zonas.flatMap((zona, gi) => {
+    const perimVertPts =
+      !is2A && zonas.length
+        ? perimetroVerticalInteriorPuntosDesdePlanta(zonas, techo.tipoAguas, gi)
+        : undefined;
     if (is2A) {
       const ha = +(Number(zona.ancho || 0) / 2).toFixed(2);
       const a1 = calcTechoCompleto({
@@ -120,7 +125,14 @@ function runCalcTecho(techo = {}) {
       });
       return [a1, a2];
     }
-    return [calcTechoCompleto({ ...techo, largo: Number(zona.largo) || 0, ancho: Number(zona.ancho) || 0 })];
+    return [
+      calcTechoCompleto({
+        ...techo,
+        largo: Number(zona.largo) || 0,
+        ancho: Number(zona.ancho) || 0,
+        ...(perimVertPts != null ? { perimetroVerticalInteriorPuntos: perimVertPts } : {}),
+      }),
+    ];
   });
 
   return mergeZonaResults(zonaResults);

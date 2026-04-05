@@ -1,8 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // RoofPreview.jsx — Vista previa del techo (rejilla de paneles, drag, pendiente)
 // Coordenadas del SVG en metros (planta). preview.x/y alimenta encuentros y (con geometría) el BOM;
-// buildRoofPlanEdges muestra perímetro/encuentros. Cotas: `roofPlan/RoofPlanDimensions.jsx`, `utils/roofPlanSvgTypography.js`,
-// `utils/roofPlanCotaObstacles.js`, `utils/roofPlanDrawingTheme.js`.
+// buildRoofPlanEdges muestra perímetro/encuentros. Cotas: `roofPlan/RoofPlanDimensions.jsx`, `utils/roofPlanSvgTypography.js`, `utils/roofPlanDrawingTheme.js`.
 // Rejilla en planta: largo del panel = largo del techo (h en SVG);
 // cantidad de paneles reparte el ancho en planta (w) cada au → columnas verticales / juntas verticales (alineado a calcPanelesTecho).
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22,7 +21,6 @@ import {
 } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
-import { buildEstructuraCotaObstacleRects } from "../utils/roofPlanCotaObstacles.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
 import { EstructuraGlobalExteriorOverlay } from "./roofPlan/RoofPlanDimensions.jsx";
 
@@ -175,6 +173,42 @@ function yForFijacionRowPlanta(r, rows, ri) {
  * Preferencia: **tercios** (misma distancia al borde izq., entre puntos y borde der.) — alineado a “equidistantes”.
  * Paneles angostos: par simétrico con margen mínimo a juntas y separación mínima entre puntos.
  */
+/**
+ * Alturas Y intermedias a lo largo de un tramo vertical [y1,y2] para que ningún tramo exceda ~espM (m).
+ */
+function yInteriorSplitsAlongVerticalEdge(y1, y2, espM) {
+  const yMin = Math.min(y1, y2);
+  const yMax = Math.max(y1, y2);
+  const L = yMax - yMin;
+  if (!(L > 0) || !(espM > 0)) return [];
+  const nSeg = Math.ceil(L / espM);
+  if (nSeg <= 1) return [];
+  const out = [];
+  for (let i = 1; i < nSeg; i++) out.push(yMin + (i * L) / nSeg);
+  return out;
+}
+
+/**
+ * Puntos de fijación en **laterales** de planta (`left`/`right`) sobre perímetro exterior libre,
+ * alineados al cómputo `perimetroVerticalInteriorPuntosDesdePlanta` / `countExposedVerticalPerimeterFixingInteriorPointsForZona`.
+ */
+function fijacionDotsPerimetroVerticalExterior(r, exterior, gi, espM) {
+  const dots = [];
+  let key = 1_000_000;
+  const inset = Math.min(0.3, Math.max(0.04, r.w * 0.11));
+  const xLeft = r.x + Math.min(inset, Math.max(0.04, r.w * 0.06));
+  const xRight = r.x + r.w - Math.min(inset, Math.max(0.04, r.w * 0.06));
+  for (const e of exterior || []) {
+    if (e.zoneIndex !== gi) continue;
+    if (e.side !== "left" && e.side !== "right") continue;
+    const xs = e.side === "left" ? xLeft : xRight;
+    for (const cy of yInteriorSplitsAlongVerticalEdge(e.y1, e.y2, espM)) {
+      dots.push({ cx: xs, cy, key: key++ });
+    }
+  }
+  return dots;
+}
+
 function xPairFijacionPerimeterInPanel(xL, xR, insetNominalM = 0.3) {
   const w = xR - xL;
   if (!(w > 1e-9)) {
@@ -247,7 +281,7 @@ function fijacionDotsLayoutDistributeTotal(r, hints) {
  * Filas perimetrales en Y: **~30 cm hacia adentro** del borde del techo (no sobre la línea azul del perímetro).
  * En **intermedios**, **1** punto centrado en cada panel (lejos de juntas).
  */
-function fijacionDotsLayoutIsodecGrid(r, hints) {
+function fijacionDotsLayoutIsodecGrid(r, hints, exterior) {
   const cantP = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
   if (!(r.w > 0) || !(r.h > 0)) return [];
   const nAp = Number(hints.apoyos);
@@ -272,141 +306,22 @@ function fijacionDotsLayoutIsodecGrid(r, hints) {
       }
     }
   }
-  return out;
+  const espM = Number(hints?.fijacionEspaciadoPerimetroM) || 2.5;
+  const extra =
+    exterior?.length && hints?.fijacionDotsMode === "isodec_grid"
+      ? fijacionDotsPerimetroVerticalExterior(r, exterior, r.gi, espM)
+      : [];
+  return [...out, ...extra];
 }
 
-function fijacionDotsLayout(r, hints) {
+function fijacionDotsLayout(r, hints, exterior) {
   if (!hints || !(r.w > 0) || !(r.h > 0)) return [];
   const useGrid =
     hints.fijacionSistema === "varilla_tuerca" && hints.fijacionDotsMode === "isodec_grid";
-  if (useGrid) return fijacionDotsLayoutIsodecGrid(r, hints);
+  if (useGrid) return fijacionDotsLayoutIsodecGrid(r, hints, exterior);
   const P = Math.round(Number(hints.puntosFijacion));
   if (!(P > 0)) return [];
   return fijacionDotsLayoutDistributeTotal(r, hints);
-}
-
-/** AABB solapada (gap positivo = inflar el primer rect). */
-function obstacleRectsOverlap(a, b, gap = 0) {
-  return !(
-    a.maxX + gap <= b.minX ||
-    a.minX - gap >= b.maxX ||
-    a.maxY + gap <= b.minY ||
-    a.minY - gap >= b.maxY
-  );
-}
-
-function chipClearOfObstacles(chipX, chipY, chipW, chipH, obstacles, gap) {
-  const chip = { minX: chipX - gap, minY: chipY - gap, maxX: chipX + chipW + gap, maxY: chipY + chipH + gap };
-  return !obstacles.some((o) => obstacleRectsOverlap(chip, o, 0));
-}
-
-/** Solape AABB con el rectángulo de zona (techo / paneles), con separación mínima. */
-function chipOverlapsRoofPanel(chipX, chipY, chipW, chipH, r, eps) {
-  const rx0 = r.x - eps;
-  const ry0 = r.y - eps;
-  const rx1 = r.x + r.w + eps;
-  const ry1 = r.y + r.h + eps;
-  return chipX < rx1 && chipX + chipW > rx0 && chipY < ry1 && chipY + chipH > ry0;
-}
-
-function chipInsideViewBox(chipX, chipY, chipW, chipH, vb, vm) {
-  if (!vb || !Number.isFinite(vb.minX)) return true;
-  return (
-    chipX >= vb.minX + vm &&
-    chipY >= vb.minY + vm &&
-    chipX + chipW <= vb.maxX - vm &&
-    chipY + chipH <= vb.maxY - vm
-  );
-}
-
-/**
- * Coloca el chip **solo fuera** del rectángulo de techo (nunca sobre paneles), dentro del viewBox,
- * evitando cotas / etiquetas de encuentro.
- */
-function pickEstructuraChipPlacement(r, chipW, chipH, zm, cotaObstacles, viewBounds) {
-  const obs = [...(cotaObstacles ?? [])];
-  const vb =
-    viewBounds && Number.isFinite(viewBounds.minX)
-      ? viewBounds
-      : { minX: -1e9, minY: -1e9, maxX: 1e9, maxY: 1e9 };
-  const vm = Math.max(0.055 * zm, 0.042);
-  const mg = Math.max(0.16 * zm, 0.1);
-  const roofGap = Math.max(0.045 * zm, 0.034);
-  const gap = Math.max(0.07 * zm, 0.045);
-  const cx = r.x + r.w / 2;
-  const cy = r.y + r.h / 2;
-
-  const tryPos = (x, y) => {
-    if (!chipInsideViewBox(x, y, chipW, chipH, vb, vm)) return false;
-    if (chipOverlapsRoofPanel(x, y, chipW, chipH, r, roofGap)) return false;
-    return chipClearOfObstacles(x, y, chipW, chipH, obs, gap);
-  };
-
-  const clampX = (x) => Math.min(Math.max(x, vb.minX + vm), vb.maxX - vm - chipW);
-  const clampY = (y) => Math.min(Math.max(y, vb.minY + vm), vb.maxY - vm - chipH);
-
-  const nudgeBelowRoof = (x) => {
-    let y = r.y + r.h + mg;
-    for (let iter = 0; iter < 22; iter++) {
-      if (tryPos(x, y)) return { chipX: x, chipY: y };
-      const chip = { minX: x - gap, minY: y - gap, maxX: x + chipW + gap, maxY: y + chipH + gap };
-      let nextY = y;
-      for (const o of obs) {
-        if (obstacleRectsOverlap(chip, o, 0)) nextY = Math.max(nextY, o.maxY + gap);
-      }
-      if (nextY <= y + 1e-9) break;
-      y = nextY;
-    }
-    return tryPos(x, y) ? { chipX: x, chipY: y } : null;
-  };
-
-  const candidates = [
-    () => {
-      const y = r.y - chipH - mg;
-      const x = clampX(cx - chipW / 2);
-      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
-    },
-    () => {
-      const y = r.y - chipH - mg;
-      const x = clampX(r.x - chipW - mg);
-      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
-    },
-    () => {
-      const y = r.y - chipH - mg;
-      const x = clampX(r.x + r.w + mg);
-      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
-    },
-    () => {
-      const x = r.x - chipW - mg;
-      const y = clampY(cy - chipH / 2);
-      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
-    },
-    () => {
-      const x = r.x + r.w + mg;
-      const y = clampY(cy - chipH / 2);
-      return tryPos(x, y) ? { chipX: x, chipY: y } : null;
-    },
-    () => nudgeBelowRoof(clampX(cx - chipW / 2)),
-    () => nudgeBelowRoof(clampX(r.x - chipW - mg)),
-    () => nudgeBelowRoof(clampX(r.x + r.w + mg)),
-  ];
-
-  for (const c of candidates) {
-    const p = c();
-    if (p) return p;
-  }
-
-  const xTop = clampX(cx - chipW / 2);
-  const yTop = clampY(r.y - chipH - mg);
-  if (!chipOverlapsRoofPanel(xTop, yTop, chipW, chipH, r, roofGap) && chipInsideViewBox(xTop, yTop, chipW, chipH, vb, vm)) {
-    return { chipX: xTop, chipY: yTop };
-  }
-  const xL = clampX(r.x - chipW - mg);
-  const yL = clampY(cy - chipH / 2);
-  if (!chipOverlapsRoofPanel(xL, yL, chipW, chipH, r, roofGap) && chipInsideViewBox(xL, yL, chipW, chipH, vb, vm)) {
-    return { chipX: xL, chipY: yL };
-  }
-  return { chipX: xTop, chipY: yTop };
 }
 
 /** Popover fijo al viewport: productos de fijación que entran al presupuesto (BOM). */
@@ -474,10 +389,10 @@ function FijacionBomHoverPopover({ anchor, onMouseEnter, onMouseLeave, zonaLabel
 }
 
 /**
- * Paso Estructura: apoyos (líneas violetas), chip fuera del techo, puntos de fijación (hover → BOM).
- * Las cotas rojas globales van en `EstructuraGlobalExteriorOverlay` (perímetro libre + encuentros).
+ * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
+ * Sin cartel de texto de apoyos/pts (la info está en el panel); cotas rojas en `EstructuraGlobalExteriorOverlay`.
  */
-function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds = null }) {
+function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
   const hidePopTimer = useRef(null);
 
@@ -534,28 +449,7 @@ function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds
     }
   }
 
-  const apTxt =
-    Number.isFinite(nAp) && nAp >= 1
-      ? `${Math.round(nAp)} apoyo${Math.round(nAp) === 1 ? "" : "s"}`
-      : "Apoyos N/D";
-  const fijTxt =
-    Number.isFinite(hints.puntosFijacion) && hints.puntosFijacion >= 0
-      ? `${Math.round(hints.puntosFijacion)} pts fij.`
-      : "";
-
-  const secondFsMult = 0.92;
-  const fsCap = Math.max(0.115 * zm, Math.min(0.2 * zm, 3.35 * 0.066 * zm));
-  const minWFromText =
-    apTxt.length * fsCap * 0.56 + (fijTxt ? fijTxt.length * fsCap * secondFsMult * 0.53 : 0) + 0.55 * zm;
-  const chipW = Math.min(3.9, Math.max(1.24, r.w * 0.92, minWFromText));
-  const chipFs = Math.max(0.115 * zm, Math.min(0.2 * zm, chipW * 0.066 * zm));
-  const secondFs = fijTxt ? chipFs * secondFsMult : 0;
-  const padY = 0.19 * zm;
-  const chipH =
-    padY * 2 + chipFs * 1.22 + (fijTxt ? 0.15 * zm + secondFs * 1.45 : chipFs * 0.22);
-
-  const dotPts = fijacionDotsLayout(r, hints);
-  const { chipX, chipY } = pickEstructuraChipPlacement(r, chipW, chipH, zm, cotaObstacles, viewBounds);
+  const dotPts = fijacionDotsLayout(r, hints, exterior);
 
   const sysLabel =
     hints.fijacionSistema === "caballete"
@@ -563,9 +457,10 @@ function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds
       : "Sistema varilla/tuerca (presupuesto)";
   const totalFij = Math.round(Number(hints.puntosFijacion) || 0);
   const grillaFij = Math.round(Number(hints.puntosFijacionGrilla ?? hints.puntosFijacion) || 0);
+  const perimV = Math.round(Number(hints.puntosFijacionPerimetroVertical) || 0);
   const gridExpl =
     hints.fijacionDotsMode === "isodec_grid"
-      ? `Puntos dibujados: ${dotPts.length} en líneas de apoyo (2/panel en perímetro en tercios del ancho de cada panel, 1/panel centrado en intermedios). Total presupuesto: ${totalFij} (incluye refuerzos según largo si aplica; grilla base ${grillaFij}).`
+      ? `Puntos dibujados: ${dotPts.length} (grilla en líneas de apoyo: 2/panel en perímetro en tercios del ancho, 1/panel centrado en intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro exterior (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m en vertical)` : ""}). Total presupuesto: ${totalFij} (grilla base ${grillaFij}${perimV > 0 ? ` + lateral perím. ${perimV}` : ""}).`
       : `Cada punto ≈ 1 unidad del cómputo (${totalFij} total).`;
   const dotR = 0.032 * zm;
   const hitR = Math.max(0.048 * zm, dotR * 2.35);
@@ -574,42 +469,6 @@ function EstructuraZonaOverlay({ r, hints, svgTy, cotaObstacles = [], viewBounds
     <>
     <g data-bmc-layer="estructura-overlay">
       <g pointerEvents="none">{supportLines}</g>
-      <g pointerEvents="none">
-        <rect
-          x={chipX}
-          y={chipY}
-          width={chipW}
-          height={chipH}
-          rx={0.07 * zm}
-          fill="rgba(255,255,255,0.96)"
-          stroke="#7c3aed"
-          strokeWidth={0.03 * zm}
-        />
-        <text
-          x={chipX + chipW / 2}
-          y={chipY + padY + chipFs * 0.98}
-          textAnchor="middle"
-          fontSize={chipFs}
-          fill="#5b21b6"
-          fontWeight={700}
-          fontFamily={FONT}
-        >
-          {apTxt}
-        </text>
-        {fijTxt ? (
-          <text
-            x={chipX + chipW / 2}
-            y={chipY + padY + chipFs * 1.22 + secondFs * 1.06}
-            textAnchor="middle"
-            fontSize={secondFs}
-            fill={C.tp}
-            fontWeight={600}
-            fontFamily={FONT}
-          >
-            {fijTxt}
-          </text>
-        ) : null}
-      </g>
       <g pointerEvents="auto">
         {dotPts.map((d) => (
           <g key={`fij-dot-${r.gi}-${d.key}`}>
@@ -973,7 +832,7 @@ export default function RoofPreview({
   /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
 
-  /** Espacio extra para cotas exteriores (+ chip apoyos/fijación si paso Estructura). */
+  /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
     if (!plantaCotaChromeActive || layout.entries.length === 0) return layout.viewBox;
@@ -982,31 +841,14 @@ export default function RoofPreview({
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
     // No usar `svgTy.m` completo: inflaba el viewBox y achicaba el techo en pantalla. Cotas siguen en coords ampliadas.
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
-    // Margen extra para carteles apoyos/fijación **fuera** del techo (evita clip del SVG).
-    const chipSlack = Math.max(0.72, 0.42 * svgTy.m) * vbPadScale;
-    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale + chipSlack;
-    const padT = (0.55 + nSide("top") * 0.14) * vbPadScale + chipSlack;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chipSlack;
-    const padR = (0.45 + nSide("right") * 0.14) * vbPadScale + chipSlack;
+    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
+    const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
   }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
 
-  const estructuraViewBounds = useMemo(() => {
-    const parts = String(svgViewBox).trim().split(/\s+/).map(Number);
-    if (parts.length < 4 || parts.some((n) => !Number.isFinite(n))) return null;
-    const [vx, vy, vw, vh] = parts;
-    return { minX: vx, minY: vy, maxX: vx + vw, maxY: vy + vh };
-  }, [svgViewBox]);
-
   const encounters = planEdges?.encounters ?? [];
-
-  const estructuraCotaObstacles = useMemo(() => {
-    if (estructuraHintsByGi == null) return [];
-    const ext = planEdges?.exterior ?? [];
-    const enc = planEdges?.encounters ?? [];
-    if (!ext.length && !enc.length) return [];
-    return buildEstructuraCotaObstacleRects(ext, enc, svgTy);
-  }, [estructuraHintsByGi, planEdges?.exterior, planEdges?.encounters, svgTy]);
 
   const cycleSlope = useCallback(
     (gi) => {
@@ -1568,8 +1410,7 @@ export default function RoofPreview({
                       r={r}
                       hints={estructuraHintsByGi[r.gi]}
                       svgTy={svgTy}
-                      cotaObstacles={estructuraCotaObstacles}
-                      viewBounds={estructuraViewBounds}
+                      exterior={planEdges?.exterior ?? []}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (

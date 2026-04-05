@@ -91,6 +91,12 @@ Otra fila de títulos: `--row 3` (solo si los encabezados no están en la fila 1
 
 Script: `scripts/matriz-rename-bromyros-headers.mjs`.
 
+## Scripts: CSV en disco y fijaciones Isodec (BROMYROS)
+
+- **`npm run matriz:pull-csv`** — Descarga el mismo CSV que `GET /api/actualizar-precios-calculadora` (default `http://localhost:3001`; override `BMC_API_BASE`) y lo guarda en **`.runtime/matriz-precios-latest.csv`** (carpeta gitignored).
+- **`npm run matriz:sync-fijaciones-isodec`** — Lee por API de Sheets las filas **161–166** de **BROMYROS** (varilla, tuerca, carrocero, tortuga blanca/gris, taco) donde **col D suele estar vacía** y actualiza **`venta` / `web` / `costo` en `src/data/constants.js`** (F, L, T tal cual). Opciones: `--dry-run`. **Arandela plana:** búsqueda por descripción + **ARPLA38** en col D; si no hay match, se intenta la fila **167** (descripción tipo “Arandela Plana…” o SKU correcto). Override: `MATRIZ_ROW_ARANDELA_PLANA=…`.
+- **`npm run matriz:sync-silicona-300`** — Fila **168** por defecto (`MATRIZ_ROW_SILICONA_300_NEUTRA` opcional) → `SELLADORES.silicona_300_neutra` en `constants.js`. Convén **SIL300N** en col D para CSV `/api/actualizar-precios-calculadora` y validación del script.
+
 ## Skill
 
 `.cursor/skills/actualizar-precios-calculadora/SKILL.md`

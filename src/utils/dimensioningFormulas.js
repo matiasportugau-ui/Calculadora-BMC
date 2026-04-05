@@ -16,7 +16,7 @@ export function getDimensioningParam(path, defaultValue) {
 
 /** Schema base: factores de fórmula (no dependen de paneles) */
 const FORMULA_FACTORS = [
-  { path: "FIJACIONES_VARILLA.espaciado_perimetro", label: "Espaciado perímetro fijación varilla (m)", default: 2.5, formula: "puntos = grilla + (largo*2/valor); grilla = cantP×(apoyos+2) (apoyos≥2)", unidad: "m", categoria: "Fijaciones Techo" },
+  { path: "FIJACIONES_VARILLA.espaciado_perimetro", label: "Espaciado perímetro fijación varilla (m)", default: 2.5, formula: "laterales verticales expuestos (planta): +Σ max(0,ceil(L/valor)−1) por tramo left/right exterior; sin multizona: +2×max(0,ceil(largo/valor)−1); puntos = grilla + lateral; grilla = cantP×(apoyos+2) (apoyos≥2)", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_VARILLA.puntos_comercial_default", label: "Puntos fijación (BOM comercial ISODEC PIR)", default: 22, formula: "override cuando opciones.bomComercial", unidad: "unid", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_VARILLA.largo_comercial_m", label: "Largo barra varilla roscada comercial (m)", default: 1, formula: "barras = ceil(puntos / floor(valor / tramo_m)); tramo = espesor_m + extra sustrato", unidad: "m", categoria: "Fijaciones Techo" },
   { path: "FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", label: "Rosca útil extra metal/hormigón (m)", default: 0.1, formula: "tramo varilla = espesor panel (m) + valor (Isodec varilla/tuerca)", unidad: "m", categoria: "Fijaciones Techo" },
@@ -32,6 +32,14 @@ const FORMULA_FACTORS = [
   { path: "SELLADORES_TECHO.comercial_membranas", label: "Kit comercial: rollos membrana", default: 2, formula: "BOM comercial ISODEC PIR", unidad: "unid", categoria: "Selladores Techo" },
   { path: "SELLADORES_TECHO.comercial_espumas", label: "Kit comercial: espumas PU", default: 4, formula: "BOM comercial ISODEC PIR", unidad: "unid", categoria: "Selladores Techo" },
   { path: "SELLADORES_TECHO.cinta_paneles_por_rollo", label: "Cinta techo: paneles por rollo", default: 10, formula: "cintas = ceil(cantP/valor)", unidad: "paneles", categoria: "Selladores Techo" },
+  {
+    path: "SELLADORES_TECHO.silicona_300_por_unid_600",
+    label: "Silicona 300 ml neutra: unidades por unidad silicona Bromplast 600 ml",
+    default: 2,
+    formula: "cant_300 = siliconas_600 × valor (techo, pared y kit comercial)",
+    unidad: "ratio",
+    categoria: "Selladores Techo",
+  },
   { path: "FIJACIONES_PARED.anclaje_espaciado", label: "Espaciado anclajes pared (m)", default: 0.30, formula: "anclajes = ceil(anchoTotal/valor)", unidad: "m", categoria: "Fijaciones Pared" },
   { path: "FIJACIONES_PARED.tornillo_t2_por_m2", label: "Tornillos T2 por m² pared", default: 5.5, formula: "tornillos = ceil(areaNeta*valor)", unidad: "unid/m²", categoria: "Fijaciones Pared" },
   { path: "FIJACIONES_PARED.remaches_por_panel", label: "Remaches por panel pared", default: 2, formula: "remaches = cantP*valor", unidad: "unid", categoria: "Fijaciones Pared" },
