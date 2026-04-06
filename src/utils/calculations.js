@@ -7,6 +7,7 @@ import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
 import { buildRoofPlanEdges, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
+import { countPanels } from "./roofPanelStripsPlanta.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ export function resolveSKU_techo(tipo, familiaP, espesor) {
 export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const espData = panel.esp[espesor];
   if (!espData) return null;
-  const cantPaneles = Math.ceil(ancho / panel.au);
+  const cantPaneles = countPanels(ancho, panel.au);
   const anchoTotal = cantPaneles * panel.au;
   const areaTotal = +(cantPaneles * largo * panel.au).toFixed(2);
   const precioM2 = p(espData);

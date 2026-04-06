@@ -167,4 +167,25 @@ Para iterar **cada 10 consultas** —respuesta modelo/KB sin ver primero la huma
 
 ---
 
+## 11. De borradores corregidos a Panelin (training-kb)
+
+Cuando cerrás una tanda de preguntas ML (borrador IA + texto final aprobado para publicar):
+
+1. **Registrar el par gold** en [`../reports/ml-gold-runs/`](../reports/ml-gold-runs/) (archivo tipo `ML-GOLD-CANDIDATES-*.md`): columna **Respuesta gold (humana)** = texto que publicás o aprobarías en ML (alineado a §3 y checklist §7).
+2. **Cargar en el KB de entrenamiento de Panelin** (modo desarrollador en la app o API), con `API_AUTH_TOKEN` en `.env`:
+   - **CLI desde el repo:** `npm run panelin:train:import -- --file <lote.json>` (API en `:3001` o `BMC_API_BASE=…` para Cloud Run). Ver [`../reports/ml-gold-runs/README.md`](../reports/ml-gold-runs/README.md).
+   - O `POST /api/agent/train` con header `Authorization: Bearer <API_AUTH_TOKEN>`.
+   - Cuerpo JSON sugerido:
+     - `category`: `sales` o `mercadolibre` (en código, `mercadolibre` se normaliza a `sales`).
+     - `question`: texto del comprador (opcional prefijo `Canal: Mercado Libre — `).
+     - `goodAnswer`: respuesta final humana (no el borrador IA si difiere).
+     - `badAnswer`: (opcional) borrador IA o texto descartado, para contraste en entrenamiento.
+     - `context`: `Canal: Mercado Libre | Q:<id> | item:<MLU…>` — ayuda al match en `GET /api/agent/training-kb/match`.
+     - `permanent`: `true` si querés prioridad alta en el scoring de ejemplos.
+3. **`data/training-kb.json`** está en `.gitignore`: cada máquina acumula ejemplos locales; para otro entorno repetí el POST o mové el JSON con cuidado (sin PII innecesaria).
+
+La **respuesta “especial” ML** es la ya definida en **§2–§7** (voz BMC, plantilla §3, checklist §7, buenas prácticas §5). El asistente Panelin recibe además reglas explícitas en `server/lib/chatPrompts.js` (WORKFLOW → Mercado Libre).
+
+---
+
 *Documento generado a partir del análisis estadístico del corpus local; las respuestas individuales no se reproducen aquí íntegras para evitar duplicar contenido privado del marketplace en documentación.*

@@ -97,7 +97,13 @@ Para cotizar correctamente necesitás estos datos según el escenario:
 - Preguntá el escenario primero y confirmá lista de precios si no está clara.
 - Solicitá datos de a uno o en grupos lógicos.
 - Cuando el usuario confirme un valor, emití la acción correspondiente.
-- Preferí advanceWizard cuando el paso actual esté completo; setWizardStep solo si conocés el índice correcto del escenario activo (varía entre solo_techo, solo_fachada, etc.).`;
+- Preferí advanceWizard cuando el paso actual esté completo; setWizardStep solo si conocés el índice correcto del escenario activo (varía entre solo_techo, solo_fachada, etc.).
+
+**Canal Mercado Libre (preguntas públicas en el marketplace):**
+Cuando el usuario o el contexto indican Mercado Libre, una pregunta de comprador o una publicación (MLU…):
+- Seguí la voz BMC y el orden de respuesta acordados para ML en documentación interna del repo: plantilla y checklist en \`docs/team/panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md\` (saludo, reconocimiento, respuesta o aclaraciones mínimas, precio solo con fuente verificable, **U$S** y **IVA inc** cuando cotizás al público, qué incluye / no incluye como flete e instalación, CTA tipo presupuesto detallado, cierre **Saludos, BMC Uruguay**).
+- No inventes montos, plazos ni stock. No cites precios que no estén en el catálogo de esta conversación o en datos que el usuario/publicación hayan confirmado.
+- No compartas teléfono, email ni WhatsApp si eso viola las políticas vigentes del marketplace.`;
 
 const ACTIONS_DOC = `## ACCIONES PARA AUTO-COMPLETAR LA CALCULADORA
 

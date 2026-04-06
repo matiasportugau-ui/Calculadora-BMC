@@ -22,7 +22,15 @@ import {
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
-import { EstructuraGlobalExteriorOverlay } from "./roofPlan/RoofPlanDimensions.jsx";
+import {
+  EstructuraGlobalExteriorOverlay,
+  PanelChainDimensions,
+  PanelLabels,
+  VerificationBadge,
+  computeCotaObstacles,
+} from "./roofPlan/RoofPlanDimensions.jsx";
+import { buildPanelLayout } from "../utils/panelLayout.js";
+import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
@@ -806,6 +814,9 @@ export default function RoofPreview({
   selectedZonaGi: selectedZonaGiProp,
   onSelectedZonaGiChange,
   denseChrome = false,
+  panelObj = null,
+  displayMode = 'technical',
+  bomPanelResultsByGi = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
@@ -825,12 +836,39 @@ export default function RoofPreview({
     [metricsExternal, onSelectedZonaGiChange],
   );
 
-  const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas);
+  const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas, panelObj ? 0.60 : null);
 
   const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
 
   /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
+
+  const effectivePanelAu = panelObj?.au ?? panelAu;
+
+  const panelLayouts = useMemo(() => {
+    if (!panelObj) return null;
+    const is2A = tipoAguas === 'dos_aguas';
+    return layout.entries.map((r) => {
+      const ancho = is2A ? r.z.ancho / 2 : r.z.ancho;
+      return { gi: r.gi, layout: buildPanelLayout({ panel: panelObj, largo: r.z.largo, ancho }) };
+    });
+  }, [panelObj, layout.entries, tipoAguas]);
+
+  const cotaObstacles = useMemo(() => {
+    if (!plantaCotaChromeActive) return [];
+    return computeCotaObstacles(planEdges?.exterior ?? [], planEdges?.encounters ?? [], svgTy);
+  }, [plantaCotaChromeActive, planEdges, svgTy]);
+
+  const verifications = useMemo(() => {
+    if (!panelLayouts || !bomPanelResultsByGi) return null;
+    const result = {};
+    for (const { gi, layout: pl } of panelLayouts) {
+      const bom = bomPanelResultsByGi[gi];
+      const entryLargo = layout.entries.find((r) => r.gi === gi)?.z.largo ?? 0;
+      if (bom) result[gi] = verifyPanelLayout(pl, bom, entryLargo);
+    }
+    return result;
+  }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
 
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
@@ -1387,7 +1425,7 @@ export default function RoofPreview({
                     y0={r.y}
                     w={r.w}
                     h={r.h}
-                    au={panelAu}
+                    au={effectivePanelAu}
                     stroke={C.brand}
                     strokeW={0.032 * svgTy.m}
                     gradKey={`z-${r.gi}`}
@@ -1437,8 +1475,8 @@ export default function RoofPreview({
                         fontWeight={600}
                         fontFamily={FONT}
                       >
-                        {panelCountAcrossAnchoPlanta(r.w, panelAu)}{" "}
-                        {panelCountAcrossAnchoPlanta(r.w, panelAu) === 1 ? "panel" : "paneles"}
+                        {panelCountAcrossAnchoPlanta(r.w, effectivePanelAu)}{" "}
+                        {panelCountAcrossAnchoPlanta(r.w, effectivePanelAu) === 1 ? "panel" : "paneles"}
                       </text>
                     </g>
                   ) : null}
@@ -1514,6 +1552,44 @@ export default function RoofPreview({
                     </g>
                   )}
                 </g>
+              );
+            })}
+            {panelLayouts && layout.entries.map((r) => {
+              const pl = panelLayouts.find((x) => x.gi === r.gi);
+              if (!pl) return null;
+              return (
+                <g key={`panel-overlay-${r.gi}`} pointerEvents="none">
+                  <PanelLabels
+                    strips={pl.layout.panels}
+                    x0={r.x} y0={r.y} h={r.h}
+                    svgTy={svgTy}
+                    mode={displayMode}
+                  />
+                  {verifications?.[r.gi] && (
+                    <VerificationBadge
+                      x={r.x + r.w} y={r.y}
+                      verification={verifications[r.gi]}
+                      svgTy={svgTy}
+                      mode={displayMode}
+                    />
+                  )}
+                </g>
+              );
+            })}
+            {panelLayouts && displayMode !== 'client' && layout.entries.map((r) => {
+              const pl = panelLayouts.find((x) => x.gi === r.gi);
+              if (!pl) return null;
+              const strips = buildAnchoStripsPlanta(r.w, effectivePanelAu);
+              return (
+                <PanelChainDimensions
+                  key={`chain-${r.gi}`}
+                  strips={strips}
+                  x0={r.x}
+                  yEdge={r.y + r.h}
+                  svgTy={svgTy}
+                  obstacleRects={cotaObstacles}
+                  mode={displayMode}
+                />
               );
             })}
             {plantaCotaChromeActive && planEdges?.exterior?.length ? (

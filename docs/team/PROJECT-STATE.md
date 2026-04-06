@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-05 (Live DevTools baseline local + informe UX)
+**Última actualización:** 2026-04-06 (CLI panelin:train:import)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-06 (Panelin — import entrenamiento desde repo):** Script [`scripts/panelin-training-import.mjs`](../../scripts/panelin-training-import.mjs) + npm **`panelin:train:import`** (JSON → `POST /api/agent/train`, `API_AUTH_TOKEN`, opcional `BMC_API_BASE`). Ejemplo JSON: [`docs/team/panelsim/reports/ml-gold-runs/examples/training-batch.example.json`](./panelsim/reports/ml-gold-runs/examples/training-batch.example.json). Doc: [`panelsim/reports/ml-gold-runs/README.md`](./panelsim/reports/ml-gold-runs/README.md) § CLI. KB ML §11 enlaza el comando.
+
+**2026-04-06 (PANELSIM — ML: gold runs + reglas Panelin):** Carpeta versionada [`panelsim/reports/ml-gold-runs/`](./panelsim/reports/ml-gold-runs/) con `README.md` + `ML-GOLD-CANDIDATES-2026-04-06.md` (11 preguntas UNANSWERED: pregunta, borrador IA, columna **Respuesta gold** para completar; enlaza checklist [`ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md)). KB ML §11: flujo hacia `POST /api/agent/train` (`category` `mercadolibre`/`sales`, `context` con `Q:id` e `item`). [`ML-TRAINING-SYSTEM.md`](./panelsim/knowledge/ML-TRAINING-SYSTEM.md) §1: fila **Gold runs**. Código: [`server/lib/chatPrompts.js`](../server/lib/chatPrompts.js) WORKFLOW — bloque **Canal Mercado Libre**; [`server/lib/trainingKB.js`](../server/lib/trainingKB.js) — `mercadolibre`/`ml` → `sales`.
 
 **2026-04-05 (Live DevTools — arranque local + línea base MCP):** Levantado **`npm run dev:full`** (API **:3001** `GET /health` **200**, Vite **:5173** **200**). MCP **`navigate_page`** → `http://localhost:5173/`; **`list_console_messages`**: solo warnings React Router v7 future flags; **`list_network_requests`**: 90 reqs sin 4xx/5xx en carga inicial; **`take_snapshot`**: Calculadora paso 1/13 + modal Panelin en árbol a11y. Informe: [`LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-local-stack-baseline.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-05-local-stack-baseline.md).
 

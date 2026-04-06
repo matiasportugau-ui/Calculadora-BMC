@@ -17,7 +17,7 @@ function viewBoxSlackMeters(spanM) {
  * @param {Array} zonas
  * @param {string} tipoAguas
  */
-export function useRoofPreviewPlanLayout(zonas, tipoAguas) {
+export function useRoofPreviewPlanLayout(zonas, tipoAguas, padOverride = null) {
   const tipoPlanta = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
   const planEdges = useMemo(() => {
     if (!zonas?.length) return null;
@@ -40,7 +40,7 @@ export function useRoofPreviewPlanLayout(zonas, tipoAguas) {
       curMaxX = Math.max(curMaxX, r.x + r.w);
       curMaxY = Math.max(curMaxY, r.y + r.h);
     }
-    const pad = 0.42;
+    const pad = padOverride ?? 0.42;
     const cw = Math.max(0, curMaxX - curMinX);
     const ch = Math.max(0, curMaxY - curMinY);
     const slack = viewBoxSlackMeters(Math.max(cw, ch, 0.01));
@@ -64,7 +64,7 @@ export function useRoofPreviewPlanLayout(zonas, tipoAguas) {
       totalArea,
       viewMetrics: { vbX, vbY, vbW, vbH, margin },
     };
-  }, [planEdges]);
+  }, [planEdges, padOverride]);
 
   return { tipoPlanta, planEdges, layout };
 }

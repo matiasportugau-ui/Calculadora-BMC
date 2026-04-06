@@ -101,7 +101,7 @@ import {
   snapLateralAnnexPlanta,
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
-import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../src/utils/roofPanelStripsPlanta.js";
+import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta, countPanels } from "../src/utils/roofPanelStripsPlanta.js";
 import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../src/utils/roof3dLateralStepInfill.js";
 import { getRoofPanelMapUrl, pickBestMapUrlFromSlides } from "../src/data/roofPanelMapUrl.js";
@@ -1905,6 +1905,23 @@ assert(
   rootLay && annLay && Math.abs(zFondoRoot - zFondoAnn) < 0.02,
   rootLay && annLay ? zFondoRoot - zFondoAnn : "missing",
   "~0",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE: countPanels — IEEE-754 epsilon guard (Phase 1 plano/BOM sync)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: countPanels IEEE-754 epsilon guard ═══");
+assert(
+  "countPanels exact multiple 3.36/1.12 = 3",
+  countPanels(3.36, 1.12) === 3,
+  countPanels(3.36, 1.12),
+  3,
+);
+assert(
+  "countPanels slightly over 3.36/1.12 = 4",
+  countPanels(3.3601, 1.12) === 4,
+  countPanels(3.3601, 1.12),
+  4,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

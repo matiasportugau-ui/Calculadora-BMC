@@ -18,3 +18,35 @@ export const ROOF_PLAN_LAYER_GLOBAL_COTAS = "estructura-global-cotas";
 /** Etiqueta numérica en encuentro (relleno + halo para legibilidad sobre geometría). */
 export const ROOF_PLAN_ENCOUNTER_LABEL_FILL = "#0f172a";
 export const ROOF_PLAN_ENCOUNTER_LABEL_HALO = "#ffffff";
+
+// ─── Shared counter factory ───────────────────────────────────────────────────
+/**
+ * Crea un contador de posiciones: primera llamada con clave k devuelve 0, segunda 1, etc.
+ * Reemplaza la closure bump() duplicada en RoofPlanDimensions y roofPlanCotaObstacles.
+ */
+export function makeBumpCounter() {
+  const m = new Map();
+  return (k) => {
+    const n = m.get(k) ?? 0;
+    m.set(k, n + 1);
+    return n;
+  };
+}
+
+// ─── Chain dimension theme ────────────────────────────────────────────────────
+export const DIM_THEME = {
+  CHAIN_OFFSET: 0.14,
+  CHAIN_STEP: 0.14,
+  chainColor: '#C62828',
+  overallColor: '#1565C0',
+  warningColor: '#E65100',
+  textColor: '#212121',
+  defaultTerminator: 'tick',
+  layers: {
+    chain: 'dim-chain',
+    overall: 'dim-overall',
+    labels: 'dim-panel-ids',
+    verification: 'dim-verification',
+  },
+  chainOpacity: 0.85,
+};

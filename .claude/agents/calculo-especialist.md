@@ -1,4 +1,4 @@
-e---
+---
 name: calculo-especialist
 description: "Specialist for the 2D roof plan SVG dimensioning system (planta de cotas). Knows buildPanelLayout, PanelChainDimensions, PanelLabels, VerificationBadge, roofPlanGeometry, roofPlanDrawingTheme, roofPlanSvgTypography, roofPlanCotaObstacles, RoofPlanDimensions.jsx, RoofPreview.jsx, useRoofPreviewPlanLayout. Use when working on: plano 2D, cotas rojas, panel chain dimensions, panel labels (T-01..T-n), cut panel indicators (✂), plano↔BOM verification badge, displayMode toggle (Client/Técnica/Completa), SVG coordinate system in meters, pad/viewBox margins, roofPlanCotaObstacles wiring, ISO 129 dimensioning. NOT for: BOM totals, pricing, quote logic — use bmc-calc-specialist for those."
 model: sonnet

@@ -4,13 +4,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { FONT } from "../../data/constants.js";
-import { fmtArchMeters } from "../../utils/roofPlanSvgTypography.js";
+import { fmtArchMeters, fmtDimMm } from "../../utils/roofPlanSvgTypography.js";
 import {
   ROOF_PLAN_DIM_STROKE,
   ROOF_PLAN_DIM_EXT_OPACITY,
   ROOF_PLAN_ENCOUNTER_LABEL_FILL,
   ROOF_PLAN_ENCOUNTER_LABEL_HALO,
   ROOF_PLAN_LAYER_GLOBAL_COTAS,
+  makeBumpCounter,
+  DIM_THEME,
 } from "../../utils/roofPlanDrawingTheme.js";
 
 function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
@@ -162,18 +164,10 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
  * Las líneas quedan **afuera** del rectángulo de techo (sin solapar el relleno del panel).
  */
 export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [], svgTy }) {
-  const bump = () => {
-    const m = new Map();
-    return (k) => {
-      const n = m.get(k) || 0;
-      m.set(k, n + 1);
-      return n;
-    };
-  };
-  const nextBottom = bump();
-  const nextTop = bump();
-  const nextLeft = bump();
-  const nextRight = bump();
+  const nextBottom = makeBumpCounter();
+  const nextTop = makeBumpCounter();
+  const nextLeft = makeBumpCounter();
+  const nextRight = makeBumpCounter();
 
   const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
   const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
@@ -293,3 +287,126 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
     </g>
   );
 }
+
+// ─── PanelChainDimensions ─────────────────────────────────────────────────────
+/**
+ * Cotas encadenadas por panel bajo una zona (ancho individual en mm).
+ * Se coloca en el nivel exterior a EstructuraGlobalExteriorOverlay (más lejos de la zona).
+ * Paneles cortados se muestran en naranja con ✂.
+ *
+ * @param {Array<{x0,width,idx,id?,isCut?}>} strips — de buildAnchoStripsPlanta o buildPanelLayout
+ * @param {number} x0 — borde izquierdo de la zona en planta (m)
+ * @param {number} yEdge — borde inferior de la zona (m)
+ * @param {object} svgTy — de buildRoofPlanSvgTypography
+ * @param {Array<{minX,maxX,minY,maxY}>} [obstacleRects=[]] — AABBs de computeCotaObstacles
+ * @param {'client'|'technical'|'full'} [mode='technical']
+ */
+export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects = [], mode = 'technical' }) {
+  if (mode === 'client' || !strips?.length) return null;
+
+  let yDimLine = yEdge + svgTy.dimStackBottom + DIM_THEME.CHAIN_OFFSET;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const labelH = svgTy.dimFont * 1.1;
+    const overlaps = obstacleRects.some(
+      (r) => yDimLine <= r.maxY + labelH && yDimLine >= r.minY - labelH,
+    );
+    if (!overlaps) break;
+    yDimLine += svgTy.dimStackStep;
+  }
+
+  const tick = svgTy.tickLen;
+  const au = strips[0]?.width ?? 1;
+
+  return (
+    <g data-bmc-layer={DIM_THEME.layers.chain} opacity={DIM_THEME.chainOpacity} pointerEvents="none">
+      {strips.map((strip) => {
+        const x1 = x0 + strip.x0;
+        const x2 = x1 + strip.width;
+        const cx = (x1 + x2) / 2;
+        const label = fmtDimMm(strip.width);
+        const isCut = strip.isCut != null ? strip.isCut : strip.width < au - 1e-9;
+        const color = isCut ? DIM_THEME.warningColor : DIM_THEME.chainColor;
+        const showLabel = strip.width >= label.length * svgTy.dimFont * 0.62 * 0.75;
+        return (
+          <g key={strip.idx ?? strip.id}>
+            <line x1={x1} y1={yDimLine} x2={x2} y2={yDimLine}
+              stroke={color} strokeWidth={svgTy.strokeMain} />
+            <line x1={x1} y1={yDimLine - tick / 2} x2={x1} y2={yDimLine + tick / 2}
+              stroke={color} strokeWidth={svgTy.strokeTick} />
+            <line x1={x2} y1={yDimLine - tick / 2} x2={x2} y2={yDimLine + tick / 2}
+              stroke={color} strokeWidth={svgTy.strokeTick} />
+            {showLabel && (
+              <text x={cx} y={yDimLine + svgTy.dimFont * 1.05}
+                fontSize={svgTy.dimFont * 0.85} fill={color}
+                textAnchor="middle" fontFamily={FONT} stroke="none">
+                {label}{isCut ? ' ✂' : ''}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+// ─── PanelLabels ──────────────────────────────────────────────────────────────
+/**
+ * Etiquetas de panel (T-01, T-02, …) centradas dentro del cuerpo de cada panel.
+ * Ocultas en modo 'client'.
+ */
+export function PanelLabels({ strips, x0, y0, h, svgTy, mode = 'technical' }) {
+  if (mode === 'client' || !strips?.length) return null;
+  const fontSize = svgTy.dimFont * 0.75;
+  const cy = y0 + h / 2;
+  return (
+    <g data-bmc-layer={DIM_THEME.layers.labels} opacity={0.65} pointerEvents="none">
+      {strips.map((strip) => {
+        const cx = x0 + strip.x0 + strip.width / 2;
+        const id = strip.id ?? `T-${String((strip.idx ?? 0) + 1).padStart(2, '0')}`;
+        const isCut = strip.isCut ?? false;
+        const showLabel = strip.width >= id.length * fontSize * 0.62 * 0.6;
+        if (!showLabel) return null;
+        return (
+          <g key={strip.idx ?? id}>
+            <text x={cx} y={cy} fontSize={fontSize}
+              fill={isCut ? DIM_THEME.warningColor : DIM_THEME.textColor}
+              textAnchor="middle" dominantBaseline="middle"
+              fontFamily={FONT} stroke="none">
+              {id}
+            </text>
+            {isCut && (
+              <text x={cx} y={cy + fontSize * 1.1} fontSize={fontSize * 0.8}
+                fill={DIM_THEME.warningColor} textAnchor="middle" dominantBaseline="middle"
+                fontFamily={FONT} stroke="none">
+                ✂
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+// ─── VerificationBadge ────────────────────────────────────────────────────────
+/**
+ * Círculo SVG de estado: verde = plano y BOM coinciden, rojo = discrepancia.
+ * El <title> muestra el delta al hacer hover. Oculto en modo 'client'.
+ */
+export function VerificationBadge({ x, y, verification, svgTy, mode = 'technical' }) {
+  if (mode === 'client' || !verification) return null;
+  const r = svgTy.dimFont * 0.4;
+  const color = verification.ok ? '#22c55e' : '#ef4444';
+  const title = verification.ok
+    ? 'Plano y cotización coinciden'
+    : `Diferencia: ${verification.delta?.panels ?? '?'} panel(es), área Δ${verification.delta?.area ?? '?'} m²`;
+  return (
+    <g data-bmc-layer={DIM_THEME.layers.verification} pointerEvents="none">
+      <circle cx={x} cy={y} r={r} fill={color} opacity={0.85} />
+      <title>{title}</title>
+    </g>
+  );
+}
+
+// ─── Obstacle bridge (for RoofPreview chain dim collision avoidance) ──────────
+export { buildEstructuraCotaObstacleRects as computeCotaObstacles } from '../../utils/roofPlanCotaObstacles.js';

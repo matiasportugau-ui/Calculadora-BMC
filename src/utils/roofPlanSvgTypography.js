@@ -59,3 +59,13 @@ export function fmtArchMeters(m) {
   const s = `${+m.toFixed(2)}`;
   return s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
 }
+
+/** Formatea metros como entero en mm. 1.12 → "1120", 0.52 → "520" */
+export function fmtDimMm(m) {
+  return String(Math.round(m * 1000));
+}
+
+/** Formatea metros para etiqueta de cota general. 1.12 → "1,12 m" */
+export function fmtDimOverall(m) {
+  return `${fmtArchMeters(m)} m`;
+}

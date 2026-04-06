@@ -15,6 +15,7 @@
 | **Auditoría automática (preguntas + órdenes + IA)** | `npm run ml:ai-audit` → informes `ML-AI-AUDIT-REPORT-*.md` en [`../reports/`](../reports/) | Panorama operativo y recomendaciones; no sustituye el KB ni las tandas. |
 | **Export de tanda (ciego o gold)** | `npm run ml:sim-batch` | JSON por offset/limit para una tanda concreta. |
 | **Export del corpus completo** | `npm run ml:corpus-export` | **Captura total** de consultas (y respuestas) para entrenamiento, RAG o backup. Ver §3. |
+| **Gold runs (borrador IA → respuesta humana → Panelin)** | [`reports/ml-gold-runs/`](./reports/ml-gold-runs/) | Tabla versionada de Q:id + pregunta + borrador + columna **gold**; tras corrección, `POST /api/agent/train` (ver [`ML-RESPUESTAS-KB-BMC.md`](./ML-RESPUESTAS-KB-BMC.md) §11). |
 | **Cálculo / no inventar precios** | [`../../knowledge/Calc.md`](../../knowledge/Calc.md) | Obligatorio en cotizaciones asistidas. |
 | **Identidad PANELSIM** | [`../AGENT-SIMULATOR-SIM.md`](../AGENT-SIMULATOR-SIM.md) | Límites y modo aprobación. |
 

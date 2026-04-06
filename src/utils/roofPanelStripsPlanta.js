@@ -4,13 +4,23 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Canonical panel count across a given width.
+ * Used by both calcPanelesTecho (BOM) and buildPanelLayout (plano) to guarantee consistency.
+ * The 1e-9 epsilon prevents IEEE-754 rounding from adding a spurious extra panel
+ * on exact multiples (e.g. 3.36 / 1.12 = 3.0000000000000004 without epsilon).
+ */
+export function countPanels(ancho, au) {
+  if (!(au > 0) || !(ancho > 0)) return 0;
+  return Math.max(1, Math.ceil(ancho / au - 1e-9));
+}
+
+/**
  * Cantidad de paneles en ancho de planta (≈ ceil(w/au)), alineada a `calcPanelesTecho`.
  * @param {number} w
  * @param {number} au
  */
 export function panelCountAcrossAnchoPlanta(w, au) {
-  if (!(au > 0) || !(w > 0)) return 0;
-  return Math.max(1, Math.ceil(w / au - 1e-9));
+  return countPanels(w, au);
 }
 
 /**

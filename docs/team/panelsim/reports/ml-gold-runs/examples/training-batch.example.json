@@ -1,0 +1,10 @@
+[
+  {
+    "category": "mercadolibre",
+    "question": "Hola, ¿cuánto sale el panel de la publicación?",
+    "goodAnswer": "Hola, gracias por escribirnos. El precio publicado es en U$S por m² IVA inc. Para decirte cantidad y total necesito largo × ancho del techo o pared y qué línea te interesa. Por cualquier consulta seguimos por acá. Saludos, BMC Uruguay",
+    "badAnswer": "",
+    "context": "Canal: Mercado Libre | Q:12345678901 | item:MLU445615830",
+    "permanent": true
+  }
+]
