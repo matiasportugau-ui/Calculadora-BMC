@@ -29,6 +29,7 @@ export default [
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       "no-unused-vars": "warn",
+      "complexity": ["warn", 15],
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
       "react-hooks/set-state-in-effect": "off",
