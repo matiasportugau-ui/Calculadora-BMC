@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-05T13:00:13.045Z",
+  "updatedAt": "2026-04-06T13:18:39.200Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -1777,6 +1777,355 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_d4c2ebc2e9c9c711"
+      ]
+    },
+    {
+      "id": "ref_704cbc6b2c87101c",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Industrial policy for the Intelligence Age]]>",
+      "url": "https://openai.com/index/industrial-policy-for-the-intelligence-age",
+      "summary": "",
+      "publishedAt": "2026-04-06T02:30:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:36.505Z",
+      "lastSeenAt": "2026-04-06T13:18:36.505Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f6de441525f399c6"
+      ]
+    },
+    {
+      "id": "ref_0e0a9d2cb7b0d0c9",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Holos: A Web-Scale LLM-Based Multi-Agent System for the Agentic Web",
+      "url": "https://arxiv.org/abs/2604.02334",
+      "summary": "arXiv:2604.02334v1 Announce Type: new Abstract: As large language models (LLM)-driven agents transition from isolated task solvers to persistent digital entities, the emergence of the Agentic Web, an ecosystem where heterogeneous agents autonomously interact and co-evolve, marks a pivotal shift toward Artificial General Intelligence (AGI). However, LLM-based multi-agent systems (LaMAS) are hindered by open-world issues such as scaling friction, coordination breakdown, and value dissipation. To address these challenges, we introduce Holos, a web-scale LaMAS architected for long-term ecological persistence. Holos adopts a five-layer architecture, with core modules primarily featuring the Nuwa engine for high-efficiency agent generation and hosting, a market-driven Orchestrator for resilient coordination, and an endogenous value cycle to achieve incentive compatibility. By bridging the gap between micro-level collaboration and macro-scale emergence, Holos hopes to lay the foundation for the next generation of the self-organizing and continuously evolving Agentic Web. We have publicly released Holos (accessible at https://holosai.io), providing a resource for the community and a testbed for future research in large-scale agentic ecosystems.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_fed56fad189a6258"
+      ]
+    },
+    {
+      "id": "ref_9a8efd2f5da5562e",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Xpertbench: Expert Level Tasks with Rubrics-Based Evaluation",
+      "url": "https://arxiv.org/abs/2604.02368",
+      "summary": "arXiv:2604.02368v1 Announce Type: new Abstract: As Large Language Models (LLMs) exhibit plateauing performance on conventional benchmarks, a pivotal challenge persists: evaluating their proficiency in complex, open-ended tasks characterizing genuine expert-level cognition. Existing frameworks suffer from narrow domain coverage, reliance on generalist tasks, or self-evaluation biases. To bridge this gap, we present XpertBench, a high-fidelity benchmark engineered to assess LLMs across authentic professional domains. XpertBench consists of 1,346 meticulously curated tasks across 80 categories, spanning finance, healthcare, legal services, education, and dual-track research (STEM and Humanities). These tasks are derived from over 1,000 submissions by domain experts--including researchers from elite institutions and practitioners with extensive clinical or industrial experience--ensuring superior ecological validity. Each task uses detailed rubrics with mostly 15-40 weighted checkpoints to assess professional rigor. To facilitate scalable yet human-aligned assessment, we introduce ShotJudge, a novel evaluation paradigm that employs LLM judges calibrated with expert few-shot exemplars to mitigate self-rewarding biases. Our empirical evaluation of state-of-the-art LLMs reveals a pronounced performance ceiling: even leading models achieve a peak success rate of only ~66%, with a mean score around 55%. Models also exhibit domain-specific divergence, showing non-overlapping strengths in quantitative reasoning versus linguistic synthesis.. These findings underscore a significant \"expert-gap\" in current AI systems and establish XpertBench as a critical instrument for navigating the transition from general-purpose assistants to specialized professional collaborators.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_9b1267e1b16c9634"
+      ]
+    },
+    {
+      "id": "ref_5d8937204c659bca",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Compositional Neuro-Symbolic Reasoning",
+      "url": "https://arxiv.org/abs/2604.02434",
+      "summary": "arXiv:2604.02434v1 Announce Type: new Abstract: We study structured abstraction-based reasoning for the Abstraction and Reasoning Corpus (ARC) and compare its generalization to test-time approaches. Purely neural architectures lack reliable combinatorial generalization, while strictly symbolic systems struggle with perceptual grounding. We therefore propose a neuro-symbolic architecture that extracts object-level structure from grids, uses neural priors to propose candidate transformations from a fixed domain-specific language (DSL) of atomic patterns, and filters hypotheses using cross-example consistency. Instantiated as a compositional reasoning framework based on unit patterns inspired by human visual abstraction, the system augments large language models (LLMs) with object representations and transformation proposals. On ARC-AGI-2, it improves base LLM performance from 16% to 24.4% on the public evaluation set, and to 30.8% when combined with ARC Lang Solver via a meta-classifier. These results demonstrate that separating perception, neural-guided transformation proposal, and symbolic consistency filtering improves generalization without task-specific finetuning or reinforcement learning, while reducing reliance on brute-force search and sampling-based test-time scaling. We open-source the ARC-AGI-2 Reasoner code (https://github.com/CoreThink-AI/arc-agi-2-reasoner).",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_644951053b37e955"
+      ]
+    },
+    {
+      "id": "ref_0dff4f6dab8c7de5",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Understanding the Nature of Generative AI as Threshold Logic in High-Dimensional Space",
+      "url": "https://arxiv.org/abs/2604.02476",
+      "summary": "arXiv:2604.02476v1 Announce Type: new Abstract: This paper examines the role of threshold logic in understanding generative artificial intelligence. Threshold functions, originally studied in the 1960s in digital circuit synthesis, provide a structurally transparent model of neural computation: a weighted sum of inputs compared to a threshold, geometrically realized as a hyperplane partitioning a space. The paper shows that this operation undergoes a qualitative transition as dimensionality increases. In low dimensions, the perceptron acts as a determinate logical classifier, separating classes when possible, as decided by linear programming. In high dimensions, however, a single hyperplane can separate almost any configuration of points (Cover, 1965); the space becomes saturated with potential classifiers, and the perceptron shifts from a logical device to a navigational one, functioning as an indexical indicator in the sense of Peirce. The limitations of the perceptron identified by Minsky and Papert (1969) were historically addressed by introducing multilayer architectures. This paper considers an alternative path: increasing dimensionality while retaining a single threshold element. It argues that this shift has equally significant implications for understanding neural computation. The role of depth is reinterpreted as a mechanism for the sequential deformation of data manifolds through iterated threshold operations, preparing them for linear separability already afforded by high-dimensional geometry. The resulting triadic account - threshold function as ontological unit, dimensionality as enabling condition, and depth as preparatory mechanism - provides a unified perspective on generative AI grounded in established mathematics.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_ff84d02d1142bbd8"
+      ]
+    },
+    {
+      "id": "ref_55e8dc14e22da2d4",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "AIVV: Neuro-Symbolic LLM Agent-Integrated Verification and Validation for Trustworthy Autonomous Systems",
+      "url": "https://arxiv.org/abs/2604.02478",
+      "summary": "arXiv:2604.02478v1 Announce Type: new Abstract: Deep learning models excel at detecting anomaly patterns in normal data. However, they do not provide a direct solution for anomaly classification and scalability across diverse control systems, frequently failing to distinguish genuine faults from nuisance faults caused by noise or the control system's large transient response. Consequently, because algorithmic fault validation remains unscalable, full Verification and Validation (V\\&V) operations are still managed by Human-in-the-Loop (HITL) analysis, resulting in an unsustainable manual workload. To automate this essential oversight, we propose Agent-Integrated Verification and Validation (AIVV), a hybrid framework that deploys Large Language Models (LLMs) as a deliberative outer loop. Because rigorous system verification strictly depends on accurate validation, AIVV escalates mathematically flagged anomalies to a role-specialized LLM council. The council agents perform collaborative validation by semantically validating nuisance and true failures based on natural-language (NL) requirements to secure a high-fidelity system-verification baseline. Building on this foundation, the council then performs system verification by assessing post-fault responses against NL operational tolerances, ultimately generating actionable V\\&V artifacts, such as gain-tuning proposals. Experiments on a time-series simulator for Unmanned Underwater Vehicles (UUVs) demonstrate that AIVV successfully digitizes the HITL V\\&V process, overcoming the limitations of rule-based fault classification and offering a scalable blueprint for LLM-mediated oversight in time-series data domains.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_407a5c6f2801f046"
+      ]
+    },
+    {
+      "id": "ref_d004d3efa4235798",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "I must delete the evidence: AI Agents Explicitly Cover up Fraud and Violent Crime",
+      "url": "https://arxiv.org/abs/2604.02500",
+      "summary": "arXiv:2604.02500v1 Announce Type: new Abstract: As ongoing research explores the ability of AI agents to be insider threats and act against company interests, we showcase the abilities of such agents to act against human well being in service of corporate authority. Building on Agentic Misalignment and AI scheming research, we present a scenario where the majority of evaluated state-of-the-art AI agents explicitly choose to suppress evidence of fraud and harm, in service of company profit. We test this scenario on 16 recent Large Language Models. Some models show remarkable resistance to our method and behave appropriately, but many do not, and instead aid and abet criminal activity. These experiments are simulations and were executed in a controlled virtual environment. No crime actually occurred.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_9860818e41c3712c"
+      ]
+    },
+    {
+      "id": "ref_41afb7ccbb3090fe",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "A Comprehensive Framework for Long-Term Resiliency Investment Planning under Extreme Weather Uncertainty for Electric Utilities",
+      "url": "https://arxiv.org/abs/2604.02504",
+      "summary": "arXiv:2604.02504v1 Announce Type: new Abstract: Electric utilities must make massive capital investments in the coming years to respond to explosive growth in demand, aging assets and rising threats from extreme weather. Utilities today already have rigorous frameworks for capital planning, and there are opportunities to extend this capability to solve multi-objective optimization problems in the face of uncertainty. This work presents a four-part framework that 1) incorporates extreme weather as a source of uncertainty, 2) leverages a digital twin of the grid, 3) uses Monte Carlo simulation to capture variability and 4) applies a multi-objective optimization method for finding the optimal investment portfolio. We use this framework to investigate whether grid-aware optimization methods outperform model-free approaches. We find that, in fact, given the computational complexity of model-based metaheuristic optimization methods, the simpler net present value ranking method was able to find more optimal portfolios with only limited knowledge of the grid.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.416Z",
+      "lastSeenAt": "2026-04-06T13:18:37.416Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_1464e7c186c79e05"
+      ]
+    },
+    {
+      "id": "ref_df0de0e1096d23fb",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Interpretable Deep Reinforcement Learning for Element-level Bridge Life-cycle Optimization",
+      "url": "https://arxiv.org/abs/2604.02528",
+      "summary": "arXiv:2604.02528v1 Announce Type: new Abstract: The new Specifications for the National Bridge Inventory (SNBI), in effect from 2022, emphasize the use of element-level condition states (CS) for risk-based bridge management. Instead of a general component rating, element-level condition data use an array of relative CS quantities (i.e., CS proportions) to represent the condition of a bridge. Although this greatly increases the granularity of bridge condition data, it introduces challenges to set up optimal life-cycle policies due to the expanded state space from one single categorical integer to four-dimensional probability arrays. This study proposes a new interpretable reinforcement learning (RL) approach to seek optimal life-cycle policies based on element-level state representations. Compared to existing RL methods, the proposed algorithm yields life-cycle policies in the form of oblique decision trees with reasonable amounts of nodes and depth, making them directly understandable and auditable by humans and easily implementable into current bridge management systems. To achieve near-optimal policies, the proposed approach introduces three major improvements to existing RL methods: (a) the use of differentiable soft tree models as actor function approximators, (b) a temperature annealing process during training, and (c) regularization paired with pruning rules to limit policy complexity. Collectively, these improvements can yield interpretable life-cycle policies in the form of deterministic oblique decision trees. The benefits and trade-offs from these techniques are demonstrated in both supervised and reinforcement learning settings. The resulting framework is illustrated in a life-cycle optimization problem for steel girder bridges.",
+      "publishedAt": "2026-04-06T04:00:00.000Z",
+      "firstSeenAt": "2026-04-06T13:18:37.417Z",
+      "lastSeenAt": "2026-04-06T13:18:37.417Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c124067a132b5af5"
+      ]
+    },
+    {
+      "id": "ref_5b6327c85b56b500",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.167",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.167",
+      "summary": "### Patch Changes - Updated dependencies [6b4ceaa] - @ai-sdk/gateway@2.0.71",
+      "publishedAt": "2026-04-05T21:43:40Z",
+      "firstSeenAt": "2026-04-06T13:18:38.028Z",
+      "lastSeenAt": "2026-04-06T13:18:38.028Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_a8587299fec99acc"
+      ]
+    },
+    {
+      "id": "ref_b75abbff46dc5862",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@2.0.167",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%402.0.167",
+      "summary": "### Patch Changes - ai@5.0.167",
+      "publishedAt": "2026-04-05T21:43:46Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_852a24a8a216acfd"
+      ]
+    },
+    {
+      "id": "ref_cb08737201fb6bfd",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/svelte@3.0.167",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/svelte%403.0.167",
+      "summary": "### Patch Changes - ai@5.0.167",
+      "publishedAt": "2026-04-05T21:43:34Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b615ee64dd0dd4c5"
+      ]
+    },
+    {
+      "id": "ref_b2eacb6e2c7d42a7",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/rsc@1.0.169",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/rsc%401.0.169",
+      "summary": "### Patch Changes - ai@5.0.167",
+      "publishedAt": "2026-04-05T21:43:49Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_bb0750ae06202590"
+      ]
+    },
+    {
+      "id": "ref_9a8e33fd2183c0f3",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/react@2.0.169",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/react%402.0.169",
+      "summary": "### Patch Changes - ai@5.0.167",
+      "publishedAt": "2026-04-05T21:43:37Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_00a7eade175ac2e7"
+      ]
+    },
+    {
+      "id": "ref_f6df7bb5dce3158b",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/llamaindex@1.0.167",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/llamaindex%401.0.167",
+      "summary": "### Patch Changes - ai@5.0.167",
+      "publishedAt": "2026-04-05T21:43:25Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_cec583d873d4b5ab"
+      ]
+    },
+    {
+      "id": "ref_9db8deac634b02b3",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/langchain@1.0.167",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/langchain%401.0.167",
+      "summary": "### Patch Changes - ai@5.0.167",
+      "publishedAt": "2026-04-05T21:43:28Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_3ab694881684021f"
+      ]
+    },
+    {
+      "id": "ref_cd178ef872683a71",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/gateway@2.0.71",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/gateway%402.0.71",
+      "summary": "### Patch Changes - 6b4ceaa: feat (provider/gateway): add hipaaCompliant gateway provider option",
+      "publishedAt": "2026-04-05T21:43:43Z",
+      "firstSeenAt": "2026-04-06T13:18:38.029Z",
+      "lastSeenAt": "2026-04-06T13:18:38.029Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_9e317cf79b48d089"
       ]
     }
   ]
