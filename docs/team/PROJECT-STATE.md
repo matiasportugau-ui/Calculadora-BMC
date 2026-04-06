@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-06 (CLI panelin:train:import)
+**Última actualización:** 2026-04-07 (Panelin-Gym skill + npm ml:*)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-07 (Panelin-Gym — skill + npm `ml:*`):** Skill [`.cursor/skills/panelin-gym/SKILL.md`](../../.cursor/skills/panelin-gym/SKILL.md) + [`.cursor/skills/panelin-gym/reference.md`](../../.cursor/skills/panelin-gym/reference.md) (entorno local, KB/prompts dev, corpus ML, límites de historial vs jsonl). Regla Cursor [`.cursor/rules/panelin-gym.mdc`](../../.cursor/rules/panelin-gym.mdc). [`package.json`](../../package.json): scripts **`ml:corpus-export`**, **`ml:sim-batch`**, **`ml:ai-audit`**, **`ml:pending-workup`** (wrappers a `scripts/ml-*.mjs`, alineados con [`AGENTS.md`](../../AGENTS.md)). Regenerar bloque “Skills developed in full”: `npm run team:agent-matrix-skills`.
 
 **2026-04-06 (Panelin — import entrenamiento desde repo):** Script [`scripts/panelin-training-import.mjs`](../../scripts/panelin-training-import.mjs) + npm **`panelin:train:import`** (JSON → `POST /api/agent/train`, `API_AUTH_TOKEN`, opcional `BMC_API_BASE`). Ejemplo JSON: [`docs/team/panelsim/reports/ml-gold-runs/examples/training-batch.example.json`](./panelsim/reports/ml-gold-runs/examples/training-batch.example.json). Doc: [`panelsim/reports/ml-gold-runs/README.md`](./panelsim/reports/ml-gold-runs/README.md) § CLI. KB ML §11 enlaza el comando.
 
