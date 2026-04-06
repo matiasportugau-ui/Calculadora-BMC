@@ -15,22 +15,55 @@
 [vite] > bash scripts/disk-space-precheck.sh .
 [vite] 
 [vite] 
-[vite] > calculadora-bmc@3.1.5 dev
-[vite] > npm run version:data && vite
+[vite] === BMC: poco espacio en disco ===
+[vite] Libre en el volumen de este directorio: ~727 MiB — mínimo configurado: 1024 MiB.
+[vite] 
+[vite] El desarrollo/build puede fallar (ENOSPC). En Cursor:
+[vite]   1) Pegá este mensaje o decí: disco lleno, recovery.
+[vite]   2) El agente debe proponer grupos de limpieza (skill disk-space-recovery-resume).
+[vite]   3) Solo después de tu aprobación explícita se ejecutan borrados/movidas.
+[vite]   4) Reintentá el comando que falló (p. ej. npm run dev).
+[vite] 
+[vite] Variables: BMC_DISK_MIN_FREE_MIB, BMC_DISK_PRECHECK_SKIP=1, BMC_DISK_PRECHECK_MODE=warn
+[vite] Doc: docs/team/orientation/DISK-SPACE-RECOVERY-AGENT.md
 [vite] 
 [vite] 
-[vite] > calculadora-bmc@3.1.5 version:data
-[vite] > node scripts/update-calculator-data-version.js
-[vite] 
-[api] [dotenv@17.3.1] injecting env (19) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
-[vite] [version:data] CALCULATOR_DATA_VERSION=b22fc4fea5 -> src/data/calculatorDataVersion.js
-[vite] 
-[vite]   VITE v7.3.1  ready in 420 ms
-[vite] 
-[vite]   ➜  Local:   http://localhost:5173/
-[vite]   ➜  Network: http://192.168.1.11:5173/
-[api] {"level":30,"time":1775426899220,"pid":11653,"hostname":"192.168.1.11","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
-[api] {"level":30,"time":1775426899984,"pid":11653,"hostname":"192.168.1.11","req":{"id":"f9019d34-e8e8-4a56-8013-e10743f5eda2","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":50501},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":8,"msg":"request completed"}
-bash: line 1: 11574 Hangup: 1               npm run dev:full
-[api] npm run start:api exited with code SIGHUP
-[vite] npm run dev exited with code SIGHUP
+[vite] npm run dev exited with code 1
+[api] [dotenv@17.3.1] injecting env (19) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[api] {"level":30,"time":1775441117633,"pid":12790,"hostname":"192.168.1.11","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
+[api] {"level":30,"time":1775441118174,"pid":12790,"hostname":"192.168.1.11","req":{"id":"463bb61e-f188-41e4-b0ec-0e4322b8b943","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49744},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":8,"msg":"request completed"}
+[api] {"level":30,"time":1775441119211,"pid":12790,"hostname":"192.168.1.11","req":{"id":"8a7ecd30-686a-445d-9b4c-0feba25487f6","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49748},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":1,"msg":"request completed"}
+[api] {"level":30,"time":1775441120251,"pid":12790,"hostname":"192.168.1.11","req":{"id":"97ca0073-55ba-456c-9ac0-92c0903c11e7","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49752},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":0,"msg":"request completed"}
+[api] {"level":30,"time":1775441121289,"pid":12790,"hostname":"192.168.1.11","req":{"id":"08437ead-418e-4c42-8f80-36d6bc44c229","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49755},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":1,"msg":"request completed"}
+/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/util/reportUnhandledError.js:13
+            throw err;
+            ^
+
+TypeError: outputStream is in errored state
+    at OutputWriter.ensureWritable (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/concurrently/dist/src/output-writer.js:75:19)
+    at OutputWriter.write (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/concurrently/dist/src/output-writer.js:79:14)
+    at Object.next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/concurrently/dist/src/concurrently.js:81:60)
+    ... 2 lines matching cause stack trace ...
+    at Subscriber.next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/Subscriber.js:51:18)
+    at /Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/Subject.js:69:34
+    at Object.errorContext (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/util/errorContext.js:22:9)
+    at Subject.next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/Subject.js:59:24)
+    at Logger.emit (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/concurrently/dist/src/logger.js:253:21) {
+  [cause]: Error: ENOSPC: no space left on device, write
+      at writeSync (node:fs:922:3)
+      at SyncWriteStream._write (node:internal/fs/sync_write_stream:27:5)
+      at writeOrBuffer (node:internal/streams/writable:570:12)
+      at _write (node:internal/streams/writable:499:10)
+      at Writable.write (node:internal/streams/writable:508:10)
+      at OutputWriter.write (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/concurrently/dist/src/output-writer.js:90:31)
+      at Object.next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/concurrently/dist/src/concurrently.js:81:60)
+      at ConsumerObserver.next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/Subscriber.js:113:33)
+      at Subscriber._next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/Subscriber.js:80:26)
+      at Subscriber.next (/Users/matias/Panelin calc loca/Calculadora-BMC/node_modules/rxjs/dist/cjs/internal/Subscriber.js:51:18) {
+    errno: -28,
+    syscall: 'write',
+    code: 'ENOSPC'
+  }
+}
+
+Node.js v24.11.0
