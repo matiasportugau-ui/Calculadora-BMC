@@ -23,6 +23,7 @@ import createTransportistaRouter from "./routes/transportista.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -311,12 +312,13 @@ app.post("/ml/questions/:id/answer", asyncHandler(async (req, res) => {
   if (!req.body?.text) {
     return res.status(400).json({ ok: false, error: "Missing body.text" });
   }
+  const text = normalizeMlAnswerCurrencyText(req.body.text);
   const payload = await ml.requestWithRetries({
     method: "POST",
     path: "/answers",
     body: {
       question_id: Number(req.params.id),
-      text: req.body.text,
+      text,
     },
   });
   res.json(payload);

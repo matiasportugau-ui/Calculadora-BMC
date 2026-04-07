@@ -2,14 +2,14 @@
 > calculadora-bmc@3.1.5 dev:full
 > concurrently -n api,vite -c blue,green "npm run start:api" "npm run dev"
 
-[vite] 
-[vite] > calculadora-bmc@3.1.5 predev
-[vite] > npm run disk:precheck
-[vite] 
 [api] 
 [api] > calculadora-bmc@3.1.5 start:api
 [api] > node server/index.js
 [api] 
+[vite] 
+[vite] > calculadora-bmc@3.1.5 predev
+[vite] > npm run disk:precheck
+[vite] 
 [vite] 
 [vite] > calculadora-bmc@3.1.5 disk:precheck
 [vite] > bash scripts/disk-space-precheck.sh .
@@ -18,19 +18,19 @@
 [vite] > calculadora-bmc@3.1.5 dev
 [vite] > npm run version:data && vite
 [vite] 
+[api] [dotenv@17.3.1] injecting env (19) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
 [vite] 
 [vite] > calculadora-bmc@3.1.5 version:data
 [vite] > node scripts/update-calculator-data-version.js
 [vite] 
 [vite] [version:data] CALCULATOR_DATA_VERSION=b22fc4fea5 -> src/data/calculatorDataVersion.js
-[api] [dotenv@17.3.1] injecting env (19) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
 [vite] 
-[vite]   VITE v7.3.1  ready in 875 ms
+[vite]   VITE v7.3.1  ready in 531 ms
 [vite] 
 [vite]   ➜  Local:   http://localhost:5173/
 [vite]   ➜  Network: http://192.168.1.9:5173/
-[api] {"level":30,"time":1775501145694,"pid":12778,"hostname":"192.168.1.9","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
-[api] {"level":30,"time":1775501146064,"pid":12778,"hostname":"192.168.1.9","req":{"id":"1746498c-b295-4c8f-8453-53e7867b1d59","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49416},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":24,"msg":"request completed"}
-bash: line 1: 12478 Hangup: 1               npm run dev:full
+[api] {"level":30,"time":1775573179181,"pid":12334,"hostname":"192.168.1.9","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
+[api] {"level":30,"time":1775573179498,"pid":12334,"hostname":"192.168.1.9","req":{"id":"cb2d59c5-7ce3-4bfc-96ea-c941b87c1477","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":51114},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":7,"msg":"request completed"}
+bash: line 1: 12272 Hangup: 1               npm run dev:full
 [api] npm run start:api exited with code SIGHUP
 [vite] npm run dev exited with code SIGHUP

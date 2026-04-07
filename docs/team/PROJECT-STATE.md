@@ -10,6 +10,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-04-07 (ML — sin mencionar tipo de lista en respuestas públicas):** Criterio operativo: en preguntas de Mercado Libre no citar “lista web/venta/BMC/distribuidor”; solo U$S, IVA y alcance. [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) bloque ML; [`panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md) §2 voz BMC.
+
+**2026-04-07 (ML — habitación sin techo: paneles vs cerramiento):** [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — bloque **Canal Mercado Libre**: si preguntan habitación/caja sin techo, cotizar `solo_fachada` **y** preguntar si buscan solo **m² de panel** (`presupuesto_libre`); ofrecer techo/puerta/flete si no lo nombraron.
+
+**2026-04-07 (ML — U$S en respuestas API):** Mercado Libre elimina el `$` ASCII en `POST /answers`; [`server/lib/mlAnswerText.js`](../../server/lib/mlAnswerText.js) `normalizeMlAnswerCurrencyText` + uso en [`server/index.js`](../../server/index.js) `POST /ml/questions/:id/answer`. Doc: [`panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md) §5 ítem 7.
+
 **2026-04-07 (Panelin — decisiones entrenamiento vs fine-tuning):** Nuevo doc [`panelsim/knowledge/PANELIN-TRAINING-DECISIONS.md`](./panelsim/knowledge/PANELIN-TRAINING-DECISIONS.md) (default operativo, umbrales SFT/DPO/PRM, MCP/multi-agente, checklist post-cambio, nota historial chat). Enlazado desde [`ML-TRAINING-SYSTEM.md`](./panelsim/knowledge/ML-TRAINING-SYSTEM.md) §1, [`panelsim/README.md`](./panelsim/README.md) y [`.cursor/skills/panelin-gym/SKILL.md`](../../.cursor/skills/panelin-gym/SKILL.md).
 
 **2026-04-07 (Panelin-Gym — skill + npm `ml:*`):** Skill [`.cursor/skills/panelin-gym/SKILL.md`](../../.cursor/skills/panelin-gym/SKILL.md) + [`.cursor/skills/panelin-gym/reference.md`](../../.cursor/skills/panelin-gym/reference.md) (entorno local, KB/prompts dev, corpus ML, límites de historial vs jsonl). Regla Cursor [`.cursor/rules/panelin-gym.mdc`](../../.cursor/rules/panelin-gym.mdc). [`package.json`](../../package.json): scripts **`ml:corpus-export`**, **`ml:sim-batch`**, **`ml:ai-audit`**, **`ml:pending-workup`** (wrappers a `scripts/ml-*.mjs`, alineados con [`AGENTS.md`](../../AGENTS.md)). Regenerar bloque “Skills developed in full”: `npm run team:agent-matrix-skills`.

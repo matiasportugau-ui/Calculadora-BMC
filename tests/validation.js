@@ -22,6 +22,7 @@ import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
+import { normalizeMlAnswerCurrencyText } from "../server/lib/mlAnswerText.js";
 import { buildProgramSnapshot } from "../scripts/program-status.mjs";
 import {
   cuerpoFromMessage,
@@ -1922,6 +1923,25 @@ assert(
   countPanels(3.3601, 1.12) === 4,
   countPanels(3.3601, 1.12),
   4,
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE: ML answer text — ASCII $ → fullwidth for Mercado Libre API
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: normalizeMlAnswerCurrencyText ═══");
+const fw = "\uFF04";
+assert(
+  "U$S amounts become U+fullwidth+S",
+  normalizeMlAnswerCurrencyText("U$S 1.456,88") === `U${fw}S 1.456,88`,
+  normalizeMlAnswerCurrencyText("U$S 1.456,88"),
+  `U${fw}S 1.456,88`,
+);
+const multi = normalizeMlAnswerCurrencyText("a $1 $2");
+assert(
+  "multiple $ replaced",
+  !multi.includes("$") && multi === `a ${fw}1 ${fw}2`,
+  multi,
+  `a ${fw}1 ${fw}2`,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
