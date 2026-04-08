@@ -18,19 +18,19 @@
 [vite] > calculadora-bmc@3.1.5 dev
 [vite] > npm run version:data && vite
 [vite] 
-[api] [dotenv@17.3.1] injecting env (19) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[api] [dotenv@17.3.1] injecting env (19) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
 [vite] 
 [vite] > calculadora-bmc@3.1.5 version:data
 [vite] > node scripts/update-calculator-data-version.js
 [vite] 
 [vite] [version:data] CALCULATOR_DATA_VERSION=b22fc4fea5 -> src/data/calculatorDataVersion.js
 [vite] 
-[vite]   VITE v7.3.1  ready in 531 ms
+[vite]   VITE v7.3.1  ready in 1483 ms
 [vite] 
 [vite]   ➜  Local:   http://localhost:5173/
-[vite]   ➜  Network: http://192.168.1.9:5173/
-[api] {"level":30,"time":1775573179181,"pid":12334,"hostname":"192.168.1.9","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
-[api] {"level":30,"time":1775573179498,"pid":12334,"hostname":"192.168.1.9","req":{"id":"cb2d59c5-7ce3-4bfc-96ea-c941b87c1477","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":51114},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":7,"msg":"request completed"}
-bash: line 1: 12272 Hangup: 1               npm run dev:full
+[vite]   ➜  Network: http://192.168.1.11:5173/
+[api] {"level":30,"time":1775606605568,"pid":26571,"hostname":"192.168.1.11","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
+[api] {"level":30,"time":1775606606096,"pid":26571,"hostname":"192.168.1.11","req":{"id":"ad76585e-25e0-4bf4-979f-f3cce8df88c8","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":65438},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"109","etag":"W/\"6d-EUOuoTnGMgozdOrGKovxOOXHeo4\""}},"responseTime":26,"msg":"request completed"}
+bash: line 1: 26332 Hangup: 1               npm run dev:full
 [api] npm run start:api exited with code SIGHUP
 [vite] npm run dev exited with code SIGHUP
