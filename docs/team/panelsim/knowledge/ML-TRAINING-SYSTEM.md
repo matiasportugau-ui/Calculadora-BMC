@@ -11,6 +11,7 @@
 | Qué | Dónde | Para qué sirve |
 |-----|--------|-----------------|
 | **Voz, métricas y reglas** (historial analizado) | [`ML-RESPUESTAS-KB-BMC.md`](./ML-RESPUESTAS-KB-BMC.md) | Base de conocimiento + checklist; alimenta prompts y simulaciones. |
+| **Plataforma ML** (publicaciones, envíos, reputación, MP/Ads — marco operativo) | [`ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md) | Complemento al KB de respuestas; enlaces oficiales; qué hace el repo vs el panel vendedor. |
 | **Simulación en ciego por tandas de 10** | [`../reports/ML-SIM-ITERATIVE-BLIND-IMPROVEMENT.md`](../reports/ML-SIM-ITERATIVE-BLIND-IMPROVEMENT.md) | Mejora iterativa: modelo/KB vs respuesta humana, tanda a tanda. |
 | **Auditoría automática (preguntas + órdenes + IA)** | `npm run ml:ai-audit` → informes `ML-AI-AUDIT-REPORT-*.md` en [`../reports/`](../reports/) | Panorama operativo y recomendaciones; no sustituye el KB ni las tandas. |
 | **Export de tanda (ciego o gold)** | `npm run ml:sim-batch` | JSON por offset/limit para una tanda concreta. |

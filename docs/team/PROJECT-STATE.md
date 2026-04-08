@@ -10,6 +10,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-04-07 (ML — KB plataforma para agentes):** Nuevo [`panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md) (alcance, mapa Central de aprendizaje, buenas prácticas BMC, enlaces oficiales, changelog). Enlaces desde [`ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md), [`ML-TRAINING-SYSTEM.md`](./panelsim/knowledge/ML-TRAINING-SYSTEM.md), [`PANELSIM-FULL-PROJECT-KB.md`](./panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md), [`KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md`](./panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md). [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — bloque ML: referencia al doc de plataforma + no inventar políticas. [`.cursor/skills/bmc-mercadolibre-api/reference.md`](../../.cursor/skills/bmc-mercadolibre-api/reference.md) — sección KB operativa.
+
 **2026-04-07 (ML — sin mencionar tipo de lista en respuestas públicas):** Criterio operativo: en preguntas de Mercado Libre no citar “lista web/venta/BMC/distribuidor”; solo U$S, IVA y alcance. [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) bloque ML; [`panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md) §2 voz BMC.
 
 **2026-04-07 (ML — habitación sin techo: paneles vs cerramiento):** [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — bloque **Canal Mercado Libre**: si preguntan habitación/caja sin techo, cotizar `solo_fachada` **y** preguntar si buscan solo **m² de panel** (`presupuesto_libre`); ofrecer techo/puerta/flete si no lo nombraron.

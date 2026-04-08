@@ -1,0 +1,12 @@
+{
+  "project": "Calculadora-BMC / Panelin",
+  "app_version": "",
+  "env": "local",
+  "recorder": "",
+  "recording_device": "iPhone (vídeo compartido / ingest)",
+  "target_device": "tablet u otra pantalla filmada",
+  "date_iso": "2026-04-08T00:28:08-03:00",
+  "app_surface": "tablet-web",
+  "base_url": "http://localhost:5173",
+  "notes": "ingest automático; revisar app_version y env."
+}

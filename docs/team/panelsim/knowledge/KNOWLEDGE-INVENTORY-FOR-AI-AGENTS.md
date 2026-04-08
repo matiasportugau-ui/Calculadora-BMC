@@ -6,7 +6,7 @@
 
 **No sustituye:** el índice operativo [`PANELSIM-FULL-PROJECT-KB.md`](./PANELSIM-FULL-PROJECT-KB.md) (se complementa con rutas concretas y matriz de alineación).
 
-**Última actualización:** 2026-04-04
+**Última actualización:** 2026-04-07
 
 ---
 
@@ -27,6 +27,7 @@
 | `docs/team/knowledge/CALCULATOR-ENGINE-MATH-SPEC.md` | Especificación motor | Calc, auditoría | Sí | Bajo | Fórmulas y variables |
 | `docs/team/panelsim/knowledge/PANELSIM-DIALOGUE-AND-CRITERIA.md` | Diálogo / guardrails | PANELSIM, GPT (espejo) | Sí (comercial) | Alto si duplicado sin sync | “Destilado GPT → repo” |
 | `docs/team/panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md` | KB Mercado Libre | ML, simulaciones | Sí (canal ML) | Medio | No es el mismo archivo que training-kb chat |
+| `docs/team/panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md` | KB plataforma ML (marketplace) | ML ops, agentes, PANELSIM | Sí (canal ML) | Medio | Complementa ML-RESPUESTAS; sin copiar cursos ML |
 | `docs/team/panelsim/knowledge/ML-TRAINING-SYSTEM.md` | Proceso corpus / tandas | ML ops | Sí | Bajo | `ml:corpus-export`, auditorías |
 | `docs/team/biblioteca-tecnica-productos/` | Material técnico-comercial | RAG humano, GPT Knowledge | Espejo / assets | Medio | Precios: validar vs MATRIZ/código |
 | `docs/team/knowledge/GPTCloud.md` | Rol GPT/Cloud | Equipo | Sí | Bajo | Disciplina sync GPT ↔ Cloud |
@@ -42,6 +43,7 @@
 | `PANELSIM-FULL-PROJECT-KB.md` | Índice global proyecto / SIM |
 | `SIM.md` / `SIM-REV.md` | Atajos a canónico y revisor |
 | `ML-RESPUESTAS-KB-BMC.md` | Voz y reglas ML |
+| `ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md` | Buenas prácticas plataforma ML (publicaciones, envíos, reputación) |
 | `ML-TRAINING-SYSTEM.md` | Corpus y simulación |
 
 ---
@@ -66,6 +68,7 @@ Completar filas con **path local real** cuando el repo esté clonado en la máqu
 | Acciones / tools | OpenAPI vs `ACTIONS_DOC` vs `VALID_ACTION_TYPES` | Acción rechazada o UI rota |
 | Tono y flujo cotización | GPT Builder vs `PANELSIM-DIALOGUE-AND-CRITERIA.md` vs `IDENTITY`/`WORKFLOW` | Experiencia inconsistente |
 | FAQ comercial | GPT Knowledge vs `training-kb.json` vs ML KB | Tres “verdades” distintas |
+| Plataforma vs mensajes ML | `ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md` vs `ML-RESPUESTAS-KB-BMC.md` | Mezclar tono de respuesta con políticas de cuenta |
 | Training “global” | Expectativa CRM/ML vs realidad | [`DEV-TRAINING-MODE-SCOPE.md`](../../DEV-TRAINING-MODE-SCOPE.md): KB entrenamiento **solo** alimenta chat |
 
 ---

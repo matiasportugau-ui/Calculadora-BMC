@@ -1,5 +1,7 @@
 # Mercado Libre — Base de conocimiento y reglas de respuesta (BMC Uruguay)
 
+**Ver también (plataforma ML, no mensajería):** [`ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md) — buenas prácticas de publicaciones, envíos, reputación, MP/Ads a alto nivel y límites del conector; complementa este archivo sin duplicar voz ni plantillas.
+
 **Audiencia:** agentes humanos, PANELSIM, futuros asistentes. **Hub del sistema de entrenamiento + captura de corpus:** [`ML-TRAINING-SYSTEM.md`](./ML-TRAINING-SYSTEM.md).  
 **Fuente empírica:** análisis del corpus **`/questions/search`** vía API local (`GET /ml/questions`), **484** preguntas; **473** respuestas publicadas con texto (**~98%** del corpus).  
 **Fecha análisis:** 2026-03-24 (entorno local; reproducir con paginación `limit`/`offset`).
