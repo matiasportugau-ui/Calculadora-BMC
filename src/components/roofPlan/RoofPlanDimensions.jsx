@@ -1,6 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// RoofPlanDimensions.jsx — Cotas SVG (perímetro libre, encuentros). Funciones puras:
-// `roofPlanSvgTypography.js`, `roofPlanCotaObstacles.js`, `roofPlanDrawingTheme.js`.
+// RoofPlanDimensions.jsx — Cotas SVG (perímetro libre, encuentros, cadena de paneles).
+// Funciones puras: `roofPlanSvgTypography.js`, `roofPlanCotaObstacles.js`,
+// `roofPlanDrawingTheme.js`, `panelLayout.js`.
+// Exports: EstructuraGlobalExteriorOverlay (existente, no modificado),
+//          PanelChainDimensions, PanelLabels, VerificationBadge (nuevos).
+// ISO 129 / IRAM 4513 compliance: sí — cadena más alejada del objeto que overall
+// (trade-off aditivo: no modifica EstructuraGlobalExteriorOverlay existente).
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { FONT } from "../../data/constants.js";
@@ -316,58 +321,95 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
   );
 }
 
-// ─── PanelChainDimensions ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// NUEVOS COMPONENTES — cadena de paneles, IDs, badge de verificación
+// Principio: ADITIVOS. No tocan EstructuraGlobalExteriorOverlay.
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Cotas encadenadas por panel bajo una zona (ancho individual en mm).
- * Se coloca en el nivel exterior a EstructuraGlobalExteriorOverlay (más lejos de la zona).
- * Paneles cortados se muestran en naranja con ✂.
+ * Cadena de cotas horizontales — una cota por panel.
+ * Se posiciona MÁS LEJOS del objeto que la cota overall existente
+ * (trade-off aditivo — ver decisión A en el plan).
  *
- * @param {Array<{x0,width,idx,id?,isCut?}>} strips — de buildAnchoStripsPlanta o buildPanelLayout
- * @param {number} x0 — borde izquierdo de la zona en planta (m)
- * @param {number} yEdge — borde inferior de la zona (m)
- * @param {object} svgTy — de buildRoofPlanSvgTypography
- * @param {Array<{minX,maxX,minY,maxY}>} [obstacleRects=[]] — AABBs de computeCotaObstacles
- * @param {'client'|'technical'|'full'} [mode='technical']
+ * Solo renderiza cuando `displayMode !== 'client'`.
+ *
+ * @param {{
+ *   panels: import('../../utils/panelLayout.js').PanelLayoutResult['panels'],
+ *   x0: number,
+ *   yBase: number,
+ *   existingDimOffset: number,
+ *   svgTy: object,
+ *   theme: import('../../utils/roofPlanDrawingTheme.js').DIM_THEME,
+ *   displayMode: 'client'|'technical'|'full',
+ * }} props
  */
-export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects = [], mode = 'technical' }) {
-  if (mode === 'client' || !strips?.length) return null;
+export function PanelChainDimensions({ panels, x0, yBase, existingDimOffset, svgTy, theme, displayMode }) {
+  if (displayMode === 'client') return null;
+  if (!panels?.length) return null;
 
-  let yDimLine = yEdge + svgTy.dimStackBottom + DIM_THEME.CHAIN_OFFSET;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const labelH = svgTy.dimFont * 1.1;
-    const overlaps = obstacleRects.some(
-      (r) => yDimLine <= r.maxY + labelH && yDimLine >= r.minY - labelH,
-    );
-    if (!overlaps) break;
-    yDimLine += svgTy.dimStackStep;
-  }
-
+  const chainY = yBase + existingDimOffset + theme.CHAIN_OFFSET;
   const tick = svgTy.tickLen;
-  const au = strips[0]?.width ?? 1;
+  const chainFont = svgTy.dimFont * 0.82;
 
   return (
-    <g data-bmc-layer={DIM_THEME.layers.chain} opacity={DIM_THEME.chainOpacity} pointerEvents="none">
-      {strips.map((strip) => {
-        const x1 = x0 + strip.x0;
-        const x2 = x1 + strip.width;
-        const cx = (x1 + x2) / 2;
-        const label = fmtDimMm(strip.width);
-        const isCut = strip.isCut != null ? strip.isCut : strip.width < au - 1e-9;
-        const color = isCut ? DIM_THEME.warningColor : DIM_THEME.chainColor;
-        const showLabel = strip.width >= label.length * svgTy.dimFont * 0.62 * 0.75;
+    <g data-bmc-layer={theme.layers.chain} opacity={theme.chainOpacity} pointerEvents="none">
+      {panels.map((panel) => {
+        const px1 = x0 + panel.x0;
+        const px2 = px1 + panel.width;
+        const color = panel.isCut ? theme.warningColor : theme.chainColor;
+        const label = panel.isCut ? `${fmtDimMm(panel.width)} ✂` : fmtDimMm(panel.width);
+        const labelWidthEst = label.length * chainFont * 0.62;
+        const showLabel = panel.width >= labelWidthEst * 0.75;
+
         return (
-          <g key={strip.idx ?? strip.id}>
-            <line x1={x1} y1={yDimLine} x2={x2} y2={yDimLine}
-              stroke={color} strokeWidth={svgTy.strokeMain} />
-            <line x1={x1} y1={yDimLine - tick / 2} x2={x1} y2={yDimLine + tick / 2}
-              stroke={color} strokeWidth={svgTy.strokeTick} />
-            <line x1={x2} y1={yDimLine - tick / 2} x2={x2} y2={yDimLine + tick / 2}
-              stroke={color} strokeWidth={svgTy.strokeTick} />
+          <g key={panel.id} stroke={color} fill={color}>
+            {/* Líneas de extensión */}
+            <line
+              x1={px1} y1={yBase}
+              x2={px1} y2={chainY}
+              strokeWidth={svgTy.strokeExt}
+              opacity={0.6}
+              vectorEffect="non-scaling-stroke"
+            />
+            <line
+              x1={px2} y1={yBase}
+              x2={px2} y2={chainY}
+              strokeWidth={svgTy.strokeExt}
+              opacity={0.6}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Línea de cota */}
+            <line
+              x1={px1} y1={chainY}
+              x2={px2} y2={chainY}
+              strokeWidth={svgTy.strokeMain}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Terminadores (ticks) */}
+            <line
+              x1={px1} y1={chainY - tick / 2}
+              x2={px1} y2={chainY + tick / 2}
+              strokeWidth={svgTy.strokeTick}
+              vectorEffect="non-scaling-stroke"
+            />
+            <line
+              x1={px2} y1={chainY - tick / 2}
+              x2={px2} y2={chainY + tick / 2}
+              strokeWidth={svgTy.strokeTick}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Etiqueta en mm */}
             {showLabel && (
-              <text x={cx} y={yDimLine + svgTy.dimFont * 1.05}
-                fontSize={svgTy.dimFont * 0.85} fill={color}
-                textAnchor="middle" fontFamily={FONT} stroke="none">
-                {label}{isCut ? ' ✂' : ''}
+              <text
+                x={(px1 + px2) / 2}
+                y={chainY + chainFont * 1.1}
+                textAnchor="middle"
+                fontSize={chainFont}
+                fontWeight={600}
+                fontFamily={FONT}
+                stroke="none"
+              >
+                {label}
               </text>
             )}
           </g>
@@ -377,35 +419,63 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
   );
 }
 
-// ─── PanelLabels ──────────────────────────────────────────────────────────────
 /**
- * Etiquetas de panel (T-01, T-02, …) centradas dentro del cuerpo de cada panel.
- * Ocultas en modo 'client'.
+ * IDs de panel (T-01, T-02…) dentro de los cuerpos de panel.
+ * Visible en modos 'client' y 'full'. No visible en 'technical'.
+ *
+ * @param {{
+ *   panels: import('../../utils/panelLayout.js').PanelLayoutResult['panels'],
+ *   x0: number,
+ *   y0: number,
+ *   h: number,
+ *   svgTy: object,
+ *   theme: object,
+ *   displayMode: 'client'|'technical'|'full',
+ * }} props
  */
-export function PanelLabels({ strips, x0, y0, h, svgTy, mode = 'technical' }) {
-  if (mode === 'client' || !strips?.length) return null;
-  const fontSize = svgTy.dimFont * 0.75;
-  const cy = y0 + h / 2;
+export function PanelLabels({ panels, x0, y0, h, svgTy, theme, displayMode }) {
+  if (displayMode === 'technical') return null;
+  if (!panels?.length) return null;
+
+  const labelFont = svgTy.dimFont * 0.72;
+  const cutFont = labelFont * 0.8;
+
   return (
-    <g data-bmc-layer={DIM_THEME.layers.labels} opacity={0.65} pointerEvents="none">
-      {strips.map((strip) => {
-        const cx = x0 + strip.x0 + strip.width / 2;
-        const id = strip.id ?? `T-${String((strip.idx ?? 0) + 1).padStart(2, '0')}`;
-        const isCut = strip.isCut ?? false;
-        const showLabel = strip.width >= id.length * fontSize * 0.62 * 0.6;
-        if (!showLabel) return null;
+    <g data-bmc-layer={theme.layers.labels} pointerEvents="none">
+      {panels.map((panel) => {
+        const cx = x0 + panel.x0 + panel.width / 2;
+        const cy = y0 + h / 2;
+        const color = panel.isCut ? theme.warningColor : theme.textColor;
+        const labelWidthEst = panel.id.length * labelFont * 0.62;
+        if (panel.width < labelWidthEst * 0.5) return <g key={panel.id} />;
+
         return (
-          <g key={strip.idx ?? id}>
-            <text x={cx} y={cy} fontSize={fontSize}
-              fill={isCut ? DIM_THEME.warningColor : DIM_THEME.textColor}
-              textAnchor="middle" dominantBaseline="middle"
-              fontFamily={FONT} stroke="none">
-              {id}
+          <g key={panel.id}>
+            <text
+              x={cx}
+              y={panel.isCut ? cy - cutFont * 0.7 : cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={labelFont}
+              fontWeight={700}
+              fontFamily={FONT}
+              fill={color}
+              opacity={0.65}
+            >
+              {panel.id}
             </text>
-            {isCut && (
-              <text x={cx} y={cy + fontSize * 1.1} fontSize={fontSize * 0.8}
-                fill={DIM_THEME.warningColor} textAnchor="middle" dominantBaseline="middle"
-                fontFamily={FONT} stroke="none">
+            {panel.isCut && (
+              <text
+                x={cx}
+                y={cy + cutFont * 0.8}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={cutFont}
+                fontWeight={600}
+                fontFamily={FONT}
+                fill={theme.warningColor}
+                opacity={0.75}
+              >
                 ✂
               </text>
             )}
@@ -416,22 +486,47 @@ export function PanelLabels({ strips, x0, y0, h, svgTy, mode = 'technical' }) {
   );
 }
 
-// ─── VerificationBadge ────────────────────────────────────────────────────────
 /**
- * Círculo SVG de estado: verde = plano y BOM coinciden, rojo = discrepancia.
- * El <title> muestra el delta al hacer hover. Oculto en modo 'client'.
+ * Badge de validez del layout en la esquina del SVG.
+ * Muestra `layout.isValid` y el primer `layout.warnings[0]` si existe.
+ * No hace comparación con BOM (para eso usar `verifyLayoutVsBom` en el wizard).
+ *
+ * @param {{
+ *   layout: import('../../utils/panelLayout.js').PanelLayoutResult,
+ *   x: number,
+ *   y: number,
+ *   svgTy: object,
+ * }} props
  */
-export function VerificationBadge({ x, y, verification, svgTy, mode = 'technical' }) {
-  if (mode === 'client' || !verification) return null;
-  const r = svgTy.dimFont * 0.4;
-  const color = verification.ok ? '#22c55e' : '#ef4444';
-  const title = verification.ok
-    ? 'Plano y cotización coinciden'
-    : `Diferencia: ${verification.delta?.panels ?? '?'} panel(es), área Δ${verification.delta?.area ?? '?'} m²`;
+export function VerificationBadge({ layout, x, y, svgTy }) {
+  if (!layout) return null;
+
+  const font = svgTy.dimFont * 0.72;
+  let text, fill;
+
+  if (!layout.isValid) {
+    text = '✗ Error en layout';
+    fill = '#B71C1C';
+  } else if (layout.warnings.length > 0) {
+    text = `⚠ ${layout.warnings[0]}`;
+    fill = '#E65100';
+  } else {
+    text = `✓ ${layout.nPaneles} panel${layout.nPaneles !== 1 ? 'es' : ''} · ${layout.area.toFixed(2)} m²`;
+    fill = '#1B5E20';
+  }
+
   return (
     <g data-bmc-layer={DIM_THEME.layers.verification} pointerEvents="none">
-      <circle cx={x} cy={y} r={r} fill={color} opacity={0.85} />
-      <title>{title}</title>
+      <text
+        x={x}
+        y={y}
+        fontSize={font}
+        fontFamily={FONT}
+        fill={fill}
+        opacity={0.85}
+      >
+        {text}
+      </text>
     </g>
   );
 }
