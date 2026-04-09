@@ -11,7 +11,7 @@ import { sendMessengerText, sendInstagramText } from "./metaOutbound.js";
  * @param {string} consultaTipo
  * @param {string} bodyText
  */
-export async function maybeOmniAutoReply(pool, config, logger, thread, messageId, consultaTipo, bodyText) {
+export async function maybeOmniAutoReply(pool, config, logger, thread, messageId, consultaTipo, _bodyText) {
   const { rows } = await pool.query(`select mode, human_active_until from omni_threads where id = $1`, [thread.id]);
   const t = rows[0];
   if (!t || t.mode !== "auto") return;

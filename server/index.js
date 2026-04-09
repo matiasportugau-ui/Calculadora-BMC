@@ -96,11 +96,17 @@ const asyncHandler =
     Promise.resolve(fn(req, res, next)).catch(next);
 
 const ensureValidState = (state) => {
-  const createdAt = oauthStates.get(state);
-  if (!createdAt) return false;
+  const entry = oauthStates.get(state);
+  if (!entry) return false;
+  const createdAt = typeof entry === "object" ? entry.createdAt : entry;
   const expired = Date.now() - createdAt > stateTtlMs;
   oauthStates.delete(state);
   return !expired;
+};
+
+const getStateVerifier = (state) => {
+  const entry = oauthStates.get(state);
+  return typeof entry === "object" ? entry.codeVerifier : undefined;
 };
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
@@ -137,8 +143,10 @@ app.get("/health", asyncHandler(async (req, res) => {
 
 app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, Date.now());
-  const authUrl = ml.buildAuthUrl(state);
+  const codeVerifier = crypto.randomBytes(32).toString("base64url");
+  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
     return res.json({ authUrl, state });
@@ -158,11 +166,12 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
+  const codeVerifier = state ? getStateVerifier(String(state)) : undefined;
   if (!state || !ensureValidState(String(state))) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
 
-  const tokens = await ml.exchangeCodeForTokens(String(code));
+  const tokens = await ml.exchangeCodeForTokens(String(code), codeVerifier);
   return res.json({
     ok: true,
     userId: tokens.user_id,
@@ -371,6 +380,15 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
     path: `/orders/${req.params.id}`,
   });
   res.json(payload);
+}));
+
+app.post("/ml/sync-crm", asyncHandler(async (req, res) => {
+  if (!config.bmcSheetId) {
+    return res.status(503).json({ ok: false, error: "BMC_SHEET_ID not configured" });
+  }
+  const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  const result = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger });
+  res.json({ ok: true, result });
 }));
 
 app.post("/webhooks/ml", asyncHandler(async (req, res) => {

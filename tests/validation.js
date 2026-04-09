@@ -44,6 +44,9 @@ import {
 } from "../src/utils/csvPricingImport.js";
 import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
 import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
+import { classifyInboundTextHeuristic } from "../server/lib/omniRepository.js";
+import { channelToCrmOrigen } from "../server/lib/omniFlush.js";
+import { extractMetaMessagingEvents } from "../server/lib/omniMetaWebhook.js";
 import { colLetterToIndex, colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
 import {
   normalizeIsodecEpsVentaLocalCsvRows,
@@ -2131,6 +2134,31 @@ assert(
   JSON.stringify(withInvalidZona.map((z) => z.gi)),
   "[1]",
 );
+
+// SUITE: Omnicanal Meta — heurística + mapeo CRM + webhook Meta
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: omnichannel omniRepository / omniFlush / omniMetaWebhook ═══");
+const h1 = classifyInboundTextHeuristic("Cuánto sale el panel 100mm con IVA");
+assert("classify precio_stock", h1.consulta_tipo === "precio_stock", h1.consulta_tipo, "precio_stock");
+assert("channelToCrmOrigen whatsapp", channelToCrmOrigen("whatsapp") === "WA-Auto");
+assert("channelToCrmOrigen messenger", channelToCrmOrigen("messenger") === "FB-Auto");
+assert("channelToCrmOrigen instagram", channelToCrmOrigen("instagram") === "IG-Auto");
+const metaEv = extractMetaMessagingEvents({
+  object: "page",
+  entry: [
+    {
+      id: "PAGE",
+      messaging: [
+        {
+          sender: { id: "PSID1" },
+          recipient: { id: "PAGE" },
+          message: { mid: "m1", text: "hola" },
+        },
+      ],
+    },
+  ],
+});
+assert("extractMetaMessagingEvents page", metaEv.length === 1 && metaEv[0].senderId === "PSID1", metaEv.length, 1);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
