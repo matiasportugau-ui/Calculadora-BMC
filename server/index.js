@@ -9,7 +9,6 @@ import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
-import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
@@ -22,7 +21,8 @@ import createShopifyRouter from "./routes/shopify.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
-import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+import { registerOmniRuntime } from "./lib/omniRuntime.js";
+import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,10 +45,15 @@ app.use("/webhooks/whatsapp", (req, res, next) => {
   if (req.method !== "POST") return next();
   return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
 });
+app.use("/webhooks/meta", (req, res, next) => {
+  if (req.method !== "POST") return next();
+  return express.raw({ type: "application/json", limit: "20mb" })(req, res, next);
+});
 app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
   if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+  if (req.path === "/webhooks/meta" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
 app.use(
@@ -311,12 +316,13 @@ app.post("/ml/questions/:id/answer", asyncHandler(async (req, res) => {
   if (!req.body?.text) {
     return res.status(400).json({ ok: false, error: "Missing body.text" });
   }
+  const text = normalizeMlAnswerCurrencyText(req.body.text);
   const payload = await ml.requestWithRetries({
     method: "POST",
     path: "/answers",
     body: {
       question_id: Number(req.params.id),
-      text: req.body.text,
+      text,
     },
   });
   res.json(payload);
@@ -408,213 +414,8 @@ app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
   res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
 }));
 
-// ── WhatsApp Business Cloud API webhook ──
-const waConversations = new Map(); // chatId → { messages: [], lastUpdate }
-
-// Limpieza de conversaciones viejas (>24h) cada hora
-setInterval(() => {
-  const cutoff = Date.now() - 24*60*60*1000;
-  for (const [k, v] of waConversations) {
-    if (v.lastUpdate < cutoff) waConversations.delete(k);
-  }
-}, 60*60*1000);
-
-// GET — verificación Meta
-app.get("/webhooks/whatsapp", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-  if (mode === "subscribe" && token === config.whatsappVerifyToken) {
-    return res.status(200).send(challenge);
-  }
-  res.status(403).send("Forbidden");
-});
-
-// POST — mensajes entrantes
-// ── Procesar conversación WA completa → CRM + Form responses ──
-async function processWaConversation(chatId, conv) {
-  const dialogo = conv.messages
-    .map(m => `${m.ts.slice(11,16)} - ${m.from}: ${m.text}`)
-    .join("\n");
-
-  console.log(`[WA] Processing conversation for ${chatId} (${conv.messages.length} msgs)`);
-
-  try {
-    const parseResp = await fetch(`http://localhost:${config.port}/api/crm/parse-conversation`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dialogo }),
-    });
-    const parsed = await parseResp.json();
-
-    if (parsed.ok && parsed.data) {
-      const d = parsed.data;
-      const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-      if (config.bmcSheetId && credsPath) {
-        const { google } = await import("googleapis");
-        const auth = new google.auth.GoogleAuth({
-          keyFile: credsPath,
-          scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-        });
-        const sheets = google.sheets({ version: "v4", auth: await auth.getClient() });
-        const sheetId = config.bmcSheetId;
-        const now = new Date().toISOString();
-
-        // Form responses 1 — primera fila con col C (Cliente) vacía
-        const formClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'Form responses 1'!C2:C200",
-        });
-        const formRows = formClientes.data.values || [];
-        let formRow = formRows.length + 2;
-        for (let i = 0; i < formRows.length; i++) {
-          if (!formRows[i][0] || !formRows[i][0].toString().trim()) { formRow = i + 2; break; }
-        }
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'Form responses 1'!A${formRow}:P${formRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, now, d.cliente || "", d.telefono || chatId,
-            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "", d.categoria || "",
-            d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
-            d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
-            d.probabilidad_cierre || "", dialogo,
-          ]] },
-        });
-
-        // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
-        const crmClientes = await sheets.spreadsheets.values.get({
-          spreadsheetId: sheetId, range: "'CRM_Operativo'!C4:C500",
-        });
-        const crmVals = crmClientes.data.values || [];
-        let crmRow = crmVals.length + 4;
-        for (let i = 0; i < crmVals.length; i++) {
-          if (!crmVals[i][0] || !crmVals[i][0].toString().trim()) { crmRow = i + 4; break; }
-        }
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
-            now, d.cliente || "", d.telefono || chatId,
-            d.ubicacion || "", "WA-Auto", d.resumen_pedido || "",
-            d.categoria || "", "", "Pendiente", d.vendedor || "",
-          ]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
-        });
-
-        // Generar respuesta IA para col AF
-        const aiResp = await fetch(`http://localhost:${config.port}/api/crm/suggest-response`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            consulta: d.resumen_pedido, origen: "WA-Auto",
-            cliente: d.cliente, observaciones: d.observaciones,
-          }),
-        });
-        const ai = await aiResp.json();
-        if (ai.ok && ai.respuesta) {
-          await sheets.spreadsheets.values.update({
-            spreadsheetId: sheetId,
-            range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
-          });
-        }
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: sheetId,
-          range: rangeAHAK(crmRow),
-          valueInputOption: "USER_ENTERED",
-          requestBody: { values: [defaultTailAHAK()] },
-        });
-
-        console.log(`[WA] ✓ Conversation processed → CRM row ${crmRow}, Form row ${formRow}, provider: ${ai.provider || "none"}`);
-      }
-    }
-  } catch (err) {
-    console.error(`[WA] ✗ parse-conversation failed for ${chatId}:`, err.message);
-  }
-
-  waConversations.delete(chatId);
-}
-
-// ── Auto-trigger: procesar conversaciones inactivas (5 min sin mensajes) ──
-const WA_INACTIVITY_MS = 5 * 60 * 1000; // 5 minutos
-setInterval(() => {
-  const now = Date.now();
-  for (const [chatId, conv] of waConversations.entries()) {
-    if (now - conv.lastUpdate >= WA_INACTIVITY_MS && conv.messages.length > 0) {
-      console.log(`[WA] Auto-trigger: ${chatId} inactive for 5min (${conv.messages.length} msgs)`);
-      processWaConversation(chatId, conv);
-    }
-  }
-}, 60 * 1000); // revisar cada 1 minuto
-
-app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
-  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-  const sig = req.headers["x-hub-signature-256"];
-  const verified = verifyWhatsAppSignature({
-    appSecret: config.whatsappAppSecret,
-    rawBodyBuffer: raw,
-    signatureHeader: sig,
-  });
-  if (!verified.skipped && !verified.ok) {
-    return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-  }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
-  }
-
-  let body = {};
-  try {
-    if (raw.length) body = JSON.parse(raw.toString("utf8"));
-  } catch {
-    return res.status(200).json({ ok: true });
-  }
-
-  res.status(200).json({ ok: true });
-
-  const entry = body?.entry?.[0];
-  const changes = entry?.changes?.[0];
-  const value = changes?.value;
-  if (!value?.messages) return;
-
-  for (const msg of value.messages) {
-    const chatId = msg.from; // número del cliente
-    const contactName = value.contacts?.[0]?.profile?.name || msg.from;
-    const text = msg.text?.body || msg.caption || "";
-    if (!text) continue;
-
-    if (!waConversations.has(chatId)) {
-      waConversations.set(chatId, { messages: [], contactName, lastUpdate: Date.now() });
-    }
-    const conv = waConversations.get(chatId);
-    conv.messages.push({ from: contactName, text, ts: new Date().toISOString() });
-    conv.lastUpdate = Date.now();
-
-    console.log(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
-
-    // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
-    if (text.includes("🚀")) {
-      console.log(`[WA] 🚀 manual trigger for ${chatId}`);
-      processWaConversation(chatId, conv);
-    }
-  }
-}));
+// Omnicanal Meta: WhatsApp Cloud + Messenger/Page + Instagram (persistencia Postgres, CRM Sheets)
+registerOmniRuntime(app, { config, logger, asyncHandler });
 
 app.use("/calc", calcRouter);
 app.use("/api", agentChatRouter);

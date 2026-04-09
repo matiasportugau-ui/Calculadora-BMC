@@ -1,0 +1,14 @@
+---
+description: Panelin-Gym — entorno, KB, prompts dev, corpus ML y prácticas de entrenamiento operativo Panelin.
+globs:
+alwaysApply: false
+---
+
+# Panelin-Gym
+
+Cuando el usuario pida **Panelin-Gym**, **gimnasio Panelin**, **entrenar el asistente** (observabilidad, KB, prompts, corpus ML, gold runs), seguir la skill canónica:
+
+- [`.cursor/skills/panelin-gym/SKILL.md`](../skills/panelin-gym/SKILL.md)
+- Chuleta: [`.cursor/skills/panelin-gym/reference.md`](../skills/panelin-gym/reference.md)
+
+No confundir con fine-tuning de pesos (SFT/DPO): el flujo producto actual es prompts + KB + corpus ML + revisión humana.

@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Línea principal de cota (perímetro libre). */
-export const ROOF_PLAN_DIM_STROKE = "#dc2626";
+export const ROOF_PLAN_DIM_STROKE = "#1a1a1a";
 
 /** Opacidad de líneas auxiliares (del elemento al eje de cota). */
 export const ROOF_PLAN_DIM_EXT_OPACITY = 0.75;
@@ -18,6 +18,20 @@ export const ROOF_PLAN_LAYER_GLOBAL_COTAS = "estructura-global-cotas";
 /** Etiqueta numérica en encuentro (relleno + halo para legibilidad sobre geometría). */
 export const ROOF_PLAN_ENCOUNTER_LABEL_FILL = "#0f172a";
 export const ROOF_PLAN_ENCOUNTER_LABEL_HALO = "#ffffff";
+
+// ─── Shared counter factory ───────────────────────────────────────────────────
+/**
+ * Crea un contador de posiciones: primera llamada con clave k devuelve 0, segunda 1, etc.
+ * Reemplaza la closure bump() duplicada en RoofPlanDimensions y roofPlanCotaObstacles.
+ */
+export function makeBumpCounter() {
+  const m = new Map();
+  return (k) => {
+    const n = m.get(k) ?? 0;
+    m.set(k, n + 1);
+    return n;
+  };
+}
 
 /**
  * Tema visual para el sistema de acotación de paneles individuales.

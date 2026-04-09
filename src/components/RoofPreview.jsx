@@ -21,8 +21,14 @@ import {
 } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
-import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
-import { EstructuraGlobalExteriorOverlay, PanelChainDimensions, PanelLabels, VerificationBadge } from "./roofPlan/RoofPlanDimensions.jsx";
+import { buildRoofPlanSvgTypography, fmtArchMeters } from "../utils/roofPlanSvgTypography.js";
+import {
+  EstructuraGlobalExteriorOverlay,
+  GlobalOverallDims,
+  PanelChainDimensions,
+  PanelLabels,
+  VerificationBadge,
+} from "./roofPlan/RoofPlanDimensions.jsx";
 import { buildPanelLayout } from "../utils/panelLayout.js";
 import { DIM_THEME } from "../utils/roofPlanDrawingTheme.js";
 
@@ -808,10 +814,12 @@ export default function RoofPreview({
   selectedZonaGi: selectedZonaGiProp,
   onSelectedZonaGiChange,
   denseChrome = false,
+  panelObj = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
+  const [hoverDim, setHoverDim] = useState(null);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
@@ -829,12 +837,14 @@ export default function RoofPreview({
     [metricsExternal, onSelectedZonaGiChange],
   );
 
-  const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas);
+  const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas, panelObj ? 0.60 : null);
 
   const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
 
   /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
+
+  const effectivePanelAu = panelObj?.au ?? panelAu;
 
   /** Layout de paneles por zona — fuente de verdad compartida con el plano SVG. */
   const panelLayouts = useMemo(() => {
@@ -883,6 +893,25 @@ export default function RoofPreview({
   }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, svgTy.dimFont, displayMode]);
 
   const encounters = planEdges?.encounters ?? [];
+
+  // B-1/B-2: hover measurement
+  const handleSvgMouseMove = useCallback((e) => {
+    if (dragRef.current?.moved) { setHoverDim(null); return; }
+    const svg = svgRef.current;
+    if (!svg || !planEdges?.rects?.length) return;
+    const p = clientToSvg(svg, e.clientX, e.clientY);
+
+    const hit = planEdges.rects.find(
+      (r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h,
+    );
+    if (hit) {
+      setHoverDim({ x: p.x, y: p.y, largo: hit.z.largo, ancho: hit.z.ancho, nombre: hit.z.nombre });
+    } else {
+      setHoverDim(null);
+    }
+  }, [planEdges]);
+
+  const handleSvgMouseLeave = useCallback(() => setHoverDim(null), []);
 
   const cycleSlope = useCallback(
     (gi) => {
@@ -1163,11 +1192,11 @@ export default function RoofPreview({
           {estructuraHintsByGi != null ? (
             <>
               <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
-              cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+              cotas de perímetro = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
             </>
           ) : (
             <>
-              <strong style={{ color: C.tp }}>Planta:</strong> cotas rojas = perímetro libre y longitud en cada encuentro. Arrastrá las zonas para ubicarlas
+              <strong style={{ color: C.tp }}>Planta:</strong> cotas = perímetro libre y longitud en cada encuentro. Arrastrá las zonas para ubicarlas
               correctamente antes de bordes y estructura.
             </>
           )}
@@ -1353,6 +1382,8 @@ export default function RoofPreview({
               onPointerUp={handlePointerUp}
               onPointerCancel={handleLostCapture}
               onLostPointerCapture={handleLostCapture}
+              onMouseMove={handleSvgMouseMove}
+              onMouseLeave={handleSvgMouseLeave}
             >
             {layout.viewMetrics && dragOverlay?.guides && (
               <g pointerEvents="none" opacity={0.55}>
@@ -1449,7 +1480,7 @@ export default function RoofPreview({
                     y0={r.y}
                     w={r.w}
                     h={r.h}
-                    au={panelAu}
+                    au={effectivePanelAu}
                     stroke={C.brand}
                     strokeW={0.032 * svgTy.m}
                     gradKey={`z-${r.gi}`}
@@ -1499,8 +1530,8 @@ export default function RoofPreview({
                         fontWeight={600}
                         fontFamily={FONT}
                       >
-                        {panelCountAcrossAnchoPlanta(r.w, panelAu)}{" "}
-                        {panelCountAcrossAnchoPlanta(r.w, panelAu) === 1 ? "panel" : "paneles"}
+                        {panelCountAcrossAnchoPlanta(r.w, effectivePanelAu)}{" "}
+                        {panelCountAcrossAnchoPlanta(r.w, effectivePanelAu) === 1 ? "panel" : "paneles"}
                       </text>
                     </g>
                   ) : null}
@@ -1607,6 +1638,9 @@ export default function RoofPreview({
                 svgTy={svgTy}
               />
             ) : null}
+            {plantaCotaChromeActive && planEdges?.rects?.length ? (
+              <GlobalOverallDims rects={planEdges.rects} svgTy={svgTy} />
+            ) : null}
             {plantaCotaChromeActive && aggregatedLayout ? (
               <VerificationBadge
                 layout={aggregatedLayout}
@@ -1620,6 +1654,38 @@ export default function RoofPreview({
                 svgTy={svgTy}
               />
             ) : null}
+            {hoverDim && (() => {
+              const f = svgTy.dimFont;
+              const pad = f * 0.5;
+              const lineH = f * 1.3;
+              const area = (hoverDim.largo * hoverDim.ancho).toFixed(2);
+              const hoverLines = [
+                hoverDim.nombre || 'Zona',
+                `${fmtArchMeters(hoverDim.largo)} × ${fmtArchMeters(hoverDim.ancho)} m`,
+                `${area} m²`,
+              ];
+              const boxW = f * 7.5;
+              const boxH = hoverLines.length * lineH + pad * 2;
+              const tx = hoverDim.x + f * 0.6;
+              const ty = hoverDim.y - boxH - f * 0.3;
+              return (
+                <g pointerEvents="none" data-bmc-layer="hover-dim-tooltip">
+                  <rect x={tx} y={ty} width={boxW} height={boxH}
+                    fill="#ffffff" stroke="#1a1a1a" strokeWidth={svgTy.strokeMain * 0.8}
+                    rx={f * 0.18} opacity={0.93} />
+                  {hoverLines.map((ln, li) => (
+                    <text key={li}
+                      x={tx + pad} y={ty + pad + lineH * li + f * 0.9}
+                      fontSize={li === 0 ? f * 0.85 : f * 0.95}
+                      fontWeight={li === 1 ? 700 : 400}
+                      fontFamily="system-ui, sans-serif"
+                      fill="#1a1a1a" stroke="none">
+                      {ln}
+                    </text>
+                  ))}
+                </g>
+              );
+            })()}
             </svg>
           </div>
         )}

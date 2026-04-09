@@ -25,6 +25,9 @@ Thumbs.db
 .env
 .env.local
 
+# Mercado Libre — token store local cifrado (OAuth; nunca commitear)
+.ml-tokens.enc
+
 # BMC Dashboard — service account key (never commit)
 **/service-account*.json
 docs/bmc-dashboard-modernization/service-account.json

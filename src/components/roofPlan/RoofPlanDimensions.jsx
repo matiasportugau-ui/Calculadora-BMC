@@ -16,6 +16,7 @@ import {
   ROOF_PLAN_ENCOUNTER_LABEL_FILL,
   ROOF_PLAN_ENCOUNTER_LABEL_HALO,
   ROOF_PLAN_LAYER_GLOBAL_COTAS,
+  makeBumpCounter,
   DIM_THEME,
 } from "../../utils/roofPlanDrawingTheme.js";
 
@@ -168,18 +169,10 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
  * Las líneas quedan **afuera** del rectángulo de techo (sin solapar el relleno del panel).
  */
 export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = [], svgTy }) {
-  const bump = () => {
-    const m = new Map();
-    return (k) => {
-      const n = m.get(k) || 0;
-      m.set(k, n + 1);
-      return n;
-    };
-  };
-  const nextBottom = bump();
-  const nextTop = bump();
-  const nextLeft = bump();
-  const nextRight = bump();
+  const nextBottom = makeBumpCounter();
+  const nextTop = makeBumpCounter();
+  const nextLeft = makeBumpCounter();
+  const nextRight = makeBumpCounter();
 
   const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
   const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
@@ -237,6 +230,18 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
     );
   });
 
+  // A-3: junction x-positions between adjacent top/bottom segments (different zones)
+  const topJunctions = [];
+  for (let i = 0; i < tops.length - 1; i++) {
+    const xEnd = tops[i].x1 + tops[i].length;
+    if (Math.abs(xEnd - tops[i + 1].x1) < 1e-3) topJunctions.push({ x: xEnd, y: tops[i].y1 });
+  }
+  const bottomJunctions = [];
+  for (let i = 0; i < bottoms.length - 1; i++) {
+    const xEnd = bottoms[i].x1 + bottoms[i].length;
+    if (Math.abs(xEnd - bottoms[i + 1].x1) < 1e-3) bottomJunctions.push({ x: xEnd, y: bottoms[i].y1 });
+  }
+
   return (
     <g data-bmc-layer={ROOF_PLAN_LAYER_GLOBAL_COTAS}>
       {bottoms.map((s) => {
@@ -252,6 +257,14 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
           />
         );
       })}
+      {bottomJunctions.map((j, i) => {
+        const yDimLine = j.y + svgTy.dimStackBottom;
+        const h = svgTy.tickLen * 2;
+        return (
+          <line key={`sep-bot-${i}`} x1={j.x} y1={yDimLine - h / 2} x2={j.x} y2={yDimLine + h / 2}
+            stroke={ROOF_PLAN_DIM_STROKE} strokeWidth={svgTy.strokeTick * 1.1} opacity={0.45} pointerEvents="none" />
+        );
+      })}
       {tops.map((s) => {
         const idx = nextTop(+s.y1.toFixed(2));
         return (
@@ -263,6 +276,14 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
             yDimLine={s.y1 - svgTy.dimStackTop - idx * svgTy.dimStackStep}
             svgTy={svgTy}
           />
+        );
+      })}
+      {topJunctions.map((j, i) => {
+        const yDimLine = j.y - svgTy.dimStackTop;
+        const h = svgTy.tickLen * 2;
+        return (
+          <line key={`sep-top-${i}`} x1={j.x} y1={yDimLine - h / 2} x2={j.x} y2={yDimLine + h / 2}
+            stroke={ROOF_PLAN_DIM_STROKE} strokeWidth={svgTy.strokeTick * 1.1} opacity={0.45} pointerEvents="none" />
         );
       })}
       {lefts.map((s) => {
@@ -509,3 +530,75 @@ export function VerificationBadge({ layout, x, y, svgTy }) {
     </g>
   );
 }
+
+// ─── GlobalOverallDims (A-1 ancho total + A-2 largo total) ───────────────────
+/**
+ * Cota acumulada global: una línea que abarca todo el ancho (arriba) y todo el largo (izquierda).
+ * Se posiciona un nivel más afuera que las cotas de segmento individual.
+ * Es la más fina de todas (strokeMain * 0.8).
+ */
+export function GlobalOverallDims({ rects, svgTy }) {
+  if (!rects?.length) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const r of rects) {
+    minX = Math.min(minX, r.x);
+    minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.w);
+    maxY = Math.max(maxY, r.y + r.h);
+  }
+  const totalW = maxX - minX;
+  const totalH = maxY - minY;
+  if (totalW <= 0 || totalH <= 0) return null;
+
+  const tick = svgTy.tickLen * 1.1;
+  const strokeO = svgTy.strokeMain * 0.8;
+  const fontSize = svgTy.dimFont * 1.05;
+  const yDimLine = minY - svgTy.dimStackTop - svgTy.dimStackStep;
+  const xDimLine = minX - svgTy.sideOffset - svgTy.sideStep;
+  const labelW = `${fmtArchMeters(totalW)} m`;
+  const labelH = `${fmtArchMeters(totalH)} m`;
+
+  return (
+    <g data-bmc-layer="global-overall-dims" pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
+      {/* A-1: ancho total — arriba */}
+      <line x1={minX} y1={minY} x2={minX} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={maxX} y1={minY} x2={maxX} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={minX} y1={yDimLine} x2={maxX} y2={yDimLine} strokeWidth={strokeO} />
+      <line x1={minX} y1={yDimLine - tick / 2} x2={minX} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
+      <line x1={maxX} y1={yDimLine - tick / 2} x2={maxX} y2={yDimLine + tick / 2} strokeWidth={svgTy.strokeTick} />
+      <text
+        x={(minX + maxX) / 2}
+        y={yDimLine - fontSize * 0.35}
+        textAnchor="middle"
+        fontSize={fontSize}
+        fontWeight={700}
+        fontFamily={FONT}
+        stroke="none"
+      >
+        {labelW}
+      </text>
+
+      {/* A-2: largo total — izquierda */}
+      <line x1={minX} y1={minY} x2={xDimLine} y2={minY} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={minX} y1={maxY} x2={xDimLine} y2={maxY} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={xDimLine} y1={minY} x2={xDimLine} y2={maxY} strokeWidth={strokeO} />
+      <line x1={xDimLine - tick / 2} y1={minY} x2={xDimLine + tick / 2} y2={minY} strokeWidth={svgTy.strokeTick} />
+      <line x1={xDimLine - tick / 2} y1={maxY} x2={xDimLine + tick / 2} y2={maxY} strokeWidth={svgTy.strokeTick} />
+      <text
+        x={xDimLine - fontSize * 0.85}
+        y={(minY + maxY) / 2}
+        textAnchor="middle"
+        fontSize={fontSize}
+        fontWeight={700}
+        fontFamily={FONT}
+        stroke="none"
+        transform={`rotate(-90 ${xDimLine - fontSize * 0.85} ${(minY + maxY) / 2})`}
+      >
+        {labelH}
+      </text>
+    </g>
+  );
+}
+
+// ─── Obstacle bridge (for RoofPreview chain dim collision avoidance) ──────────
+export { buildEstructuraCotaObstacleRects as computeCotaObstacles } from '../../utils/roofPlanCotaObstacles.js';

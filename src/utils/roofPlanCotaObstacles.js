@@ -4,23 +4,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { fmtArchMeters } from "./roofPlanSvgTypography.js";
+import { makeBumpCounter } from "./roofPlanDrawingTheme.js";
 
 /** Rectángulos aproximados de cotas globales + textos de encuentro (mismas reglas que el overlay SVG). */
 export function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
   if (!exterior?.length && !(encounters?.length > 0)) return [];
   const pad = Math.max(svgTy.dimFont * 0.32, svgTy.tickLen * 0.45);
-  const bump = () => {
-    const m = new Map();
-    return (k) => {
-      const n = m.get(k) || 0;
-      m.set(k, n + 1);
-      return n;
-    };
-  };
-  const nextBottom = bump();
-  const nextTop = bump();
-  const nextLeft = bump();
-  const nextRight = bump();
+  const nextBottom = makeBumpCounter();
+  const nextTop = makeBumpCounter();
+  const nextLeft = makeBumpCounter();
+  const nextRight = makeBumpCounter();
 
   const out = [];
 

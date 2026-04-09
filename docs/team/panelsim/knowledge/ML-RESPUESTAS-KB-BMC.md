@@ -1,5 +1,7 @@
 # Mercado Libre — Base de conocimiento y reglas de respuesta (BMC Uruguay)
 
+**Ver también (plataforma ML, no mensajería):** [`ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md) — buenas prácticas de publicaciones, envíos, reputación, MP/Ads a alto nivel y límites del conector; complementa este archivo sin duplicar voz ni plantillas.
+
 **Audiencia:** agentes humanos, PANELSIM, futuros asistentes. **Hub del sistema de entrenamiento + captura de corpus:** [`ML-TRAINING-SYSTEM.md`](./ML-TRAINING-SYSTEM.md).  
 **Fuente empírica:** análisis del corpus **`/questions/search`** vía API local (`GET /ml/questions`), **484** preguntas; **473** respuestas publicadas con texto (**~98%** del corpus).  
 **Fecha análisis:** 2026-03-24 (entorno local; reproducir con paginación `limit`/`offset`).
@@ -47,7 +49,7 @@ Este documento **no** sustituye políticas oficiales de Mercado Libre; las secci
 1. **Marca:** firmar como **BMC Uruguay** (mayúsculas/minúsculas variables en histórico; unificar en **“BMC Uruguay”** salvo que el canal impida firma larga).  
 2. **Tono:** cordial, respetuoso, **español rioplatense** mezclado con registro de negocio (“le comentamos”, “no dudes en consultarnos”).  
 3. **Honestidad operativa:** si falta información para cotizar, **preguntar** (largo, ancho, ciudad, tipo de estructura, aguas del techo, etc.) en lugar de inventar.  
-4. **Precios:** cuando se da monto, usar **U$S** (como en histórico) y, si corresponde, **IVA inc**.  
+4. **Precios:** cuando se da monto, usar **U$S** (como en histórico) y, si corresponde, **IVA inc**. En **Mercado Libre**, no mencionar el **tipo de lista** (“web”, “venta”, “distribuidor”, “lista BMC”): el comprador recibe montos y alcance; la lista aplicada es decisión interna (calculadora/MATRIZ).  
 5. **Alcance del presupuesto:** cuando se cotiza paquete (paneles + accesorios), indicar **qué incluye** y, si aplica, **qué no** (traslado, instalación).  
 6. **Puente a presupuesto detallado:** invitar a “presupuesto detallado / personalizado” y a seguir en el mismo canal de preguntas sin prometer plazos irreales.  
 7. **Brevedad permitida:** respuestas de una línea solo cuando la pregunta es binaria (“¿tienen color X?”).
@@ -95,7 +97,8 @@ Usar como **guía**, no como texto fijo.
 3. **No pedir datos sensibles** fuera de lo que ML permite en mensajería; respetar **Términos y políticas** vigentes del marketplace.  
 4. **Seguimiento:** si la cotización quedó pendiente en otro hilo, enlazar el hilo mentalmente (“como te comentamos en la consulta anterior…”).  
 5. **Reputación:** responder siempre que haya **contenido útil**; evitar spam de firmas repetidas en el mismo hilo.  
-6. **No compartir** canales externos si ML restringe (teléfono, WhatsApp, email) según reglas del sitio — verificar política actual antes de incluirlos en plantillas.
+6. **No compartir** canales externos si ML restringe (teléfono, WhatsApp, email) según reglas del sitio — verificar política actual antes de incluirlos en plantillas.  
+7. **Moneda U$S vía API:** al publicar con `POST /ml/questions/:id/answer`, Mercado Libre **suele eliminar** el carácter ASCII `$` del texto (queda “U 1.456” en lugar de “U$S 1.456”). Seguí redactando **U$S** en borradores; el servidor (`normalizeMlAnswerCurrencyText` en [`server/lib/mlAnswerText.js`](../../../../server/lib/mlAnswerText.js)) reemplaza cada `$` por el símbolo de dólar de ancho completo (**U+FF04**) antes de llamar a ML, de modo que en la publicación se lee como **U$S**. Si una respuesta **ya** salió sin el símbolo, corregila desde el **centro de preguntas** del vendedor (la API no permite volver a responder la misma pregunta).
 
 ---
 
@@ -164,6 +167,27 @@ Los parámetros válidos están acotados en `server/index.js` (`seller_id`, `lim
 Para iterar **cada 10 consultas** —respuesta modelo/KB sin ver primero la humana, luego comparación y mejoras— seguir el proceso en [`../reports/ML-SIM-ITERATIVE-BLIND-IMPROVEMENT.md`](../reports/ML-SIM-ITERATIVE-BLIND-IMPROVEMENT.md) y exportar tandas con `npm run ml:sim-batch` (ver ese doc §5).
 
 **Auditoría automática (corpus completo + órdenes + informe IA):** `npm run ml:ai-audit` — descarga todas las preguntas y órdenes, agrega métricas y genera `docs/team/panelsim/reports/ML-AI-AUDIT-REPORT-*.md` (ver `AGENTS.md`). `--dry-run` solo escribe JSON agregado.
+
+---
+
+## 11. De borradores corregidos a Panelin (training-kb)
+
+Cuando cerrás una tanda de preguntas ML (borrador IA + texto final aprobado para publicar):
+
+1. **Registrar el par gold** en [`../reports/ml-gold-runs/`](../reports/ml-gold-runs/) (archivo tipo `ML-GOLD-CANDIDATES-*.md`): columna **Respuesta gold (humana)** = texto que publicás o aprobarías en ML (alineado a §3 y checklist §7).
+2. **Cargar en el KB de entrenamiento de Panelin** (modo desarrollador en la app o API), con `API_AUTH_TOKEN` en `.env`:
+   - **CLI desde el repo:** `npm run panelin:train:import -- --file <lote.json>` (API en `:3001` o `BMC_API_BASE=…` para Cloud Run). Ver [`../reports/ml-gold-runs/README.md`](../reports/ml-gold-runs/README.md).
+   - O `POST /api/agent/train` con header `Authorization: Bearer <API_AUTH_TOKEN>`.
+   - Cuerpo JSON sugerido:
+     - `category`: `sales` o `mercadolibre` (en código, `mercadolibre` se normaliza a `sales`).
+     - `question`: texto del comprador (opcional prefijo `Canal: Mercado Libre — `).
+     - `goodAnswer`: respuesta final humana (no el borrador IA si difiere).
+     - `badAnswer`: (opcional) borrador IA o texto descartado, para contraste en entrenamiento.
+     - `context`: `Canal: Mercado Libre | Q:<id> | item:<MLU…>` — ayuda al match en `GET /api/agent/training-kb/match`.
+     - `permanent`: `true` si querés prioridad alta en el scoring de ejemplos.
+3. **`data/training-kb.json`** está en `.gitignore`: cada máquina acumula ejemplos locales; para otro entorno repetí el POST o mové el JSON con cuidado (sin PII innecesaria).
+
+La **respuesta “especial” ML** es la ya definida en **§2–§7** (voz BMC, plantilla §3, checklist §7, buenas prácticas §5). El asistente Panelin recibe además reglas explícitas en `server/lib/chatPrompts.js` (WORKFLOW → Mercado Libre).
 
 ---
 

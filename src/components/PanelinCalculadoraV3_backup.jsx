@@ -2990,6 +2990,7 @@ export default function PanelinCalculadoraV3() {
         tipoAguas={techo.tipoAguas}
         pendiente={techo.pendiente}
         panelAu={techoPanelData?.au ?? 1.12}
+        panelObj={techoPanelData ?? null}
         onZonaPreviewChange={updateZonaPreview}
         onResetLayout={resetRoofPreviewLayout}
         onAnnexRankSwap={swapAnnexRank}
@@ -4155,6 +4156,7 @@ export default function PanelinCalculadoraV3() {
                           tipoAguas={techo.tipoAguas}
                           pendiente={techo.pendiente}
                           panelAu={techoPanelData?.au ?? 1.12}
+                          panelObj={techoPanelData ?? null}
                           onZonaPreviewChange={updateZonaPreview}
                           onResetLayout={resetRoofPreviewLayout}
                           onAnnexRankSwap={swapAnnexRank}

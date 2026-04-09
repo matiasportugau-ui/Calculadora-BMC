@@ -22,6 +22,7 @@ import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
+import { normalizeMlAnswerCurrencyText } from "../server/lib/mlAnswerText.js";
 import { buildProgramSnapshot } from "../scripts/program-status.mjs";
 import {
   cuerpoFromMessage,
@@ -101,7 +102,7 @@ import {
   snapLateralAnnexPlanta,
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
-import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../src/utils/roofPanelStripsPlanta.js";
+import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta, countPanels } from "../src/utils/roofPanelStripsPlanta.js";
 import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../src/utils/roof3dLateralStepInfill.js";
 import { getRoofPanelMapUrl, pickBestMapUrlFromSlides } from "../src/data/roofPanelMapUrl.js";
@@ -1905,6 +1906,42 @@ assert(
   rootLay && annLay && Math.abs(zFondoRoot - zFondoAnn) < 0.02,
   rootLay && annLay ? zFondoRoot - zFondoAnn : "missing",
   "~0",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE: countPanels — IEEE-754 epsilon guard (Phase 1 plano/BOM sync)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: countPanels IEEE-754 epsilon guard ═══");
+assert(
+  "countPanels exact multiple 3.36/1.12 = 3",
+  countPanels(3.36, 1.12) === 3,
+  countPanels(3.36, 1.12),
+  3,
+);
+assert(
+  "countPanels slightly over 3.36/1.12 = 4",
+  countPanels(3.3601, 1.12) === 4,
+  countPanels(3.3601, 1.12),
+  4,
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE: ML answer text — ASCII $ → fullwidth for Mercado Libre API
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: normalizeMlAnswerCurrencyText ═══");
+const fw = "\uFF04";
+assert(
+  "U$S amounts become U+fullwidth+S",
+  normalizeMlAnswerCurrencyText("U$S 1.456,88") === `U${fw}S 1.456,88`,
+  normalizeMlAnswerCurrencyText("U$S 1.456,88"),
+  `U${fw}S 1.456,88`,
+);
+const multi = normalizeMlAnswerCurrencyText("a $1 $2");
+assert(
+  "multiple $ replaced",
+  !multi.includes("$") && multi === `a ${fw}1 ${fw}2`,
+  multi,
+  `a ${fw}1 ${fw}2`,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

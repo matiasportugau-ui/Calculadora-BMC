@@ -30,6 +30,8 @@ function ensureKbFile() {
 
 function normalizeCategory(category) {
   const value = String(category || "conversational").trim().toLowerCase();
+  // Mercado Libre → misma bolsa que ventas para matching; usar `context` con "Mercado Libre" y Q:id
+  if (value === "mercadolibre" || value === "ml") return "sales";
   if (["sales", "math", "product", "conversational"].includes(value)) return value;
   return "conversational";
 }
