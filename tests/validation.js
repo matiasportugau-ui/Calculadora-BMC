@@ -1964,6 +1964,8 @@ assert("aggregatePanelLayoutVerifications failed=1", verAgg.failed === 1, verAgg
 assert("aggregatePanelLayoutVerifications pending=1", verAgg.pending === 1, verAgg.pending, 1);
 
 // buildPanelLayout: negative wasteUnclamped is clamped to 0
+// ancho is just below 3×1.12 = 3.36, simulating FP noise that could yield
+// anchoTotal < ancho and a negative wasteUnclamped before clamping.
 const layoutNegativeWaste = buildPanelLayout({
   panel: { au: 1.12 },
   largo: 6,
@@ -1977,6 +1979,8 @@ assert(
 );
 
 // buildPanelLayout: full panels have width===au and cutRatio===1 (defensive clamp)
+// ancho is just above 3×1.12 = 3.36 — all three resulting full strips should
+// have width clamped to exactly au via clampPanelWidth and cutRatio clamped to 1 via clamp01.
 const layoutWidthClamp = buildPanelLayout({
   panel: { au: 1.12 },
   largo: 6,

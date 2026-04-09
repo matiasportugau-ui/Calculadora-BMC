@@ -64,6 +64,16 @@ function verificationSummaryText(summary) {
   return `Verificación zonas: ${summary.ok}/${summary.total} OK`;
 }
 
+function verificationSummaryColors(summary) {
+  if (summary.hasFailures) {
+    return { border: "#fca5a5", background: "#fef2f2", color: "#b91c1c" };
+  }
+  if (summary.pending > 0) {
+    return { border: "#fde68a", background: "#fffbeb", color: "#92400e" };
+  }
+  return { border: "#86efac", background: "#f0fdf4", color: "#166534" };
+}
+
 /** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
 function zonaLabelPlanta(r) {
   const L = Number(r.z.largo);
@@ -1484,25 +1494,28 @@ export default function RoofPreview({
         suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
         independiente en planta.
       </CollapsibleHint>
-      {verificationSummary.total > 1 && (
-        <div
-          style={{
-            marginBottom: 8,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: 11,
-            fontWeight: 600,
-            padding: "4px 8px",
-            borderRadius: 999,
-            border: `1px solid ${verificationSummary.hasFailures ? "#fca5a5" : verificationSummary.pending > 0 ? "#fde68a" : "#86efac"}`,
-            background: verificationSummary.hasFailures ? "#fef2f2" : verificationSummary.pending > 0 ? "#fffbeb" : "#f0fdf4",
-            color: verificationSummary.hasFailures ? "#b91c1c" : verificationSummary.pending > 0 ? "#92400e" : "#166534",
-          }}
-        >
-          {verificationSummaryText(verificationSummary)}
-        </div>
-      )}
+      {verificationSummary.total > 1 && (() => {
+        const vc = verificationSummaryColors(verificationSummary);
+        return (
+          <div
+            style={{
+              marginBottom: 8,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "4px 8px",
+              borderRadius: 999,
+              border: `1px solid ${vc.border}`,
+              background: vc.background,
+              color: vc.color,
+            }}
+          >
+            {verificationSummaryText(verificationSummary)}
+          </div>
+        );
+      })()}
       <div
         style={{
           display: "flex",
