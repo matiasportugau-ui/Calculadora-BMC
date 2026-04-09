@@ -343,20 +343,42 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
  *   displayMode: 'client'|'technical'|'full',
  * }} props
  */
-export function PanelChainDimensions({ panels, x0, yBase, existingDimOffset, svgTy, theme, displayMode }) {
-  if (displayMode === 'client') return null;
-  if (!panels?.length) return null;
+export function PanelChainDimensions({
+  panels,
+  strips,
+  x0,
+  yBase,
+  yEdge,
+  existingDimOffset,
+  svgTy,
+  theme,
+  displayMode,
+  mode,
+}) {
+  const resolvedMode = displayMode ?? mode ?? "client";
+  const resolvedTheme = theme ?? DIM_THEME;
+  const resolvedPanels = panels ?? strips?.map((s, i) => ({
+    id: `T-${String(i + 1).padStart(2, "0")}`,
+    x0: s.x0 ?? 0,
+    width: s.width ?? 0,
+    isCut: false,
+  }));
+  const resolvedYBase = yBase ?? yEdge;
+  const resolvedDimOffset = existingDimOffset ?? svgTy?.dimStackBottom ?? 0;
 
-  const chainY = yBase + existingDimOffset + theme.CHAIN_OFFSET;
+  if (resolvedMode === 'client') return null;
+  if (!resolvedPanels?.length || !Number.isFinite(resolvedYBase)) return null;
+
+  const chainY = resolvedYBase + resolvedDimOffset + resolvedTheme.CHAIN_OFFSET;
   const tick = svgTy.tickLen;
   const chainFont = svgTy.dimFont * 0.82;
 
   return (
-    <g data-bmc-layer={theme.layers.chain} opacity={theme.chainOpacity} pointerEvents="none">
-      {panels.map((panel) => {
+    <g data-bmc-layer={resolvedTheme.layers.chain} opacity={resolvedTheme.chainOpacity} pointerEvents="none">
+      {resolvedPanels.map((panel) => {
         const px1 = x0 + panel.x0;
         const px2 = px1 + panel.width;
-        const color = panel.isCut ? theme.warningColor : theme.chainColor;
+        const color = panel.isCut ? resolvedTheme.warningColor : resolvedTheme.chainColor;
         const label = panel.isCut ? `${fmtDimMm(panel.width)} ✂` : fmtDimMm(panel.width);
         const labelWidthEst = label.length * chainFont * 0.62;
         const showLabel = panel.width >= labelWidthEst * 0.75;
@@ -365,14 +387,14 @@ export function PanelChainDimensions({ panels, x0, yBase, existingDimOffset, svg
           <g key={panel.id} stroke={color} fill={color}>
             {/* Líneas de extensión */}
             <line
-              x1={px1} y1={yBase}
+              x1={px1} y1={resolvedYBase}
               x2={px1} y2={chainY}
               strokeWidth={svgTy.strokeExt}
               opacity={0.6}
               vectorEffect="non-scaling-stroke"
             />
             <line
-              x1={px2} y1={yBase}
+              x1={px2} y1={resolvedYBase}
               x2={px2} y2={chainY}
               strokeWidth={svgTy.strokeExt}
               opacity={0.6}
@@ -433,19 +455,28 @@ export function PanelChainDimensions({ panels, x0, yBase, existingDimOffset, svg
  *   displayMode: 'client'|'technical'|'full',
  * }} props
  */
-export function PanelLabels({ panels, x0, y0, h, svgTy, theme, displayMode }) {
-  if (displayMode === 'technical') return null;
-  if (!panels?.length) return null;
+export function PanelLabels({ panels, strips, x0, y0, h, svgTy, theme, displayMode, mode }) {
+  const resolvedMode = displayMode ?? mode ?? "client";
+  const resolvedTheme = theme ?? DIM_THEME;
+  const resolvedPanels = panels ?? strips?.map((s, i) => ({
+    id: `T-${String(i + 1).padStart(2, "0")}`,
+    x0: s.x0 ?? 0,
+    width: s.width ?? 0,
+    isCut: false,
+  }));
+
+  if (resolvedMode === 'technical') return null;
+  if (!resolvedPanels?.length) return null;
 
   const labelFont = svgTy.dimFont * 0.72;
   const cutFont = labelFont * 0.8;
 
   return (
-    <g data-bmc-layer={theme.layers.labels} pointerEvents="none">
-      {panels.map((panel) => {
+    <g data-bmc-layer={resolvedTheme.layers.labels} pointerEvents="none">
+      {resolvedPanels.map((panel) => {
         const cx = x0 + panel.x0 + panel.width / 2;
         const cy = y0 + h / 2;
-        const color = panel.isCut ? theme.warningColor : theme.textColor;
+        const color = panel.isCut ? resolvedTheme.warningColor : resolvedTheme.textColor;
         const labelWidthEst = panel.id.length * labelFont * 0.62;
         if (panel.width < labelWidthEst * 0.5) return <g key={panel.id} />;
 
@@ -473,7 +504,7 @@ export function PanelLabels({ panels, x0, y0, h, svgTy, theme, displayMode }) {
                 fontSize={cutFont}
                 fontWeight={600}
                 fontFamily={FONT}
-                fill={theme.warningColor}
+                fill={resolvedTheme.warningColor}
                 opacity={0.75}
               >
                 ✂
@@ -498,20 +529,30 @@ export function PanelLabels({ panels, x0, y0, h, svgTy, theme, displayMode }) {
  *   svgTy: object,
  * }} props
  */
-export function VerificationBadge({ layout, x, y, svgTy }) {
-  if (!layout) return null;
+export function VerificationBadge({ layout, verification, x, y, svgTy }) {
+  const resolvedLayout = layout ?? verification;
+  if (!resolvedLayout) return null;
 
   const font = svgTy.dimFont * 0.72;
   let text, fill;
 
-  if (!layout.isValid) {
+  if (typeof resolvedLayout.summary === "string") {
+    text = resolvedLayout.summary;
+    if (!resolvedLayout.isValid) {
+      fill = "#B71C1C";
+    } else if ((resolvedLayout.warnings?.length ?? 0) > 0) {
+      fill = "#E65100";
+    } else {
+      fill = "#1B5E20";
+    }
+  } else if (!resolvedLayout.isValid) {
     text = '✗ Error en layout';
     fill = '#B71C1C';
-  } else if (layout.warnings.length > 0) {
-    text = `⚠ ${layout.warnings[0]}`;
+  } else if (resolvedLayout.warnings.length > 0) {
+    text = `⚠ ${resolvedLayout.warnings[0]}`;
     fill = '#E65100';
   } else {
-    text = `✓ ${layout.nPaneles} panel${layout.nPaneles !== 1 ? 'es' : ''} · ${layout.area.toFixed(2)} m²`;
+    text = `✓ ${resolvedLayout.nPaneles} panel${resolvedLayout.nPaneles !== 1 ? 'es' : ''} · ${resolvedLayout.area.toFixed(2)} m²`;
     fill = '#1B5E20';
   }
 

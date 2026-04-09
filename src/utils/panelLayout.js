@@ -16,7 +16,12 @@
  *   ancho — ancho total a cubrir en metros (ej: 8.36)
  * @returns {PanelLayoutResult}
  */
-export function buildPanelLayout({ au, largo, ancho }) {
+export function buildPanelLayout(opts = {}) {
+  // Compat: aceptar firma histórica { panel, largo, ancho } además de { au, largo, ancho }.
+  const au = Number(opts.au ?? opts.panel?.au ?? 0);
+  const largo = Number(opts.largo ?? 0);
+  const ancho = Number(opts.ancho ?? 0);
+
   if (!(au > 0) || !(largo > 0) || !(ancho > 0)) {
     return {
       panels: [],

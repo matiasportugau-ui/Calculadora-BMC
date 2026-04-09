@@ -20,6 +20,13 @@ import {
 
 const WA_INACTIVITY_MS = 5 * 60 * 1000;
 
+function safeWebhookChallenge(value) {
+  const challenge = String(value ?? "");
+  // Meta challenge tokens are short URL-safe strings; reject anything else.
+  if (!/^[A-Za-z0-9._-]{1,256}$/.test(challenge)) return null;
+  return challenge;
+}
+
 /**
  * @param {object} msg WhatsApp Cloud payload message
  */
@@ -117,9 +124,9 @@ export function registerOmniRuntime(app, { config, logger, asyncHandler }) {
   app.get("/webhooks/whatsapp", (req, res) => {
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-    if (mode === "subscribe" && token === config.whatsappVerifyToken) {
-      return res.type("text/plain").status(200).send(String(challenge ?? ""));
+    const challenge = safeWebhookChallenge(req.query["hub.challenge"]);
+    if (mode === "subscribe" && token === config.whatsappVerifyToken && challenge) {
+      return res.type("text/plain").status(200).send(challenge);
     }
     res.status(403).send("Forbidden");
   });
@@ -127,10 +134,10 @@ export function registerOmniRuntime(app, { config, logger, asyncHandler }) {
   app.get("/webhooks/meta", (req, res) => {
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
+    const challenge = safeWebhookChallenge(req.query["hub.challenge"]);
     const verify = config.metaWebhookVerifyToken || config.whatsappVerifyToken;
-    if (mode === "subscribe" && token === verify) {
-      return res.type("text/plain").status(200).send(String(challenge ?? ""));
+    if (mode === "subscribe" && token === verify && challenge) {
+      return res.type("text/plain").status(200).send(challenge);
     }
     res.status(403).send("Forbidden");
   });

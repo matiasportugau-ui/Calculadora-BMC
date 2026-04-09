@@ -93,3 +93,8 @@ export function verifyLayoutVsBom(layout, calcResult) {
 
   return { isValid, errors, warnings, summary };
 }
+
+// Compat: usado por RoofPreview histórico (firma previa con 3er argumento largo).
+export function verifyPanelLayout(layout, calcResult) {
+  return verifyLayoutVsBom(layout, calcResult);
+}

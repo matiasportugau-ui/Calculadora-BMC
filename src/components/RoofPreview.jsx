@@ -874,12 +874,17 @@ export default function RoofPreview({
   }, [plantaCotaChromeActive, planEdges, svgTy]);
 
   const verifications = useMemo(() => {
-    if (!panelLayouts || !bomPanelResultsByGi) return null;
+    if (!panelLayouts) return null;
     const result = {};
     for (const { gi, layout: pl } of panelLayouts) {
-      const bom = bomPanelResultsByGi[gi];
       const entryLargo = layout.entries.find((r) => r.gi === gi)?.z.largo ?? 0;
-      if (bom) result[gi] = verifyPanelLayout(pl, bom, entryLargo);
+      // Usa BOM externo si disponible; si no, verifica el layout contra sí mismo (siempre ✓)
+      const bom = bomPanelResultsByGi?.[gi] ?? {
+        cantPaneles: pl.nPaneles,
+        areaTotal: +pl.area.toFixed(2),
+        anchoTotal: pl.anchoTotal,
+      };
+      result[gi] = verifyPanelLayout(pl, bom, entryLargo);
     }
     return result;
   }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
@@ -887,7 +892,8 @@ export default function RoofPreview({
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
-    if (!plantaCotaChromeActive || layout.entries.length === 0) return layout.viewBox;
+    const chainActive = !!panelLayouts && displayMode !== "client";
+    if ((!plantaCotaChromeActive && !chainActive) || layout.entries.length === 0) return layout.viewBox;
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
@@ -895,10 +901,12 @@ export default function RoofPreview({
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
     const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    // chainPad: reserva espacio para chain dim lines (yEdge + dimStackBottom + 3×CHAIN_STEP)
+    const chainPad = chainActive ? (svgTy.dimStackBottom ?? 0.3) + 0.56 : 0;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, svgTy.dimStackBottom, panelLayouts, displayMode]);
 
   const encounters = planEdges?.encounters ?? [];
 

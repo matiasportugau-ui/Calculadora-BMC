@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import pino from "pino";
 import pinoHttp from "pino-http";
+import rateLimit from "express-rate-limit";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
@@ -448,7 +449,13 @@ app.use("/api", createTransportistaRouter(config, logger));
 {
   const _isDev = config.appEnv === "development";
   if (_isDev) {
-    app.get("/api/diagnostic", (req, res) => {
+    const diagnosticRateLimit = rateLimit({
+      windowMs: 60 * 1000,
+      max: 30,
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
+    app.get("/api/diagnostic", diagnosticRateLimit, (req, res) => {
       const credsPath =
         config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
       const hasSheets = !!(
