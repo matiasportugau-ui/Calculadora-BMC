@@ -88,6 +88,7 @@ Son **modos o protocolos compartidos** por el equipo; **no sustituyen** una fila
 | **Chat equipo (interactivo)** | `.cursor/skills/chat-equipo-interactivo/SKILL.md` | *Cuando exista en el repo:* comunicación dialógica con Matias dentro del run; complementa batch sin reemplazar pasos 1–8. |
 | **Project Team Sync** | `.cursor/skills/bmc-project-team-sync/SKILL.md` | Carga al invocar full team; define orden y actualización de PROJECT-STATE. |
 | **BMC Mercado Libre API** | `.cursor/skills/bmc-mercadolibre-api/SKILL.md` | Arranque de la API (`start:api`, `ml:local`, `env:ensure`), OAuth ML (UY), ngrok/HTTPS, `ml:verify`, rutas `/auth/ml/*` y `/ml/*`. Aplica cuando el run toque integración ML, preguntas/órdenes o `server/index.js` / `mercadoLibreClient.js`. |
+| **BMC Cross-Sync Propagation** | `.cursor/skills/bmc-cross-sync-propagation/SKILL.md` | Runbook **Calculadora BMC** (Vercel `calculadora-bmc.vercel.app` + local `:5173`/`:3001`): inventario, §4, `PROJECT-STATE`, contrato/capacidades, `gate:local:full`, `smoke:prod`, opcional repos hermanos y full team. En paso 0: si el usuario pidió sync calculadora/prod+local o hay cambios multi-área sin cerrar en calculadora+API, documentar si aplica o **N/A este run**. |
 
 *(Añadir aquí toda skill transversal nueva; al dar de alta una skill que deba correr en cada full team, actualizar esta subtabla en el mismo PR.)*
 
