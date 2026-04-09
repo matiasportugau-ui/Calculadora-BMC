@@ -48,6 +48,7 @@ export function verifyPanelLayout(layout, bomResult, largo) {
  *
  * @param {Record<number, ReturnType<verifyPanelLayout>>|null} verificationsByGi
  * @param {number} [expectedZones=0]
+ * @returns {{total:number, ok:number, failed:number, pending:number, allOk:boolean, hasFailures:boolean}}
  */
 export function aggregatePanelLayoutVerifications(verificationsByGi, expectedZones = 0) {
   const entries = Object.values(verificationsByGi || {});

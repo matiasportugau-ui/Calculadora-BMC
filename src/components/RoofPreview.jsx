@@ -46,6 +46,20 @@ import { ROOF_PLAN_LAYERS } from "../utils/roofPlanDrawingTheme.js";
 const DRAG_SENSITIVITY = 0.52;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
 const SNAP_ZONE_M = 0.35;
+const DEFAULT_DISPLAY_MODE = "technical";
+const ROOF_PREVIEW_DISPLAY_MODES = [
+  { id: "client", label: "Cliente" },
+  { id: "technical", label: "Técnico" },
+  { id: "full", label: "Completo" },
+];
+
+function verificationSummaryText(summary) {
+  if (!summary || summary.total <= 0) return "";
+  if (summary.hasFailures) {
+    return `Verificación zonas: ${summary.ok}/${summary.total} OK · ${summary.failed} con discrepancia`;
+  }
+  return `Verificación zonas: ${summary.ok}/${summary.total} OK`;
+}
 
 /** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
 function zonaLabelPlanta(r) {
@@ -840,13 +854,15 @@ export default function RoofPreview({
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
-  const [localDisplayMode, setLocalDisplayMode] = useState(displayMode);
+  const [localDisplayMode, setLocalDisplayMode] = useState(() => (
+    ROOF_PREVIEW_DISPLAY_MODES.some((m) => m.id === displayMode) ? displayMode : DEFAULT_DISPLAY_MODE
+  ));
 
   useEffect(() => {
-    if (displayMode === "client" || displayMode === "technical" || displayMode === "full") {
+    if (ROOF_PREVIEW_DISPLAY_MODES.some((m) => m.id === displayMode)) {
       setLocalDisplayMode(displayMode);
     } else {
-      setLocalDisplayMode("technical");
+      setLocalDisplayMode(DEFAULT_DISPLAY_MODE);
     }
   }, [displayMode]);
 
@@ -898,7 +914,7 @@ export default function RoofPreview({
 
   const verificationSummary = useMemo(
     () => aggregatePanelLayoutVerifications(verifications, panelLayouts?.length ?? 0),
-    [verifications, panelLayouts],
+    [verifications, panelLayouts?.length],
   );
 
   /** Espacio extra para cotas exteriores (planta / Estructura). */
@@ -1317,11 +1333,7 @@ export default function RoofPreview({
               background: C.surface,
             }}
           >
-            {[
-              { id: "client", label: "Cliente" },
-              { id: "technical", label: "Técnico" },
-              { id: "full", label: "Completo" },
-            ].map((opt) => {
+            {ROOF_PREVIEW_DISPLAY_MODES.map((opt) => {
               const active = effectiveDisplayMode === opt.id;
               return (
                 <button
@@ -1485,9 +1497,7 @@ export default function RoofPreview({
             color: verificationSummary.hasFailures ? "#b91c1c" : "#166534",
           }}
         >
-          {verificationSummary.hasFailures
-            ? `Verificación zonas: ${verificationSummary.ok}/${verificationSummary.total} OK · ${verificationSummary.failed} con diferencia`
-            : `Verificación zonas: ${verificationSummary.ok}/${verificationSummary.total} OK`}
+          {verificationSummaryText(verificationSummary)}
         </div>
       )}
       <div
