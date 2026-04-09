@@ -23,22 +23,14 @@ import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography, fmtArchMeters } from "../utils/roofPlanSvgTypography.js";
 import {
-  lineRectIntersections,
-  buildOffcutPolygon,
-  snapCutLine,
-  computeCutAngleDeg,
-  computeCutOnStrips,
-} from "../utils/roofPlanCutTool.js";
-import {
   EstructuraGlobalExteriorOverlay,
   GlobalOverallDims,
   PanelChainDimensions,
   PanelLabels,
   VerificationBadge,
-  computeCotaObstacles,
 } from "./roofPlan/RoofPlanDimensions.jsx";
 import { buildPanelLayout } from "../utils/panelLayout.js";
-import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
+import { DIM_THEME } from "../utils/roofPlanDrawingTheme.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
@@ -823,22 +815,17 @@ export default function RoofPreview({
   onSelectedZonaGiChange,
   denseChrome = false,
   panelObj = null,
-  displayMode = 'technical',
-  bomPanelResultsByGi = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
-  const cutRef = useRef(null);
   const [hoverDim, setHoverDim] = useState(null);
-  const [cutMode, setCutMode] = useState(false);
-  const [cutDraft, setCutDraft] = useState(null);
-  const [appliedCuts, setAppliedCuts] = useState([]);
-  const cutModeRef = useRef(false);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
+  /** Vista de cotas: 'client' (IDs + overall), 'technical' (cadena mm), 'full' (todo). */
+  const [displayMode, setDisplayMode] = useState('client');
 
   const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
   const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
@@ -859,30 +846,33 @@ export default function RoofPreview({
 
   const effectivePanelAu = panelObj?.au ?? panelAu;
 
+  /** Layout de paneles por zona — fuente de verdad compartida con el plano SVG. */
   const panelLayouts = useMemo(() => {
-    if (!panelObj) return null;
-    const is2A = tipoAguas === 'dos_aguas';
-    return layout.entries.map((r) => {
-      const ancho = is2A ? r.z.ancho / 2 : r.z.ancho;
-      return { gi: r.gi, layout: buildPanelLayout({ panel: panelObj, largo: r.z.largo, ancho }) };
-    });
-  }, [panelObj, layout.entries, tipoAguas]);
+    if (!layout.entries.length || !(panelAu > 0)) return [];
+    return layout.entries.map((r) =>
+      buildPanelLayout({ au: panelAu, largo: Number(r.z.largo), ancho: r.w })
+    );
+  }, [layout.entries, panelAu]);
 
-  const cotaObstacles = useMemo(() => {
-    if (!plantaCotaChromeActive) return [];
-    return computeCotaObstacles(planEdges?.exterior ?? [], planEdges?.encounters ?? [], svgTy);
-  }, [plantaCotaChromeActive, planEdges, svgTy]);
-
-  const verifications = useMemo(() => {
-    if (!panelLayouts || !bomPanelResultsByGi) return null;
-    const result = {};
-    for (const { gi, layout: pl } of panelLayouts) {
-      const bom = bomPanelResultsByGi[gi];
-      const entryLargo = layout.entries.find((r) => r.gi === gi)?.z.largo ?? 0;
-      if (bom) result[gi] = verifyPanelLayout(pl, bom, entryLargo);
-    }
-    return result;
-  }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
+  /**
+   * Layout agregado de TODAS las zonas para el VerificationBadge.
+   * Sin esto, el badge muestra solo la zona 0 y puede reportar ✓
+   * cuando otra zona tiene cortes o isValid=false.
+   */
+  const aggregatedLayout = useMemo(() => {
+    if (!panelLayouts.length) return null;
+    return panelLayouts.reduce((acc, zl, i) => {
+      if (i === 0) {
+        return { nPaneles: zl.nPaneles, area: zl.area, warnings: [...zl.warnings], isValid: zl.isValid };
+      }
+      return {
+        nPaneles: acc.nPaneles + zl.nPaneles,
+        area: +(acc.area + zl.area).toFixed(4),
+        warnings: [...new Set([...acc.warnings, ...zl.warnings])],
+        isValid: acc.isValid && zl.isValid,
+      };
+    }, null);
+  }, [panelLayouts]);
 
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
@@ -895,60 +885,14 @@ export default function RoofPreview({
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
     const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    // Espacio adicional en la base para la cadena de paneles (displayMode técnica/completa).
+    const chainPad = displayMode !== 'client' ? DIM_THEME.CHAIN_OFFSET + svgTy.dimFont * 1.1 : 0;
+    const padB = (0.68 + nSide("bottom") * 0.14 + chainPad) * vbPadScale;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, svgTy.dimFont, displayMode]);
 
   const encounters = planEdges?.encounters ?? [];
-
-  // Keep cutModeRef in sync (avoids stale closures in pointer handlers)
-  useEffect(() => { cutModeRef.current = cutMode; }, [cutMode]);
-
-  // C-1: cut tool — mouse down starts drawing
-  const handleSvgMouseDown = useCallback((e) => {
-    if (!cutModeRef.current || e.button !== 0) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const p = clientToSvg(svg, e.clientX, e.clientY);
-    cutRef.current = { x1: p.x, y1: p.y };
-    setCutDraft({ x1: p.x, y1: p.y, x2: p.x, y2: p.y, snapped: false });
-  }, []);
-
-  // C-1: cut tool — mouse up applies the cut
-  const handleSvgMouseUp = useCallback((e) => {
-    if (!cutRef.current) return;
-    const { x1, y1 } = cutRef.current;
-    const svg = svgRef.current;
-    if (!svg) { cutRef.current = null; setCutDraft(null); return; }
-    const p = clientToSvg(svg, e.clientX, e.clientY);
-    let { x2, y2 } = e.shiftKey ? snapCutLine(x1, y1, p.x, p.y) : { x2: p.x, y2: p.y };
-
-    // Minimum drag distance
-    if (Math.hypot(x2 - x1, y2 - y1) < 0.05) {
-      cutRef.current = null; setCutDraft(null); return;
-    }
-
-    const affected = (planEdges?.rects ?? []).map(r => {
-      const pts = lineRectIntersections(x1, y1, x2, y2, r.x, r.y, r.w, r.h);
-      if (pts.length < 2) return null;
-      const pl = panelLayouts?.find(p => p.gi === r.gi);
-      const strips = pl?.layout?.panels ?? [];
-      const cutStrips = computeCutOnStrips(x1, y1, x2, y2, strips, r.x, r.y, r.z.largo);
-      return { gi: r.gi, rx: r.x, ry: r.y, rw: r.w, rh: r.h, pts, z: r.z, cutStrips };
-    }).filter(Boolean);
-
-    if (affected.length > 0) {
-      setAppliedCuts(prev => [...prev, {
-        id: `cut-${Date.now()}`,
-        x1, y1, x2, y2,
-        angleDeg: computeCutAngleDeg(x1, y1, x2, y2),
-        affected,
-      }]);
-    }
-    cutRef.current = null;
-    setCutDraft(null);
-  }, [planEdges, panelLayouts]);
 
   // B-1/B-2: hover measurement
   const handleSvgMouseMove = useCallback((e) => {
@@ -956,16 +900,6 @@ export default function RoofPreview({
     const svg = svgRef.current;
     if (!svg || !planEdges?.rects?.length) return;
     const p = clientToSvg(svg, e.clientX, e.clientY);
-
-    // C-1: update cut draft while drawing
-    if (cutRef.current) {
-      const { x1, y1 } = cutRef.current;
-      const snapped = e.shiftKey;
-      const raw = { x2: p.x, y2: p.y };
-      const { x2, y2 } = snapped ? snapCutLine(x1, y1, raw.x2, raw.y2) : raw;
-      setCutDraft({ x1, y1, x2, y2, snapped });
-      return;
-    }
 
     const hit = planEdges.rects.find(
       (r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h,
@@ -1010,7 +944,6 @@ export default function RoofPreview({
 
   const handlePointerDown = useCallback(
     (e, gi, rect) => {
-      if (cutModeRef.current) return; // cut tool takes over pointer events
       if (!onZonaPreviewChange) return;
       if (e.button != null && e.button !== 0) return;
       const svg = svgRef.current;
@@ -1243,70 +1176,9 @@ export default function RoofPreview({
               Deshacer
             </button>
           )}
-          {plantaCotaChromeActive && (
-            <button
-              type="button"
-              onClick={() => {
-                setCutMode(m => !m);
-                setCutDraft(null);
-                cutRef.current = null;
-              }}
-              title={cutMode ? "Salir del modo corte" : "Herramienta de corte de paneles"}
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: cutMode ? '#fff' : C.tp,
-                background: cutMode ? '#b45309' : C.surface,
-                border: `1.5px solid ${cutMode ? '#b45309' : C.border}`,
-                borderRadius: 8,
-                padding: "6px 10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              ✂ {cutMode ? 'Salir corte' : 'Corte'}
-            </button>
-          )}
-          {appliedCuts.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setAppliedCuts([])}
-              title="Eliminar todos los cortes aplicados"
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#b45309',
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: "6px 10px",
-                cursor: "pointer",
-              }}
-            >
-              Limpiar cortes ({appliedCuts.length})
-            </button>
-          )}
         </div>
       </div>
-      {cutMode && (
-        <div style={{
-          fontSize: 11, fontWeight: 500, color: '#92400e',
-          background: '#fffbeb', border: '1px solid #fbbf24',
-          borderRadius: 8, padding: '8px 12px', marginBottom: 8,
-          lineHeight: 1.5,
-        }}>
-          <strong>✂ Modo corte activo</strong> — Hacé click y arrastrá sobre el plano para trazar la línea de corte.
-          {' '}<strong>Shift</strong> = snap a 0° / 45° / 90°. El corte aplica a todas las zonas que atraviese.
-          {appliedCuts.length > 0 && (
-            <span style={{ marginLeft: 8, color: '#b45309' }}>
-              · {appliedCuts.length} corte{appliedCuts.length > 1 ? 's' : ''} aplicado{appliedCuts.length > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      )}
-      {plantaCotaChromeActive && !cutMode && (
+      {plantaCotaChromeActive && (
         <div
           style={{
             fontSize: 11,
@@ -1328,6 +1200,34 @@ export default function RoofPreview({
               correctamente antes de bordes y estructura.
             </>
           )}
+        </div>
+      )}
+      {plantaCotaChromeActive && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: C.ts, marginRight: 2 }}>Vista:</span>
+          {[
+            { key: 'client', label: 'Cliente' },
+            { key: 'technical', label: 'Técnica' },
+            { key: 'full', label: 'Completa' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setDisplayMode(key)}
+              style={{
+                padding: '2px 10px',
+                borderRadius: 4,
+                fontSize: 11,
+                border: `1px solid ${C.border}`,
+                background: displayMode === key ? '#1565C0' : C.surface,
+                color: displayMode === key ? '#fff' : C.tp,
+                cursor: 'pointer',
+                fontWeight: displayMode === key ? 700 : 500,
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
       {encounterPrompt && onEncounterPairChange && (
@@ -1476,14 +1376,12 @@ export default function RoofPreview({
               preserveAspectRatio="xMidYMid meet"
               style={{
                 display: "block",
-                cursor: cutMode ? "crosshair" : (onZonaPreviewChange ? "default" : undefined),
+                cursor: onZonaPreviewChange ? "default" : undefined,
               }}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handleLostCapture}
               onLostPointerCapture={handleLostCapture}
-              onMouseDown={handleSvgMouseDown}
-              onMouseUp={handleSvgMouseUp}
               onMouseMove={handleSvgMouseMove}
               onMouseLeave={handleSvgMouseLeave}
             >
@@ -1540,7 +1438,7 @@ export default function RoofPreview({
                 />
               );
             })}
-            {layout.entries.map((r) => {
+            {layout.entries.map((r, rIdx) => {
               const sm = r.z.preview?.slopeMark;
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
               const zm = svgTy.m;
@@ -1646,6 +1544,28 @@ export default function RoofPreview({
                       scaleM={svgTy.m}
                     />
                   )}
+                  {plantaCotaChromeActive && panelLayouts[rIdx] && (
+                    <>
+                      <PanelLabels
+                        panels={panelLayouts[rIdx].panels}
+                        x0={r.x}
+                        y0={r.y}
+                        h={r.h}
+                        svgTy={svgTy}
+                        theme={DIM_THEME}
+                        displayMode={displayMode}
+                      />
+                      <PanelChainDimensions
+                        panels={panelLayouts[rIdx].panels}
+                        x0={r.x}
+                        yBase={r.y + r.h}
+                        existingDimOffset={svgTy.dimStackBottom}
+                        svgTy={svgTy}
+                        theme={DIM_THEME}
+                        displayMode={displayMode}
+                      />
+                    </>
+                  )}
                   {showAnnexCtl && (
                     <g pointerEvents="auto">
                       <rect
@@ -1711,44 +1631,6 @@ export default function RoofPreview({
                 </g>
               );
             })}
-            {panelLayouts && layout.entries.map((r) => {
-              const pl = panelLayouts.find((x) => x.gi === r.gi);
-              if (!pl) return null;
-              return (
-                <g key={`panel-overlay-${r.gi}`} pointerEvents="none">
-                  <PanelLabels
-                    strips={pl.layout.panels}
-                    x0={r.x} y0={r.y} h={r.h}
-                    svgTy={svgTy}
-                    mode={displayMode}
-                  />
-                  {verifications?.[r.gi] && (
-                    <VerificationBadge
-                      x={r.x + r.w} y={r.y}
-                      verification={verifications[r.gi]}
-                      svgTy={svgTy}
-                      mode={displayMode}
-                    />
-                  )}
-                </g>
-              );
-            })}
-            {panelLayouts && displayMode !== 'client' && layout.entries.map((r) => {
-              const pl = panelLayouts.find((x) => x.gi === r.gi);
-              if (!pl) return null;
-              const strips = buildAnchoStripsPlanta(r.w, effectivePanelAu);
-              return (
-                <PanelChainDimensions
-                  key={`chain-${r.gi}`}
-                  strips={strips}
-                  x0={r.x}
-                  yEdge={r.y + r.h}
-                  svgTy={svgTy}
-                  obstacleRects={cotaObstacles}
-                  mode={displayMode}
-                />
-              );
-            })}
             {plantaCotaChromeActive && planEdges?.exterior?.length ? (
               <EstructuraGlobalExteriorOverlay
                 exterior={planEdges.exterior}
@@ -1759,88 +1641,31 @@ export default function RoofPreview({
             {plantaCotaChromeActive && planEdges?.rects?.length ? (
               <GlobalOverallDims rects={planEdges.rects} svgTy={svgTy} />
             ) : null}
-            {/* C-2/C-3: Draft cut line while drawing */}
-            {cutMode && cutDraft && (Math.hypot(cutDraft.x2 - cutDraft.x1, cutDraft.y2 - cutDraft.y1) > 0.01) && (
-              <g pointerEvents="none" data-bmc-layer="cut-draft">
-                <line
-                  x1={cutDraft.x1} y1={cutDraft.y1}
-                  x2={cutDraft.x2} y2={cutDraft.y2}
-                  stroke="#b45309" strokeWidth={svgTy.strokeTick * 1.3}
-                  strokeDasharray={`${svgTy.dimFont * 0.4} ${svgTy.dimFont * 0.18}`}
-                  opacity={0.9}
-                />
-                <circle cx={cutDraft.x1} cy={cutDraft.y1} r={svgTy.dimFont * 0.22}
-                  fill="#b45309" opacity={0.9} />
-                <circle cx={cutDraft.x2} cy={cutDraft.y2} r={svgTy.dimFont * 0.15}
-                  fill="#b45309" opacity={0.7} />
-                <text
-                  x={cutDraft.x2 + svgTy.dimFont * 0.35}
-                  y={cutDraft.y2 - svgTy.dimFont * 0.18}
-                  fontSize={svgTy.dimFont * 0.78}
-                  fill="#b45309" fontFamily="system-ui,sans-serif"
-                  stroke="none" fontWeight={700}
-                >
-                  {computeCutAngleDeg(cutDraft.x1, cutDraft.y1, cutDraft.x2, cutDraft.y2)}°
-                  {cutDraft.snapped ? ' ⊷' : ''}
-                </text>
-              </g>
-            )}
-
-            {/* C-5: Applied cuts — line + offcut shading + scissors label */}
-            {appliedCuts.map(cut => (
-              <g key={cut.id} pointerEvents="none" data-bmc-layer="cut-applied">
-                {cut.affected.map((a, i) => {
-                  const poly = buildOffcutPolygon(cut.x1, cut.y1, cut.x2, cut.y2, a.rx, a.ry, a.rw, a.rh);
-                  const midX = (a.pts[0].x + a.pts[1].x) / 2;
-                  const midY = (a.pts[0].y + a.pts[1].y) / 2;
-                  const cutLen = +Math.hypot(a.pts[1].x - a.pts[0].x, a.pts[1].y - a.pts[0].y).toFixed(3);
-                  return (
-                    <g key={`${cut.id}-${i}`}>
-                      {poly && (
-                        <polygon points={poly} fill="#b45309" opacity={0.13} />
-                      )}
-                      <line
-                        x1={a.pts[0].x} y1={a.pts[0].y}
-                        x2={a.pts[1].x} y2={a.pts[1].y}
-                        stroke="#1a1a1a" strokeWidth={svgTy.strokeTick * 1.1}
-                        strokeDasharray={`${svgTy.dimFont * 0.28} ${svgTy.dimFont * 0.12}`}
-                        opacity={0.82}
-                      />
-                      <text x={midX} y={midY - svgTy.dimFont * 0.55}
-                        fontSize={svgTy.dimFont * 0.88} fill="#b45309"
-                        textAnchor="middle" fontFamily="system-ui,sans-serif"
-                        stroke="#fff" strokeWidth={svgTy.strokeMain * 1.5} paintOrder="stroke"
-                        fontWeight={600}
-                      >
-                        ✂ {cut.angleDeg}°
-                      </text>
-                      {a.cutStrips?.length > 0 && (
-                        <text x={midX} y={midY + svgTy.dimFont * 0.7}
-                          fontSize={svgTy.dimFont * 0.72} fill="#92400e"
-                          textAnchor="middle" fontFamily="system-ui,sans-serif"
-                          stroke="#fff" strokeWidth={svgTy.strokeMain} paintOrder="stroke"
-                        >
-                          {a.cutStrips.length} panel{a.cutStrips.length > 1 ? 'es' : ''} afectado{a.cutStrips.length > 1 ? 's' : ''}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </g>
-            ))}
-
+            {plantaCotaChromeActive && aggregatedLayout ? (
+              <VerificationBadge
+                layout={aggregatedLayout}
+                x={layout.viewMetrics?.vbX ?? layout.entries[0].x}
+                y={
+                  Math.max(...layout.entries.map((r) => r.y + r.h))
+                  + svgTy.dimStackBottom
+                  + DIM_THEME.CHAIN_OFFSET
+                  + svgTy.dimFont * 1.7
+                }
+                svgTy={svgTy}
+              />
+            ) : null}
             {hoverDim && (() => {
               const f = svgTy.dimFont;
               const pad = f * 0.5;
               const lineH = f * 1.3;
               const area = (hoverDim.largo * hoverDim.ancho).toFixed(2);
-              const lines = [
+              const hoverLines = [
                 hoverDim.nombre || 'Zona',
                 `${fmtArchMeters(hoverDim.largo)} × ${fmtArchMeters(hoverDim.ancho)} m`,
                 `${area} m²`,
               ];
               const boxW = f * 7.5;
-              const boxH = lines.length * lineH + pad * 2;
+              const boxH = hoverLines.length * lineH + pad * 2;
               const tx = hoverDim.x + f * 0.6;
               const ty = hoverDim.y - boxH - f * 0.3;
               return (
@@ -1848,14 +1673,14 @@ export default function RoofPreview({
                   <rect x={tx} y={ty} width={boxW} height={boxH}
                     fill="#ffffff" stroke="#1a1a1a" strokeWidth={svgTy.strokeMain * 0.8}
                     rx={f * 0.18} opacity={0.93} />
-                  {lines.map((line, i) => (
-                    <text key={i}
-                      x={tx + pad} y={ty + pad + lineH * i + f * 0.9}
-                      fontSize={i === 0 ? f * 0.85 : f * 0.95}
-                      fontWeight={i === 1 ? 700 : 400}
+                  {hoverLines.map((ln, li) => (
+                    <text key={li}
+                      x={tx + pad} y={ty + pad + lineH * li + f * 0.9}
+                      fontSize={li === 0 ? f * 0.85 : f * 0.95}
+                      fontWeight={li === 1 ? 700 : 400}
                       fontFamily="system-ui, sans-serif"
                       fill="#1a1a1a" stroke="none">
-                      {line}
+                      {ln}
                     </text>
                   ))}
                 </g>
