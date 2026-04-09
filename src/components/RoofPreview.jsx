@@ -38,7 +38,8 @@ import {
   computeCotaObstacles,
 } from "./roofPlan/RoofPlanDimensions.jsx";
 import { buildPanelLayout } from "../utils/panelLayout.js";
-import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
+import { verifyPanelLayout, aggregatePanelLayoutVerifications } from "../utils/panelLayoutVerification.js";
+import { ROOF_PLAN_LAYERS } from "../utils/roofPlanDrawingTheme.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
@@ -483,7 +484,7 @@ function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
 
   return (
     <>
-    <g data-bmc-layer="estructura-overlay">
+    <g data-bmc-layer={ROOF_PLAN_LAYERS.estructuraOverlay}>
       <g pointerEvents="none">{supportLines}</g>
       <g pointerEvents="auto">
         {dotPts.map((d) => (
@@ -839,6 +840,17 @@ export default function RoofPreview({
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
+  const [localDisplayMode, setLocalDisplayMode] = useState(displayMode);
+
+  useEffect(() => {
+    if (displayMode === "client" || displayMode === "technical" || displayMode === "full") {
+      setLocalDisplayMode(displayMode);
+    } else {
+      setLocalDisplayMode("technical");
+    }
+  }, [displayMode]);
+
+  const effectiveDisplayMode = localDisplayMode;
 
   const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
   const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
@@ -883,6 +895,11 @@ export default function RoofPreview({
     }
     return result;
   }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
+
+  const verificationSummary = useMemo(
+    () => aggregatePanelLayoutVerifications(verifications, panelLayouts?.length ?? 0),
+    [verifications, panelLayouts],
+  );
 
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
@@ -1288,6 +1305,45 @@ export default function RoofPreview({
               Limpiar cortes ({appliedCuts.length})
             </button>
           )}
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              padding: 2,
+              borderRadius: 999,
+              border: `1px solid ${C.border}`,
+              background: C.surface,
+            }}
+          >
+            {[
+              { id: "client", label: "Cliente" },
+              { id: "technical", label: "Técnico" },
+              { id: "full", label: "Completo" },
+            ].map((opt) => {
+              const active = effectiveDisplayMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setLocalDisplayMode(opt.id)}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "4px 8px",
+                    cursor: "pointer",
+                    color: active ? C.primary : C.ts,
+                    background: active ? C.primarySoft : "transparent",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
       {cutMode && (
@@ -1413,6 +1469,27 @@ export default function RoofPreview({
         suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
         independiente en planta.
       </CollapsibleHint>
+      {verificationSummary.total > 1 && (
+        <div
+          style={{
+            marginBottom: 8,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "4px 8px",
+            borderRadius: 999,
+            border: `1px solid ${verificationSummary.hasFailures ? "#fca5a5" : "#86efac"}`,
+            background: verificationSummary.hasFailures ? "#fef2f2" : "#f0fdf4",
+            color: verificationSummary.hasFailures ? "#b91c1c" : "#166534",
+          }}
+        >
+          {verificationSummary.hasFailures
+            ? `Verificación zonas: ${verificationSummary.ok}/${verificationSummary.total} OK · ${verificationSummary.failed} con diferencia`
+            : `Verificación zonas: ${verificationSummary.ok}/${verificationSummary.total} OK`}
+        </div>
+      )}
       <div
         style={{
           display: "flex",
@@ -1720,20 +1797,20 @@ export default function RoofPreview({
                     strips={pl.layout.panels}
                     x0={r.x} y0={r.y} h={r.h}
                     svgTy={svgTy}
-                    mode={displayMode}
+                    mode={effectiveDisplayMode}
                   />
                   {verifications?.[r.gi] && (
                     <VerificationBadge
                       x={r.x + r.w} y={r.y}
                       verification={verifications[r.gi]}
                       svgTy={svgTy}
-                      mode={displayMode}
+                      mode={effectiveDisplayMode}
                     />
                   )}
                 </g>
               );
             })}
-            {panelLayouts && displayMode !== 'client' && layout.entries.map((r) => {
+            {panelLayouts && effectiveDisplayMode !== 'client' && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
               const strips = buildAnchoStripsPlanta(r.w, effectivePanelAu);
@@ -1745,7 +1822,7 @@ export default function RoofPreview({
                   yEdge={r.y + r.h}
                   svgTy={svgTy}
                   obstacleRects={cotaObstacles}
-                  mode={displayMode}
+                  mode={effectiveDisplayMode}
                 />
               );
             })}
@@ -1761,7 +1838,7 @@ export default function RoofPreview({
             ) : null}
             {/* C-2/C-3: Draft cut line while drawing */}
             {cutMode && cutDraft && (Math.hypot(cutDraft.x2 - cutDraft.x1, cutDraft.y2 - cutDraft.y1) > 0.01) && (
-              <g pointerEvents="none" data-bmc-layer="cut-draft">
+              <g pointerEvents="none" data-bmc-layer={ROOF_PLAN_LAYERS.cutDraft}>
                 <line
                   x1={cutDraft.x1} y1={cutDraft.y1}
                   x2={cutDraft.x2} y2={cutDraft.y2}
@@ -1788,7 +1865,7 @@ export default function RoofPreview({
 
             {/* C-5: Applied cuts — line + offcut shading + scissors label */}
             {appliedCuts.map(cut => (
-              <g key={cut.id} pointerEvents="none" data-bmc-layer="cut-applied">
+              <g key={cut.id} pointerEvents="none" data-bmc-layer={ROOF_PLAN_LAYERS.cutApplied}>
                 {cut.affected.map((a, i) => {
                   const poly = buildOffcutPolygon(cut.x1, cut.y1, cut.x2, cut.y2, a.rx, a.ry, a.rw, a.rh);
                   const midX = (a.pts[0].x + a.pts[1].x) / 2;
@@ -1844,7 +1921,7 @@ export default function RoofPreview({
               const tx = hoverDim.x + f * 0.6;
               const ty = hoverDim.y - boxH - f * 0.3;
               return (
-                <g pointerEvents="none" data-bmc-layer="hover-dim-tooltip">
+                <g pointerEvents="none" data-bmc-layer={ROOF_PLAN_LAYERS.hoverDimTooltip}>
                   <rect x={tx} y={ty} width={boxW} height={boxH}
                     fill="#ffffff" stroke="#1a1a1a" strokeWidth={svgTy.strokeMain * 0.8}
                     rx={f * 0.18} opacity={0.93} />

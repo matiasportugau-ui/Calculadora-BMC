@@ -5,6 +5,10 @@
 
 import { buildAnchoStripsPlanta } from './roofPanelStripsPlanta.js';
 
+const PANEL_LAYOUT_EPS = 1e-9;
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const roundM = (v) => +Number(v).toFixed(9);
+
 /**
  * Layout de paneles en planta para una zona de techo.
  * Usa la misma lógica que calcPanelesTecho para garantizar consistencia BOM↔plano.
@@ -30,14 +34,15 @@ export function buildPanelLayout({ panel, largo, ancho }) {
 
   const strips = buildAnchoStripsPlanta(ancho, au);
   const panels = strips.map((s) => {
-    const isCut = s.width < au - 1e-9;
+    const width = roundM(Math.max(0, Math.min(au, s.width)));
+    const isCut = width < au - PANEL_LAYOUT_EPS;
     return {
       id: `T-${String(s.idx + 1).padStart(2, '0')}`,
       idx: s.idx,
-      x0: s.x0,
-      width: s.width,
+      x0: roundM(s.x0),
+      width,
       isCut,
-      cutRatio: s.width / au,
+      cutRatio: clamp01(roundM(width / au)),
     };
   });
 
@@ -45,7 +50,8 @@ export function buildPanelLayout({ panel, largo, ancho }) {
   const fullPanels = panels.filter((p) => !p.isCut).length;
   const cutPanels = totalPanels - fullPanels;
   const anchoTotal = totalPanels * au;
-  const wasteM = +(anchoTotal - ancho).toFixed(6);
+  const wasteRaw = +(anchoTotal - ancho).toFixed(6);
+  const wasteM = Math.max(0, wasteRaw);
 
   return { panels, totalPanels, fullPanels, cutPanels, anchoTotal, wasteM, au };
 }

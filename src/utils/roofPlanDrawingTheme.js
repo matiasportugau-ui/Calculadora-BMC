@@ -13,7 +13,21 @@ export const ROOF_PLAN_DIM_EXT_OPACITY = 0.75;
 export const ROOF_PLAN_DIM_FONT_BASE = 0.13;
 
 /** `data-bmc-layer` del grupo de cotas exteriores + encuentros. */
-export const ROOF_PLAN_LAYER_GLOBAL_COTAS = "estructura-global-cotas";
+export const ROOF_PLAN_LAYERS = Object.freeze({
+  globalCotas: "estructura-global-cotas",
+  estructuraOverlay: "estructura-overlay",
+  cutDraft: "cut-draft",
+  cutApplied: "cut-applied",
+  hoverDimTooltip: "hover-dim-tooltip",
+  chain: "dim-chain",
+  overall: "dim-overall",
+  labels: "dim-panel-ids",
+  verification: "dim-verification",
+  globalOverallDims: "global-overall-dims",
+});
+
+/** @deprecated usar ROOF_PLAN_LAYERS.globalCotas */
+export const ROOF_PLAN_LAYER_GLOBAL_COTAS = ROOF_PLAN_LAYERS.globalCotas;
 
 /** Etiqueta numérica en encuentro (relleno + halo para legibilidad sobre geometría). */
 export const ROOF_PLAN_ENCOUNTER_LABEL_FILL = "#0f172a";
@@ -43,10 +57,10 @@ export const DIM_THEME = {
   textColor: '#212121',
   defaultTerminator: 'tick',
   layers: {
-    chain: 'dim-chain',
-    overall: 'dim-overall',
-    labels: 'dim-panel-ids',
-    verification: 'dim-verification',
+    chain: ROOF_PLAN_LAYERS.chain,
+    overall: ROOF_PLAN_LAYERS.overall,
+    labels: ROOF_PLAN_LAYERS.labels,
+    verification: ROOF_PLAN_LAYERS.verification,
   },
   chainOpacity: 0.85,
 };

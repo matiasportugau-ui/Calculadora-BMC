@@ -11,6 +11,7 @@ import {
   ROOF_PLAN_ENCOUNTER_LABEL_FILL,
   ROOF_PLAN_ENCOUNTER_LABEL_HALO,
   ROOF_PLAN_LAYER_GLOBAL_COTAS,
+  ROOF_PLAN_LAYERS,
   makeBumpCounter,
   DIM_THEME,
 } from "../../utils/roofPlanDrawingTheme.js";
@@ -464,7 +465,7 @@ export function GlobalOverallDims({ rects, svgTy }) {
   const labelH = `${fmtArchMeters(totalH)} m`;
 
   return (
-    <g data-bmc-layer="global-overall-dims" pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
+    <g data-bmc-layer={ROOF_PLAN_LAYERS.globalOverallDims} pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
       {/* A-1: ancho total — arriba */}
       <line x1={minX} y1={minY} x2={minX} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={maxX} y1={minY} x2={maxX} y2={yDimLine} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
