@@ -59,3 +59,24 @@ export function fmtArchMeters(m) {
   const s = `${+m.toFixed(2)}`;
   return s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
 }
+
+/**
+ * Formatea metros como milímetros enteros para etiquetas de cadena (fabricación).
+ * fmtDimMm(1.12) → "1120"  |  fmtDimMm(0.52) → "520"
+ * @param {number} meters
+ */
+export function fmtDimMm(meters) {
+  if (!Number.isFinite(meters)) return "—";
+  return `${Math.round(meters * 1000)}`;
+}
+
+/**
+ * Formatea metros como cota overall para el cliente (con unidad, coma decimal).
+ * fmtDimOverall(8.36) → "8,36 m"  |  fmtDimOverall(6) → "6 m"
+ * @param {number} meters
+ */
+export function fmtDimOverall(meters) {
+  if (!Number.isFinite(meters)) return "—";
+  if (Math.abs(meters - Math.round(meters)) < 1e-6) return `${Math.round(meters)} m`;
+  return `${meters.toFixed(2).replace(".", ",")} m`;
+}

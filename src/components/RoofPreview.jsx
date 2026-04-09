@@ -22,7 +22,9 @@ import {
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
-import { EstructuraGlobalExteriorOverlay } from "./roofPlan/RoofPlanDimensions.jsx";
+import { EstructuraGlobalExteriorOverlay, PanelChainDimensions, PanelLabels, VerificationBadge } from "./roofPlan/RoofPlanDimensions.jsx";
+import { buildPanelLayout } from "../utils/panelLayout.js";
+import { DIM_THEME } from "../utils/roofPlanDrawingTheme.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
@@ -814,6 +816,8 @@ export default function RoofPreview({
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
+  /** Vista de cotas: 'client' (IDs + overall), 'technical' (cadena mm), 'full' (todo). */
+  const [displayMode, setDisplayMode] = useState('client');
 
   const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
   const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
@@ -832,6 +836,14 @@ export default function RoofPreview({
   /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
 
+  /** Layout de paneles por zona — fuente de verdad compartida con el plano SVG. */
+  const panelLayouts = useMemo(() => {
+    if (!layout.entries.length || !(panelAu > 0)) return [];
+    return layout.entries.map((r) =>
+      buildPanelLayout({ au: panelAu, largo: Number(r.z.largo), ancho: r.w })
+    );
+  }, [layout.entries, panelAu]);
+
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
@@ -843,10 +855,12 @@ export default function RoofPreview({
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
     const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    // Espacio adicional en la base para la cadena de paneles (displayMode técnica/completa).
+    const chainPad = displayMode !== 'client' ? DIM_THEME.CHAIN_OFFSET + svgTy.dimFont * 1.1 : 0;
+    const padB = (0.68 + nSide("bottom") * 0.14 + chainPad) * vbPadScale;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, displayMode]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -1139,6 +1153,34 @@ export default function RoofPreview({
           )}
         </div>
       )}
+      {plantaCotaChromeActive && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: C.ts, marginRight: 2 }}>Vista:</span>
+          {[
+            { key: 'client', label: 'Cliente' },
+            { key: 'technical', label: 'Técnica' },
+            { key: 'full', label: 'Completa' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setDisplayMode(key)}
+              style={{
+                padding: '2px 10px',
+                borderRadius: 4,
+                fontSize: 11,
+                border: `1px solid ${C.border}`,
+                background: displayMode === key ? '#1565C0' : C.surface,
+                color: displayMode === key ? '#fff' : C.tp,
+                cursor: 'pointer',
+                fontWeight: displayMode === key ? 700 : 500,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       {encounterPrompt && onEncounterPairChange && (
         <div
           style={{
@@ -1345,7 +1387,7 @@ export default function RoofPreview({
                 />
               );
             })}
-            {layout.entries.map((r) => {
+            {layout.entries.map((r, rIdx) => {
               const sm = r.z.preview?.slopeMark;
               const showSlope = sm === "along_largo_pos" || sm === "along_largo_neg";
               const zm = svgTy.m;
@@ -1451,6 +1493,28 @@ export default function RoofPreview({
                       scaleM={svgTy.m}
                     />
                   )}
+                  {plantaCotaChromeActive && panelLayouts[rIdx] && (
+                    <>
+                      <PanelLabels
+                        panels={panelLayouts[rIdx].panels}
+                        x0={r.x}
+                        y0={r.y}
+                        h={r.h}
+                        svgTy={svgTy}
+                        theme={DIM_THEME}
+                        displayMode={displayMode}
+                      />
+                      <PanelChainDimensions
+                        panels={panelLayouts[rIdx].panels}
+                        x0={r.x}
+                        yBase={r.y + r.h}
+                        existingDimOffset={svgTy.dimStackBottom}
+                        svgTy={svgTy}
+                        theme={DIM_THEME}
+                        displayMode={displayMode}
+                      />
+                    </>
+                  )}
                   {showAnnexCtl && (
                     <g pointerEvents="auto">
                       <rect
@@ -1520,6 +1584,19 @@ export default function RoofPreview({
               <EstructuraGlobalExteriorOverlay
                 exterior={planEdges.exterior}
                 encounters={planEdges.encounters ?? []}
+                svgTy={svgTy}
+              />
+            ) : null}
+            {plantaCotaChromeActive && panelLayouts[0] && layout.entries.length ? (
+              <VerificationBadge
+                layout={panelLayouts[0]}
+                x={layout.viewMetrics?.vbX ?? layout.entries[0].x}
+                y={
+                  Math.max(...layout.entries.map((r) => r.y + r.h))
+                  + svgTy.dimStackBottom
+                  + DIM_THEME.CHAIN_OFFSET
+                  + svgTy.dimFont * 1.7
+                }
                 svgTy={svgTy}
               />
             ) : null}

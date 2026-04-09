@@ -1,10 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// RoofPlanDimensions.jsx — Cotas SVG (perímetro libre, encuentros). Funciones puras:
-// `roofPlanSvgTypography.js`, `roofPlanCotaObstacles.js`, `roofPlanDrawingTheme.js`.
+// RoofPlanDimensions.jsx — Cotas SVG (perímetro libre, encuentros, cadena de paneles).
+// Funciones puras: `roofPlanSvgTypography.js`, `roofPlanCotaObstacles.js`,
+// `roofPlanDrawingTheme.js`, `panelLayout.js`.
+// Exports: EstructuraGlobalExteriorOverlay (existente, no modificado),
+//          PanelChainDimensions, PanelLabels, VerificationBadge (nuevos).
+// ISO 129 / IRAM 4513 compliance: sí — cadena más alejada del objeto que overall
+// (trade-off aditivo: no modifica EstructuraGlobalExteriorOverlay existente).
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { FONT } from "../../data/constants.js";
-import { fmtArchMeters } from "../../utils/roofPlanSvgTypography.js";
+import { fmtArchMeters, fmtDimMm } from "../../utils/roofPlanSvgTypography.js";
 import {
   ROOF_PLAN_DIM_STROKE,
   ROOF_PLAN_DIM_EXT_OPACITY,
@@ -290,6 +295,216 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
         );
       })}
       {encLabels}
+    </g>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NUEVOS COMPONENTES — cadena de paneles, IDs, badge de verificación
+// Principio: ADITIVOS. No tocan EstructuraGlobalExteriorOverlay.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Cadena de cotas horizontales — una cota por panel.
+ * Se posiciona MÁS LEJOS del objeto que la cota overall existente
+ * (trade-off aditivo — ver decisión A en el plan).
+ *
+ * Solo renderiza cuando `displayMode !== 'client'`.
+ *
+ * @param {{
+ *   panels: import('../../utils/panelLayout.js').PanelLayoutResult['panels'],
+ *   x0: number,
+ *   yBase: number,
+ *   existingDimOffset: number,
+ *   svgTy: object,
+ *   theme: import('../../utils/roofPlanDrawingTheme.js').DIM_THEME,
+ *   displayMode: 'client'|'technical'|'full',
+ * }} props
+ */
+export function PanelChainDimensions({ panels, x0, yBase, existingDimOffset, svgTy, theme, displayMode }) {
+  if (displayMode === 'client') return null;
+  if (!panels?.length) return null;
+
+  const chainY = yBase + existingDimOffset + theme.CHAIN_OFFSET;
+  const tick = svgTy.tickLen;
+  const chainFont = svgTy.dimFont * 0.82;
+
+  return (
+    <g data-bmc-layer={theme.layers.chain} opacity={theme.chainOpacity} pointerEvents="none">
+      {panels.map((panel) => {
+        const px1 = x0 + panel.x0;
+        const px2 = px1 + panel.width;
+        const color = panel.isCut ? theme.warningColor : theme.chainColor;
+        const label = panel.isCut ? `${fmtDimMm(panel.width)} ✂` : fmtDimMm(panel.width);
+        const labelWidthEst = label.length * chainFont * 0.62;
+        const showLabel = panel.width >= labelWidthEst * 0.75;
+
+        return (
+          <g key={panel.id} stroke={color} fill={color}>
+            {/* Líneas de extensión */}
+            <line
+              x1={px1} y1={yBase}
+              x2={px1} y2={chainY}
+              strokeWidth={svgTy.strokeExt}
+              opacity={0.6}
+              vectorEffect="non-scaling-stroke"
+            />
+            <line
+              x1={px2} y1={yBase}
+              x2={px2} y2={chainY}
+              strokeWidth={svgTy.strokeExt}
+              opacity={0.6}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Línea de cota */}
+            <line
+              x1={px1} y1={chainY}
+              x2={px2} y2={chainY}
+              strokeWidth={svgTy.strokeMain}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Terminadores (ticks) */}
+            <line
+              x1={px1} y1={chainY - tick / 2}
+              x2={px1} y2={chainY + tick / 2}
+              strokeWidth={svgTy.strokeTick}
+              vectorEffect="non-scaling-stroke"
+            />
+            <line
+              x1={px2} y1={chainY - tick / 2}
+              x2={px2} y2={chainY + tick / 2}
+              strokeWidth={svgTy.strokeTick}
+              vectorEffect="non-scaling-stroke"
+            />
+            {/* Etiqueta en mm */}
+            {showLabel && (
+              <text
+                x={(px1 + px2) / 2}
+                y={chainY + chainFont * 1.1}
+                textAnchor="middle"
+                fontSize={chainFont}
+                fontWeight={600}
+                fontFamily={FONT}
+                stroke="none"
+              >
+                {label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * IDs de panel (T-01, T-02…) dentro de los cuerpos de panel.
+ * Visible en modos 'client' y 'full'. No visible en 'technical'.
+ *
+ * @param {{
+ *   panels: import('../../utils/panelLayout.js').PanelLayoutResult['panels'],
+ *   x0: number,
+ *   y0: number,
+ *   h: number,
+ *   svgTy: object,
+ *   theme: object,
+ *   displayMode: 'client'|'technical'|'full',
+ * }} props
+ */
+export function PanelLabels({ panels, x0, y0, h, svgTy, theme, displayMode }) {
+  if (displayMode === 'technical') return null;
+  if (!panels?.length) return null;
+
+  const labelFont = svgTy.dimFont * 0.72;
+  const cutFont = labelFont * 0.8;
+
+  return (
+    <g data-bmc-layer={theme.layers.labels} pointerEvents="none">
+      {panels.map((panel) => {
+        const cx = x0 + panel.x0 + panel.width / 2;
+        const cy = y0 + h / 2;
+        const color = panel.isCut ? theme.warningColor : theme.textColor;
+        const labelWidthEst = panel.id.length * labelFont * 0.62;
+        if (panel.width < labelWidthEst * 0.5) return null;
+
+        return (
+          <g key={panel.id}>
+            <text
+              x={cx}
+              y={panel.isCut ? cy - cutFont * 0.7 : cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={labelFont}
+              fontWeight={700}
+              fontFamily={FONT}
+              fill={color}
+              opacity={0.65}
+            >
+              {panel.id}
+            </text>
+            {panel.isCut && (
+              <text
+                x={cx}
+                y={cy + cutFont * 0.8}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={cutFont}
+                fontWeight={600}
+                fontFamily={FONT}
+                fill={theme.warningColor}
+                opacity={0.75}
+              >
+                ✂
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * Badge de validez del layout en la esquina del SVG.
+ * Muestra `layout.isValid` y el primer `layout.warnings[0]` si existe.
+ * No hace comparación con BOM (para eso usar `verifyLayoutVsBom` en el wizard).
+ *
+ * @param {{
+ *   layout: import('../../utils/panelLayout.js').PanelLayoutResult,
+ *   x: number,
+ *   y: number,
+ *   svgTy: object,
+ * }} props
+ */
+export function VerificationBadge({ layout, x, y, svgTy }) {
+  if (!layout) return null;
+
+  const font = svgTy.dimFont * 0.72;
+  let text, fill;
+
+  if (!layout.isValid) {
+    text = '✗ Error en layout';
+    fill = '#B71C1C';
+  } else if (layout.warnings.length > 0) {
+    text = `⚠ ${layout.warnings[0]}`;
+    fill = '#E65100';
+  } else {
+    text = `✓ ${layout.nPaneles} panel${layout.nPaneles !== 1 ? 'es' : ''} · ${layout.area.toFixed(2)} m²`;
+    fill = '#1B5E20';
+  }
+
+  return (
+    <g data-bmc-layer="dim-verification" pointerEvents="none">
+      <text
+        x={x}
+        y={y}
+        fontSize={font}
+        fontFamily={FONT}
+        fill={fill}
+        opacity={0.85}
+      >
+        {text}
+      </text>
     </g>
   );
 }
