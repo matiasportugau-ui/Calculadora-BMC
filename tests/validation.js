@@ -1964,8 +1964,9 @@ assert("aggregatePanelLayoutVerifications failed=1", verAgg.failed === 1, verAgg
 assert("aggregatePanelLayoutVerifications pending=1", verAgg.pending === 1, verAgg.pending, 1);
 
 // buildPanelLayout: negative wasteUnclamped is clamped to 0
-// ancho is just below 3×1.12 = 3.36, simulating FP noise that could yield
-// anchoTotal < ancho and a negative wasteUnclamped before clamping.
+// ancho is just below 3×1.12 = 3.36 by ~1e-13, safely representable as an IEEE 754 double
+// and reliably distinct from 3.36 (Number.EPSILON≈2.22e-16 is below the ULP of 3.36≈4.44e-16
+// and might round back to 3.36 itself, so an explicit literal is more portable here).
 const layoutNegativeWaste = buildPanelLayout({
   panel: { au: 1.12 },
   largo: 6,
@@ -1979,8 +1980,9 @@ assert(
 );
 
 // buildPanelLayout: full panels have width===au and cutRatio===1 (defensive clamp)
-// ancho is just above 3×1.12 = 3.36 — all three resulting full strips should
-// have width clamped to exactly au via clampPanelWidth and cutRatio clamped to 1 via clamp01.
+// ancho = 3.36 + 1e-13, just above 3*au=3.36 — reliably distinct from 3.36 in IEEE 754
+// (unlike Number.EPSILON which is the ULP at 1.0 and may round back to 3.36 at this scale).
+// Full strips should have width clamped to au and cutRatio clamped to 1 via clamp01.
 const layoutWidthClamp = buildPanelLayout({
   panel: { au: 1.12 },
   largo: 6,
