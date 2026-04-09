@@ -193,7 +193,7 @@ export async function processOmniOutboxJob(pool, config, logger, job) {
     const [b, ...op] = rest.split("/");
     const [buf] = await storage.bucket(b).file(op.join("/")).download();
 
-    const pdfMod = await import("pdf-parse");
+    const pdfMod = await import("pdf-parse/lib/pdf-parse.js");
     const pdfParse = pdfMod.default || pdfMod;
     const data = await pdfParse(buf);
     const text = String(data.text || "").trim().slice(0, 50000);

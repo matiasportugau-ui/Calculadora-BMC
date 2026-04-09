@@ -17,6 +17,8 @@ import {
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
+import { sendMessengerText, sendInstagramText } from "../lib/metaOutbound.js";
+import { getOmniPool } from "../lib/omniDb.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 
@@ -1455,6 +1457,19 @@ export default function createBmcDashboardRouter(config) {
     next();
   });
 
+  router.get("/omni/health", (_req, res) => {
+    const pool = getOmniPool({
+      omniDatabaseUrl: config.omniDatabaseUrl,
+      databaseUrl: config.databaseUrl,
+    });
+    res.json({
+      ok: true,
+      databaseConfigured: !!pool,
+      gcsBucketConfigured: !!config.omniGcsBucket,
+      modeDefault: config.omniModeDefault || "listen",
+    });
+  });
+
   router.get("/cotizaciones", async (_req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     try {
@@ -2683,9 +2698,60 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         return res.json({ ok: true, channel: "whatsapp", sentAt, wa });
       }
 
+      if (/FB-Auto|Messenger|Facebook/i.test(origen)) {
+        if (!config.metaPageAccessToken) {
+          return res.status(503).json({ ok: false, error: "META_PAGE_ACCESS_TOKEN not set" });
+        }
+        const psid = String(parsed.telefono || "").trim();
+        if (!psid) return res.status(400).json({ ok: false, error: "Missing PSID (column D)" });
+        const ms = await sendMessengerText({
+          accessToken: config.metaPageAccessToken,
+          psid,
+          text,
+          graphVersion: config.metaGraphVersion,
+        });
+        const sentAt = new Date().toISOString();
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[sentAt]] },
+        });
+        return res.json({ ok: true, channel: "messenger", sentAt, messenger: ms });
+      }
+
+      if (/IG-Auto|Instagram/i.test(origen)) {
+        const tok = config.metaInstagramAccessToken;
+        const ig = config.metaInstagramAccountId;
+        if (!tok || !ig) {
+          return res.status(503).json({
+            ok: false,
+            error: "META_INSTAGRAM_ACCESS_TOKEN / META_INSTAGRAM_ACCOUNT_ID not set",
+          });
+        }
+        const igsid = String(parsed.telefono || "").trim();
+        if (!igsid) return res.status(400).json({ ok: false, error: "Missing IGSID (column D)" });
+        const igResp = await sendInstagramText({
+          accessToken: tok,
+          instagramAccountId: ig,
+          igsid,
+          text,
+          graphVersion: config.metaGraphVersion,
+        });
+        const sentAt = new Date().toISOString();
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[sentAt]] },
+        });
+        return res.json({ ok: true, channel: "instagram", sentAt, instagram: igResp });
+      }
+
       return res.status(400).json({
         ok: false,
-        error: "Unsupported origen for send-approved (need ML + Q:id in W, or WA in F)",
+        error:
+          "Unsupported origen for send-approved (need ML + Q:id in W, WA, FB-Auto/Messenger, or IG-Auto/Instagram in F)",
         origen,
       });
     } catch (e) {
