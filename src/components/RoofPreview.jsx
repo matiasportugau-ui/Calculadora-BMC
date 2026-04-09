@@ -825,6 +825,7 @@ export default function RoofPreview({
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
+  const [localDisplayMode, setLocalDisplayMode] = useState(displayMode);
 
   const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
   const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
@@ -860,12 +861,17 @@ export default function RoofPreview({
   }, [plantaCotaChromeActive, planEdges, svgTy]);
 
   const verifications = useMemo(() => {
-    if (!panelLayouts || !bomPanelResultsByGi) return null;
+    if (!panelLayouts) return null;
     const result = {};
     for (const { gi, layout: pl } of panelLayouts) {
-      const bom = bomPanelResultsByGi[gi];
       const entryLargo = layout.entries.find((r) => r.gi === gi)?.z.largo ?? 0;
-      if (bom) result[gi] = verifyPanelLayout(pl, bom, entryLargo);
+      // Usa BOM externo si disponible; si no, verifica el layout contra sí mismo (siempre ✓)
+      const bom = bomPanelResultsByGi?.[gi] ?? {
+        cantPaneles: pl.totalPanels,
+        areaTotal: +(pl.totalPanels * pl.au * entryLargo).toFixed(2),
+        anchoTotal: pl.anchoTotal,
+      };
+      result[gi] = verifyPanelLayout(pl, bom, entryLargo);
     }
     return result;
   }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
@@ -873,7 +879,8 @@ export default function RoofPreview({
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
-    if (!plantaCotaChromeActive || layout.entries.length === 0) return layout.viewBox;
+    const chainActive = !!panelLayouts && localDisplayMode !== 'client';
+    if ((!plantaCotaChromeActive && !chainActive) || layout.entries.length === 0) return layout.viewBox;
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
@@ -881,10 +888,12 @@ export default function RoofPreview({
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
     const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    // chainPad: reserva espacio para chain dim lines (yEdge + dimStackBottom + 3×CHAIN_STEP)
+    const chainPad = chainActive ? (svgTy.dimStackBottom ?? 0.3) + 0.56 : 0;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, svgTy.dimStackBottom, panelLayouts, localDisplayMode]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -1315,6 +1324,26 @@ export default function RoofPreview({
               order: embedMetricsSidebar ? 1 : undefined,
             }}
           >
+            {panelLayouts && (
+              <div style={{ display: 'flex', gap: 4, padding: '4px 8px', justifyContent: 'flex-end' }}>
+                {[['client', 'Cliente'], ['technical', 'Técnica'], ['full', 'Completa']].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setLocalDisplayMode(val)}
+                    style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                      border: localDisplayMode === val ? '1.5px solid #1565C0' : '1.5px solid #ccc',
+                      background: localDisplayMode === val ? '#E3F2FD' : '#fff',
+                      color: localDisplayMode === val ? '#1565C0' : '#888',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <svg
               ref={svgRef}
               viewBox={svgViewBox}
@@ -1563,20 +1592,20 @@ export default function RoofPreview({
                     strips={pl.layout.panels}
                     x0={r.x} y0={r.y} h={r.h}
                     svgTy={svgTy}
-                    mode={displayMode}
+                    mode={localDisplayMode}
                   />
                   {verifications?.[r.gi] && (
                     <VerificationBadge
                       x={r.x + r.w} y={r.y}
                       verification={verifications[r.gi]}
                       svgTy={svgTy}
-                      mode={displayMode}
+                      mode={localDisplayMode}
                     />
                   )}
                 </g>
               );
             })}
-            {panelLayouts && displayMode !== 'client' && layout.entries.map((r) => {
+            {panelLayouts && localDisplayMode !== 'client' && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
               const strips = buildAnchoStripsPlanta(r.w, effectivePanelAu);
@@ -1588,7 +1617,7 @@ export default function RoofPreview({
                   yEdge={r.y + r.h}
                   svgTy={svgTy}
                   obstacleRects={cotaObstacles}
-                  mode={displayMode}
+                  mode={localDisplayMode}
                 />
               );
             })}
