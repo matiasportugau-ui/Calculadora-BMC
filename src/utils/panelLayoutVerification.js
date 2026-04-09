@@ -53,14 +53,24 @@ export function verifyLayoutVsBom(layout, calcResult) {
     });
   }
 
-  // 3. La cadena cubre el ancho pedido
+  // 3. La cadena cubre el ancho pedido.
+  // Distinguir "layout vacío por inputs inválidos" de "cadena no cubre ancho":
+  // si panels.length === 0, buildPanelLayout recibió parámetros inválidos (au/largo/ancho ≤ 0);
+  // en ese caso el error es de datos, no de cobertura.
   if (!layout.isValid) {
-    errors.push({
-      type: 'CHAIN_UNDERFLOW',
-      suma: layout.anchoTotal,
-      input: layout.inputAncho,
-      msg: `Suma de cadena (${layout.anchoTotal.toFixed(3)} m) no cubre el ancho pedido (${layout.inputAncho} m)`,
-    });
+    if (layout.panels.length === 0) {
+      errors.push({
+        type: 'NO_LAYOUT_DATA',
+        msg: 'El layout no tiene paneles — verificar que au, largo y ancho sean mayores a cero',
+      });
+    } else {
+      errors.push({
+        type: 'CHAIN_UNDERFLOW',
+        suma: layout.anchoTotal,
+        input: layout.inputAncho,
+        msg: `Suma de cadena (${layout.anchoTotal.toFixed(3)} m) no cubre el ancho pedido (${layout.inputAncho} m)`,
+      });
+    }
   }
 
   // 4. Ancho total (calcPanelesTecho devuelve anchoTotal = n * au, que puede exceder input)

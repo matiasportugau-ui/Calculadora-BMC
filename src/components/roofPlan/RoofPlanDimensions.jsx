@@ -16,6 +16,7 @@ import {
   ROOF_PLAN_ENCOUNTER_LABEL_FILL,
   ROOF_PLAN_ENCOUNTER_LABEL_HALO,
   ROOF_PLAN_LAYER_GLOBAL_COTAS,
+  DIM_THEME,
 } from "../../utils/roofPlanDrawingTheme.js";
 
 function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
@@ -494,7 +495,7 @@ export function VerificationBadge({ layout, x, y, svgTy }) {
   }
 
   return (
-    <g data-bmc-layer="dim-verification" pointerEvents="none">
+    <g data-bmc-layer={DIM_THEME.layers.verification} pointerEvents="none">
       <text
         x={x}
         y={y}
