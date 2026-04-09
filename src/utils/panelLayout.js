@@ -42,7 +42,10 @@ export function buildPanelLayout({ au, largo, ancho }) {
 
   for (let i = 0; i < n; i++) {
     const remaining = ancho - x0;
-    const width = i < n - 1 ? au : remaining;
+    // Clamp last panel: floating-point accumulation can make `remaining`
+    // slightly > au (e.g. 5.6000000000000005 / 1.12 = 5 exact panels but
+    // remaining ≈ 1.1200000000000001). Also guard against negative remainder.
+    const width = i < n - 1 ? au : Math.min(au, Math.max(0, remaining));
     const isCut = width < au - 1e-9;
     panels.push({
       index: i,

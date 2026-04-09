@@ -844,6 +844,26 @@ export default function RoofPreview({
     );
   }, [layout.entries, panelAu]);
 
+  /**
+   * Layout agregado de TODAS las zonas para el VerificationBadge.
+   * Sin esto, el badge muestra solo la zona 0 y puede reportar ✓
+   * cuando otra zona tiene cortes o isValid=false.
+   */
+  const aggregatedLayout = useMemo(() => {
+    if (!panelLayouts.length) return null;
+    return panelLayouts.reduce((acc, zl, i) => {
+      if (i === 0) {
+        return { nPaneles: zl.nPaneles, area: zl.area, warnings: [...zl.warnings], isValid: zl.isValid };
+      }
+      return {
+        nPaneles: acc.nPaneles + zl.nPaneles,
+        area: +(acc.area + zl.area).toFixed(4),
+        warnings: [...new Set([...acc.warnings, ...zl.warnings])],
+        isValid: acc.isValid && zl.isValid,
+      };
+    }, null);
+  }, [panelLayouts]);
+
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
@@ -1587,9 +1607,9 @@ export default function RoofPreview({
                 svgTy={svgTy}
               />
             ) : null}
-            {plantaCotaChromeActive && panelLayouts[0] && layout.entries.length ? (
+            {plantaCotaChromeActive && aggregatedLayout ? (
               <VerificationBadge
-                layout={panelLayouts[0]}
+                layout={aggregatedLayout}
                 x={layout.viewMetrics?.vbX ?? layout.entries[0].x}
                 y={
                   Math.max(...layout.entries.map((r) => r.y + r.h))
