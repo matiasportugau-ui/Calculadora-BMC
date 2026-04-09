@@ -407,6 +407,3 @@ export function VerificationBadge({ x, y, verification, svgTy, mode = 'technical
     </g>
   );
 }
-
-// ─── Obstacle bridge (for RoofPreview chain dim collision avoidance) ──────────
-export { buildEstructuraCotaObstacleRects as computeCotaObstacles } from '../../utils/roofPlanCotaObstacles.js';

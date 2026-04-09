@@ -23,12 +23,12 @@ import {
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
+import { buildEstructuraCotaObstacleRects as computeCotaObstacles } from "../utils/roofPlanCotaObstacles.js";
 import {
   EstructuraGlobalExteriorOverlay,
   PanelChainDimensions,
   PanelLabels,
   VerificationBadge,
-  computeCotaObstacles,
 } from "./roofPlan/RoofPlanDimensions.jsx";
 import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";

@@ -2982,76 +2982,6 @@ export default function PanelinCalculadoraV3() {
     }));
   }, [setTecho]);
 
-  const roof2DPreviewForVisor = useMemo(() => {
-    if (!showRoof2dInQuoteVisor) return null;
-    const embedMetrics = activeWizardStepId !== "estructura";
-    return (
-      <RoofPreview
-        zonas={techo.zonas || []}
-        tipoAguas={techo.tipoAguas}
-        pendiente={techo.pendiente}
-        panelAu={techoPanelData?.au ?? 1.12}
-        panelObj={techoPanelData ?? null}
-        onZonaPreviewChange={updateZonaPreview}
-        onResetLayout={resetRoofPreviewLayout}
-        onAnnexRankSwap={swapAnnexRank}
-        onAddZona={addZona}
-        onEncounterPairChange={onRoofEncounterPairChange}
-        onZonaDimensionPatch={onRoofZonaDimensionPatch}
-        estructuraHintsByGi={roofEstructuraHintsByGi}
-        showPlantaExteriorCotas={showRoof2dInQuoteVisor}
-        embedMetricsSidebar={embedMetrics}
-        selectedZonaGi={embedMetrics ? undefined : estructuraMetricsSelectedGi}
-        onSelectedZonaGiChange={embedMetrics ? undefined : setEstructuraMetricsSelectedGi}
-        denseChrome
-        combinadaFijacionAssign={combinadaRoof2dAssignActive}
-        combinadaFijByGi={combinadaFijByGi}
-        onCombinadaFijacionSync={handleCombinadaFijacionSync}
-        combinadaPtsH={techo.ptsHorm ?? 0}
-        combinadaPtsMetal={techo.ptsMetal ?? 0}
-        combinadaPtsMadera={techo.ptsMadera ?? 0}
-        bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
-        bordesPanelFamiliaKey={techo.familia || ""}
-        techoBorders={techo.borders}
-        onTechoBorderChange={(side, val) =>
-          setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
-        }
-        onZonaBorderChange={(gi, side, val) =>
-          updateZonaPreview(gi, {
-            borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
-          })
-        }
-      />
-    );
-  }, [
-    showRoof2dInQuoteVisor,
-    activeWizardStepId,
-    estructuraMetricsSelectedGi,
-    techo.zonas,
-    techo.tipoAguas,
-    techo.pendiente,
-    techoPanelData?.au,
-    updateZonaPreview,
-    resetRoofPreviewLayout,
-    swapAnnexRank,
-    addZona,
-    onRoofEncounterPairChange,
-    onRoofZonaDimensionPatch,
-    roofEstructuraHintsByGi,
-    combinadaRoof2dAssignActive,
-    combinadaFijByGi,
-    handleCombinadaFijacionSync,
-    techo.ptsHorm,
-    techo.ptsMetal,
-    techo.ptsMadera,
-    bordesPlantaRoof2dAssignActive,
-    techo.familia,
-    techo.borders,
-    techo.inclAccesorios,
-    setTecho,
-    updateZonaPreview,
-  ]);
-
   /** Índice de zona “techo principal” (presupuesto): manual `techo.zonaPrincipalGi`; si no, siempre la primera (no roba atención un tramo nuevo aunque tenga más m²). */
   const effectivePrincipalZonaGi = useMemo(() => {
     const z = techo.zonas || [];
@@ -3486,6 +3416,76 @@ export default function PanelinCalculadoraV3() {
   const bordesPlantaRoof2dAssignActive = Boolean(
     scenarioDef?.hasTecho && techo.inclAccesorios !== false && activeWizardStepId === "bordes",
   );
+
+  const roof2DPreviewForVisor = useMemo(() => {
+    if (!showRoof2dInQuoteVisor) return null;
+    const embedMetrics = activeWizardStepId !== "estructura";
+    return (
+      <RoofPreview
+        zonas={techo.zonas || []}
+        tipoAguas={techo.tipoAguas}
+        pendiente={techo.pendiente}
+        panelAu={techoPanelData?.au ?? 1.12}
+        panelObj={techoPanelData ?? null}
+        onZonaPreviewChange={updateZonaPreview}
+        onResetLayout={resetRoofPreviewLayout}
+        onAnnexRankSwap={swapAnnexRank}
+        onAddZona={addZona}
+        onEncounterPairChange={onRoofEncounterPairChange}
+        onZonaDimensionPatch={onRoofZonaDimensionPatch}
+        estructuraHintsByGi={roofEstructuraHintsByGi}
+        showPlantaExteriorCotas={showRoof2dInQuoteVisor}
+        embedMetricsSidebar={embedMetrics}
+        selectedZonaGi={embedMetrics ? undefined : estructuraMetricsSelectedGi}
+        onSelectedZonaGiChange={embedMetrics ? undefined : setEstructuraMetricsSelectedGi}
+        denseChrome
+        combinadaFijacionAssign={combinadaRoof2dAssignActive}
+        combinadaFijByGi={combinadaFijByGi}
+        onCombinadaFijacionSync={handleCombinadaFijacionSync}
+        combinadaPtsH={techo.ptsHorm ?? 0}
+        combinadaPtsMetal={techo.ptsMetal ?? 0}
+        combinadaPtsMadera={techo.ptsMadera ?? 0}
+        bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
+        bordesPanelFamiliaKey={techo.familia || ""}
+        techoBorders={techo.borders}
+        onTechoBorderChange={(side, val) =>
+          setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
+        }
+        onZonaBorderChange={(gi, side, val) =>
+          updateZonaPreview(gi, {
+            borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
+          })
+        }
+      />
+    );
+  }, [
+    showRoof2dInQuoteVisor,
+    activeWizardStepId,
+    estructuraMetricsSelectedGi,
+    techo.zonas,
+    techo.tipoAguas,
+    techo.pendiente,
+    techoPanelData?.au,
+    updateZonaPreview,
+    resetRoofPreviewLayout,
+    swapAnnexRank,
+    addZona,
+    onRoofEncounterPairChange,
+    onRoofZonaDimensionPatch,
+    roofEstructuraHintsByGi,
+    combinadaRoof2dAssignActive,
+    combinadaFijByGi,
+    handleCombinadaFijacionSync,
+    techo.ptsHorm,
+    techo.ptsMetal,
+    techo.ptsMadera,
+    bordesPlantaRoof2dAssignActive,
+    techo.familia,
+    techo.borders,
+    techo.inclAccesorios,
+    setTecho,
+  ]);
+
   const uP = (k, v) => setPared(pd => ({ ...pd, [k]: v }));
   const uPr = (k, v) => setProyecto(pr => ({ ...pr, [k]: v }));
 
