@@ -6,13 +6,14 @@
 // cantidad de paneles reparte el ancho en planta (w) cada au → columnas verticales / juntas verticales (alineado a calcPanelesTecho).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { C, FONT } from "../data/constants.js";
+import { Check } from "lucide-react";
+import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente } from "../utils/calculations.js";
 import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
-import { encounterPairKey, findEncounters } from "../utils/roofPlanGeometry.js";
+import { encounterPairKey, findEncounters, getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
 import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import {
   formatZonaDisplayTitle,
@@ -31,6 +32,16 @@ import {
 } from "./roofPlan/RoofPlanDimensions.jsx";
 import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
+import {
+  fijacionDotsLayout,
+  fijacionRowsFromHints,
+  yForFijacionRowPlanta,
+} from "../utils/roofEstructuraDotsLayout.js";
+import {
+  countCombinadaMaterialsInDots,
+  cycleCombinadaMaterial,
+  mergeCombinadaByKeyWithDefaults,
+} from "../utils/combinadaFijacionShared.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
@@ -181,176 +192,6 @@ function encounterStrokeForModo(modo) {
   return "#f59e0b";
 }
 
-/**
- * Posición Y de una fila de fijación en planta: filas **perimetrales** (1.ª y última) se desplazan **hacia adentro**
- * del rectángulo del techo (~30 cm desde el borde), no sobre la línea azul del perímetro.
- */
-function yForFijacionRowPlanta(r, rows, ri) {
-  if (rows <= 1) return r.y + r.h / 2;
-  const base = r.y + (ri / (rows - 1)) * r.h;
-  const isPerimeter = ri === 0 || ri === rows - 1;
-  if (!isPerimeter) return base;
-  const insetNominalM = 0.3;
-  const yInset = Math.min(insetNominalM, Math.max(0.04, r.h * 0.5 - 0.02));
-  return ri === 0 ? base + yInset : base - yInset;
-}
-
-/**
- * Dos fijaciones en **un panel** [xL, xR] (bordes = juntas verticales): **nunca** sobre la junta.
- * Preferencia: **tercios** (misma distancia al borde izq., entre puntos y borde der.) — alineado a “equidistantes”.
- * Paneles angostos: par simétrico con margen mínimo a juntas y separación mínima entre puntos.
- */
-/**
- * Alturas Y intermedias a lo largo de un tramo vertical [y1,y2] para que ningún tramo exceda ~espM (m).
- */
-function yInteriorSplitsAlongVerticalEdge(y1, y2, espM) {
-  const yMin = Math.min(y1, y2);
-  const yMax = Math.max(y1, y2);
-  const L = yMax - yMin;
-  if (!(L > 0) || !(espM > 0)) return [];
-  const nSeg = Math.ceil(L / espM);
-  if (nSeg <= 1) return [];
-  const out = [];
-  for (let i = 1; i < nSeg; i++) out.push(yMin + (i * L) / nSeg);
-  return out;
-}
-
-/**
- * Puntos de fijación en **laterales** de planta (`left`/`right`) sobre perímetro exterior libre,
- * alineados al cómputo `perimetroVerticalInteriorPuntosDesdePlanta` / `countExposedVerticalPerimeterFixingInteriorPointsForZona`.
- */
-function fijacionDotsPerimetroVerticalExterior(r, exterior, gi, espM) {
-  const dots = [];
-  let key = 1_000_000;
-  const inset = Math.min(0.3, Math.max(0.04, r.w * 0.11));
-  const xLeft = r.x + Math.min(inset, Math.max(0.04, r.w * 0.06));
-  const xRight = r.x + r.w - Math.min(inset, Math.max(0.04, r.w * 0.06));
-  for (const e of exterior || []) {
-    if (e.zoneIndex !== gi) continue;
-    if (e.side !== "left" && e.side !== "right") continue;
-    const xs = e.side === "left" ? xLeft : xRight;
-    for (const cy of yInteriorSplitsAlongVerticalEdge(e.y1, e.y2, espM)) {
-      dots.push({ cx: xs, cy, key: key++ });
-    }
-  }
-  return dots;
-}
-
-function xPairFijacionPerimeterInPanel(xL, xR, insetNominalM = 0.3) {
-  const w = xR - xL;
-  if (!(w > 1e-9)) {
-    const x = (xL + xR) / 2;
-    return { xa: x, xb: x };
-  }
-  const minBetween = Math.max(0.045, w * 0.07);
-  const minFromJoint = Math.min(insetNominalM, Math.max(0.04, w * 0.11));
-  const third = w / 3;
-  if (third >= minFromJoint && third >= minBetween) {
-    return { xa: xL + third, xb: xL + 2 * third };
-  }
-  const innerL = xL + minFromJoint;
-  const innerR = xR - minFromJoint;
-  const innerW = innerR - innerL;
-  if (innerW >= minBetween) {
-    const mid = (innerL + innerR) / 2;
-    const half = Math.min(innerW * 0.42, Math.max(minBetween / 2, innerW / 3));
-    let xa = mid - half;
-    let xb = mid + half;
-    if (xb - xa < minBetween) {
-      const pad = (minBetween - (xb - xa)) / 2;
-      xa -= pad;
-      xb += pad;
-      xa = Math.max(innerL, Math.min(xa, xb - minBetween));
-      xb = Math.min(innerR, Math.max(xb, xa + minBetween));
-    }
-    return { xa, xb };
-  }
-  const mid = (xL + xR) / 2;
-  const eps = Math.max(0.02, w * 0.08);
-  return { xa: mid - eps, xb: mid + eps };
-}
-
-/** Reparto de puntos de fijación por filas alineadas a ejes de apoyo (modo legado: reparte P en N filas). */
-function fijacionDotsLayoutDistributeTotal(r, hints) {
-  const P = Math.round(Number(hints.puntosFijacion));
-  if (!(P > 0) || !(r.w > 0) || !(r.h > 0)) return [];
-  const nAp = Number(hints.apoyos);
-  const rows =
-    Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
-  const counts = [];
-  const base = Math.floor(P / rows);
-  let extra = P - base * rows;
-  for (let i = 0; i < rows; i++) {
-    counts.push(base + (extra > 0 ? 1 : 0));
-    if (extra > 0) extra -= 1;
-  }
-  const mx = Math.min(r.w, Math.max(0.12, r.w * 0.06));
-  const x0 = r.x + mx;
-  const x1 = r.x + r.w - mx;
-  const usableW = Math.max(1e-6, x1 - x0);
-  const out = [];
-  let key = 0;
-  for (let ri = 0; ri < rows; ri++) {
-    const nInRow = counts[ri] || 0;
-    const yy = yForFijacionRowPlanta(r, rows, ri);
-    for (let j = 0; j < nInRow; j++) {
-      const t = nInRow === 1 ? 0.5 : (j + 1) / (nInRow + 1);
-      const cx = x0 + t * usableW;
-      out.push({ cx, cy: yy, key: key++ });
-    }
-  }
-  return out;
-}
-
-/**
- * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel en **tercios** del ancho del panel
- * (equidistantes respecto de juntas y entre sí; nunca sobre juntas verticales ni bordes del panel).
- * Filas perimetrales en Y: **~30 cm hacia adentro** del borde del techo (no sobre la línea azul del perímetro).
- * En **intermedios**, **1** punto centrado en cada panel (lejos de juntas).
- */
-function fijacionDotsLayoutIsodecGrid(r, hints, exterior) {
-  const cantP = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
-  if (!(r.w > 0) || !(r.h > 0)) return [];
-  const nAp = Number(hints.apoyos);
-  const rows =
-    Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
-  const panelW = r.w / cantP;
-  const out = [];
-  let key = 0;
-  const insetNominal = 0.3;
-  for (let ri = 0; ri < rows; ri++) {
-    const yy = yForFijacionRowPlanta(r, rows, ri);
-    const isPerimeter = ri === 0 || ri === rows - 1;
-    for (let pi = 0; pi < cantP; pi++) {
-      const xL = r.x + pi * panelW;
-      const xR = r.x + (pi + 1) * panelW;
-      if (isPerimeter) {
-        const { xa, xb } = xPairFijacionPerimeterInPanel(xL, xR, insetNominal);
-        out.push({ cx: xa, cy: yy, key: key++ });
-        out.push({ cx: xb, cy: yy, key: key++ });
-      } else {
-        out.push({ cx: (xL + xR) / 2, cy: yy, key: key++ });
-      }
-    }
-  }
-  const espM = Number(hints?.fijacionEspaciadoPerimetroM) || 2.5;
-  const extra =
-    exterior?.length && hints?.fijacionDotsMode === "isodec_grid"
-      ? fijacionDotsPerimetroVerticalExterior(r, exterior, r.gi, espM)
-      : [];
-  return [...out, ...extra];
-}
-
-function fijacionDotsLayout(r, hints, exterior) {
-  if (!hints || !(r.w > 0) || !(r.h > 0)) return [];
-  const useGrid =
-    hints.fijacionSistema === "varilla_tuerca" && hints.fijacionDotsMode === "isodec_grid";
-  if (useGrid) return fijacionDotsLayoutIsodecGrid(r, hints, exterior);
-  const P = Math.round(Number(hints.puntosFijacion));
-  if (!(P > 0)) return [];
-  return fijacionDotsLayoutDistributeTotal(r, hints);
-}
-
 /** Popover fijo al viewport: productos de fijación que entran al presupuesto (BOM). */
 function FijacionBomHoverPopover({ anchor, onMouseEnter, onMouseLeave, zonaLabel, sysLabel, gridExpl, productLines }) {
   if (!anchor) return null;
@@ -415,11 +256,28 @@ function FijacionBomHoverPopover({ anchor, onMouseEnter, onMouseLeave, zonaLabel
   return typeof document !== "undefined" ? createPortal(body, document.body) : null;
 }
 
+function combinadaMaterialFill(mat) {
+  if (mat === "hormigon") return "#0ea5e9";
+  if (mat === "madera") return "#b45309";
+  return "#1e293b";
+}
+
 /**
  * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
- * Sin cartel de texto de apoyos/pts (la info está en el panel); cotas rojas en `EstructuraGlobalExteriorOverlay`.
+ * Modo Combinada: clic en apoyos, bandas de perímetro y puntos para asignar hormigón / metal / madera.
  */
-function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
+function EstructuraZonaOverlay({
+  r,
+  hints,
+  svgTy,
+  exterior = [],
+  combinadaAssign = false,
+  combinadaByKey = null,
+  combinadaPtsH = 0,
+  combinadaPtsMetal = 0,
+  combinadaPtsMadera = 0,
+  onCombinadaZoneInteraction = null,
+}) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
   const hidePopTimer = useRef(null);
 
@@ -452,16 +310,17 @@ function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
 
   if (!hints) return null;
 
-  const nAp = hints.apoyos;
   const zm = svgTy?.m ?? 1;
-  const supportLines = [];
-  if (Number.isFinite(nAp) && nAp >= 2 && r.h > 1e-6) {
-    const n = Math.min(32, Math.round(nAp));
+  const rows = fijacionRowsFromHints(hints);
+  const supportLinesVisual = [];
+  const supportLinesHit = [];
+  if (rows >= 2 && r.h > 1e-6) {
+    const n = Math.min(32, rows);
     for (let i = 0; i < n; i++) {
-      const yy = r.y + (i / (n - 1)) * r.h;
-      supportLines.push(
+      const yy = yForFijacionRowPlanta(r, n, i);
+      supportLinesVisual.push(
         <line
-          key={`est-ap-${r.gi}-${i}`}
+          key={`est-ap-v-${r.gi}-${i}`}
           x1={r.x}
           y1={yy}
           x2={r.x + r.w}
@@ -473,10 +332,96 @@ function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
           pointerEvents="none"
         />,
       );
+      if (combinadaAssign && typeof onCombinadaZoneInteraction === "function") {
+        supportLinesHit.push(
+          <line
+            key={`est-ap-hit-${r.gi}-${i}`}
+            x1={r.x}
+            y1={yy}
+            x2={r.x + r.w}
+            y2={yy}
+            stroke="transparent"
+            strokeWidth={0.22 * zm}
+            pointerEvents="stroke"
+            style={{ cursor: "pointer" }}
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              const pts = fijacionDotsLayout(r, hints, exterior);
+              const keysInRow = pts.filter((d) => d.rowIndex === i).map((d) => d.key);
+              if (!keysInRow.length) return;
+              onCombinadaZoneInteraction(r.gi, (prev) => {
+                const first = prev[keysInRow[0]] || "metal";
+                const nm = cycleCombinadaMaterial(first);
+                const next = { ...prev };
+                for (const k of keysInRow) next[k] = nm;
+                return next;
+              });
+            }}
+          />,
+        );
+      }
     }
   }
 
   const dotPts = fijacionDotsLayout(r, hints, exterior);
+  const dotKeys = dotPts.map((d) => d.key);
+  const mergedByKey =
+    combinadaAssign && typeof onCombinadaZoneInteraction === "function"
+      ? mergeCombinadaByKeyWithDefaults(
+          dotKeys,
+          combinadaByKey && typeof combinadaByKey === "object" ? combinadaByKey : {},
+          combinadaPtsH,
+          combinadaPtsMetal,
+          combinadaPtsMadera,
+        )
+      : {};
+
+  const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
+  const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
+  const perimeterBands =
+    combinadaAssign && typeof onCombinadaZoneInteraction === "function" && rows >= 2
+      ? [
+          {
+            key: "perim-top",
+            x: r.x,
+            y: r.y,
+            w: r.w,
+            h: hStrip,
+            pick: (dots) => dots.filter((d) => d.rowIndex === 0).map((d) => d.key),
+          },
+          {
+            key: "perim-bot",
+            x: r.x,
+            y: r.y + r.h - hStrip,
+            w: r.w,
+            h: hStrip,
+            pick: (dots) => dots.filter((d) => d.rowIndex === rows - 1).map((d) => d.key),
+          },
+          {
+            key: "perim-left",
+            x: r.x,
+            y: r.y,
+            w: wStrip,
+            h: r.h,
+            pick: (dots) =>
+              dots
+                .filter((d) => d.cx <= r.x + wStrip + 1e-6 || (d.kind === "pv" && d.edge === "left"))
+                .map((d) => d.key),
+          },
+          {
+            key: "perim-right",
+            x: r.x + r.w - wStrip,
+            y: r.y,
+            w: wStrip,
+            h: r.h,
+            pick: (dots) =>
+              dots
+                .filter((d) => d.cx >= r.x + r.w - wStrip - 1e-6 || (d.kind === "pv" && d.edge === "right"))
+                .map((d) => d.key),
+          },
+        ]
+      : [];
 
   const sysLabel =
     hints.fijacionSistema === "caballete"
@@ -494,45 +439,185 @@ function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
 
   return (
     <>
-    <g data-bmc-layer="estructura-overlay">
-      <g pointerEvents="none">{supportLines}</g>
-      <g pointerEvents="auto">
-        {dotPts.map((d) => (
-          <g key={`fij-dot-${r.gi}-${d.key}`}>
-            <circle
-              cx={d.cx}
-              cy={d.cy}
-              r={hitR}
-              fill="transparent"
-              style={{ cursor: "pointer" }}
-              onMouseEnter={showPopoverAt}
-              onMouseLeave={scheduleHidePopover}
-              aria-label="Ver productos de fijación incluidos en la cotización"
-            />
-            <circle
-              cx={d.cx}
-              cy={d.cy}
-              r={dotR}
-              fill="#1e293b"
-              stroke="#f8fafc"
-              strokeWidth={0.012 * zm}
-              opacity={0.9}
-              pointerEvents="none"
-            />
-          </g>
+      <g data-bmc-layer="estructura-overlay">
+        <g pointerEvents="none">{supportLinesVisual}</g>
+        {combinadaAssign && supportLinesHit.length ? <g pointerEvents="auto">{supportLinesHit}</g> : null}
+        {perimeterBands.map((band) => (
+          <rect
+            key={`${band.key}-${r.gi}`}
+            x={band.x}
+            y={band.y}
+            width={band.w}
+            height={band.h}
+            fill="rgba(124,58,237,0.06)"
+            stroke="rgba(124,58,237,0.35)"
+            strokeWidth={0.02 * zm}
+            style={{ cursor: "pointer" }}
+            pointerEvents="auto"
+            onPointerDown={(ev) => {
+              if (typeof onCombinadaZoneInteraction !== "function") return;
+              ev.stopPropagation();
+              ev.preventDefault();
+              const keysPick = band.pick(dotPts);
+              if (!keysPick.length) return;
+              onCombinadaZoneInteraction(r.gi, (prev) => {
+                const first = prev[keysPick[0]] || "metal";
+                const nm = cycleCombinadaMaterial(first);
+                const next = { ...prev };
+                for (const k of keysPick) next[k] = nm;
+                return next;
+              });
+            }}
+          />
         ))}
+        <g pointerEvents="auto">
+          {dotPts.map((d) => {
+            const mat = combinadaAssign ? mergedByKey[d.key] || "metal" : "metal";
+            const fill = combinadaAssign ? combinadaMaterialFill(mat) : "#1e293b";
+            return (
+              <g key={`fij-dot-${r.gi}-${d.key}`}>
+                <circle
+                  cx={d.cx}
+                  cy={d.cy}
+                  r={hitR}
+                  fill="transparent"
+                  style={{ cursor: combinadaAssign ? "pointer" : "pointer" }}
+                  onMouseEnter={showPopoverAt}
+                  onMouseLeave={scheduleHidePopover}
+                  aria-label={
+                    combinadaAssign
+                      ? `Material: ${mat}. Clic para rotar (hormigón / metal / madera).`
+                      : "Ver productos de fijación incluidos en la cotización"
+                  }
+                  onPointerDown={(ev) => {
+                    if (!combinadaAssign || typeof onCombinadaZoneInteraction !== "function") return;
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    onCombinadaZoneInteraction(r.gi, (prev) => {
+                      const next = { ...prev };
+                      next[d.key] = cycleCombinadaMaterial(prev[d.key] || "metal");
+                      return next;
+                    });
+                  }}
+                />
+                <circle
+                  cx={d.cx}
+                  cy={d.cy}
+                  r={dotR}
+                  fill={fill}
+                  stroke="#f8fafc"
+                  strokeWidth={0.012 * zm}
+                  opacity={0.92}
+                  pointerEvents="none"
+                />
+              </g>
+            );
+          })}
+        </g>
       </g>
-    </g>
-    <FijacionBomHoverPopover
-      anchor={fijPopAnchor}
-      onMouseEnter={clearHideTimer}
-      onMouseLeave={scheduleHidePopover}
-      zonaLabel={`Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`}
-      sysLabel={sysLabel}
-      gridExpl={gridExpl}
-      productLines={hints.fijacionProductLines}
-    />
+      <FijacionBomHoverPopover
+        anchor={fijPopAnchor}
+        onMouseEnter={clearHideTimer}
+        onMouseLeave={scheduleHidePopover}
+        zonaLabel={`Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`}
+        sysLabel={sysLabel}
+        gridExpl={gridExpl}
+        productLines={hints.fijacionProductLines}
+      />
     </>
+  );
+}
+
+const PLANTA_BORDER_SIDE_LABELS = {
+  frente: "Frente inferior",
+  fondo: "Frente superior",
+  latIzq: "Lateral izq.",
+  latDer: "Lateral der.",
+};
+
+function resolvePlantaBorderPanelFam(panelFamiliaKey) {
+  return PANELS_TECHO[panelFamiliaKey]?.fam || "";
+}
+
+function plantaBorderOptsForSide(side, panelFamiliaKey) {
+  const fam = resolvePlantaBorderPanelFam(panelFamiliaKey);
+  return (BORDER_OPTIONS[side] || []).filter((o) => !o.familias || o.familias.includes(fam));
+}
+
+/**
+ * Paso «Accesorios perimetrales»: bandas en planta (fondo=borde superior SVG, frente=inferior), misma convención que RoofBorderSelector / 3D.
+ */
+function PlantaBordesEdgeStrips({
+  r,
+  svgTy,
+  multiZona,
+  sharedSidesMap,
+  disabledSidesGlobal,
+  techoBorders,
+  zonas,
+  openGi,
+  openSide,
+  onStripPointerDown,
+}) {
+  const zm = svgTy?.m ?? 1;
+  const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
+  const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
+  const gi = r.gi;
+  const sideDefs = [
+    { side: "latIzq", x: r.x, y: r.y, w: wStrip, h: r.h },
+    { side: "latDer", x: r.x + r.w - wStrip, y: r.y, w: wStrip, h: r.h },
+    { side: "fondo", x: r.x, y: r.y, w: r.w, h: hStrip },
+    { side: "frente", x: r.x, y: r.y + r.h - hStrip, w: r.w, h: hStrip },
+  ];
+
+  const currentVal = (side) => {
+    if (multiZona) {
+      const zb = zonas[gi]?.preview?.borders ?? {};
+      return zb[side] ?? techoBorders[side] ?? "";
+    }
+    return techoBorders[side] ?? "";
+  };
+
+  const isDisabled = (side) => {
+    if (!multiZona && (disabledSidesGlobal || []).includes(side)) return true;
+    if (multiZona && sharedSidesMap.get(gi)?.get(side)?.fullySide) return true;
+    return false;
+  };
+
+  return (
+    <g data-bmc-layer="planta-bordes-assign" pointerEvents="auto">
+      {sideDefs.map(({ side, x, y, w, h }) => {
+        const dis = isDisabled(side);
+        const val = currentVal(side);
+        const active = val && val !== "none";
+        const isOpen = openGi === gi && openSide === side;
+        let fill = "rgba(147,197,253,0.20)";
+        if (dis) fill = "rgba(200,205,216,0.28)";
+        else if (isOpen) fill = "rgba(59,130,246,0.40)";
+        else if (active) fill = "rgba(96,165,250,0.35)";
+        const stroke = isOpen ? C.primary : active ? C.primary : "rgba(37,99,235,0.5)";
+        return (
+          <rect
+            key={`planta-bd-${gi}-${side}`}
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            rx={0.05 * zm}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={isOpen ? 0.06 * zm : 0.035 * zm}
+            style={{ cursor: dis ? "not-allowed" : "pointer" }}
+            onPointerDown={(ev) => {
+              if (dis) return;
+              ev.stopPropagation();
+              ev.preventDefault();
+              onStripPointerDown(ev, gi, side);
+            }}
+          />
+        );
+      })}
+    </g>
   );
 }
 
@@ -815,6 +900,17 @@ export function RoofPreviewMetricsSidebar({
  * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
  * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
  * @param {boolean} [props.denseChrome] - true en visor embebido: menos padding y el bloque SVG crece con el host (flex + altura máxima)
+ * @param {boolean} [props.combinadaFijacionAssign] - paso Estructura + tipo Combinada: clic en 2D para materiales (una sola zona en planta)
+ * @param {Record<number, Record<string, string>>|null} [props.combinadaFijByGi] - mapa punto → hormigon|metal|madera por zona
+ * @param {(payload: { byGi: Record<number, Record<string, string>>, ptsHorm: number, ptsMetal: number, ptsMadera: number }) => void} [props.onCombinadaFijacionSync]
+ * @param {number} [props.combinadaPtsH] - conteos actuales (para inicializar puntos sin mapa)
+ * @param {number} [props.combinadaPtsMetal]
+ * @param {number} [props.combinadaPtsMadera]
+ * @param {boolean} [props.bordesPlantaAssign] - paso Accesorios perimetrales: bandas en planta + popover (como 3D)
+ * @param {string} [props.bordesPanelFamiliaKey] - clave `PANELS_TECHO` (p. ej. techo.familia) para filtrar BORDER_OPTIONS
+ * @param {Record<string, string>|null} [props.techoBorders] - bordes globales (`techo.borders`)
+ * @param {(side: string, val: string) => void} [props.onTechoBorderChange] - una sola zona efectiva en planta
+ * @param {(gi: number, side: string, val: string) => void} [props.onZonaBorderChange] - multizona
  */
 export default function RoofPreview({
   zonas = [],
@@ -836,10 +932,24 @@ export default function RoofPreview({
   panelObj = null,
   displayMode = 'technical',
   bomPanelResultsByGi = null,
+  combinadaFijacionAssign = false,
+  combinadaFijByGi = null,
+  onCombinadaFijacionSync = null,
+  combinadaPtsH = 0,
+  combinadaPtsMetal = 0,
+  combinadaPtsMadera = 0,
+  bordesPlantaAssign = false,
+  bordesPanelFamiliaKey = "",
+  techoBorders = null,
+  onTechoBorderChange = null,
+  onZonaBorderChange = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
+  const plantaBorderPopRef = useRef(null);
+  const [plantaBorderPick, setPlantaBorderPick] = useState(null);
+  const [plantaBorderPopoverStyle, setPlantaBorderPopoverStyle] = useState(null);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
@@ -862,6 +972,146 @@ export default function RoofPreview({
   );
 
   const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas, panelObj ? 0.60 : null);
+
+  const combinadaSingleZona = Boolean(combinadaFijacionAssign && layout.entries.length === 1);
+
+  const bordersGlobalForPlanta = techoBorders && typeof techoBorders === "object" ? techoBorders : {};
+  const validZonasForBordes = useMemo(
+    () => (zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
+    [zonas],
+  );
+  const multiZonaBordes = validZonasForBordes.length > 1;
+  const bordesSharedSidesMap = useMemo(() => {
+    if (!bordesPlantaAssign || !multiZonaBordes) return new Map();
+    try {
+      return getSharedSidesPerZona(validZonasForBordes, tipoAguas);
+    } catch {
+      return new Map();
+    }
+  }, [bordesPlantaAssign, multiZonaBordes, validZonasForBordes, tipoAguas]);
+
+  const disabledSidesGlobalBordes = tipoAguas === "dos_aguas" && !multiZonaBordes ? ["fondo"] : [];
+  const bordesPlantaHandlersOk = typeof onTechoBorderChange === "function" || typeof onZonaBorderChange === "function";
+
+  useEffect(() => {
+    if (!bordesPlantaAssign) {
+      setPlantaBorderPick(null);
+      setPlantaBorderPopoverStyle(null);
+    }
+  }, [bordesPlantaAssign]);
+
+  useEffect(() => {
+    if (!plantaBorderPick) return;
+    const handler = (e) => {
+      const inPop = plantaBorderPopRef.current?.contains(e.target);
+      if (!inPop) {
+        setPlantaBorderPick(null);
+        setPlantaBorderPopoverStyle(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [plantaBorderPick]);
+
+  const positionPlantaBorderPopover = useCallback(() => {
+    const popEl = plantaBorderPopRef.current;
+    if (!plantaBorderPick || !popEl) return;
+    const popRect = popEl.getBoundingClientRect();
+    if (popRect.width === 0 || popRect.height === 0) return;
+    const vpPad = 10;
+    const gap = 10;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 800;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+    const { ax, ay, side } = plantaBorderPick;
+    const canBottom = ay + gap + popRect.height + vpPad <= vh;
+    const canTop = ay - gap - popRect.height - vpPad >= 0;
+    let top =
+      side === "fondo"
+        ? (canTop || !canBottom ? ay - gap - popRect.height : ay + gap)
+        : side === "frente"
+          ? (canBottom || !canTop ? ay + gap : ay - gap - popRect.height)
+          : ay - popRect.height / 2;
+    let left = ax - popRect.width / 2;
+    left = Math.min(Math.max(vpPad, left), vw - popRect.width - vpPad);
+    top = Math.min(Math.max(vpPad, top), vh - popRect.height - vpPad);
+    setPlantaBorderPopoverStyle({ top, left, opacity: 1 });
+  }, [plantaBorderPick]);
+
+  useLayoutEffect(() => {
+    if (plantaBorderPick) positionPlantaBorderPopover();
+    else setPlantaBorderPopoverStyle(null);
+  }, [plantaBorderPick, positionPlantaBorderPopover]);
+
+  useEffect(() => {
+    if (!plantaBorderPick) return;
+    window.addEventListener("resize", positionPlantaBorderPopover);
+    window.addEventListener("scroll", positionPlantaBorderPopover, true);
+    return () => {
+      window.removeEventListener("resize", positionPlantaBorderPopover);
+      window.removeEventListener("scroll", positionPlantaBorderPopover, true);
+    };
+  }, [plantaBorderPick, positionPlantaBorderPopover]);
+
+  const handlePlantaBordeStripDown = useCallback((ev, gi, side) => {
+    setPlantaBorderPick((prev) => {
+      if (prev?.gi === gi && prev?.side === side) return null;
+      return { gi, side, ax: ev.clientX, ay: ev.clientY };
+    });
+  }, []);
+
+  const applyPlantaBorderOption = useCallback(
+    (optId) => {
+      if (!plantaBorderPick) return;
+      const { gi, side } = plantaBorderPick;
+      if (multiZonaBordes && typeof onZonaBorderChange === "function") {
+        onZonaBorderChange(gi, side, optId);
+      } else if (typeof onTechoBorderChange === "function") {
+        onTechoBorderChange(side, optId);
+      }
+      setPlantaBorderPick(null);
+      setPlantaBorderPopoverStyle(null);
+    },
+    [plantaBorderPick, multiZonaBordes, onZonaBorderChange, onTechoBorderChange],
+  );
+
+  const handleCombinadaZoneInteraction = useCallback(
+    (gi, updater) => {
+      if (!combinadaSingleZona || typeof onCombinadaFijacionSync !== "function") return;
+      const entry = layout.entries[0];
+      if (!entry || entry.gi !== gi) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const keys = dots.map((d) => d.key);
+      const prev = mergeCombinadaByKeyWithDefaults(
+        keys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const next = updater(prev);
+      const c = countCombinadaMaterialsInDots(dots, next);
+      onCombinadaFijacionSync({
+        byGi: { [gi]: next },
+        ptsHorm: c.ptsHorm,
+        ptsMetal: c.ptsMetal,
+        ptsMadera: c.ptsMadera,
+      });
+    },
+    [
+      combinadaSingleZona,
+      onCombinadaFijacionSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
 
   const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
 
@@ -1263,6 +1513,12 @@ export default function RoofPreview({
             <>
               <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
               cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+              {combinadaSingleZona ? (
+                <>
+                  {" "}
+                  <strong style={{ color: C.tp }}>Combinada:</strong> tocá una línea de apoyo, una banda violeta del perímetro o un punto para rotar hormigón → metal → madera; los contadores se actualizan solos. Con varias zonas en planta, usá los números del panel.
+                </>
+              ) : null}
               Movimiento de zonas en planta: <strong>Deshacer / Rehacer</strong> o <kbd>Ctrl/Cmd+Z</kbd> / <kbd>Ctrl/Cmd+Shift+Z</kbd>.
             </>
           ) : (
@@ -1347,6 +1603,20 @@ export default function RoofPreview({
           >
             Cerrar
           </button>
+        </div>
+      )}
+      {bordesPlantaAssign && bordesPlantaHandlersOk && (
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: C.ts,
+            marginTop: plantaCotaChromeActive ? -2 : 0,
+            marginBottom: 8,
+            lineHeight: 1.35,
+          }}
+        >
+          <strong style={{ color: C.tp }}>Accesorios perimetrales (planta):</strong> tocá los bordes resaltados de cada zona; misma convención que el 3D (frente = borde inferior del rectángulo en 2D). Los lados totalmente compartidos entre zonas no se eligen aquí.
         </div>
       )}
       <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
@@ -1565,6 +1835,12 @@ export default function RoofPreview({
                       hints={estructuraHintsByGi[r.gi]}
                       svgTy={svgTy}
                       exterior={planEdges?.exterior ?? []}
+                      combinadaAssign={combinadaSingleZona}
+                      combinadaByKey={combinadaFijByGi?.[r.gi] ?? null}
+                      combinadaPtsH={combinadaPtsH}
+                      combinadaPtsMetal={combinadaPtsMetal}
+                      combinadaPtsMadera={combinadaPtsMadera}
+                      onCombinadaZoneInteraction={handleCombinadaZoneInteraction}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
@@ -1667,6 +1943,20 @@ export default function RoofPreview({
                       </text>
                     </g>
                   )}
+                  {bordesPlantaAssign && bordesPlantaHandlersOk ? (
+                    <PlantaBordesEdgeStrips
+                      r={r}
+                      svgTy={svgTy}
+                      multiZona={multiZonaBordes}
+                      sharedSidesMap={bordesSharedSidesMap}
+                      disabledSidesGlobal={disabledSidesGlobalBordes}
+                      techoBorders={bordersGlobalForPlanta}
+                      zonas={zonas}
+                      openGi={plantaBorderPick?.gi ?? null}
+                      openSide={plantaBorderPick?.side ?? null}
+                      onStripPointerDown={handlePlantaBordeStripDown}
+                    />
+                  ) : null}
                 </g>
               );
             })}
@@ -1744,6 +2034,105 @@ export default function RoofPreview({
           </div>
         ) : null}
       </div>
+      {plantaBorderPick && typeof document !== "undefined" && bordesPlantaAssign && bordesPlantaHandlersOk
+        ? createPortal(
+            (() => {
+              const { gi, side } = plantaBorderPick;
+              const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
+              let curVal = "";
+              if (multiZonaBordes) {
+                curVal = zonas[gi]?.preview?.borders?.[side] ?? bordersGlobalForPlanta[side] ?? "";
+              } else {
+                curVal = bordersGlobalForPlanta[side] ?? "";
+              }
+              const title = multiZonaBordes
+                ? `Zona ${gi + 1} — ${PLANTA_BORDER_SIDE_LABELS[side] || side}`
+                : PLANTA_BORDER_SIDE_LABELS[side] || side;
+              return (
+                <div
+                  ref={plantaBorderPopRef}
+                  style={{
+                    position: "fixed",
+                    zIndex: 10070,
+                    top: plantaBorderPopoverStyle?.top ?? -9999,
+                    left: plantaBorderPopoverStyle?.left ?? -9999,
+                    opacity: plantaBorderPopoverStyle?.opacity ?? 0,
+                    transition: "opacity 80ms ease",
+                    fontFamily: FONT,
+                    background: C.surface,
+                    borderRadius: 10,
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+                    minWidth: 220,
+                    maxWidth: 320,
+                    maxHeight: 320,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: C.ts,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      borderBottom: `1px solid ${C.border}`,
+                      background: C.surfaceAlt,
+                      borderRadius: "10px 10px 0 0",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {title}
+                  </div>
+                  <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
+                    {opts.map((opt, oi) => {
+                      const isSel = curVal === opt.id;
+                      return (
+                        <div
+                          key={`${side}-${opt.id}-${oi}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            applyPlantaBorderOption(opt.id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              applyPlantaBorderOption(opt.id);
+                            }
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            fontSize: 13,
+                            background: isSel ? C.primarySoft : "transparent",
+                            fontWeight: isSel ? 500 : 400,
+                            color: C.tp,
+                            transition: TR,
+                          }}
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <span>{opt.label}</span>
+                            {opt.descripcion ? (
+                              <span style={{ fontSize: 10, color: C.ts, fontWeight: 400, lineHeight: 1.3 }}>{opt.descripcion}</span>
+                            ) : null}
+                          </div>
+                          {isSel ? <Check size={14} color={C.primary} style={{ flexShrink: 0 }} /> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })(),
+            document.body,
+          )
+        : null}
     </div>
   );
 }

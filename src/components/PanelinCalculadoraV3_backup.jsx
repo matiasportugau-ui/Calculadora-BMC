@@ -3004,6 +3004,23 @@ export default function PanelinCalculadoraV3() {
         selectedZonaGi={embedMetrics ? undefined : estructuraMetricsSelectedGi}
         onSelectedZonaGiChange={embedMetrics ? undefined : setEstructuraMetricsSelectedGi}
         denseChrome
+        combinadaFijacionAssign={combinadaRoof2dAssignActive}
+        combinadaFijByGi={combinadaFijByGi}
+        onCombinadaFijacionSync={handleCombinadaFijacionSync}
+        combinadaPtsH={techo.ptsHorm ?? 0}
+        combinadaPtsMetal={techo.ptsMetal ?? 0}
+        combinadaPtsMadera={techo.ptsMadera ?? 0}
+        bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
+        bordesPanelFamiliaKey={techo.familia || ""}
+        techoBorders={techo.borders}
+        onTechoBorderChange={(side, val) =>
+          setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
+        }
+        onZonaBorderChange={(gi, side, val) =>
+          updateZonaPreview(gi, {
+            borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
+          })
+        }
       />
     );
   }, [
@@ -3021,6 +3038,18 @@ export default function PanelinCalculadoraV3() {
     onRoofEncounterPairChange,
     onRoofZonaDimensionPatch,
     roofEstructuraHintsByGi,
+    combinadaRoof2dAssignActive,
+    combinadaFijByGi,
+    handleCombinadaFijacionSync,
+    techo.ptsHorm,
+    techo.ptsMetal,
+    techo.ptsMadera,
+    bordesPlantaRoof2dAssignActive,
+    techo.familia,
+    techo.borders,
+    techo.inclAccesorios,
+    setTecho,
+    updateZonaPreview,
   ]);
 
   /** Índice de zona “techo principal” (presupuesto): manual `techo.zonaPrincipalGi`; si no, siempre la primera (no roba atención un tramo nuevo aunque tenga más m²). */
@@ -3112,6 +3141,65 @@ export default function PanelinCalculadoraV3() {
       items: group.items.filter(item => !excludedItems[item.lineId])
     })).filter(group => group.items.length > 0);
   }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion]);
+
+  /** Líneas de selladores para el paso wizard (cantidades/precios); si el presupuesto aún no los incluye, vista previa con hipótesis inclSell=true. */
+  const selladoresWizardRows = useMemo(() => {
+    if (scenario === "presupuesto_libre") return { items: [], fromHypothesis: false, subtotal: 0 };
+    if (!results || results.error) return { items: [], fromHypothesis: false, subtotal: 0 };
+
+    const extractSell = (r) => {
+      const g = applyOverrides(bomToGroups(r), overrides);
+      const sg = g.find((x) => x.title === "SELLADORES");
+      return sg?.items ?? [];
+    };
+
+    let items = extractSell(results);
+    let fromHypothesis = false;
+    if (items.length === 0) {
+      try {
+        const tHyp = scenarioDef?.hasTecho
+          ? {
+              ...techo,
+              opciones: {
+                ...(techo.opciones || {}),
+                inclSell: techo.opciones?.inclSell === false ? true : techo.opciones?.inclSell !== false,
+              },
+            }
+          : techo;
+        const pHyp = scenarioDef?.hasPared
+          ? {
+              ...pared,
+              inclSell: pared.inclSell === false ? true : pared.inclSell !== false,
+            }
+          : pared;
+        const rHyp = executeScenario(scenario, { techo: tHyp, pared: pHyp, camara });
+        if (rHyp && !rHyp.error) {
+          const hItems = extractSell(rHyp);
+          if (hItems.length > 0) {
+            items = hItems.map((i) => ({ ...i }));
+            fromHypothesis = true;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    items = items.map((i) => ({ ...i }));
+    const subtotal = items.reduce((s, i) => s + (Number(i.total) || 0), 0);
+    return { items, fromHypothesis, subtotal: +subtotal.toFixed(2) };
+  }, [scenario, scenarioDef, results, overrides, techo, pared, camara, listaPrecios]);
+
+  /** Mapeo estable sku+label → lineId del BOM actual (solo cuando selladores ya entran al cálculo). */
+  const selladoresLineIdByKey = useMemo(() => {
+    if (!results || results.error) return new Map();
+    const g = applyOverrides(bomToGroups(results), overrides);
+    const sell = g.find((x) => x.title === "SELLADORES");
+    const m = new Map();
+    (sell?.items || []).forEach((it) => {
+      m.set(`${String(it.sku)}||${String(it.label)}`, it.lineId);
+    });
+    return m;
+  }, [results, overrides]);
 
   // ── Grand totals (with overrides applied) ──
   const grandTotal = useMemo(() => {
@@ -3353,6 +3441,51 @@ export default function PanelinCalculadoraV3() {
 
   // ── Input updaters ──
   const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
+  const patchTechoCombinadaPts = useCallback(
+    (k, v) => {
+      if (k !== "ptsHorm" && k !== "ptsMetal" && k !== "ptsMadera") return;
+      setTecho((t) => ({
+        ...t,
+        [k]: v,
+        zonas: (t.zonas || []).map((z) => {
+          const { combinadaFijByKey: _drop, ...rest } = z;
+          return rest;
+        }),
+      }));
+    },
+    [setTecho],
+  );
+  const combinadaFijByGi = useMemo(() => {
+    const arr = techo.zonas || [];
+    const out = {};
+    for (let i = 0; i < arr.length; i++) {
+      const m = arr[i]?.combinadaFijByKey;
+      if (m && typeof m === "object" && Object.keys(m).length) out[i] = m;
+    }
+    return Object.keys(out).length ? out : null;
+  }, [techo.zonas]);
+  const handleCombinadaFijacionSync = useCallback(
+    ({ byGi, ptsHorm, ptsMetal, ptsMadera }) => {
+      setTecho((t) => ({
+        ...t,
+        ptsHorm,
+        ptsMetal,
+        ptsMadera,
+        zonas: (t.zonas || []).map((z, i) => {
+          const patch = byGi[i];
+          if (!patch) return z;
+          return { ...z, combinadaFijByKey: { ...patch } };
+        }),
+      }));
+    },
+    [setTecho],
+  );
+  const combinadaRoof2dAssignActive = Boolean(
+    scenarioDef?.hasTecho && techo.tipoEst === "combinada" && activeWizardStepId === "estructura",
+  );
+  const bordesPlantaRoof2dAssignActive = Boolean(
+    scenarioDef?.hasTecho && techo.inclAccesorios !== false && activeWizardStepId === "bordes",
+  );
   const uP = (k, v) => setPared(pd => ({ ...pd, [k]: v }));
   const uPr = (k, v) => setProyecto(pr => ({ ...pr, [k]: v }));
 
@@ -3371,6 +3504,25 @@ export default function PanelinCalculadoraV3() {
   const handleRestore = useCallback((lineId) => {
     setExcludedItems(prev => { const next = { ...prev }; delete next[lineId]; return next; });
   }, []);
+
+  const activateSelladoresInBudget = useCallback(() => {
+    setTecho((t) => ({ ...t, opciones: { ...(t.opciones || {}), inclSell: true } }));
+    if (scenarioDef?.hasPared) setPared((pd) => ({ ...pd, inclSell: true }));
+  }, [setTecho, setPared, scenarioDef]);
+
+  const handleSelladoresWizardCardClick = useCallback(
+    (it) => {
+      const k = `${String(it.sku)}||${String(it.label)}`;
+      const lineId = selladoresLineIdByKey.get(k);
+      if (!lineId) {
+        activateSelladoresInBudget();
+        return;
+      }
+      if (excludedItems[lineId]) handleRestore(lineId);
+      else handleExclude(lineId, it.label);
+    },
+    [selladoresLineIdByKey, excludedItems, activateSelladoresInBudget, handleRestore, handleExclude],
+  );
 
   const handleRestoreAll = useCallback(() => {
     setExcludedItems({});
@@ -4165,6 +4317,23 @@ export default function PanelinCalculadoraV3() {
                           onEncounterPairChange={onRoofEncounterPairChange}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
                           estructuraHintsByGi={roofEstructuraHintsByGi}
+                          combinadaFijacionAssign={combinadaRoof2dAssignActive}
+                          combinadaFijByGi={combinadaFijByGi}
+                          onCombinadaFijacionSync={handleCombinadaFijacionSync}
+                          combinadaPtsH={techo.ptsHorm ?? 0}
+                          combinadaPtsMetal={techo.ptsMetal ?? 0}
+                          combinadaPtsMadera={techo.ptsMadera ?? 0}
+                          bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
+                          bordesPanelFamiliaKey={techo.familia || ""}
+                          techoBorders={techo.borders}
+                          onTechoBorderChange={(side, val) =>
+                            setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
+                          }
+                          onZonaBorderChange={(gi, side, val) =>
+                            updateZonaPreview(gi, {
+                              borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val },
+                            })
+                          }
                         />
                       ) : null}
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
@@ -4256,9 +4425,9 @@ export default function PanelinCalculadoraV3() {
                         <div style={{ padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Cantidad de fijaciones por tipo</div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => uT("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                            <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => uT("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                            <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => uT("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                            <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => patchTechoCombinadaPts("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                            <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => patchTechoCombinadaPts("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                            <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => patchTechoCombinadaPts("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
                           </div>
                         </div>
                       )}
@@ -4299,7 +4468,20 @@ export default function PanelinCalculadoraV3() {
                   )}
                   {stepId === "selladores" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      <Toggle label="¿Consideramos selladores?" value={techo.opciones?.inclSell !== false} onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, inclSell: v } }))} />
+                      {scenarioDef?.hasTecho ? (
+                        <Toggle
+                          label="¿Consideramos selladores (techo)?"
+                          value={techo.opciones?.inclSell !== false}
+                          onChange={(v) => setTecho((t) => ({ ...t, opciones: { ...t.opciones, inclSell: v } }))}
+                        />
+                      ) : null}
+                      {scenarioDef?.hasPared ? (
+                        <Toggle
+                          label={scenarioDef?.hasTecho ? "¿Consideramos selladores (fachada)?" : "¿Consideramos selladores?"}
+                          value={pared.inclSell !== false}
+                          onChange={(v) => uP("inclSell", v)}
+                        />
+                      ) : null}
                       <Toggle
                         label="BOM comercial ISODEC PIR (2 goteros + 6 babetas + kit selladores + 22 pts fijación)"
                         value={techo.opciones?.bomComercial === true}
@@ -4308,6 +4490,127 @@ export default function PanelinCalculadoraV3() {
                       />
                       {(techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas") && (
                         <div style={{ fontSize: 11, color: C.ts, opacity: 0.85 }}>Solo familia ISODEC PIR y techo una agua. En dos aguas el kit se duplicaría por faldón.</div>
+                      )}
+                      {!categoriasActivas.SELLADORES && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "10px 12px",
+                            borderRadius: 10,
+                            border: `1px solid ${C.warning}`,
+                            background: C.warningSoft,
+                            fontSize: 12,
+                            color: C.tp,
+                          }}
+                        >
+                          <span>La categoría <strong>Selladores</strong> está desactivada en el presupuesto: no verás estas líneas en la tabla hasta activarla.</span>
+                          <button
+                            type="button"
+                            onClick={() => setCategoriasActivas((ca) => ({ ...ca, SELLADORES: true }))}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: 8,
+                              border: `1px solid ${C.primary}`,
+                              background: C.primarySoft,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: C.primary,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Activar categoría Selladores
+                          </button>
+                        </div>
+                      )}
+                      {selladoresWizardRows.fromHypothesis && (
+                        <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.45, padding: "10px 12px", background: C.warningSoft, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                          <strong style={{ color: C.tp }}>Vista previa:</strong> cantidades calculadas como si los selladores estuvieran activos. Tocá una tarjeta o activá el interruptor superior para sumarlas al presupuesto.
+                        </div>
+                      )}
+                      {selladoresWizardRows.items.length > 0 ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: C.tp, marginBottom: 8, fontSize: 13 }}>
+                            Líneas al cotizador ({listaPrecios === "web" ? "lista web" : "lista BMC"})
+                          </div>
+                          <div
+                            style={{
+                              display: "grid",
+                              gap: 10,
+                              gridTemplateColumns: "repeat(auto-fill, minmax(228px, 1fr))",
+                            }}
+                          >
+                            {selladoresWizardRows.items.map((it, idx) => {
+                              const rowKey = `${String(it.sku)}||${String(it.label)}||${idx}`;
+                              const lineId = selladoresLineIdByKey.get(`${String(it.sku)}||${String(it.label)}`);
+                              const excluded = Boolean(lineId && excludedItems[lineId]);
+                              const inPlay = Boolean(lineId && !excluded);
+                              const cantStr =
+                                typeof it.cant === "number" && Math.abs(it.cant - Math.round(it.cant)) > 1e-6
+                                  ? it.cant.toFixed(2)
+                                  : String(it.cant ?? "—");
+                              return (
+                                <button
+                                  key={rowKey}
+                                  type="button"
+                                  onClick={() => handleSelladoresWizardCardClick(it)}
+                                  style={{
+                                    textAlign: "left",
+                                    padding: "12px 14px",
+                                    borderRadius: 12,
+                                    border: `2px solid ${inPlay ? C.primary : excluded ? C.danger : C.border}`,
+                                    background: inPlay ? C.primarySoft : excluded ? C.dangerSoft : C.surface,
+                                    cursor: "pointer",
+                                    transition: TR,
+                                    minHeight: 120,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "space-between",
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 700, fontSize: 13, color: C.tp, lineHeight: 1.35 }}>{it.label}</div>
+                                  <div style={{ fontSize: 12, color: C.ts, marginTop: 8, lineHeight: 1.4 }}>
+                                    Cant. <strong style={{ color: C.tp }}>{cantStr}</strong> {it.unidad || ""}
+                                    <span style={{ display: "block", marginTop: 4 }}>
+                                      P. unit. U$S <strong style={{ color: C.tp }}>{fmtPrice(Number(it.pu) || 0)}</strong>
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: 15, fontWeight: 700, color: C.tp, marginTop: 10 }}>
+                                    Total U$S {fmtPrice(Number(it.total) || 0)}
+                                  </div>
+                                  <div style={{ fontSize: 11, marginTop: 8, color: inPlay ? C.primary : excluded ? C.danger : C.ts, fontWeight: 600 }}>
+                                    {!lineId
+                                      ? "Clic: activar selladores y sumar al presupuesto"
+                                      : excluded
+                                        ? "Quitado del presupuesto — clic para restaurar"
+                                        : "En presupuesto — clic para quitar"}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div
+                            style={{
+                              marginTop: 10,
+                              fontSize: 12,
+                              color: C.ts,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
+                            <span>
+                              Subtotal selladores (vista): <strong style={{ color: C.tp }}>U$S {fmtPrice(selladoresWizardRows.subtotal)}</strong> s/IVA
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: C.ts, padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                          Sin líneas de selladores con la configuración actual. Completá panel y dimensiones, o activá selladores arriba.
+                        </div>
                       )}
                       <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                         <div style={{ fontWeight: 600, color: C.tp, marginBottom: 6 }}>Uso de selladores</div>
@@ -4957,9 +5260,9 @@ export default function PanelinCalculadoraV3() {
               <div style={{ marginTop: 12, padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Cantidad de fijaciones por tipo (techo)</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => uT("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                  <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => uT("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                  <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => uT("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                  <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => patchTechoCombinadaPts("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                  <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => patchTechoCombinadaPts("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                  <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => patchTechoCombinadaPts("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
                 </div>
               </div>
             )}

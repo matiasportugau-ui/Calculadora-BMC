@@ -2,10 +2,10 @@
 
 **Maquetación HTML (imprimir a PDF):** abrir en navegador [`MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.html`](./MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.html) → Archivo → Imprimir → Guardar como PDF (activar gráficos de fondo).
 
-**Fusión MD + HTML (v1.1):** Este `.md` es la **fuente canónica** (control documental, secciones 1–5, anexos, historial). El `.html` es la **vista maquetada** de la misma spread (L/R) para pantalla e impresión; al cambiar hechos o redacción de **L-1…L-6** o página R, actualizar **ambos** archivos para mantener paridad.
+**Fusión MD + HTML (v1.2):** Este `.md` es la **fuente canónica** (control documental, secciones 1–5, anexos, historial). El `.html` es la **vista maquetada** de la misma spread (L/R) para pantalla e impresión; al cambiar hechos o redacción de **L-1…L-7** o página R, actualizar **ambos** archivos para mantener paridad.
 
 **Código del documento:** BMC-ORI-MAG-2026-04-09  
-**Versión:** 1.1 · **Estado:** Aprobado para uso interno  
+**Versión:** 1.2 · **Estado:** Aprobado para uso interno  
 **Clasificación:** Interno — operaciones y producto  
 **Idioma de trabajo:** ES (narrativa) / EN (identificadores técnicos, rutas, comandos)
 
@@ -29,9 +29,12 @@ Este informe implementa una **spread de revista de dos páginas**: la **página 
 
 1. **Gobernanza de despliegue (L-6):** existe runbook formal (skill de propagación y sync) que enlaza verificación local y `smoke:prod` contra producción pública.  
 2. **Coherencia de producto en UI (L-2):** baseline de producción sin errores de consola ni 5xx en la muestra; el informe original citaba **v3.0** vs **3.1.5** — **corrección en repo** vía `appSemver` y badge en headers; **pendiente** confirmación en prod y revisión del **modal** inicial.  
-3. **Estado del repositorio (L-1):** trabajo local y documentación pendiente de integración al remoto; riesgo operativo de **drift** entre colaboradores hasta push o PR.
+3. **Estado del repositorio (L-1):** trabajo local y documentación pendiente de integración al remoto; riesgo operativo de **drift** entre colaboradores hasta push o PR.  
+4. **Plano 2D y cotas (L-7):** la spread v1.1 no cubría el **desarrollo de producto** del visor (cotas rojas de planta/paso Estructura, geometría SVG, obstáculos de etiquetas, coherencia plano↔BOM). Ese hilo vive en `RoofPreview.jsx`, módulos `roofPlan*` y tests asociados; sigue **evolucionando** y debe quedar explícito en `PROJECT-STATE` y en futuras ediciones de este informe.
 
-**Acciones recomendadas (síntesis):** validar en producción el badge semver tras deploy (L-2); revisar comportamiento del modal inicial; ejecutar gate local si hubo cambios en `src/`; publicar cambios en `origin/main` cuando el diff esté revisado; tras cambios de API, validar contrato y humo de producción según L-6.
+**Nota de diseño (página L):** la **regla inferior roja** del titular y las **viñetas/refs L-n en `#E10600`** son **acentos editoriales** del PDF/HTML; **no** son las cotas técnicas del dibujo (ISO / tema `roofPlanDrawingTheme` en el producto).
+
+**Acciones recomendadas (síntesis):** validar en producción el badge semver tras deploy (L-2); revisar comportamiento del modal inicial; ejecutar gate local si hubo cambios en `src/`; publicar cambios en `origin/main` cuando el diff esté revisado; tras cambios de API, validar contrato y humo de producción según L-6; para plano 2D, mantener `npm test` (p. ej. consistencia visual/cota) y documentar hitos en `PROJECT-STATE` (L-7).
 
 ---
 
@@ -64,7 +67,7 @@ Este informe implementa una **spread de revista de dos páginas**: la **página 
 
 ## 2. Página L — Registro de operaciones (completo)
 
-**Notas de maquetación:** fondo blanco; titular de spread con regla inferior roja 2 px (`#E10600`); cada bloque **L-n** en tarjeta con esquinas 6 px; viñetas de lista en rojo solo cuando aporten jerarquía; pie de página: “Fuente: `docs/team/PROJECT-STATE.md` + estado Git (sesión de elaboración)”.
+**Notas de maquetación:** fondo blanco; titular de spread con regla inferior roja 2 px (`#E10600`) como **marca editorial** (no confundir con cotas de taller en el SVG del producto); cada bloque **L-n** en tarjeta con esquinas 6 px; viñetas de lista en rojo solo cuando aporten jerarquía; pie de página: “Fuente: `docs/team/PROJECT-STATE.md` + estado Git (sesión de elaboración)”.
 
 ### Titular de página
 
@@ -197,6 +200,28 @@ Skill `.cursor/skills/bmc-cross-sync-propagation/SKILL.md`: runbook **Calculador
 
 ---
 
+### L-7 — Plano 2D del techo: cotas, Estructura y capas SVG
+
+| Campo | Valor |
+|--------|--------|
+| **ID** | `CALC-2026-04-09-PLANO-2D` `[inferred]` |
+| **Marca temporal** | `2026-04-09` `[inferred]` |
+| **Severidad** | `NOTICE` `[inferred — producto en evolución]` |
+| **Componente** | `src/components/RoofPreview.jsx` · `src/components/roofPlan/` · `src/utils/roofPlanGeometry.js` · `roofPlanDrawingTheme.js` · `roofPlanCotaObstacles.js` · `roofPlanSvgTypography.js` · utilidades `roofEstructuraDotsLayout.js` / `combinadaFijacionShared.js` (estado del árbol local sujeto a commit) |
+
+**Mensaje (texto íntegro):**  
+Las ediciones v1.0–v1.1 de esta spread documentaron **gobernanza**, **observabilidad de prod**, **plantilla editorial** e **historial semver**, pero **no** el hilo de **producto** del **plano 2D**: cotas rojas de **perímetro libre** y **encuentros** (con o sin paso **Estructura**), chips de apoyos/fijación, **obstáculos** para colocar texto (`roofPlanCotaObstacles`), modos de lectura (Cliente / Técnica / Completa) y la verificación plano↔BOM. Ese desarrollo está **parcialmente implementado** en el código citado y sigue **activo**; la maquetación de esta revista **no** reproduce el trazo rojo de cotización del taller: solo usa `#E10600` como **diseño editorial** en página L.
+
+| Dimensión | Detalle |
+|-----------|---------|
+| **Alcance** `[inferred]` | Legibilidad técnica del presupuesto, alineación con dibujo de obra y confianza del instalador. |
+| **Impacto** `[inferred]` | Errores de lectura de longitudes o encuentros afectan obra y postventa aunque el BOM numérico sea correcto. |
+| **Riesgo** `[inferred]` | Divergencia entre lo **dibujado** y lo **cotizado** si el plano avanza sin `npm test` / gate local y sin entrada en `PROJECT-STATE`. |
+
+**Evidencia de apoyo (no exhaustiva):** tests `tests/roofVisualQuoteConsistency.js`; agente/skill de referencia **calculo-especialist** (planta de cotas); reglas **bmc-roof-2d-viewer-specialist** en `.cursor/agents/`.
+
+---
+
 ## 3. Página R — Qué significa para las personas
 
 **Notas de maquetación:** gradiente `#050505` → `#1A0000`; titulares en blanco, alineación izquierda, interletraje condensado; entre secciones, regla 1 px `#00D4AA` con longitud ~40 % del ancho de columna; ilustración bajo el subhero según brief de la sección 1.
@@ -244,13 +269,21 @@ Existen cambios locales sin publicar. Secuencia recomendada: revisar diff; si hu
 
 ---
 
-### Franja “At a glance” (máximo tres viñetas; texto blanco o cyan sobre `#0D0D0D`)
+### Sección 5 — Metáfora visual: regla sobre el plano
+
+**Referencia de evidencia: L-7 · Producto 2D**  
+El **rojo del titular en página L** es **marca del informe**, no la cota de obra. El **desarrollo real de cotas** ocurre en el **visor** (`RoofPreview`, tema y geometría `roofPlan*`): perímetro, encuentros, Estructura y etiquetas que deben convivir sin solaparse. Quien comunica cambios al equipo debe **mezclar** runbook (L-6) con **hitos de plano** en `PROJECT-STATE`, no solo semver y docs de orientación.
+
+---
+
+### Franja “At a glance” (viñetas; texto blanco o cyan sobre `#0D0D0D`)
 
 - **Sincronización:** L-6 — evidencia local y remota antes de cerrar un release.  
 - **Experiencia en prod:** L-2 — consola limpia en muestra; discrepancia **v3.0 / 3.1.5** abordada en repo (`appSemver`); **confirmar en prod** tras deploy.  
-- **Repositorio:** L-1 — `main` ahead 1 y archivos sin seguimiento hasta decisión de commit.
+- **Repositorio:** L-1 — `main` por delante de `origin/main` y cambios locales hasta `push`/PR (número de commits: ver Git; no inferir solo desde esta spread).  
+- **Plano / cotas:** L-7 — desarrollo activo del SVG y cotas de planta/Estructura; **no** cubierto en v1.1; seguir en `PROJECT-STATE` y tests.
 
-**Línea de crédito (8–9 pt):** Evidencia detallada en bloques **L-1 … L-6** (página izquierda).
+**Línea de crédito (8–9 pt):** Evidencia detallada en bloques **L-1 … L-7** (página izquierda).
 
 ---
 
@@ -261,7 +294,7 @@ Existen cambios locales sin publicar. Secuencia recomendada: revisar diff; si hu
 | Titulares cortos en página R | `#FFFFFF` sobre gradiente oscuro | Verificar ratio ≥ 4.5:1 en el punto más claro del gradiente. |
 | Cuerpo en página R | `#F2F2F2` preferido a blanco puro en párrafos largos | WCAG 2.1 AA, texto normal ≥ 4.5:1 respecto de `#050505` / `#1A0000`. |
 | Cyan en texto corrido | Si `#00E5FF` no alcanza contraste, usar `#7AE8D8` o peso semibold | No usar color como única señal de significado. |
-| Página L | Reservar `#E10600` a rúbricas, viñetas y alertas; cuerpo en `#0A0A0A` | Incluir siempre **ID L-n** para usuarios con acromatopsia o baja percepción del rojo. |
+| Página L | Reservar `#E10600` a **identidad editorial** (rúbricas, regla del titular, refs L-n); cuerpo en `#0A0A0A` | Incluir siempre **ID L-n** para usuarios con acromatopsia o baja percepción del rojo. **No** asumir que este rojo representa cotas del plano de producto. |
 | Efectos glow | Mantener decorativos; no sustituir texto legible por solo “brillo” | Preferir bordes 1 px sólidos para divisores funcionales. |
 
 ---
@@ -336,7 +369,7 @@ Existen cambios locales sin publicar. Secuencia recomendada: revisar diff; si hu
 
 ### 5.7 Lista de verificación pre-export
 
-- [ ] Todos los bloques L-1 … L-6 presentes y con ID visible.  
+- [ ] Todos los bloques L-1 … L-7 presentes y con ID visible.  
 - [ ] Referencias cruzadas L-n en página R coinciden con títulos en L.  
 - [ ] Contraste AA comprobado en muestras de gradiente (claro y oscuro).  
 - [ ] Sangrado y marcas de corte si el PDF va a imprenta.  
@@ -364,6 +397,7 @@ Existen cambios locales sin publicar. Secuencia recomendada: revisar diff; si hu
 | L-4 | Entrada Doc VERSION-HISTORY | Sección 2 |
 | L-5 | Entrada Dev expert traceability | Sección 3 |
 | L-6 | Entrada Skill Cross-Sync | Sección 1 |
+| L-7 | `[inferred]` Hilo producto plano 2D / cotas ( RoofPreview, `roofPlan*` ) | Sección 5 |
 
 ---
 
@@ -373,6 +407,7 @@ Existen cambios locales sin publicar. Secuencia recomendada: revisar diff; si hu
 |---------|--------|--------|
 | 1.0 | 2026-04-09 | Spread inicial incorporada al repo (contenido A–D). |
 | 1.1 | 2026-04-09 | Pasadas profesionales: control documental, resumen ejecutivo, índice, especificación Figma/PDF (pt, mm, hex), anexos de severidad y trazabilidad, rutas corregidas en L-1, redacción unificada. Ajuste posterior: nota de conciliación L-2 vs `appSemver` en repo; “At a glance”, sección 3 y acciones recomendadas alineadas a verificación post-deploy. |
+| 1.2 | 2026-04-09 | **L-7** (plano 2D, cotas, Estructura, capas SVG): cierra la brecha entre “líneas rojas editoriales” y desarrollo de cotas en producto; página R **sección 5**; “At a glance” y anexo B actualizados; notas de accesibilidad y checklist L-1…L-7. |
 
 ---
 

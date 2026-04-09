@@ -321,25 +321,27 @@
   <div class="toolbar">
     <strong>PDF:</strong> Archivo → Imprimir → Guardar como PDF · Márgenes: predeterminados · Gráficos de fondo: activados
     <span>|</span>
-    <span><strong>Fusión v1.1:</strong> paridad con <code>MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md</code> (canónico)</span>
+    <span><strong>Fusión v1.2:</strong> paridad con <code>MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md</code> (canónico)</span>
   </div>
 
   <div class="spread-wrap">
     <div class="spread">
       <!-- PAGE L -->
       <article class="page page--l" aria-label="Página L — Registro de operaciones">
-        <div class="doc-code">BMC-ORI-MAG-2026-04-09 · v1.1 · Aprobado uso interno · Paridad con <code>.md</code> canónico</div>
+        <div class="doc-code">BMC-ORI-MAG-2026-04-09 · v1.2 · Aprobado uso interno · Paridad con <code>.md</code> canónico</div>
         <h1>Calculadora BMC — registro de actualizaciones de sistema</h1>
         <p class="subhead">Período 2026-04-01 → 2026-04-09 · Rama <code>main</code> ahead 1 vs <code>origin/main</code> <span class="sev">[inferred]</span> · Audiencia mixta · Fuentes: <code>PROJECT-STATE.md</code> + Git (sesión)</p>
 
         <div class="exec-summary">
-          <strong>Resumen ejecutivo (v1.1)</strong>
+          <strong>Resumen ejecutivo (v1.2)</strong>
           <ol>
             <li><strong>L-6:</strong> runbook sync local + <code>smoke:prod</code>.</li>
             <li><strong>L-2:</strong> baseline prod OK; v3.0 vs 3.1.5 mitigado en código (<code>appSemver</code>); validar en prod + modal.</li>
             <li><strong>L-1:</strong> cambios locales / drift hasta push o PR.</li>
+            <li><strong>L-7:</strong> plano 2D / cotas de planta y Estructura — desarrollo de producto en <code>RoofPreview</code> + <code>roofPlan*</code>; la spread v1.1 no lo cubría.</li>
           </ol>
-          <p style="margin:8px 0 0;font-size:7.8pt;">Acciones: validar badge tras deploy; revisar modal; <code>gate:local:full</code> si <code>src/</code>; push/PR; contrato + humo si API cambia.</p>
+          <p style="margin:8px 0 0;font-size:7.8pt;"><strong>Diseño:</strong> el rojo <code>#E10600</code> en página L es <strong>marca editorial</strong> (titular, refs L-n), no el trazo de cotas del taller en el SVG.</p>
+          <p style="margin:6px 0 0;font-size:7.8pt;">Acciones: validar badge tras deploy; revisar modal; <code>gate:local:full</code> si <code>src/</code>; push/PR; contrato + humo si API cambia; hitos de plano en <code>PROJECT-STATE</code> (L-7).</p>
         </div>
 
         <div class="card">
@@ -439,6 +441,25 @@
           </table>
         </div>
 
+        <div class="card">
+          <h2><span class="ref">L-7</span>Plano 2D del techo: cotas, Estructura y capas SVG</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>CALC-2026-04-09-PLANO-2D</code> [inferred]</td></tr>
+            <tr><th>Marca temporal</th><td><code>2026-04-09</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td><code>RoofPreview.jsx</code> · <code>src/components/roofPlan/</code> · <code>roofPlanGeometry.js</code> · <code>roofPlanDrawingTheme.js</code> · <code>roofPlanCotaObstacles.js</code> · <code>roofPlanSvgTypography.js</code> · util. estructura/fijación (árbol local)</td></tr>
+            <tr><th>Severidad</th><td><span class="sev">NOTICE</span> [inferred — producto en evolución]</td></tr>
+          </table>
+          <p class="msg">Las ediciones v1.0–v1.1 de esta spread no registraban el hilo de <strong>producto</strong> del <strong>plano 2D</strong>: cotas rojas de perímetro y encuentros (con o sin paso Estructura), chips apoyos/fijación, obstáculos para etiquetas, modos Cliente/Técnica/Completa y coherencia plano↔BOM. Implementación parcial en código; trabajo <strong>activo</strong>. El <code>#E10600</code> de página L es <strong>solo editorial</strong>, no la cota del visor.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>[inferred] Lectura técnica del presupuesto y alineación con obra.</td></tr>
+            <tr><th>Impacto</th><td>[inferred] Errores de lectura afectan obra aunque el BOM sea correcto.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Dibujo vs cotización sin tests + <code>PROJECT-STATE</code>.</td></tr>
+          </table>
+          <div class="callout">
+            <strong>Apoyo:</strong> <code>tests/roofVisualQuoteConsistency.js</code>; rol <strong>calculo-especialist</strong>; agente <code>bmc-roof-2d-viewer-specialist</code>.
+          </div>
+        </div>
+
         <footer>Fuente: <code>docs/team/PROJECT-STATE.md</code> + estado Git (sesión de elaboración). Identificadores L-n para trazabilidad y accesibilidad.</footer>
       </article>
 
@@ -491,14 +512,21 @@
           <p>Cambios locales sin publicar. Secuencia: revisar diff; si hubo cambios bajo <code>src/</code>, gate local; PR o integración en <code>origin/main</code> antes de declarar estado oficial del repositorio.</p>
         </section>
 
+        <section>
+          <p class="evidence">L-7 · Producto 2D</p>
+          <h3>Regla sobre el plano</h3>
+          <p>El <strong>rojo del titular en L</strong> es <strong>marca del informe</strong>, no la cota de obra. Las <strong>cotas reales</strong> viven en el visor (<code>RoofPreview</code>, <code>roofPlan*</code>): perímetro, encuentros, Estructura y etiquetas sin solaparse. Comunicar cambios mezclando runbook (L-6) con <strong>hitos de plano</strong> en <code>PROJECT-STATE</code>, no solo semver y docs de orientación.</p>
+        </section>
+
         <div class="strip">
           <h4>At a glance</h4>
           <ul>
             <li><strong>Sincronización:</strong> L-6 — evidencia local y remota antes de cerrar release.</li>
             <li><strong>Experiencia en prod:</strong> L-2 — consola limpia en muestra; discrepancia v3.0/3.1.5 abordada en repo (<code>appSemver</code>); <strong>confirmar en prod</strong> tras deploy.</li>
-            <li><strong>Repositorio:</strong> L-1 — <code>main</code> ahead 1 y archivos sin seguimiento hasta decisión de commit.</li>
+            <li><strong>Repositorio:</strong> L-1 — <code>main</code> ahead de <code>origin/main</code> y cambios locales hasta <code>push</code>/PR (número: ver Git).</li>
+            <li><strong>Plano / cotas:</strong> L-7 — SVG y cotas planta/Estructura en evolución; ausente en v1.1; seguir en <code>PROJECT-STATE</code> y tests.</li>
           </ul>
-          <p class="credit">Evidencia detallada en bloques L-1 … L-6 (página izquierda).</p>
+          <p class="credit">Evidencia detallada en bloques L-1 … L-7 (página izquierda).</p>
         </div>
 
         <footer>Cuerpo R: <code>#F2F2F2</code> · Titulares: blanco · Acentos: <code>#00D4AA</code> · Cyan decorativo con contraste verificado en impresión.</footer>

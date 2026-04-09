@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-07T13:25:06.099Z",
+  "updatedAt": "2026-04-09T13:13:29.829Z",
   "projectProfile": {
     "name": "BMC/Panelin",
     "focusAreas": [
@@ -43,15 +43,15 @@
         "agent"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-07T13:25:02.972Z",
+      "lastCheckedAt": "2026-04-09T13:13:26.359Z",
       "stats": {
-        "eventsSeen": 10,
-        "acceptedEvents": 8,
+        "eventsSeen": 13,
+        "acceptedEvents": 11,
         "rejectedEvents": 2,
-        "avgEventScore": 0.56
+        "avgEventScore": 0.5699
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.909
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.9169
     },
     {
       "id": "anthropic-news-rss",
@@ -70,15 +70,15 @@
         "safety"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-07T13:25:03.668Z",
+      "lastCheckedAt": "2026-04-09T13:13:27.312Z",
       "stats": {
-        "eventsSeen": 20,
-        "acceptedEvents": 7,
+        "eventsSeen": 27,
+        "acceptedEvents": 14,
         "rejectedEvents": 13,
-        "avgEventScore": 0.2917
+        "avgEventScore": 0.3823
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.7942
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.8285
     },
     {
       "id": "vercel-releases",
@@ -97,15 +97,15 @@
         "ci-cd"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-07T13:25:03.829Z",
+      "lastCheckedAt": "2026-04-09T13:13:27.468Z",
       "stats": {
-        "eventsSeen": 23,
-        "acceptedEvents": 13,
+        "eventsSeen": 31,
+        "acceptedEvents": 21,
         "rejectedEvents": 10,
-        "avgEventScore": 0.372
+        "avgEventScore": 0.4443
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.816
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.84
     },
     {
       "id": "supabase-releases",
@@ -124,14 +124,14 @@
         "auth"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-07T13:25:03.873Z",
+      "lastCheckedAt": "2026-04-09T13:13:27.513Z",
       "stats": {
         "eventsSeen": 19,
         "acceptedEvents": 8,
         "rejectedEvents": 11,
         "avgEventScore": 0.2823
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
+      "updatedAt": "2026-04-09T13:13:29.829Z",
       "rankScore": 0.7634
     },
     {
@@ -149,15 +149,15 @@
         "benchmarks"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-07T13:25:04.264Z",
+      "lastCheckedAt": "2026-04-09T13:13:27.985Z",
       "stats": {
-        "eventsSeen": 24,
-        "acceptedEvents": 24,
+        "eventsSeen": 32,
+        "acceptedEvents": 32,
         "rejectedEvents": 0,
-        "avgEventScore": 0.6537
+        "avgEventScore": 0.657
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.8504
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.8507
     },
     {
       "id": "openai-node-releases",
@@ -176,15 +176,15 @@
         "typescript"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-07T13:25:04.726Z",
+      "lastCheckedAt": "2026-04-09T13:13:28.436Z",
       "stats": {
-        "eventsSeen": 19,
-        "acceptedEvents": 2,
+        "eventsSeen": 20,
+        "acceptedEvents": 3,
         "rejectedEvents": 17,
-        "avgEventScore": 0.2077
+        "avgEventScore": 0.2306
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.7626
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.7716
     },
     {
       "id": "vercel-ai-sdk-releases",
@@ -203,15 +203,15 @@
         "tooling"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-07T13:25:05.043Z",
+      "lastCheckedAt": "2026-04-09T13:13:28.763Z",
       "stats": {
-        "eventsSeen": 43,
-        "acceptedEvents": 32,
+        "eventsSeen": 51,
+        "acceptedEvents": 40,
         "rejectedEvents": 11,
-        "avgEventScore": 0.4324
+        "avgEventScore": 0.4569
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.8514
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.8598
     },
     {
       "id": "mcp-ts-sdk-releases",
@@ -230,14 +230,14 @@
         "tools"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-07T13:25:05.405Z",
+      "lastCheckedAt": "2026-04-09T13:13:29.118Z",
       "stats": {
         "eventsSeen": 19,
         "acceptedEvents": 8,
         "rejectedEvents": 11,
         "avgEventScore": 0.2674
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
+      "updatedAt": "2026-04-09T13:13:29.829Z",
       "rankScore": 0.7849
     },
     {
@@ -256,15 +256,15 @@
         "tools"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-07T13:25:05.760Z",
+      "lastCheckedAt": "2026-04-09T13:13:29.496Z",
       "stats": {
-        "eventsSeen": 9,
-        "acceptedEvents": 6,
-        "rejectedEvents": 3,
-        "avgEventScore": 0.4956
+        "eventsSeen": 12,
+        "acceptedEvents": 8,
+        "rejectedEvents": 4,
+        "avgEventScore": 0.507
       },
-      "updatedAt": "2026-04-07T13:25:06.099Z",
-      "rankScore": 0.8141
+      "updatedAt": "2026-04-09T13:13:29.829Z",
+      "rankScore": 0.8152
     }
   ],
   "sourceCandidates": [

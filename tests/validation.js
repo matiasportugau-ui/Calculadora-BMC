@@ -23,6 +23,12 @@ import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/ut
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
 import { normalizeMlAnswerCurrencyText } from "../server/lib/mlAnswerText.js";
+import {
+  buildInitialByKeyFromOrderedDots,
+  countCombinadaMaterialsInDots,
+  cycleCombinadaMaterial,
+} from "../src/utils/combinadaFijacionShared.js";
+import { fijacionDotsLayoutDistributeTotal } from "../src/utils/roofEstructuraDotsLayout.js";
 import { buildProgramSnapshot } from "../scripts/program-status.mjs";
 import {
   cuerpoFromMessage,
@@ -1942,6 +1948,46 @@ assert(
   !multi.includes("$") && multi === `a ${fw}1 ${fw}2`,
   multi,
   `a ${fw}1 ${fw}2`,
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32g: Combinada — mapa 2D / layout de puntos
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32g: combinadaFijacionShared + dots layout keys ═══");
+assert(
+  "cycleCombinadaMaterial metal→madera",
+  cycleCombinadaMaterial("metal") === "madera",
+  cycleCombinadaMaterial("metal"),
+  "madera",
+);
+const keys5 = ["r0-j0", "r0-j1", "r1-j0", "r1-j1", "r2-j0"];
+const initComb = buildInitialByKeyFromOrderedDots(keys5, 1, 2, 1);
+assert(
+  "buildInitialByKeyFromOrderedDots orden fila-major",
+  initComb["r0-j0"] === "hormigon" &&
+    initComb["r0-j1"] === "metal" &&
+    initComb["r1-j1"] === "madera" &&
+    initComb["r2-j0"] === "metal",
+  JSON.stringify(initComb),
+  "h + 2×metal + madera + metal resto",
+);
+const dotsStub = keys5.map((k) => ({ key: k }));
+const cntComb = countCombinadaMaterialsInDots(dotsStub, initComb);
+assert(
+  "countCombinadaMaterialsInDots 1/3/1",
+  cntComb.ptsHorm === 1 && cntComb.ptsMetal === 3 && cntComb.ptsMadera === 1,
+  `${cntComb.ptsHorm}/${cntComb.ptsMetal}/${cntComb.ptsMadera}`,
+  "1/3/1",
+);
+const rDots = { x: 0, y: 0, w: 5, h: 4, gi: 0 };
+const hintsDots = { puntosFijacion: 7, apoyos: 3 };
+const laid = fijacionDotsLayoutDistributeTotal(rDots, hintsDots);
+assert(
+  "fijacionDotsLayoutDistributeTotal keys + rowIndex",
+  laid.length === 7 &&
+    laid.every((d) => typeof d.key === "string" && d.rowIndex != null && d.rowIndex >= 0),
+  laid.length,
+  7,
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
