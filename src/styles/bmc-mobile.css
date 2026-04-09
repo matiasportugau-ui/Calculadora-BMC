@@ -45,12 +45,11 @@
 .bmc-right-panel::-webkit-scrollbar { display: none; }
 .bmc-right-panel { scrollbar-width: none; }
 
-/* ── Mobile layout (< 1024px) ─────────────────────────────────────────── */
+/* ── Compact layout (< 1024px — phone + tablet) ──────────────────────── */
 @media (max-width: 1023px) {
   .bmc-main-grid { height: auto !important; overflow: visible !important; }
   .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
   .bmc-mobile-bar { display: flex !important; }
-  .bmc-desktop-actions { display: none !important; }
 
   /* Touch-action: eliminate 300ms tap delay on form areas */
   .bmc-left-panel { touch-action: manipulation; }
@@ -58,6 +57,25 @@
   /* Fluid typography for small screens — caps at 18px (desktop unaffected) */
   .bmc-left-panel, .bmc-right-panel {
     font-size: clamp(14px, 3.5vw, 18px);
+  }
+}
+
+/* ── Phone-only: hide desktop actions (< 640px) ──────────────────────── */
+@media (max-width: 639px) {
+  .bmc-desktop-actions { display: none !important; }
+}
+
+/* ── Tablet: wrap action buttons for narrower widths (640–1023px) ─────── */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .bmc-desktop-actions {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .bmc-desktop-actions > button {
+    flex: 1 1 calc(33.3% - 8px) !important;
+    min-width: 0 !important;
+    font-size: 13px !important;
+    padding: 10px 12px !important;
   }
 }
 

@@ -2658,7 +2658,7 @@ export default function PanelinCalculadoraV3() {
     () => (techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
     [techo.zonas],
   );
-  const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isCompactLayout);
+  const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isPhone);
   const showRoof2dInQuoteVisor = Boolean(
     showRoof3DHost && activeWizardStepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(activeWizardStepId),
   );
