@@ -880,7 +880,7 @@ export default function RoofPreview({
     const padB = (0.68 + nSide("bottom") * 0.14 + chainPad) * vbPadScale;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, displayMode]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, svgTy.dimFont, displayMode]);
 
   const encounters = planEdges?.encounters ?? [];
 
