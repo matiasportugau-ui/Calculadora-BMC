@@ -624,6 +624,36 @@ app.use("/api", agentTrainingRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
+// Diagnostic endpoint (dev only) — must be before /api router
+{
+  const _isDev = config.appEnv === "development";
+  if (_isDev) {
+    app.get("/api/diagnostic", (req, res) => {
+      const credsPath =
+        config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+      const hasSheets = !!(
+        config.bmcSheetId &&
+        credsPath &&
+        fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath))
+      );
+      res.json({
+        ok: true,
+        version: "1.0",
+        appEnv: config.appEnv,
+        envVarsPresent: [
+          "BMC_SHEET_ID",
+          "GOOGLE_APPLICATION_CREDENTIALS",
+          "ML_CLIENT_ID",
+          "ML_CLIENT_SECRET",
+          "SHOPIFY_CLIENT_ID",
+          "SHOPIFY_CLIENT_SECRET",
+        ].filter((k) => !!process.env[k]),
+        hasSheets,
+        port: config.port,
+      });
+    });
+  }
+}
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
