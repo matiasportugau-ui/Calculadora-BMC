@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-07 (Panelin-Gym skill + npm ml:*)
+**Última actualización:** 2026-04-08 (revisión ML + roadmap; doc prototipo V3.2)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-08 (ML — revisión integración + roadmap cuenta):** Nuevo [`docs/team/ML-ACCOUNT-REVIEW-2026-04-08.md`](./ML-ACCOUNT-REVIEW-2026-04-08.md): capa técnica RAG (OAuth, proxy `/ml/*`, webhooks, `ml-crm-sync`), evidencia runtime local (`npm run ml:verify` sin API en `:3001`) y prod Cloud Run (`GET /health` con `hasTokens: false`, `GET /auth/ml/status` → 404), checklist negocio y datos pendientes para Seller Center, quick wins e iniciativas medianas, roadmap en tres oleadas, anexos (comandos, rutas código, `docs/ML-OAUTH-SETUP.md`).
+
+**2026-04-08 (Doc — prototipo HTML Panelin V3.2 vs calculadora BMC):** Nuevo [`docs/team/PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md`](./PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md): matriz funcional Prototipo/App/Acción, lista explícita de no hacer (no duplicar `calcFactorPendiente`, no mapa autoportancia del HTML, no `fijaciones = paneles × 4`), auditoría wizard Solo techo (`SCENARIOS_DEF.wizardSteps`) y hover en `PanelinCalculadoraV3_backup.jsx` / `RoofPreview.jsx`, especificación toggle largo global/local sobre `techo.zonas` sin tocar `calculations.js`, decisión Wolfboard (priorizar calculadora principal; ruta futura solo como shell/enlace profundo), backlog B1–B5 con criterios de aceptación, checklist QA regresión. Índice actualizado en [`docs/team/README.md`](./README.md).
 
 **2026-04-07 (ML — KB plataforma para agentes):** Nuevo [`panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md) (alcance, mapa Central de aprendizaje, buenas prácticas BMC, enlaces oficiales, changelog). Enlaces desde [`ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md), [`ML-TRAINING-SYSTEM.md`](./panelsim/knowledge/ML-TRAINING-SYSTEM.md), [`PANELSIM-FULL-PROJECT-KB.md`](./panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md), [`KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md`](./panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md). [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — bloque ML: referencia al doc de plataforma + no inventar políticas. [`.cursor/skills/bmc-mercadolibre-api/reference.md`](../../.cursor/skills/bmc-mercadolibre-api/reference.md) — sección KB operativa.
 

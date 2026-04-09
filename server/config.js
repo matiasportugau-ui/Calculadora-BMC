@@ -71,6 +71,31 @@ export const config = {
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
   /** Postgres — Modo Transportista (viajes / eventos / outbox) */
   databaseUrl: process.env.DATABASE_URL || "",
+  /** Postgres — Omnicanal Meta (mensajes / adjuntos / outbox). Default: mismo DATABASE_URL */
+  omniDatabaseUrl: process.env.OMNI_DATABASE_URL || process.env.DATABASE_URL || "",
+  /** Bucket GCS para medios omnicanal (WA / Meta) */
+  omniGcsBucket: process.env.OMNI_GCS_BUCKET || "",
+  /** Modo por defecto para hilos nuevos: off | listen | auto */
+  omniModeDefault: (process.env.OMNI_MODE_DEFAULT || "listen").toLowerCase(),
+  /** Retención opcional (días) — usada por scripts de limpieza / política */
+  omniRetentionDays: Number(process.env.OMNI_RETENTION_DAYS || 0),
+  /** Verificación webhook Meta (Messenger/IG). Default: mismo que WhatsApp */
+  metaWebhookVerifyToken:
+    process.env.META_WEBHOOK_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || "",
+  /** Page Access Token (Messenger) — envío saliente */
+  metaPageAccessToken: process.env.META_PAGE_ACCESS_TOKEN || "",
+  /** Page ID conectada a Messenger */
+  metaPageId: process.env.META_PAGE_ID || "",
+  /** Instagram Business Account ID (Graph) */
+  metaInstagramAccountId: process.env.META_INSTAGRAM_ACCOUNT_ID || "",
+  /** Token para Instagram messaging (a veces igual al page token según configuración) */
+  metaInstagramAccessToken: process.env.META_INSTAGRAM_ACCESS_TOKEN || process.env.META_PAGE_ACCESS_TOKEN || "",
+  /** Graph API version */
+  metaGraphVersion: process.env.META_GRAPH_VERSION || "v21.0",
+  /** Máx. bytes adjuntos descargados */
+  omniMaxAttachmentBytes: Number(process.env.OMNI_MAX_ATTACHMENT_BYTES || 25 * 1024 * 1024),
+  /** OCR / visión en imágenes (requiere OPENAI_API_KEY) */
+  omniImageExtractEnabled: bool(process.env.OMNI_IMAGE_EXTRACT_ENABLED, false),
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
