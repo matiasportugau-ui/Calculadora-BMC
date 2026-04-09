@@ -71,19 +71,19 @@ All test-only, no production code. PRs #28/#29 potentially overlap — consolida
 ## Implementation Phases
 
 ### Phase 0: Housekeeping (Day 1)
-1. Close 8 duplicate/obsolete PRs: #14, #35, #36, #37, #42, #43, #44, and one of #31/#32
-2. Label remaining PRs by category
-3. Update PROJECT-STATE.md
+1. ~~Close 8 duplicate/obsolete PRs: #14, #35, #36, #37, #42, #43, #44, and one of #31/#32~~ *(pending — requires GH web UI or CLI)*
+2. ~~Label remaining PRs by category~~ *(pending)*
+3. ✅ Update PROJECT-STATE.md
 
-### Phase 1: Security & Critical Fixes (Day 1–2)
-1. Rebase & merge **#34** (already approved)
-2. Fix CI on **#48**, merge (picomatch CVE fix)
-3. Run `npm run smoke:prod`
+### Phase 1: Security & Critical Fixes (Day 1–2) ✅ DONE
+1. ✅ Applied **#34** fixes — Sheets auth ADC, null-safety, shell exit codes, strict 404 contract
+2. ✅ Applied **#48** — picomatch 4.0.3→4.0.4 (CVE-2026-33671/33672)
+3. ~~Run `npm run smoke:prod`~~ *(requires production credentials)*
 
-### Phase 2: Test Coverage (Day 2–3)
-1. Compare #28 vs #29, consolidate if overlapping
-2. Review & merge #49, #51, #52 (test-only)
-3. Run `npm run gate:local:full`
+### Phase 2: Test Coverage (Day 2–3) ✅ DONE
+1. ✅ Compared #28 vs #29 — #28 adds `calc-routes.validation.js` (separate file), #29 modifies `npm test` — adopted #28 approach
+2. ✅ Applied #49 (SUITE 23b matrizCsvNormalization), #51 (SUITE 34+35 knowledge/3D), #52 (SUITE 33 scenarioOrchestrator)
+3. ✅ Tests: 284→315 unit + 17 API route, 0 failures
 
 ### Phase 3: Integrations (Day 3–5)
 1. Merge **#30** + consolidated webhook doc fix

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-09 (PR backlog audit + roadmap)
+**Última actualización:** 2026-04-09 (PR backlog implementation — Phase 1+2)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-09 (PR backlog implementation — Phase 1: Security + Phase 2: Tests):** Ejecución del [plan de auditoría de PRs](./plans/PR-BACKLOG-AUDIT-AND-ROADMAP-2026-04-09.md). **Phase 1 (Security):** picomatch 4.0.3→4.0.4 (CVE-2026-33671/33672); scripts Sheets (`verify-sheets-tabs.js`, `create-sheets-tabs.js`) migrados a ADC via `GOOGLE_APPLICATION_CREDENTIALS` con null-safety; exit codes en `verify-api-runtime.sh`; eliminado bypass `allow404` en `validate-api-contracts.js` (PR #34 + #48). **Phase 2 (Tests):** SUITE 33 `scenarioOrchestrator` guards (PR #52); SUITE 34 `knowledge-antenna` RSS/scoring helpers (PR #51); SUITE 35 `roofZoneLayouts3d` coplanarity/filtering (PR #51); SUITE 23b `matrizCsvNormalization` ISODEC/ISOPANEL EPS (PR #49) — módulo extraído de `bmcDashboard.js` a [`server/lib/matrizCsvNormalization.js`](../../server/lib/matrizCsvNormalization.js); nuevo [`tests/calc-routes.validation.js`](../../tests/calc-routes.validation.js) 17 API tests (PR #28). Tests: 284→315 unit + 17 API route. **Próximo:** Phase 3 (Meta + ML integrations) / Phase 4 (agent tooling) — ver roadmap.
 
 **2026-04-09 (PR backlog audit + implementation roadmap):** Auditoría completa de las 22 PRs abiertas. 8 duplicadas/obsoletas identificadas para cierre (#14, #35, #36, #37, #42, #43, #44, una de #31/#32). 2 PRs de seguridad críticas (#34 Google Sheets auth — ya aprobada, #48 picomatch CVE). 5 PRs test-only. Plan de 6 fases / ~10 días para llegar a 0 PRs abiertas. Doc: [`plans/PR-BACKLOG-AUDIT-AND-ROADMAP-2026-04-09.md`](./plans/PR-BACKLOG-AUDIT-AND-ROADMAP-2026-04-09.md).
 
