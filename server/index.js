@@ -19,6 +19,7 @@ import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
+import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
@@ -619,6 +620,8 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 }));
 
 app.use("/calc", calcRouter);
+// Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
+app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
