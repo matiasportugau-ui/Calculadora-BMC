@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-07 (Panelin-Gym skill + npm ml:*)
+**Última actualización:** 2026-04-09 (PR backlog audit + roadmap)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-09 (PR backlog audit + implementation roadmap):** Auditoría completa de las 22 PRs abiertas. 8 duplicadas/obsoletas identificadas para cierre (#14, #35, #36, #37, #42, #43, #44, una de #31/#32). 2 PRs de seguridad críticas (#34 Google Sheets auth — ya aprobada, #48 picomatch CVE). 5 PRs test-only. Plan de 6 fases / ~10 días para llegar a 0 PRs abiertas. Doc: [`plans/PR-BACKLOG-AUDIT-AND-ROADMAP-2026-04-09.md`](./plans/PR-BACKLOG-AUDIT-AND-ROADMAP-2026-04-09.md).
 
 **2026-04-07 (ML — KB plataforma para agentes):** Nuevo [`panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./panelsim/knowledge/ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md) (alcance, mapa Central de aprendizaje, buenas prácticas BMC, enlaces oficiales, changelog). Enlaces desde [`ML-RESPUESTAS-KB-BMC.md`](./panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md), [`ML-TRAINING-SYSTEM.md`](./panelsim/knowledge/ML-TRAINING-SYSTEM.md), [`PANELSIM-FULL-PROJECT-KB.md`](./panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md), [`KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md`](./panelsim/knowledge/KNOWLEDGE-INVENTORY-FOR-AI-AGENTS.md). [`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — bloque ML: referencia al doc de plataforma + no inventar políticas. [`.cursor/skills/bmc-mercadolibre-api/reference.md`](../../.cursor/skills/bmc-mercadolibre-api/reference.md) — sección KB operativa.
 
