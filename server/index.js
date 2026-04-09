@@ -427,7 +427,8 @@ app.get("/webhooks/whatsapp", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
   if (mode === "subscribe" && token === config.whatsappVerifyToken) {
-    return res.status(200).send(challenge);
+    res.set("Content-Type", "text/plain");
+    return res.status(200).send(String(challenge ?? ""));
   }
   res.status(403).send("Forbidden");
 });
