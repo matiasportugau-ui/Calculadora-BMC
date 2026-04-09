@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** Línea principal de cota (perímetro libre). */
-export const ROOF_PLAN_DIM_STROKE = "#1a1a1a";
+export const ROOF_PLAN_DIM_STROKE = "#dc2626";
 
 /** Opacidad de líneas auxiliares (del elemento al eje de cota). */
 export const ROOF_PLAN_DIM_EXT_OPACITY = 0.75;
@@ -37,8 +37,8 @@ export function makeBumpCounter() {
 export const DIM_THEME = {
   CHAIN_OFFSET: 0.14,
   CHAIN_STEP: 0.14,
-  chainColor: '#1a1a1a',
-  overallColor: '#1a1a1a',
+  chainColor: '#C62828',
+  overallColor: '#1565C0',
   warningColor: '#E65100',
   textColor: '#212121',
   defaultTerminator: 'tick',

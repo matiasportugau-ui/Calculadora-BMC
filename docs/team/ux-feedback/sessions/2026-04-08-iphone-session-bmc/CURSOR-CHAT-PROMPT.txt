@@ -1,9 +1,0 @@
-1) Abrí este chat en Cursor y adjuntá:
-   - Vídeo: /Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/ux-feedback/sessions/2026-04-08-iphone-session-bmc/session-bmc.mov
-   - (opcional) audio ya extraído: /Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/ux-feedback/sessions/2026-04-08-iphone-session-bmc/extracted/audio.wav
-   - metadata: /Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/ux-feedback/sessions/2026-04-08-iphone-session-bmc/metadata.json
-
-2) Escribí una línea como:
-   "Video-User-interactive-dev. Vídeo: /Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/ux-feedback/sessions/2026-04-08-iphone-session-bmc/session-bmc.mov. Analizá por completo lo evaluado; generá VIDEO-USER-INTERACTIVE-DEV-REPORT y VIDEO-USER-INTERACTIVE-DEV-ANALYSIS (misma sesión). base_url: http://localhost:5173"
-
-3) Si el modelo no acepta vídeo pesado: adjuntá extracted/audio.wav (toda la narración) + frames de extracted/frames/ (por defecto 1 JPG cada 5 s, baja calidad pero legible) + metadata.json.

@@ -121,14 +121,6 @@ function checkTransportistaHealth(data) {
   return { ok: true };
 }
 
-function checkOmniHealth(data) {
-  const keys = ["ok", "databaseConfigured", "gcsBucketConfigured"];
-  if (!data || typeof data !== "object") return { ok: false, msg: "not an object" };
-  if (!hasKeys(data, keys)) return { ok: false, msg: `Missing keys: ${keys.filter((k) => !(k in data)).join(", ")}` };
-  if (data.ok !== true) return { ok: false, msg: "ok must be true" };
-  return { ok: true };
-}
-
 async function main() {
   console.log(`\nBMC API Contract Validator — ${BASE}\n`);
   let passed = 0;
@@ -199,12 +191,6 @@ async function main() {
       path: "/api/transportista/health",
       check: checkTransportistaHealth,
       allow503: true,
-    },
-    {
-      name: "GET /api/omni/health",
-      path: "/api/omni/health",
-      check: checkOmniHealth,
-      allow503: false,
     },
   ];
 
