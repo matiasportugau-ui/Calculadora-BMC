@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BMC-ORI-MAG-2026-04-09 — Spread actualización de sistema</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #ffffff;
+      --ink: #0a0a0a;
+      --alert: #e10600;
+      --rule-light: #e8e8e8;
+      --void-top: #050505;
+      --void-bottom: #1a0000;
+      --strip: #0d0d0d;
+      --text-on-dark: #f2f2f2;
+      --head-on-dark: #ffffff;
+      --cyan: #00d4aa;
+      --cyan-bright: #00e5ff;
+      --illustration-core: #3d0a0a;
+      --muted-dark: #a8a8a8;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Helvetica Neue", Roboto, system-ui, sans-serif;
+      background: #1a1a1a;
+      color: var(--ink);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 10px 16px;
+      background: #222;
+      color: #eee;
+      font-size: 13px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .toolbar code { background: #333; padding: 2px 6px; border-radius: 4px; }
+
+    .spread-wrap {
+      max-width: calc(210mm * 2 + 48px);
+      margin: 24px auto 48px;
+      padding: 0 16px;
+    }
+
+    .spread {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      position: relative;
+    }
+
+    /* —— Page L —— */
+    .page--l {
+      background: var(--paper);
+      padding: 14mm 15mm 16mm 15mm;
+      border-right: 1px solid var(--rule-light);
+    }
+
+    .doc-code {
+      font-size: 7.5pt;
+      color: #666;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+
+    .page--l h1 {
+      font-size: 11pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      line-height: 1.25;
+      margin: 0 0 4px;
+      border-bottom: 2px solid var(--alert);
+      padding-bottom: 8px;
+    }
+
+    .page--l .subhead {
+      font-size: 9pt;
+      color: #444;
+      margin: 0 0 16px;
+    }
+
+    .card {
+      border: 1px solid var(--rule-light);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 10pt;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .card h2 span.ref {
+      color: var(--alert);
+      margin-right: 6px;
+    }
+
+    .meta {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+      margin-bottom: 8px;
+    }
+    .meta th, .meta td {
+      border: 1px solid var(--rule-light);
+      padding: 4px 6px;
+      vertical-align: top;
+      text-align: left;
+    }
+    .meta th {
+      width: 28%;
+      font-weight: 600;
+      background: #fafafa;
+    }
+
+    .msg {
+      font-size: 9.5pt;
+      line-height: 1.45;
+      margin: 0 0 8px;
+    }
+
+    .sev {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f5f5f5;
+      border: 1px solid var(--rule-light);
+    }
+    .sev--high { color: var(--alert); border-color: #f5c2c2; background: #fff5f5; }
+
+    .page--l footer {
+      margin-top: 12px;
+      font-size: 7.5pt;
+      color: #777;
+      border-top: 1px solid var(--rule-light);
+      padding-top: 8px;
+    }
+
+    .exec-summary {
+      font-size: 8pt;
+      line-height: 1.45;
+      background: #fafafa;
+      border-left: 3px solid var(--alert);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: 0 0 12px;
+    }
+    .exec-summary strong { display: block; margin-bottom: 4px; font-size: 8.5pt; }
+    .exec-summary ol { margin: 6px 0 0; padding-left: 16px; }
+
+    .callout {
+      font-size: 8pt;
+      line-height: 1.4;
+      background: #fffaf5;
+      border: 1px solid #e8d4c0;
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 8px;
+    }
+    .callout strong { color: #7c2d12; }
+
+    .page--l .card { padding: 8px 10px; margin-bottom: 8px; }
+    .page--l .msg { font-size: 8.8pt; line-height: 1.42; }
+    .page--l .meta.tight { font-size: 7.8pt; }
+    .page--l .meta.tight th,
+    .page--l .meta.tight td { padding: 3px 5px; }
+
+    /* —— Page R —— */
+    .page--r {
+      background: linear-gradient(165deg, var(--void-top) 0%, #120202 45%, var(--void-bottom) 100%);
+      padding: 14mm 15mm 16mm 15mm;
+      color: var(--text-on-dark);
+      overflow: hidden;
+    }
+
+    .hero-visual {
+      position: relative;
+      min-height: 92mm;
+      margin: -4mm -15mm 12px -15mm;
+      padding: 10mm 15mm 0;
+    }
+
+    .hero-svg {
+      position: absolute;
+      right: 8mm;
+      top: 4mm;
+      width: 78mm;
+      height: 78mm;
+      opacity: 0.92;
+    }
+
+    .page--r h1 {
+      font-size: 42pt;
+      font-weight: 800;
+      line-height: 0.98;
+      letter-spacing: -0.03em;
+      color: var(--head-on-dark);
+      margin: 0 0 8px;
+      max-width: 72%;
+    }
+
+    .page--r .subhero {
+      font-size: 14pt;
+      font-weight: 500;
+      color: var(--cyan);
+      margin: 0 0 14px;
+    }
+
+    .divider {
+      height: 1px;
+      width: 40%;
+      background: var(--cyan);
+      margin: 14px 0 12px;
+      opacity: 0.85;
+    }
+
+    .page--r section {
+      margin-bottom: 12px;
+    }
+    .page--r section h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: var(--head-on-dark);
+      margin: 0 0 6px;
+    }
+    .page--r section p {
+      font-size: 10pt;
+      line-height: 1.5;
+      margin: 0;
+    }
+    .page--r .evidence {
+      font-size: 9pt;
+      color: var(--cyan);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .strip {
+      background: var(--strip);
+      margin: 16px -15mm 0;
+      padding: 10px 15mm 12px;
+      border-top: 1px solid rgba(0, 212, 170, 0.35);
+    }
+    .strip h4 {
+      margin: 0 0 8px;
+      font-size: 11pt;
+      color: var(--head-on-dark);
+    }
+    .strip ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .strip li {
+      font-size: 10pt;
+      line-height: 1.45;
+      margin-bottom: 4px;
+    }
+    .strip li::marker {
+      color: var(--cyan);
+    }
+
+    .credit {
+      font-size: 8pt;
+      color: var(--muted-dark);
+      margin-top: 10px;
+    }
+
+    .page--r footer {
+      font-size: 7.5pt;
+      color: var(--muted-dark);
+      margin-top: 10px;
+    }
+
+    @media print {
+      .toolbar { display: none; }
+      body { background: white; }
+      .spread-wrap { margin: 0; padding: 0; max-width: none; }
+      .spread { box-shadow: none; border-radius: 0; }
+      .page {
+        page-break-after: always;
+        border: none;
+      }
+      .page--l { border-right: none; }
+    }
+
+    @media screen and (max-width: 1100px) {
+      .spread { flex-direction: column; }
+      .page { width: 100%; min-height: auto; border-right: none; }
+      .page--l { border-bottom: 1px solid var(--rule-light); }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <strong>PDF:</strong> Archivo → Imprimir → Guardar como PDF · Márgenes: predeterminados · Gráficos de fondo: activados
+    <span>|</span>
+    <span><strong>Fusión v1.1:</strong> paridad con <code>MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md</code> (canónico)</span>
+  </div>
+
+  <div class="spread-wrap">
+    <div class="spread">
+      <!-- PAGE L -->
+      <article class="page page--l" aria-label="Página L — Registro de operaciones">
+        <div class="doc-code">BMC-ORI-MAG-2026-04-09 · v1.1 · Aprobado uso interno · Paridad con <code>.md</code> canónico</div>
+        <h1>Calculadora BMC — registro de actualizaciones de sistema</h1>
+        <p class="subhead">Período 2026-04-01 → 2026-04-09 · Rama <code>main</code> ahead 1 vs <code>origin/main</code> <span class="sev">[inferred]</span> · Audiencia mixta · Fuentes: <code>PROJECT-STATE.md</code> + Git (sesión)</p>
+
+        <div class="exec-summary">
+          <strong>Resumen ejecutivo (v1.1)</strong>
+          <ol>
+            <li><strong>L-6:</strong> runbook sync local + <code>smoke:prod</code>.</li>
+            <li><strong>L-2:</strong> baseline prod OK; v3.0 vs 3.1.5 mitigado en código (<code>appSemver</code>); validar en prod + modal.</li>
+            <li><strong>L-1:</strong> cambios locales / drift hasta push o PR.</li>
+          </ol>
+          <p style="margin:8px 0 0;font-size:7.8pt;">Acciones: validar badge tras deploy; revisar modal; <code>gate:local:full</code> si <code>src/</code>; push/PR; contrato + humo si API cambia.</p>
+        </div>
+
+        <div class="card">
+          <h2><span class="ref">L-1</span>Árbol de trabajo (cambios no publicados)</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>GIT-WT-2026-04-09</code> [inferred]</td></tr>
+            <tr><th>Marca temporal</th><td><code>2026-04-09T00:00:00Z</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td>repository / git</td></tr>
+            <tr><th>Severidad</th><td><span class="sev">NOTICE</span> [inferred]</td></tr>
+          </table>
+          <p class="msg"><strong>Modified:</strong> <code>.gitignore</code>, <code>AGENTS.md</code>, <code>docs/team/PROJECT-STATE.md</code>, <code>docs/team/README.md</code>, <code>docs/team/orientation/README.md</code>, <code>package-lock.json</code>, <code>package.json</code>.</p>
+          <p class="msg"><strong>Untracked:</strong> <code>docs/team/orientation/AI-MAGAZINE-UPDATE-LOGS-PROMPT.md</code>, <code>docs/team/orientation/EXPERT-DEV-TRACEABILITY.md</code>, <code>docs/team/orientation/VERSION-HISTORY-BMC-CALC.md</code>, <code>docs/team/orientation/MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md</code>, <code>docs/team/orientation/MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.html</code>, <code>docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-09-prod-state-baseline.md</code>, <code>scripts/expert-dev-traceability.mjs</code> [lista alineada al informe canónico; ajustar si el árbol cambió].</p>
+          <p class="msg"><strong>Branch:</strong> <code>main...origin/main [ahead 1]</code>.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>[inferred] Cambios locales y documentación no integrados al remoto.</td></tr>
+            <tr><th>Impacto</th><td>[inferred] El remoto puede no reflejar el árbol local hasta push/PR.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Divergencia entre colaboradores y decisiones sobre artefactos desactualizados.</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2><span class="ref">L-2</span>Narrativa Live DevTools (línea base de producción)</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>PS-2026-04-09-UX-LDN</code> [inferred]</td></tr>
+            <tr><th>Marca temporal</th><td><code>2026-04-09</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td>ux-feedback / <code>https://calculadora-bmc.vercel.app</code></td></tr>
+            <tr><th>Severidad</th><td><span class="sev">INFO</span></td></tr>
+          </table>
+          <p class="msg">Informe <code>docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-09-prod-state-baseline.md</code>: carga producción — consola sin mensajes; red: 18 solicitudes sin 4xx/5xx. Hallazgos P2: discrepancia copy <strong>Panelin v3.0</strong> vs <code>package.json</code> <strong>3.1.5</strong> (<code>PanelinCalculadoraV3_backup.jsx</code>); modal Panelin abierto al inicio.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>Observabilidad del front en producción; alineación marca/versión.</td></tr>
+            <tr><th>Impacto</th><td>Versión percibida desalineada con el build; modal modifica primera impresión.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Soporte y confianza en numeración si persiste divergencia.</td></tr>
+          </table>
+          <div class="callout">
+            <strong>Nota de conciliación:</strong> En repo: <code>src/appSemver.js</code> y badge en headers alineado a <code>package.json</code> (ver PROJECT-STATE, UX badge). Tras deploy, la divergencia puede quedar cerrada en código; <strong>L-2</strong> conserva el baseline documentado — validar en prod con nueva pasada DevTools si se requiere evidencia actualizada.
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span class="ref">L-3</span>Plantilla editorial para logs (agente IA)</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>PS-2026-04-09-DOC-AI-MAG</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td><code>docs/team/orientation</code></td></tr>
+            <tr><th>Severidad</th><td><span class="sev">INFO</span></td></tr>
+          </table>
+          <p class="msg"><code>AI-MAGAZINE-UPDATE-LOGS-PROMPT.md</code>: plantilla SYSTEM+USER — página L registro técnico completo; página R narrativa usuario (gradiente oscuro, acentos cyan). Índice en <code>orientation/README.md</code>.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>[inferred] Metodología de comunicación de cambios (equipo / IA).</td></tr>
+            <tr><th>Impacto</th><td>[inferred] Formato repetible para changelogs visuales.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Bajo; confundir plantilla con estado operativo real.</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2><span class="ref">L-4</span>Historial de versiones consolidado</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>PS-2026-04-09-DOC-VER-HIST</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td><code>docs/team/orientation</code></td></tr>
+            <tr><th>Severidad</th><td><span class="sev">INFO</span></td></tr>
+          </table>
+          <p class="msg"><code>VERSION-HISTORY-BMC-CALC.md</code>: semver desde 3.0.0 (Git), <code>CALCULATOR_DATA_VERSION</code>, deploys/URLs, git tags, PROJECT-STATE y checkpoints expert. Índices en <code>docs/team/README.md</code> y <code>orientation/README.md</code>.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>Trazabilidad de releases y datos de calculadora.</td></tr>
+            <tr><th>Impacto</th><td>[inferred] Onboarding y auditorías “qué versión corre dónde”.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Doc obsoleto si no se actualiza tras bump.</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2><span class="ref">L-5</span>Trazabilidad expert y checkpoints locales</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>PS-2026-04-09-DEV-EXPERT</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td><code>scripts/</code> · <code>.cursor/</code></td></tr>
+            <tr><th>Severidad</th><td><span class="sev">INFO</span></td></tr>
+          </table>
+          <p class="msg"><code>expert-dev-traceability.mjs</code>: <code>npm run expert:checkpoint</code>, <code>expert:checkpoints</code>, <code>expert:restore-hint</code>, <code>expert:workflow</code>; <code>.cursor/dev-checkpoints/</code> (gitignored). Doc <code>EXPERT-DEV-TRACEABILITY.md</code>. Comandos en <code>package.json</code>. Instrumentación DEBUG en ingest retirada.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>Flujo desarrollador local y contexto entre sesiones.</td></tr>
+            <tr><th>Impacto</th><td>[inferred] Restauración más rápida ante regresiones o handoff.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Checkpoints no sustituyen el remoto como fuente de verdad.</td></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2><span class="ref">L-6</span>Skill BMC Cross-Sync Propagation</h2>
+          <table class="meta tight">
+            <tr><th>ID</th><td><code>PS-2026-04-09-SKILL-SYNC</code> [inferred]</td></tr>
+            <tr><th>Componente</th><td><code>.cursor/skills/</code> · <code>AGENTS.md</code> · reglas Cursor</td></tr>
+            <tr><th>Severidad</th><td><span class="sev sev--high">HIGH</span> [inferred — deploy y contratos API]</td></tr>
+          </table>
+          <p class="msg">Skill <code>bmc-cross-sync-propagation/SKILL.md</code>: runbook — propagación §4, <code>PROJECT-STATE</code>; local (<code>localhost:5173</code>, <code>:3001</code>, <code>npm run gate:local:full</code>) y remoto (<code>calculadora-bmc.vercel.app</code>, <code>npm run smoke:prod</code>); contrato/capacidades si cambian rutas u OpenAPI; <code>bmc-project-team-sync</code>, <code>bmc-calculadora-deploy-from-cursor</code>, <code>bmc-repo-sync-agent</code> opcional. Regla <code>bmc-cross-sync-propagation.mdc</code>. <code>PROJECT-TEAM-FULL-COVERAGE.md</code>, <code>docs/team/AGENTS.md</code>.</p>
+          <table class="meta tight">
+            <tr><th>Alcance</th><td>Sync local/producción y gobernanza multiárea.</td></tr>
+            <tr><th>Impacto</th><td>Checklist explícito antes/después de API o front público.</td></tr>
+            <tr><th>Riesgo</th><td>[inferred] Drift en prod si se omiten <code>smoke:prod</code> o contrato.</td></tr>
+          </table>
+        </div>
+
+        <footer>Fuente: <code>docs/team/PROJECT-STATE.md</code> + estado Git (sesión de elaboración). Identificadores L-n para trazabilidad y accesibilidad.</footer>
+      </article>
+
+      <!-- PAGE R -->
+      <article class="page page--r" aria-label="Página R — Qué significa para las personas">
+        <div class="hero-visual">
+          <svg class="hero-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#3d0a0a" />
+                <stop offset="70%" stop-color="#1a0000" stop-opacity="0.9" />
+                <stop offset="100%" stop-color="#050505" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="100" cy="100" r="88" fill="none" stroke="#00e5ff" stroke-opacity="0.12" stroke-width="0.5" />
+            <circle cx="100" cy="100" r="72" fill="none" stroke="#00e5ff" stroke-opacity="0.18" stroke-width="0.5" />
+            <circle cx="100" cy="100" r="56" fill="none" stroke="#00e5ff" stroke-opacity="0.25" stroke-width="0.5" />
+            <path d="M20 100 H180 M100 20 V180 M35 35 L165 165 M165 35 L35 165" stroke="#ffffff" stroke-opacity="0.06" stroke-width="0.6" />
+            <circle cx="100" cy="100" r="22" fill="url(#glow)" stroke="#e10600" stroke-opacity="0.35" stroke-width="1" />
+            <path d="M100 40 Q140 100 100 160 Q60 100 100 40" fill="none" stroke="#00d4aa" stroke-opacity="0.5" stroke-width="1.2" />
+            <path d="M40 100 Q100 60 160 100 Q100 140 40 100" fill="none" stroke="#00d4aa" stroke-opacity="0.35" stroke-width="0.8" />
+          </svg>
+          <h1>EL SISTEMA SE DOCUMENTA<br />Y SE OBSERVA</h1>
+          <p class="subhero">Calculadora BMC · API + Vite · 2026-04-09</p>
+        </div>
+
+        <div class="divider" role="presentation"></div>
+
+        <section>
+          <p class="evidence">L-6 · Gobernanza</p>
+          <h3>Escudo con traza de circuito</h3>
+          <p>Runbook formal: entorno local con lo que ve el cliente en Vercel y la API en Cloud Run. Quien prepara release reduce incertidumbre con <code>npm run gate:local:full</code> y <code>npm run smoke:prod</code> cuando cambia contrato HTTP u OpenAPI.</p>
+        </section>
+
+        <section>
+          <p class="evidence">L-3 · L-4 · Comunicación</p>
+          <h3>Malla de nodos</h3>
+          <p>Versiones y plantilla editorial definen <strong>qué</strong> contar y <strong>con qué pruebas</strong>. Ejecutivo: riesgo y cambio. Técnico: semver, <code>CALCULATOR_DATA_VERSION</code>, rutas de deploy.</p>
+        </section>
+
+        <section>
+          <p class="evidence">L-2 · L-5 · Observabilidad y cadencia</p>
+          <h3>Pulso / latido</h3>
+          <p>Red estable en la muestra. Hallazgo <strong>v3.0</strong> vs <strong>3.1.5</strong> <strong>mitigado en código</strong> (<code>appSemver</code> / badge); falta <strong>verificación post-deploy</strong> y seguimiento del <strong>modal</strong> inicial. Checkpoints expert aceleran recuperación en local; <strong>no</strong> sustituyen <code>git push</code> ni el remoto.</p>
+        </section>
+
+        <section>
+          <p class="evidence">L-1 · Próximo paso</p>
+          <h3>Ruta sobre mapa</h3>
+          <p>Cambios locales sin publicar. Secuencia: revisar diff; si hubo cambios bajo <code>src/</code>, gate local; PR o integración en <code>origin/main</code> antes de declarar estado oficial del repositorio.</p>
+        </section>
+
+        <div class="strip">
+          <h4>At a glance</h4>
+          <ul>
+            <li><strong>Sincronización:</strong> L-6 — evidencia local y remota antes de cerrar release.</li>
+            <li><strong>Experiencia en prod:</strong> L-2 — consola limpia en muestra; discrepancia v3.0/3.1.5 abordada en repo (<code>appSemver</code>); <strong>confirmar en prod</strong> tras deploy.</li>
+            <li><strong>Repositorio:</strong> L-1 — <code>main</code> ahead 1 y archivos sin seguimiento hasta decisión de commit.</li>
+          </ul>
+          <p class="credit">Evidencia detallada en bloques L-1 … L-6 (página izquierda).</p>
+        </div>
+
+        <footer>Cuerpo R: <code>#F2F2F2</code> · Titulares: blanco · Acentos: <code>#00D4AA</code> · Cyan decorativo con contraste verificado en impresión.</footer>
+      </article>
+    </div>
+  </div>
+</body>
+</html>

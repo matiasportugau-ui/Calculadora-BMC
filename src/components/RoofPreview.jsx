@@ -37,6 +37,8 @@ import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
 const DRAG_SENSITIVITY = 0.52;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
 const SNAP_ZONE_M = 0.35;
+/** Máx. pasos en deshacer / rehacer (planta 2D). */
+const MAX_PLAN_UNDO = 5;
 
 /** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
 function zonaLabelPlanta(r) {
@@ -72,6 +74,23 @@ function suppressSharedVerticalStroke(r, entries, zonas) {
     if (Math.abs(r.x + r.w - e.x) < eps) right = true;
   }
   return { left, right };
+}
+
+/** Snapshot { gi: { x, y } } para deshacer/rehacer posiciones en planta 2D. */
+function snapshotZonaPositions(zonasList) {
+  const snap = {};
+  if (!Array.isArray(zonasList)) return snap;
+  for (let i = 0; i < zonasList.length; i++) {
+    const px = zonasList[i]?.preview?.x;
+    const py = zonasList[i]?.preview?.y;
+    if (Number.isFinite(px) && Number.isFinite(py)) snap[i] = { x: px, y: py };
+  }
+  return snap;
+}
+
+function isEditableKeyEventTarget(target) {
+  if (!target || typeof target.closest !== "function") return false;
+  return !!target.closest('input, textarea, select, [contenteditable="true"]');
 }
 
 function clampZonaTopLeft(x, y, w, h, vm) {
@@ -825,7 +844,12 @@ export default function RoofPreview({
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
   const [localDisplayMode, setLocalDisplayMode] = useState(displayMode);
+  const zonasRef = useRef(zonas);
+  useEffect(() => {
+    zonasRef.current = zonas;
+  }, [zonas]);
 
   const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
   const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
@@ -911,6 +935,8 @@ export default function RoofPreview({
     setUndoStack((s) => {
       if (!s.length) return s;
       const prev = s[s.length - 1];
+      const before = snapshotZonaPositions(zonasRef.current);
+      setRedoStack((r) => [...r.slice(-(MAX_PLAN_UNDO - 1)), before]);
       for (const k of Object.keys(prev)) {
         const gi = Number(k);
         const pos = prev[k];
@@ -921,6 +947,45 @@ export default function RoofPreview({
       return s.slice(0, -1);
     });
   }, [onZonaPreviewChange]);
+
+  const applyRedo = useCallback(() => {
+    setRedoStack((r) => {
+      if (!r.length) return r;
+      const nextPos = r[r.length - 1];
+      const before = snapshotZonaPositions(zonasRef.current);
+      setUndoStack((s) => [...s.slice(-(MAX_PLAN_UNDO - 1)), before]);
+      for (const k of Object.keys(nextPos)) {
+        const gi = Number(k);
+        const pos = nextPos[k];
+        if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) {
+          onZonaPreviewChange?.(gi, { x: pos.x, y: pos.y });
+        }
+      }
+      return r.slice(0, -1);
+    });
+  }, [onZonaPreviewChange]);
+
+  useEffect(() => {
+    if (!onZonaPreviewChange) return;
+    const onKey = (e) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (isEditableKeyEventTarget(e.target)) return;
+      if (e.key === "z" || e.key === "Z") {
+        if (e.shiftKey) {
+          e.preventDefault();
+          applyRedo();
+        } else {
+          e.preventDefault();
+          applyUndo();
+        }
+      } else if ((e.key === "y" || e.key === "Y") && e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        applyRedo();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [applyUndo, applyRedo, onZonaPreviewChange]);
 
   const annexHitStop = useCallback((e) => {
     e.stopPropagation();
@@ -973,7 +1038,8 @@ export default function RoofPreview({
       if (!svg) return;
       if (d.moved && !d.snapshotSaved && d.startSnapshot && Object.keys(d.startSnapshot).length) {
         d.snapshotSaved = true;
-        setUndoStack((s) => [...s.slice(-4), d.startSnapshot]);
+        setUndoStack((s) => [...s.slice(-(MAX_PLAN_UNDO - 1)), d.startSnapshot]);
+        setRedoStack([]);
       }
       const p = clientToSvg(svg, e.clientX, e.clientY);
       const zDrag = zonas[d.gi];
@@ -1146,6 +1212,7 @@ export default function RoofPreview({
             <button
               type="button"
               onClick={applyUndo}
+              title="Deshacer último movimiento en planta (Ctrl/Cmd+Z)"
               style={{
                 fontSize: 11,
                 fontWeight: 600,
@@ -1158,6 +1225,25 @@ export default function RoofPreview({
               }}
             >
               Deshacer
+            </button>
+          )}
+          {redoStack.length > 0 && onZonaPreviewChange && (
+            <button
+              type="button"
+              onClick={applyRedo}
+              title="Rehacer (Ctrl/Cmd+Shift+Z o Ctrl+Y)"
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.tp,
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+              }}
+            >
+              Rehacer
             </button>
           )}
         </div>
@@ -1177,11 +1263,12 @@ export default function RoofPreview({
             <>
               <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
               cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+              Movimiento de zonas en planta: <strong>Deshacer / Rehacer</strong> o <kbd>Ctrl/Cmd+Z</kbd> / <kbd>Ctrl/Cmd+Shift+Z</kbd>.
             </>
           ) : (
             <>
               <strong style={{ color: C.tp }}>Planta:</strong> cotas rojas = perímetro libre y longitud en cada encuentro. Arrastrá las zonas para ubicarlas
-              correctamente antes de bordes y estructura.
+              correctamente antes de bordes y estructura. <strong>Deshacer / Rehacer</strong> en la barra o <kbd>Ctrl/Cmd+Z</kbd> y <kbd>Ctrl/Cmd+Shift+Z</kbd> (o <kbd>Ctrl+Y</kbd> en Windows).
             </>
           )}
         </div>

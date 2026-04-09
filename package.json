@@ -109,7 +109,13 @@
     "expert:restore-hint": "node scripts/expert-dev-traceability.mjs restore-hint",
     "knowledge:schedule:install": "bash scripts/install-knowledge-antenna-schedule.sh",
     "knowledge:schedule:uninstall": "bash scripts/uninstall-knowledge-antenna-schedule.sh",
-    "knowledge:schedule:tick": "bash scripts/knowledge-antenna-scheduler.sh"
+    "knowledge:schedule:tick": "bash scripts/knowledge-antenna-scheduler.sh",
+    "magazine:daily": "node scripts/magazine-daily-digest.mjs",
+    "magazine:daily:send": "node scripts/magazine-daily-digest.mjs --send",
+    "magazine:daily:dry": "node scripts/magazine-daily-digest.mjs --dry-run",
+    "magazine:schedule:install": "bash scripts/install-magazine-daily-schedule.sh",
+    "magazine:schedule:uninstall": "bash scripts/uninstall-magazine-daily-schedule.sh",
+    "magazine:schedule:tick": "bash scripts/magazine-daily-scheduler.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -146,6 +152,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "nodemailer": "^7.0.13",
     "playwright": "^1.58.2",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.2.0"

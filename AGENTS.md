@@ -58,6 +58,10 @@ Lee este archivo antes de cualquier tarea.
 | `npm run expert:checkpoint` | Snapshot local: versión `package.json`, git sha/rama/dirty, hints de restore → `.cursor/dev-checkpoints/` (gitignored). `-- --message="…"` |
 | `npm run expert:checkpoints` | Lista checkpoints (más reciente primero). |
 | `npm run expert:restore-hint -- <id>` | Pasos manuales para volver al commit guardado (`git checkout`, gates). |
+| `npm run magazine:daily` | Digest local: `PROJECT-STATE` + git → `.runtime/magazine-daily/*.html` / `.txt` |
+| `npm run magazine:daily:send` | Igual + correo SMTP si `SMTP_USER` / `SMTP_PASS` en `.env` (default TO: `matias.portugau@gmail.com`). Doc: [`docs/team/orientation/MAGAZINE-DAILY-EMAIL.md`](docs/team/orientation/MAGAZINE-DAILY-EMAIL.md) |
+| `npm run magazine:daily:dry` | Muestra asunto y tamaño; no escribe ni envía |
+| `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
 
 **Loops de validación:**
 

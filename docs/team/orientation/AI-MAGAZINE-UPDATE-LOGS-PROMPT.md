@@ -65,7 +65,9 @@ Do not output generic “lorem ipsum.” Use only the provided log input plus re
 
 ## Ejemplo ejecutado (repo)
 
-Salida **A–D** ya rellenada con fuente `PROJECT-STATE.md` (2026-04-09) + snapshot Git: [MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md](./MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md).
+Salida completa (dirección de arte, páginas L/R, accesibilidad, **especificación Figma/PDF**: mm, pt, hex, checklist) — **versión de documento 1.1:** [MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md](./MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md). Fuentes: `PROJECT-STATE.md` (2026-04-09) + snapshot Git.
+
+**Digest diario por correo (automático):** [MAGAZINE-DAILY-EMAIL.md](./MAGAZINE-DAILY-EMAIL.md) — `npm run magazine:daily:send`, LaunchAgent `npm run magazine:schedule:install`.
 
 ---
 
