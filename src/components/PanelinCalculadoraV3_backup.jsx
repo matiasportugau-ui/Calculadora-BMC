@@ -4310,6 +4310,7 @@ export default function PanelinCalculadoraV3() {
                           pendiente={techo.pendiente}
                           panelAu={techoPanelData?.au ?? 1.12}
                           panelObj={techoPanelData ?? null}
+                          showPlantaExteriorCotas
                           onZonaPreviewChange={updateZonaPreview}
                           onResetLayout={resetRoofPreviewLayout}
                           onAnnexRankSwap={swapAnnexRank}

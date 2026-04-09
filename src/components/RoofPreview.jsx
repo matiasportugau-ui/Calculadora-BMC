@@ -1120,14 +1120,25 @@ export default function RoofPreview({
 
   const effectivePanelAu = panelObj?.au ?? panelAu;
 
+  /**
+   * `buildPanelLayout` solo usa `panel.au`. Sin `panelObj` del catálogo (p. ej. paso temprano),
+   * igual armamos layout con `effectivePanelAu` para que no queden solo cotas de perímetro y parezca
+   * que “falta” la cadena mm / etiquetas T-xx bajo las cotas rojas.
+   */
+  const layoutPanelSource = useMemo(() => {
+    if (panelObj) return panelObj;
+    if (effectivePanelAu > 0) return { au: effectivePanelAu };
+    return null;
+  }, [panelObj, effectivePanelAu]);
+
   const panelLayouts = useMemo(() => {
-    if (!panelObj) return null;
+    if (!layoutPanelSource) return null;
     const is2A = tipoAguas === 'dos_aguas';
     return layout.entries.map((r) => {
       const ancho = is2A ? r.z.ancho / 2 : r.z.ancho;
-      return { gi: r.gi, layout: buildPanelLayout({ panel: panelObj, largo: r.z.largo, ancho }) };
+      return { gi: r.gi, layout: buildPanelLayout({ panel: layoutPanelSource, largo: r.z.largo, ancho }) };
     });
-  }, [panelObj, layout.entries, tipoAguas]);
+  }, [layoutPanelSource, layout.entries, tipoAguas]);
 
   const cotaObstacles = useMemo(() => {
     if (!plantaCotaChromeActive) return [];
@@ -1523,7 +1534,7 @@ export default function RoofPreview({
             </>
           ) : (
             <>
-              <strong style={{ color: C.tp }}>Planta:</strong> cotas rojas = perímetro libre y longitud en cada encuentro. Arrastrá las zonas para ubicarlas
+              <strong style={{ color: C.tp }}>Planta:</strong> cotas rojas = perímetro libre y longitud en cada encuentro; la cadena de cotas en mm bajo el borde inferior = paños según el ancho útil (AU) del panel. Arrastrá las zonas para ubicarlas
               correctamente antes de bordes y estructura. <strong>Deshacer / Rehacer</strong> en la barra o <kbd>Ctrl/Cmd+Z</kbd> y <kbd>Ctrl/Cmd+Shift+Z</kbd> (o <kbd>Ctrl+Y</kbd> en Windows).
             </>
           )}
