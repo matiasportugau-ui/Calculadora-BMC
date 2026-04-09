@@ -10,15 +10,19 @@ LOG_FILE="/tmp/api_runtime_test.log"
 
 # Función para limpiar y salir
 cleanup() {
+  local exit_code=${1:-0}
   echo "Limpiando..."
   if [ ! -z "$API_PID" ]; then
-    kill $API_PID
+    kill $API_PID 2>/dev/null
+    wait $API_PID 2>/dev/null
   fi
   rm -f $LOG_FILE
-  exit
+  exit $exit_code
 }
 
-trap cleanup INT TERM
+trap 'cleanup 130' INT
+trap 'cleanup 143' TERM
+trap 'rm -f $LOG_FILE' EXIT
 
 echo "Iniciando el servidor de la API en segundo plano..."
 # Iniciar la API y guardar su PID
@@ -36,7 +40,7 @@ if [ "$HEALTH_STATUS" -eq 200 ]; then
 else
   echo -e "${RED}FALLÓ (Código: $HEALTH_STATUS)${NC}"
   cat $LOG_FILE
-  cleanup
+  cleanup 1
 fi
 
 # Array de endpoints a verificar
