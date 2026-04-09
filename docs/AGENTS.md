@@ -6,6 +6,26 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## CEO AI Agent
+
+**Skill:** `.cursor/skills/ceo-ai-agent/`
+
+**Rol:** Liderar el proyecto con un solo objetivo: **project working by end of week**. Invoca full team run repetidamente hasta alcanzar la meta.
+
+**Cuándo usar:**
+- CEO run, CEO agent, CEO AI Agent
+- project working by end of week, make it work
+- Invoque full team until ready, lead until it works
+
+**Referencias:**
+- [SKILL.md](../.cursor/skills/ceo-ai-agent/SKILL.md)
+- [CEO-RUN-LOG.md](./team/CEO-RUN-LOG.md) — historial de runs
+- [GO-LIVE-DASHBOARD-CHECKLIST.md](./bmc-dashboard-modernization/GO-LIVE-DASHBOARD-CHECKLIST.md) — criterios de éxito
+
+**Cursor Rule:** `.cursor/rules/ceo-ai-agent.mdc`
+
+---
+
 ## SIM / PANELSIM y SIM-REV (Agente Simulador en Cursor)
 
 **Doc:** [team/panelsim/AGENT-SIMULATOR-SIM.md](./team/panelsim/AGENT-SIMULATOR-SIM.md) — **PANELSIM** = agente comercial/operativo BMC en Cursor (cotizaciones + admin + Sheets + ML como el operador). **Sesión completa + informe por área:** `npm run panelsim:session` (por defecto incluye compass, canales/smoke prod, `ml:verify` si la API está arriba; `-- --quick` para modo corto — ver [`../AGENTS.md`](../AGENTS.md)). **KB índice de todo el proyecto:** [team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md](./team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md). Hub: [team/panelsim/README.md](./team/panelsim/README.md). **Skill correo / bandeja IMAP:** [../.cursor/skills/panelsim-email-inbox/SKILL.md](../.cursor/skills/panelsim-email-inbox/SKILL.md) (`BMC_EMAIL_INBOX_REPO` opcional en `.env`). SIM-REV = revisor vs backlog. Agente Cursor: `.cursor/agents/sim-reviewer-agent.md`. Plantilla MATPROMT: [team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md](./team/panelsim/matprompt/MATPROMT-RUN-THEME-SIM-2026-03-23.md).

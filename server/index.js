@@ -18,6 +18,7 @@ import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
+import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
@@ -436,11 +437,43 @@ app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
 registerOmniRuntime(app, { config, logger, asyncHandler });
 
 app.use("/calc", calcRouter);
+// Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
+app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
+// Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
+{
+  const _isDev = config.appEnv === "development";
+  if (_isDev) {
+    app.get("/api/diagnostic", (req, res) => {
+      const credsPath =
+        config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+      const hasSheets = !!(
+        config.bmcSheetId &&
+        credsPath &&
+        fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath))
+      );
+      res.json({
+        ok: true,
+        version: "1.0",
+        appEnv: config.appEnv,
+        envVarsPresent: [
+          "BMC_SHEET_ID",
+          "GOOGLE_APPLICATION_CREDENTIALS",
+          "ML_CLIENT_ID",
+          "ML_CLIENT_SECRET",
+          "SHOPIFY_CLIENT_ID",
+          "SHOPIFY_CLIENT_SECRET",
+        ].filter((k) => !!process.env[k]),
+        hasSheets,
+        port: config.port,
+      });
+    });
+  }
+}
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)

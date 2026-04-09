@@ -38,9 +38,9 @@
 | `alertarPagosVencidos` | Resalta filas vencidas (#ffcccc) + email digest a tab CONTACTOS | Time-driven daily 8:00 AM |
 | `onEdit` | Cuando ESTADO → "Cobrado": pinta verde + escribe FECHA_COBRO | On edit |
 
-**Checklist instalación:**
-- [ ] Crear tab `CONTACTOS` con columnas: NOMBRE \| EMAIL
-- [ ] Instalar triggers: `alertarPagosVencidos` (time-driven daily 8am) + `onEdit` (on edit)
+**Checklist instalación (ejecutable por tab):**
+- [ ] **Tab CONTACTOS:** 1) Crear tab, 2) Añadir columna NOMBRE (texto), 3) Añadir columna EMAIL (texto)
+- [ ] **Triggers:** 1) alertarPagosVencidos → Time-driven → Day timer → 8am-9am, 2) onEdit → From spreadsheet → On edit
 
 ---
 
@@ -60,9 +60,9 @@
 **Pre-condición:** Crear manualmente tab `Ventas_Consolidado` con columnas:
 `COTIZACION_ID | PROVEEDOR | CLIENTE_NOMBRE | FECHA_ENTREGA | COSTO | GANANCIA | SALDO_CLIENTE | PAGO_PROVEEDOR | FACTURADO | NUM_FACTURA | FECHA_INGRESO`
 
-**Checklist instalación:**
-- [ ] Crear tab `Ventas_Consolidado` con los 11 headers
-- [ ] Instalar triggers: `consolidarVentasDiario` (daily 7am) + `alertarVentasSinFacturar` (weekly Monday 9am)
+**Checklist instalación (ejecutable por tab):**
+- [ ] **Tab Ventas_Consolidado:** 1) Crear tab, 2) Añadir headers: COTIZACION_ID | PROVEEDOR | CLIENTE_NOMBRE | FECHA_ENTREGA | COSTO | GANANCIA | SALDO_CLIENTE | PAGO_PROVEEDOR | FACTURADO | NUM_FACTURA | FECHA_INGRESO
+- [ ] **Triggers:** 1) consolidarVentasDiario → Daily 7am, 2) alertarVentasSinFacturar → Weekly Monday 9am
 - [ ] Opcional: configurar Script Property `WORKBOOK1_ID` = ID del workbook CRM para emails desde EQUIPOS
 
 ---

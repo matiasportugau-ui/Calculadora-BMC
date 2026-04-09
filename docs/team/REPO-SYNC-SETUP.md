@@ -15,6 +15,13 @@
 | **bmc-dashboard-2.0** | Desarrollo y funcionamiento del dashboard | Código dashboard (app.js, styles, index.html), rutas API (bmcDashboard.js), docs de dashboard, DASHBOARD-INTERFACE-MAP, planilla-inventory, config de Sheets, scripts de deploy |
 | **bmc-development-team** | Equipo y artefactos | PROJECT-STATE, PROJECT-TEAM-FULL-COVERAGE, JUDGE-CRITERIA-POR-AGENTE, JUDGE-REPORT-HISTORICO, reportes Solution/Coding, handoffs, skills/agents actualizados |
 
+### Mapa artefacto → repo
+
+| Artefacto / Carpeta | Destino |
+|---------------------|---------|
+| server/, dashboard/, docs/bmc-dashboard-modernization/, docs/google-sheets-module/ | bmc-dashboard-2.0 |
+| docs/team/, .cursor/agents/, .cursor/skills/, reportes Judge | bmc-development-team |
+
 ---
 
 ## 2. Configuración
