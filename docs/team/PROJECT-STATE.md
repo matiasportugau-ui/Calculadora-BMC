@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-08 (revisión ML + roadmap; doc prototipo V3.2)
+**Última actualización:** 2026-04-07 (omnicanal Meta: Postgres + webhooks + CRM)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-07 (Omnicanal Meta — WA + Messenger + Instagram en Postgres):** Tablas `omni_*` ([`server/migrations/omni/001_omni_core.sql`](../../server/migrations/omni/001_omni_core.sql)), `npm run omni:migrate`, pool [`server/lib/omniDb.js`](../../server/lib/omniDb.js). Runtime [`server/lib/omniRuntime.js`](../../server/lib/omniRuntime.js) montado desde [`server/index.js`](../../server/index.js): `POST /webhooks/meta` (raw + HMAC), WhatsApp persistido + adjuntos → `omni_outbox` (descarga GCS, STT Whisper, PDF texto, imagen opcional). CRM unificado vía [`server/lib/omniCrmSync.js`](../../server/lib/omniCrmSync.js) (`WA-Auto` / `FB-Auto` / `IG-Auto`), flush 5 min o 🚀. Auto-respuesta si `mode=auto` y [`omni_policy`](../../server/migrations/omni/001_omni_core.sql). Cockpit [`send-approved`](../../server/routes/bmcDashboard.js) extendido a Messenger/Instagram. `GET /api/omni/health`, scripts `omni:export`, `omni:playbook`, `omni:worker`. Runbook [`docs/team/OMNI-META-RUNBOOK.md`](./OMNI-META-RUNBOOK.md). Contrato [`scripts/validate-api-contracts.js`](../../scripts/validate-api-contracts.js) — `GET /api/omni/health`. Tests [`tests/validation.js`](../../tests/validation.js) suite omnicanal. [`AGENTS.md`](../../AGENTS.md): tabla npm con `omni:migrate` / `omni:export` / `omni:playbook` / `omni:worker`. Sin `DATABASE_URL`: WhatsApp vuelve a modo legacy en memoria (solo texto/caption). Dep: `pdf-parse`.
 
 **2026-04-08 (ML — revisión integración + roadmap cuenta):** Nuevo [`docs/team/ML-ACCOUNT-REVIEW-2026-04-08.md`](./ML-ACCOUNT-REVIEW-2026-04-08.md): capa técnica RAG (OAuth, proxy `/ml/*`, webhooks, `ml-crm-sync`), evidencia runtime local (`npm run ml:verify` sin API en `:3001`) y prod Cloud Run (`GET /health` con `hasTokens: false`, `GET /auth/ml/status` → 404), checklist negocio y datos pendientes para Seller Center, quick wins e iniciativas medianas, roadmap en tres oleadas, anexos (comandos, rutas código, `docs/ML-OAUTH-SETUP.md`).
 
