@@ -106,7 +106,7 @@ export default function SpecManagementSandbox({ onBack }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             type="button"
-            onClick={onBack}
+            onClick={onBack || (() => window.history.back())}
             style={{
               padding: "8px 12px",
               borderRadius: 8,

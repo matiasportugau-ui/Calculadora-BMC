@@ -62,14 +62,25 @@ function requireOpenAI(req, res, next) {
   next();
 }
 
+const MSG_LIMIT = 8;
+const MSG_CHAR_LIMIT = 4000;
+const TOTAL_CHAR_BUDGET = 32000;
+
 function clampMessages(messages) {
   if (!Array.isArray(messages)) return [];
-  const max = 32;
-  const sliced = messages.slice(-max);
-  return sliced.map((m) => ({
-    role: m.role === "assistant" ? "assistant" : "user",
-    content: String(m.content ?? "").slice(0, 24000),
-  }));
+  const sliced = messages.slice(-MSG_LIMIT);
+  const clamped = [];
+  let totalChars = 0;
+  for (const m of sliced) {
+    const content = String(m.content ?? "").slice(0, MSG_CHAR_LIMIT);
+    if (totalChars + content.length > TOTAL_CHAR_BUDGET) break;
+    totalChars += content.length;
+    clamped.push({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content,
+    });
+  }
+  return clamped;
 }
 
 function buildSystemPrompt(agentId, context) {
@@ -117,19 +128,27 @@ router.post("/chat", requireOpenAI, async (req, res) => {
   const system = buildSystemPrompt(agentId, context);
 
   try {
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.openaiApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: config.openaiChatModel,
-        messages: [{ role: "system", content: system }, ...messages],
-        temperature: 0.5,
-        max_tokens: 4096,
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let r;
+    try {
+      r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: config.openaiChatModel,
+          messages: [{ role: "system", content: system }, ...messages],
+          temperature: 0.5,
+          max_tokens: 4096,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const raw = await r.text();
     let data;
@@ -162,6 +181,9 @@ router.post("/chat", requireOpenAI, async (req, res) => {
     });
   } catch (err) {
     req.log?.error?.({ err }, "teamAssist fetch failed");
+    if (err.name === "AbortError") {
+      return res.status(504).json({ ok: false, error: "Timeout al contactar OpenAI (30 s)" });
+    }
     return res.status(503).json({ ok: false, error: err.message || "Error al contactar OpenAI" });
   }
 });

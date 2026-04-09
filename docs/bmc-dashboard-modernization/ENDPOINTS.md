@@ -46,7 +46,7 @@
 | Ruta | Módulo |
 |------|--------|
 | /health | index.js |
-| /api/calc/* | calc.js |
+| /calc/* | calc.js |
 | /api/legacy/* | legacyQuote.js |
 | /auth/ml/*, /ml/* | MercadoLibre |
 | /auth/shopify/*, /webhooks/shopify | Shopify |

@@ -12,7 +12,8 @@ import {
 } from "../utils/helpers.js";
 import { downloadPdf } from "../utils/pdfGenerator.js";
 
-export default function BidPresentation({ onBack }) {
+export default function BidPresentation({ onBack: onBackProp }) {
+  const onBack = onBackProp || (() => window.history.back());
   const html = useMemo(() => generateBidPresentationHTML(), []);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);

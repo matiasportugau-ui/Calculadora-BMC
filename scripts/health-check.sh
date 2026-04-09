@@ -48,8 +48,8 @@ check "api/audit" "$BASE_URL/api/audit"
 check "api/kpi-report" "$BASE_URL/api/kpi-report"
 check "api/ventas/tabs" "$BASE_URL/api/ventas/tabs"
 
-# Calc (si está montado)
-check "api/calc/catalogo" "$BASE_URL/api/calc/catalogo"
+# Calc (montado en /calc, no /api/calc)
+check "calc/catalogo" "$BASE_URL/calc/catalogo"
 
 # Puertos adicionales (opcionales)
 if curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "http://localhost:3849" 2>/dev/null | grep -qE "200|301|302"; then

@@ -627,7 +627,7 @@ app.use("/api", agentTrainingRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
-// Diagnostic endpoint (dev only) — must be before /api router
+// Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
   if (_isDev) {

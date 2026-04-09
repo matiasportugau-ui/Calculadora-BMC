@@ -5,6 +5,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
@@ -2225,6 +2226,7 @@ const PENDIENTE_MODOS = [
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function PanelinCalculadoraV3() {
+  const navigate = useNavigate();
   const isDetachedChatWindow = useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("panelinDetached") === "1";
@@ -3721,7 +3723,7 @@ export default function PanelinCalculadoraV3() {
           </div>
           <button
             type="button"
-            onClick={() => { window.location.href = "/especificaciones"; }}
+            onClick={() => { navigate("/especificaciones"); }}
             style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
             title="Simulacro de gestión de especificaciones y PDF de práctica"
           >
@@ -3729,7 +3731,7 @@ export default function PanelinCalculadoraV3() {
           </button>
           <button
             type="button"
-            onClick={() => { window.location.href = "/presentacion-licitacion"; }}
+            onClick={() => { navigate("/presentacion-licitacion"); }}
             style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
             title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
           >

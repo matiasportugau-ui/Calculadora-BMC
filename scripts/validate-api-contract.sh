@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # BMC Dashboard — Validación de contrato API
 # Hace curl a endpoints GET y verifica que la respuesta tenga estructura esperada (ok, data, etc.)
-# Uso: bash scripts/validate-api-contract.sh [--base URL]
+# Uso: bash scripts/validate-api-contract.sh [--base=URL]
 
 BASE_URL="${BMC_API_BASE:-http://localhost:3001}"
 pass=0
