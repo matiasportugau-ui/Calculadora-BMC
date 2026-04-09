@@ -1963,6 +1963,74 @@ assert("aggregatePanelLayoutVerifications ok=1", verAgg.ok === 1, verAgg.ok, 1);
 assert("aggregatePanelLayoutVerifications failed=1", verAgg.failed === 1, verAgg.failed, 1);
 assert("aggregatePanelLayoutVerifications pending=1", verAgg.pending === 1, verAgg.pending, 1);
 
+// buildPanelLayout: negative wasteUnclamped is clamped to 0
+const layoutNegativeWaste = buildPanelLayout({
+  panel: { au: 1.12 },
+  largo: 6,
+  ancho: 3.3599999999999,
+});
+assert(
+  "buildPanelLayout negative wasteUnclamped is clamped to 0",
+  layoutNegativeWaste.wasteM >= 0,
+  layoutNegativeWaste.wasteM,
+  ">=0",
+);
+
+// buildPanelLayout: full panels have width===au and cutRatio===1 (defensive clamp)
+const layoutWidthClamp = buildPanelLayout({
+  panel: { au: 1.12 },
+  largo: 6,
+  ancho: 3.3600000000001,
+});
+const fullPanelsList = layoutWidthClamp.panels.filter((p) => p.cutRatio === 1);
+assert(
+  "buildPanelLayout panels with cutRatio=1 have width clamped to au",
+  fullPanelsList.length > 0 &&
+    fullPanelsList.every((p) => p.width === 1.12 && p.cutRatio === 1),
+  JSON.stringify(fullPanelsList.map((p) => ({ width: p.width, cutRatio: p.cutRatio }))),
+  ">=1 panel with width===au and cutRatio===1",
+);
+
+// aggregatePanelLayoutVerifications: null/undefined input
+const verNoneNull0 = aggregatePanelLayoutVerifications(null, 0);
+assert("aggregatePanelLayoutVerifications null+expectedZones=0 total=0", verNoneNull0.total === 0, verNoneNull0.total, 0);
+assert("aggregatePanelLayoutVerifications null+expectedZones=0 pending=0", verNoneNull0.pending === 0, verNoneNull0.pending, 0);
+assert("aggregatePanelLayoutVerifications null+expectedZones=0 allOk=true", verNoneNull0.allOk === true, verNoneNull0.allOk, true);
+assert("aggregatePanelLayoutVerifications null+expectedZones=0 hasFailures=false", verNoneNull0.hasFailures === false, verNoneNull0.hasFailures, false);
+
+const verNoneNull2 = aggregatePanelLayoutVerifications(null, 2);
+assert("aggregatePanelLayoutVerifications null+expectedZones=2 total=2", verNoneNull2.total === 2, verNoneNull2.total, 2);
+assert("aggregatePanelLayoutVerifications null+expectedZones=2 pending=2", verNoneNull2.pending === 2, verNoneNull2.pending, 2);
+assert("aggregatePanelLayoutVerifications null+expectedZones=2 allOk=false", verNoneNull2.allOk === false, verNoneNull2.allOk, false);
+assert("aggregatePanelLayoutVerifications null+expectedZones=2 hasFailures=false", verNoneNull2.hasFailures === false, verNoneNull2.hasFailures, false);
+
+const verNoneEmpty1 = aggregatePanelLayoutVerifications({}, 1);
+assert("aggregatePanelLayoutVerifications {}+expectedZones=1 total=1", verNoneEmpty1.total === 1, verNoneEmpty1.total, 1);
+assert("aggregatePanelLayoutVerifications {}+expectedZones=1 pending=1", verNoneEmpty1.pending === 1, verNoneEmpty1.pending, 1);
+assert("aggregatePanelLayoutVerifications {}+expectedZones=1 allOk=false", verNoneEmpty1.allOk === false, verNoneEmpty1.allOk, false);
+assert("aggregatePanelLayoutVerifications {}+expectedZones=1 hasFailures=false", verNoneEmpty1.hasFailures === false, verNoneEmpty1.hasFailures, false);
+
+// all-ok case
+const verAllOk = aggregatePanelLayoutVerifications({ 0: { ok: true }, 1: { ok: true } }, 2);
+assert("aggregatePanelLayoutVerifications all-ok total=2", verAllOk.total === 2, verAllOk.total, 2);
+assert("aggregatePanelLayoutVerifications all-ok ok=2", verAllOk.ok === 2, verAllOk.ok, 2);
+assert("aggregatePanelLayoutVerifications all-ok failed=0", verAllOk.failed === 0, verAllOk.failed, 0);
+assert("aggregatePanelLayoutVerifications all-ok pending=0", verAllOk.pending === 0, verAllOk.pending, 0);
+assert("aggregatePanelLayoutVerifications all-ok allOk=true", verAllOk.allOk === true, verAllOk.allOk, true);
+assert("aggregatePanelLayoutVerifications all-ok hasFailures=false", verAllOk.hasFailures === false, verAllOk.hasFailures, false);
+
+// expectedZones < known.length → total uses Math.max(expectedZones, known.length)
+const verExpectedLess = aggregatePanelLayoutVerifications(
+  { 0: { ok: true }, 1: { ok: true }, 2: { ok: false } },
+  2,
+);
+assert("aggregatePanelLayoutVerifications expectedZones<known total=3", verExpectedLess.total === 3, verExpectedLess.total, 3);
+assert("aggregatePanelLayoutVerifications expectedZones<known ok=2", verExpectedLess.ok === 2, verExpectedLess.ok, 2);
+assert("aggregatePanelLayoutVerifications expectedZones<known failed=1", verExpectedLess.failed === 1, verExpectedLess.failed, 1);
+assert("aggregatePanelLayoutVerifications expectedZones<known pending=0", verExpectedLess.pending === 0, verExpectedLess.pending, 0);
+assert("aggregatePanelLayoutVerifications expectedZones<known allOk=false", verExpectedLess.allOk === false, verExpectedLess.allOk, false);
+assert("aggregatePanelLayoutVerifications expectedZones<known hasFailures=true", verExpectedLess.hasFailures === true, verExpectedLess.hasFailures, true);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE: ML answer text — ASCII $ → fullwidth for Mercado Libre API
 // ═══════════════════════════════════════════════════════════════════════════

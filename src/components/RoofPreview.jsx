@@ -58,6 +58,9 @@ function verificationSummaryText(summary) {
   if (summary.hasFailures) {
     return `Verificación zonas: ${summary.ok}/${summary.total} OK · ${summary.failed} con discrepancia`;
   }
+  if (summary.pending > 0) {
+    return `Verificación zonas: ${summary.ok}/${summary.total} OK · ${summary.pending} pendiente${summary.pending > 1 ? "s" : ""}`;
+  }
   return `Verificación zonas: ${summary.ok}/${summary.total} OK`;
 }
 
@@ -1492,9 +1495,9 @@ export default function RoofPreview({
             fontWeight: 600,
             padding: "4px 8px",
             borderRadius: 999,
-            border: `1px solid ${verificationSummary.hasFailures ? "#fca5a5" : "#86efac"}`,
-            background: verificationSummary.hasFailures ? "#fef2f2" : "#f0fdf4",
-            color: verificationSummary.hasFailures ? "#b91c1c" : "#166534",
+            border: `1px solid ${verificationSummary.hasFailures ? "#fca5a5" : verificationSummary.pending > 0 ? "#fde68a" : "#86efac"}`,
+            background: verificationSummary.hasFailures ? "#fef2f2" : verificationSummary.pending > 0 ? "#fffbeb" : "#f0fdf4",
+            color: verificationSummary.hasFailures ? "#b91c1c" : verificationSummary.pending > 0 ? "#92400e" : "#166534",
           }}
         >
           {verificationSummaryText(verificationSummary)}
