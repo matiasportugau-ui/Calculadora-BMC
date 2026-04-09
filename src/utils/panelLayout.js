@@ -51,8 +51,8 @@ export function buildPanelLayout({ panel, largo, ancho }) {
   const fullPanels = panels.filter((p) => !p.isCut).length;
   const cutPanels = totalPanels - fullPanels;
   const anchoTotal = totalPanels * au;
-  const wasteUnclamped = +(anchoTotal - ancho).toFixed(6);
-  const wasteM = Math.max(0, wasteUnclamped);
+  const wasteBeforeClamp = +(anchoTotal - ancho).toFixed(6);
+  const wasteM = Math.max(0, wasteBeforeClamp);
 
   return { panels, totalPanels, fullPanels, cutPanels, anchoTotal, wasteM, au };
 }

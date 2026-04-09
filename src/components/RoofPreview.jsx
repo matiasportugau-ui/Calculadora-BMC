@@ -45,6 +45,10 @@ const ROOF_PREVIEW_DISPLAY_MODES = [
   { id: "full", label: "Completo" },
 ];
 
+function normalizeDisplayMode(mode) {
+  return ROOF_PREVIEW_DISPLAY_MODES.some((m) => m.id === mode) ? mode : DEFAULT_DISPLAY_MODE;
+}
+
 function verificationSummaryText(summary) {
   if (!summary || summary.total <= 0) return "";
   if (summary.hasFailures) {
@@ -840,16 +844,10 @@ export default function RoofPreview({
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
-  const [localDisplayMode, setLocalDisplayMode] = useState(() => (
-    ROOF_PREVIEW_DISPLAY_MODES.some((m) => m.id === displayMode) ? displayMode : DEFAULT_DISPLAY_MODE
-  ));
+  const [localDisplayMode, setLocalDisplayMode] = useState(() => normalizeDisplayMode(displayMode));
 
   useEffect(() => {
-    if (ROOF_PREVIEW_DISPLAY_MODES.some((m) => m.id === displayMode)) {
-      setLocalDisplayMode(displayMode);
-    } else {
-      setLocalDisplayMode(DEFAULT_DISPLAY_MODE);
-    }
+    setLocalDisplayMode(normalizeDisplayMode(displayMode));
   }, [displayMode]);
 
   const effectiveDisplayMode = localDisplayMode;
