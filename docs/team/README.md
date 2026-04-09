@@ -23,6 +23,7 @@ docs/team/
 ├── RUN55-OPERATOR-CHECKLIST.md   Run 55: WA / ML / correo — pasos operador + enlaces a gates y CLI ingest
 ├── GCLOUD-SHEETS-CREDENTIALS-SIMPLE.md  Sheets en Cloud Run: service account → Secret Manager → mount → GOOGLE_APPLICATION_CREDENTIALS (pasos simples)
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
+├── CHAT-EQUIPO-INTERACTIVO.md   Chat/diálogo interactivo con el equipo completo
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo
 ├── popular-known-ai-teams/     KB: arquitecturas multi-agente reconocidas (CrewAI, AutoGen, LangGraph, ADK, …) + informe vs BMC
@@ -68,6 +69,7 @@ docs/team/
 | Documento | Descripción |
 |-----------|-------------|
 | [PROJECT-STATE.md](./PROJECT-STATE.md) | Estado del proyecto; cambios recientes; pendientes; cómo usar |
+| [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md) | Chat/diálogo interactivo con el equipo completo |
 | [PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md](./PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md) | Comparativa demo HTML “V3.2 Pro” vs calculadora repo: matriz, auditoría wizard/visor, spec largo global/local, decisión Wolfboard, backlog, QA |
 | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) | Seguimiento unificado: `npm run project:compass` (fase, tareas, follow-ups); rutina |
 | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) | Orden fijo WA → ML → Correo: checklist, comandos, `npm run channels:onboarding` |

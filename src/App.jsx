@@ -11,6 +11,8 @@ import { onLCP, onINP, onCLS } from "web-vitals";
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
 const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
+const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSandbox.jsx"));
+const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
 
 const suspenseFallback = (
   <div
@@ -97,6 +99,26 @@ export default function App() {
             <Shell>
               <Suspense fallback={suspenseFallback}>
                 <DriverTransportistaApp />
+              </Suspense>
+            </Shell>
+          }
+        />
+        <Route
+          path="/especificaciones"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <SpecManagementSandbox />
+              </Suspense>
+            </Shell>
+          }
+        />
+        <Route
+          path="/presentacion-licitacion"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <BidPresentation />
               </Suspense>
             </Shell>
           }

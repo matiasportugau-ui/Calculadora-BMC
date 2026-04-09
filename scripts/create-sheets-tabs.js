@@ -3,12 +3,14 @@ import {
 } from 'googleapis';
 import 'dotenv/config';
 
-// Configuración de autenticación
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  console.error('Error: GOOGLE_APPLICATION_CREDENTIALS no está configurada. Apunta al JSON de la cuenta de servicio.');
+  process.exit(1);
+}
+
+// Configuración de autenticación via ADC (Application Default Credentials)
 const auth = new google.auth.GoogleAuth({
-  credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-  },
+  keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 

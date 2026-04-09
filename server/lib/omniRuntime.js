@@ -119,7 +119,7 @@ export function registerOmniRuntime(app, { config, logger, asyncHandler }) {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
     if (mode === "subscribe" && token === config.whatsappVerifyToken) {
-      return res.status(200).send(challenge);
+      return res.type("text/plain").status(200).send(String(challenge ?? ""));
     }
     res.status(403).send("Forbidden");
   });
@@ -130,7 +130,7 @@ export function registerOmniRuntime(app, { config, logger, asyncHandler }) {
     const challenge = req.query["hub.challenge"];
     const verify = config.metaWebhookVerifyToken || config.whatsappVerifyToken;
     if (mode === "subscribe" && token === verify) {
-      return res.status(200).send(challenge);
+      return res.type("text/plain").status(200).send(String(challenge ?? ""));
     }
     res.status(403).send("Forbidden");
   });

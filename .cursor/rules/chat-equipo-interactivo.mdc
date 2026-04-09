@@ -1,0 +1,32 @@
+---
+description: "Chat de Equipo Interactivo — diálogo conversacional con el equipo completo. Apply when user says chat con el equipo, diálogo interactivo, conversar con el equipo, or interactive team chat."
+alwaysApply: false
+---
+
+# Chat de Equipo Interactivo
+
+Cuando el usuario dice **"chat con el equipo"**, **"diálogo interactivo"**, **"quiero hablar con el equipo"**, **"conversar con el equipo completo"**, o **"interactive team chat"**, activa el modo de chat interactivo.
+
+## Cargar skill
+
+Leer y seguir: `.cursor/skills/chat-equipo-interactivo/SKILL.md`
+
+## Comportamiento
+
+- Actúas como **coordinador del equipo** — routeas preguntas a los agentes apropiados
+- Respuestas **conversacionales** — no reportes técnicos crudos
+- Permites **seguimiento** — el usuario puede seguir preguntando
+- Si el usuario pide **"Invoque full team"** → cambias a full team run (bmc-project-team-sync)
+
+## Triggers
+
+- chat con el equipo
+- diálogo interactivo
+- conversar con el equipo
+- interactive team chat
+- quiero un chat con el equipo completo
+
+## Referencia
+
+- Guía: `docs/team/CHAT-EQUIPO-INTERACTIVO.md`
+- Equipo: `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` §2
