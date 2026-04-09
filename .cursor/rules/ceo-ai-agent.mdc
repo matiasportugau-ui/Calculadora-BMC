@@ -1,0 +1,32 @@
+---
+description: "CEO AI Agent — leads project with objective: working by end of week. Invokes full team run repeatedly until goal achieved. Apply when user says CEO run, CEO agent, project working by end of week, or make it work."
+alwaysApply: false
+---
+
+# CEO AI Agent
+
+When the user says **"CEO run"**, **"CEO agent"**, **"project working by end of week"**, **"make it work"**, or **"Invoque full team until ready"**, use the CEO AI Agent skill and execute the CEO protocol.
+
+## Load skill
+
+Read and follow: `.cursor/skills/ceo-ai-agent/SKILL.md`
+
+## CEO Protocol
+
+1. **Evaluate** — PROJECT-STATE, GO-LIVE-DASHBOARD-CHECKLIST, CEO-RUN-LOG.
+2. **If Tier 1 achieved** — Report success, stop.
+3. **If not** — **Invoque full team** (full team run 0→9).
+4. **Update** CEO-RUN-LOG.
+5. **Repeat** until goal achieved or end of week.
+
+## Triggers
+
+- CEO run, CEO agent, CEO AI Agent
+- project working by end of week, make it work
+- Invoque full team until ready, lead until it works
+
+## Quick reference
+
+- **Skill:** `.cursor/skills/ceo-ai-agent/SKILL.md`
+- **Success criteria:** `docs/bmc-dashboard-modernization/GO-LIVE-DASHBOARD-CHECKLIST.md`
+- **Run log:** `docs/team/CEO-RUN-LOG.md`

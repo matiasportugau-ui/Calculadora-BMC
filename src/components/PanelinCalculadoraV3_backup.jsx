@@ -5,6 +5,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
@@ -2225,6 +2226,7 @@ const PENDIENTE_MODOS = [
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function PanelinCalculadoraV3() {
+  const navigate = useNavigate();
   const isDetachedChatWindow = useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("panelinDetached") === "1";
@@ -3719,6 +3721,22 @@ export default function PanelinCalculadoraV3() {
             <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
             <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
           </div>
+          <button
+            type="button"
+            onClick={() => { navigate("/especificaciones"); }}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+            title="Simulacro de gestión de especificaciones y PDF de práctica"
+          >
+            <ClipboardList size={14} />Especificaciones
+          </button>
+          <button
+            type="button"
+            onClick={() => { navigate("/presentacion-licitacion"); }}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+            title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
+          >
+            <FileText size={14} />Presentación
+          </button>
           <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Settings size={14} />Config
           </button>
