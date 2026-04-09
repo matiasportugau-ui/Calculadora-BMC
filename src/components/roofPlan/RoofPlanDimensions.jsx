@@ -425,7 +425,7 @@ export function PanelLabels({ panels, x0, y0, h, svgTy, theme, displayMode }) {
         const cy = y0 + h / 2;
         const color = panel.isCut ? theme.warningColor : theme.textColor;
         const labelWidthEst = panel.id.length * labelFont * 0.62;
-        if (panel.width < labelWidthEst * 0.5) return null;
+        if (panel.width < labelWidthEst * 0.5) return <g key={panel.id} />;
 
         return (
           <g key={panel.id}>

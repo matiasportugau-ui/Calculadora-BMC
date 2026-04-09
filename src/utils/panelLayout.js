@@ -64,7 +64,6 @@ export function buildPanelLayout({ au, largo, ancho }) {
 
   const warnings = [];
   if (nCortados > 0) {
-    const corteM = anchoCorte.toFixed(3).replace(/\.?0+$/, '');
     warnings.push(
       `Panel ${panels[n - 1].id} requiere corte a ${Math.round(anchoCorte * 1000)} mm (descarte: ${Math.round((au - anchoCorte) * 1000)} mm)`
     );
