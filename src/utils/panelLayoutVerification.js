@@ -42,3 +42,22 @@ export function verifyPanelLayout(layout, bomResult, largo) {
     },
   };
 }
+
+/**
+ * Agrega resultados de verificación por zona para mostrar un estado global en multi-zona.
+ *
+ * @param {Record<number, ReturnType<verifyPanelLayout>>|null} verificationsByGi
+ * @param {number} [expectedZones=0]
+ * @returns {{total:number, ok:number, failed:number, pending:number, allOk:boolean, hasFailures:boolean}}
+ */
+export function aggregatePanelLayoutVerifications(verificationsByGi, expectedZones = 0) {
+  const entries = Object.values(verificationsByGi || {});
+  const known = entries.filter(Boolean);
+  const total = Math.max(Number(expectedZones) || 0, known.length);
+  const ok = known.filter((v) => v?.ok === true).length;
+  const failed = known.filter((v) => v?.ok === false).length;
+  const pending = Math.max(0, total - ok - failed);
+  const allOk = total > 0 && failed === 0 && pending === 0;
+  const hasFailures = failed > 0;
+  return { total, ok, failed, pending, allOk, hasFailures };
+}

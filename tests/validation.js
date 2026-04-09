@@ -103,6 +103,8 @@ import {
   zonasToPlantRectsLogical,
 } from "../src/utils/roofLateralAnnexLayout.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta, countPanels } from "../src/utils/roofPanelStripsPlanta.js";
+import { buildPanelLayout } from "../src/utils/panelLayout.js";
+import { aggregatePanelLayoutVerifications } from "../src/utils/panelLayoutVerification.js";
 import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../src/utils/roof3dLateralStepInfill.js";
 import { getRoofPanelMapUrl, pickBestMapUrlFromSlides } from "../src/data/roofPanelMapUrl.js";
@@ -1924,6 +1926,39 @@ assert(
   countPanels(3.3601, 1.12),
   4,
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE: panelLayout clamps + multi-zone verification aggregation
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: panelLayout clamping + verification aggregation ═══");
+const layoutExact = buildPanelLayout({
+  panel: { au: 1.12 },
+  largo: 6,
+  ancho: 3.36,
+});
+assert(
+  "buildPanelLayout exact multiple: waste clamped to 0",
+  layoutExact.wasteM === 0,
+  layoutExact.wasteM,
+  0,
+);
+assert(
+  "buildPanelLayout cutRatio clamped to [0..1]",
+  layoutExact.panels.every((p) => p.cutRatio >= 0 && p.cutRatio <= 1),
+  layoutExact.panels.map((p) => p.cutRatio).join(","),
+  "[0..1]",
+);
+const verAgg = aggregatePanelLayoutVerifications(
+  {
+    0: { ok: true },
+    1: { ok: false },
+  },
+  3,
+);
+assert("aggregatePanelLayoutVerifications total=3", verAgg.total === 3, verAgg.total, 3);
+assert("aggregatePanelLayoutVerifications ok=1", verAgg.ok === 1, verAgg.ok, 1);
+assert("aggregatePanelLayoutVerifications failed=1", verAgg.failed === 1, verAgg.failed, 1);
+assert("aggregatePanelLayoutVerifications pending=1", verAgg.pending === 1, verAgg.pending, 1);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE: ML answer text — ASCII $ → fullwidth for Mercado Libre API
