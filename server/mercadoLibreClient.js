@@ -28,17 +28,13 @@ export const createMercadoLibreClient = ({ config, tokenStore, logger }) => {
     }
   };
 
-  const buildAuthUrl = (state, codeChallenge) => {
+  const buildAuthUrl = (state) => {
     assertOAuthConfig();
     const url = new URL("/authorization", config.mlAuthBase);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", config.mlClientId);
     url.searchParams.set("redirect_uri", redirectUri());
     url.searchParams.set("state", state);
-    if (codeChallenge) {
-      url.searchParams.set("code_challenge", codeChallenge);
-      url.searchParams.set("code_challenge_method", "S256");
-    }
     return url.toString();
   };
 
@@ -80,16 +76,14 @@ export const createMercadoLibreClient = ({ config, tokenStore, logger }) => {
     return payload;
   };
 
-  const exchangeCodeForTokens = async (code, codeVerifier) => {
-    const body = {
+  const exchangeCodeForTokens = async (code) => {
+    const payload = await tokenRequest({
       grant_type: "authorization_code",
       client_id: config.mlClientId,
       client_secret: config.mlClientSecret,
       code,
       redirect_uri: redirectUri(),
-    };
-    if (codeVerifier) body.code_verifier = codeVerifier;
-    const payload = await tokenRequest(body);
+    });
     return saveOAuthPayload(payload);
   };
 

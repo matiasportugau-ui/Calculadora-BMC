@@ -4,7 +4,7 @@
 
 **Audiencia:** Cualquier chat en modo SIM / PANELSIM; revisores SIM-REV; MATPROMT al armar bundles “objetivo SIM”.
 
-**Última revisión:** 2026-04-07 (ML plataforma — `ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md` en índice Integraciones).
+**Última revisión:** 2026-03-26 (diálogo + biblioteca técnica productos — `PANELSIM-DIALOGUE-AND-CRITERIA.md`, `biblioteca-tecnica-productos/README.md`, `AGENT-SIMULATOR-SIM.md` §0.2).
 
 ---
 
@@ -44,7 +44,7 @@
 | **Dashboard UI** | Finanzas, operaciones, KPIs, entregas, ventas, stock | `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md`, `dashboard/` (HTML/JS/CSS en modernization) |
 | **Calculadora** | Cotizador React, BOM, PDF, WhatsApp, presupuesto libre | `src/`, `server/routes/calc.js`, `GET /capabilities` |
 | **Infraestructura** | Puertos, Cloud Run, Vercel, ngrok, Netuy | `server/index.js`, `PROJECT-STATE` §Infra, skills `networks-development-agent`, `bmc-dashboard-netuy-hosting` |
-| **Integraciones** | Mercado Libre, Shopify, Drive | `server/index.js` (`/ml/*`, `/auth/ml/*`, `/webhooks/*`), `server/routes/shopify.js`; **voz y reglas ML:** [`ML-RESPUESTAS-KB-BMC.md`](./ML-RESPUESTAS-KB-BMC.md); **plataforma ML (buenas prácticas):** [`ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md`](./ML-PLATAFORMA-BUENAS-PRACTICAS-BMC.md); **sistema entrenamiento + corpus:** [`ML-TRAINING-SYSTEM.md`](./ML-TRAINING-SYSTEM.md) |
+| **Integraciones** | Mercado Libre, Shopify, Drive | `server/index.js` (`/ml/*`, `/auth/ml/*`, `/webhooks/*`), `server/routes/shopify.js`; **voz y reglas ML:** [`ML-RESPUESTAS-KB-BMC.md`](./ML-RESPUESTAS-KB-BMC.md); **sistema entrenamiento + corpus:** [`ML-TRAINING-SYSTEM.md`](./ML-TRAINING-SYSTEM.md) |
 | **GPT / Panelin** | OpenAPI, acciones GPT, drift con Cloud | `docs/openapi-calc.yaml` (y variantes en repo), skills `panelin-gpt-cloud-system`, `openai-gpt-builder-integration` |
 | **Fiscal / billing / audit** | DGI, facturación, auditorías | skills `bmc-dgi-impositivo`, `billing-error-review`, `bmc-dashboard-audit-runner`, `cloudrun-diagnostics-reporter` |
 | **Equipo / proceso** | Judge, Reporter, MATPROMT, Repo Sync | `docs/team/judge/`, `docs/team/reports/`, `IMPROVEMENT-BACKLOG-BY-AGENT.md` |
