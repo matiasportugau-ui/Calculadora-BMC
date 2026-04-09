@@ -40,6 +40,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Expert dev traceability — snapshots locales (regenerar con npm run expert:checkpoint)
+.cursor/dev-checkpoints/
+
 # Runtime exports (MATRIZ CSV pull, logs locales)
 .runtime/
 

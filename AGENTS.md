@@ -54,6 +54,10 @@ Lee este archivo antes de cualquier tarea.
 | `npm run session:video-ingest -- <ruta-video-iphone> [base_url]` | Copia el vídeo a `docs/team/ux-feedback/sessions/…`, corre **extract**, genera **metadata.json** y **CURSOR-CHAT-PROMPT.txt** para pegar en Cursor. Flujo “solo compartir vídeo” desde iPhone → Mac. **Método en chat:** decir **Video-User-interactive-dev** + path → informe `VIDEO-USER-INTERACTIVE-DEV-REPORT-*.md` + JSON — ver [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md). |
 | **Live DevTools narrative** (MCP) | Con MCP **chrome-devtools** en Cursor (`.cursor/mcp.json`): decir **Live DevTools narrative** o **Narrativa en vivo DevTools**; el agente navega (default **`https://calculadora-bmc.vercel.app`**), extrae consola/red/snapshots y cruza con narrativa o transcripción pegada → `LIVE-DEVTOOLS-NARRATIVE-REPORT-*.md`. Skill [`.cursor/skills/live-devtools-narrative-mcp/SKILL.md`](.cursor/skills/live-devtools-narrative-mcp/SKILL.md), plantilla [`TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md`](docs/team/ux-feedback/TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md). |
 | `npm run pre-deploy` | Checklist pre-deploy: health, contratos (API en 3001 o `BMC_API_BASE`), **paso 2** carga `.env` para comprobar `BMC_SHEET_ID` / `GOOGLE_APPLICATION_CREDENTIALS`, **paso 4** cuenta ítems abiertos `- [ ]` en `docs/team/PROJECT-STATE.md` (canónico; `docs/PROJECT-STATE.md` es solo redirección) |
+| `npm run expert:workflow` | Flujo experto local → prod (URLs, gates, smoke). Doc [`docs/team/orientation/EXPERT-DEV-TRACEABILITY.md`](docs/team/orientation/EXPERT-DEV-TRACEABILITY.md). |
+| `npm run expert:checkpoint` | Snapshot local: versión `package.json`, git sha/rama/dirty, hints de restore → `.cursor/dev-checkpoints/` (gitignored). `-- --message="…"` |
+| `npm run expert:checkpoints` | Lista checkpoints (más reciente primero). |
+| `npm run expert:restore-hint -- <id>` | Pasos manuales para volver al commit guardado (`git checkout`, gates). |
 
 **Loops de validación:**
 

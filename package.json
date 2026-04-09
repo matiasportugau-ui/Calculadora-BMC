@@ -103,6 +103,10 @@
     "knowledge:run": "npm run knowledge:env:ensure && npm run knowledge:preflight && npm run knowledge:scan && npm run knowledge:rank && npm run knowledge:impact && npm run knowledge:db && npm run knowledge:direction",
     "development:chain": "node scripts/development-chain-runner.mjs",
     "development:chain:full": "node scripts/development-chain-runner.mjs --full",
+    "expert:workflow": "node scripts/expert-dev-traceability.mjs workflow",
+    "expert:checkpoint": "node scripts/expert-dev-traceability.mjs snapshot",
+    "expert:checkpoints": "node scripts/expert-dev-traceability.mjs list",
+    "expert:restore-hint": "node scripts/expert-dev-traceability.mjs restore-hint",
     "knowledge:schedule:install": "bash scripts/install-knowledge-antenna-schedule.sh",
     "knowledge:schedule:uninstall": "bash scripts/uninstall-knowledge-antenna-schedule.sh",
     "knowledge:schedule:tick": "bash scripts/knowledge-antenna-scheduler.sh"

@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/components/PanelinCalculadoraV3.jsx — React UI component
-// BMC Uruguay · Calculadora de Cotización v3.0
+// BMC Uruguay · Calculadora de Cotización (semver UI: ../appSemver.js)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
@@ -14,6 +14,7 @@ import {
   Table, LayoutTemplate, CircleDollarSign
 } from "lucide-react";
 
+import { PANELIN_VERSION_BADGE } from "../appSemver.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
@@ -3709,7 +3710,7 @@ export default function PanelinCalculadoraV3() {
       <div style={{ background: C.brand, color: "#fff", padding: isPhone ? "12px 14px" : "16px 24px", display: "flex", alignItems: isCompactLayout ? "stretch" : "center", flexDirection: isCompactLayout ? "column" : "row", justifyContent: "space-between", gap: isCompactLayout ? 10 : 16, position: "sticky", top: 0, zIndex: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ fontSize: isPhone ? 18 : 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.0</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>{PANELIN_VERSION_BADGE}</div>
           {currentBudgetCode && (
             <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
           )}

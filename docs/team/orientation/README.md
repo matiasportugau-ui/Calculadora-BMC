@@ -11,6 +11,10 @@
 | [ASYNC-RUNBOOK-UNATTENDED.md](./ASYNC-RUNBOOK-UNATTENDED.md) | **Runbook asíncrono:** pipeline ordenado (H0 / A / H), fin de proceso cm-0…cm-2, sin consultar al titular en cada paso |
 | [../HUMAN-GATES-ONE-BY-ONE.md](../HUMAN-GATES-ONE-BY-ONE.md) | **Humano paso a paso:** enlaces Meta / ML / correo, opciones de menú, criterio de listo |
 | [EXECUTION-PLAN-MASTER.md](./EXECUTION-PLAN-MASTER.md) | **Plan maestro paso a paso:** Fase 0→5, tabla “dónde encontrar” cada doc y script, orden cm-0 → cm-1 → cm-2 → resto |
+| [VERSION-HISTORY-BMC-CALC.md](./VERSION-HISTORY-BMC-CALC.md) | **Versiones:** semver `package.json` desde 3.0.0 (tabla + commits), `CALCULATOR_DATA_VERSION`, deploys, tags, enlaces a PROJECT-STATE |
+| [EXPERT-DEV-TRACEABILITY.md](./EXPERT-DEV-TRACEABILITY.md) | Checkpoints locales `expert:checkpoint` / flujo local → prod |
+| [AI-MAGAZINE-UPDATE-LOGS-PROMPT.md](./AI-MAGAZINE-UPDATE-LOGS-PROMPT.md) | Prompt para agente IA: revista/spread **logs completos (izq.)** + **explicación visual usuario (der.)**, estilo cyber-industrial |
+| [MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md](./MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md) | **Ejemplo ejecutado:** spread dos páginas (art direction + L-1…L-6 + página R + a11y), fuente PROJECT-STATE 2026-04-09 + Git |
 
 **Comando rápido (repo root):**
 
