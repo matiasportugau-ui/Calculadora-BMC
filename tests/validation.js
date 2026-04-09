@@ -16,6 +16,7 @@ import {
   countPuntosFijacionVarillaGrilla,
   countVarillasRoscadasDesdeBarras1m,
   perimetroVerticalInteriorPuntosDesdePlanta,
+  calcTotalesSinIVA,
 } from "../src/utils/calculations.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
@@ -44,6 +45,10 @@ import {
 import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
 import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
 import { colLetterToIndex, colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
+import {
+  normalizeIsodecEpsVentaLocalCsvRows,
+  splitCsvRowSafe,
+} from "../server/lib/matrizCsvNormalization.js";
 import {
   parseAccesorioLine,
   parseLogisticaFromAdjuntoText,
@@ -88,6 +93,7 @@ import {
   encounterBorderPerfil,
 } from "../src/utils/roofEncounterModel.js";
 import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
+import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
 import {
   defaultPrincipalZonaIndex,
   previewPositionForTramoApiladoFrente,
@@ -110,6 +116,7 @@ import crypto from "node:crypto";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
 import { isAllowedDriverEventType } from "../server/lib/transportistaFsm.js";
+import { parseRssItems, pickTier, clamp01 } from "../scripts/knowledge-antenna-lib.mjs";
 
 // Simulate the pricing engine inline for testing
 const IVA = 0.22;
@@ -922,6 +929,45 @@ const dupLines = [
 ];
 const dups = getDuplicatePathReport(dupLines, 0);
 assert("getDuplicatePathReport one dup", dups.length === 1 && dups[0].path === "A.B" && dups[0].count === 2, JSON.stringify(dups), "1 dup A.B");
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 23b: MATRIZ CSV normalization (ISODEC_EPS techo vs ISOPANEL_EPS pared)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 23b: matrizCsvNormalization ═══");
+
+const csvRowsNorm = [
+  "path,descripcion,categoria,costo,venta_local,venta_local_iva_inc,venta_web,venta_web_iva_inc,unidad,tab",
+  'PANELS_PARED.ISOPANEL_EPS.esp.100,"Pared ""EPS"" 100, blanca",Paneles Pared,30,3777,4607.94,3900,4758,m²,BROMYROS',
+  'PANELS_TECHO.ISODEC_EPS.esp.100,"Techo ""EPS"" 100, blanca",Paneles Techo,31,3903,4761.66,4100,5002,m²,BROMYROS',
+  "PANELS_TECHO.ISODEC_EPS.esp.150,Techo 150,Paneles Techo,35,4248,5182.56,4500,5490,m²,BROMYROS",
+  "PANELS_PARED.ISOPANEL_EPS.esp.150,Pared 150,Paneles Pared,35,4248,5182.56,4400,5368,m²,BROMYROS",
+];
+const beforeSameRow = csvRowsNorm[3];
+const sameRef = normalizeIsodecEpsVentaLocalCsvRows(csvRowsNorm);
+assert(
+  "normalizeIsodecEpsVentaLocalCsvRows returns same array reference",
+  sameRef === csvRowsNorm,
+  sameRef === csvRowsNorm,
+  true,
+);
+
+const pared100 = splitCsvRowSafe(csvRowsNorm[1]);
+const techo100 = splitCsvRowSafe(csvRowsNorm[2]);
+assert("normalize copies venta_local from pared to techo", techo100[4] === pared100[4], techo100[4], pared100[4]);
+assert("normalize copies venta_local_iva_inc from pared to techo", techo100[5] === pared100[5], techo100[5], pared100[5]);
+assert("normalize keeps venta_web untouched", techo100[6] === "4100", techo100[6], "4100");
+assert("normalize keeps venta_web_iva_inc untouched", techo100[7] === "5002", techo100[7], "5002");
+assert(
+  "normalize preserves quoted description with comma",
+  techo100[1] === 'Techo "EPS" 100, blanca',
+  techo100[1],
+  'Techo "EPS" 100, blanca',
+);
+assert("normalize skips rows already aligned", csvRowsNorm[3] === beforeSameRow, csvRowsNorm[3], beforeSameRow);
+
+const splitQuoted = splitCsvRowSafe('A,"B, C","D ""Q"""');
+assert("splitCsvRowSafe handles comma in quoted cell", splitQuoted[1] === "B, C", splitQuoted[1], "B, C");
+assert("splitCsvRowSafe handles escaped quotes", splitQuoted[2] === 'D "Q"', splitQuoted[2], 'D "Q"');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 24: Nuevos productos — ISOROOF_COLONIAL, ISODEC_EPS_PARED, perfilería
@@ -1942,6 +1988,148 @@ assert(
   !multi.includes("$") && multi === `a ${fw}1 ${fw}2`,
   multi,
   `a ${fw}1 ${fw}2`,
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 33: scenarioOrchestrator — guards y ramas de alto riesgo
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 33: scenarioOrchestrator ═══");
+
+{
+  const r = executeScenario("unknown_scenario", { techo: {}, pared: {}, camara: {} });
+  assert("executeScenario unknown scenario -> null", r === null, r, null);
+}
+
+{
+  const r = executeScenario("solo_techo", {
+    techo: { familia: "ISODEC_EPS", espesor: null },
+    pared: {},
+    camara: {},
+  });
+  assert("executeScenario solo_techo without espesor -> null", r === null, r, null);
+}
+
+{
+  const r = executeScenario("techo_fachada", {
+    techo: { familia: "", espesor: null },
+    pared: { familia: "", espesor: null },
+    camara: {},
+  });
+  assert("executeScenario techo_fachada without techo+pared -> null", r === null, r, null);
+}
+
+{
+  const paredOnly = {
+    familia: "ISOPANEL_EPS",
+    espesor: 100,
+    alto: 3.2,
+    perimetro: 30,
+    numEsqExt: 4,
+    numEsqInt: 0,
+    aberturas: [],
+    tipoEst: "metal",
+    inclSell: false,
+    incl5852: false,
+    color: "Blanco",
+  };
+  const r = executeScenario("techo_fachada", {
+    techo: { familia: "", espesor: null },
+    pared: paredOnly,
+    camara: {},
+  });
+  assert("executeScenario techo_fachada (pared only) returns result", !!r && Array.isArray(r.allItems), !!r, true);
+  assert("executeScenario techo_fachada (pared only) keeps paredResult", !!r?.paredResult, !!r?.paredResult, true);
+  assert(
+    "executeScenario techo_fachada (pared only) totals are computed from allItems",
+    r?.totales?.totalFinal === calcTotalesSinIVA(r?.allItems || []).totalFinal,
+    r?.totales?.totalFinal,
+    calcTotalesSinIVA(r?.allItems || []).totalFinal
+  );
+}
+
+{
+  const r = executeScenario("camara_frig", {
+    techo: {},
+    pared: {
+      familia: "ISOWALL_PIR",
+      espesor: 80,
+      tipoEst: "metal",
+      inclSell: true,
+      incl5852: false,
+      color: "Blanco",
+      aberturas: [],
+    },
+    camara: {
+      largo_int: 6,
+      ancho_int: 4,
+      alto_int: 3,
+    },
+  });
+  assert("executeScenario camara_frig returns result", !!r, !!r, true);
+  assert("executeScenario camara_frig provides techoResult on valid dims", !!r?.techoResult, !!r?.techoResult, true);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 34: Knowledge antenna helpers (RSS + scoring)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 34: knowledge-antenna helpers ═══");
+
+const rssSample = `
+<rss><channel>
+  <item>
+    <title>OpenAI &amp; Agents</title>
+    <link>https://example.com/openai-agents</link>
+    <pubDate>Fri, 03 Apr 2026 00:00:00 GMT</pubDate>
+    <description><p>Hello &amp; <b>world</b></p></description>
+  </item>
+  <item>
+    <title>Ignored without link</title>
+    <description>missing link</description>
+  </item>
+</channel></rss>
+`;
+const rssItems = parseRssItems(rssSample);
+assert("parseRssItems keeps only entries with title+link", rssItems.length === 1, rssItems.length, 1);
+assert("parseRssItems decodes title entities", rssItems[0]?.title === "OpenAI & Agents", rssItems[0]?.title, "OpenAI & Agents");
+assert("parseRssItems strips HTML description", rssItems[0]?.description === "Hello & world", rssItems[0]?.description, "Hello & world");
+assert("pickTier boundary 0.85 => tier-1", pickTier(0.85) === "tier-1", pickTier(0.85), "tier-1");
+assert("pickTier boundary 0.65 => tier-2", pickTier(0.65) === "tier-2", pickTier(0.65), "tier-2");
+assert("pickTier low score => tier-3", pickTier(0.64) === "tier-3", pickTier(0.64), "tier-3");
+assert("clamp01 floors negatives", clamp01(-2) === 0, clamp01(-2), 0);
+assert("clamp01 caps >1", clamp01(2.5) === 1, clamp01(2.5), 1);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 35: Roof 3D layout helpers (annex front coplanar)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 35: roofZoneLayouts3d + visual profile ═══");
+
+const zonas3d = [
+  { largo: 6, ancho: 4, preview: { x: 1, y: 2, slopeMark: "along_largo_neg" } },
+  { largo: 3, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0, slopeMark: "off" } },
+  { largo: 4, ancho: 4, preview: { x: 20, y: 1, slopeMark: "along_largo_pos" } },
+];
+const layouts3d = buildZoneLayoutsForRoof3d(zonas3d, "una_agua");
+const byGi3d = new Map(layouts3d.map((l) => [l.gi, l]));
+const z0 = byGi3d.get(0);
+const z1 = byGi3d.get(1);
+const z2 = byGi3d.get(2);
+assert("buildZoneLayoutsForRoof3d includes all valid zonas", layouts3d.length === 3, layouts3d.length, 3);
+assert("buildZoneLayoutsForRoof3d root oz is positive (3d space)", z0?.oz > 0, z0?.oz, "> 0");
+assert("buildZoneLayoutsForRoof3d annex oz matches independent root oz", approx(z1?.oz, z2?.oz, 0.0001), z1?.oz, z2?.oz);
+assert("buildZoneLayoutsForRoof3d preserves slopeMark", z0?.slopeMark === "along_largo_neg" && z1?.slopeMark === "off", `${z0?.slopeMark}/${z1?.slopeMark}`, "along_largo_neg/off");
+
+const dosAguas3d = buildZoneLayoutsForRoof3d([{ largo: 4, ancho: 10 }], "dos_aguas");
+assert("buildZoneLayoutsForRoof3d dos_aguas halves ancho in planta", approx(dosAguas3d[0]?.ancho, 5, 0.0001), dosAguas3d[0]?.ancho, 5);
+
+const withInvalidZona = buildZoneLayoutsForRoof3d([
+  { largo: 0, ancho: 4 },
+  { largo: 2, ancho: 2 },
+], "una_agua");
+assert(
+  "buildZoneLayoutsForRoof3d filters invalid zonas and keeps original gi",
+  withInvalidZona.length === 1 && withInvalidZona[0]?.gi === 1,
+  JSON.stringify(withInvalidZona.map((z) => z.gi)),
+  "[1]",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

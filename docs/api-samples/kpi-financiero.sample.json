@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "pendingPayments": [],
+  "calendar": [],
+  "byPeriod": { "estaSemana": 0, "proximaSemana": 0, "esteMes": 0, "total": 0 },
+  "byCurrency": {},
+  "currencies": ["$", "UES"],
+  "metas": []
+}
