@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-09T13:13:29.820Z",
+  "updatedAt": "2026-04-10T13:03:34.465Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -3328,6 +3328,447 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_272b75cbcd39abcd"
+      ]
+    },
+    {
+      "id": "ref_85db75eeeac549b3",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[CyberAgent moves faster with ChatGPT Enterprise and Codex]]>",
+      "url": "https://openai.com/index/cyberagent",
+      "summary": "",
+      "publishedAt": "2026-04-09T00:00:00.000Z",
+      "firstSeenAt": "2026-04-10T13:03:31.527Z",
+      "lastSeenAt": "2026-04-10T13:03:31.527Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5165d1fc616e8ef7"
+      ]
+    },
+    {
+      "id": "ref_bc802abab63e550e",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.87.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.87.0",
+      "summary": "## 0.87.0 (2026-04-09) Full Changelog: [sdk-v0.86.1...sdk-v0.87.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.86.1...sdk-v0.87.0) ### Features * **api:** Add beta advisor tool ([1e99a8d](https://github.com/anthropics/anthropic-sdk-typescript/commit/1e99a8db387b8dbc2ce5cd43e3c4e4ca440aa01b))",
+      "publishedAt": "2026-04-09T18:12:09Z",
+      "firstSeenAt": "2026-04-10T13:03:31.682Z",
+      "lastSeenAt": "2026-04-10T13:03:31.682Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_44be3a48d126c01d"
+      ]
+    },
+    {
+      "id": "ref_492a18a964e118b6",
+      "sourceId": "vercel-releases",
+      "title": "vercel@50.43.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4050.43.0",
+      "summary": "### Minor Changes - Add Deployment Checks support to `deploy --prod`. Shows \"Running Checks...\" spinner when checks are pending, detects check failures before alias promotion, and displays failed check run details with links to logs. ([#15884](https://github.com/vercel/vercel/pull/15884)) - Extend marketplace integration CLI parity: add `vercel integration installations` to list team installations (with optional `--integration` filter and JSON output), align `vercel integration update` argument parsing with other subcommands (parse only tokens after `update`, so the integration slug is the first positional), and ship related help/telemetry updates. ([#15849](https://github.com/vercel/vercel/pull/15849)) - Add `vercel project protection` actions for automation protection bypass via PATCH `/v1/projects/.../protection-bypass` (`--protection-bypass`). ([#15862](https://github.com/vercel/vercel/pull/15862)) - Add `vercel project protection` actions for customer support code visibility (`--customer-support-code-visibility`). ([#15860](https://github.com/vercel/vercel/pull/15860)) - Add `vercel project protection` actions for Git fork protection (`--git-fork-protection`). ([#15861](https://github.com/vercel/vercel/pull/15861)) - [services] migrate python workers to Queues V3 API ([#15885](https://github.com/vercel/vercel/pull/15885)) - [cli] Add `vercel flags override` subcommand to encrypt and decrypt flag override tokens for the `vercel-flag-overrides` cookie ([#15875](https://github.com/vercel/vercel/pull/15875)) ### Patch Changes - Persist CLI telemetry across invocations with bounded-time sessions, stable installation device IDs, and per-invocation identifiers. ([#15872](https://github.com/vercel/vercel/pull/15872)) - Update the `vercel metrics` CLI to use the V2 observability metrics API with `--metric`-based schema inspection and querying. ([#15876](https://github.com/vercel/vercel/pull/15876)) - Improve `vercel integration add` command to support fallback to the discover API and first-party integrations. ([#15788](https://github.com/vercel/vercel/pull/15788)) - refactor(cli): remove FF_AUTO_PROVISION_INSTALL feature flag and dead code from `integration add` ([#15871](https://github.com/vercel/vercel/pull/15871)) - Updated dependencies \\[[`5e02289f927050a6c1025cc0edb7eda607fd5e73`](https://github.com/vercel/vercel/commit/5e02289f927050a6c1025cc0edb7eda607fd5e73), [`2e15ee828f14de4a849a462429ca03feab161174`](https://github.com/vercel/vercel/commit/2e15ee828f14de4a849a462429ca03feab161174), [`a31c84d1bda56a60da6d7bc6d611b0b18ba3bf57`](https://github.com/vercel/vercel/commit/a31c84d1bda56a60da6d7bc6d611b0b18ba3bf57)]: - @vercel/detect-agent@1.2.2 - @vercel/build-utils@13.14.1 - @vercel/backends@0.0.58 - @vercel/elysia@0.1.61 - @vercel/express@0.1.71 - @vercel/fastify@0.1.64 - @vercel/go@3.4.7 - @vercel/h3@0.1.70 - @vercel/hono@0.2.64 - @vercel/hydrogen@1.3.6 - @vercel/koa@0.1.44 - @vercel/nestjs@0.2.65 - @vercel/next@4.16.5 - @vercel/node@5.7.3 - @vercel/python@6.29.0 - @vercel/redwood@2.4.12 - @vercel/remix-builder@5.7.2 - @vercel/ruby@2.3.2 - @vercel/rust@1.1.0 - @vercel/static-build@2.9.11",
+      "publishedAt": "2026-04-10T08:04:41Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_848525517241b4c4"
+      ]
+    },
+    {
+      "id": "ref_6800cde1069aefae",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/static-build@2.9.11",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/static-build%402.9.11",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/gatsby-plugin-vercel-builder@2.1.11",
+      "publishedAt": "2026-04-10T08:04:47Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_1c35fb5817e72db5"
+      ]
+    },
+    {
+      "id": "ref_15bae3780a355fb5",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python-workers@0.0.14",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python-workers%400.0.14",
+      "summary": "### Patch Changes - [services] migrate python workers to Queues V3 API ([#15885](https://github.com/vercel/vercel/pull/15885))",
+      "publishedAt": "2026-04-10T08:04:47Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b2d41a8d4fe5ca90"
+      ]
+    },
+    {
+      "id": "ref_1187401911b06e16",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/node@5.7.3",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/node%405.7.3",
+      "summary": "### Patch Changes - Updated dependencies \\[[`2e15ee828f14de4a849a462429ca03feab161174`](https://github.com/vercel/vercel/commit/2e15ee828f14de4a849a462429ca03feab161174), [`a31c84d1bda56a60da6d7bc6d611b0b18ba3bf57`](https://github.com/vercel/vercel/commit/a31c84d1bda56a60da6d7bc6d611b0b18ba3bf57)]: - @vercel/build-utils@13.14.1",
+      "publishedAt": "2026-04-10T08:05:08Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_bfc2eb09c6e18d31"
+      ]
+    },
+    {
+      "id": "ref_52cf43bb4841e8b6",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/nestjs@0.2.65",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/nestjs%400.2.65",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.3",
+      "publishedAt": "2026-04-10T08:05:11Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_8105fa35a436d683"
+      ]
+    },
+    {
+      "id": "ref_7f385847b98c5fe8",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/koa@0.1.44",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/koa%400.1.44",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.3",
+      "publishedAt": "2026-04-10T08:04:53Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_d182337ed00ba911"
+      ]
+    },
+    {
+      "id": "ref_255c8e2878f73add",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/hono@0.2.64",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/hono%400.2.64",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.3",
+      "publishedAt": "2026-04-10T08:04:38Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_a5bbcbc294b6264b"
+      ]
+    },
+    {
+      "id": "ref_b6d9f19f5b9f754a",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/h3@0.1.70",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/h3%400.1.70",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.3",
+      "publishedAt": "2026-04-10T08:04:50Z",
+      "firstSeenAt": "2026-04-10T13:03:31.725Z",
+      "lastSeenAt": "2026-04-10T13:03:31.725Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_73104b27daa627cc"
+      ]
+    },
+    {
+      "id": "ref_e7731fda98867885",
+      "sourceId": "supabase-releases",
+      "title": "Developer Update - April 2026",
+      "url": "https://github.com/supabase/supabase/releases/tag/v1.26.04",
+      "summary": "Here’s everything that happened with Supabase in the last month: ## Multigres Operator is now open source ![multigresoperator](https://github.com/user-attachments/assets/a6ef072e-991d-4213-a7ba-ac036a2798d5) The Multigres Kubernetes operator is now open source, with direct pod management, zero-downtime rolling upgrades, pgBackRest PITR backups, and OTel tracing. [GitHub](https://github.com/multigres/multigres-operator) | [Twitter](https://x.com/kiwicopple/status/2038996664732516363) ## GitHub integration on all plans ![githubintegration](https://github.com/user-attachments/assets/a6cb5af1-0085-4534-9a89-1434d89861f8) GitHub integration is now available on all plans. Connect your repo on the free tier to deploy migrations from your main branch via CI/CD, no branching required. [GitHub](https://github.com/supabase/supabase/pull/44008) ## Supabase joins the Stripe Projects developer preview ![stripesyncenginesocial](https://github.com/user-attachments/assets/85e9c873-5755-4afe-8aab-95fab01e9949) Supabase is a co-design partner in Stripe Projects, a new CLI tool that provisions and connects services like Supabase, Vercel, and Clerk from your terminal, with credentials synced to your `.env` automatically. [Blog](https://supabase.com/blog/supabase-joins-the-stripe-projects-developer-preview) ## Supabase docs over SSH ![supabasedocsoverssh](https://github.com/user-attachments/assets/e4c3bd43-3732-47cc-a398-5782f3837d69) Browse all Supabase docs with standard Unix tools, or pipe them directly into Claude Code: `ssh supabase.sh setup | claude`. [Blog](https://supabase.com/blog/supabase-docs-over-ssh) ## Supabase Security Newsletter ![securitynewsletterog](https://github.com/user-attachments/assets/652cc1e4-238b-429e-8277-2d474d5bad91) Subscribe to the Supabase security newsletter, sent only when there are important security updates. [Sign Up](https://supabase.com/security) ## Quick Product Announcements - Studio now has \"Fix with Assistant\" buttons across touchpoints, with a dropdown to send the prompt to Claude or ChatGPT. [Twitter](https://x.com/kiwicopple/status/2033565478073827694) - Browser tabs now show your exact navigation path so you can tell your tabs apart at a glance. [Twitter](https://x.com/kiwicopple/status/2034956365232509434) - Supabase secret keys now have Push Protection on GitHub, blocking accidental commits before they land. [Twitter](https://x.com/kiwicopple/status/2033854717793607899) - Schema Visualiser: relation lines are now clickable, tables and columns have context actions, and popovers appear between connected tables. [Link](https://github.com/supabase/supabase/pull/44023) ## Made with Supabase - [Menugo](https://menugo.live/) - AI-powered QR code menu generator for restaurants - [Gasindex](https://gasindex.ai) - AI voice agents call thousands of businesses to track real-time gas prices in America, with Vision AI and crowdsourced submissions keeping data fresh - [Guinndex](https://guinndex.ai) - AI voice agents call thousands of businesses to track real-time Guinness prices in Ireland with Vision AI and crowdsourced submissions keeping data fresh - [Festie](https://festie.live/) - The unofficial Coachella 2026 companion - [burn0](https://github.com/burn0-dev/burn0) - Track Supabase costs per-request in real time ## Community Highlights - [I Dare You to Fact-Check Me: You Need Supabase Before You Build Anything Else with AI](https://limitededitionjonathan.substack.com/p/your-notion-database-isnt-a-database) - [Supabase in Production: What I Actually Learned Building Real Features](https://www.aozora-developer.me/blog/supabase-backend-article) - [I Got Surprised By A GitHub Actions Quota. Built A Tool To Make Sure It Never Happens Again](https://dev.to/acrticsludge/i-got-surprised-by-a-github-actions-quota-built-a-tool-to-make-sure-it-never-happens-again-heres-mb3) - [The Solo Dev Cheat Code: Building Fast with Next.js, Supabase, and Vercel in 2026](https://dev.to/brighto7700/the-solo-dev-cheat-code-building-fast-with-nextjs-supabase-and-vercel-in-2026-7e4)",
+      "publishedAt": "2026-04-09T14:38:08Z",
+      "firstSeenAt": "2026-04-10T13:03:32.222Z",
+      "lastSeenAt": "2026-04-10T13:03:32.222Z",
+      "tags": [
+        "supabase",
+        "postgres",
+        "realtime",
+        "auth"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_bce23f1e7bacd0e5"
+      ]
+    },
+    {
+      "id": "ref_bf7d99a11c02fecc",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.156",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.156",
+      "summary": "### Patch Changes - Updated dependencies [08c5ac3] - @ai-sdk/gateway@3.0.95",
+      "publishedAt": "2026-04-09T21:14:43Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_23ac1dfb49314e2a"
+      ]
+    },
+    {
+      "id": "ref_bcf84ca160ed7666",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.155",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.155",
+      "summary": "### Patch Changes - 06764c5: fix(ai): skip passing invalid JSON inputs to response messages",
+      "publishedAt": "2026-04-09T20:21:27Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1ad0295d9d5af5dd"
+      ]
+    },
+    {
+      "id": "ref_341a479743b7d2cd",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.172",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.172",
+      "summary": "### Patch Changes - Updated dependencies [a5317d0] - @ai-sdk/gateway@2.0.76",
+      "publishedAt": "2026-04-09T21:06:29Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_0dc457fdf6fce6ef"
+      ]
+    },
+    {
+      "id": "ref_6589b888f95041f9",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.156",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.156",
+      "summary": "### Patch Changes - ai@6.0.156",
+      "publishedAt": "2026-04-09T21:14:40Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8448a2d5bcc72c6e"
+      ]
+    },
+    {
+      "id": "ref_fcc6a6caa19fb37d",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.155",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.155",
+      "summary": "### Patch Changes - Updated dependencies [06764c5] - ai@6.0.155",
+      "publishedAt": "2026-04-09T20:21:15Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ec32934e9c66f342"
+      ]
+    },
+    {
+      "id": "ref_1d51991085475b2e",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@2.0.172",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%402.0.172",
+      "summary": "### Patch Changes - ai@5.0.172",
+      "publishedAt": "2026-04-09T21:06:17Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_97abe3c56988170e"
+      ]
+    },
+    {
+      "id": "ref_1915ece5b2834afa",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/svelte@4.0.156",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/svelte%404.0.156",
+      "summary": "### Patch Changes - ai@6.0.156",
+      "publishedAt": "2026-04-09T21:14:54Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9ce55adc5db2b52c"
+      ]
+    },
+    {
+      "id": "ref_7cf638157caf5fb8",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/svelte@4.0.155",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/svelte%404.0.155",
+      "summary": "### Patch Changes - Updated dependencies [06764c5] - ai@6.0.155",
+      "publishedAt": "2026-04-09T20:21:24Z",
+      "firstSeenAt": "2026-04-10T13:03:33.295Z",
+      "lastSeenAt": "2026-04-10T13:03:33.295Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ee27c3df134ba952"
+      ]
+    },
+    {
+      "id": "ref_4a2f85cb57712f88",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Waypoint-1.5: Higher-Fidelity Interactive Worlds for Everyday GPUs",
+      "url": "https://huggingface.co/blog/waypoint-1-5",
+      "summary": "",
+      "publishedAt": "2026-04-09T00:00:00.000Z",
+      "firstSeenAt": "2026-04-10T13:03:34.464Z",
+      "lastSeenAt": "2026-04-10T13:03:34.464Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_0ba7668bcdf215f9"
+      ]
+    },
+    {
+      "id": "ref_56d0dd79c419104f",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Multimodal Embedding & Reranker Models with Sentence Transformers",
+      "url": "https://huggingface.co/blog/multimodal-sentence-transformers",
+      "summary": "",
+      "publishedAt": "2026-04-09T00:00:00.000Z",
+      "firstSeenAt": "2026-04-10T13:03:34.464Z",
+      "lastSeenAt": "2026-04-10T13:03:34.464Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_ac7bbc30303bdedc"
       ]
     }
   ]
