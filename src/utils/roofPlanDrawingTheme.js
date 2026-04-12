@@ -39,14 +39,26 @@ export const DIM_THEME = {
   CHAIN_STEP: 0.14,
   chainColor: '#C62828',
   overallColor: '#1565C0',
+  envelopeColor: '#0D47A1',
   warningColor: '#E65100',
   textColor: '#212121',
   defaultTerminator: 'tick',
   layers: {
     chain: 'dim-chain',
     overall: 'dim-overall',
+    envelope: 'dim-envelope',
     labels: 'dim-panel-ids',
     verification: 'dim-verification',
   },
   chainOpacity: 0.85,
+};
+
+// ─── Line weight tiers (ISO 128) ─────────────────────────────────────────────
+// Multiplied by svgTy.m at render time. Order: zone border > encounter > dim main > panel joint > hatch.
+export const LINE_WEIGHTS = {
+  zoneBorder: 0.072,   // existing — heaviest
+  encounter: 0.055,    // between zone border and dims
+  dimMain: 0.032,      // existing (strokeMain)
+  panelJoint: 0.024,   // lighter than dims
+  hatch: 0.012,        // subtle diagonal fill pattern
 };
