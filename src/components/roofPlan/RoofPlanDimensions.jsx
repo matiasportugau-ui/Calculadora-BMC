@@ -321,9 +321,13 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
   const lastStrip = strips[strips.length - 1];
   const chainXMax = x0 + (lastStrip?.x0 ?? 0) + (lastStrip?.width ?? 0);
 
+  const tick = svgTy.tickLen;
+  const au = strips[0]?.width ?? 1;
+  const labelFontSz = svgTy.dimFontTertiary;
+
   let yDimLine = yEdge + svgTy.dimStackBottom + DIM_THEME.CHAIN_OFFSET;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const labelH = svgTy.dimFontTertiary * 1.1;
+    const labelH = labelFontSz * 1.1;
     const chainMinY = yDimLine - labelH;
     const chainMaxY = yDimLine + labelFontSz * 1.05 + labelFontSz * 0.8;
     const overlaps = obstacleRects.some(
@@ -333,10 +337,6 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
     if (!overlaps) break;
     yDimLine += svgTy.dimStackStep;
   }
-
-  const tick = svgTy.tickLen;
-  const au = strips[0]?.width ?? 1;
-  const labelFontSz = svgTy.dimFontTertiary;
 
   return (
     <g data-bmc-layer={DIM_THEME.layers.chain} opacity={DIM_THEME.chainOpacity} pointerEvents="none">
