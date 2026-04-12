@@ -24,8 +24,13 @@ import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
 import { buildEstructuraCotaObstacleRects as computeCotaObstacles } from "../utils/roofPlanCotaObstacles.js";
+import { LINE_WEIGHTS } from "../utils/roofPlanDrawingTheme.js";
+import ScaleBar from "./roofPlan/ScaleBar.jsx";
+import OrientationMark from "./roofPlan/OrientationMark.jsx";
+import DatumMark from "./roofPlan/DatumMark.jsx";
 import {
   EstructuraGlobalExteriorOverlay,
+  OverallEnvelopeDimension,
   PanelChainDimensions,
   PanelLabels,
   VerificationBadge,
@@ -669,6 +674,8 @@ function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "
     );
   }
   const gradId = `roofGrad-${String(gradKey).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const hatchId = `poche-${String(gradKey).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const hatchSpacing = 0.15 * (w > 3 ? 1 : 0.8);
   return (
     <g pointerEvents="none">
       <defs>
@@ -677,8 +684,14 @@ function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "
           <stop offset="50%" stopColor={C.primary} stopOpacity="0.04" />
           <stop offset="100%" stopColor={stroke} stopOpacity="0.1" />
         </linearGradient>
+        <pattern id={hatchId} width={hatchSpacing} height={hatchSpacing}
+          patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2={hatchSpacing}
+            stroke="#0071E3" strokeWidth={LINE_WEIGHTS.hatch} opacity={0.06} />
+        </pattern>
       </defs>
       <rect x={x0} y={y0} width={w} height={h} fill={`url(#${gradId})`} rx={0.08} />
+      <rect x={x0} y={y0} width={w} height={h} fill={`url(#${hatchId})`} rx={0.08} />
       {bands}
       {lines}
     </g>
@@ -1169,14 +1182,16 @@ export default function RoofPreview({
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
     // No usar `svgTy.m` completo: inflaba el viewBox y achicaba el techo en pantalla. Cotas siguen en coords ampliadas.
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
-    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
+    const hasEnvelope = !!planEdges?.envelope && layout.entries.length > 0;
+    const envExtra = hasEnvelope ? svgTy.dimStackStep * 1.6 : 0;
+    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale + envExtra;
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
     // chainPad: reserva espacio para chain dim lines (yEdge + dimStackBottom + 3×CHAIN_STEP)
     const chainPad = chainActive ? (svgTy.dimStackBottom ?? 0.3) + 0.56 : 0;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad + envExtra;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m, svgTy.dimStackBottom, panelLayouts, localDisplayMode]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, planEdges?.envelope, svgTy.m, svgTy.dimStackBottom, svgTy.dimStackStep, panelLayouts]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -1692,6 +1707,7 @@ export default function RoofPreview({
           >
             <svg
               ref={svgRef}
+              data-bmc-capture="roof-plan-2d"
               viewBox={svgViewBox}
               width="100%"
               height="100%"
@@ -1745,7 +1761,7 @@ export default function RoofPreview({
                   x2={enc.x2}
                   y2={enc.y2}
                   stroke={stroke}
-                  strokeWidth={0.09 * svgTy.m}
+                  strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
                   strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
                   pointerEvents="stroke"
                   opacity={0.95}
@@ -1802,13 +1818,13 @@ export default function RoofPreview({
                     h={r.h}
                     au={effectivePanelAu}
                     stroke={C.brand}
-                    strokeW={0.032 * svgTy.m}
+                    strokeW={LINE_WEIGHTS.panelJoint * svgTy.m}
                     gradKey={`z-${r.gi}`}
                   />
                   <g
                     pointerEvents="none"
                     stroke={C.primary}
-                    strokeWidth={0.072 * svgTy.m}
+                    strokeWidth={LINE_WEIGHTS.zoneBorder * svgTy.m}
                     fill="none"
                     strokeLinecap="square"
                     opacity={0.92}
@@ -1991,6 +2007,51 @@ export default function RoofPreview({
                 svgTy={svgTy}
               />
             ) : null}
+            {plantaCotaChromeActive && planEdges?.envelope && (() => {
+              const ext = planEdges.exterior ?? [];
+              const maxBottomBump = ext.filter(s => s.side === 'bottom')
+                .reduce((mx, s) => Math.max(mx, ext.filter(b => b.side === 'bottom' && +b.y1.toFixed(2) === +s.y1.toFixed(2)).length), 0);
+              const maxLeftBump = ext.filter(s => s.side === 'left')
+                .reduce((mx, s) => Math.max(mx, ext.filter(b => b.side === 'left' && +b.x1.toFixed(2) === +s.x1.toFixed(2)).length), 0);
+              return (
+                <OverallEnvelopeDimension
+                  envelope={planEdges.envelope}
+                  svgTy={svgTy}
+                  bumpCounts={{ maxBottomBump, maxLeftBump }}
+                />
+              );
+            })()}
+            {plantaCotaChromeActive && layout.viewMetrics && (() => {
+              const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
+              const spanM = Math.max(vbW, vbH, 2.5);
+              return (
+                <ScaleBar
+                  x={vbX}
+                  y={vbY + vbH + (svgTy.dimStackBottom ?? 0.24)}                  spanM={spanM}
+                  svgTy={svgTy}
+                />
+              );
+            })()}
+            {plantaCotaChromeActive && layout.viewMetrics && (() => {
+              const { vbX, vbY } = layout.viewMetrics;
+              return (
+                <OrientationMark
+                  x={vbX}
+                  y={vbY - (svgTy.dimStackTop ?? 0.24) * 0.5}
+                  svgTy={svgTy}
+                />
+              );
+            })()}
+            {plantaCotaChromeActive && planEdges?.envelope && (() => {
+              const env = planEdges.envelope;
+              return (
+                <DatumMark
+                  x={env.minX}
+                  y={env.minY + env.totalH}
+                  svgTy={svgTy}
+                />
+              );
+            })()}
             </svg>
           </div>
         )}

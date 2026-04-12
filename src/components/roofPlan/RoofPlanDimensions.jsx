@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { FONT } from "../../data/constants.js";
-import { fmtArchMeters, fmtDimMm } from "../../utils/roofPlanSvgTypography.js";
+import { fmtArchMeters, fmtDimMm, fmtDimOverall } from "../../utils/roofPlanSvgTypography.js";
 import {
   ROOF_PLAN_DIM_STROKE,
   ROOF_PLAN_DIM_EXT_OPACITY,
@@ -20,8 +20,9 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
   const tick = svgTy.tickLen;
   const gap = svgTy.extGap;
   const overshoot = svgTy.extOvershoot;
+  const df = svgTy.dimFontSecondary;
   const label = `${fmtArchMeters(w)} m`;
-  const labelWidthEst = label.length * svgTy.dimFont * 0.62;
+  const labelWidthEst = label.length * df * 0.62;
   const showLabel = w >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
@@ -49,9 +50,9 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
       {showLabel && (
         <text
           x={x0 + w / 2}
-          y={yDimLine + svgTy.dimFont * 1.05}
+          y={yDimLine + df * 1.05}
           textAnchor="middle"
-          fontSize={svgTy.dimFont}
+          fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
           stroke="none"
@@ -68,8 +69,9 @@ function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
   const tick = svgTy.tickLen;
   const gap = svgTy.extGap;
   const overshoot = svgTy.extOvershoot;
+  const df = svgTy.dimFontSecondary;
   const label = `${fmtArchMeters(w)} m`;
-  const labelWidthEst = label.length * svgTy.dimFont * 0.62;
+  const labelWidthEst = label.length * df * 0.62;
   const showLabel = w >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
@@ -83,9 +85,9 @@ function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
       {showLabel && (
         <text
           x={x0 + w / 2}
-          y={yDimLine - svgTy.dimFont * 0.35}
+          y={yDimLine - df * 0.35}
           textAnchor="middle"
-          fontSize={svgTy.dimFont}
+          fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
           stroke="none"
@@ -101,10 +103,11 @@ function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
   const tick = svgTy.tickLen;
   const gap = svgTy.extGap;
   const overshoot = svgTy.extOvershoot;
+  const df = svgTy.dimFontSecondary;
   const ym = (y1 + y2) / 2;
   const label = `${fmtArchMeters(spanM)} m`;
-  const tx = xDim + svgTy.dimFont * 0.85;
-  const labelWidthEst = label.length * svgTy.dimFont * 0.95 * 0.62;
+  const tx = xDim + df * 0.85;
+  const labelWidthEst = label.length * df * 0.62;
   const showLabel = (y2 - y1) >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
@@ -120,7 +123,7 @@ function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
           x={tx}
           y={ym}
           textAnchor="middle"
-          fontSize={svgTy.dimFont * 0.95}
+          fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
           stroke="none"
@@ -137,10 +140,11 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
   const tick = svgTy.tickLen;
   const gap = svgTy.extGap;
   const overshoot = svgTy.extOvershoot;
+  const df = svgTy.dimFontSecondary;
   const ym = (y1 + y2) / 2;
   const label = `${fmtArchMeters(spanM)} m`;
-  const tx = xDim - svgTy.dimFont * 0.85;
-  const labelWidthEst = label.length * svgTy.dimFont * 0.95 * 0.62;
+  const tx = xDim - df * 0.85;
+  const labelWidthEst = label.length * df * 0.62;
   const showLabel = (y2 - y1) >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
@@ -156,7 +160,7 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
           x={tx}
           y={ym}
           textAnchor="middle"
-          fontSize={svgTy.dimFont * 0.95}
+          fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
           stroke="none"
@@ -313,11 +317,18 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
 export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects = [] }) {
   if (!strips?.length) return null;
 
+  const chainXMin = x0 + (strips[0]?.x0 ?? 0);
+  const lastStrip = strips[strips.length - 1];
+  const chainXMax = x0 + (lastStrip?.x0 ?? 0) + (lastStrip?.width ?? 0);
+
   let yDimLine = yEdge + svgTy.dimStackBottom + DIM_THEME.CHAIN_OFFSET;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const labelH = svgTy.dimFont * 1.1;
+    const labelH = svgTy.dimFontTertiary * 1.1;
+    const chainMinY = yDimLine - labelH;
+    const chainMaxY = yDimLine + labelFontSz * 1.05 + labelFontSz * 0.8;
     const overlaps = obstacleRects.some(
-      (r) => yDimLine <= r.maxY + labelH && yDimLine >= r.minY - labelH,
+      (r) => chainXMin < r.maxX && chainXMax > r.minX &&
+             chainMinY < r.maxY && chainMaxY > r.minY,
     );
     if (!overlaps) break;
     yDimLine += svgTy.dimStackStep;
@@ -325,6 +336,7 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
 
   const tick = svgTy.tickLen;
   const au = strips[0]?.width ?? 1;
+  const labelFontSz = svgTy.dimFontTertiary;
 
   return (
     <g data-bmc-layer={DIM_THEME.layers.chain} opacity={DIM_THEME.chainOpacity} pointerEvents="none">
@@ -335,7 +347,17 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
         const label = fmtDimMm(strip.width);
         const isCut = strip.isCut != null ? strip.isCut : strip.width < au - 1e-9;
         const color = isCut ? DIM_THEME.warningColor : DIM_THEME.chainColor;
-        const showLabel = strip.width >= label.length * svgTy.dimFont * 0.62 * 0.75;
+        let showLabel = strip.width >= label.length * svgTy.dimFontTertiary * 0.62 * 0.75;
+        if (showLabel && obstacleRects.length > 0) {
+          const lw = label.length * labelFontSz * 0.52;
+          const lh = labelFontSz * 1.2;
+          const ly = yDimLine + labelFontSz * 1.05;
+          const lblRect = { minX: cx - lw / 2, maxX: cx + lw / 2, minY: ly - lh, maxY: ly + lh * 0.15 };
+          showLabel = !obstacleRects.some(
+            (r) => lblRect.minX < r.maxX && lblRect.maxX > r.minX &&
+                   lblRect.minY < r.maxY && lblRect.maxY > r.minY,
+          );
+        }
         return (
           <g key={strip.idx ?? strip.id}>
             <line x1={x1} y1={yDimLine} x2={x2} y2={yDimLine}
@@ -345,8 +367,8 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
             <line x1={x2 - tick / 2} y1={yDimLine - tick / 2} x2={x2 + tick / 2} y2={yDimLine + tick / 2}
               stroke={color} strokeWidth={svgTy.strokeTick} />
             {showLabel && (
-              <text x={cx} y={yDimLine + svgTy.dimFont * 1.05}
-                fontSize={svgTy.dimFont * 0.85} fill={color}
+              <text x={cx} y={yDimLine + labelFontSz * 1.05}
+                fontSize={labelFontSz} fill={color}
                 textAnchor="middle" fontFamily={FONT} stroke="none">
                 {label}{isCut ? ' ✂' : ''}
               </text>
@@ -412,6 +434,80 @@ export function VerificationBadge({ x, y, verification, svgTy }) {
     <g data-bmc-layer={DIM_THEME.layers.verification} pointerEvents="none">
       <circle cx={x} cy={y} r={r} fill={color} opacity={0.85} />
       <title>{title}</title>
+    </g>
+  );
+}
+
+// ─── OverallEnvelopeDimension ─────────────────────────────────────────────────
+/**
+ * Overall bounding-box dimension (ISO 129 envelope).
+ * One horizontal cota (totalW) below all per-segment bottom cotas,
+ * one vertical cota (totalH) left of all per-segment left cotas.
+ * Uses DIM_THEME.envelopeColor (dark blue) for distinction.
+ *
+ * @param {{ minX: number, minY: number, maxX: number, maxY: number, totalW: number, totalH: number }} envelope
+ * @param {object} svgTy
+ * @param {{ maxBottomBump?: number, maxLeftBump?: number }} [bumpCounts]
+ */
+export function OverallEnvelopeDimension({ envelope, svgTy, bumpCounts = {} }) {
+  if (!envelope) return null;
+  const { minX, minY, maxX, maxY, totalW, totalH } = envelope;
+  const color = DIM_THEME.envelopeColor;
+  const tick = svgTy.tickLen;
+  const gap = svgTy.extGap;
+  const overshoot = svgTy.extOvershoot;
+  const fw = svgTy.dimFontPrimary;
+
+  // Place envelope dims one level beyond the max bump of per-segment cotas
+  const bottomLevel = (bumpCounts.maxBottomBump ?? 0) + 1;
+  const leftLevel = (bumpCounts.maxLeftBump ?? 0) + 1;
+
+  const yDimH = maxY + svgTy.dimStackBottom + bottomLevel * svgTy.dimStackStep;
+  const xDimV = minX - svgTy.sideOffset - leftLevel * svgTy.sideStep;
+
+  const hLabel = fmtDimOverall(totalW);
+  const vLabel = fmtDimOverall(totalH);
+
+  return (
+    <g data-bmc-layer={DIM_THEME.layers.envelope} pointerEvents="none">
+      {/* Horizontal overall (totalW) — below */}
+      <line x1={minX} y1={maxY + gap} x2={minX} y2={yDimH + overshoot}
+        stroke={color} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={maxX} y1={maxY + gap} x2={maxX} y2={yDimH + overshoot}
+        stroke={color} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={minX} y1={yDimH} x2={maxX} y2={yDimH}
+        stroke={color} strokeWidth={svgTy.strokeMain} />
+      <line x1={minX - tick / 2} y1={yDimH - tick / 2} x2={minX + tick / 2} y2={yDimH + tick / 2}
+        stroke={color} strokeWidth={svgTy.strokeTick} />
+      <line x1={maxX - tick / 2} y1={yDimH - tick / 2} x2={maxX + tick / 2} y2={yDimH + tick / 2}
+        stroke={color} strokeWidth={svgTy.strokeTick} />
+      <text
+        x={(minX + maxX) / 2} y={yDimH + fw * 1.05}
+        textAnchor="middle" fontSize={fw} fontWeight={500}
+        fontFamily={FONT} fill={color} stroke="none"
+      >
+        {hLabel}
+      </text>
+
+      {/* Vertical overall (totalH) — left */}
+      <line x1={minX - gap} y1={minY} x2={xDimV - overshoot} y2={minY}
+        stroke={color} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={minX - gap} y1={maxY} x2={xDimV - overshoot} y2={maxY}
+        stroke={color} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
+      <line x1={xDimV} y1={minY} x2={xDimV} y2={maxY}
+        stroke={color} strokeWidth={svgTy.strokeMain} />
+      <line x1={xDimV - tick / 2} y1={minY - tick / 2} x2={xDimV + tick / 2} y2={minY + tick / 2}
+        stroke={color} strokeWidth={svgTy.strokeTick} />
+      <line x1={xDimV - tick / 2} y1={maxY - tick / 2} x2={xDimV + tick / 2} y2={maxY + tick / 2}
+        stroke={color} strokeWidth={svgTy.strokeTick} />
+      <text
+        x={xDimV - fw * 0.85} y={(minY + maxY) / 2}
+        textAnchor="middle" fontSize={fw * 0.95} fontWeight={500}
+        fontFamily={FONT} fill={color} stroke="none"
+        transform={`rotate(-90 ${xDimV - fw * 0.85} ${(minY + maxY) / 2})`}
+      >
+        {vLabel}
+      </text>
     </g>
   );
 }

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-09 (skill BMC Cross-Sync Propagation — Calculadora local + Vercel)
+**Última actualización:** 2026-04-10 (RoofPlan Architect — ISO quality upgrade completo)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-10 (RoofPlan Architect — ISO 128/129/3098 quality upgrade 79→100):** Nuevo agente + skill `roofplan-architect` con rubric 100 pts (7 dominios). Código: [LINE_WEIGHTS](../../src/utils/roofPlanDrawingTheme.js) 5 tiers (ISO 128), 3 font tiers en [roofPlanSvgTypography.js](../../src/utils/roofPlanSvgTypography.js), poché hatch, AABB collision avoidance, [OverallEnvelopeDimension](../../src/components/roofPlan/RoofPlanDimensions.jsx), [ScaleBar](../../src/components/roofPlan/ScaleBar.jsx), [OrientationMark](../../src/components/roofPlan/OrientationMark.jsx), [DatumMark](../../src/components/roofPlan/DatumMark.jsx), [PRINT_THEME + getTheme()](../../src/utils/roofPlanDrawingTheme.js), SVG capture + 3D snapshot en PDF ([captureDomToPng.js](../../src/utils/captureDomToPng.js), [quotationViews.js](../../src/utils/quotationViews.js)), 3D dim annotations + encounter color-coding en [RoofPanelRealisticScene.jsx](../../src/components/RoofPanelRealisticScene.jsx). Share Tech Mono en [index.html](../../index.html). Agent: `.cursor/agents/roofplan-architect.md`, skill: `.cursor/skills/roofplan-architect/`, Knowledge: `docs/team/knowledge/RoofPlanArchitect.md`. Judge criteria + backlog actualizados.
 
 **2026-04-09 (Fix — cadena mm / T-xx con cotas rojas sin `panelObj`):** En `RoofPreview`, `panelLayouts` (cotas en cadena, etiquetas T-01…, badge plano↔BOM) exigía `panelObj`; con solo `showPlantaExteriorCotas` y perímetro dibujado, el SVG parecía “vacío” salvo el contorno rojo. Se usa **`layoutPanelSource = panelObj ?? { au: effectivePanelAu }`** cuando `au` &gt; 0. Leyenda **Planta** aclara que la cadena en mm sigue el AU del panel. [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx).
 

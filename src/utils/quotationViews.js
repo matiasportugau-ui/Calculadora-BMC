@@ -150,6 +150,8 @@ export function buildSnapshotSectionHtml(snapshots, clientMode = false) {
   row(L.a, snapshots.summary);
   row(L.b, snapshots.totals);
   row(L.c, snapshots.borders);
+  row(clientMode ? "Plano 2D de cubierta" : "Captura — plano 2D de cubierta", snapshots.roofPlan2d);
+  row(clientMode ? "Vista 3D de cubierta" : "Captura — vista 3D de cubierta", snapshots.roof3d);
   if (!blocks.length) return "";
   return `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1pt solid #E5E5EA">${blocks.join("")}<p style="margin:6px 0 0;font-size:8pt;color:#777">${L.foot}</p></div>`;
 }

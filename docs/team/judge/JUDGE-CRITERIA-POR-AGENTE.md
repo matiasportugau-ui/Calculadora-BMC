@@ -273,6 +273,23 @@
 
 ---
 
+## RoofPlan Architect (roofplan-architect)
+
+| Criterio | Entregable / Cómo juzgar |
+|----------|---------------------------|
+| **ISO Score** | Scoring rubric (`.cursor/skills/roofplan-architect/reference.md`) da ≥ 95/100 |
+| **LINE_WEIGHTS** | 5 tiers visibles en SVG inspector; cada tier en archivo correcto |
+| **Typography** | 3 font tiers consistentes; Share Tech Mono cargada; fontWeight 500 |
+| **Symbols** | ScaleBar + OrientationMark + DatumMark presentes, posicionados correctamente |
+| **Collision avoidance** | Sin overlap dim text ↔ encounter labels en multi-zone |
+| **Print/PDF** | PRINT_THEME en grayscale; 2D plan + 3D snapshot en PDF enriched |
+| **3D encounters** | Lines color-coded por modo (continuo/pretil/cumbrera/desnivel) |
+| **Gates** | `npm run gate:local:full` pasa limpio |
+
+**Áreas de ranqueo:** ISO compliance (1–5), Visual consistency 2D↔3D↔PDF (1–5), Code quality / maintainability (1–5).
+
+---
+
 ## Regla para nuevos agentes
 
 Cuando se añade un nuevo rol a PROJECT-TEAM-FULL-COVERAGE §2, **debe** añadirse una sección aquí con:

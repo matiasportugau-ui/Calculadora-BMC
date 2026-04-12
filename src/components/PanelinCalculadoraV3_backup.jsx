@@ -3213,6 +3213,8 @@ export default function PanelinCalculadoraV3() {
         summaryEl: pdfCaptureSummaryRef.current,
         totalsEl: pdfCaptureTotalsRef.current,
         bordersEl: bordesRef.current,
+        roofPlanSvgEl: document.querySelector('[data-bmc-capture="roof-plan-2d"]'),
+        roof3dCanvasEl: document.querySelector('[data-bmc-capture="roof-3d"] canvas'),
       });
       const vis_ = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
       const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
@@ -4359,7 +4361,7 @@ export default function PanelinCalculadoraV3() {
                         </CollapsibleHint>
                       </div>
                       {roofRealistic3dOn && techoPanelData ? (
-                        <div style={{ marginBottom: 14 }}>
+                        <div data-bmc-capture="roof-3d" style={{ marginBottom: 14 }}>
                           <Suspense
                             fallback={
                               <div

@@ -14,6 +14,9 @@ export function buildRoofPlanSvgTypography(viewMetrics) {
     const m = 1;
     return {
       dimFont: base,
+      dimFontPrimary: base,
+      dimFontSecondary: base * 0.82,
+      dimFontTertiary: base * 0.72,
       m,
       tickLen: 0.075 * m,
       extGap: 0.03 * m,
@@ -38,6 +41,9 @@ export function buildRoofPlanSvgTypography(viewMetrics) {
   const m = dimFont / base;
   return {
     dimFont,
+    dimFontPrimary: dimFont,
+    dimFontSecondary: dimFont * 0.82,
+    dimFontTertiary: dimFont * 0.72,
     m,
     tickLen: 0.075 * m,
     extGap: 0.03 * m,

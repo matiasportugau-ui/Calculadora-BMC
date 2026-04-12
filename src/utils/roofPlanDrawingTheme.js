@@ -62,3 +62,33 @@ export const LINE_WEIGHTS = {
   panelJoint: 0.024,   // lighter than dims
   hatch: 0.012,        // subtle diagonal fill pattern
 };
+
+// ─── Print / PDF theme (ISO monochrome) ───────────────────────────────────────
+export const PRINT_THEME = {
+  dimStroke: '#000000',
+  zoneFill: '#f5f5f5',
+  zoneBorder: '#1a1a1a',
+  encounterStroke: '#333333',
+  panelJoint: '#666666',
+  hatchStroke: '#999999',
+  textColor: '#000000',
+  fontFamily: "'Share Tech Mono', 'DIN Alternate', 'Courier New', monospace",
+};
+
+/**
+ * Returns the screen or print theme object.
+ * @param {'screen'|'print'} [mode='screen']
+ */
+export function getTheme(mode = 'screen') {
+  if (mode === 'print') return PRINT_THEME;
+  return {
+    dimStroke: ROOF_PLAN_DIM_STROKE,
+    zoneFill: null,
+    zoneBorder: null,
+    encounterStroke: null,
+    panelJoint: null,
+    hatchStroke: '#0071E3',
+    textColor: DIM_THEME.textColor,
+    fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+  };
+}
