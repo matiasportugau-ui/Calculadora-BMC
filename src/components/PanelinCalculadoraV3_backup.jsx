@@ -3380,7 +3380,7 @@ export default function PanelinCalculadoraV3() {
         ...t,
         [k]: v,
         zonas: (t.zonas || []).map((z) => {
-          const { combinadaFijByKey: _drop, ...rest } = z;
+          const { combinadaFijByKey: _drop, fijDotOverrides: _dropDots, ...rest } = z;
           return rest;
         }),
       }));
@@ -3419,6 +3419,32 @@ export default function PanelinCalculadoraV3() {
     scenarioDef?.hasTecho && techo.inclAccesorios !== false && activeWizardStepId === "bordes",
   );
 
+  const fijDotOverridesByGi = useMemo(() => {
+    const arr = techo.zonas || [];
+    const out = {};
+    for (let i = 0; i < arr.length; i++) {
+      const ov = arr[i]?.fijDotOverrides;
+      if (ov && typeof ov === "object" && Object.keys(ov).length) out[i] = ov;
+    }
+    return Object.keys(out).length ? out : null;
+  }, [techo.zonas]);
+
+  const handleFijDotOverridesSync = useCallback(
+    ({ gi, overrides, ptsHorm, ptsMetal, ptsMadera }) => {
+      setTecho((t) => ({
+        ...t,
+        ptsHorm,
+        ptsMetal,
+        ptsMadera,
+        zonas: (t.zonas || []).map((z, i) => {
+          if (i !== gi) return z;
+          return { ...z, fijDotOverrides: { ...overrides } };
+        }),
+      }));
+    },
+    [setTecho],
+  );
+
   const roof2DPreviewForVisor = useMemo(() => {
     if (!showRoof2dInQuoteVisor) return null;
     const embedMetrics = activeWizardStepId !== "estructura";
@@ -3447,6 +3473,8 @@ export default function PanelinCalculadoraV3() {
         combinadaPtsH={techo.ptsHorm ?? 0}
         combinadaPtsMetal={techo.ptsMetal ?? 0}
         combinadaPtsMadera={techo.ptsMadera ?? 0}
+        fijDotOverridesByGi={fijDotOverridesByGi}
+        onFijDotOverridesSync={handleFijDotOverridesSync}
         bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
         bordesPanelFamiliaKey={techo.familia || ""}
         techoBorders={techo.borders}
@@ -3481,6 +3509,8 @@ export default function PanelinCalculadoraV3() {
     techo.ptsHorm,
     techo.ptsMetal,
     techo.ptsMadera,
+    fijDotOverridesByGi,
+    handleFijDotOverridesSync,
     bordesPlantaRoof2dAssignActive,
     techo.familia,
     techo.borders,
@@ -4326,6 +4356,8 @@ export default function PanelinCalculadoraV3() {
                           combinadaPtsH={techo.ptsHorm ?? 0}
                           combinadaPtsMetal={techo.ptsMetal ?? 0}
                           combinadaPtsMadera={techo.ptsMadera ?? 0}
+                          fijDotOverridesByGi={fijDotOverridesByGi}
+                          onFijDotOverridesSync={handleFijDotOverridesSync}
                           bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
                           bordesPanelFamiliaKey={techo.familia || ""}
                           techoBorders={techo.borders}

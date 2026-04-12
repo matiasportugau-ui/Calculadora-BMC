@@ -54,3 +54,68 @@ export function mergeCombinadaByKeyWithDefaults(dotKeysInOrder, existingByKey, p
   const init = buildInitialByKeyFromOrderedDots(dotKeysInOrder, ptsHorm, ptsMetal, ptsMadera);
   return { ...init, ...ex };
 }
+
+// ── Per-dot overrides (fijDotOverrides) ─────────────────────────────
+
+/**
+ * Resolve per-dot material & enabled state from byrKey base + dotOverrides layer.
+ * Returns `{ mat, enabled }` for every dot.
+ */
+export function resolveDotState(dotKey, byKey, dotOverrides) {
+  const ov = dotOverrides && dotOverrides[dotKey];
+  const baseMat = byKey?.[dotKey];
+  const mat = ov?.mat ?? (baseMat === "hormigon" || baseMat === "metal" || baseMat === "madera" ? baseMat : "metal");
+  const enabled = ov != null ? ov.enabled !== false : true;
+  return { mat, enabled };
+}
+
+/**
+ * Count pts per material only from enabled dots (respecting dotOverrides).
+ */
+export function countPtsWithOverrides(dots, byKey, dotOverrides) {
+  let h = 0;
+  let metal = 0;
+  let madera = 0;
+  for (const d of dots) {
+    const { mat, enabled } = resolveDotState(d.key, byKey, dotOverrides);
+    if (!enabled) continue;
+    if (mat === "hormigon") h += 1;
+    else if (mat === "madera") madera += 1;
+    else metal += 1;
+  }
+  return { ptsHorm: h, ptsMetal: metal, ptsMadera: madera };
+}
+
+/**
+ * Toggle a single dot's enabled state. Returns new dotOverrides map.
+ */
+export function toggleDotEnabled(dotKey, byKey, dotOverrides) {
+  const prev = resolveDotState(dotKey, byKey, dotOverrides);
+  return {
+    ...dotOverrides,
+    [dotKey]: { mat: prev.mat, enabled: !prev.enabled },
+  };
+}
+
+/**
+ * Set a specific material on a single dot. Returns new dotOverrides map.
+ */
+export function setDotMaterial(dotKey, newMat, byKey, dotOverrides) {
+  const prev = resolveDotState(dotKey, byKey, dotOverrides);
+  return {
+    ...dotOverrides,
+    [dotKey]: { mat: newMat, enabled: prev.enabled },
+  };
+}
+
+/**
+ * Cycle material on a single dot. Returns new dotOverrides map.
+ */
+export function cycleDotMaterial(dotKey, byKey, dotOverrides) {
+  const prev = resolveDotState(dotKey, byKey, dotOverrides);
+  const next = cycleCombinadaMaterial(prev.mat);
+  return {
+    ...dotOverrides,
+    [dotKey]: { mat: next, enabled: prev.enabled },
+  };
+}

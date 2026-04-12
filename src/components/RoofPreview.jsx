@@ -44,8 +44,12 @@ import {
 } from "../utils/roofEstructuraDotsLayout.js";
 import {
   countCombinadaMaterialsInDots,
+  countPtsWithOverrides,
+  cycleDotMaterial,
   cycleCombinadaMaterial,
   mergeCombinadaByKeyWithDefaults,
+  resolveDotState,
+  toggleDotEnabled,
 } from "../utils/combinadaFijacionShared.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
@@ -282,6 +286,9 @@ function EstructuraZonaOverlay({
   combinadaPtsMetal = 0,
   combinadaPtsMadera = 0,
   onCombinadaZoneInteraction = null,
+  dotOverrides = null,
+  onDotCycleMaterial = null,
+  onDotToggleEnabled = null,
 }) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
   const hidePopTimer = useRef(null);
@@ -477,10 +484,14 @@ function EstructuraZonaOverlay({
         ))}
         <g pointerEvents="auto">
           {dotPts.map((d) => {
-            const mat = combinadaAssign ? mergedByKey[d.key] || "metal" : "metal";
+            const resolved = combinadaAssign
+              ? resolveDotState(d.key, mergedByKey, dotOverrides)
+              : { mat: "metal", enabled: true };
+            const { mat, enabled } = resolved;
             const fill = combinadaAssign ? combinadaMaterialFill(mat) : "#1e293b";
+            const xSz = dotR * 0.7;
             return (
-              <g key={`fij-dot-${r.gi}-${d.key}`}>
+              <g key={`fij-dot-${r.gi}-${d.key}`} opacity={enabled ? 1 : 0.3}>
                 <circle
                   cx={d.cx}
                   cy={d.cy}
@@ -491,30 +502,55 @@ function EstructuraZonaOverlay({
                   onMouseLeave={scheduleHidePopover}
                   aria-label={
                     combinadaAssign
-                      ? `Material: ${mat}. Clic para rotar (hormigón / metal / madera).`
+                      ? `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para rotar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`
                       : "Ver productos de fijación incluidos en la cotización"
                   }
                   onPointerDown={(ev) => {
-                    if (!combinadaAssign || typeof onCombinadaZoneInteraction !== "function") return;
+                    if (!combinadaAssign) return;
                     ev.stopPropagation();
                     ev.preventDefault();
-                    onCombinadaZoneInteraction(r.gi, (prev) => {
-                      const next = { ...prev };
-                      next[d.key] = cycleCombinadaMaterial(prev[d.key] || "metal");
-                      return next;
-                    });
+                    if (typeof onDotCycleMaterial === "function") {
+                      onDotCycleMaterial(r.gi, d.key);
+                    } else if (typeof onCombinadaZoneInteraction === "function") {
+                      onCombinadaZoneInteraction(r.gi, (prev) => {
+                        const next = { ...prev };
+                        next[d.key] = cycleCombinadaMaterial(prev[d.key] || "metal");
+                        return next;
+                      });
+                    }
+                  }}
+                  onContextMenu={(ev) => {
+                    if (!combinadaAssign || typeof onDotToggleEnabled !== "function") return;
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    onDotToggleEnabled(r.gi, d.key);
                   }}
                 />
                 <circle
                   cx={d.cx}
                   cy={d.cy}
                   r={dotR}
-                  fill={fill}
-                  stroke="#f8fafc"
+                  fill={enabled ? fill : "transparent"}
+                  stroke={enabled ? "#f8fafc" : fill}
                   strokeWidth={0.012 * zm}
+                  strokeDasharray={enabled ? "none" : `${0.04 * zm} ${0.03 * zm}`}
                   opacity={0.92}
                   pointerEvents="none"
                 />
+                {!enabled && (
+                  <>
+                    <line
+                      x1={d.cx - xSz} y1={d.cy - xSz}
+                      x2={d.cx + xSz} y2={d.cy + xSz}
+                      stroke={fill} strokeWidth={0.012 * zm} pointerEvents="none"
+                    />
+                    <line
+                      x1={d.cx + xSz} y1={d.cy - xSz}
+                      x2={d.cx - xSz} y2={d.cy + xSz}
+                      stroke={fill} strokeWidth={0.012 * zm} pointerEvents="none"
+                    />
+                  </>
+                )}
               </g>
             );
           })}
@@ -950,6 +986,8 @@ export default function RoofPreview({
   combinadaPtsH = 0,
   combinadaPtsMetal = 0,
   combinadaPtsMadera = 0,
+  fijDotOverridesByGi = null,
+  onFijDotOverridesSync = null,
   bordesPlantaAssign = false,
   bordesPanelFamiliaKey = "",
   techoBorders = null,
@@ -1118,6 +1156,76 @@ export default function RoofPreview({
       estructuraHintsByGi,
       planEdges,
       combinadaFijByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
+  const handleDotCycleMaterial = useCallback(
+    (gi, dotKey) => {
+      if (typeof onFijDotOverridesSync !== "function") return;
+      const entry = layout.entries.find((e) => e.gi === gi);
+      if (!entry) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const keys = dots.map((d) => d.key);
+      const byKey = mergeCombinadaByKeyWithDefaults(
+        keys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
+      const nextOv = cycleDotMaterial(dotKey, byKey, prevOv);
+      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
+    },
+    [
+      onFijDotOverridesSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      fijDotOverridesByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
+  const handleDotToggleEnabled = useCallback(
+    (gi, dotKey) => {
+      if (typeof onFijDotOverridesSync !== "function") return;
+      const entry = layout.entries.find((e) => e.gi === gi);
+      if (!entry) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const keys = dots.map((d) => d.key);
+      const byKey = mergeCombinadaByKeyWithDefaults(
+        keys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
+      const nextOv = toggleDotEnabled(dotKey, byKey, prevOv);
+      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
+    },
+    [
+      onFijDotOverridesSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      fijDotOverridesByGi,
       combinadaPtsH,
       combinadaPtsMetal,
       combinadaPtsMadera,
@@ -1846,6 +1954,9 @@ export default function RoofPreview({
                       combinadaPtsMetal={combinadaPtsMetal}
                       combinadaPtsMadera={combinadaPtsMadera}
                       onCombinadaZoneInteraction={handleCombinadaZoneInteraction}
+                      dotOverrides={fijDotOverridesByGi?.[r.gi] ?? null}
+                      onDotCycleMaterial={handleDotCycleMaterial}
+                      onDotToggleEnabled={handleDotToggleEnabled}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
