@@ -138,3 +138,27 @@ Al terminar una tarea:
 - No usar `npm audit fix --force` sin aprobación de Matias (puede romper vite).
 - No modificar `docs/team/PROJECT-STATE.md` sin agregar entrada en "Cambios recientes".
 - No saltear `npm run lint` antes de commit en `src/`.
+
+---
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+| Service | Port | Start command |
+|---------|------|---------------|
+| Express API | 3001 | `npm run start:api` |
+| Vite dev server (React SPA) | 5173 | `npm run dev` |
+| Both together | 3001 + 5173 | `npm run dev:full` |
+
+### Key commands
+
+Standard lint/test/build commands are documented in the table at the top of this file and in `README.md`. Use `npm run gate:local:full` to run the full local gate (lint + test + build).
+
+### Non-obvious caveats
+
+- **`easymidi` native dependency:** `npm install` requires `libasound2-dev` (ALSA headers) on Linux. Without it, the `midi` native addon (pulled by `easymidi`) fails to compile. Install via `sudo apt-get install -y libasound2-dev` before `npm install`.
+- **Disk precheck:** `npm run dev` and `npm run build` both run `disk:precheck` as a pre-hook. In cloud/CI environments with ample disk, set `BMC_DISK_PRECHECK_SKIP=1` to skip it, or it may fail on unusual filesystem layouts.
+- **`.env` file:** `npm run env:ensure` creates `.env` from `.env.example` (non-destructive). Most features work without credentials, but Google Sheets integration, MercadoLibre OAuth, and AI-powered CRM features require secrets in `.env`.
+- **API health check:** `curl http://localhost:3001/health` — returns `{"ok":true,...}`. The `hasSheets` and `hasTokens` fields will be `false` without Google/ML credentials configured.
+- **Tests run without a server:** `npm test` runs offline unit tests (288 assertions). `npm run test:contracts` requires the API server running on port 3001.
