@@ -25,6 +25,9 @@ Thumbs.db
 .env
 .env.local
 
+# Registro maestro credenciales — solo local / cifrado (ver npm run credentials:registry)
+docs/team/credentials-registry/local/
+
 # Mercado Libre — token store local cifrado (OAuth; nunca commitear)
 .ml-tokens.enc
 

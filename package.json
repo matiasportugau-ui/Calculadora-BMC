@@ -115,7 +115,12 @@
     "magazine:daily:dry": "node scripts/magazine-daily-digest.mjs --dry-run",
     "magazine:schedule:install": "bash scripts/install-magazine-daily-schedule.sh",
     "magazine:schedule:uninstall": "bash scripts/uninstall-magazine-daily-schedule.sh",
-    "magazine:schedule:tick": "bash scripts/magazine-daily-scheduler.sh"
+    "magazine:schedule:tick": "bash scripts/magazine-daily-scheduler.sh",
+    "credentials:registry": "node scripts/credentials-master-registry.mjs",
+    "credentials:registry:probe": "node scripts/credentials-master-registry.mjs --probe-local",
+    "credentials:registry:encrypt": "node scripts/credentials-master-registry.mjs --encrypt",
+    "credentials:registry:encrypt:only": "node scripts/credentials-master-registry.mjs --encrypt-only",
+    "credentials:registry:decrypt": "node scripts/credentials-master-registry.mjs --decrypt"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
