@@ -2816,6 +2816,7 @@ export default function PanelinCalculadoraV3() {
         const totales = calcTotalesSinIVA(allItems);
         return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraW] };
       }
+      return null;
     } catch (e) { return { error: e.message }; }
   }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 

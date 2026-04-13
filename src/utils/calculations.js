@@ -13,7 +13,8 @@
 //   ./calc/structureDispatch.js — distribute fixation points by structure type
 //
 // All prices are SIN IVA. IVA is applied once at the end by calcTotalesSinIVA().
-// Quantities always use Math.ceil() (never round/floor).
+// Auto-calculated quantities use Math.ceil(); user-provided override handling
+// may use round/floor for normalization and clamping in specific flows.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { p } from "../data/constants.js";

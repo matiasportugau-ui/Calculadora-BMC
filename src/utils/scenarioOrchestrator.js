@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/utils/scenarioOrchestrator.js — Generic scenario execution engine
 //
-// Replaces the hardcoded if/else chain in PanelinCalculadoraV3_backup.jsx
-// with a data-driven approach. Each scenario is defined in SCENARIOS_DEF
-// (constants.js) and this module executes the appropriate calculations.
+// Provides a data-driven scenario execution API intended to replace
+// the hardcoded if/else chain in PanelinCalculadoraV3_backup.jsx.
+// Current status: available and parity-tested, but not yet wired as
+// the active runtime path in the main calculator component.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "./calculations.js";
@@ -117,9 +118,8 @@ export function calcCamaraFrig(pared, camara) {
 /**
  * Execute a scenario calculation based on scenario ID.
  *
- * This is the single entry point that replaces the if/else chain
- * in the component's useMemo. Each scenario maps to a composition
- * of surface calculations.
+ * This is the single entry point for data-driven scenario execution.
+ * It is ready for integration into the component's useMemo path.
  *
  * @param {string} scenarioId — one of: solo_techo, solo_fachada, techo_fachada, camara_frig
  * @param {Object} inputs — { techo, pared, camara }

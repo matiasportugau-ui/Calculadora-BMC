@@ -125,9 +125,13 @@ export default function PanelinChatPanel({
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [privacyNoticeSeen, setPrivacyNoticeSeen] = useState(
-    () => typeof localStorage !== "undefined" && !!localStorage.getItem(PRIVACY_KEY)
-  );
+  const [privacyNoticeSeen, setPrivacyNoticeSeen] = useState(() => {
+    try {
+      return typeof localStorage !== "undefined" && !!localStorage.getItem(PRIVACY_KEY);
+    } catch {
+      return false;
+    }
+  });
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);

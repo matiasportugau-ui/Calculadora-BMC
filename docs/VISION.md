@@ -11,7 +11,7 @@ quotation in seconds — so intuitive it doesn't need assistance.
 ### What Works
 - 5 quotation scenarios (unified in SCENARIOS_DEF with visibility + wizard steps)
 - Pure JS calculation engine with modular helpers (calc/skuResolver, calc/structureDispatch)
-- Scenario orchestrator (`scenarioOrchestrator.js`) — data-driven, no hardcoded if/else
+- Scenario orchestrator module (`scenarioOrchestrator.js`) implemented and ready for runtime wiring
 - RoofPreview with drag-drop zones (2D SVG, pointer capture, snap-to-grid)
 - Complete panel catalog: 7 families, multiple thicknesses/colors
 - PDF A4 export with professional margins (14/12/22/12mm) + WhatsApp text
@@ -26,7 +26,7 @@ quotation in seconds — so intuitive it doesn't need assistance.
 - No product comparison side-by-side
 - Price sync from MATRIZ is manual (CSV export/import)
 - No price sanity validation (cost < selling, large jumps)
-- No in-app AI chat (only endpoints for external agents)
+- In-app AI chat exists, but still lacks production-grade persistence/policy/traceability controls
 - No audit trail for price changes
 
 ## The 5 Pillars

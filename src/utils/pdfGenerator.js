@@ -15,8 +15,8 @@ const PDF_MARGINS = [14, 12, 22, 12];
 /**
  * Convert the print-ready HTML string into a PDF Blob.
  *
- * Uses a hidden iframe instead of shadow DOM + off-screen positioning
- * to improve font loading reliability and CSS @page rule support.
+ * Uses an off-screen shadow DOM container to isolate print styles
+ * and improve reliability for font loading / CSS @page rendering.
  *
  * @param {string} htmlString — full HTML document from generatePrintHTML()
  * @returns {Promise<Blob>} — PDF blob ready for upload or download

@@ -129,7 +129,7 @@ function buildPdfHead(title) {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="${GOOGLE_FONT_URL}" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 11mm 10mm 18mm 10mm; }
+  @page { size: A4; margin: 14mm 12mm 22mm 12mm; }
   * { box-sizing: border-box; }
   body {
     font-family: ${PDF_FONT};

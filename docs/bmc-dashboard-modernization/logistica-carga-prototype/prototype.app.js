@@ -39,7 +39,7 @@ const VENTAS_API_BASE_KEY = "bmc-carga-ventas-api-base";
 const VENTAS_API_TOKEN_KEY = "bmc-carga-ventas-api-bearer";
 /** Hostnames permitidos para `fetch` (una línea por host, sin puerto). */
 const VENTAS_API_ALLOWED_HOSTS_KEY = "bmc-carga-ventas-allowed-hosts";
-const DEFAULT_VENTAS_ALLOWED_HOST_LINES = ["localhost", "127.0.0.1", "[::1]"];
+const DEFAULT_VENTAS_ALLOWED_HOST_LINES = ["localhost", "127.0.0.1", "::1"];
 const VENTAS_TAB_COORDINACIONES = "Ventas y Coordinaciones";
 const TRUCK_LEN_OPTS = [6, 7, 8, 9, 10, 12, 14];
 
@@ -849,7 +849,7 @@ function getVentasAllowedHostsText() {
 function parseVentasAllowedHostLines(text) {
   return String(text || "")
     .split(/\r?\n/)
-    .map((s) => s.trim().toLowerCase())
+    .map((s) => s.trim().toLowerCase().replace(/^\[|\]$/g, ""))
     .filter(Boolean);
 }
 
@@ -868,7 +868,7 @@ function ventasApiOriginGate(base, allowedHosts) {
   } catch {
     return { ok: false, reason: "Base API inválida (usá http:// o https:// y puerto si aplica)." };
   }
-  const host = u.hostname.toLowerCase();
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!allowedHosts.length) {
     return { ok: false, reason: "La lista de hosts permitidos está vacía." };
   }
