@@ -33,6 +33,10 @@ echo ""
 curl -sS -o /dev/null -w "auth/ml/status HTTP %{http_code}\n" "$BMC_API_BASE/auth/ml/status"
 ```
 
+### 0.4 Snapshots operativos (preguntas, catálogo, métricas API)
+
+Para un **informe puntual** (pendientes, listings, reputación desde JSON de ML) sin sustituir §0, usar documentos separados con fecha en el nombre, p. ej. [`ML-OPERATIVO-SNAPSHOT-2026-04-12.md`](./ML-OPERATIVO-SNAPSHOT-2026-04-12.md). Tras cambios fuertes en la cuenta, generar un nuevo `ML-OPERATIVO-SNAPSHOT-YYYY-MM-DD.md` y una línea en `PROJECT-STATE.md`.
+
 Interpretación rápida: `hasTokens: true` y `auth/ml/status` **200** ⇒ token persistido accesible para el runtime. **404** en status ⇒ completar OAuth en navegador: `$BMC_API_BASE/auth/ml/start` (y callback registrado en Developers ML).
 
 ---
