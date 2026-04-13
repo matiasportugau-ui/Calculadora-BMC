@@ -20,6 +20,11 @@ Ver [.env.example](../../.env.example): `ML_CLIENT_ID`, `ML_CLIENT_SECRET`, `ML_
 - Panel ngrok local: http://127.0.0.1:4040  
 - Guía repo: [docs/ML-OAUTH-SETUP.md](../../docs/ML-OAUTH-SETUP.md)
 
+## Respuestas publicadas (`POST /ml/questions/:id/answer`)
+
+- Mercado Libre **suele eliminar** el carácter `$` del texto; **“U$S”** puede degradarse a **“US”** pegado al monto.
+- El servidor aplica `normalizeMlAnswerCurrencyText` en [`server/lib/mlAnswerText.js`](../../server/lib/mlAnswerText.js): convierte **`U$S` / `u$s` → `USD`** y mapea **`$`** restantes a dólar de ancho completo (mitigación). Ver [`docs/team/panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md`](../../docs/team/panelsim/knowledge/ML-RESPUESTAS-KB-BMC.md) §5.
+
 ## Errores frecuentes (recordatorio)
 
 - **redirect_uri mismatch:** cadena idéntica en portal ML, `.env` y `authUrl` (`/auth/ml/start?mode=json`).

@@ -1932,15 +1932,21 @@ assert(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SUITE: ML answer text — ASCII $ → fullwidth for Mercado Libre API
+// SUITE: ML answer text — U$S → USD; remaining ASCII $ → fullwidth
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE: normalizeMlAnswerCurrencyText ═══");
 const fw = "\uFF04";
 assert(
-  "U$S amounts become U+fullwidth+S",
-  normalizeMlAnswerCurrencyText("U$S 1.456,88") === `U${fw}S 1.456,88`,
+  "U$S becomes USD (no dollar glyph for ML)",
+  normalizeMlAnswerCurrencyText("U$S 1.456,88") === "USD 1.456,88",
   normalizeMlAnswerCurrencyText("U$S 1.456,88"),
-  `U${fw}S 1.456,88`,
+  "USD 1.456,88",
+);
+assert(
+  "u$s lower-case becomes USD",
+  normalizeMlAnswerCurrencyText("Precio u$s 10") === "Precio USD 10",
+  normalizeMlAnswerCurrencyText("Precio u$s 10"),
+  "Precio USD 10",
 );
 const multi = normalizeMlAnswerCurrencyText("a $1 $2");
 assert(
