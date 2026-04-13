@@ -46,6 +46,7 @@ import {
 import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
 import { htmlToPdfBlob, downloadPdf } from "../utils/pdfGenerator.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
+import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
 import { capturePdfSnapshotTargets } from "../utils/captureDomToPng.js";
 import {
@@ -3415,6 +3416,82 @@ export default function PanelinCalculadoraV3() {
   const combinadaRoof2dAssignActive = Boolean(
     scenarioDef?.hasTecho && techo.tipoEst === "combinada" && activeWizardStepId === "estructura",
   );
+
+  // ── Per-apoyo material management for combinada ──
+  const combinadaApoyoInfo = useMemo(() => {
+    if (!roofEstructuraHintsByGi || techo.tipoEst !== "combinada") return null;
+    // For now, single-zone only (gi=0)
+    const h = roofEstructuraHintsByGi[0];
+    if (!h) return null;
+    return { apoyos: h.apoyos || 2, cantPaneles: h.cantPaneles || 1 };
+  }, [roofEstructuraHintsByGi, techo.tipoEst]);
+
+  const apoyoMateriales = useMemo(() => {
+    if (!combinadaApoyoInfo) return null;
+    const stored = techo.apoyoMateriales;
+    if (Array.isArray(stored) && stored.length === combinadaApoyoInfo.apoyos) return stored;
+    // Build default: all metal
+    return buildDefaultApoyoMateriales(combinadaApoyoInfo.apoyos, "metal");
+  }, [combinadaApoyoInfo, techo.apoyoMateriales]);
+
+  const handleApoyoMaterialCycle = useCallback(
+    (gi, rowIndex) => {
+      if (!combinadaApoyoInfo || !apoyoMateriales) return;
+      const next = [...apoyoMateriales];
+      next[rowIndex] = cycleCombinadaMaterial(next[rowIndex] || "metal");
+      const pts = countPtsFromApoyoMateriales(next, combinadaApoyoInfo.cantPaneles);
+      setTecho((t) => ({
+        ...t,
+        apoyoMateriales: next,
+        ptsHorm: pts.ptsHorm,
+        ptsMetal: pts.ptsMetal,
+        ptsMadera: pts.ptsMadera,
+        zonas: (t.zonas || []).map((z) => {
+          const { combinadaFijByKey: _drop, fijDotOverrides: _dropDots, ...rest } = z;
+          return rest;
+        }),
+      }));
+    },
+    [combinadaApoyoInfo, apoyoMateriales, setTecho],
+  );
+
+  const handleApoyoMaterialDirect = useCallback(
+    (rowIndex, mat) => {
+      if (!combinadaApoyoInfo || !apoyoMateriales) return;
+      const next = [...apoyoMateriales];
+      next[rowIndex] = mat;
+      const pts = countPtsFromApoyoMateriales(next, combinadaApoyoInfo.cantPaneles);
+      setTecho((t) => ({
+        ...t,
+        apoyoMateriales: next,
+        ptsHorm: pts.ptsHorm,
+        ptsMetal: pts.ptsMetal,
+        ptsMadera: pts.ptsMadera,
+        zonas: (t.zonas || []).map((z) => {
+          const { combinadaFijByKey: _drop, fijDotOverrides: _dropDots, ...rest } = z;
+          return rest;
+        }),
+      }));
+    },
+    [combinadaApoyoInfo, apoyoMateriales, setTecho],
+  );
+
+  // Auto-sync techo.apoyoMateriales & pts when useMemo builds defaults
+  useEffect(() => {
+    if (!apoyoMateriales || !combinadaApoyoInfo) return;
+    const stored = techo.apoyoMateriales;
+    if (Array.isArray(stored) && stored.length === apoyoMateriales.length &&
+        stored.every((m, i) => m === apoyoMateriales[i])) return; // already in sync
+    const pts = countPtsFromApoyoMateriales(apoyoMateriales, combinadaApoyoInfo.cantPaneles);
+    setTecho((t) => ({
+      ...t,
+      apoyoMateriales,
+      ptsHorm: pts.ptsHorm,
+      ptsMetal: pts.ptsMetal,
+      ptsMadera: pts.ptsMadera,
+    }));
+  }, [apoyoMateriales, combinadaApoyoInfo, techo.apoyoMateriales, setTecho]);
+
   const bordesPlantaRoof2dAssignActive = Boolean(
     scenarioDef?.hasTecho && techo.inclAccesorios !== false && activeWizardStepId === "bordes",
   );
@@ -3475,6 +3552,8 @@ export default function PanelinCalculadoraV3() {
         combinadaPtsMadera={techo.ptsMadera ?? 0}
         fijDotOverridesByGi={fijDotOverridesByGi}
         onFijDotOverridesSync={handleFijDotOverridesSync}
+        apoyoMateriales={apoyoMateriales}
+        onApoyoMaterialCycle={handleApoyoMaterialCycle}
         bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
         bordesPanelFamiliaKey={techo.familia || ""}
         techoBorders={techo.borders}
@@ -3511,6 +3590,8 @@ export default function PanelinCalculadoraV3() {
     techo.ptsMadera,
     fijDotOverridesByGi,
     handleFijDotOverridesSync,
+    apoyoMateriales,
+    handleApoyoMaterialCycle,
     bordesPlantaRoof2dAssignActive,
     techo.familia,
     techo.borders,
@@ -4358,6 +4439,8 @@ export default function PanelinCalculadoraV3() {
                           combinadaPtsMadera={techo.ptsMadera ?? 0}
                           fijDotOverridesByGi={fijDotOverridesByGi}
                           onFijDotOverridesSync={handleFijDotOverridesSync}
+                          apoyoMateriales={apoyoMateriales}
+                          onApoyoMaterialCycle={handleApoyoMaterialCycle}
                           bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
                           bordesPanelFamiliaKey={techo.familia || ""}
                           techoBorders={techo.borders}
@@ -4458,12 +4541,53 @@ export default function PanelinCalculadoraV3() {
                       <SegmentedControl value={techo.tipoEst} onChange={v => uT("tipoEst", v)} options={ESTRUCTURA_OPTIONS} />
                       {techo.tipoEst === "combinada" && (
                         <div style={{ padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Cantidad de fijaciones por tipo</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => patchTechoCombinadaPts("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                            <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => patchTechoCombinadaPts("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                            <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => patchTechoCombinadaPts("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Material por apoyo</div>
+                          {apoyoMateriales && apoyoMateriales.length > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              {apoyoMateriales.map((mat, ri) => {
+                                const isPerim = ri === 0 || ri === apoyoMateriales.length - 1;
+                                const label = isPerim
+                                  ? `Apoyo ${ri + 1} (Perímetro)`
+                                  : `Apoyo ${ri + 1} (Intermedio)`;
+                                return (
+                                  <div key={ri} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: C.tp }}>{label}</div>
+                                    <div style={{ display: "flex", gap: 4 }}>
+                                      {COMBINADA_MATERIAL_ORDER.map((m) => (
+                                        <button
+                                          key={m}
+                                          onClick={() => handleApoyoMaterialDirect(ri, m)}
+                                          style={{
+                                            padding: "4px 10px",
+                                            borderRadius: 8,
+                                            border: `1.5px solid ${mat === m ? (m === "hormigon" ? "#0ea5e9" : m === "madera" ? "#b45309" : "#1e293b") : C.border}`,
+                                            background: mat === m ? (m === "hormigon" ? "#e0f2fe" : m === "madera" ? "#fef3c7" : "#f1f5f9") : C.surface,
+                                            fontSize: 11,
+                                            fontWeight: mat === m ? 700 : 400,
+                                            cursor: "pointer",
+                                            color: mat === m ? (m === "hormigon" ? "#0369a1" : m === "madera" ? "#92400e" : "#1e293b") : C.ts,
+                                            transition: "all 0.15s ease",
+                                          }}
+                                        >
+                                          {m === "hormigon" ? "Hormigón" : m === "madera" ? "Madera" : "Metal"}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              <div style={{ marginTop: 6, fontSize: 11, color: C.ts, lineHeight: 1.4 }}>
+                                Fijaciones: <strong>{techo.ptsHorm ?? 0}</strong> hormigón, <strong>{techo.ptsMetal ?? 0}</strong> metal, <strong>{techo.ptsMadera ?? 0}</strong> madera
+                                <span style={{ opacity: 0.6 }}> — total {(techo.ptsHorm ?? 0) + (techo.ptsMetal ?? 0) + (techo.ptsMadera ?? 0)}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                              <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => patchTechoCombinadaPts("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                              <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => patchTechoCombinadaPts("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                              <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => patchTechoCombinadaPts("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                            </div>
+                          )}
                         </div>
                       )}
                       {showRoof2dInQuoteVisor ? (
@@ -5293,12 +5417,49 @@ export default function PanelinCalculadoraV3() {
             <SegmentedControl value={scenarioDef?.hasTecho && !scenarioDef?.hasPared ? techo.tipoEst : pared.tipoEst} onChange={v => { uT("tipoEst", v); uP("tipoEst", v); }} options={ESTRUCTURA_OPTIONS} />
             {scenarioDef?.hasTecho && techo.tipoEst === "combinada" && (
               <div style={{ marginTop: 12, padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Cantidad de fijaciones por tipo (techo)</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => patchTechoCombinadaPts("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                  <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => patchTechoCombinadaPts("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                  <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => patchTechoCombinadaPts("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
-                </div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Material por apoyo (techo)</div>
+                {apoyoMateriales && apoyoMateriales.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {apoyoMateriales.map((mat, ri) => {
+                      const isPerim = ri === 0 || ri === apoyoMateriales.length - 1;
+                      const label = isPerim ? `Apoyo ${ri + 1} (P)` : `Apoyo ${ri + 1} (I)`;
+                      return (
+                        <div key={ri} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ flex: 1, fontSize: 11, fontWeight: 500, color: C.tp }}>{label}</div>
+                          <div style={{ display: "flex", gap: 3 }}>
+                            {COMBINADA_MATERIAL_ORDER.map((m) => (
+                              <button
+                                key={m}
+                                onClick={() => handleApoyoMaterialDirect(ri, m)}
+                                style={{
+                                  padding: "3px 7px",
+                                  borderRadius: 6,
+                                  border: `1.5px solid ${mat === m ? (m === "hormigon" ? "#0ea5e9" : m === "madera" ? "#b45309" : "#1e293b") : C.border}`,
+                                  background: mat === m ? (m === "hormigon" ? "#e0f2fe" : m === "madera" ? "#fef3c7" : "#f1f5f9") : C.surface,
+                                  fontSize: 10,
+                                  fontWeight: mat === m ? 700 : 400,
+                                  cursor: "pointer",
+                                  color: mat === m ? (m === "hormigon" ? "#0369a1" : m === "madera" ? "#92400e" : "#1e293b") : C.ts,
+                                }}
+                              >
+                                {m === "hormigon" ? "H" : m === "madera" ? "Mad" : "Met"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: 10, color: C.ts, marginTop: 4 }}>
+                      {techo.ptsHorm ?? 0}H / {techo.ptsMetal ?? 0}Met / {techo.ptsMadera ?? 0}Mad = {(techo.ptsHorm ?? 0) + (techo.ptsMetal ?? 0) + (techo.ptsMadera ?? 0)} fij.
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <StepperInput label="Fijaciones en Hormigón" value={techo.ptsHorm ?? 0} onChange={v => patchTechoCombinadaPts("ptsHorm", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                    <StepperInput label="Fijaciones a Metal" value={techo.ptsMetal ?? 0} onChange={v => patchTechoCombinadaPts("ptsMetal", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                    <StepperInput label="Fijaciones a Madera" value={techo.ptsMadera ?? 0} onChange={v => patchTechoCombinadaPts("ptsMadera", v)} min={0} max={9999} step={1} unit="unid" decimals={0} />
+                  </div>
+                )}
               </div>
             )}
             

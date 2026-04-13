@@ -289,6 +289,8 @@ function EstructuraZonaOverlay({
   dotOverrides = null,
   onDotCycleMaterial = null,
   onDotToggleEnabled = null,
+  apoyoMateriales = null,
+  onApoyoMaterialCycle = null,
 }) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
   const hidePopTimer = useRef(null);
@@ -330,6 +332,8 @@ function EstructuraZonaOverlay({
     const n = Math.min(32, rows);
     for (let i = 0; i < n; i++) {
       const yy = yForFijacionRowPlanta(r, n, i);
+      const apoyoMat = apoyoMateriales && i < apoyoMateriales.length ? apoyoMateriales[i] : null;
+      const lineColor = combinadaAssign && apoyoMat ? combinadaMaterialFill(apoyoMat) : "#7c3aed";
       supportLinesVisual.push(
         <line
           key={`est-ap-v-${r.gi}-${i}`}
@@ -337,14 +341,33 @@ function EstructuraZonaOverlay({
           y1={yy}
           x2={r.x + r.w}
           y2={yy}
-          stroke="#7c3aed"
-          strokeWidth={0.048 * zm}
-          strokeDasharray={`${0.16 * zm} ${0.1 * zm}`}
+          stroke={lineColor}
+          strokeWidth={combinadaAssign && apoyoMat ? 0.065 * zm : 0.048 * zm}
+          strokeDasharray={combinadaAssign && apoyoMat ? undefined : `${0.16 * zm} ${0.1 * zm}`}
           opacity={0.88}
           pointerEvents="none"
         />,
       );
-      if (combinadaAssign && typeof onCombinadaZoneInteraction === "function") {
+      if (combinadaAssign && typeof onApoyoMaterialCycle === "function") {
+        supportLinesHit.push(
+          <line
+            key={`est-ap-hit-${r.gi}-${i}`}
+            x1={r.x}
+            y1={yy}
+            x2={r.x + r.w}
+            y2={yy}
+            stroke="transparent"
+            strokeWidth={0.22 * zm}
+            pointerEvents="stroke"
+            style={{ cursor: "pointer" }}
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              onApoyoMaterialCycle(r.gi, i);
+            }}
+          />,
+        );
+      } else if (combinadaAssign && typeof onCombinadaZoneInteraction === "function") {
         supportLinesHit.push(
           <line
             key={`est-ap-hit-${r.gi}-${i}`}
@@ -379,15 +402,17 @@ function EstructuraZonaOverlay({
   const dotPts = fijacionDotsLayout(r, hints, exterior);
   const dotKeys = dotPts.map((d) => d.key);
   const mergedByKey =
-    combinadaAssign && typeof onCombinadaZoneInteraction === "function"
-      ? mergeCombinadaByKeyWithDefaults(
-          dotKeys,
-          combinadaByKey && typeof combinadaByKey === "object" ? combinadaByKey : {},
-          combinadaPtsH,
-          combinadaPtsMetal,
-          combinadaPtsMadera,
-        )
-      : {};
+    combinadaAssign && apoyoMateriales && apoyoMateriales.length
+      ? Object.fromEntries(dotPts.map((d) => [d.key, d.rowIndex >= 0 && d.rowIndex < apoyoMateriales.length ? (apoyoMateriales[d.rowIndex] || "metal") : "metal"]))
+      : combinadaAssign && typeof onCombinadaZoneInteraction === "function"
+        ? mergeCombinadaByKeyWithDefaults(
+            dotKeys,
+            combinadaByKey && typeof combinadaByKey === "object" ? combinadaByKey : {},
+            combinadaPtsH,
+            combinadaPtsMetal,
+            combinadaPtsMadera,
+          )
+        : {};
 
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
   const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
@@ -960,6 +985,8 @@ export function RoofPreviewMetricsSidebar({
  * @param {Record<string, string>|null} [props.techoBorders] - bordes globales (`techo.borders`)
  * @param {(side: string, val: string) => void} [props.onTechoBorderChange] - una sola zona efectiva en planta
  * @param {(gi: number, side: string, val: string) => void} [props.onZonaBorderChange] - multizona
+ * @param {string[]|null} [props.apoyoMateriales] - per-apoyo material array (combinada mode)
+ * @param {(gi: number, rowIndex: number) => void} [props.onApoyoMaterialCycle] - cycle apoyo material on click
  */
 export default function RoofPreview({
   zonas = [],
@@ -993,6 +1020,8 @@ export default function RoofPreview({
   techoBorders = null,
   onTechoBorderChange = null,
   onZonaBorderChange = null,
+  apoyoMateriales = null,
+  onApoyoMaterialCycle = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
@@ -1957,6 +1986,8 @@ export default function RoofPreview({
                       dotOverrides={fijDotOverridesByGi?.[r.gi] ?? null}
                       onDotCycleMaterial={handleDotCycleMaterial}
                       onDotToggleEnabled={handleDotToggleEnabled}
+                      apoyoMateriales={combinadaSingleZona ? apoyoMateriales : null}
+                      onApoyoMaterialCycle={combinadaSingleZona ? onApoyoMaterialCycle : null}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (

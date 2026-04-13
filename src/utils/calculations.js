@@ -697,8 +697,9 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
     if (!paneles) continue;
     const autop = calcAutoportancia(panel, techo.espesor, largo);
     let fij;
+    const hasApoyoMat = tipoEst === "combinada" && Array.isArray(techo.apoyoMateriales) && techo.apoyoMateriales.length >= 2;
     const fijacionDotsMode =
-      panel.sist === "varilla_tuerca" && tipoEst !== "combinada" && !bomComercial ? "isodec_grid" : "distribute";
+      panel.sist === "varilla_tuerca" && (tipoEst !== "combinada" || hasApoyoMat) && !bomComercial ? "isodec_grid" : "distribute";
     if (panel.sist === "varilla_tuerca") {
       const ptsComercial = bomComercial
         ? getDimensioningParam("FIJACIONES_VARILLA.puntos_comercial_default", 22)

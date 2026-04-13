@@ -119,3 +119,55 @@ export function cycleDotMaterial(dotKey, byKey, dotOverrides) {
     [dotKey]: { mat: next, enabled: prev.enabled },
   };
 }
+
+/**
+ * Derive ptsHorm / ptsMetal / ptsMadera from per-apoyo material array using
+ * the isodec grid rule: perimeter rows (first & last) = 2 dots per panel,
+ * interior rows = 1 dot per panel.
+ * @param {string[]} apoyoMateriales - e.g. ["metal", "hormigon", "madera"]
+ * @param {number} cantPaneles - panels in width
+ * @returns {{ ptsHorm: number, ptsMetal: number, ptsMadera: number }}
+ */
+export function countPtsFromApoyoMateriales(apoyoMateriales, cantPaneles) {
+  const n = cantPaneles > 0 ? Math.round(cantPaneles) : 1;
+  const rows = apoyoMateriales.length;
+  let ptsHorm = 0, ptsMetal = 0, ptsMadera = 0;
+  for (let ri = 0; ri < rows; ri++) {
+    const isPerimeter = ri === 0 || ri === rows - 1;
+    const dotsInRow = isPerimeter ? 2 * n : n;
+    const mat = apoyoMateriales[ri] || "metal";
+    if (mat === "hormigon") ptsHorm += dotsInRow;
+    else if (mat === "madera") ptsMadera += dotsInRow;
+    else ptsMetal += dotsInRow;
+  }
+  return { ptsHorm, ptsMetal, ptsMadera };
+}
+
+/**
+ * Build a byKey dot map from per-apoyo materials: each dot inherits the material
+ * of its apoyo (rowIndex).
+ * @param {{ key: string, rowIndex: number }[]} dots
+ * @param {string[]} apoyoMateriales
+ * @returns {Record<string, string>}
+ */
+export function apoyoMaterialsToDotsByKey(dots, apoyoMateriales) {
+  const out = {};
+  for (const d of dots) {
+    const ri = d.rowIndex;
+    out[d.key] = (ri >= 0 && ri < apoyoMateriales.length)
+      ? (apoyoMateriales[ri] || "metal")
+      : "metal";
+  }
+  return out;
+}
+
+/**
+ * Build default apoyoMateriales array: all set to a single material.
+ * @param {number} apoyos - number of support lines
+ * @param {string} [defaultMat="metal"]
+ * @returns {string[]}
+ */
+export function buildDefaultApoyoMateriales(apoyos, defaultMat = "metal") {
+  const n = Math.max(2, Math.round(apoyos) || 2);
+  return Array.from({ length: n }, () => defaultMat);
+}

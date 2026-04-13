@@ -1,0 +1,123 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+# Calculadora-BMC / Panelin — configuración de proyecto para OpenAI Codex CLI
+# Marcar el repo como "trusted" en Codex para que se cargue esta capa.
+# Referencia: https://developers.openai.com/codex/config-reference
+
+################################################################################
+# Modelo y proveedor
+################################################################################
+
+model = "gpt-5.4"
+model_provider = "openai"
+personality = "pragmatic"
+model_reasoning_effort = "medium"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+################################################################################
+# Instrucciones y documentación del proyecto
+################################################################################
+
+# AGENTS.md en la raíz ya es la fuente canónica; esto añade contexto compacto para Codex.
+developer_instructions = """
+Stack: Vite+React en `src/` (puerto 5173), API Node en `server/` (puerto 3001). ES modules únicamente (import/export).
+API: montar rutas en `server/routes/bmcDashboard.js` bajo `/api`. Sheets: 503 si no hay servicio; 200 con data vacía si no hay datos; nunca 500 por Sheets.
+Secretos e IDs de planillas solo vía `process.env` / config; prohibido hardcodear tokens, API keys o URLs de prod.
+Flujo de verificación: tras cambios en `src/` ejecutar `npm run lint`; lógica de negocio `npm test`; antes de PR/commit con UI: `npm run gate:local:full` (lint+test+build).
+Contratos: con API en marcha, `npm run start:api` y `npm run test:contracts`. Smoke prod: `npm run smoke:prod`.
+Estado y pendientes del equipo: `docs/team/PROJECT-STATE.md`. Gates humanos (OAuth/ML/correo): no marcar done sin evidencia.
+Antes de levantar otro `npm run dev:full`, comprobar si ya responden `http://localhost:3001/health` y `http://localhost:5173`.
+"""
+
+project_doc_max_bytes = 49152
+
+################################################################################
+# Editor y búsqueda
+################################################################################
+
+file_opener = "cursor"
+web_search = "cached"
+
+################################################################################
+# Aprobaciones y sandbox (adecuado a Node/npm/tests en este repo)
+################################################################################
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = []
+network_access = true
+exclude_tmpdir_env_var = false
+exclude_slash_tmp = false
+
+################################################################################
+# Entorno de shell (heredar todo para que npm/node encuentren PATH habitual)
+################################################################################
+
+[shell_environment_policy]
+inherit = "all"
+ignore_default_excludes = false
+exclude = []
+set = {}
+include_only = []
+experimental_use_profile = false
+
+################################################################################
+# Historial
+################################################################################
+
+[history]
+persistence = "save-all"
+
+################################################################################
+# Features (explícitas solo donde conviene al flujo de desarrollo)
+################################################################################
+
+[features]
+multi_agent = true
+unified_exec = true
+shell_snapshot = true
+shell_tool = true
+fast_mode = true
+skill_mcp_dependency_install = true
+
+################################################################################
+# MCP — alineado con `.mcp.json` de Cursor (Chrome DevTools)
+################################################################################
+
+[mcp_servers]
+
+[mcp_servers."chrome-devtools"]
+command = "npx"
+args = [
+  "-y",
+  "chrome-devtools-mcp@latest",
+  "--no-usage-statistics",
+  "--no-performance-crux",
+]
+enabled = true
+required = false
+startup_timeout_sec = 60.0
+tool_timeout_sec = 120.0
+
+# Opcional: proxy MCP → API local (requiere `npm run start:api` y variables en `.env`).
+# [mcp_servers.panelin]
+# command = "npm"
+# args = ["run", "mcp:panelin", "--silent"]
+# enabled = false
+# required = false
+
+################################################################################
+# Perfiles opcionales: `codex --profile fast` o `--profile review`
+################################################################################
+
+[profiles.fast]
+service_tier = "fast"
+model_reasoning_effort = "low"
+model_verbosity = "low"
+
+[profiles.review]
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+plan_mode_reasoning_effort = "high"

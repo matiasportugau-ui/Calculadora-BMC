@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-10T13:03:34.476Z",
+  "updatedAt": "2026-04-12T13:19:26.908Z",
   "projectProfile": {
     "name": "BMC/Panelin",
     "focusAreas": [
@@ -43,15 +43,15 @@
         "agent"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-10T13:03:30.474Z",
+      "lastCheckedAt": "2026-04-12T13:19:23.217Z",
       "stats": {
-        "eventsSeen": 14,
-        "acceptedEvents": 12,
+        "eventsSeen": 27,
+        "acceptedEvents": 25,
         "rejectedEvents": 2,
-        "avgEventScore": 0.5737
+        "avgEventScore": 0.5619
       },
-      "updatedAt": "2026-04-10T13:03:34.475Z",
-      "rankScore": 0.9189
+      "updatedAt": "2026-04-12T13:19:26.908Z",
+      "rankScore": 0.9281
     },
     {
       "id": "anthropic-news-rss",
@@ -70,15 +70,15 @@
         "safety"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-10T13:03:31.527Z",
+      "lastCheckedAt": "2026-04-12T13:19:24.560Z",
       "stats": {
-        "eventsSeen": 28,
-        "acceptedEvents": 15,
+        "eventsSeen": 30,
+        "acceptedEvents": 17,
         "rejectedEvents": 13,
-        "avgEventScore": 0.3923
+        "avgEventScore": 0.4103
       },
-      "updatedAt": "2026-04-10T13:03:34.475Z",
-      "rankScore": 0.8321
+      "updatedAt": "2026-04-12T13:19:26.908Z",
+      "rankScore": 0.8385
     },
     {
       "id": "vercel-releases",
@@ -97,15 +97,15 @@
         "ci-cd"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-10T13:03:31.683Z",
+      "lastCheckedAt": "2026-04-12T13:19:24.765Z",
       "stats": {
-        "eventsSeen": 39,
-        "acceptedEvents": 29,
+        "eventsSeen": 47,
+        "acceptedEvents": 37,
         "rejectedEvents": 10,
-        "avgEventScore": 0.493
+        "avgEventScore": 0.5201
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
-      "rankScore": 0.8548
+      "updatedAt": "2026-04-12T13:19:26.908Z",
+      "rankScore": 0.8641
     },
     {
       "id": "supabase-releases",
@@ -124,14 +124,14 @@
         "auth"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-10T13:03:31.725Z",
+      "lastCheckedAt": "2026-04-12T13:19:24.810Z",
       "stats": {
         "eventsSeen": 20,
         "acceptedEvents": 9,
         "rejectedEvents": 11,
         "avgEventScore": 0.3081
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
+      "updatedAt": "2026-04-12T13:19:26.908Z",
       "rankScore": 0.7703
     },
     {
@@ -149,14 +149,14 @@
         "benchmarks"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-10T13:03:32.223Z",
+      "lastCheckedAt": "2026-04-12T13:19:25.220Z",
       "stats": {
         "eventsSeen": 32,
         "acceptedEvents": 32,
         "rejectedEvents": 0,
         "avgEventScore": 0.657
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
+      "updatedAt": "2026-04-12T13:19:26.908Z",
       "rankScore": 0.8507
     },
     {
@@ -176,14 +176,14 @@
         "typescript"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-10T13:03:32.500Z",
+      "lastCheckedAt": "2026-04-12T13:19:25.462Z",
       "stats": {
         "eventsSeen": 20,
         "acceptedEvents": 3,
         "rejectedEvents": 17,
         "avgEventScore": 0.2306
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
+      "updatedAt": "2026-04-12T13:19:26.908Z",
       "rankScore": 0.7716
     },
     {
@@ -203,15 +203,15 @@
         "tooling"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-04-10T13:03:32.888Z",
+      "lastCheckedAt": "2026-04-12T13:19:25.776Z",
       "stats": {
-        "eventsSeen": 59,
-        "acceptedEvents": 48,
+        "eventsSeen": 69,
+        "acceptedEvents": 58,
         "rejectedEvents": 11,
-        "avgEventScore": 0.472
+        "avgEventScore": 0.4918
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
-      "rankScore": 0.8657
+      "updatedAt": "2026-04-12T13:19:26.908Z",
+      "rankScore": 0.8718
     },
     {
       "id": "mcp-ts-sdk-releases",
@@ -230,14 +230,14 @@
         "tools"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-10T13:03:33.295Z",
+      "lastCheckedAt": "2026-04-12T13:19:26.143Z",
       "stats": {
         "eventsSeen": 19,
         "acceptedEvents": 8,
         "rejectedEvents": 11,
         "avgEventScore": 0.2674
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
+      "updatedAt": "2026-04-12T13:19:26.908Z",
       "rankScore": 0.7849
     },
     {
@@ -256,14 +256,14 @@
         "tools"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-04-10T13:03:33.639Z",
+      "lastCheckedAt": "2026-04-12T13:19:26.491Z",
       "stats": {
         "eventsSeen": 14,
         "acceptedEvents": 10,
         "rejectedEvents": 4,
         "avgEventScore": 0.5124
       },
-      "updatedAt": "2026-04-10T13:03:34.476Z",
+      "updatedAt": "2026-04-12T13:19:26.908Z",
       "rankScore": 0.8229
     }
   ],
