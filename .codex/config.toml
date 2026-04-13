@@ -1,0 +1,94 @@
+# Codex CLI — project-level config for Calculadora BMC / Panelin Dashboard
+# Schema: https://raw.githubusercontent.com/openai/codex/main/codex-rs/config.schema.json
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+model                  = "codex-mini-latest"
+model_reasoning_effort = "medium"
+model_reasoning_summary = "concise"
+personality            = "pragmatic"
+
+# ── Approval ──────────────────────────────────────────────────────────────────
+# "on-request" = Codex pide aprobación solo cuando lo considera necesario
+# Cambiá a "never" si querés full-auto en este repo (no recomendado)
+approval_policy = "on-request"
+
+# ── Sandbox ───────────────────────────────────────────────────────────────────
+[sandbox]
+# Permite escribir en el workspace y hacer llamadas de red
+# (necesario para npm install, smoke:prod, test:contracts, etc.)
+writable_roots  = ["."]
+network_access  = true
+
+# ── Developer instructions ────────────────────────────────────────────────────
+[instructions]
+developer_instructions = """
+# Calculadora BMC / Panelin Dashboard — instrucciones de agente
+
+## Stack
+- Frontend: Vite + React (puerto 5173), entry src/components/PanelinCalculadoraV3.jsx
+- API:      Express (puerto 3001), entry server/index.js
+- Tests:    tests/validation.js (node), scripts/validate-api-contracts.js (requiere API)
+
+## Comandos clave — ejecutar en orden
+| Comando                    | Cuándo                                          |
+|----------------------------|-------------------------------------------------|
+| npm run lint               | Después de editar cualquier archivo en src/     |
+| npm test                   | Después de cambios en lógica de negocio         |
+| npm run gate:local         | Antes de PR: lint → test                        |
+| npm run gate:local:full    | Antes de commit con cambios en src/: lint→test→build |
+| npm run test:contracts     | Requiere API en 3001; valida contratos /api/*   |
+| npm run smoke:prod         | Smoke contra Cloud Run (requiere red)           |
+| npm run pre-deploy         | Checklist completo antes de deploy              |
+
+## Flujo de validación obligatorio antes de commit
+1. npm run lint → corregir errores
+2. npm test
+3. Si cambiaste src/: npm run build
+4. Si cambiaste rutas API: npm run start:api (bg) → npm run test:contracts
+
+## Documentación canónica
+- Estado del proyecto:  docs/team/PROJECT-STATE.md
+- Gates humanos:        docs/team/HUMAN-GATES-ONE-BY-ONE.md
+- Deploy checklist:     docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md
+- Canales (WA/ML/mail): docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md
+
+## Reglas de negocio críticas
+- NUNCA inventar precios de Mercado Libre; leerlos siempre desde /api/ml/* o la Matriz
+- Rutas de API siguen contratos en scripts/validate-api-contracts.js — no cambiar shapes sin actualizar el validador
+- PROJECT-STATE.md debe actualizarse al final de cada sesión (propagation protocol)
+- Gates cm-0 / cm-1 / cm-2 requieren intervención humana — no intentar automatizarlos
+
+## MCP disponible (opcional)
+- npm run mcp:panelin  → servidor MCP stdio (requiere API en 3001 y .env)
+"""
+
+# ── Perfil: fast ──────────────────────────────────────────────────────────────
+[profile.fast]
+model                  = "codex-mini-latest"
+model_reasoning_effort = "low"
+model_reasoning_summary = "concise"
+approval_policy        = "on-request"
+
+# ── Perfil: review ────────────────────────────────────────────────────────────
+[profile.review]
+model                  = "o3"
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+approval_policy        = "on-request"
+
+# ── MCP: chrome-devtools ──────────────────────────────────────────────────────
+# Habilita Live DevTools narrative (ver AGENTS.md §Live DevTools)
+[mcp_servers.chrome-devtools]
+command  = "npx"
+args     = ["-y", "@modelcontextprotocol/server-puppeteer"]
+env      = {}
+required = false
+
+# ── MCP: panelin (desactivado por defecto — requiere API en 3001) ─────────────
+# Descomentá y cambiá enabled = true cuando uses Codex con la API local corriendo
+# [mcp_servers.panelin]
+# command  = "node"
+# args     = ["scripts/mcp-panelin-http.mjs"]
+# env      = {}
+# required = false
+# enabled  = false
