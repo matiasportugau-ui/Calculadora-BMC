@@ -2027,84 +2027,13 @@ function RoofBorderSelector({
 
 // ── Wizard steps (Modo Vendedor — por escenario; excluye presupuesto_libre) ─────
 // Footer: wizardPrimaryActionStyle(isValid) para Siguiente en todos los flujos.
-const WIZARD_STEPS_SOLO_TECHO = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "tipoAguas", label: "Caída del techo" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel techo" },
-  { id: "espesor", label: "Espesor techo" },
-  { id: "color", label: "Color techo" },
-  { id: "dimensiones", label: "Dimensiones (metros o paneles)" },
-  { id: "pendiente", label: "Pendiente" },
-  { id: "estructura", label: "Estructura" },
-  { id: "bordes", label: "Accesorios perimetrales" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_SOLO_FACHADA = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia_pared", label: "Familia panel pared" },
-  { id: "espesor_pared", label: "Espesor pared" },
-  { id: "color_pared", label: "Color pared" },
-  { id: "dimensiones_pared", label: "Dimensiones pared" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "estructura", label: "Estructura" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_TECHO_FACHADA = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "tipoAguas", label: "Caída del techo" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia", label: "Familia panel techo" },
-  { id: "espesor", label: "Espesor techo" },
-  { id: "color", label: "Color techo" },
-  { id: "dimensiones", label: "Dimensiones techo" },
-  { id: "pendiente", label: "Pendiente" },
-  { id: "estructura", label: "Estructura" },
-  { id: "bordes", label: "Accesorios perimetrales" },
-  { id: "selladores", label: "Selladores" },
-  { id: "familia_pared", label: "Familia panel pared" },
-  { id: "espesor_pared", label: "Espesor pared" },
-  { id: "color_pared", label: "Color pared" },
-  { id: "dimensiones_pared", label: "Dimensiones pared" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "perfil_5852", label: "Perfil 5852 aluminio" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-const WIZARD_STEPS_CAMARA_FRIG = [
-  { id: "escenario", label: "Escenario de obra" },
-  { id: "lista", label: "Lista de precios" },
-  { id: "familia_pared", label: "Familia panel" },
-  { id: "espesor_pared", label: "Espesor" },
-  { id: "color_pared", label: "Color" },
-  { id: "camara_dim", label: "Dimensiones cámara (interiores)" },
-  { id: "aberturas", label: "Aberturas (opcional)" },
-  { id: "estructura", label: "Estructura" },
-  { id: "selladores", label: "Selladores" },
-  { id: "flete", label: "Flete" },
-  { id: "proyecto", label: "Datos del proyecto" },
-];
-
-/** Pasos del wizard modo vendedor. `presupuesto_libre` → [] (sin wizard). */
+/** Wizard steps lookup — reads from unified SCENARIOS_DEF (constants.js) */
+const _scenarioMap = Object.fromEntries(SCENARIOS_DEF.map(s => [s.id, s]));
 function getWizardStepsForScenario(scenarioId) {
-  switch (scenarioId) {
-    case "solo_techo": return WIZARD_STEPS_SOLO_TECHO;
-    case "solo_fachada": return WIZARD_STEPS_SOLO_FACHADA;
-    case "techo_fachada": return WIZARD_STEPS_TECHO_FACHADA;
-    case "camara_frig": return WIZARD_STEPS_CAMARA_FRIG;
-    case "presupuesto_libre":
-    default:
-      return [];
-  }
+  return _scenarioMap[scenarioId]?.wizardSteps ?? [];
 }
+/** Backward-compatible alias used in wizard UI */
+const WIZARD_STEPS_SOLO_TECHO = getWizardStepsForScenario("solo_techo");
 
 const TECHO_INITIAL_VENDEDOR = {
   familia: "", espesor: "", color: "", zonas: [{ largo: 0, ancho: 0 }],
@@ -2779,11 +2708,13 @@ export default function PanelinCalculadoraV3() {
   }, [techo.zonas]);
 
   // ── Calculate results ──
+  // Standard scenarios: inline paths (bordes multi-zona / encuentros) — see scenarioOrchestrator for related extractions.
+  // presupuesto_libre has its own path since it doesn't use the surface model.
   const results = useMemo(() => {
     setListaPrecios(listaPrecios || "web"); // sync global LISTA_ACTIVA before any p() call
     const sc = scenario;
     try {
-      if (sc === "presupuesto_libre") {
+      if (scenario === "presupuesto_libre") {
         const listaEff = listaPrecios || "web";
         return computePresupuestoLibreCatalogo({
           listaPrecios: listaEff,
@@ -2886,7 +2817,6 @@ export default function PanelinCalculadoraV3() {
         return { ...rP, techoResult: rT?.error ? null : rT, allItems, totales, warnings: [...(rP?.warnings || []), ...(rT?.warnings || []), ...extraW] };
       }
     } catch (e) { return { error: e.message }; }
-    return null;
   }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Build BOM groups ──

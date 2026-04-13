@@ -1,11 +1,26 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/utils/calculations.js — Pure calculation functions for BMC calculator
+//
+// Architecture:
+//   §0 PENDIENTE — slope/pitch correction
+//   §1 ENGINE TECHO — roof panels, fixations, profiles, sealants, orchestrator
+//   §1b MULTI-ZONE MERGE — combine multiple roof zones
+//   §2 ENGINE PARED — wall panels, U-profiles, corners, fixations, sealants, orchestrator
+//   §3 PRESUPUESTO LIBRE — manual line items
+//
+// Helpers extracted to:
+//   ./calc/skuResolver.js — unified SKU resolution (resolveSKU_techo, resolvePerfilPared)
+//   ./calc/structureDispatch.js — distribute fixation points by structure type
+//
+// All prices are SIN IVA. IVA is applied once at the end by calcTotalesSinIVA().
+// Quantities always use Math.ceil() (never round/floor).
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { p } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
+import { distributePointsByStructure } from "./calc/structureDispatch.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
 
@@ -39,22 +54,24 @@ export function normalizarMedida(modo, valor, panel) {
   return { cantPaneles, ancho: valor };
 }
 
-export function resolveSKU_techo(tipo, familiaP, espesor) {
-  const { PERFIL_TECHO } = getPricing();
-  const byTipo = PERFIL_TECHO[tipo];
-  if (!byTipo) return null;
-  /** Isoroof Colonial: misma perfilería ISOROOF 3G excepto cumbrera (2,2 m colonial bajo cumbrera.ISOROOF_COLONIAL). */
-  let fam = familiaP;
-  if (fam === "ISOROOF_COLONIAL" && tipo !== "cumbrera") {
-    fam = "ISOROOF";
-  }
-  const byFam = byTipo[fam];
-  if (!byFam) return null;
-  if (byFam[espesor]) return { ...byFam[espesor] };
-  if (byFam._all) return { ...byFam._all };
-  return null;
-}
+// SKU resolution delegated to ./calc/skuResolver.js (consolidated, no duplication)
+import { resolveSKU_techo, resolvePerfilPared } from "./calc/skuResolver.js";
+export { resolveSKU_techo, resolvePerfilPared };
 
+/**
+ * Calculate roof panel requirements: quantity, area, cost, and waste.
+ *
+ * Formula:
+ *   cantPaneles = ceil(ancho / au) — panels needed to cover requested width
+ *   areaTotal = cantPaneles × largo × au — actual purchased area (m²)
+ *   descarte = anchoTotal - ancho — waste from panel width discretization
+ *
+ * @param {Object} panel — PANELS_TECHO[familia] with .au (useful width, m), .esp (thickness data)
+ * @param {number|string} espesor — thickness in mm (e.g. 100, 150, 200)
+ * @param {number} largo — real length in meters (post-slope adjustment)
+ * @param {number} ancho — requested width in meters
+ * @returns {{ cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2, descarte }|null}
+ */
 export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const espData = panel.esp[espesor];
   if (!espData) return null;
@@ -91,28 +108,47 @@ export function calcAutoportancia(panel, espesor, largo) {
   return { ok, apoyos, maxSpan, largoMinOK, largoMaxOK };
 }
 
+/**
+ * Calculate rod-based roof fixations (varilla + tuerca system).
+ *
+ * Formula for auto-calculated points:
+ *   puntosFijacion = ceil((cantP × apoyos × 2) + (largo × 2 / espPerim))
+ *   where:
+ *     cantP × apoyos × 2 = interior fixation points (2 per panel per support)
+ *     largo × 2 / espPerim = perimeter fixation points (every espPerim meters along 2 sides)
+ *
+ * Then points are distributed by structure type (metal/hormigon/madera/combinada)
+ * to determine which fastener hardware is needed.
+ *
+ * @param {number} cantP — number of panels
+ * @param {number} apoyos — support points per panel (from autoportancia)
+ * @param {number} largo — real length in meters (post-slope adjustment)
+ * @param {string} tipoEst — structure type: "metal"|"hormigon"|"madera"|"combinada"
+ * @param {number} ptsHorm — hormigon points (for combinada)
+ * @param {number} ptsMetal — metal points (for combinada)
+ * @param {number} ptsMadera — wood points (for combinada)
+ * @param {Object} [opts] — { overridePuntosFijacion?: number }
+ * @returns {{ items: Array, total: number, puntosFijacion: number }}
+ */
 export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, ptsMetal, ptsMadera, opts = {}) {
   const { FIJACIONES } = getPricing();
   let puntosFijacion, pMetal, pH, pMadera;
   const overridePts = opts.overridePuntosFijacion;
   if (tipoEst === "combinada") {
+    // User specified exact split — points = sum of user inputs
     pH = Math.max(0, Math.floor(ptsHorm || 0));
     pMetal = Math.max(0, Math.floor(ptsMetal || 0));
     pMadera = Math.max(0, Math.floor(ptsMadera || 0));
     puntosFijacion = pH + pMetal + pMadera;
   } else if (overridePts != null && overridePts > 0) {
+    // Manual override of total points (e.g. commercial BOM)
     puntosFijacion = Math.round(overridePts);
-    if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
-    else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
-    else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
-    else { pH = Math.min(ptsHorm || 0, puntosFijacion); pMetal = puntosFijacion - pH; pMadera = 0; }
+    ({ pMetal, pH, pMadera } = distributePointsByStructure(puntosFijacion, tipoEst, ptsHorm, ptsMetal, ptsMadera));
   } else {
+    // Auto-calculate from dimensions
     const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
     puntosFijacion = Math.ceil(((cantP * apoyos) * 2) + (largo * 2 / espPerim));
-    if (tipoEst === "metal") { pMetal = puntosFijacion; pH = 0; pMadera = 0; }
-    else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
-    else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
-    else { pH = Math.min(ptsHorm || 0, puntosFijacion); pMetal = puntosFijacion - pH; pMadera = 0; }
+    ({ pMetal, pH, pMadera } = distributePointsByStructure(puntosFijacion, tipoEst, ptsHorm, ptsMetal, ptsMadera));
   }
   const tuercas = (pMetal * 2) + (pH * 1) + (pMadera * 2);
   const tacos = pH;
@@ -373,6 +409,13 @@ export function calcSelladoresTechoComercial() {
   return { items, total: +total.toFixed(2) };
 }
 
+/**
+ * Calculate subtotal, IVA (22%), and final total from BOM items.
+ * All item prices are stored SIN IVA. This function applies IVA once at the end.
+ *
+ * @param {Array<{total: number}>} allItems — BOM line items with .total (price sin IVA)
+ * @returns {{ subtotalSinIVA: number, iva: number, totalFinal: number }}
+ */
 export function calcTotalesSinIVA(allItems) {
   const ivaRate = getIVA();
   const sumSinIVA = allItems.reduce((s, i) => s + (i.total || 0), 0);
@@ -542,19 +585,24 @@ export function mergeZonaResults(zonaResults) {
 
 // ── §2 ENGINE PARED ──────────────────────────────────────────────────────────
 
-export function resolvePerfilPared(tipo, familia, espesor) {
-  const { PERFIL_PARED } = getPricing();
-  const byTipo = PERFIL_PARED[tipo];
-  if (!byTipo) return null;
-  const byFam = byTipo[familia];
-  if (byFam) {
-    if (byFam[espesor]) return { ...byFam[espesor] };
-    if (byFam._all) return { ...byFam._all };
-  }
-  if (byTipo._all) return { ...byTipo._all };
-  return null;
-}
+// resolvePerfilPared is imported and re-exported from ./calc/skuResolver.js above
 
+/**
+ * Calculate wall panel requirements: quantity, gross/net area, cost.
+ * Net area deducts window/door openings from gross area.
+ *
+ * Formula:
+ *   cantPaneles = ceil(perimetro / au) — panels to cover full perimeter
+ *   areaBruta = cantPaneles × alto × au
+ *   areaNeta = areaBruta - sum(abertura.ancho × abertura.alto × abertura.cant)
+ *
+ * @param {Object} panel — PANELS_PARED[familia]
+ * @param {number|string} espesor — thickness in mm
+ * @param {number} alto — wall height in meters
+ * @param {number} perimetro — wall perimeter in meters
+ * @param {Array} aberturas — [{ancho, alto, cant}] openings to deduct
+ * @returns {{ cantPaneles, areaBruta, areaAberturas, areaNeta, costoPaneles, precioM2 }|null}
+ */
 export function calcPanelesPared(panel, espesor, alto, perimetro, aberturas) {
   const espData = panel.esp[espesor];
   if (!espData) return null;
