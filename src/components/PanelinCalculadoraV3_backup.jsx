@@ -3036,7 +3036,6 @@ export default function PanelinCalculadoraV3() {
       }
       return executeScenario(sc, { techo, pared, camara });
     } catch (e) { return { error: e.message }; }
-    return null;
   }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Build BOM groups ──
