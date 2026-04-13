@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-12 (UX mockups + ML snapshot operativo + doc §0 anti-deriva)
+**Última actualización:** 2026-04-13 (Planta 2D — cotas gris grafito tipo lápiz)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-13 (UX — cotas planta gris grafito, trazo lápiz):** Perímetro/encuentros, cadena mm y envolvente en **gris grafito** (`#5c6470` … `#3d4756`) con terminaciones **`strokeLinecap` / `strokeLinejoin` redondeadas** (`ROOF_PLAN_DIM_STROKE_PROPS` en [`roofPlanDrawingTheme.js`](../../src/utils/roofPlanDrawingTheme.js)); líneas de extensión más suaves (`ROOF_PLAN_DIM_EXT_OPACITY` 0,5). Leyenda/JSDoc en [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx). Conocimiento: [`RoofPlanArchitect.md`](./knowledge/RoofPlanArchitect.md). `PRINT_THEME` sigue monocromo para PDF. **Fix:** [`calculatorDataVersion.js`](../../src/data/calculatorDataVersion.js) — eliminada declaración duplicada de `CALCULATOR_DATA_VERSION_DATE` que rompía `npm test` / eslint.
 
 **2026-04-12 (ML — snapshot operativo API prod):** Nuevo [`docs/team/ML-OPERATIVO-SNAPSHOT-2026-04-12.md`](./ML-OPERATIVO-SNAPSHOT-2026-04-12.md): lectura **2026-04-12** desde Cloud Run (`/health` tokens OK, `/auth/ml/status` 200, usuario **179969104** / **BMC URUGUAY**, reputación **verde** + **ADVANCED**, métricas 365d (21 ventas completadas, 0 reclamos en payload), **2** preguntas `UNANSWERED` (babeta técnica + envío Solymar), **41** publicaciones activas, muestra ítem `gold_special`, muestra órdenes; enlaza revalidación a [`ML-ACCOUNT-REVIEW-2026-04-08.md`](./ML-ACCOUNT-REVIEW-2026-04-08.md) §0. Sin tokens ni secretos en el MD.
 

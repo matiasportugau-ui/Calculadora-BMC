@@ -969,7 +969,7 @@ export function RoofPreviewMetricsSidebar({
 /**
  * Vista previa 2D del techo en planta (rejilla, arrastre, encuentros).
  * @param {Record<number, object>|null} [props.estructuraHintsByGi] - overlay Estructura (apoyos, fijaciones; requiere hints por zona)
- * @param {boolean} [props.showPlantaExteriorCotas] - cotas rojas globales (perímetro + encuentros) sin paso Estructura; p. ej. desde paso Dimensiones del wizard
+ * @param {boolean} [props.showPlantaExteriorCotas] - cotas de perímetro globales (trazo gris grafito; perímetro + encuentros) sin paso Estructura; p. ej. desde paso Dimensiones del wizard
  * @param {boolean} [props.embedMetricsSidebar] - false = sin columna de métricas (mostrar `RoofPreviewMetricsSidebar` en el wizard)
  * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
  * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
@@ -1263,7 +1263,7 @@ export default function RoofPreview({
 
   const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
 
-  /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
+  /** Margen SVG y leyenda: cotas de planta (gris grafito) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
 
   const effectivePanelAu = panelObj?.au ?? panelAu;
@@ -1271,7 +1271,7 @@ export default function RoofPreview({
   /**
    * `buildPanelLayout` solo usa `panel.au`. Sin `panelObj` del catálogo (p. ej. paso temprano),
    * igual armamos layout con `effectivePanelAu` para que no queden solo cotas de perímetro y parezca
-   * que “falta” la cadena mm / etiquetas T-xx bajo las cotas rojas.
+   * que “falta” la cadena mm / etiquetas T-xx bajo las cotas de perímetro.
    */
   const layoutPanelSource = useMemo(() => {
     if (panelObj) return panelObj;
@@ -1673,7 +1673,7 @@ export default function RoofPreview({
           {estructuraHintsByGi != null ? (
             <>
               <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
-              cotas rojas = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+              cotas (gris grafito) = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
               {combinadaSingleZona ? (
                 <>
                   {" "}
@@ -1684,7 +1684,7 @@ export default function RoofPreview({
             </>
           ) : (
             <>
-              <strong style={{ color: C.tp }}>Planta:</strong> cotas rojas = perímetro libre y longitud en cada encuentro; la cadena de cotas en mm bajo el borde inferior = paños según el ancho útil (AU) del panel. Arrastrá las zonas para ubicarlas
+              <strong style={{ color: C.tp }}>Planta:</strong> cotas en gris grafito = perímetro libre y longitud en cada encuentro; la cadena de cotas en mm bajo el borde inferior = paños según el ancho útil (AU) del panel. Arrastrá las zonas para ubicarlas
               correctamente antes de bordes y estructura. <strong>Deshacer / Rehacer</strong> en la barra o <kbd>Ctrl/Cmd+Z</kbd> y <kbd>Ctrl/Cmd+Shift+Z</kbd> (o <kbd>Ctrl+Y</kbd> en Windows).
             </>
           )}

@@ -7,6 +7,7 @@ import { FONT } from "../../data/constants.js";
 import { fmtArchMeters, fmtDimMm, fmtDimOverall } from "../../utils/roofPlanSvgTypography.js";
 import {
   ROOF_PLAN_DIM_STROKE,
+  ROOF_PLAN_DIM_STROKE_PROPS,
   ROOF_PLAN_DIM_EXT_OPACITY,
   ROOF_PLAN_ENCOUNTER_LABEL_FILL,
   ROOF_PLAN_ENCOUNTER_LABEL_HALO,
@@ -25,7 +26,7 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
   const labelWidthEst = label.length * df * 0.62;
   const showLabel = w >= labelWidthEst * 0.75;
   return (
-    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
+    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
       <line
         x1={x0}
         y1={yBottom + gap}
@@ -74,7 +75,7 @@ function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
   const labelWidthEst = label.length * df * 0.62;
   const showLabel = w >= labelWidthEst * 0.75;
   return (
-    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
+    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
       <line x1={x0} y1={yEdge - gap} x2={x0} y2={yDimLine - overshoot} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={x0 + w} y1={yEdge - gap} x2={x0 + w} y2={yDimLine - overshoot} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={x0} y1={yDimLine} x2={x0 + w} y2={yDimLine} strokeWidth={svgTy.strokeMain} />
@@ -110,7 +111,7 @@ function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
   const labelWidthEst = label.length * df * 0.62;
   const showLabel = (y2 - y1) >= labelWidthEst * 0.75;
   return (
-    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
+    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
       <line x1={xRef + gap} y1={y1} x2={xDim + overshoot} y2={y1} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={xRef + gap} y1={y2} x2={xDim + overshoot} y2={y2} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={svgTy.strokeMain} />
@@ -147,7 +148,7 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
   const labelWidthEst = label.length * df * 0.62;
   const showLabel = (y2 - y1) >= labelWidthEst * 0.75;
   return (
-    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE}>
+    <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
       <line x1={xRef - gap} y1={y1} x2={xDim - overshoot} y2={y1} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={xRef - gap} y1={y2} x2={xDim - overshoot} y2={y2} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />
       <line x1={xDim} y1={y1} x2={xDim} y2={y2} strokeWidth={svgTy.strokeMain} />
@@ -240,7 +241,7 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
   });
 
   return (
-    <g data-bmc-layer={ROOF_PLAN_LAYER_GLOBAL_COTAS}>
+    <g data-bmc-layer={ROOF_PLAN_LAYER_GLOBAL_COTAS} {...ROOF_PLAN_DIM_STROKE_PROPS}>
       {bottoms.map((s) => {
         const idx = nextBottom(+s.y1.toFixed(2));
         return (
@@ -339,7 +340,7 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
   }
 
   return (
-    <g data-bmc-layer={DIM_THEME.layers.chain} opacity={DIM_THEME.chainOpacity} pointerEvents="none">
+    <g data-bmc-layer={DIM_THEME.layers.chain} opacity={DIM_THEME.chainOpacity} pointerEvents="none" {...ROOF_PLAN_DIM_STROKE_PROPS}>
       {strips.map((strip) => {
         const x1 = x0 + strip.x0;
         const x2 = x1 + strip.width;
@@ -443,7 +444,7 @@ export function VerificationBadge({ x, y, verification, svgTy }) {
  * Overall bounding-box dimension (ISO 129 envelope).
  * One horizontal cota (totalW) below all per-segment bottom cotas,
  * one vertical cota (totalH) left of all per-segment left cotas.
- * Uses DIM_THEME.envelopeColor (dark blue) for distinction.
+ * Uses DIM_THEME.envelopeColor (gris más oscuro que la cadena) para jerarquía tipo lápiz.
  *
  * @param {{ minX: number, minY: number, maxX: number, maxY: number, totalW: number, totalH: number }} envelope
  * @param {object} svgTy
@@ -469,7 +470,7 @@ export function OverallEnvelopeDimension({ envelope, svgTy, bumpCounts = {} }) {
   const vLabel = fmtDimOverall(totalH);
 
   return (
-    <g data-bmc-layer={DIM_THEME.layers.envelope} pointerEvents="none">
+    <g data-bmc-layer={DIM_THEME.layers.envelope} pointerEvents="none" {...ROOF_PLAN_DIM_STROKE_PROPS}>
       {/* Horizontal overall (totalW) — below */}
       <line x1={minX} y1={maxY + gap} x2={minX} y2={yDimH + overshoot}
         stroke={color} strokeWidth={svgTy.strokeExt} opacity={ROOF_PLAN_DIM_EXT_OPACITY} />

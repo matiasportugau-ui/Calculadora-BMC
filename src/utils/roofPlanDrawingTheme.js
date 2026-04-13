@@ -3,11 +3,20 @@
 // Centraliza colores y constantes para futuros temas (alto contraste, impresión/PDF).
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Línea principal de cota (perímetro libre). */
-export const ROOF_PLAN_DIM_STROKE = "#dc2626";
+/**
+ * Línea principal de cota (perímetro libre + encuentros).
+ * Gris grafito (lectura tipo lápiz / grafo), no rojo de acento.
+ */
+export const ROOF_PLAN_DIM_STROKE = "#5c6470";
 
-/** Opacidad de líneas auxiliares (del elemento al eje de cota). */
-export const ROOF_PLAN_DIM_EXT_OPACITY = 0.75;
+/** Opacidad de líneas auxiliares (del elemento al eje de cota) — más suave que el trazo principal. */
+export const ROOF_PLAN_DIM_EXT_OPACITY = 0.5;
+
+/** Terminaciones de trazo tipo lápiz (SVG hereda en hijos con stroke). */
+export const ROOF_PLAN_DIM_STROKE_PROPS = {
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+};
 
 /** Referencia de fuente (m en user space SVG) antes de escalar por span del viewBox. */
 export const ROOF_PLAN_DIM_FONT_BASE = 0.13;
@@ -37,11 +46,14 @@ export function makeBumpCounter() {
 export const DIM_THEME = {
   CHAIN_OFFSET: 0.14,
   CHAIN_STEP: 0.14,
-  chainColor: '#C62828',
-  overallColor: '#1565C0',
-  envelopeColor: '#0D47A1',
+  /** Cadena mm / paños — mismo familia grafito que ROOF_PLAN_DIM_STROKE. */
+  chainColor: "#5c6470",
+  /** Cotas “overall” entre niveles de cadena — gris más cargado. */
+  overallColor: "#4a5568",
+  /** Cota envolvente ISO — tono más oscuro (jerarquía lapicero / 2B). */
+  envelopeColor: "#3d4756",
   warningColor: '#E65100',
-  textColor: '#212121',
+  textColor: "#3a3f46",
   defaultTerminator: 'tick',
   layers: {
     chain: 'dim-chain',
@@ -50,7 +62,7 @@ export const DIM_THEME = {
     labels: 'dim-panel-ids',
     verification: 'dim-verification',
   },
-  chainOpacity: 0.85,
+  chainOpacity: 0.92,
 };
 
 // ─── Line weight tiers (ISO 128) ─────────────────────────────────────────────

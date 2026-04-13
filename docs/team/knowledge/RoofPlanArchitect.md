@@ -48,6 +48,7 @@ Rol: ISO Drawing Quality Architect. Skills: `roofplan-architect`.
 | `preserveDrawingBuffer: true` | Requerido para `canvas.toDataURL()` en WebGL |
 | SVG serialize → canvas → PNG | `html2canvas` no maneja SVG complejo correctamente |
 | Encounters computed inside 3D scene | Evita prop drilling desde componente raíz |
+| Cotas perímetro / cadena / envolvente | Gris grafito (`ROOF_PLAN_DIM_STROKE`, `DIM_THEME.*`), `strokeLinecap`/`strokeLinejoin` redondeados; rojo solo advertencias (corte ✂) |
 
 ---
 
