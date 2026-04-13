@@ -59,6 +59,12 @@ docs/team/panelsim/reports/ml-corpus/exports/
 # channels:automated --write
 .channels/
 
+# Local runtime outputs (logs, digests, MATRIZ snapshots — do not commit)
+.runtime/
+
+# Expert dev checkpoints (local snapshots; see docs/team/orientation/EXPERT-DEV-TRACEABILITY.md)
+.cursor/dev-checkpoints/
+
 # Catálogo local de fichas PDF (no versionar)
 PDF Productos /
 PDF Productos/

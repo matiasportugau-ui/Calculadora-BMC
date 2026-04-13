@@ -35,6 +35,11 @@ import { estimateRouteLoadPhysical } from "./lib/loadCharacteristics.js";
 
 const STORAGE_KEY = "bmc-carga-ruta-v1";
 const VENTAS_API_BASE_KEY = "bmc-carga-ventas-api-base";
+/** Bearer opcional (`API_AUTH_TOKEN` u otro); nunca en querystring. */
+const VENTAS_API_TOKEN_KEY = "bmc-carga-ventas-api-bearer";
+/** Hostnames permitidos para `fetch` (una línea por host, sin puerto). */
+const VENTAS_API_ALLOWED_HOSTS_KEY = "bmc-carga-ventas-allowed-hosts";
+const DEFAULT_VENTAS_ALLOWED_HOST_LINES = ["localhost", "127.0.0.1", "[::1]"];
 const VENTAS_TAB_COORDINACIONES = "Ventas y Coordinaciones";
 const TRUCK_LEN_OPTS = [6, 7, 8, 9, 10, 12, 14];
 
@@ -819,6 +824,63 @@ function getVentasApiBaseDefault() {
   }
 }
 
+function getVentasApiTokenStored() {
+  try {
+    return localStorage.getItem(VENTAS_API_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function getVentasAllowedHostsText() {
+  try {
+    const raw = localStorage.getItem(VENTAS_API_ALLOWED_HOSTS_KEY);
+    if (raw != null && String(raw).trim() !== "") return String(raw);
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_VENTAS_ALLOWED_HOST_LINES.join("\n");
+}
+
+/**
+ * @param {string} text
+ * @returns {string[]}
+ */
+function parseVentasAllowedHostLines(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/**
+ * Comprueba que el hostname de `base` esté en `allowedHosts` (sin wildcards).
+ * @param {string} base
+ * @param {string[]} allowedHosts lowercased hostnames
+ * @returns {{ ok: true, origin: string } | { ok: false, reason: string }}
+ */
+function ventasApiOriginGate(base, allowedHosts) {
+  const trimmed = String(base || "").trim().replace(/\/+$/, "");
+  let u;
+  try {
+    const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+    u = new URL(withProto);
+  } catch {
+    return { ok: false, reason: "Base API inválida (usá http:// o https:// y puerto si aplica)." };
+  }
+  const host = u.hostname.toLowerCase();
+  if (!allowedHosts.length) {
+    return { ok: false, reason: "La lista de hosts permitidos está vacía." };
+  }
+  if (!allowedHosts.includes(host)) {
+    return {
+      ok: false,
+      reason: `Host «${host}» no permitido. Agregalo en «Hosts permitidos (API)» (una línea por host, sin https ni puerto) o usá solo loopback para desarrollo.`,
+    };
+  }
+  return { ok: true, origin: u.origin };
+}
+
 /**
  * @param {any} s
  * @param {Record<string, string>} row fila canónica /api/ventas
@@ -884,15 +946,22 @@ function renderForm() {
         `<option value="${esc(String(i))}">${esc(`${row.COTIZACION_ID || "—"} · ${row.CLIENTE_NOMBRE || "—"}`)}</option>`
     )
     .join("");
+  const ventasAllowedHostsDefault = esc(getVentasAllowedHostsText());
+  const ventasTokenDefault = esc(getVentasApiTokenStored());
   const ventasCoordBlock = `
     <div class="card card-highlight">
       <strong>Ventas y Coordinaciones (API)</strong>
       <p class="paste-help">
         Cargá el listado desde la pestaña <code>${esc(VENTAS_TAB_COORDINACIONES)}</code> del workbook 2.0 Ventas (columna <strong>CARPETA</strong> → PDF cotización).
         Requiere API en marcha (<code>npm run start:api</code>) y <code>BMC_VENTAS_SHEET_ID</code> en el servidor. CORS ya está abierto en desarrollo.
+        Solo se llama a hosts listados abajo (anti-<code>fetch</code> arbitrario). Token opcional: mismo valor que <code>API_AUTH_TOKEN</code> del servidor si aplica.
       </p>
       <label class="lbl">Base API</label>
       <input class="inp" id="ventasApiBase" value="${ventasApiDefault}" placeholder="http://localhost:3001" />
+      <label class="lbl" style="margin-top:8px">Hosts permitidos (API) — una línea por hostname, sin puerto</label>
+      <textarea class="inp" id="ventasAllowedHosts" rows="3" placeholder="localhost">${ventasAllowedHostsDefault}</textarea>
+      <label class="lbl" style="margin-top:8px">Token Bearer (opcional)</label>
+      <input class="inp" type="password" id="ventasApiToken" value="${ventasTokenDefault}" placeholder="Pegá API_AUTH_TOKEN si el servidor lo exige" autocomplete="off" />
       <div class="row-flex" style="margin-top:8px;gap:8px;flex-wrap:wrap;align-items:center">
         <button type="button" class="btn btn-primary" id="btnVentasFetch">Cargar listado</button>
         <select class="inp" id="ventasRowPicker" style="flex:1;min-width:220px" aria-label="Elegir fila Ventas y Coordinaciones">
@@ -1458,17 +1527,44 @@ function ensureMainDelegation() {
       void (async () => {
         const mainEl = document.getElementById("main");
         const baseInp = mainEl?.querySelector("#ventasApiBase");
-        const base = String(baseInp?.value || "http://localhost:3001").replace(/\/$/, "");
-        ventasFetchStatusText = "Cargando…";
-        renderMain();
+        const hostsTa = mainEl?.querySelector("#ventasAllowedHosts");
+        const tokenInp = mainEl?.querySelector("#ventasApiToken");
+        const baseRaw = String(baseInp?.value || "http://localhost:3001").trim();
+        const hostsText = hostsTa instanceof HTMLTextAreaElement ? hostsTa.value : getVentasAllowedHostsText();
+        const allowedHosts = parseVentasAllowedHostLines(hostsText);
+        const token = tokenInp instanceof HTMLInputElement ? String(tokenInp.value || "").trim() : "";
+        try {
+          localStorage.setItem(VENTAS_API_ALLOWED_HOSTS_KEY, hostsText);
+        } catch {
+          /* ignore */
+        }
+        try {
+          if (token) localStorage.setItem(VENTAS_API_TOKEN_KEY, token);
+          else localStorage.removeItem(VENTAS_API_TOKEN_KEY);
+        } catch {
+          /* ignore */
+        }
+        const gate = ventasApiOriginGate(baseRaw, allowedHosts);
+        if (!gate.ok) {
+          ventasFetchStatusText = gate.reason;
+          ventasCoordinacionesRows = [];
+          renderAll();
+          return;
+        }
+        const base = gate.origin;
         try {
           localStorage.setItem(VENTAS_API_BASE_KEY, base);
         } catch {
           /* ignore */
         }
+        ventasFetchStatusText = "Cargando…";
+        renderMain();
         const url = `${base}/api/ventas?tab=${encodeURIComponent(VENTAS_TAB_COORDINACIONES)}&logistica=1`;
         try {
-          const res = await fetch(url);
+          /** @type {Record<string, string>} */
+          const headers = { Accept: "application/json" };
+          if (token) headers.Authorization = `Bearer ${token}`;
+          const res = await fetch(url, { headers });
           const json = await res.json().catch(() => null);
           if (!res.ok || !json?.ok) {
             ventasFetchStatusText = `Error ${res.status}: ${json?.error || json?.message || res.statusText || "API"}`;

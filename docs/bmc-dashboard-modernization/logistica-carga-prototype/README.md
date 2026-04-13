@@ -31,7 +31,11 @@ En la barra superior, **Cliente (planilla)** lista **nombres únicos** detectado
 ### Ventas y Coordinaciones (API) + transportista
 
 1. Levantá la API (`npm run start:api` desde la raíz del repo) con `BMC_VENTAS_SHEET_ID` y credenciales Sheets.
-2. En el prototipo, bloque **Ventas y Coordinaciones (API)**: base `http://localhost:3001` (se guarda en `localStorage`), **Cargar listado** → `GET /api/ventas?tab=Ventas%20y%20Coordinaciones&logistica=1`.
+2. En el prototipo, bloque **Ventas y Coordinaciones (API)**:
+   - **Base API** (p. ej. `http://localhost:3001`) se guarda en `localStorage` bajo `bmc-carga-ventas-api-base`.
+   - **Hosts permitidos**: una línea por hostname (`localhost`, `127.0.0.1`, `[::1]`, o el host de tu API, **sin** `https://` ni puerto). Solo se hace `fetch` si el hostname de la base coincide con la lista (evita apuntar el navegador a orígenes arbitrarios). Clave: `bmc-carga-ventas-allowed-hosts`.
+   - **Token Bearer (opcional)**: si el servidor exige el mismo secreto que `API_AUTH_TOKEN`, pegalo aquí; se envía como `Authorization: Bearer …` (nunca en query). Clave: `bmc-carga-ventas-api-bearer`. En desarrollo típico, `GET /api/ventas` no requiere token.
+   - **Cargar listado** → `GET /api/ventas?tab=Ventas%20y%20Coordinaciones&logistica=1`.
 3. Elegí **cliente / pedido** y **Añadir parada desde fila**: se rellenan cliente, teléfono, dirección, zona, mapa, ID pedido y **link CARPETA** (PDF). El texto de **ENCARGO/PEDIDO** queda en `rawSheet` para **Extraer desde NOTAS** si hace falta.
 4. **Características de la carga**: totales estimados de m², m³ y kg (heurística; no sustituye balanza). Detalle por parada en tabla.
 5. **PDF escaneado:** el extractor usa capa de texto; **no hay OCR** en el navegador. Para escaneos, pegá líneas manualmente o usá un OCR externo y luego «Añadir desde texto».

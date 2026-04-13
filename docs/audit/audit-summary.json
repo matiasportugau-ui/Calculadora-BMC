@@ -1,0 +1,242 @@
+{
+  "project": "calculadora-bmc",
+  "audit_date": "2026-04-13",
+  "repo_state": {
+    "stack": [
+      "React 18 SPA (Vite 7)",
+      "Express 5 API (Node ESM)",
+      "Google Sheets API (dashboard + MATRIZ)",
+      "Postgres optional (transportista / omni per migrations in repo)",
+      "Mercado Libre + Shopify integrations",
+      "Pino logging"
+    ],
+    "runtimes": [
+      "Node.js (local: v24.11.1 per shell audit; CI workflows pin Node 20)",
+      "Browser (Vite dev server)"
+    ],
+    "package_manager": "npm (package-lock.json present)",
+    "apps": [
+      "Vite frontend: src/, build to dist/",
+      "Express backend: server/index.js on PORT default 3001",
+      "Optional static/dashboard paths served from API (e.g. /finanzas, /calculadora per server/index.js)"
+    ],
+    "services": [
+      "Google Cloud Run: API service name panelin-calc (deploy-calc-api.yml); frontend image panelin-calc-web (deploy-frontend.yml)",
+      "Vercel: vercel.json rewrites SPA (framework vite, output dist)",
+      "External: Mercado Libre API, Shopify, Anthropic/OpenAI/Gemini/Grok for suggest-response"
+    ],
+    "ci_cd": [
+      ".github/workflows/ci.yml — validate (tests+build), lint, channels_pipeline (prod smoke), knowledge_antenna reusable",
+      ".github/workflows/deploy-calc-api.yml — Cloud Run API on server/** src/utils/** src/data/**",
+      ".github/workflows/deploy-frontend.yml — Cloud Run web image on src/** Dockerfile nginx",
+      ".github/workflows/knowledge-antenna-scheduled.yml",
+      ".github/workflows/knowledge-antenna-reusable.yml"
+    ],
+    "cursor_assets": [
+      ".cursor/rules/*.mdc (9 rule files: team sync, calculator, disk recovery, human gates, devtools narrative, nav feedback, networks, spanish, video)",
+      ".cursor/skills/ (extensive role skills per AGENTS.md)",
+      ".cursor/agents/ (agent definitions referenced from docs)"
+    ],
+    "spec_assets": [
+      "docs/openapi-calc.yaml",
+      "docs/openapi-email-gpt.yaml",
+      "server/gptActions.js + server/agentCapabilitiesManifest.js (runtime manifest)",
+      "docs/api/AGENT-CAPABILITIES.json (regenerated via npm run capabilities:snapshot)",
+      "scripts/validate-api-contracts.js (ad-hoc structural checks)",
+      "docs/google-sheets-module/* (sheet semantics as documentation)"
+    ],
+    "test_assets": [
+      "tests/validation.js (~1676 lines, imports server + src + docs prototype code)",
+      "playwright in devDependencies (no evidence of committed e2e suite in this audit pass)",
+      "scripts/smoke-prod-api.mjs (production smoke, used by CI channels_pipeline)"
+    ]
+  },
+  "environments": {
+    "local": {
+      "status": "Partially verified (commands and configs read; full stack not started in this audit session)",
+      "evidence": [
+        "package.json scripts: dev :5173, start:api :3001, dev:full, gate:local:full",
+        "vite.config.js proxies /api and /calc to http://localhost:3001",
+        "git status -sb on branch claude/live-calculator-editing-Beqxk (untracked .codex/, mockup png)",
+        "node -v v24.11.1, npm -v 11.12.0 (shell)"
+      ],
+      "unknowns": [
+        "Whether .env exists and which integrations are enabled on this machine",
+        "Result of npm run gate:local:full on audit date (not executed to avoid disk/build side effects)"
+      ]
+    },
+    "production": {
+      "status": "Verified subset via npm run smoke:prod -- --json (2026-04-13)",
+      "evidence": [
+        "GET https://panelin-calc-642127786762.us-central1.run.app/health 200",
+        "GET /capabilities 200",
+        "GET /api/actualizar-precios-calculadora returned MATRIZ-shaped CSV 200",
+        "GET /auth/ml/status 200 (token present)",
+        "POST /api/crm/suggest-response 200 ok (note: smoke reported provider grok)",
+        "public_base_url mismatch: capabilities manifest reports https://panelin-calc-q74zutv7dq-uc.a.run.app while smoke default base was https://panelin-calc-642127786762.us-central1.run.app"
+      ],
+      "unknowns": [
+        "Vercel production bundle env (VITE_API_URL / VITE_SAME_ORIGIN_API) — not readable from repo",
+        "Cloud Run revision routing if multiple services/URLs are active",
+        "WHATSAPP_APP_SECRET and webhook hardening state in prod"
+      ]
+    }
+  },
+  "spec_driven_maturity": {
+    "level": 2,
+    "label": "spec-anchored (elements of spec-validated for prod-only checks)",
+    "strengths": [
+      "Canonical OpenAPI file for calculator (docs/openapi-calc.yaml) aligned with GPT/calc routes",
+      "GET /capabilities aggregates calculator + dashboard route discovery",
+      "scripts/validate-api-contracts.js exercises key JSON shapes when API is up",
+      "CI runs channels:automated which fails on prod smoke including MATRIZ CSV and suggest-response",
+      "AGENTS.md documents gates, smoke, contracts, human intervention paths"
+    ],
+    "gaps": [
+      "No TypeScript or JSON Schema as compile-time enforcement for API payloads",
+      "Contract tests are not default CI gate on every PR job validate (only smoke pipeline after lint+tests)",
+      "validate-api-contracts allows 503/404 as pass for several routes — masks drift",
+      "OpenAPI for full /api/dashboard surface not a single generated artifact from code",
+      "Multiple production host strings in repo (smoke default vs .env.example vs capabilities output) — authority conflict"
+    ],
+    "drift_sources": [
+      "DASHBOARD_ROUTES list in server/agentCapabilitiesManifest.js must be manually synced with server/routes/bmcDashboard.js",
+      "docs/openapi-calc.yaml servers.url vs actual Cloud Run hostname",
+      "AGENTS.md says never hardcode sheet IDs; server/config.js provides default BMC_MATRIZ_SHEET_ID",
+      "ESLint ignores src/components/PanelinCalculadoraV3_backup.jsx"
+    ],
+    "confidence": "High for repository inventory; high for smoke-verified prod endpoints; medium for full prod config parity across hosts"
+  },
+  "critical_findings": [
+    "capabilities.public_base_url / discovery URL disagrees with smoke script default host while both endpoints respond — operational drift risk for agents and OAuth redirects; smoke script intentionally does not fail the job on this mismatch today (see scripts/smoke-prod-api.mjs)",
+    "Production SPA API targeting: getCalcApiBase() falls back to http://localhost:3001 when VITE_API_URL and VITE_SAME_ORIGIN_API are unset in non-dev builds — misconfiguration risk on static hosts",
+    "Contract validation softness: 404 on /api/kpi-report and 503 on Sheets-backed routes can count as pass — reduces CI ability to catch regressions",
+    "Single mega-test file tests/validation.js couples domain, server libs, and docs-prototype imports — brittle for spec isolation",
+    "Node version mismatch signal: local v24 vs CI Node 20 — potential subtle runtime drift"
+  ],
+  "risks": {
+    "green": [
+      "Strong operational scripting culture (smoke, pre-deploy, capabilities snapshot, many npm workflows)",
+      "Security headers on API (X-Frame-Options, X-Content-Type-Options) in server/index.js",
+      "Webhook routes use raw body where needed for HMAC"
+    ],
+    "yellow": [
+      "Multiple deploy paths (Vercel vercel.json vs Cloud Run Docker for frontend) can confuse canonical production topology",
+      "CORS app.use(cors()) wide open — acceptable in dev; production guidance in AGENTS.md must be enforced per deploy",
+      "Secrets surface area: many API keys in .env.example documentation (placeholders) — discipline required to avoid committing real secrets",
+      "channels_pipeline depends on external prod IA + Sheets — flaky CI risk unrelated to PR diffs"
+    ],
+    "red": [
+      "public_base_url mismatch across documented hosts vs live smoke base (verified)",
+      "Accidental API base misconfiguration for Vercel builds could point users at localhost (logic in src/utils/calcApiBase.js)"
+    ]
+  },
+  "implementation_plan": [
+    {
+      "phase": "Phase 0 — Canonical environment map",
+      "goal": "Establish a single authoritative map of hosts, services, and env vars per environment (local, staging, prod).",
+      "tasks": [
+        "Document canonical Cloud Run service URL(s) and reconcile PUBLIC_BASE_URL in deploy vs smoke default",
+        "Add env validation matrix (Vercel vs Cloud Run SPA) for VITE_API_URL / VITE_SAME_ORIGIN_API",
+        "Automate check: GET /capabilities discovery.public_base_url must equal SMOKE_BASE_URL when running smoke"
+      ],
+      "deliverables": [
+        "docs/audit/host-authority.md (new) or section in deployment checklist",
+        "Script or CI assertion for public_base_url alignment"
+      ],
+      "acceptance_criteria": [
+        "npm run smoke:prod passes with public_base_url ok: true without manual --base override",
+        "Zero conflicting default URLs in smoke script, openapi servers, and capabilities snapshot"
+      ],
+      "dependencies": [
+        "Access to Cloud Run / Vercel env configuration (human gate)"
+      ],
+      "risk": "Low; mostly documentation and small script changes"
+    },
+    {
+      "phase": "Phase 1 — Contract hardening in CI",
+      "goal": "Make structural contract checks fail-fast on PRs without requiring live Sheets.",
+      "tasks": [
+        "Split tests/validation.js into domain vs integration modules",
+        "Add CI job: start server with mocked/minimal env OR run contract checks only against routes that do not need Sheets",
+        "Remove or narrow allow404/allow503 escape hatches; replace with explicit snapshots for degraded mode"
+      ],
+      "deliverables": [
+        "New test layout under tests/contract/ or tests/unit/",
+        "Updated .github/workflows/ci.yml job wiring"
+      ],
+      "acceptance_criteria": [
+        "PR CI fails if /calc/cotizar response shape regresses",
+        "Sheets outage simulated does not green-pass dashboard contract tests unless explicitly tagged as integration"
+      ],
+      "dependencies": [
+        "Refactor time; fixture strategy for Sheets"
+      ],
+      "risk": "Medium — may expose existing flaky behaviors"
+    },
+    {
+      "phase": "Phase 2 — OpenAPI as enforcement anchor",
+      "goal": "Move toward level 3–4: generated or validated OpenAPI from route definitions.",
+      "tasks": [
+        "Introduce route registry (single module) consumed by Express routers and manifest builder",
+        "Add openapi validator step comparing docs/openapi-calc.yaml to served /calc/openapi (if exists) or static build",
+        "Consider zod/express type-safe handlers for /calc/* responses"
+      ],
+      "deliverables": [
+        "npm run openapi:verify script",
+        "CI step openapi:verify"
+      ],
+      "acceptance_criteria": [
+        "Drift between YAML and runtime OpenAPI fails CI",
+        "GPT_ACTIONS derived from same registry as HTTP routes"
+      ],
+      "dependencies": [
+        "Pick tooling (zod-to-openapi vs manual registry)"
+      ],
+      "risk": "Medium-high — touches GPT integration surface"
+    },
+    {
+      "phase": "Phase 3 — Multi-agent orchestration spec",
+      "goal": "Executable runbooks with machine-verifiable outputs (level 4+ behaviors for agent ops).",
+      "tasks": [
+        "Define JSON schema for agent run reports (extend audit-summary.json pattern)",
+        "Wire channels:automated outputs to schema validation",
+        "Standardize MATPROMT bundles with acceptance hooks (lint, test, smoke)"
+      ],
+      "deliverables": [
+        "docs/team/schemas/agent-pipeline.v1.json",
+        "Validator in scripts/"
+      ],
+      "acceptance_criteria": [
+        "Invalid pipeline JSON fails CI or pre-commit",
+        "Each full team run produces attestable artifact path + hash recorded in PROJECT-STATE"
+      ],
+      "dependencies": [
+        "Team process agreement"
+      ],
+      "risk": "Low-medium — mostly automation glue"
+    },
+    {
+      "phase": "Phase 4 — Context control and worktrees",
+      "goal": "Reduce agent context overload; parallelize high-risk work safely.",
+      "tasks": [
+        "Document worktree pattern: contracts branch vs feature branch",
+        "Move long AGENTS.md tables into docs with stable anchors; keep AGENTS.md as index",
+        "Add CODEOWNERS for server/routes/bmcDashboard.js and openapi files"
+      ],
+      "deliverables": [
+        "docs/audit/WORKTREE-RUNBOOK.md",
+        "PR template with contract/smoke checklist"
+      ],
+      "acceptance_criteria": [
+        "Contributing doc describes branch strategy",
+        "Large backup JSX either linted or explicitly quarantined with rationale"
+      ],
+      "dependencies": [
+        "GitHub settings for CODEOWNERS"
+      ],
+      "risk": "Low"
+    }
+  ],
+  "recommended_next_step": "Resolve Cloud Run canonical URL vs PUBLIC_BASE_URL (Phase 0) in a dedicated contracts/host-hardening branch or git worktree to avoid coupling with feature work; then tighten CI contract gates before expanding OpenAPI coverage."
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bmc:kingspan-bibliography-manifest:v1",
+  "title": "Kingspan / insulated panel bibliography manifest",
+  "type": "object",
+  "required": ["fecha_local", "links"],
+  "additionalProperties": true,
+  "properties": {
+    "manifestVersion": {
+      "type": "string",
+      "description": "Semantic version of this manifest shape (e.g. 1.0.0). Bump when breaking consumers."
+    },
+    "EXPORT_SEAL": {
+      "type": "boolean",
+      "description": "Author declares the bundle is ready for downstream export. Not a cryptographic seal or legal attestation."
+    },
+    "fecha_local": {
+      "type": "string",
+      "description": "Local business date YYYY-MM-DD."
+    },
+    "retrieved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When links were last verified or manifest was generated (ISO 8601)."
+    },
+    "links": {
+      "type": "object",
+      "description": "Map of category key to array of document entries.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["titulo", "url"],
+          "additionalProperties": false,
+          "properties": {
+            "titulo": { "type": "string" },
+            "url": {
+              "type": "string",
+              "description": "Absolute https URL to PDF, DWG listing, or resource page."
+            },
+            "nota": { "type": "string" },
+            "source_tier": {
+              "type": "string",
+              "enum": [
+                "manufacturer_official",
+                "regional_official",
+                "third_party_library",
+                "hub_listing"
+              ],
+              "description": "Provenance tier for engineering use."
+            },
+            "document_id": {
+              "type": "string",
+              "description": "Stable id from vendor or library when URL is opaque (e.g. ASS_*)."
+            }
+          }
+        }
+      }
+    }
+  }
+}
