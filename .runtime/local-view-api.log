@@ -1,0 +1,6 @@
+
+> calculadora-bmc@3.1.5 start:api
+> node server/index.js
+
+[dotenv@17.3.1] injecting env (21) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":30,"time":1775743631193,"pid":28603,"hostname":"192.168.1.4","port":3001,"appEnv":"development","publicBaseUrl":"https://panelin-calc-q74zutv7dq-uc.a.run.app","msg":"MercadoLibre connector server started"}

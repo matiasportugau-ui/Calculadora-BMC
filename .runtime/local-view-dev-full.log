@@ -1,0 +1,38 @@
+
+> calculadora-bmc@3.1.5 dev:full
+> concurrently -n api,vite -c blue,green "npm run start:api" "npm run dev"
+
+[api] 
+[api] > calculadora-bmc@3.1.5 start:api
+[api] > node server/index.js
+[api] 
+[vite] 
+[vite] > calculadora-bmc@3.1.5 predev
+[vite] > npm run disk:precheck
+[vite] 
+[vite] 
+[vite] > calculadora-bmc@3.1.5 disk:precheck
+[vite] > bash scripts/disk-space-precheck.sh .
+[vite] 
+[vite] 
+[vite] > calculadora-bmc@3.1.5 dev
+[vite] > npm run version:data && vite
+[vite] 
+[api] [dotenv@17.3.1] injecting env (22) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[vite] 
+[vite] > calculadora-bmc@3.1.5 version:data
+[vite] > node scripts/update-calculator-data-version.js
+[vite] 
+[vite] [version:data] CALCULATOR_DATA_VERSION=b22fc4fea5 -> src/data/calculatorDataVersion.js
+[vite] 
+[vite]   VITE v7.3.1  ready in 413 ms
+[vite] 
+[vite]   ➜  Local:   http://localhost:5173/
+[vite]   ➜  Network: http://169.254.133.53:5173/
+[vite]   ➜  Network: http://192.168.1.3:5173/
+[api] {"level":40,"time":1776040312537,"pid":4184,"hostname":"192.168.1.3","msg":"TOKEN_ENCRYPTION_KEY missing: token file will be plaintext in local dev only"}
+[api] {"level":30,"time":1776040312544,"pid":4184,"hostname":"192.168.1.3","port":3001,"appEnv":"development","publicBaseUrl":"http://localhost:3001","msg":"MercadoLibre connector server started"}
+[api] {"level":30,"time":1776040312959,"pid":4184,"hostname":"192.168.1.3","req":{"id":"7995d96b-ef36-4c45-a3ca-608973fad7a7","method":"GET","url":"/health","query":{},"params":{},"headers":{"host":"localhost:3001","user-agent":"curl/8.7.1","accept":"*/*"},"remoteAddress":"::1","remotePort":49227},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","access-control-allow-origin":"*","x-frame-options":"DENY","x-content-type-options":"nosniff","content-type":"application/json; charset=utf-8","content-length":"129","etag":"W/\"81-1OEIw4RPLUXF+0GHMo2lXJKKGSA\""}},"responseTime":4,"msg":"request completed"}
+bash: line 1:  4065 Hangup: 1               npm run dev:full
+[api] npm run start:api exited with code SIGHUP
+[vite] npm run dev exited with code SIGHUP

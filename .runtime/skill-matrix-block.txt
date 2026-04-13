@@ -1,0 +1,335 @@
+
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│  S K I L L S   D E V E L O P E D   I N   F U L L   ( 5 1   ×   S K I L L . m d )          │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Source: .cursor/skills/<id>/SKILL.md  —  text below = YAML description (folded) + name
+
+  -- actualizar-precios-calculadora --
+  Actualiza los precios de la Calculadora BMC desde la MATRIZ de COSTOS y VENTAS 2026.
+  Lee BROMYROS: F/L/T tal cual; M ref. c/IVA tal cual; col U = venta web c/IVA → CSV
+  venta_web_iva_inc (tal cual; sin push); genera CSV (path, costo, venta_local,
+  venta_web, …). Use cuando el usuario pida: actualizar precios calculadora, sincronizar
+  precios desde MATRIZ, levantar precios de la planilla,
+  /actualizar-precios-calculadora, o consultar precios desde la matriz.
+
+  -- ai-interactive-team --
+  Enables multi-agent collaboration with shared visibility of thoughts, logs, and
+  outputs. Agents dialogue, share cross-impact discoveries, design integrations
+  together, and escalate to the user when unanimous approval is not reached. Use when
+  coordinating agents (mapping sheets, dashboard design, networks/infra) for a 100/100
+  deploy goal.
+
+  -- billing-error-review --
+  Detecta posibles errores de facturacion cometidos por administracion desde exports
+  CSV/XLS/XLSX (duplicados, matematica fiscal, estados de pago, fechas y datos
+  faltantes). Use when the user asks to review billing errors, invoice inconsistencies,
+  admin mistakes, month close controls, or pre-audit billing checks.
+
+  -- bmc-api-contract-validator --
+  Validates API responses against the canonical contract from planilla-inventory and
+  DASHBOARD-INTERFACE-MAP. Catches drift before the UI breaks. Use when validating API
+  contracts, pre-deploy checks, or after bmcDashboard.js changes.
+
+  -- bmc-calculadora-deploy-from-cursor --
+  Ejecuta desde Cursor (agente con terminal) verificación local, smoke a producción,
+  checks pre-deploy y guía de deploy Cloud Run (panelin-calc) + Vercel para Calculadora
+  BMC. Usar cuando pidan deploy desde este entorno, dejar configurado el flujo, redeploy
+  API/MATRIZ, o “hacerlo todo desde Cursor”.
+
+  -- bmc-calculadora-specialist --
+  Specialist for the Panelin Calculadora (port 5173): BOM, pricing, panels, Drive
+  integration, PDF, WhatsApp export. Knows constants, calculations, helpers. Use when
+  working on the quote builder, pricing logic, or Calculadora-Cotizaciones flow.
+
+  -- bmc-dashboard-audit-runner --
+  Runs the full BMC Dashboard audit at depth. Ensures stack is up, executes
+  run_audit.sh, probes all API endpoints, and writes report + handoff to
+  .cursor/bmc-audit/ for the Debug Reviewer. Use when user asks for bmc audit a fondo,
+  full dashboard audit, or run audit completo.
+
+  -- bmc-dashboard-debug-reviewer --
+  Reviews Audit Runner output, extracts issues and logs, exports to structured files,
+  and produces DEBUG-REPORT.md. Runs AFTER bmc-dashboard-audit-runner. Use when user
+  asks for bmc debug review, export logs, review issues, or after audit runner
+  completes.
+
+  -- bmc-dashboard-design-best-practices --
+  Researches best practices on similar dashboards, reviews them against BMC needs, and
+  implements the most suitable aesthetic and functional design with time-saving as the
+  main goal. Use when improving dashboard UX/UI, designing views for
+  Finanzas/Operaciones/Cotizaciones/Ventas, or optimizing workflows for speed and
+  clarity.
+
+  -- bmc-dashboard-netuy-hosting --
+  Guía el deploy del BMC Dashboard en un VPS de Netuy (Uruguay): requisitos, subida del
+  proyecto, .env, PM2/systemd, nginx + HTTPS. Usar cuando pidan hostear el dashboard en
+  Netuy, desplegar en Netuy, configurar el dashboard en mi servidor Netuy, o deploy VPS
+  Uruguay. Requiere VPS (no hosting compartido).
+
+  -- bmc-dashboard-one-click-setup --
+  One-click setup and verification of the BMC Dashboard: .env, service account, Apps
+  Script (Code.gs, DialogEntregas), sheets, triggers, API server, Panelin integration,
+  and ngrok. Use when the user asks for dashboard setup, one-click setup, run dashboard,
+  configure BMC dashboard, or verify dashboard readiness. Also handles version bump,
+  changelog automation, and update logs.
+
+  -- bmc-dependencies-service-mapper --
+  Connects all dependencies and maps all BMC Dashboard services so they work perfectly:
+  dependency graph, service inventory, contracts, entry points, health checks. Use when
+  connecting dependencies, mapping services, validating integration points, or ensuring
+  end-to-end alignment across modules.
+
+  -- bmc-dgi-impositivo --
+  Detecta errores e inconsistencias impositivas de BMC Uruguay (SAS) cruzando DGI, CFE,
+  facturacion y datos bancarios. Use when the user asks for conciliacion IVA/IRAE/IP,
+  analisis de vistas Art. 46, preparacion de descargos, control fiscal mensual, o
+  estrategia de mitigacion impositiva en Uruguay.
+
+  -- bmc-docs-and-repos-organizer --
+  Organiza carpetas y documentación en Calculadora-BMC, detecta huecos o docs obsoletos,
+  mantiene índices en docs/ y READMEs, y guía flujos GitHub (ramas, PR, etiquetas). Use
+  when the user asks to organize documentation, fix doc structure, update READMEs, doc
+  index, repo hygiene, or GitHub workflow for docs.
+
+  -- bmc-implementation-plan-reporter --
+  Generates reports and implementation plans for the Solution team and Coding team:
+  status, gaps, risks, handoffs, task breakdown by team, ownership, order, acceptance
+  criteria. Use when reporting to Solution/Coding teams or producing implementation plan
+  from the full improvement plan.
+
+  -- bmc-mercadolibre-api --
+  >- Conector Mercado Libre en Calculadora-BMC: arranque de la API (puerto 3001), OAuth
+  2.0 (UY), ngrok/HTTPS, variables .env, verificación (ml:verify), y uso de rutas
+  /auth/ml/* y /ml/* (preguntas, órdenes, users/me). Usar cuando el usuario o el flujo
+  requieran Mercado Libre, Panelin ML, OAuth ML, ngrok, curl a localhost:3001/ml, o
+  cambios en server/index.js / mercadoLibreClient.
+
+  -- bmc-parallel-serial-agent --
+  Evalúa según mejores desempeños en distintas áreas y tareas. Sabe desde cero qué
+  procesos conviene ejecutar en paralelo o en serie. Muy orientado a objetivos; prevé
+  según scores y contexto la mejor combinación de agentes. Use when deciding parallel vs
+  serial execution, agent combination, or orchestration strategy.
+
+  -- bmc-planilla-dashboard-mapper --
+  Maps both planillas (Google Sheets/templates) and the dashboard interface so the agent
+  knows where each element lives. Produces a plan and proposal before implementation.
+  Use when mapping planillas and dashboard UI together, defining where templates vs
+  interface components live, or generating the mapping plan and proposal for sheet +
+  dashboard.
+
+  -- bmc-project-team-sync --
+  Syncs project state across all BMC/Panelin areas. Reads PROJECT-STATE.md, runs
+  propagation when changes affect multiple agents, updates state and pendientes. Use
+  when user says sync project state, actualizar equipo, full team run, or keep everyone
+  updated after a change.
+
+  -- bmc-repo-sync-agent --
+  Mantiene actualizados dos repositorios: bmc-dashboard-2.0 (desarrollo y funcionamiento
+  del dashboard) y bmc-development-team (equipo y artefactos). Tras cada corrida del
+  equipo, evalúa qué debe actualizarse y sincroniza. Use when syncing repos after team
+  run, updating bmc-dashboard-2.0, or maintaining bmc-development-team.
+
+  -- bmc-security-reviewer --
+  Security review for BMC/Panelin: OAuth, tokens, env vars, CORS, HMAC, credentials. Use
+  when user requests security review, pre-deploy security check, or audit of
+  auth/credentials handling.
+
+  -- bmc-sheets-structure-editor --
+  Restricted skill for full Google Sheets editing from Cursor only: create tabs,
+  dropdown menus (data validation), rows/columns/charts, read automation and guides, and
+  customize sheet workflow. Only Matias may perform these edits. Use when Matias asks
+  for tabs, drop menus, automation/guides, or workflow customization of the BMC sheet.
+
+  -- bmc-team-judge --
+  Evalúa forma de trabajo y desempeño del equipo BMC. Define sistema de ranqueo por
+  agente, genera reporte por run y reporte promedio histórico. Cada agente tiene
+  entregable individual para saber cómo juzgarlo. Objetivo: evolución continua. Use when
+  evaluating team performance, ranking agents, or generating judge reports.
+
+  -- bmc-telegram-architecture-scout --
+  Por cada run: estado interno + WATCHLIST, descubrimiento de grupos/canales públicos
+  relacionados, escaneo de contenido permitido (export/Bot API), verificación de enlaces
+  y memo de decisiones de implementación (hacer / piloto / diferir / rechazar). Use when
+  the user wants recurring Telegram intelligence for BMC/Panelin roadmap decisions.
+
+  -- browser-agent-orchestration --
+  Orchestrates web browser agent tasks with strict token economy: OAuth verification,
+  dashboard checks, URL flows, and external console navigation. Use when the user needs
+  to verify OAuth callbacks, open URLs in browser, check Mercado Libre/Cloud Run config,
+  validate dashboard functionality, or resolve web-flow issues. Structures browser tasks
+  as minimal, goal-directed steps to avoid exploratory browsing.
+
+  -- cloudrun-diagnostics-reporter --
+  Extracts full state of a Cloud Run service (panelin-calc) via REST API and gcloud
+  logging/gsutil, produces a structured diagnostic report and flags persistent
+  anomalies. Can open Cloud Console (Run, Logging, Storage) in browser to verify or
+  capture state. Use when the user asks for Cloud Run full state, diagnostic report,
+  anomaly report, deploy console review, or "ejecutar comandos en consola del deploy y
+  Google Cloud".
+
+  -- disk-space-recovery-resume --
+  Ante disco lleno (ENOSPC, no space left on device), audita espacio en modo seguro,
+  propone liberación por GRUPOS (origen, impacto, fechas típicas), pide aprobación
+  explícita del usuario, ejecuta lo aprobado y reanuda el trabajo que quedó bloqueado.
+  Use when disk is full, write fails for lack of space, or the user asks to free space
+  and continue a blocked procedure.
+
+  -- drive-space-optimizer --
+  Analiza uso de disco y propone limpieza segura sin perder informacion. Use when the
+  user asks to free storage, clean disk space, remove cache/temporales, optimize Mac
+  storage, or analyze what is taking space on the drive.
+
+  -- expert-debug-autonomous --
+  Runs an autonomous debug cycle: reads linter/TS/test diagnostics, applies fixes in
+  priority order, re-checks, and repeats until clean or max iterations. Use when the
+  user asks to fix all problems, debug autonomously, fix lint errors, resolve
+  diagnostics, or run a full problem-fix cycle in one go.
+
+  -- google-sheets-mapping-agent --
+  Builds an AI agent that maps and works directly on Google Sheets: read (map) and write
+  (edit, append, update) via the Sheets API. Documents data types, columns,
+  relationships, lookups, calculation logic; implements or extends server routes/scripts
+  for get/push. Use when mapping Admin Sheet, CRM_Operativo, editing sheet data from the
+  app, or adding new sheet read/write endpoints.
+
+  -- implement-gpt-operativo-plan --
+  Implement the GPT Operativo Completo execution plan end-to-end with strict todo
+  tracking, backend hardening, OpenAPI contract hardening, instruction updates, and
+  go-live documentation. Use when the user asks to execute the attached
+  gpt_operativo_completo plan, says "implement the plan as specified", or requests full
+  operational rollout for GPT actions and instructions.
+
+  -- intent-solution-product-reviewer --
+  Revisa la tarea y la intención del usuario (incluyendo matices entre paréntesis),
+  analiza prompts y brechas, escanea soluciones open source, extensiones y bases
+  reutilizables, y propone mejoras orientadas a las mejores capacidades de producto. Use
+  when refining intent, reviewing a spec before build, comparing OSS options, or
+  choosing foundations to ship faster with better features.
+
+  -- live-devtools-narrative-mcp --
+  Live DevTools narrative (Narrativa en vivo DevTools): sesión en Cursor donde el agente
+  usa el MCP chrome-devtools para navegar la app (default calculadora-bmc.vercel.app),
+  extrae consola/red/performance/DOM según aplique, y cruza en tiempo real con la
+  narrativa del usuario (chat o transcripción pegada), organizada para lectura. Use when
+  the user says Live DevTools narrative, Narrativa en vivo DevTools, or wants MCP
+  browser evidence linked to their commentary on the Calculadora BMC Vercel app.
+
+  -- live-devtools-transcript-action-plan --
+  Convierte transcripción de navegación (voz/texto) en beats U-xx, cruza con evidencia
+  MCP chrome-devtools (E-xx), y produce plan de acción + parches; repetible para
+  Calculadora BMC local o prod.
+
+  -- local-browser-live-preview --
+  See a local page in the browser while editing files in Cursor: run the right dev
+  server (Vite HMR or static live-reload), dock Simple Browser beside the editor, and
+  keep URL + port in sync so saves reflect almost instantly. Use when the user wants to
+  watch a local browser tab, live preview, instant refresh while coding, or edit
+  HTML/CSS/JS here and see changes immediately.
+
+  -- mac-performance-optimizer --
+  Asesor macOS para rendimiento estable, menos beach balls y diagnóstico ordenado (CPU,
+  memoria, disco, energía, red). Pasos seguros primero; avanzado solo con backup y
+  confirmación. Use when the user asks to speed up Mac, fix hangs, reduce lag, optimize
+  macOS, Activity Monitor, or system freezes.
+
+  -- matprompt --
+  MATPROMT — Optimización de prompts y flujos de trabajo para el equipo BMC. Genera
+  instrucciones específicas por rol para full team run, refina prompts ante tareas
+  nuevas durante el run, y mejora handoffs. Usar cuando se invoque full team, se pida
+  MATPROMT, o se necesiten prompts orientadores por agente.
+
+  -- navigation-user-feedback --
+  Convierte transcripción de audio, capturas y URL de la app desplegada en un informe
+  Markdown estructurado (USER-NAV-REPORT) con hallazgos, propagación multi-área y
+  backlog accionable para un agente implementador. Use when the user shares voice
+  transcript, screenshots, or navigation feedback about the Vercel/Panelin app and wants
+  a structured report incorporable into the project.
+
+  -- networks-development-agent --
+  Networks and Development Agent with full context on BMC Dashboard, endpoints, Sheets,
+  Cloud Run, hosting, and all integrations. Evaluates hosting/storage capabilities,
+  email as inbound channel, migration procedures and risks, and service expansion
+  possibilities. Use when the user asks for hosting analysis, storage evaluation, email
+  integration, migration planning, service discovery, or infrastructure/network
+  development for BMC/Panelin.
+
+  -- openai-gpt-builder-integration --
+  Configura un Custom GPT en OpenAI GPT Builder de forma completa y verificable a partir
+  de artefactos del repositorio. Use when the user asks to integrate, publish, leave
+  ready, or validate a fully configured GPT in OpenAI, including actions, instructions,
+  capabilities, starters, and smoke tests.
+
+  -- panelin-calculadora-knowledge-planner --
+  Turns Panelin Signal / Knowledge Antenna outputs into evaluated improvement quests and
+  concrete implementation plans for Calculadora BMC
+  (https://calculadora-bmc.vercel.app). Reads magazine HTML and underlying JSON reports,
+  maps news to repo areas, and produces scoped plans (full stack or single area). Use
+  when the user asks for improvements from knowledge news, Panelin Signal, antenna
+  magazine, knowledge run output, or implementation plans driven by external AI/platform
+  updates.
+
+  -- panelin-drift-risk-closure --
+  Closes remaining GPT-Cloud drifts and go-live risks for Panelin as one system. Use
+  when endpoints are partially deployed, Builder points to wrong service, auth keys
+  drift, quote validation is inconsistent, or user asks to finish pending risks
+  end-to-end.
+
+  -- panelin-gpt-artifacts-regenerator --
+  Regenerates GPT configuration artifacts so instructions, actions, routing, checklists,
+  and knowledge packaging remain aligned with current business objectives and deployed
+  Cloud contracts. Use when objectives change, operationIds drift, OpenAPI changes,
+  quote flow fails, or GPT behavior diverges from runtime.
+
+  -- panelin-gpt-cloud-system --
+  Operates Panelin as a single production system, always synchronizing GPT Builder
+  configuration with Google Cloud runtime changes. Use when working on prompts, actions,
+  OpenAPI, backend routes, auth, deploy, or any issue that can diverge GPT and Cloud
+  behavior.
+
+  -- panelin-live-editor --
+  Live-edit the Panelin Evolution dashboard (HTML/CSS/JS) from natural language
+  descriptions. Interprets visual modification requests, designs the best
+  implementation, and applies changes to the running viewer at
+  ~/.panelin-evolution/viewer/. Use when the user describes visual changes, layout
+  adjustments, new features, or style modifications for the evolution dashboard, or says
+  "livefaemod", "live edit", "modify the dashboard", or references localhost:3847.
+
+  -- panelin-repo-solution-miner --
+  Audits Panelin repositories to find already-implemented solutions and convert them
+  into a concrete reuse plan for GPT Builder integration and go-live. Use when the user
+  asks to analyze GPT-Panelin-Calc, Panelin1103, mercadolibre-connector, compare
+  implementations, avoid rework, or unblock full GPT integration.
+
+  -- panelsim-email-inbox --
+  PANELSIM — bandeja multi-cuenta (repo conexion-cuentas-email-agentes-bmc): sync IMAP,
+  clasificación, reporte PANELSIM-ULTIMO-REPORTE.md, borradores con aprobación. Usar
+  cuando el usuario pide PANELSIM y correo, actualizar bandeja, resumen de mails, estado
+  del inbox, panelsim-update, o consultas sobre emails operativos BMC.
+
+  -- shopify-integration-v4 --
+  >- Implements and maintains the Shopify questions/quotes flow that replaces Mercado
+  Libre: OAuth 2.0/PKCE, webhooks→Google Sheet sync, admin question list, LLM/rule-based
+  suggested replies, one-click approve & send, auto-reply scheduler (UTC-3). Use when
+  working on Shopify backend, Cloud Run, Firestore, Sheets API, HMAC validation, or
+  LATAM Spanish reply formatting for Uruguay.
+
+  -- super-agente-bmc-dashboard --
+  Runs a comprehensive BMC Dashboard health audit in fixed order: log anomaly analysis,
+  system state, git history, config, dependencies, API endpoints, security, Google
+  Sheets/scopes, viewer and ngrok. Produces a single "REPORTE SUPER AGENTE BMC — ESTADO
+  COMPLETO". Use when the user asks for super agente bmc, reporte estado completo,
+  analisis anomalias logs bmc, auditoria dashboard bmc, or full system health check.
+
+  -- user-session-video-to-backlog --
+  Video-User-interactive-dev: método nombrado por el usuario para analizar un vídeo de
+  sesión (path o adjunto), revisión completa documentada y procedimiento de desarrollo
+  en un solo informe. También: sesiones MP4/MOV (iPhone, Loom, OBS), metadatos, JSON +
+  Markdown en docs/team/ux-feedback. Use when the user says Video-User-interactive-dev,
+  shares a session video path, or wants USER POV video analysis and a dev plan in
+  Calculadora-BMC.
+
+  -- voice-say-last-answer --
+  Lee en voz (Mónica / español) la última respuesta completa del asistente usando un
+  archivo temporal y scripts/voice-tts-file.sh. Usar cuando el usuario pida escuchar la
+  última respuesta, TTS de la respuesta anterior, o “voice say last”.
