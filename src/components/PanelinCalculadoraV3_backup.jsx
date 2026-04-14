@@ -2249,7 +2249,6 @@ const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardS
 const SOLO_TECHO_DIM_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones");
 const SOLO_TECHO_PENDIENTE_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "pendiente");
 const SOLO_TECHO_ESTRUCTURA_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "estructura");
-const SOLO_TECHO_COLOR_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "color");
 
 /** Nombre visible del cliente (empresa → razón social). */
 function proyectoClienteDisplay(p) {
@@ -2542,22 +2541,30 @@ export default function PanelinCalculadoraV3() {
     }
   }, []);
 
-  /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
+  /** Otros escenarios con `wizardSteps`: avanza un paso (tope al último índice). */
   const advanceWizardStep = useCallback(() => {
+    setWizardStep((s) => {
+      const steps = SCENARIOS_DEF.find((x) => x.id === scenario)?.wizardSteps ?? [];
+      const last = Math.max(0, steps.length - 1);
+      if (!steps.length || s >= last) return s;
+      const next = s + 1;
+      setWizardMaxReachedStep((m) => Math.max(m, next));
+      return next;
+    });
+  }, [scenario]);
+
+  /** Siguiente paso solo techo: salta Pendiente global si aplica; `wizardMaxReachedStep` = índice real alcanzado. */
+  const commitAdvanceSoloTecho = useCallback(() => {
     setWizardStep((s) => {
       if (s >= SOLO_TECHO_STEPS.length - 1) return s;
       let next = s + 1;
       if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && next === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
         next = SOLO_TECHO_ESTRUCTURA_STEP_INDEX;
       }
+      setWizardMaxReachedStep((m) => Math.max(m, next));
       return next;
     });
   }, [techo.zonas?.length]);
-
-  const commitAdvanceSoloTecho = useCallback(() => {
-    setWizardMaxReachedStep((m) => Math.max(m, wizardStep + 1));
-    advanceWizardStep();
-  }, [wizardStep, advanceWizardStep]);
 
   const goPrevWizardSoloTecho = useCallback(() => {
     setWizardStep((s) => {
@@ -2592,6 +2599,11 @@ export default function PanelinCalculadoraV3() {
 
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
+
+  useEffect(() => {
+    if (!modoVendedor || scenario !== "solo_techo") return;
+    if (!listaPrecios) setLP(getListaDefault());
+  }, [modoVendedor, scenario, listaPrecios, setLP]);
 
   // Reset wizard al cambiar escenario o al activar modo vendedor
   useEffect(() => {
@@ -3558,7 +3570,10 @@ export default function PanelinCalculadoraV3() {
     setFlete(getFleteDefault());
     setOverrides({});
     setExcludedItems({});
-    if (modoVendedor) setWizardStep(0);
+    if (modoVendedor) {
+      setWizardStep(0);
+      setWizardMaxReachedStep(0);
+    }
     setCategoriasActivas(() => {
       const initial = {};
       Object.keys(CATEGORIAS_BOM).forEach(k => { initial[k] = CATEGORIAS_BOM[k].default; });
@@ -4126,7 +4141,7 @@ export default function PanelinCalculadoraV3() {
         libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
       };
       const entry = saveBudget({
-        cliente: proyectoClienteDisplay(proyecto) || proyecto.nombre,
+        cliente: proyectoClienteDisplay(proyecto),
         producto: productoStr,
         escenario: scenarioLabels.current[scenario] || scenario,
         listaPrecios,
@@ -4151,7 +4166,7 @@ export default function PanelinCalculadoraV3() {
       libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
     };
     const entry = saveBudget({
-      cliente: proyectoClienteDisplay(proyecto) || proyecto.nombre,
+      cliente: proyectoClienteDisplay(proyecto),
       producto: productoStr,
       escenario: scenarioLabels.current[scenario] || scenario,
       listaPrecios,
@@ -4170,8 +4185,22 @@ export default function PanelinCalculadoraV3() {
     if (!entry.snapshot) return;
     const s = entry.snapshot;
     setScenario(s.scenario || "solo_techo");
-    setLP(s.listaPrecios || "web");
-    if (s.proyecto) setProyecto(s.proyecto);
+    setLP(s.listaPrecios || getListaDefault());
+    if (s.proyecto) {
+      setProyecto({
+        tipoCliente: "empresa",
+        nombre: "",
+        rut: "",
+        razonSocial: "",
+        telefono: "",
+        direccion: "",
+        descripcion: "",
+        refInterna: "",
+        contactoRef: "",
+        fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
+        ...s.proyecto,
+      });
+    }
     if (s.techo) setTecho(s.techo);
     if (s.pared) setPared(s.pared);
     if (s.camara) setCamara(s.camara);
@@ -5914,8 +5943,8 @@ export default function PanelinCalculadoraV3() {
               </div>
             )}
             
-            {/* Referencia estructural en la columna izquierda cuando corresponda (a partir del paso 5) */}
-            {SOLO_TECHO_COLOR_STEP_INDEX >= 0 && wizardStep >= SOLO_TECHO_COLOR_STEP_INDEX && (
+            {/* Referencia estructural (modo cliente: equivalente a post-espesor — panel y espesor definidos) */}
+            {scenarioDef?.hasTecho && !!techo.familia && !!techo.espesor && (
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Referencia de montaje</div>
                 <div style={{ borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", background: C.surfaceAlt }}>
@@ -6065,7 +6094,7 @@ export default function PanelinCalculadoraV3() {
           {!scenarioDef?.isLibre && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Lista de precios</div>
-              <SegmentedControl value={listaPrecios || "web"} onChange={(v) => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
+              <SegmentedControl value={listaPrecios || getListaDefault()} onChange={(v) => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
             </div>
           )}
 
