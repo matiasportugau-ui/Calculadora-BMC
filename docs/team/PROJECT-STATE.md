@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-13 (Planta 2D — cotas gris grafito tipo lápiz)
+**Última actualización:** 2026-04-14 (Skill — cloud agent repo starter)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-14 (Skill — cloud agent repo starter):** Nueva skill [`.cursor/skills/cloud-agent-repo-starter/SKILL.md`](../../.cursor/skills/cloud-agent-repo-starter/SKILL.md): arranque mínimo para agentes Cloud (Node 20, `npm ci`/`env:ensure`, stack `:3001`+`:5173`, gates `lint`/`test`/`build`, `test:contracts`, `smoke:prod`, variables tipo flag vía `.env` / `VITE_*`, flujos de prueba por área `src/`, `server/`, chat, transportista, y sección breve para mantener la skill al día. **Afecta a:** agentes Cloud / onboarding técnico.
 
 **2026-04-13 (UX — cotas planta gris grafito, trazo lápiz):** Perímetro/encuentros, cadena mm y envolvente en **gris grafito** (`#5c6470` … `#3d4756`) con terminaciones **`strokeLinecap` / `strokeLinejoin` redondeadas** (`ROOF_PLAN_DIM_STROKE_PROPS` en [`roofPlanDrawingTheme.js`](../../src/utils/roofPlanDrawingTheme.js)); líneas de extensión más suaves (`ROOF_PLAN_DIM_EXT_OPACITY` 0,5). Leyenda/JSDoc en [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx). Conocimiento: [`RoofPlanArchitect.md`](./knowledge/RoofPlanArchitect.md). `PRINT_THEME` sigue monocromo para PDF. **Fix:** [`calculatorDataVersion.js`](../../src/data/calculatorDataVersion.js) — eliminada declaración duplicada de `CALCULATOR_DATA_VERSION_DATE` que rompía `npm test` / eslint.
 
