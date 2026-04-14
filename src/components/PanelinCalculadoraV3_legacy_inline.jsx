@@ -23,6 +23,7 @@ import { buildCostingReport } from "../utils/bomCosting.js";
 import { countVarillasRoscadasDesdeBarras1m } from "../utils/calculations.js";
 import { getDimensioningParam } from "../utils/dimensioningFormulas.js";
 import RoofPreview from "./RoofPreview.jsx";
+import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // §1 DESIGN TOKENS + CSS
@@ -1943,7 +1944,7 @@ export default function PanelinCalculadoraV3() {
               {SCENARIOS_DEF.map(sc => {
                 const isS = scenario === sc.id;
                 return <div key={sc.id} onClick={() => setScenario(sc.id)} style={{ borderRadius: 16, padding: 20, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
-                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{sc.icon}</span>
+                  <ScenarioStepIcon scenarioId={sc.id} size={32} selected={isS} color={isS ? C.primary : C.tp} />
                   <div style={{ fontSize: 15, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 4 }}>{sc.label}</div>
                   <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
                 </div>;

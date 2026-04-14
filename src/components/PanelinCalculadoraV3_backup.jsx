@@ -4167,7 +4167,7 @@ export default function PanelinCalculadoraV3() {
                           }}
                           style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${scenario === sc.id ? C.primary : C.border}`, background: scenario === sc.id ? C.primarySoft : C.surface, transition: TR, boxShadow: scenario === sc.id ? `0 0 0 4px ${C.primarySoft}` : SHC }}
                         >
-                          <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
+                          <ScenarioStepIcon scenarioId={sc.id} size={28} selected={scenario === sc.id} color={scenario === sc.id ? C.primary : C.tp} />
                           <div style={{ fontSize: 14, fontWeight: 600, color: scenario === sc.id ? C.primary : C.tp }}>{sc.label}</div>
                           <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
                           {sc.id !== "solo_techo" && <div style={{ fontSize: 10, color: C.tt, marginTop: 6 }}>→ Modo Cliente</div>}
@@ -4943,7 +4943,7 @@ export default function PanelinCalculadoraV3() {
                 {SCENARIOS_DEF.map(sc => {
                   const isS = scenario === sc.id;
                   return <div key={sc.id} onMouseEnter={() => setScenarioHoverId(sc.id)} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
-                    <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
+                    <ScenarioStepIcon scenarioId={sc.id} size={28} selected={isS} color={isS ? C.primary : C.tp} />
                     <div style={{ fontSize: 14, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 2 }}>{sc.label}</div>
                     <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
                   </div>;
