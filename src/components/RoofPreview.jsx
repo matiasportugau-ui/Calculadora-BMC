@@ -11,7 +11,7 @@ import { createPortal } from "react-dom";
 import { Check, Trash2 } from "lucide-react";
 import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
-import { calcFactorPendiente } from "../utils/calculations.js";
+import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
 import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
 import { encounterPairKey, findEncounters, getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
 import { normalizeEncounter } from "../utils/roofEncounterModel.js";
@@ -788,6 +788,8 @@ export function RoofPreviewMetricsSidebar({
   zonas = [],
   tipoAguas = "una_agua",
   pendiente = 0,
+  pendienteModo: globalPendienteModo = "incluye_pendiente",
+  globalAlturaDif = 0,
   selectedGi = null,
   onZonaDimensionPatch,
   onRemoveZona,
@@ -917,13 +919,26 @@ export function RoofPreviewMetricsSidebar({
           {layout.entries.map((r) => {
             const a = r.z.largo * r.z.ancho;
             const label = formatZonaDisplayTitle(zonas, r.gi);
+            const zPm = r.z.pendienteModo ?? globalPendienteModo;
+            const zPend = r.z.pendiente ?? pendiente;
+            const zAlt = r.z.alturaDif ?? globalAlturaDif;
+            const largoReal = calcLargoRealFromModo(r.z.largo, zPm, zPend, zAlt);
+            const hasSlope = Math.abs(largoReal - r.z.largo) > 0.001;
             return (
-              <div key={r.gi} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                <span style={{ color: C.ts }}>
-                  {label}
-                  <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>{zonaLabelPlanta(r)} en planta</span>
-                </span>
-                <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
+              <div key={r.gi} style={{ marginBottom: hasSlope ? 6 : 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                  <span style={{ color: C.ts }}>
+                    {label}
+                    <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>{zonaLabelPlanta(r)} en planta</span>
+                  </span>
+                  <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
+                </div>
+                {hasSlope && (
+                  <div style={{ fontSize: 10, color: C.primary, fontWeight: 600, marginTop: 2 }}>
+                    Largo panel: {largoReal.toFixed(2)} m
+                    <span style={{ fontWeight: 400, color: C.ts }}> (proy. {r.z.largo.toFixed(2)} m)</span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1024,6 +1039,8 @@ export default function RoofPreview({
   onRemoveZona,
   onEncounterPairChange,
   onZonaDimensionPatch,
+  pendienteModo: globalPendienteModoProp = "incluye_pendiente",
+  globalAlturaDif: globalAlturaDifProp = 0,
   estructuraHintsByGi = null,
   showPlantaExteriorCotas = false,
   embedMetricsSidebar = true,
@@ -2261,6 +2278,8 @@ export default function RoofPreview({
               zonas={zonas}
               tipoAguas={tipoAguas}
               pendiente={pendiente}
+              pendienteModo={globalPendienteModoProp}
+              globalAlturaDif={globalAlturaDifProp}
               selectedGi={selectedGi}
               onZonaDimensionPatch={onZonaDimensionPatch}
               onRemoveZona={onRemoveZona}

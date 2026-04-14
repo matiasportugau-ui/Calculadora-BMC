@@ -3538,6 +3538,8 @@ export default function PanelinCalculadoraV3() {
         onRemoveZona={removeZona}
         onEncounterPairChange={onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
+        pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+        globalAlturaDif={techo.alturaDif ?? 0}
         estructuraHintsByGi={roofEstructuraHintsByGi}
         showPlantaExteriorCotas={showRoof2dInQuoteVisor}
         embedMetricsSidebar={embedMetrics}
@@ -4363,6 +4365,41 @@ export default function PanelinCalculadoraV3() {
                               <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
                           </div>
+                          {(techo.zonas?.length || 0) > 1 && (() => {
+                            const zPendienteModo = zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente";
+                            const zPendiente = zona.pendiente ?? techo.pendiente ?? 0;
+                            const zAlturaDif = zona.alturaDif ?? techo.alturaDif ?? 0;
+                            const largoReal = calcLargoRealFromModo(zona.largo ?? 0, zPendienteModo, zPendiente, zAlturaDif);
+                            const largoChanged = Math.abs(largoReal - (zona.largo ?? 0)) > 0.001;
+                            return (
+                              <div style={{ padding: 12, background: C.surface, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendiente — {formatZonaDisplayTitle(techo.zonas || [], idx)}</div>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                                  {PENDIENTE_MODOS.map(m => (
+                                    <button key={m.id} onClick={() => updateZona(idx, "pendienteModo", m.id)} style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${zPendienteModo === m.id ? C.primary : C.border}`, background: zPendienteModo === m.id ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: zPendienteModo === m.id ? C.primary : C.tp, fontWeight: zPendienteModo === m.id ? 700 : 400 }}>{m.label}</button>
+                                  ))}
+                                </div>
+                                {zPendienteModo === "calcular_pendiente" && (
+                                  <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+                                    <StepperInput label="Pendiente" value={zPendiente} onChange={v => updateZona(idx, "pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", paddingBottom: 4 }}>
+                                      {PENDIENTES_PRESET.map(pr => (
+                                        <button key={pr.valor} onClick={() => updateZona(idx, "pendiente", pr.valor)} style={{ padding: "4px 8px", borderRadius: 16, border: `1.5px solid ${zPendiente === pr.valor ? C.primary : C.border}`, background: zPendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr.label}</button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {zPendienteModo === "calcular_altura" && (
+                                  <StepperInput label="Diferencia de altura" value={zAlturaDif} onChange={v => updateZona(idx, "alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
+                                )}
+                                {largoChanged && (
+                                  <div style={{ marginTop: 8, fontSize: 12, color: C.primary, fontWeight: 600 }}>
+                                    Largo real del panel: {largoReal.toFixed(3)} m <span style={{ fontWeight: 400, color: C.ts }}>(proyectado: {(zona.largo ?? 0).toFixed(2)} m)</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
                             <button
                               type="button"
@@ -4431,6 +4468,8 @@ export default function PanelinCalculadoraV3() {
                           onRemoveZona={removeZona}
                           onEncounterPairChange={onRoofEncounterPairChange}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                          pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+                          globalAlturaDif={techo.alturaDif ?? 0}
                           estructuraHintsByGi={roofEstructuraHintsByGi}
                           combinadaFijacionAssign={combinadaRoof2dAssignActive}
                           combinadaFijByGi={combinadaFijByGi}
@@ -4598,6 +4637,8 @@ export default function PanelinCalculadoraV3() {
                           zonas={techo.zonas || []}
                           tipoAguas={techo.tipoAguas}
                           pendiente={techo.pendiente}
+                          pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+                          globalAlturaDif={techo.alturaDif ?? 0}
                           selectedGi={estructuraMetricsSelectedGi}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
                           onRemoveZona={removeZona}
@@ -5089,12 +5130,13 @@ export default function PanelinCalculadoraV3() {
 
           {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && !(scenario === "techo_fachada" && usePlanoTechoFachada) && (() => {
-            const fp = calcFactorPendiente(techo.pendiente);
-            const pm = techo.pendienteModo || "incluye_pendiente";
+            const globalPm = techo.pendienteModo || "incluye_pendiente";
             const is2A = techo.tipoAguas === "dos_aguas";
             const baseArea = zonasTotales.area;
             const areaReal = techo.zonas?.reduce((s, z) => {
-              const lr = calcLargoRealFromModo(z.largo, pm, techo.pendiente, z.alturaDif ?? techo.alturaDif ?? 0);
+              const zPm = z.pendienteModo ?? globalPm;
+              const zPend = z.pendiente ?? techo.pendiente ?? 0;
+              const lr = calcLargoRealFromModo(z.largo, zPm, zPend, z.alturaDif ?? techo.alturaDif ?? 0);
               return s + (lr * (is2A ? z.ancho / 2 : z.ancho));
             }, 0);
             const areaRealDisplay = areaReal != null && areaReal !== baseArea ? +areaReal.toFixed(1) : null;
@@ -5328,15 +5370,16 @@ export default function PanelinCalculadoraV3() {
                     </>
                   )}
                   {techo.zonas?.[0] && (
-                    <span>Largo real zona 1: <b style={{ color: C.tp }}>{calcLargoRealFromModo(techo.zonas[0].largo, techo.pendienteModo || "incluye_pendiente", techo.pendiente, techo.zonas[0].alturaDif ?? techo.alturaDif ?? 0).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
+                    <span>Largo real zona 1: <b style={{ color: C.tp }}>{calcLargoRealFromModo(techo.zonas[0].largo, techo.zonas[0].pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente", techo.zonas[0].pendiente ?? techo.pendiente ?? 0, techo.zonas[0].alturaDif ?? techo.alturaDif ?? 0).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
                   )}
                 </div>
               ) : null}
             </div>
 
             {techoPanelData && techo.zonas?.some(z => {
-              const pm = techo.pendienteModo || "incluye_pendiente";
-              const lr = calcLargoRealFromModo(z.largo, pm, techo.pendiente, z.alturaDif ?? techo.alturaDif ?? 0);
+              const zPm = z.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente";
+              const zPend = z.pendiente ?? techo.pendiente ?? 0;
+              const lr = calcLargoRealFromModo(z.largo, zPm, zPend, z.alturaDif ?? techo.alturaDif ?? 0);
               return lr < techoPanelData.lmin || lr > techoPanelData.lmax;
             }) && (
               <div style={{ marginTop: 8 }}>
