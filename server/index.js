@@ -13,7 +13,7 @@ import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
-import agentChatRouter from "./routes/agentChat.js";
+import agentChatRouter, { setMercadoLibreForAgentChat } from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
@@ -74,6 +74,7 @@ const tokenStore = createTokenStore({
   logger,
 });
 const ml = createMercadoLibreClient({ config, tokenStore, logger });
+setMercadoLibreForAgentChat(ml);
 
 const missingConfig = () => {
   const missing = [];
