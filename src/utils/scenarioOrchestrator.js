@@ -67,7 +67,8 @@ function computeTechoZonas(techo, useEncounterBorders) {
       ...techo,
       largo: zona.largo,
       ancho: zona.ancho,
-      pendienteModo: techo.pendienteModo || "incluye_pendiente",
+      pendiente: zona.pendiente ?? techo.pendiente ?? 0,
+      pendienteModo: zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente",
       alturaDif: zona.alturaDif ?? techo.alturaDif ?? 0,
     };
     const globalBorders = techo.inclAccesorios === false ? EMPTY_BORDERS : techo.borders;

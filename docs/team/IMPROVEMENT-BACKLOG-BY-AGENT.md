@@ -49,6 +49,7 @@ Por agente deben cumplirse:
 | Sheets Structure | ✓ | ✓ | ✓ | ✓ | Desarrollado |
 | SIM | ✓ | doc `panelsim/AGENT-SIMULATOR-SIM.md` | N/A | ⬜ | En desarrollo (protocolo Cursor) |
 | SIM-REV | ✓ | doc `panelsim/AGENT-SIMULATOR-SIM.md` | N/A | ⬜ | En desarrollo (`panelsim/reports/SIM-REV-REVIEW-*.md`) |
+| RoofPlan Architect | ✓ | ✓ | ⬜ | ✓ | Desarrollado |
 
 **Leyenda:** ✓ hecho | ⬜ pendiente | — N/A o ya cubierto por agent .md
 

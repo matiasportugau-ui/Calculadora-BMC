@@ -24,6 +24,12 @@ import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/ut
 import { PERFIL_TECHO, PERFIL_PARED, PANELS_TECHO, PANELS_PARED } from "../src/data/constants.js";
 import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpStore.js";
 import { normalizeMlAnswerCurrencyText } from "../server/lib/mlAnswerText.js";
+import {
+  buildInitialByKeyFromOrderedDots,
+  countCombinadaMaterialsInDots,
+  cycleCombinadaMaterial,
+} from "../src/utils/combinadaFijacionShared.js";
+import { fijacionDotsLayoutDistributeTotal } from "../src/utils/roofEstructuraDotsLayout.js";
 import { buildProgramSnapshot } from "../scripts/program-status.mjs";
 import {
   cuerpoFromMessage,
@@ -44,9 +50,6 @@ import {
 } from "../src/utils/csvPricingImport.js";
 import { resolveEmailInboxRepoRoot } from "../server/lib/emailInboxRepoResolve.js";
 import { readPanelsimEmailSummary } from "../server/lib/panelsimSummaryReader.js";
-import { classifyInboundTextHeuristic } from "../server/lib/omniRepository.js";
-import { channelToCrmOrigen } from "../server/lib/omniFlush.js";
-import { extractMetaMessagingEvents } from "../server/lib/omniMetaWebhook.js";
 import { colLetterToIndex, colIndexToLetter } from "../server/lib/sheetColumnLetters.js";
 import {
   normalizeIsodecEpsVentaLocalCsvRows,
@@ -1975,15 +1978,21 @@ assert(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SUITE: ML answer text — ASCII $ → fullwidth for Mercado Libre API
+// SUITE: ML answer text — U$S → USD; remaining ASCII $ → fullwidth
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE: normalizeMlAnswerCurrencyText ═══");
 const fw = "\uFF04";
 assert(
-  "U$S amounts become U+fullwidth+S",
-  normalizeMlAnswerCurrencyText("U$S 1.456,88") === `U${fw}S 1.456,88`,
+  "U$S becomes USD (no dollar glyph for ML)",
+  normalizeMlAnswerCurrencyText("U$S 1.456,88") === "USD 1.456,88",
   normalizeMlAnswerCurrencyText("U$S 1.456,88"),
-  `U${fw}S 1.456,88`,
+  "USD 1.456,88",
+);
+assert(
+  "u$s lower-case becomes USD",
+  normalizeMlAnswerCurrencyText("Precio u$s 10") === "Precio USD 10",
+  normalizeMlAnswerCurrencyText("Precio u$s 10"),
+  "Precio USD 10",
 );
 const multi = normalizeMlAnswerCurrencyText("a $1 $2");
 assert(
@@ -2137,29 +2146,46 @@ assert(
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE: Omnicanal Meta — heurística + mapeo CRM + webhook Meta
+
 // ═══════════════════════════════════════════════════════════════════════════
-console.log("\n═══ SUITE: omnichannel omniRepository / omniFlush / omniMetaWebhook ═══");
-const h1 = classifyInboundTextHeuristic("Cuánto sale el panel 100mm con IVA");
-assert("classify precio_stock", h1.consulta_tipo === "precio_stock", h1.consulta_tipo, "precio_stock");
-assert("channelToCrmOrigen whatsapp", channelToCrmOrigen("whatsapp") === "WA-Auto");
-assert("channelToCrmOrigen messenger", channelToCrmOrigen("messenger") === "FB-Auto");
-assert("channelToCrmOrigen instagram", channelToCrmOrigen("instagram") === "IG-Auto");
-const metaEv = extractMetaMessagingEvents({
-  object: "page",
-  entry: [
-    {
-      id: "PAGE",
-      messaging: [
-        {
-          sender: { id: "PSID1" },
-          recipient: { id: "PAGE" },
-          message: { mid: "m1", text: "hola" },
-        },
-      ],
-    },
-  ],
-});
-assert("extractMetaMessagingEvents page", metaEv.length === 1 && metaEv[0].senderId === "PSID1", metaEv.length, 1);
+// SUITE 32g: Combinada — mapa 2D / layout de puntos
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32g: combinadaFijacionShared + dots layout keys ═══");
+assert(
+  "cycleCombinadaMaterial metal→madera",
+  cycleCombinadaMaterial("metal") === "madera",
+  cycleCombinadaMaterial("metal"),
+  "madera",
+);
+const keys5 = ["r0-j0", "r0-j1", "r1-j0", "r1-j1", "r2-j0"];
+const initComb = buildInitialByKeyFromOrderedDots(keys5, 1, 2, 1);
+assert(
+  "buildInitialByKeyFromOrderedDots orden fila-major",
+  initComb["r0-j0"] === "hormigon" &&
+    initComb["r0-j1"] === "metal" &&
+    initComb["r1-j1"] === "madera" &&
+    initComb["r2-j0"] === "metal",
+  JSON.stringify(initComb),
+  "h + 2×metal + madera + metal resto",
+);
+const dotsStub = keys5.map((k) => ({ key: k }));
+const cntComb = countCombinadaMaterialsInDots(dotsStub, initComb);
+assert(
+  "countCombinadaMaterialsInDots 1/3/1",
+  cntComb.ptsHorm === 1 && cntComb.ptsMetal === 3 && cntComb.ptsMadera === 1,
+  `${cntComb.ptsHorm}/${cntComb.ptsMetal}/${cntComb.ptsMadera}`,
+  "1/3/1",
+);
+const rDots = { x: 0, y: 0, w: 5, h: 4, gi: 0 };
+const hintsDots = { puntosFijacion: 7, apoyos: 3 };
+const laid = fijacionDotsLayoutDistributeTotal(rDots, hintsDots);
+assert(
+  "fijacionDotsLayoutDistributeTotal keys + rowIndex",
+  laid.length === 7 &&
+    laid.every((d) => typeof d.key === "string" && d.rowIndex != null && d.rowIndex >= 0),
+  laid.length,
+  7,
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY

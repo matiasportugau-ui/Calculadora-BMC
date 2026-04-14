@@ -6,13 +6,14 @@
 // cantidad de paneles reparte el ancho en planta (w) cada au → columnas verticales / juntas verticales (alineado a calcPanelesTecho).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { C, FONT } from "../data/constants.js";
+import { Check, Trash2 } from "lucide-react";
+import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
-import { calcFactorPendiente } from "../utils/calculations.js";
+import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
 import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
-import { encounterPairKey, findEncounters } from "../utils/roofPlanGeometry.js";
+import { encounterPairKey, findEncounters, getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
 import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import {
   formatZonaDisplayTitle,
@@ -21,30 +22,43 @@ import {
 } from "../utils/roofLateralAnnexLayout.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
-import { buildRoofPlanSvgTypography, fmtArchMeters } from "../utils/roofPlanSvgTypography.js";
-import {
-  lineRectIntersections,
-  buildOffcutPolygon,
-  snapCutLine,
-  computeCutAngleDeg,
-  computeCutOnStrips,
-} from "../utils/roofPlanCutTool.js";
+import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
+import { buildEstructuraCotaObstacleRects as computeCotaObstacles } from "../utils/roofPlanCotaObstacles.js";
+import { LINE_WEIGHTS } from "../utils/roofPlanDrawingTheme.js";
+import ScaleBar from "./roofPlan/ScaleBar.jsx";
+import OrientationMark from "./roofPlan/OrientationMark.jsx";
+import DatumMark from "./roofPlan/DatumMark.jsx";
 import {
   EstructuraGlobalExteriorOverlay,
-  GlobalOverallDims,
+  OverallEnvelopeDimension,
   PanelChainDimensions,
   PanelLabels,
   VerificationBadge,
-  computeCotaObstacles,
 } from "./roofPlan/RoofPlanDimensions.jsx";
 import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
+import {
+  fijacionDotsLayout,
+  fijacionRowsFromHints,
+  yForFijacionRowPlanta,
+} from "../utils/roofEstructuraDotsLayout.js";
+import {
+  countCombinadaMaterialsInDots,
+  countPtsWithOverrides,
+  cycleDotMaterial,
+  cycleCombinadaMaterial,
+  mergeCombinadaByKeyWithDefaults,
+  resolveDotState,
+  toggleDotEnabled,
+} from "../utils/combinadaFijacionShared.js";
 
 /** ViewBox slack: `useRoofPreviewPlanLayout.js` (`viewBoxSlackMeters`, proporcional al plano). */
 /** Menos de 1 = el rectángulo se mueve más lento que el puntero (mejor precisión). */
 const DRAG_SENSITIVITY = 0.52;
 /** Distancia máx (m) para que el borde de una zona se enganche al borde de otra al soltar. */
 const SNAP_ZONE_M = 0.35;
+/** Máx. pasos en deshacer / rehacer (planta 2D). */
+const MAX_PLAN_UNDO = 5;
 
 /** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
 function zonaLabelPlanta(r) {
@@ -80,6 +94,23 @@ function suppressSharedVerticalStroke(r, entries, zonas) {
     if (Math.abs(r.x + r.w - e.x) < eps) right = true;
   }
   return { left, right };
+}
+
+/** Snapshot { gi: { x, y } } para deshacer/rehacer posiciones en planta 2D. */
+function snapshotZonaPositions(zonasList) {
+  const snap = {};
+  if (!Array.isArray(zonasList)) return snap;
+  for (let i = 0; i < zonasList.length; i++) {
+    const px = zonasList[i]?.preview?.x;
+    const py = zonasList[i]?.preview?.y;
+    if (Number.isFinite(px) && Number.isFinite(py)) snap[i] = { x: px, y: py };
+  }
+  return snap;
+}
+
+function isEditableKeyEventTarget(target) {
+  if (!target || typeof target.closest !== "function") return false;
+  return !!target.closest('input, textarea, select, [contenteditable="true"]');
 }
 
 function clampZonaTopLeft(x, y, w, h, vm) {
@@ -170,176 +201,6 @@ function encounterStrokeForModo(modo) {
   return "#f59e0b";
 }
 
-/**
- * Posición Y de una fila de fijación en planta: filas **perimetrales** (1.ª y última) se desplazan **hacia adentro**
- * del rectángulo del techo (~30 cm desde el borde), no sobre la línea azul del perímetro.
- */
-function yForFijacionRowPlanta(r, rows, ri) {
-  if (rows <= 1) return r.y + r.h / 2;
-  const base = r.y + (ri / (rows - 1)) * r.h;
-  const isPerimeter = ri === 0 || ri === rows - 1;
-  if (!isPerimeter) return base;
-  const insetNominalM = 0.3;
-  const yInset = Math.min(insetNominalM, Math.max(0.04, r.h * 0.5 - 0.02));
-  return ri === 0 ? base + yInset : base - yInset;
-}
-
-/**
- * Dos fijaciones en **un panel** [xL, xR] (bordes = juntas verticales): **nunca** sobre la junta.
- * Preferencia: **tercios** (misma distancia al borde izq., entre puntos y borde der.) — alineado a “equidistantes”.
- * Paneles angostos: par simétrico con margen mínimo a juntas y separación mínima entre puntos.
- */
-/**
- * Alturas Y intermedias a lo largo de un tramo vertical [y1,y2] para que ningún tramo exceda ~espM (m).
- */
-function yInteriorSplitsAlongVerticalEdge(y1, y2, espM) {
-  const yMin = Math.min(y1, y2);
-  const yMax = Math.max(y1, y2);
-  const L = yMax - yMin;
-  if (!(L > 0) || !(espM > 0)) return [];
-  const nSeg = Math.ceil(L / espM);
-  if (nSeg <= 1) return [];
-  const out = [];
-  for (let i = 1; i < nSeg; i++) out.push(yMin + (i * L) / nSeg);
-  return out;
-}
-
-/**
- * Puntos de fijación en **laterales** de planta (`left`/`right`) sobre perímetro exterior libre,
- * alineados al cómputo `perimetroVerticalInteriorPuntosDesdePlanta` / `countExposedVerticalPerimeterFixingInteriorPointsForZona`.
- */
-function fijacionDotsPerimetroVerticalExterior(r, exterior, gi, espM) {
-  const dots = [];
-  let key = 1_000_000;
-  const inset = Math.min(0.3, Math.max(0.04, r.w * 0.11));
-  const xLeft = r.x + Math.min(inset, Math.max(0.04, r.w * 0.06));
-  const xRight = r.x + r.w - Math.min(inset, Math.max(0.04, r.w * 0.06));
-  for (const e of exterior || []) {
-    if (e.zoneIndex !== gi) continue;
-    if (e.side !== "left" && e.side !== "right") continue;
-    const xs = e.side === "left" ? xLeft : xRight;
-    for (const cy of yInteriorSplitsAlongVerticalEdge(e.y1, e.y2, espM)) {
-      dots.push({ cx: xs, cy, key: key++ });
-    }
-  }
-  return dots;
-}
-
-function xPairFijacionPerimeterInPanel(xL, xR, insetNominalM = 0.3) {
-  const w = xR - xL;
-  if (!(w > 1e-9)) {
-    const x = (xL + xR) / 2;
-    return { xa: x, xb: x };
-  }
-  const minBetween = Math.max(0.045, w * 0.07);
-  const minFromJoint = Math.min(insetNominalM, Math.max(0.04, w * 0.11));
-  const third = w / 3;
-  if (third >= minFromJoint && third >= minBetween) {
-    return { xa: xL + third, xb: xL + 2 * third };
-  }
-  const innerL = xL + minFromJoint;
-  const innerR = xR - minFromJoint;
-  const innerW = innerR - innerL;
-  if (innerW >= minBetween) {
-    const mid = (innerL + innerR) / 2;
-    const half = Math.min(innerW * 0.42, Math.max(minBetween / 2, innerW / 3));
-    let xa = mid - half;
-    let xb = mid + half;
-    if (xb - xa < minBetween) {
-      const pad = (minBetween - (xb - xa)) / 2;
-      xa -= pad;
-      xb += pad;
-      xa = Math.max(innerL, Math.min(xa, xb - minBetween));
-      xb = Math.min(innerR, Math.max(xb, xa + minBetween));
-    }
-    return { xa, xb };
-  }
-  const mid = (xL + xR) / 2;
-  const eps = Math.max(0.02, w * 0.08);
-  return { xa: mid - eps, xb: mid + eps };
-}
-
-/** Reparto de puntos de fijación por filas alineadas a ejes de apoyo (modo legado: reparte P en N filas). */
-function fijacionDotsLayoutDistributeTotal(r, hints) {
-  const P = Math.round(Number(hints.puntosFijacion));
-  if (!(P > 0) || !(r.w > 0) || !(r.h > 0)) return [];
-  const nAp = Number(hints.apoyos);
-  const rows =
-    Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
-  const counts = [];
-  const base = Math.floor(P / rows);
-  let extra = P - base * rows;
-  for (let i = 0; i < rows; i++) {
-    counts.push(base + (extra > 0 ? 1 : 0));
-    if (extra > 0) extra -= 1;
-  }
-  const mx = Math.min(r.w, Math.max(0.12, r.w * 0.06));
-  const x0 = r.x + mx;
-  const x1 = r.x + r.w - mx;
-  const usableW = Math.max(1e-6, x1 - x0);
-  const out = [];
-  let key = 0;
-  for (let ri = 0; ri < rows; ri++) {
-    const nInRow = counts[ri] || 0;
-    const yy = yForFijacionRowPlanta(r, rows, ri);
-    for (let j = 0; j < nInRow; j++) {
-      const t = nInRow === 1 ? 0.5 : (j + 1) / (nInRow + 1);
-      const cx = x0 + t * usableW;
-      out.push({ cx, cy: yy, key: key++ });
-    }
-  }
-  return out;
-}
-
-/**
- * Isodec / varilla: en **perímetro** (primera y última línea de apoyo) **2** puntos por panel en **tercios** del ancho del panel
- * (equidistantes respecto de juntas y entre sí; nunca sobre juntas verticales ni bordes del panel).
- * Filas perimetrales en Y: **~30 cm hacia adentro** del borde del techo (no sobre la línea azul del perímetro).
- * En **intermedios**, **1** punto centrado en cada panel (lejos de juntas).
- */
-function fijacionDotsLayoutIsodecGrid(r, hints, exterior) {
-  const cantP = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
-  if (!(r.w > 0) || !(r.h > 0)) return [];
-  const nAp = Number(hints.apoyos);
-  const rows =
-    Number.isFinite(nAp) && nAp >= 2 ? Math.min(24, Math.max(2, Math.round(nAp))) : 2;
-  const panelW = r.w / cantP;
-  const out = [];
-  let key = 0;
-  const insetNominal = 0.3;
-  for (let ri = 0; ri < rows; ri++) {
-    const yy = yForFijacionRowPlanta(r, rows, ri);
-    const isPerimeter = ri === 0 || ri === rows - 1;
-    for (let pi = 0; pi < cantP; pi++) {
-      const xL = r.x + pi * panelW;
-      const xR = r.x + (pi + 1) * panelW;
-      if (isPerimeter) {
-        const { xa, xb } = xPairFijacionPerimeterInPanel(xL, xR, insetNominal);
-        out.push({ cx: xa, cy: yy, key: key++ });
-        out.push({ cx: xb, cy: yy, key: key++ });
-      } else {
-        out.push({ cx: (xL + xR) / 2, cy: yy, key: key++ });
-      }
-    }
-  }
-  const espM = Number(hints?.fijacionEspaciadoPerimetroM) || 2.5;
-  const extra =
-    exterior?.length && hints?.fijacionDotsMode === "isodec_grid"
-      ? fijacionDotsPerimetroVerticalExterior(r, exterior, r.gi, espM)
-      : [];
-  return [...out, ...extra];
-}
-
-function fijacionDotsLayout(r, hints, exterior) {
-  if (!hints || !(r.w > 0) || !(r.h > 0)) return [];
-  const useGrid =
-    hints.fijacionSistema === "varilla_tuerca" && hints.fijacionDotsMode === "isodec_grid";
-  if (useGrid) return fijacionDotsLayoutIsodecGrid(r, hints, exterior);
-  const P = Math.round(Number(hints.puntosFijacion));
-  if (!(P > 0)) return [];
-  return fijacionDotsLayoutDistributeTotal(r, hints);
-}
-
 /** Popover fijo al viewport: productos de fijación que entran al presupuesto (BOM). */
 function FijacionBomHoverPopover({ anchor, onMouseEnter, onMouseLeave, zonaLabel, sysLabel, gridExpl, productLines }) {
   if (!anchor) return null;
@@ -404,11 +265,33 @@ function FijacionBomHoverPopover({ anchor, onMouseEnter, onMouseLeave, zonaLabel
   return typeof document !== "undefined" ? createPortal(body, document.body) : null;
 }
 
+function combinadaMaterialFill(mat) {
+  if (mat === "hormigon") return "#0ea5e9";
+  if (mat === "madera") return "#b45309";
+  return "#1e293b";
+}
+
 /**
  * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
- * Sin cartel de texto de apoyos/pts (la info está en el panel); cotas rojas en `EstructuraGlobalExteriorOverlay`.
+ * Modo Combinada: clic en apoyos, bandas de perímetro y puntos para asignar hormigón / metal / madera.
  */
-function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
+function EstructuraZonaOverlay({
+  r,
+  hints,
+  svgTy,
+  exterior = [],
+  combinadaAssign = false,
+  combinadaByKey = null,
+  combinadaPtsH = 0,
+  combinadaPtsMetal = 0,
+  combinadaPtsMadera = 0,
+  onCombinadaZoneInteraction = null,
+  dotOverrides = null,
+  onDotCycleMaterial = null,
+  onDotToggleEnabled = null,
+  apoyoMateriales = null,
+  onApoyoMaterialCycle = null,
+}) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
   const hidePopTimer = useRef(null);
 
@@ -441,31 +324,141 @@ function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
 
   if (!hints) return null;
 
-  const nAp = hints.apoyos;
   const zm = svgTy?.m ?? 1;
-  const supportLines = [];
-  if (Number.isFinite(nAp) && nAp >= 2 && r.h > 1e-6) {
-    const n = Math.min(32, Math.round(nAp));
+  const rows = fijacionRowsFromHints(hints);
+  const supportLinesVisual = [];
+  const supportLinesHit = [];
+  if (rows >= 2 && r.h > 1e-6) {
+    const n = Math.min(32, rows);
     for (let i = 0; i < n; i++) {
-      const yy = r.y + (i / (n - 1)) * r.h;
-      supportLines.push(
+      const yy = yForFijacionRowPlanta(r, n, i);
+      const apoyoMat = apoyoMateriales && i < apoyoMateriales.length ? apoyoMateriales[i] : null;
+      const lineColor = combinadaAssign && apoyoMat ? combinadaMaterialFill(apoyoMat) : "#7c3aed";
+      supportLinesVisual.push(
         <line
-          key={`est-ap-${r.gi}-${i}`}
+          key={`est-ap-v-${r.gi}-${i}`}
           x1={r.x}
           y1={yy}
           x2={r.x + r.w}
           y2={yy}
-          stroke="#7c3aed"
-          strokeWidth={0.048 * zm}
-          strokeDasharray={`${0.16 * zm} ${0.1 * zm}`}
+          stroke={lineColor}
+          strokeWidth={combinadaAssign && apoyoMat ? 0.065 * zm : 0.048 * zm}
+          strokeDasharray={combinadaAssign && apoyoMat ? undefined : `${0.16 * zm} ${0.1 * zm}`}
           opacity={0.88}
           pointerEvents="none"
         />,
       );
+      if (combinadaAssign && typeof onApoyoMaterialCycle === "function") {
+        supportLinesHit.push(
+          <line
+            key={`est-ap-hit-${r.gi}-${i}`}
+            x1={r.x}
+            y1={yy}
+            x2={r.x + r.w}
+            y2={yy}
+            stroke="transparent"
+            strokeWidth={0.22 * zm}
+            pointerEvents="stroke"
+            style={{ cursor: "pointer" }}
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              onApoyoMaterialCycle(r.gi, i);
+            }}
+          />,
+        );
+      } else if (combinadaAssign && typeof onCombinadaZoneInteraction === "function") {
+        supportLinesHit.push(
+          <line
+            key={`est-ap-hit-${r.gi}-${i}`}
+            x1={r.x}
+            y1={yy}
+            x2={r.x + r.w}
+            y2={yy}
+            stroke="transparent"
+            strokeWidth={0.22 * zm}
+            pointerEvents="stroke"
+            style={{ cursor: "pointer" }}
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              const pts = fijacionDotsLayout(r, hints, exterior);
+              const keysInRow = pts.filter((d) => d.rowIndex === i).map((d) => d.key);
+              if (!keysInRow.length) return;
+              onCombinadaZoneInteraction(r.gi, (prev) => {
+                const first = prev[keysInRow[0]] || "metal";
+                const nm = cycleCombinadaMaterial(first);
+                const next = { ...prev };
+                for (const k of keysInRow) next[k] = nm;
+                return next;
+              });
+            }}
+          />,
+        );
+      }
     }
   }
 
   const dotPts = fijacionDotsLayout(r, hints, exterior);
+  const dotKeys = dotPts.map((d) => d.key);
+  const mergedByKey =
+    combinadaAssign && apoyoMateriales && apoyoMateriales.length
+      ? Object.fromEntries(dotPts.map((d) => [d.key, d.rowIndex >= 0 && d.rowIndex < apoyoMateriales.length ? (apoyoMateriales[d.rowIndex] || "metal") : "metal"]))
+      : combinadaAssign && typeof onCombinadaZoneInteraction === "function"
+        ? mergeCombinadaByKeyWithDefaults(
+            dotKeys,
+            combinadaByKey && typeof combinadaByKey === "object" ? combinadaByKey : {},
+            combinadaPtsH,
+            combinadaPtsMetal,
+            combinadaPtsMadera,
+          )
+        : {};
+
+  const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
+  const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
+  const perimeterBands =
+    combinadaAssign && typeof onCombinadaZoneInteraction === "function" && rows >= 2
+      ? [
+          {
+            key: "perim-top",
+            x: r.x,
+            y: r.y,
+            w: r.w,
+            h: hStrip,
+            pick: (dots) => dots.filter((d) => d.rowIndex === 0).map((d) => d.key),
+          },
+          {
+            key: "perim-bot",
+            x: r.x,
+            y: r.y + r.h - hStrip,
+            w: r.w,
+            h: hStrip,
+            pick: (dots) => dots.filter((d) => d.rowIndex === rows - 1).map((d) => d.key),
+          },
+          {
+            key: "perim-left",
+            x: r.x,
+            y: r.y,
+            w: wStrip,
+            h: r.h,
+            pick: (dots) =>
+              dots
+                .filter((d) => d.cx <= r.x + wStrip + 1e-6 || (d.kind === "pv" && d.edge === "left"))
+                .map((d) => d.key),
+          },
+          {
+            key: "perim-right",
+            x: r.x + r.w - wStrip,
+            y: r.y,
+            w: wStrip,
+            h: r.h,
+            pick: (dots) =>
+              dots
+                .filter((d) => d.cx >= r.x + r.w - wStrip - 1e-6 || (d.kind === "pv" && d.edge === "right"))
+                .map((d) => d.key),
+          },
+        ]
+      : [];
 
   const sysLabel =
     hints.fijacionSistema === "caballete"
@@ -483,45 +476,214 @@ function EstructuraZonaOverlay({ r, hints, svgTy, exterior = [] }) {
 
   return (
     <>
-    <g data-bmc-layer="estructura-overlay">
-      <g pointerEvents="none">{supportLines}</g>
-      <g pointerEvents="auto">
-        {dotPts.map((d) => (
-          <g key={`fij-dot-${r.gi}-${d.key}`}>
-            <circle
-              cx={d.cx}
-              cy={d.cy}
-              r={hitR}
-              fill="transparent"
-              style={{ cursor: "pointer" }}
-              onMouseEnter={showPopoverAt}
-              onMouseLeave={scheduleHidePopover}
-              aria-label="Ver productos de fijación incluidos en la cotización"
-            />
-            <circle
-              cx={d.cx}
-              cy={d.cy}
-              r={dotR}
-              fill="#1e293b"
-              stroke="#f8fafc"
-              strokeWidth={0.012 * zm}
-              opacity={0.9}
-              pointerEvents="none"
-            />
-          </g>
+      <g data-bmc-layer="estructura-overlay">
+        <g pointerEvents="none">{supportLinesVisual}</g>
+        {combinadaAssign && supportLinesHit.length ? <g pointerEvents="auto">{supportLinesHit}</g> : null}
+        {perimeterBands.map((band) => (
+          <rect
+            key={`${band.key}-${r.gi}`}
+            x={band.x}
+            y={band.y}
+            width={band.w}
+            height={band.h}
+            fill="rgba(124,58,237,0.06)"
+            stroke="rgba(124,58,237,0.35)"
+            strokeWidth={0.02 * zm}
+            style={{ cursor: "pointer" }}
+            pointerEvents="auto"
+            onPointerDown={(ev) => {
+              if (typeof onCombinadaZoneInteraction !== "function") return;
+              ev.stopPropagation();
+              ev.preventDefault();
+              const keysPick = band.pick(dotPts);
+              if (!keysPick.length) return;
+              onCombinadaZoneInteraction(r.gi, (prev) => {
+                const first = prev[keysPick[0]] || "metal";
+                const nm = cycleCombinadaMaterial(first);
+                const next = { ...prev };
+                for (const k of keysPick) next[k] = nm;
+                return next;
+              });
+            }}
+          />
         ))}
+        <g pointerEvents="auto">
+          {dotPts.map((d) => {
+            const resolved = combinadaAssign
+              ? resolveDotState(d.key, mergedByKey, dotOverrides)
+              : { mat: "metal", enabled: true };
+            const { mat, enabled } = resolved;
+            const fill = combinadaAssign ? combinadaMaterialFill(mat) : "#1e293b";
+            const xSz = dotR * 0.7;
+            return (
+              <g key={`fij-dot-${r.gi}-${d.key}`} opacity={enabled ? 1 : 0.3}>
+                <circle
+                  cx={d.cx}
+                  cy={d.cy}
+                  r={hitR}
+                  fill="transparent"
+                  style={{ cursor: combinadaAssign ? "pointer" : "pointer" }}
+                  onMouseEnter={showPopoverAt}
+                  onMouseLeave={scheduleHidePopover}
+                  aria-label={
+                    combinadaAssign
+                      ? `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para rotar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`
+                      : "Ver productos de fijación incluidos en la cotización"
+                  }
+                  onPointerDown={(ev) => {
+                    if (!combinadaAssign) return;
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    if (typeof onDotCycleMaterial === "function") {
+                      onDotCycleMaterial(r.gi, d.key);
+                    } else if (typeof onCombinadaZoneInteraction === "function") {
+                      onCombinadaZoneInteraction(r.gi, (prev) => {
+                        const next = { ...prev };
+                        next[d.key] = cycleCombinadaMaterial(prev[d.key] || "metal");
+                        return next;
+                      });
+                    }
+                  }}
+                  onContextMenu={(ev) => {
+                    if (!combinadaAssign || typeof onDotToggleEnabled !== "function") return;
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                    onDotToggleEnabled(r.gi, d.key);
+                  }}
+                />
+                <circle
+                  cx={d.cx}
+                  cy={d.cy}
+                  r={dotR}
+                  fill={enabled ? fill : "transparent"}
+                  stroke={enabled ? "#f8fafc" : fill}
+                  strokeWidth={0.012 * zm}
+                  strokeDasharray={enabled ? "none" : `${0.04 * zm} ${0.03 * zm}`}
+                  opacity={0.92}
+                  pointerEvents="none"
+                />
+                {!enabled && (
+                  <>
+                    <line
+                      x1={d.cx - xSz} y1={d.cy - xSz}
+                      x2={d.cx + xSz} y2={d.cy + xSz}
+                      stroke={fill} strokeWidth={0.012 * zm} pointerEvents="none"
+                    />
+                    <line
+                      x1={d.cx + xSz} y1={d.cy - xSz}
+                      x2={d.cx - xSz} y2={d.cy + xSz}
+                      stroke={fill} strokeWidth={0.012 * zm} pointerEvents="none"
+                    />
+                  </>
+                )}
+              </g>
+            );
+          })}
+        </g>
       </g>
-    </g>
-    <FijacionBomHoverPopover
-      anchor={fijPopAnchor}
-      onMouseEnter={clearHideTimer}
-      onMouseLeave={scheduleHidePopover}
-      zonaLabel={`Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`}
-      sysLabel={sysLabel}
-      gridExpl={gridExpl}
-      productLines={hints.fijacionProductLines}
-    />
+      <FijacionBomHoverPopover
+        anchor={fijPopAnchor}
+        onMouseEnter={clearHideTimer}
+        onMouseLeave={scheduleHidePopover}
+        zonaLabel={`Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`}
+        sysLabel={sysLabel}
+        gridExpl={gridExpl}
+        productLines={hints.fijacionProductLines}
+      />
     </>
+  );
+}
+
+const PLANTA_BORDER_SIDE_LABELS = {
+  frente: "Frente inferior",
+  fondo: "Frente superior",
+  latIzq: "Lateral izq.",
+  latDer: "Lateral der.",
+};
+
+function resolvePlantaBorderPanelFam(panelFamiliaKey) {
+  return PANELS_TECHO[panelFamiliaKey]?.fam || "";
+}
+
+function plantaBorderOptsForSide(side, panelFamiliaKey) {
+  const fam = resolvePlantaBorderPanelFam(panelFamiliaKey);
+  return (BORDER_OPTIONS[side] || []).filter((o) => !o.familias || o.familias.includes(fam));
+}
+
+/**
+ * Paso «Accesorios perimetrales»: bandas en planta (fondo=borde superior SVG, frente=inferior), misma convención que RoofBorderSelector / 3D.
+ */
+function PlantaBordesEdgeStrips({
+  r,
+  svgTy,
+  multiZona,
+  sharedSidesMap,
+  disabledSidesGlobal,
+  techoBorders,
+  zonas,
+  openGi,
+  openSide,
+  onStripPointerDown,
+}) {
+  const zm = svgTy?.m ?? 1;
+  const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
+  const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
+  const gi = r.gi;
+  const sideDefs = [
+    { side: "latIzq", x: r.x, y: r.y, w: wStrip, h: r.h },
+    { side: "latDer", x: r.x + r.w - wStrip, y: r.y, w: wStrip, h: r.h },
+    { side: "fondo", x: r.x, y: r.y, w: r.w, h: hStrip },
+    { side: "frente", x: r.x, y: r.y + r.h - hStrip, w: r.w, h: hStrip },
+  ];
+
+  const currentVal = (side) => {
+    if (multiZona) {
+      const zb = zonas[gi]?.preview?.borders ?? {};
+      return zb[side] ?? techoBorders[side] ?? "";
+    }
+    return techoBorders[side] ?? "";
+  };
+
+  const isDisabled = (side) => {
+    if (!multiZona && (disabledSidesGlobal || []).includes(side)) return true;
+    if (multiZona && sharedSidesMap.get(gi)?.get(side)?.fullySide) return true;
+    return false;
+  };
+
+  return (
+    <g data-bmc-layer="planta-bordes-assign" pointerEvents="auto">
+      {sideDefs.map(({ side, x, y, w, h }) => {
+        const dis = isDisabled(side);
+        const val = currentVal(side);
+        const active = val && val !== "none";
+        const isOpen = openGi === gi && openSide === side;
+        let fill = "rgba(147,197,253,0.20)";
+        if (dis) fill = "rgba(200,205,216,0.28)";
+        else if (isOpen) fill = "rgba(59,130,246,0.40)";
+        else if (active) fill = "rgba(96,165,250,0.35)";
+        const stroke = isOpen ? C.primary : active ? C.primary : "rgba(37,99,235,0.5)";
+        return (
+          <rect
+            key={`planta-bd-${gi}-${side}`}
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            rx={0.05 * zm}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={isOpen ? 0.06 * zm : 0.035 * zm}
+            style={{ cursor: dis ? "not-allowed" : "pointer" }}
+            onPointerDown={(ev) => {
+              if (dis) return;
+              ev.stopPropagation();
+              ev.preventDefault();
+              onStripPointerDown(ev, gi, side);
+            }}
+          />
+        );
+      })}
+    </g>
   );
 }
 
@@ -573,6 +735,8 @@ function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "
     );
   }
   const gradId = `roofGrad-${String(gradKey).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const hatchId = `poche-${String(gradKey).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const hatchSpacing = 0.15 * (w > 3 ? 1 : 0.8);
   return (
     <g pointerEvents="none">
       <defs>
@@ -581,8 +745,14 @@ function PanelRoofVisualization({ x0, y0, w, h, au, stroke, strokeW, gradKey = "
           <stop offset="50%" stopColor={C.primary} stopOpacity="0.04" />
           <stop offset="100%" stopColor={stroke} stopOpacity="0.1" />
         </linearGradient>
+        <pattern id={hatchId} width={hatchSpacing} height={hatchSpacing}
+          patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2={hatchSpacing}
+            stroke="#0071E3" strokeWidth={LINE_WEIGHTS.hatch} opacity={0.06} />
+        </pattern>
       </defs>
       <rect x={x0} y={y0} width={w} height={h} fill={`url(#${gradId})`} rx={0.08} />
+      <rect x={x0} y={y0} width={w} height={h} fill={`url(#${hatchId})`} rx={0.08} />
       {bands}
       {lines}
     </g>
@@ -618,8 +788,11 @@ export function RoofPreviewMetricsSidebar({
   zonas = [],
   tipoAguas = "una_agua",
   pendiente = 0,
+  pendienteModo: globalPendienteModo = "incluye_pendiente",
+  globalAlturaDif = 0,
   selectedGi = null,
   onZonaDimensionPatch,
+  onRemoveZona,
   /** Métricas bajo el wizard (columna izquierda): ancho completo y tipografía un poco mayor */
   compact = false,
   /** Cuando va junto a `RoofPreview` en fila y el padre ya define `flex` */
@@ -659,8 +832,31 @@ export function RoofPreviewMetricsSidebar({
             color: C.ts,
           }}
         >
-          <div style={{ fontWeight: 700, color: C.tp, marginBottom: 8 }}>
-            Zona {formatZonaDisplayTitle(zonas, selectedGi)}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontWeight: 700, color: C.tp }}>
+              Zona {formatZonaDisplayTitle(zonas, selectedGi)}
+            </span>
+            {onRemoveZona && zonas.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onRemoveZona(selectedGi)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: C.dangerSoft,
+                  color: C.danger,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <Trash2 size={12} />Quitar
+              </button>
+            )}
           </div>
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ width: 72 }}>Largo (m)</span>
@@ -723,13 +919,26 @@ export function RoofPreviewMetricsSidebar({
           {layout.entries.map((r) => {
             const a = r.z.largo * r.z.ancho;
             const label = formatZonaDisplayTitle(zonas, r.gi);
+            const zPm = r.z.pendienteModo ?? globalPendienteModo;
+            const zPend = r.z.pendiente ?? pendiente;
+            const zAlt = r.z.alturaDif ?? globalAlturaDif;
+            const largoReal = calcLargoRealFromModo(r.z.largo, zPm, zPend, zAlt);
+            const hasSlope = Math.abs(largoReal - r.z.largo) > 0.001;
             return (
-              <div key={r.gi} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                <span style={{ color: C.ts }}>
-                  {label}
-                  <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>{zonaLabelPlanta(r)} en planta</span>
-                </span>
-                <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
+              <div key={r.gi} style={{ marginBottom: hasSlope ? 6 : 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                  <span style={{ color: C.ts }}>
+                    {label}
+                    <span style={{ fontSize: 10, display: "block", fontWeight: 500, marginTop: 2 }}>{zonaLabelPlanta(r)} en planta</span>
+                  </span>
+                  <strong style={{ color: C.tp, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{a.toFixed(1)} m²</strong>
+                </div>
+                {hasSlope && (
+                  <div style={{ fontSize: 10, color: C.primary, fontWeight: 600, marginTop: 2 }}>
+                    Largo panel: {largoReal.toFixed(2)} m
+                    <span style={{ fontWeight: 400, color: C.ts }}> (proy. {r.z.largo.toFixed(2)} m)</span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -799,11 +1008,24 @@ export function RoofPreviewMetricsSidebar({
 /**
  * Vista previa 2D del techo en planta (rejilla, arrastre, encuentros).
  * @param {Record<number, object>|null} [props.estructuraHintsByGi] - overlay Estructura (apoyos, fijaciones; requiere hints por zona)
- * @param {boolean} [props.showPlantaExteriorCotas] - cotas rojas globales (perímetro + encuentros) sin paso Estructura; p. ej. desde paso Dimensiones del wizard
+ * @param {boolean} [props.showPlantaExteriorCotas] - cotas de perímetro globales (trazo gris grafito; perímetro + encuentros) sin paso Estructura; p. ej. desde paso Dimensiones del wizard
  * @param {boolean} [props.embedMetricsSidebar] - false = sin columna de métricas (mostrar `RoofPreviewMetricsSidebar` en el wizard)
  * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
  * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
  * @param {boolean} [props.denseChrome] - true en visor embebido: menos padding y el bloque SVG crece con el host (flex + altura máxima)
+ * @param {boolean} [props.combinadaFijacionAssign] - paso Estructura + tipo Combinada: clic en 2D para materiales (una sola zona en planta)
+ * @param {Record<number, Record<string, string>>|null} [props.combinadaFijByGi] - mapa punto → hormigon|metal|madera por zona
+ * @param {(payload: { byGi: Record<number, Record<string, string>>, ptsHorm: number, ptsMetal: number, ptsMadera: number }) => void} [props.onCombinadaFijacionSync]
+ * @param {number} [props.combinadaPtsH] - conteos actuales (para inicializar puntos sin mapa)
+ * @param {number} [props.combinadaPtsMetal]
+ * @param {number} [props.combinadaPtsMadera]
+ * @param {boolean} [props.bordesPlantaAssign] - paso Accesorios perimetrales: bandas en planta + popover (como 3D)
+ * @param {string} [props.bordesPanelFamiliaKey] - clave `PANELS_TECHO` (p. ej. techo.familia) para filtrar BORDER_OPTIONS
+ * @param {Record<string, string>|null} [props.techoBorders] - bordes globales (`techo.borders`)
+ * @param {(side: string, val: string) => void} [props.onTechoBorderChange] - una sola zona efectiva en planta
+ * @param {(gi: number, side: string, val: string) => void} [props.onZonaBorderChange] - multizona
+ * @param {string[]|null} [props.apoyoMateriales] - per-apoyo material array (combinada mode)
+ * @param {(gi: number, rowIndex: number) => void} [props.onApoyoMaterialCycle] - cycle apoyo material on click
  */
 export default function RoofPreview({
   zonas = [],
@@ -814,8 +1036,11 @@ export default function RoofPreview({
   onResetLayout,
   onAnnexRankSwap,
   onAddZona,
+  onRemoveZona,
   onEncounterPairChange,
   onZonaDimensionPatch,
+  pendienteModo: globalPendienteModoProp = "incluye_pendiente",
+  globalAlturaDif: globalAlturaDifProp = 0,
   estructuraHintsByGi = null,
   showPlantaExteriorCotas = false,
   embedMetricsSidebar = true,
@@ -823,22 +1048,38 @@ export default function RoofPreview({
   onSelectedZonaGiChange,
   denseChrome = false,
   panelObj = null,
-  displayMode = 'technical',
   bomPanelResultsByGi = null,
+  combinadaFijacionAssign = false,
+  combinadaFijByGi = null,
+  onCombinadaFijacionSync = null,
+  combinadaPtsH = 0,
+  combinadaPtsMetal = 0,
+  combinadaPtsMadera = 0,
+  fijDotOverridesByGi = null,
+  onFijDotOverridesSync = null,
+  bordesPlantaAssign = false,
+  bordesPanelFamiliaKey = "",
+  techoBorders = null,
+  onTechoBorderChange = null,
+  onZonaBorderChange = null,
+  apoyoMateriales = null,
+  onApoyoMaterialCycle = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
-  const cutRef = useRef(null);
-  const [hoverDim, setHoverDim] = useState(null);
-  const [cutMode, setCutMode] = useState(false);
-  const [cutDraft, setCutDraft] = useState(null);
-  const [appliedCuts, setAppliedCuts] = useState([]);
-  const cutModeRef = useRef(false);
+  const plantaBorderPopRef = useRef(null);
+  const [plantaBorderPick, setPlantaBorderPick] = useState(null);
+  const [plantaBorderPopoverStyle, setPlantaBorderPopoverStyle] = useState(null);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const zonasRef = useRef(zonas);
+  useEffect(() => {
+    zonasRef.current = zonas;
+  }, [zonas]);
 
   const metricsExternal = embedMetricsSidebar === false && typeof onSelectedZonaGiChange === "function";
   const selectedGi = metricsExternal ? (selectedZonaGiProp ?? null) : internalSelectedGi;
@@ -852,21 +1093,242 @@ export default function RoofPreview({
 
   const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas, panelObj ? 0.60 : null);
 
+  const combinadaSingleZona = Boolean(combinadaFijacionAssign && layout.entries.length === 1);
+
+  const bordersGlobalForPlanta = techoBorders && typeof techoBorders === "object" ? techoBorders : {};
+  const validZonasForBordes = useMemo(
+    () => (zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
+    [zonas],
+  );
+  const multiZonaBordes = validZonasForBordes.length > 1;
+  const bordesSharedSidesMap = useMemo(() => {
+    if (!bordesPlantaAssign || !multiZonaBordes) return new Map();
+    try {
+      return getSharedSidesPerZona(validZonasForBordes, tipoAguas);
+    } catch {
+      return new Map();
+    }
+  }, [bordesPlantaAssign, multiZonaBordes, validZonasForBordes, tipoAguas]);
+
+  const disabledSidesGlobalBordes = tipoAguas === "dos_aguas" && !multiZonaBordes ? ["fondo"] : [];
+  const bordesPlantaHandlersOk = typeof onTechoBorderChange === "function" || typeof onZonaBorderChange === "function";
+
+  useEffect(() => {
+    if (!bordesPlantaAssign) {
+      setPlantaBorderPick(null);
+      setPlantaBorderPopoverStyle(null);
+    }
+  }, [bordesPlantaAssign]);
+
+  useEffect(() => {
+    if (!plantaBorderPick) return;
+    const handler = (e) => {
+      const inPop = plantaBorderPopRef.current?.contains(e.target);
+      if (!inPop) {
+        setPlantaBorderPick(null);
+        setPlantaBorderPopoverStyle(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [plantaBorderPick]);
+
+  const positionPlantaBorderPopover = useCallback(() => {
+    const popEl = plantaBorderPopRef.current;
+    if (!plantaBorderPick || !popEl) return;
+    const popRect = popEl.getBoundingClientRect();
+    if (popRect.width === 0 || popRect.height === 0) return;
+    const vpPad = 10;
+    const gap = 10;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 800;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+    const { ax, ay, side } = plantaBorderPick;
+    const canBottom = ay + gap + popRect.height + vpPad <= vh;
+    const canTop = ay - gap - popRect.height - vpPad >= 0;
+    let top =
+      side === "fondo"
+        ? (canTop || !canBottom ? ay - gap - popRect.height : ay + gap)
+        : side === "frente"
+          ? (canBottom || !canTop ? ay + gap : ay - gap - popRect.height)
+          : ay - popRect.height / 2;
+    let left = ax - popRect.width / 2;
+    left = Math.min(Math.max(vpPad, left), vw - popRect.width - vpPad);
+    top = Math.min(Math.max(vpPad, top), vh - popRect.height - vpPad);
+    setPlantaBorderPopoverStyle({ top, left, opacity: 1 });
+  }, [plantaBorderPick]);
+
+  useLayoutEffect(() => {
+    if (plantaBorderPick) positionPlantaBorderPopover();
+    else setPlantaBorderPopoverStyle(null);
+  }, [plantaBorderPick, positionPlantaBorderPopover]);
+
+  useEffect(() => {
+    if (!plantaBorderPick) return;
+    window.addEventListener("resize", positionPlantaBorderPopover);
+    window.addEventListener("scroll", positionPlantaBorderPopover, true);
+    return () => {
+      window.removeEventListener("resize", positionPlantaBorderPopover);
+      window.removeEventListener("scroll", positionPlantaBorderPopover, true);
+    };
+  }, [plantaBorderPick, positionPlantaBorderPopover]);
+
+  const handlePlantaBordeStripDown = useCallback((ev, gi, side) => {
+    setPlantaBorderPick((prev) => {
+      if (prev?.gi === gi && prev?.side === side) return null;
+      return { gi, side, ax: ev.clientX, ay: ev.clientY };
+    });
+  }, []);
+
+  const applyPlantaBorderOption = useCallback(
+    (optId) => {
+      if (!plantaBorderPick) return;
+      const { gi, side } = plantaBorderPick;
+      if (multiZonaBordes && typeof onZonaBorderChange === "function") {
+        onZonaBorderChange(gi, side, optId);
+      } else if (typeof onTechoBorderChange === "function") {
+        onTechoBorderChange(side, optId);
+      }
+      setPlantaBorderPick(null);
+      setPlantaBorderPopoverStyle(null);
+    },
+    [plantaBorderPick, multiZonaBordes, onZonaBorderChange, onTechoBorderChange],
+  );
+
+  const handleCombinadaZoneInteraction = useCallback(
+    (gi, updater) => {
+      if (!combinadaSingleZona || typeof onCombinadaFijacionSync !== "function") return;
+      const entry = layout.entries[0];
+      if (!entry || entry.gi !== gi) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const keys = dots.map((d) => d.key);
+      const prev = mergeCombinadaByKeyWithDefaults(
+        keys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const next = updater(prev);
+      const c = countCombinadaMaterialsInDots(dots, next);
+      onCombinadaFijacionSync({
+        byGi: { [gi]: next },
+        ptsHorm: c.ptsHorm,
+        ptsMetal: c.ptsMetal,
+        ptsMadera: c.ptsMadera,
+      });
+    },
+    [
+      combinadaSingleZona,
+      onCombinadaFijacionSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
+  const handleDotCycleMaterial = useCallback(
+    (gi, dotKey) => {
+      if (typeof onFijDotOverridesSync !== "function") return;
+      const entry = layout.entries.find((e) => e.gi === gi);
+      if (!entry) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const keys = dots.map((d) => d.key);
+      const byKey = mergeCombinadaByKeyWithDefaults(
+        keys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
+      const nextOv = cycleDotMaterial(dotKey, byKey, prevOv);
+      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
+    },
+    [
+      onFijDotOverridesSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      fijDotOverridesByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
+  const handleDotToggleEnabled = useCallback(
+    (gi, dotKey) => {
+      if (typeof onFijDotOverridesSync !== "function") return;
+      const entry = layout.entries.find((e) => e.gi === gi);
+      if (!entry) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const keys = dots.map((d) => d.key);
+      const byKey = mergeCombinadaByKeyWithDefaults(
+        keys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
+      const nextOv = toggleDotEnabled(dotKey, byKey, prevOv);
+      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
+    },
+    [
+      onFijDotOverridesSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      fijDotOverridesByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
   const svgTy = useMemo(() => buildRoofPlanSvgTypography(layout.viewMetrics), [layout.viewMetrics]);
 
-  /** Margen SVG y leyenda: cotas rojas (planta) y/o overlay completo Estructura. */
+  /** Margen SVG y leyenda: cotas de planta (gris grafito) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
 
   const effectivePanelAu = panelObj?.au ?? panelAu;
 
+  /**
+   * `buildPanelLayout` solo usa `panel.au`. Sin `panelObj` del catálogo (p. ej. paso temprano),
+   * igual armamos layout con `effectivePanelAu` para que no queden solo cotas de perímetro y parezca
+   * que “falta” la cadena mm / etiquetas T-xx bajo las cotas de perímetro.
+   */
+  const layoutPanelSource = useMemo(() => {
+    if (panelObj) return panelObj;
+    if (effectivePanelAu > 0) return { au: effectivePanelAu };
+    return null;
+  }, [panelObj, effectivePanelAu]);
+
   const panelLayouts = useMemo(() => {
-    if (!panelObj) return null;
+    if (!layoutPanelSource) return null;
     const is2A = tipoAguas === 'dos_aguas';
     return layout.entries.map((r) => {
       const ancho = is2A ? r.z.ancho / 2 : r.z.ancho;
-      return { gi: r.gi, layout: buildPanelLayout({ panel: panelObj, largo: r.z.largo, ancho }) };
+      return { gi: r.gi, layout: buildPanelLayout({ panel: layoutPanelSource, largo: r.z.largo, ancho }) };
     });
-  }, [panelObj, layout.entries, tipoAguas]);
+  }, [layoutPanelSource, layout.entries, tipoAguas]);
 
   const cotaObstacles = useMemo(() => {
     if (!plantaCotaChromeActive) return [];
@@ -874,12 +1336,17 @@ export default function RoofPreview({
   }, [plantaCotaChromeActive, planEdges, svgTy]);
 
   const verifications = useMemo(() => {
-    if (!panelLayouts || !bomPanelResultsByGi) return null;
+    if (!panelLayouts) return null;
     const result = {};
     for (const { gi, layout: pl } of panelLayouts) {
-      const bom = bomPanelResultsByGi[gi];
       const entryLargo = layout.entries.find((r) => r.gi === gi)?.z.largo ?? 0;
-      if (bom) result[gi] = verifyPanelLayout(pl, bom, entryLargo);
+      // Usa BOM externo si disponible; si no, verifica el layout contra sí mismo (siempre ✓)
+      const bom = bomPanelResultsByGi?.[gi] ?? {
+        cantPaneles: pl.totalPanels,
+        areaTotal: +(pl.totalPanels * pl.au * entryLargo).toFixed(2),
+        anchoTotal: pl.anchoTotal,
+      };
+      result[gi] = verifyPanelLayout(pl, bom, entryLargo);
     }
     return result;
   }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
@@ -887,97 +1354,25 @@ export default function RoofPreview({
   /** Espacio extra para cotas exteriores (planta / Estructura). */
   const svgViewBox = useMemo(() => {
     if (!layout.viewMetrics) return layout.viewBox;
-    if (!plantaCotaChromeActive || layout.entries.length === 0) return layout.viewBox;
+    const chainActive = !!panelLayouts;
+    if ((!plantaCotaChromeActive && !chainActive) || layout.entries.length === 0) return layout.viewBox;
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
     // No usar `svgTy.m` completo: inflaba el viewBox y achicaba el techo en pantalla. Cotas siguen en coords ampliadas.
     const vbPadScale = Math.min(1.22, Math.max(1, 0.62 + 0.22 * svgTy.m));
-    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale;
+    const hasEnvelope = !!planEdges?.envelope && layout.entries.length > 0;
+    const envExtra = hasEnvelope ? svgTy.dimStackStep * 1.6 : 0;
+    const padL = (1.05 + nSide("left") * 0.14) * vbPadScale + envExtra;
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale;
+    // chainPad: reserva espacio para chain dim lines (yEdge + dimStackBottom + 3×CHAIN_STEP)
+    const chainPad = chainActive ? (svgTy.dimStackBottom ?? 0.3) + 0.56 : 0;
+    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad + envExtra;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
     return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, svgTy.m]);
+  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, planEdges?.envelope, svgTy.m, svgTy.dimStackBottom, svgTy.dimStackStep, panelLayouts]);
 
   const encounters = planEdges?.encounters ?? [];
-
-  // Keep cutModeRef in sync (avoids stale closures in pointer handlers)
-  useEffect(() => { cutModeRef.current = cutMode; }, [cutMode]);
-
-  // C-1: cut tool — mouse down starts drawing
-  const handleSvgMouseDown = useCallback((e) => {
-    if (!cutModeRef.current || e.button !== 0) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const p = clientToSvg(svg, e.clientX, e.clientY);
-    cutRef.current = { x1: p.x, y1: p.y };
-    setCutDraft({ x1: p.x, y1: p.y, x2: p.x, y2: p.y, snapped: false });
-  }, []);
-
-  // C-1: cut tool — mouse up applies the cut
-  const handleSvgMouseUp = useCallback((e) => {
-    if (!cutRef.current) return;
-    const { x1, y1 } = cutRef.current;
-    const svg = svgRef.current;
-    if (!svg) { cutRef.current = null; setCutDraft(null); return; }
-    const p = clientToSvg(svg, e.clientX, e.clientY);
-    let { x2, y2 } = e.shiftKey ? snapCutLine(x1, y1, p.x, p.y) : { x2: p.x, y2: p.y };
-
-    // Minimum drag distance
-    if (Math.hypot(x2 - x1, y2 - y1) < 0.05) {
-      cutRef.current = null; setCutDraft(null); return;
-    }
-
-    const affected = (planEdges?.rects ?? []).map(r => {
-      const pts = lineRectIntersections(x1, y1, x2, y2, r.x, r.y, r.w, r.h);
-      if (pts.length < 2) return null;
-      const pl = panelLayouts?.find(p => p.gi === r.gi);
-      const strips = pl?.layout?.panels ?? [];
-      const cutStrips = computeCutOnStrips(x1, y1, x2, y2, strips, r.x, r.y, r.z.largo);
-      return { gi: r.gi, rx: r.x, ry: r.y, rw: r.w, rh: r.h, pts, z: r.z, cutStrips };
-    }).filter(Boolean);
-
-    if (affected.length > 0) {
-      setAppliedCuts(prev => [...prev, {
-        id: `cut-${Date.now()}`,
-        x1, y1, x2, y2,
-        angleDeg: computeCutAngleDeg(x1, y1, x2, y2),
-        affected,
-      }]);
-    }
-    cutRef.current = null;
-    setCutDraft(null);
-  }, [planEdges, panelLayouts]);
-
-  // B-1/B-2: hover measurement
-  const handleSvgMouseMove = useCallback((e) => {
-    if (dragRef.current?.moved) { setHoverDim(null); return; }
-    const svg = svgRef.current;
-    if (!svg || !planEdges?.rects?.length) return;
-    const p = clientToSvg(svg, e.clientX, e.clientY);
-
-    // C-1: update cut draft while drawing
-    if (cutRef.current) {
-      const { x1, y1 } = cutRef.current;
-      const snapped = e.shiftKey;
-      const raw = { x2: p.x, y2: p.y };
-      const { x2, y2 } = snapped ? snapCutLine(x1, y1, raw.x2, raw.y2) : raw;
-      setCutDraft({ x1, y1, x2, y2, snapped });
-      return;
-    }
-
-    const hit = planEdges.rects.find(
-      (r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h,
-    );
-    if (hit) {
-      setHoverDim({ x: p.x, y: p.y, largo: hit.z.largo, ancho: hit.z.ancho, nombre: hit.z.nombre });
-    } else {
-      setHoverDim(null);
-    }
-  }, [planEdges]);
-
-  const handleSvgMouseLeave = useCallback(() => setHoverDim(null), []);
 
   const cycleSlope = useCallback(
     (gi) => {
@@ -993,6 +1388,8 @@ export default function RoofPreview({
     setUndoStack((s) => {
       if (!s.length) return s;
       const prev = s[s.length - 1];
+      const before = snapshotZonaPositions(zonasRef.current);
+      setRedoStack((r) => [...r.slice(-(MAX_PLAN_UNDO - 1)), before]);
       for (const k of Object.keys(prev)) {
         const gi = Number(k);
         const pos = prev[k];
@@ -1004,13 +1401,51 @@ export default function RoofPreview({
     });
   }, [onZonaPreviewChange]);
 
+  const applyRedo = useCallback(() => {
+    setRedoStack((r) => {
+      if (!r.length) return r;
+      const nextPos = r[r.length - 1];
+      const before = snapshotZonaPositions(zonasRef.current);
+      setUndoStack((s) => [...s.slice(-(MAX_PLAN_UNDO - 1)), before]);
+      for (const k of Object.keys(nextPos)) {
+        const gi = Number(k);
+        const pos = nextPos[k];
+        if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) {
+          onZonaPreviewChange?.(gi, { x: pos.x, y: pos.y });
+        }
+      }
+      return r.slice(0, -1);
+    });
+  }, [onZonaPreviewChange]);
+
+  useEffect(() => {
+    if (!onZonaPreviewChange) return;
+    const onKey = (e) => {
+      if (!e.metaKey && !e.ctrlKey) return;
+      if (isEditableKeyEventTarget(e.target)) return;
+      if (e.key === "z" || e.key === "Z") {
+        if (e.shiftKey) {
+          e.preventDefault();
+          applyRedo();
+        } else {
+          e.preventDefault();
+          applyUndo();
+        }
+      } else if ((e.key === "y" || e.key === "Y") && e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        applyRedo();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [applyUndo, applyRedo, onZonaPreviewChange]);
+
   const annexHitStop = useCallback((e) => {
     e.stopPropagation();
   }, []);
 
   const handlePointerDown = useCallback(
     (e, gi, rect) => {
-      if (cutModeRef.current) return; // cut tool takes over pointer events
       if (!onZonaPreviewChange) return;
       if (e.button != null && e.button !== 0) return;
       const svg = svgRef.current;
@@ -1056,7 +1491,8 @@ export default function RoofPreview({
       if (!svg) return;
       if (d.moved && !d.snapshotSaved && d.startSnapshot && Object.keys(d.startSnapshot).length) {
         d.snapshotSaved = true;
-        setUndoStack((s) => [...s.slice(-4), d.startSnapshot]);
+        setUndoStack((s) => [...s.slice(-(MAX_PLAN_UNDO - 1)), d.startSnapshot]);
+        setRedoStack([]);
       }
       const p = clientToSvg(svg, e.clientX, e.clientY);
       const zDrag = zonas[d.gi];
@@ -1207,6 +1643,27 @@ export default function RoofPreview({
               Otro cuerpo de techo
             </button>
           )}
+          {onRemoveZona && selectedGi != null && zonas.length > 1 && (
+            <button
+              type="button"
+              onClick={() => onRemoveZona(selectedGi)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.danger,
+                background: C.dangerSoft,
+                border: "none",
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={12} />Quitar zona
+            </button>
+          )}
           {onResetLayout && layout.entries.length > 0 && (
             <button
               type="button"
@@ -1229,6 +1686,7 @@ export default function RoofPreview({
             <button
               type="button"
               onClick={applyUndo}
+              title="Deshacer último movimiento en planta (Ctrl/Cmd+Z)"
               style={{
                 fontSize: 11,
                 fontWeight: 600,
@@ -1243,70 +1701,28 @@ export default function RoofPreview({
               Deshacer
             </button>
           )}
-          {plantaCotaChromeActive && (
+          {redoStack.length > 0 && onZonaPreviewChange && (
             <button
               type="button"
-              onClick={() => {
-                setCutMode(m => !m);
-                setCutDraft(null);
-                cutRef.current = null;
-              }}
-              title={cutMode ? "Salir del modo corte" : "Herramienta de corte de paneles"}
+              onClick={applyRedo}
+              title="Rehacer (Ctrl/Cmd+Shift+Z o Ctrl+Y)"
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: cutMode ? '#fff' : C.tp,
-                background: cutMode ? '#b45309' : C.surface,
-                border: `1.5px solid ${cutMode ? '#b45309' : C.border}`,
-                borderRadius: 8,
-                padding: "6px 10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              ✂ {cutMode ? 'Salir corte' : 'Corte'}
-            </button>
-          )}
-          {appliedCuts.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setAppliedCuts([])}
-              title="Eliminar todos los cortes aplicados"
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#b45309',
-                background: C.surface,
+                color: C.tp,
+                background: C.surfaceAlt,
                 border: `1px solid ${C.border}`,
                 borderRadius: 8,
                 padding: "6px 10px",
                 cursor: "pointer",
               }}
             >
-              Limpiar cortes ({appliedCuts.length})
+              Rehacer
             </button>
           )}
         </div>
       </div>
-      {cutMode && (
-        <div style={{
-          fontSize: 11, fontWeight: 500, color: '#92400e',
-          background: '#fffbeb', border: '1px solid #fbbf24',
-          borderRadius: 8, padding: '8px 12px', marginBottom: 8,
-          lineHeight: 1.5,
-        }}>
-          <strong>✂ Modo corte activo</strong> — Hacé click y arrastrá sobre el plano para trazar la línea de corte.
-          {' '}<strong>Shift</strong> = snap a 0° / 45° / 90°. El corte aplica a todas las zonas que atraviese.
-          {appliedCuts.length > 0 && (
-            <span style={{ marginLeft: 8, color: '#b45309' }}>
-              · {appliedCuts.length} corte{appliedCuts.length > 1 ? 's' : ''} aplicado{appliedCuts.length > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      )}
-      {plantaCotaChromeActive && !cutMode && (
+      {plantaCotaChromeActive && (
         <div
           style={{
             fontSize: 11,
@@ -1320,12 +1736,19 @@ export default function RoofPreview({
           {estructuraHintsByGi != null ? (
             <>
               <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
-              cotas de perímetro = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+              cotas (gris grafito) = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+              {combinadaSingleZona ? (
+                <>
+                  {" "}
+                  <strong style={{ color: C.tp }}>Combinada:</strong> tocá una línea de apoyo, una banda violeta del perímetro o un punto para rotar hormigón → metal → madera; los contadores se actualizan solos. Con varias zonas en planta, usá los números del panel.
+                </>
+              ) : null}
+              Movimiento de zonas en planta: <strong>Deshacer / Rehacer</strong> o <kbd>Ctrl/Cmd+Z</kbd> / <kbd>Ctrl/Cmd+Shift+Z</kbd>.
             </>
           ) : (
             <>
-              <strong style={{ color: C.tp }}>Planta:</strong> cotas = perímetro libre y longitud en cada encuentro. Arrastrá las zonas para ubicarlas
-              correctamente antes de bordes y estructura.
+              <strong style={{ color: C.tp }}>Planta:</strong> cotas en gris grafito = perímetro libre y longitud en cada encuentro; la cadena de cotas en mm bajo el borde inferior = paños según el ancho útil (AU) del panel. Arrastrá las zonas para ubicarlas
+              correctamente antes de bordes y estructura. <strong>Deshacer / Rehacer</strong> en la barra o <kbd>Ctrl/Cmd+Z</kbd> y <kbd>Ctrl/Cmd+Shift+Z</kbd> (o <kbd>Ctrl+Y</kbd> en Windows).
             </>
           )}
         </div>
@@ -1406,6 +1829,20 @@ export default function RoofPreview({
           </button>
         </div>
       )}
+      {bordesPlantaAssign && bordesPlantaHandlersOk && (
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: C.ts,
+            marginTop: plantaCotaChromeActive ? -2 : 0,
+            marginBottom: 8,
+            lineHeight: 1.35,
+          }}
+        >
+          <strong style={{ color: C.tp }}>Accesorios perimetrales (planta):</strong> tocá los bordes resaltados de cada zona; misma convención que el 3D (frente = borde inferior del rectángulo en 2D). Los lados totalmente compartidos entre zonas no se eligen aquí.
+        </div>
+      )}
       <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
         Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
         Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir.
@@ -1470,22 +1907,19 @@ export default function RoofPreview({
           >
             <svg
               ref={svgRef}
+              data-bmc-capture="roof-plan-2d"
               viewBox={svgViewBox}
               width="100%"
               height="100%"
               preserveAspectRatio="xMidYMid meet"
               style={{
                 display: "block",
-                cursor: cutMode ? "crosshair" : (onZonaPreviewChange ? "default" : undefined),
+                cursor: onZonaPreviewChange ? "default" : undefined,
               }}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handleLostCapture}
               onLostPointerCapture={handleLostCapture}
-              onMouseDown={handleSvgMouseDown}
-              onMouseUp={handleSvgMouseUp}
-              onMouseMove={handleSvgMouseMove}
-              onMouseLeave={handleSvgMouseLeave}
             >
             {layout.viewMetrics && dragOverlay?.guides && (
               <g pointerEvents="none" opacity={0.55}>
@@ -1527,7 +1961,7 @@ export default function RoofPreview({
                   x2={enc.x2}
                   y2={enc.y2}
                   stroke={stroke}
-                  strokeWidth={0.09 * svgTy.m}
+                  strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
                   strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
                   pointerEvents="stroke"
                   opacity={0.95}
@@ -1584,13 +2018,13 @@ export default function RoofPreview({
                     h={r.h}
                     au={effectivePanelAu}
                     stroke={C.brand}
-                    strokeW={0.032 * svgTy.m}
+                    strokeW={LINE_WEIGHTS.panelJoint * svgTy.m}
                     gradKey={`z-${r.gi}`}
                   />
                   <g
                     pointerEvents="none"
                     stroke={C.primary}
-                    strokeWidth={0.072 * svgTy.m}
+                    strokeWidth={LINE_WEIGHTS.zoneBorder * svgTy.m}
                     fill="none"
                     strokeLinecap="square"
                     opacity={0.92}
@@ -1606,6 +2040,17 @@ export default function RoofPreview({
                       hints={estructuraHintsByGi[r.gi]}
                       svgTy={svgTy}
                       exterior={planEdges?.exterior ?? []}
+                      combinadaAssign={combinadaSingleZona}
+                      combinadaByKey={combinadaFijByGi?.[r.gi] ?? null}
+                      combinadaPtsH={combinadaPtsH}
+                      combinadaPtsMetal={combinadaPtsMetal}
+                      combinadaPtsMadera={combinadaPtsMadera}
+                      onCombinadaZoneInteraction={handleCombinadaZoneInteraction}
+                      dotOverrides={fijDotOverridesByGi?.[r.gi] ?? null}
+                      onDotCycleMaterial={handleDotCycleMaterial}
+                      onDotToggleEnabled={handleDotToggleEnabled}
+                      apoyoMateriales={combinadaSingleZona ? apoyoMateriales : null}
+                      onApoyoMaterialCycle={combinadaSingleZona ? onApoyoMaterialCycle : null}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
@@ -1708,6 +2153,20 @@ export default function RoofPreview({
                       </text>
                     </g>
                   )}
+                  {bordesPlantaAssign && bordesPlantaHandlersOk ? (
+                    <PlantaBordesEdgeStrips
+                      r={r}
+                      svgTy={svgTy}
+                      multiZona={multiZonaBordes}
+                      sharedSidesMap={bordesSharedSidesMap}
+                      disabledSidesGlobal={disabledSidesGlobalBordes}
+                      techoBorders={bordersGlobalForPlanta}
+                      zonas={zonas}
+                      openGi={plantaBorderPick?.gi ?? null}
+                      openSide={plantaBorderPick?.side ?? null}
+                      onStripPointerDown={handlePlantaBordeStripDown}
+                    />
+                  ) : null}
                 </g>
               );
             })}
@@ -1720,20 +2179,18 @@ export default function RoofPreview({
                     strips={pl.layout.panels}
                     x0={r.x} y0={r.y} h={r.h}
                     svgTy={svgTy}
-                    mode={displayMode}
                   />
                   {verifications?.[r.gi] && (
                     <VerificationBadge
                       x={r.x + r.w} y={r.y}
                       verification={verifications[r.gi]}
                       svgTy={svgTy}
-                      mode={displayMode}
                     />
                   )}
                 </g>
               );
             })}
-            {panelLayouts && displayMode !== 'client' && layout.entries.map((r) => {
+            {panelLayouts && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
               const strips = buildAnchoStripsPlanta(r.w, effectivePanelAu);
@@ -1745,7 +2202,6 @@ export default function RoofPreview({
                   yEdge={r.y + r.h}
                   svgTy={svgTy}
                   obstacleRects={cotaObstacles}
-                  mode={displayMode}
                 />
               );
             })}
@@ -1756,109 +2212,49 @@ export default function RoofPreview({
                 svgTy={svgTy}
               />
             ) : null}
-            {plantaCotaChromeActive && planEdges?.rects?.length ? (
-              <GlobalOverallDims rects={planEdges.rects} svgTy={svgTy} />
-            ) : null}
-            {/* C-2/C-3: Draft cut line while drawing */}
-            {cutMode && cutDraft && (Math.hypot(cutDraft.x2 - cutDraft.x1, cutDraft.y2 - cutDraft.y1) > 0.01) && (
-              <g pointerEvents="none" data-bmc-layer="cut-draft">
-                <line
-                  x1={cutDraft.x1} y1={cutDraft.y1}
-                  x2={cutDraft.x2} y2={cutDraft.y2}
-                  stroke="#b45309" strokeWidth={svgTy.strokeTick * 1.3}
-                  strokeDasharray={`${svgTy.dimFont * 0.4} ${svgTy.dimFont * 0.18}`}
-                  opacity={0.9}
-                />
-                <circle cx={cutDraft.x1} cy={cutDraft.y1} r={svgTy.dimFont * 0.22}
-                  fill="#b45309" opacity={0.9} />
-                <circle cx={cutDraft.x2} cy={cutDraft.y2} r={svgTy.dimFont * 0.15}
-                  fill="#b45309" opacity={0.7} />
-                <text
-                  x={cutDraft.x2 + svgTy.dimFont * 0.35}
-                  y={cutDraft.y2 - svgTy.dimFont * 0.18}
-                  fontSize={svgTy.dimFont * 0.78}
-                  fill="#b45309" fontFamily="system-ui,sans-serif"
-                  stroke="none" fontWeight={700}
-                >
-                  {computeCutAngleDeg(cutDraft.x1, cutDraft.y1, cutDraft.x2, cutDraft.y2)}°
-                  {cutDraft.snapped ? ' ⊷' : ''}
-                </text>
-              </g>
-            )}
-
-            {/* C-5: Applied cuts — line + offcut shading + scissors label */}
-            {appliedCuts.map(cut => (
-              <g key={cut.id} pointerEvents="none" data-bmc-layer="cut-applied">
-                {cut.affected.map((a, i) => {
-                  const poly = buildOffcutPolygon(cut.x1, cut.y1, cut.x2, cut.y2, a.rx, a.ry, a.rw, a.rh);
-                  const midX = (a.pts[0].x + a.pts[1].x) / 2;
-                  const midY = (a.pts[0].y + a.pts[1].y) / 2;
-                  const cutLen = +Math.hypot(a.pts[1].x - a.pts[0].x, a.pts[1].y - a.pts[0].y).toFixed(3);
-                  return (
-                    <g key={`${cut.id}-${i}`}>
-                      {poly && (
-                        <polygon points={poly} fill="#b45309" opacity={0.13} />
-                      )}
-                      <line
-                        x1={a.pts[0].x} y1={a.pts[0].y}
-                        x2={a.pts[1].x} y2={a.pts[1].y}
-                        stroke="#1a1a1a" strokeWidth={svgTy.strokeTick * 1.1}
-                        strokeDasharray={`${svgTy.dimFont * 0.28} ${svgTy.dimFont * 0.12}`}
-                        opacity={0.82}
-                      />
-                      <text x={midX} y={midY - svgTy.dimFont * 0.55}
-                        fontSize={svgTy.dimFont * 0.88} fill="#b45309"
-                        textAnchor="middle" fontFamily="system-ui,sans-serif"
-                        stroke="#fff" strokeWidth={svgTy.strokeMain * 1.5} paintOrder="stroke"
-                        fontWeight={600}
-                      >
-                        ✂ {cut.angleDeg}°
-                      </text>
-                      {a.cutStrips?.length > 0 && (
-                        <text x={midX} y={midY + svgTy.dimFont * 0.7}
-                          fontSize={svgTy.dimFont * 0.72} fill="#92400e"
-                          textAnchor="middle" fontFamily="system-ui,sans-serif"
-                          stroke="#fff" strokeWidth={svgTy.strokeMain} paintOrder="stroke"
-                        >
-                          {a.cutStrips.length} panel{a.cutStrips.length > 1 ? 'es' : ''} afectado{a.cutStrips.length > 1 ? 's' : ''}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
-              </g>
-            ))}
-
-            {hoverDim && (() => {
-              const f = svgTy.dimFont;
-              const pad = f * 0.5;
-              const lineH = f * 1.3;
-              const area = (hoverDim.largo * hoverDim.ancho).toFixed(2);
-              const lines = [
-                hoverDim.nombre || 'Zona',
-                `${fmtArchMeters(hoverDim.largo)} × ${fmtArchMeters(hoverDim.ancho)} m`,
-                `${area} m²`,
-              ];
-              const boxW = f * 7.5;
-              const boxH = lines.length * lineH + pad * 2;
-              const tx = hoverDim.x + f * 0.6;
-              const ty = hoverDim.y - boxH - f * 0.3;
+            {plantaCotaChromeActive && planEdges?.envelope && (() => {
+              const ext = planEdges.exterior ?? [];
+              const maxBottomBump = ext.filter(s => s.side === 'bottom')
+                .reduce((mx, s) => Math.max(mx, ext.filter(b => b.side === 'bottom' && +b.y1.toFixed(2) === +s.y1.toFixed(2)).length), 0);
+              const maxLeftBump = ext.filter(s => s.side === 'left')
+                .reduce((mx, s) => Math.max(mx, ext.filter(b => b.side === 'left' && +b.x1.toFixed(2) === +s.x1.toFixed(2)).length), 0);
               return (
-                <g pointerEvents="none" data-bmc-layer="hover-dim-tooltip">
-                  <rect x={tx} y={ty} width={boxW} height={boxH}
-                    fill="#ffffff" stroke="#1a1a1a" strokeWidth={svgTy.strokeMain * 0.8}
-                    rx={f * 0.18} opacity={0.93} />
-                  {lines.map((line, i) => (
-                    <text key={i}
-                      x={tx + pad} y={ty + pad + lineH * i + f * 0.9}
-                      fontSize={i === 0 ? f * 0.85 : f * 0.95}
-                      fontWeight={i === 1 ? 700 : 400}
-                      fontFamily="system-ui, sans-serif"
-                      fill="#1a1a1a" stroke="none">
-                      {line}
-                    </text>
-                  ))}
-                </g>
+                <OverallEnvelopeDimension
+                  envelope={planEdges.envelope}
+                  svgTy={svgTy}
+                  bumpCounts={{ maxBottomBump, maxLeftBump }}
+                />
+              );
+            })()}
+            {plantaCotaChromeActive && layout.viewMetrics && (() => {
+              const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
+              const spanM = Math.max(vbW, vbH, 2.5);
+              return (
+                <ScaleBar
+                  x={vbX}
+                  y={vbY + vbH + (svgTy.dimStackBottom ?? 0.24)}                  spanM={spanM}
+                  svgTy={svgTy}
+                />
+              );
+            })()}
+            {plantaCotaChromeActive && layout.viewMetrics && (() => {
+              const { vbX, vbY } = layout.viewMetrics;
+              return (
+                <OrientationMark
+                  x={vbX}
+                  y={vbY - (svgTy.dimStackTop ?? 0.24) * 0.5}
+                  svgTy={svgTy}
+                />
+              );
+            })()}
+            {plantaCotaChromeActive && planEdges?.envelope && (() => {
+              const env = planEdges.envelope;
+              return (
+                <DatumMark
+                  x={env.minX}
+                  y={env.minY + env.totalH}
+                  svgTy={svgTy}
+                />
               );
             })()}
             </svg>
@@ -1882,14 +2278,116 @@ export default function RoofPreview({
               zonas={zonas}
               tipoAguas={tipoAguas}
               pendiente={pendiente}
+              pendienteModo={globalPendienteModoProp}
+              globalAlturaDif={globalAlturaDifProp}
               selectedGi={selectedGi}
               onZonaDimensionPatch={onZonaDimensionPatch}
+              onRemoveZona={onRemoveZona}
               emphasize={estructuraHintsByGi != null}
               noRootFlex
             />
           </div>
         ) : null}
       </div>
+      {plantaBorderPick && typeof document !== "undefined" && bordesPlantaAssign && bordesPlantaHandlersOk
+        ? createPortal(
+            (() => {
+              const { gi, side } = plantaBorderPick;
+              const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
+              let curVal = "";
+              if (multiZonaBordes) {
+                curVal = zonas[gi]?.preview?.borders?.[side] ?? bordersGlobalForPlanta[side] ?? "";
+              } else {
+                curVal = bordersGlobalForPlanta[side] ?? "";
+              }
+              const title = multiZonaBordes
+                ? `Zona ${gi + 1} — ${PLANTA_BORDER_SIDE_LABELS[side] || side}`
+                : PLANTA_BORDER_SIDE_LABELS[side] || side;
+              return (
+                <div
+                  ref={plantaBorderPopRef}
+                  style={{
+                    position: "fixed",
+                    zIndex: 10070,
+                    top: plantaBorderPopoverStyle?.top ?? -9999,
+                    left: plantaBorderPopoverStyle?.left ?? -9999,
+                    opacity: plantaBorderPopoverStyle?.opacity ?? 0,
+                    transition: "opacity 80ms ease",
+                    fontFamily: FONT,
+                    background: C.surface,
+                    borderRadius: 10,
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+                    minWidth: 220,
+                    maxWidth: 320,
+                    maxHeight: 320,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: C.ts,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      borderBottom: `1px solid ${C.border}`,
+                      background: C.surfaceAlt,
+                      borderRadius: "10px 10px 0 0",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {title}
+                  </div>
+                  <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
+                    {opts.map((opt, oi) => {
+                      const isSel = curVal === opt.id;
+                      return (
+                        <div
+                          key={`${side}-${opt.id}-${oi}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            applyPlantaBorderOption(opt.id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              applyPlantaBorderOption(opt.id);
+                            }
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            fontSize: 13,
+                            background: isSel ? C.primarySoft : "transparent",
+                            fontWeight: isSel ? 500 : 400,
+                            color: C.tp,
+                            transition: TR,
+                          }}
+                        >
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                            <span>{opt.label}</span>
+                            {opt.descripcion ? (
+                              <span style={{ fontSize: 10, color: C.ts, fontWeight: 400, lineHeight: 1.3 }}>{opt.descripcion}</span>
+                            ) : null}
+                          </div>
+                          {isSel ? <Check size={14} color={C.primary} style={{ flexShrink: 0 }} /> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })(),
+            document.body,
+          )
+        : null}
     </div>
   );
 }

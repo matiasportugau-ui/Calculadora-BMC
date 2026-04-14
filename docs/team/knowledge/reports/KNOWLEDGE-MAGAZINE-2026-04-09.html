@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panelin Signal · 2026-04-09</title>
+  <meta name="description" content="Internal research magazine — BMC Panelin Knowledge Antenna" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --paper: #faf8f5;
+      --card: #ffffff;
+      --rule: #e2e8f0;
+      --accent: #1a3a5c;
+      --accent-hot: #0071e3;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.55;
+      font-size: 1rem;
+    }
+    a { color: var(--accent-hot); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    .masthead {
+      border-bottom: 3px double var(--ink);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .masthead h1 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0 0 0.25rem;
+      color: var(--accent);
+    }
+    .masthead .tagline {
+      font-size: 0.95rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .issue-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+    }
+    .run-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 1rem 1.1rem;
+      text-align: center;
+    }
+    .stat .num { font-family: var(--serif); font-size: 1.75rem; color: var(--accent); }
+    .stat .lbl { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    section { margin-bottom: 2.5rem; }
+    h2.section-title {
+      font-family: var(--serif);
+      font-size: 1.35rem;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 0.35rem;
+      margin-bottom: 1rem;
+    }
+    .lead .kicker {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-hot);
+      margin: 0 0 0.35rem;
+    }
+    .lead h2 { font-family: var(--serif); font-size: 1.5rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .lead .meta { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; }
+    .lead .deck { font-size: 1.05rem; margin: 0; }
+    .radar-grid { display: grid; gap: 0.65rem; }
+    .radar-card {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 0.75rem 1rem;
+    }
+    .radar-rank {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      color: var(--muted);
+      min-width: 1.5rem;
+    }
+    .radar-score { font-size: 0.8rem; color: var(--muted); margin: 0.15rem 0 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--rule);
+      padding: 0.15rem 0.45rem;
+      margin-left: 0.35rem;
+      border-radius: 2px;
+    }
+    ul.dispatch { list-style: none; padding: 0; margin: 0; }
+    .dispatch-item { padding: 0.85rem 0; border-bottom: 1px solid var(--rule); }
+    .dispatch-title { font-weight: 600; display: block; margin-bottom: 0.2rem; }
+    .dispatch-meta { font-size: 0.8rem; color: var(--muted); }
+    .dispatch-sum { font-size: 0.9rem; color: var(--muted); margin: 0.35rem 0 0; }
+    .impact-card {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .impact-high { border-left: 4px solid #b45309; }
+    .impact-medium { border-left: 4px solid var(--accent-hot); }
+    .impact-domain { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.35rem; }
+    .impact-targets { font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0; font-family: ui-monospace, monospace; }
+    .muted { color: var(--muted); }
+    footer.mag-footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--rule);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    footer.mag-footer code { font-size: 0.75rem; background: var(--rule); padding: 0.1rem 0.35rem; }
+    @media print {
+      body { background: #fff; }
+      .run-strip { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <p class="tagline">BMC Uruguay · Panelin</p>
+      <h1>Panelin Signal</h1>
+      <p class="muted" style="margin:0;font-size:1rem;">Revista interna de investigación y ecosistema (Knowledge Antenna)</p>
+      <div class="issue-line">
+        <span><strong>Issue</strong> 2026-04-09</span>
+        <span><strong>Generated</strong> 2026-04-09T13:13:29.846Z</span>
+        <span><strong>Impact map</strong> 2026-04-09</span>
+        <span><strong>Registry</strong> 2026-04-09</span>
+      </div>
+    </header>
+
+    
+    <div class="run-strip">
+      <span>Last scan · 2026-04-09</span>
+      <span>Sources 9</span>
+      <span>New refs +38</span>
+      <span>Accepted 38</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num">160</div><div class="lbl">References</div></div>
+      <div class="stat"><div class="num">293</div><div class="lbl">Impact mappings</div></div>
+      <div class="stat"><div class="num">22</div><div class="lbl">High priority</div></div>
+      <div class="stat"><div class="num">9</div><div class="lbl">Active sources</div></div>
+    </div>
+
+    <section aria-labelledby="lead">
+      <h2 id="lead" class="section-title">Portada</h2>
+      
+    <article class="lead">
+      <p class="kicker">Lead reference</p>
+      <h2><a href="https://huggingface.co/blog/ibm-research/altk-evolve" target="_blank" rel="noopener noreferrer">ALTK‑Evolve: On‑the‑Job Learning for AI Agents</a></h2>
+      <p class="meta">huggingface-blog-rss · 2026-04-08</p>
+      <p class="deck"></p>
+    </article>
+    </section>
+
+    <section aria-labelledby="radar">
+      <h2 id="radar" class="section-title">Radar de fuentes</h2>
+      <p class="muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Orden por ranking compuesto del agente. Actualiza al regenerar el magazine.</p>
+      <div class="radar-grid">
+    <div class="radar-card">
+      <span class="radar-rank">1</span>
+      <div>
+        <strong>OpenAI News</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.917</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">2</span>
+      <div>
+        <strong>Vercel AI SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.860</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">3</span>
+      <div>
+        <strong>arXiv cs.AI</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.851</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">4</span>
+      <div>
+        <strong>Vercel Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.840</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">5</span>
+      <div>
+        <strong>Anthropic SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.829</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">6</span>
+      <div>
+        <strong>Hugging Face Blog</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.815</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">7</span>
+      <div>
+        <strong>MCP TypeScript SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.785</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">8</span>
+      <div>
+        <strong>OpenAI Node SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.772</p>
+      </div>
+    </div></div>
+    </section>
+
+    <section aria-labelledby="dispatch">
+      <h2 id="dispatch" class="section-title">Despacho</h2>
+      <p class="muted" style="margin-top:-0.5rem;margin-bottom:1rem;">
+        Novedades aceptadas en el último escaneo.
+      </p>
+      <ul class="dispatch">
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/full-fan-mode-contest-terms-conditions" target="_blank" rel="noopener noreferrer">&lt;![CDATA[OpenAI Full Fan Mode Contest: Terms &amp; Conditions]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.673</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/next-phase-of-enterprise-ai" target="_blank" rel="noopener noreferrer">&lt;![CDATA[The next phase of enterprise AI]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.593</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/introducing-child-safety-blueprint" target="_blank" rel="noopener noreferrer">&lt;![CDATA[Introducing the Child Safety Blueprint]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.543</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.86.1" target="_blank" rel="noopener noreferrer">sdk: v0.86.1</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6625</span>
+        <p class="dispatch-sum">## 0.86.1 (2026-04-08) Full Changelog: [sdk-v0.86.0...sdk-v0.86.1](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.86.0...sdk-v0.86.1) ##…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.86.0" target="_blank" rel="noopener noreferrer">sdk: v0.86.0</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6625</span>
+        <p class="dispatch-sum">## 0.86.0 (2026-04-08) Full Changelog: [sdk-v0.85.0...sdk-v0.86.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.85.0...sdk-v0.86.0) ##…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/bedrock-sdk-v0.28.1" target="_blank" rel="noopener noreferrer">bedrock-sdk: v0.28.1</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6625</span>
+        <p class="dispatch-sum">## 0.28.1 (2026-04-08) Full Changelog: [bedrock-sdk-v0.28.0...bedrock-sdk-v0.28.1](https://github.com/anthropics/anthropic-sdk-typescript/compare/bedrock-sdk-v…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/aws-sdk-v0.2.5" target="_blank" rel="noopener noreferrer">aws-sdk: v0.2.5</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6625</span>
+        <p class="dispatch-sum">## 0.2.5 (2026-04-08) Full Changelog: [aws-sdk-v0.2.4...aws-sdk-v0.2.5](https://github.com/anthropics/anthropic-sdk-typescript/compare/aws-sdk-v0.2.4...aws-sdk…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.85.0" target="_blank" rel="noopener noreferrer">sdk: v0.85.0</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6125</span>
+        <p class="dispatch-sum">## 0.85.0 (2026-04-07) Full Changelog: [sdk-v0.84.0...sdk-v0.85.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.84.0...sdk-v0.85.0) ##…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.84.0" target="_blank" rel="noopener noreferrer">sdk: v0.84.0</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6125</span>
+        <p class="dispatch-sum">## 0.84.0 (2026-04-07) Full Changelog: [sdk-v0.83.0...sdk-v0.84.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.83.0...sdk-v0.84.0) ##…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/bedrock-sdk-v0.28.0" target="_blank" rel="noopener noreferrer">bedrock-sdk: v0.28.0</a>
+        <span class="dispatch-meta">Anthropic SDK Releases · score 0.6125</span>
+        <p class="dispatch-sum">## 0.28.0 (2026-04-07) Full Changelog: [bedrock-sdk-v0.27.0...bedrock-sdk-v0.28.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/bedrock-sdk-v…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/vercel/vercel/releases/tag/vercel%4050.42.0" target="_blank" rel="noopener noreferrer">vercel@50.42.0</a>
+        <span class="dispatch-meta">Vercel Releases · score 0.652</span>
+        <p class="dispatch-sum">### Minor Changes - Add `vercel project protection` actions for password deployment protection (`--password`). ([#15858](https://github.com/vercel/vercel/pull/…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://github.com/vercel/vercel/releases/tag/%40vercel/static-build%402.9.10" target="_blank" rel="noopener noreferrer">@vercel/static-build@2.9.10</a>
+        <span class="dispatch-meta">Vercel Releases · score 0.652</span>
+        <p class="dispatch-sum">### Patch Changes - Updated dependencies \[]: - @vercel/gatsby-plugin-vercel-builder@2.1.10</p>
+      </li></ul>
+    </section>
+
+    <section aria-labelledby="impact">
+      <h2 id="impact" class="section-title">Impacto en el repo</h2>
+      <p class="muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Muestra prioridad alta y una muestra media (46 medias en total, 225 bajas).</p>
+      
+    <div class="impact-card impact-high">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+      <p class="impact-targets">server/gptActions.js · server/index.js · docs/openapi-email-gpt.yaml · scripts/capabilities-snapshot.mjs</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+      <p class="impact-targets">server/gptActions.js · server/index.js · docs/openapi-email-gpt.yaml · scripts/capabilities-snapshot.mjs</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">data-and-storage</p>
+      <p>Assess schema/runtime compatibility and migration impact.</p>
+      <p class="impact-targets">scripts/run-transportista-migrations.mjs · server/routes/transportista.js · server/routes/bmcDashboard.js</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">data-and-storage</p>
+      <p>Assess schema/runtime compatibility and migration impact.</p>
+      <p class="impact-targets">scripts/run-transportista-migrations.mjs · server/routes/transportista.js · server/routes/bmcDashboard.js</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+      <p class="impact-targets">scripts/deploy-vercel.sh · scripts/deploy-cloud-run.sh · scripts/smoke-prod-api.mjs · vercel.json</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">data-and-storage</p>
+      <p>Assess schema/runtime compatibility and migration impact.</p>
+      <p class="impact-targets">scripts/run-transportista-migrations.mjs · server/routes/transportista.js · server/routes/bmcDashboard.js</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+      <p class="impact-targets">scripts/deploy-vercel.sh · scripts/deploy-cloud-run.sh · scripts/smoke-prod-api.mjs · vercel.json</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">data-and-storage</p>
+      <p>Assess schema/runtime compatibility and migration impact.</p>
+      <p class="impact-targets">scripts/run-transportista-migrations.mjs · server/routes/transportista.js · server/routes/bmcDashboard.js</p>
+    </div>
+      
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+    </div>
+    </section>
+
+    <footer class="mag-footer">
+      <p><strong>Uso interno.</strong> Los datos viven en JSON bajo <code>docs/team/knowledge/</code>. Para una futura edición pública, filtrar fuentes y redactar resúmenes editoriales aparte.</p>
+      <p>Regenerar solo el magazine (sin escanear red): <code>npm run knowledge:magazine</code></p>
+      <p>Pipeline completo: <code>npm run knowledge:run</code></p>
+    </footer>
+  </div>
+</body>
+</html>

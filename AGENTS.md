@@ -23,8 +23,6 @@ Lee este archivo antes de cualquier tarea.
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
 | `npm run transportista:migrate` | Modo Transportista: aplica migraciones Postgres (`DATABASE_URL`) desde `transportista-cursor-package/migrations/` |
-| `npm run omni:migrate` | Omnicanal Meta: aplica migraciones Postgres `server/migrations/omni/` (`OMNI_DATABASE_URL` o `DATABASE_URL`). Ver `docs/team/OMNI-META-RUNBOOK.md` |
-| `npm run omni:export` / `omni:playbook` / `omni:worker` | Export transcripciones JSONL+MD, borrador playbook IA, worker outbox medios |
 | `npm run followup` | Follow-ups / recordatorios (CLI `scripts/followup.mjs`; almacén local `.followup/` o `FOLLOWUP_STORE_PATH`); API `GET/POST /api/followups` |
 | `npm run program:status` | Programa maestro multi-área: fase actual, progreso ~%, próximos pasos (`docs/team/orientation/programs/bmc-panelin-master.json`) |
 | `npm run project:compass` | **Seguimiento unificado:** `program:status` + follow-ups vencidos (`followup due`). Índice: `docs/team/PROJECT-SCHEDULE.md`. Alias: `npm run schedule` |
@@ -56,6 +54,14 @@ Lee este archivo antes de cualquier tarea.
 | `npm run session:video-ingest -- <ruta-video-iphone> [base_url]` | Copia el vídeo a `docs/team/ux-feedback/sessions/…`, corre **extract**, genera **metadata.json** y **CURSOR-CHAT-PROMPT.txt** para pegar en Cursor. Flujo “solo compartir vídeo” desde iPhone → Mac. **Método en chat:** decir **Video-User-interactive-dev** + path → informe `VIDEO-USER-INTERACTIVE-DEV-REPORT-*.md` + JSON — ver [`docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md`](docs/team/ux-feedback/METHOD-VIDEO-USER-INTERACTIVE-DEV.md). |
 | **Live DevTools narrative** (MCP) | Con MCP **chrome-devtools** en Cursor (`.cursor/mcp.json`): decir **Live DevTools narrative** o **Narrativa en vivo DevTools**; el agente navega (default **`https://calculadora-bmc.vercel.app`**), extrae consola/red/snapshots y cruza con narrativa o transcripción pegada → `LIVE-DEVTOOLS-NARRATIVE-REPORT-*.md`. Skill [`.cursor/skills/live-devtools-narrative-mcp/SKILL.md`](.cursor/skills/live-devtools-narrative-mcp/SKILL.md), plantilla [`TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md`](docs/team/ux-feedback/TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md). |
 | `npm run pre-deploy` | Checklist pre-deploy: health, contratos (API en 3001 o `BMC_API_BASE`), **paso 2** carga `.env` para comprobar `BMC_SHEET_ID` / `GOOGLE_APPLICATION_CREDENTIALS`, **paso 4** cuenta ítems abiertos `- [ ]` en `docs/team/PROJECT-STATE.md` (canónico; `docs/PROJECT-STATE.md` es solo redirección) |
+| `npm run expert:workflow` | Flujo experto local → prod (URLs, gates, smoke). Doc [`docs/team/orientation/EXPERT-DEV-TRACEABILITY.md`](docs/team/orientation/EXPERT-DEV-TRACEABILITY.md). |
+| `npm run expert:checkpoint` | Snapshot local: versión `package.json`, git sha/rama/dirty, hints de restore → `.cursor/dev-checkpoints/` (gitignored). `-- --message="…"` |
+| `npm run expert:checkpoints` | Lista checkpoints (más reciente primero). |
+| `npm run expert:restore-hint -- <id>` | Pasos manuales para volver al commit guardado (`git checkout`, gates). |
+| `npm run magazine:daily` | Digest local: `PROJECT-STATE` + git → `.runtime/magazine-daily/*.html` / `.txt` |
+| `npm run magazine:daily:send` | Igual + correo SMTP si `SMTP_USER` / `SMTP_PASS` en `.env` (default TO: `matias.portugau@gmail.com`). Doc: [`docs/team/orientation/MAGAZINE-DAILY-EMAIL.md`](docs/team/orientation/MAGAZINE-DAILY-EMAIL.md) |
+| `npm run magazine:daily:dry` | Muestra asunto y tamaño; no escribe ni envía |
+| `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
 
 **Loops de validación:**
 
@@ -132,3 +138,27 @@ Al terminar una tarea:
 - No usar `npm audit fix --force` sin aprobación de Matias (puede romper vite).
 - No modificar `docs/team/PROJECT-STATE.md` sin agregar entrada en "Cambios recientes".
 - No saltear `npm run lint` antes de commit en `src/`.
+
+---
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+| Service | Port | Start command |
+|---------|------|---------------|
+| Express API | 3001 | `npm run start:api` |
+| Vite dev server (React SPA) | 5173 | `npm run dev` |
+| Both together | 3001 + 5173 | `npm run dev:full` |
+
+### Key commands
+
+Standard lint/test/build commands are documented in the table at the top of this file and in `README.md`. Use `npm run gate:local:full` to run the full local gate (lint + test + build).
+
+### Non-obvious caveats
+
+- **`easymidi` native dependency:** `npm install` requires `libasound2-dev` (ALSA headers) on Linux. Without it, the `midi` native addon (pulled by `easymidi`) fails to compile. Install via `sudo apt-get install -y libasound2-dev` before `npm install`.
+- **Disk precheck:** `npm run dev` and `npm run build` both run `disk:precheck` as a pre-hook. In cloud/CI environments with ample disk, set `BMC_DISK_PRECHECK_SKIP=1` to skip it, or it may fail on unusual filesystem layouts.
+- **`.env` file:** `npm run env:ensure` creates `.env` from `.env.example` (non-destructive). Most features work without credentials, but Google Sheets integration, MercadoLibre OAuth, and AI-powered CRM features require secrets in `.env`.
+- **API health check:** `curl http://localhost:3001/health` — returns `{"ok":true,...}`. The `hasSheets` and `hasTokens` fields will be `false` without Google/ML credentials configured.
+- **Tests run without a server:** `npm test` runs offline unit tests (288 assertions). `npm run test:contracts` requires the API server running on port 3001.

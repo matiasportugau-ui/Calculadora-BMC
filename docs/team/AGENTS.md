@@ -97,6 +97,30 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## BMC Cross-Sync Propagation (Calculadora BMC)
+
+**Skill:** `.cursor/skills/bmc-cross-sync-propagation/`
+
+**Rol:** Orquestar propagación §4, actualización de `PROJECT-STATE` y **verificación local vs producción** para la Calculadora BMC (frontend Vercel, API Cloud Run, stack `localhost:5173` + `localhost:3001`), sin sustituir `bmc-project-team-sync` ni el deploy detallado.
+
+**Cuándo usar:**
+
+- Sync calculadora, alinear local y remoto, verificar `calculadora-bmc.vercel.app` y API pública
+- Tras cambios en `src/`, `server/`, OpenAPI/capabilities, integraciones o MATRIZ que afecten la calculadora
+- `npm run smoke:prod`, `npm run gate:local:full`, contrato API cuando corresponda
+
+**Referencias:**
+
+- [SKILL.md](../.cursor/skills/bmc-cross-sync-propagation/SKILL.md)
+- [PROJECT-STATE.md](./PROJECT-STATE.md)
+- [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) (§4, §5.2)
+- [bmc-project-team-sync/SKILL.md](../.cursor/skills/bmc-project-team-sync/SKILL.md) — full team y protocolo global
+- [bmc-calculadora-deploy-from-cursor/SKILL.md](../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md) — deploy Vercel + Cloud Run
+
+**Cursor Rule:** `.cursor/rules/bmc-cross-sync-propagation.mdc`
+
+---
+
 ## Google Sheets — documentación canónica
 
 Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapper código, sync full team, variables 1:1). El informe de capacidades del equipo enlaza al mapa de acceso en ese módulo.

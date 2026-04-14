@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// PanelinCalculadoraV3.jsx — BMC Uruguay · Calculadora de Cotización v3.1
+// PanelinCalculadoraV3.jsx — BMC Uruguay · Calculadora de Cotización (semver UI: ../appSemver.js)
 // Un solo archivo React — Default export, sin props
 // Precios SIN IVA · IVA 22% al final · Doble lista (venta/web)
 // Repo: github.com/matiasportugau-ui/GPT-Panelin-Calc (frontend/)
@@ -12,6 +12,7 @@ import {
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText, Table,
   LayoutTemplate, CircleDollarSign,
 } from "lucide-react";
+import { PANELIN_VERSION_BADGE } from "../appSemver.js";
 import { FIJACIONES, HERRAMIENTAS } from "../data/constants.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
@@ -22,6 +23,7 @@ import { buildCostingReport } from "../utils/bomCosting.js";
 import { countVarillasRoscadasDesdeBarras1m } from "../utils/calculations.js";
 import { getDimensioningParam } from "../utils/dimensioningFormulas.js";
 import RoofPreview from "./RoofPreview.jsx";
+import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // §1 DESIGN TOKENS + CSS
@@ -1898,7 +1900,7 @@ export default function PanelinCalculadoraV3() {
       <div style={{ background: C.brand, color: "#fff", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, position: "sticky", top: 0, zIndex: 40, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>· Panelin v3.1</div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>{PANELIN_VERSION_BADGE}</div>
           <div style={{ display: "flex", gap: 0, marginLeft: 8 }}>
             <button onClick={() => setMainTab("invocar")} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: mainTab === "invocar" ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 13, fontWeight: mainTab === "invocar" ? 600 : 400, cursor: "pointer", transition: TR }}>Invocar Panelin</button>
             <button onClick={() => setMainTab("finanzas")} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: mainTab === "finanzas" ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 13, fontWeight: mainTab === "finanzas" ? 600 : 400, cursor: "pointer", transition: TR }}>Finanzas</button>
@@ -1942,7 +1944,7 @@ export default function PanelinCalculadoraV3() {
               {SCENARIOS_DEF.map(sc => {
                 const isS = scenario === sc.id;
                 return <div key={sc.id} onClick={() => setScenario(sc.id)} style={{ borderRadius: 16, padding: 20, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
-                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{sc.icon}</span>
+                  <ScenarioStepIcon scenarioId={sc.id} size={32} selected={isS} color={isS ? C.primary : C.tp} />
                   <div style={{ fontSize: 15, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 4 }}>{sc.label}</div>
                   <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
                 </div>;

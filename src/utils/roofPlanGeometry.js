@@ -326,10 +326,24 @@ export function buildRoofPlanEdges(zonas, tipoAguas = "una_agua") {
   const encounterLength = encounters.reduce((s, e) => s + e.length, 0);
   const perimeterIndependent = rects.reduce((s, r) => s + 2 * (r.w + r.h), 0);
 
+  // Global bounding box across all zone rects (for overall envelope dimension)
+  let envMinX = Infinity, envMinY = Infinity, envMaxX = -Infinity, envMaxY = -Infinity;
+  for (const r of rects) {
+    envMinX = Math.min(envMinX, r.x);
+    envMinY = Math.min(envMinY, r.y);
+    envMaxX = Math.max(envMaxX, r.x + r.w);
+    envMaxY = Math.max(envMaxY, r.y + r.h);
+  }
+  const envelope = rects.length > 0
+    ? { minX: envMinX, minY: envMinY, maxX: envMaxX, maxY: envMaxY,
+        totalW: +(envMaxX - envMinX).toFixed(4), totalH: +(envMaxY - envMinY).toFixed(4) }
+    : null;
+
   return {
     rects,
     encounters,
     exterior,
+    envelope,
     meta: {
       tipoAguas,
       gapM: ROOF_PLAN_GAP_M,

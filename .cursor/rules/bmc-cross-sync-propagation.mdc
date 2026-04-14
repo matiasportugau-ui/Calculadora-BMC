@@ -1,0 +1,26 @@
+---
+description: "Calculadora BMC cross-sync — local 5173/3001 vs calculadora-bmc.vercel.app, smoke prod, propagation §4. Apply when user asks sync calculadora, align local and remote, verify Vercel and API, or cross-area sync for Panelin calc."
+alwaysApply: false
+---
+
+# BMC Cross-Sync Propagation (Calculadora BMC)
+
+When the user asks to **sync the calculadora** with production, **align local and remote**, **verify Vercel + API**, run **smoke prod**, or **cross-sync** changes across the Calculadora stack (`src/`, `server/`, integrations, MATRIZ), read and follow:
+
+`.cursor/skills/bmc-cross-sync-propagation/SKILL.md`
+
+## Scope
+
+- **Production frontend:** `https://calculadora-bmc.vercel.app`
+- **Local:** `http://localhost:5173` (Vite), `http://localhost:3001` (API)
+- **Remote checks:** `npm run smoke:prod` (and env vars as in root `AGENTS.md`)
+
+This rule complements **Project Team Sync** (`bmc-project-team-sync`): use cross-sync for **Calculadora-focused** propagation and local vs prod verification; use project team sync for full team runs and global PROJECT-STATE protocol.
+
+## Triggers (EN / ES)
+
+- sync calculadora, calculadora BMC, Panelin calc, calculadora-bmc.vercel.app
+- local and prod aligned, local y remoto, parity, verificar Vercel
+- smoke prod, smoke production, API public health
+- localhost 5173, localhost 3001, gate local full
+- cross sync calculadora, propagar cambios calculadora

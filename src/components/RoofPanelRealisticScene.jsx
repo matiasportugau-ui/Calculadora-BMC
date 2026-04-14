@@ -5,14 +5,24 @@
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, useTexture } from "@react-three/drei";
+import { OrbitControls, useTexture, Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../utils/roof3dLateralStepInfill.js";
 import { buildAnchoStripsPlanta } from "../utils/roofPanelStripsPlanta.js";
+import { findEncounters, encounterPairKey } from "../utils/roofPlanGeometry.js";
+import { zonasToPlantRectsWithAutoGap } from "../utils/roofLateralAnnexLayout.js";
+import { normalizeEncounter } from "../utils/roofEncounterModel.js";
 import { getRoofPanelVisualProfile } from "../data/roofPanelVisualProfiles.js";
 import { getRoofPanelMapUrl } from "../data/roofPanelMapUrl.js";
 import { C } from "../data/constants.js";
+
+const ENCOUNTER_COLORS = {
+  continuo: "#22c55e",
+  pretil: "#f97316",
+  cumbrera: "#3b82f6",
+  desnivel: "#ef4444",
+};
 
 function computeSceneBounds(zoneLayouts, theta, fovDeg = 36) {
   if (!zoneLayouts.length) {
@@ -260,6 +270,7 @@ function RoofRealisticSceneContent({
   mapUrl,
   bounds,
   panelAu,
+  encounters3d = [],
 }) {
   const orbitRef = useRef(null);
   const { minX, maxX, maxH, maxD, maxLargo, camTarget, camPos } = bounds;
@@ -298,6 +309,44 @@ function RoofRealisticSceneContent({
           profile={profile}
           map={map}
           panelAu={panelAu}
+        />
+      ))}
+      {zoneLayouts.map((z) => {
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        const cx = z.ox + z.ancho / 2;
+        const cy = (z.oy ?? 0) + z.largo * sinT * 0.5;
+        const cz = z.oz - z.largo * cosT * 0.5;
+        return (
+          <Html
+            key={`dim-${z.gi}`}
+            position={[cx, cy + 0.15, cz]}
+            center
+            distanceFactor={Math.max(bounds.maxLargo, 4)}
+            style={{ pointerEvents: "none", userSelect: "none" }}
+          >
+            <div style={{
+              background: "rgba(255,255,255,0.85)",
+              borderRadius: 4,
+              padding: "2px 6px",
+              fontSize: 11,
+              fontFamily: "'Share Tech Mono', monospace",
+              color: "#333",
+              whiteSpace: "nowrap",
+              border: "1px solid rgba(0,0,0,0.12)",
+            }}>
+              {z.ancho.toFixed(2)} × {z.largo.toFixed(2)} m
+            </div>
+          </Html>
+        );
+      })}
+      {encounters3d.map((enc) => (
+        <Line
+          key={enc.id}
+          points={enc.points}
+          color={enc.color}
+          lineWidth={3}
+          dashed={false}
         />
       ))}
       <OrbitControls
@@ -357,6 +406,33 @@ export default function RoofPanelRealisticScene({
 
   const bounds = useMemo(() => computeSceneBounds(zoneLayouts, theta), [zoneLayouts, theta]);
 
+  const encounters3d = useMemo(() => {
+    if (!validZonas.length) return [];
+    try {
+      const plantRects = zonasToPlantRectsWithAutoGap(validZonas, tipoAguasStr);
+      const encs = findEncounters(plantRects);
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      return encs.map((enc) => {
+        const [ga, gb] = enc.zoneIndices;
+        const pk = encounterPairKey(ga, gb);
+        const low = Math.min(ga, gb);
+        const raw = validZonas[low]?.preview?.encounterByPair?.[pk];
+        const norm = raw ? normalizeEncounter(raw) : null;
+        const modo = norm?.modo ?? "continuo";
+        const color = ENCOUNTER_COLORS[modo] ?? "#f59e0b";
+        return {
+          id: enc.id,
+          color,
+          points: [
+            [enc.x1, enc.y1 * sinT + 0.01, enc.y1 * cosT],
+            [enc.x2, enc.y2 * sinT + 0.01, enc.y2 * cosT],
+          ],
+        };
+      });
+    } catch { return []; }
+  }, [validZonas, tipoAguasStr, theta]);
+
   if (!zoneLayouts.length) {
     return (
       <div
@@ -402,7 +478,7 @@ export default function RoofPanelRealisticScene({
         camera={{ position: bounds.camPos, fov: 36, near: 0.05, far: 400 }}
         shadows
         dpr={[1, 2]}
-        gl={{ antialias: true, alpha: false }}
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
         style={{ width: "100%", height: "100%", display: "block" }}
       >
         <Suspense fallback={null}>
@@ -414,6 +490,7 @@ export default function RoofPanelRealisticScene({
             mapUrl={mapUrl}
             bounds={bounds}
             panelAu={panelAu}
+            encounters3d={encounters3d}
           />
         </Suspense>
       </Canvas>
