@@ -2185,6 +2185,15 @@ function RoofBorderSelector({
 // Adding a new scenario only requires adding it to SCENARIOS_DEF in constants.js.
 const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardSteps ?? [];
 
+/** Paso "Pendiente" (solo_techo): con varios cuerpos de techo se configura pendiente por zona en Dimensiones — saltar este paso. */
+const SOLO_TECHO_DIM_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones");
+const SOLO_TECHO_PENDIENTE_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "pendiente");
+const SOLO_TECHO_ESTRUCTURA_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "estructura");
+
+function soloTechoSkipPendienteStep(zonasCount) {
+  return zonasCount > 1 && SOLO_TECHO_PENDIENTE_STEP_INDEX >= 0 && SOLO_TECHO_ESTRUCTURA_STEP_INDEX >= 0 && SOLO_TECHO_DIM_STEP_INDEX >= 0;
+}
+
 /** Default roof color by panel line: ISODEC → Blanco, ISOROOF* → Gris when available (transcript preset / Enter-through wizard). */
 function defaultTechoColorForPanelFamilia(fam) {
   const pd = PANELS_TECHO[fam];
@@ -2451,15 +2460,42 @@ export default function PanelinCalculadoraV3() {
     }
   }, []);
 
+  /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
   const advanceWizardStep = useCallback(() => {
-    setWizardStep((s) => (s < SOLO_TECHO_STEPS.length - 1 ? s + 1 : s));
-  }, []);
+    setWizardStep((s) => {
+      if (s >= SOLO_TECHO_STEPS.length - 1) return s;
+      let next = s + 1;
+      if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && next === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
+        next = SOLO_TECHO_ESTRUCTURA_STEP_INDEX;
+      }
+      return next;
+    });
+  }, [techo.zonas?.length]);
+
+  const goPrevWizardSoloTecho = useCallback(() => {
+    setWizardStep((s) => {
+      if (s <= 0) return s;
+      let prev = s - 1;
+      if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && prev === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
+        prev = SOLO_TECHO_DIM_STEP_INDEX;
+      }
+      return prev;
+    });
+  }, [techo.zonas?.length]);
 
   useEffect(() => {
     const handler = () => advanceWizardStep();
     window.addEventListener("bmc-wizard-next", handler);
     return () => window.removeEventListener("bmc-wizard-next", handler);
   }, [advanceWizardStep]);
+
+  /** Si quedó en paso Pendiente con varios cuerpos (p. ej. clic en el indicador), saltar a Estructura. */
+  useEffect(() => {
+    if (!modoVendedor || scenario !== "solo_techo") return;
+    if (!soloTechoSkipPendienteStep(techo.zonas?.length ?? 0)) return;
+    if (wizardStep !== SOLO_TECHO_PENDIENTE_STEP_INDEX) return;
+    setWizardStep(SOLO_TECHO_ESTRUCTURA_STEP_INDEX);
+  }, [modoVendedor, scenario, wizardStep, techo.zonas?.length]);
 
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -2532,16 +2568,18 @@ export default function PanelinCalculadoraV3() {
       if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT" || editable) return;
       if ((e.key === "ArrowRight" || e.key === "Enter") && canNext && isValid) {
         e.preventDefault();
-        setWizardStep(s => s + 1);
+        if (scenario === "solo_techo") advanceWizardStep();
+        else setWizardStep((s) => s + 1);
       }
       if (e.key === "ArrowLeft" && canPrev) {
         e.preventDefault();
-        setWizardStep(s => s - 1);
+        if (scenario === "solo_techo") goPrevWizardSoloTecho();
+        else setWizardStep((s) => s - 1);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [modoVendedor, scenario, wizardStep, isWizardStepValid]);
+  }, [modoVendedor, scenario, wizardStep, isWizardStepValid, advanceWizardStep, goPrevWizardSoloTecho]);
 
   const vis = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
@@ -2680,13 +2718,12 @@ export default function PanelinCalculadoraV3() {
     return Object.keys(hints).length ? hints : null;
   }, [activeWizardStepId, scenarioDef?.hasTecho, techoPanelData, techo]);
 
-  const soloTechoWizardDimStepIndex = useMemo(() => SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones"), []);
   const useDockedRoofBorderSelector = Boolean(
     modoVendedor
     && scenario === "solo_techo"
     && showRoof3DHost
-    && soloTechoWizardDimStepIndex >= 0
-    && wizardStep >= soloTechoWizardDimStepIndex,
+    && SOLO_TECHO_DIM_STEP_INDEX >= 0
+    && wizardStep >= SOLO_TECHO_DIM_STEP_INDEX,
   );
 
   const bumpRoof3dHostReady = useCallback((el) => {
@@ -4843,13 +4880,13 @@ export default function PanelinCalculadoraV3() {
                   )}
                   <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}` }}>
                     {canPrev && (
-                      <button type="button" onClick={() => setWizardStep(s => s - 1)} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
+                      <button type="button" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
                         Anterior
                       </button>
                     )}
                     <div style={{ flex: 1 }} />
                     {canNext ? (
-                      <button type="button" onClick={() => isValid && setWizardStep(s => s + 1)} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
+                      <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
                         Siguiente
                       </button>
                     ) : (
