@@ -3535,6 +3535,7 @@ export default function PanelinCalculadoraV3() {
         onResetLayout={resetRoofPreviewLayout}
         onAnnexRankSwap={swapAnnexRank}
         onAddZona={addZona}
+        onRemoveZona={removeZona}
         onEncounterPairChange={onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
         estructuraHintsByGi={roofEstructuraHintsByGi}
@@ -4427,6 +4428,7 @@ export default function PanelinCalculadoraV3() {
                           onResetLayout={resetRoofPreviewLayout}
                           onAnnexRankSwap={swapAnnexRank}
                           onAddZona={addZona}
+                          onRemoveZona={removeZona}
                           onEncounterPairChange={onRoofEncounterPairChange}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
                           estructuraHintsByGi={roofEstructuraHintsByGi}
@@ -4598,6 +4600,7 @@ export default function PanelinCalculadoraV3() {
                           pendiente={techo.pendiente}
                           selectedGi={estructuraMetricsSelectedGi}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                          onRemoveZona={removeZona}
                         />
                       ) : null}
                     </div>

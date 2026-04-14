@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente } from "../utils/calculations.js";
@@ -790,6 +790,7 @@ export function RoofPreviewMetricsSidebar({
   pendiente = 0,
   selectedGi = null,
   onZonaDimensionPatch,
+  onRemoveZona,
   /** Métricas bajo el wizard (columna izquierda): ancho completo y tipografía un poco mayor */
   compact = false,
   /** Cuando va junto a `RoofPreview` en fila y el padre ya define `flex` */
@@ -829,8 +830,31 @@ export function RoofPreviewMetricsSidebar({
             color: C.ts,
           }}
         >
-          <div style={{ fontWeight: 700, color: C.tp, marginBottom: 8 }}>
-            Zona {formatZonaDisplayTitle(zonas, selectedGi)}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontWeight: 700, color: C.tp }}>
+              Zona {formatZonaDisplayTitle(zonas, selectedGi)}
+            </span>
+            {onRemoveZona && zonas.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onRemoveZona(selectedGi)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: C.dangerSoft,
+                  color: C.danger,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <Trash2 size={12} />Quitar
+              </button>
+            )}
           </div>
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ width: 72 }}>Largo (m)</span>
@@ -997,6 +1021,7 @@ export default function RoofPreview({
   onResetLayout,
   onAnnexRankSwap,
   onAddZona,
+  onRemoveZona,
   onEncounterPairChange,
   onZonaDimensionPatch,
   estructuraHintsByGi = null,
@@ -1599,6 +1624,27 @@ export default function RoofPreview({
               }}
             >
               Otro cuerpo de techo
+            </button>
+          )}
+          {onRemoveZona && selectedGi != null && zonas.length > 1 && (
+            <button
+              type="button"
+              onClick={() => onRemoveZona(selectedGi)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: C.danger,
+                background: C.dangerSoft,
+                border: "none",
+                borderRadius: 8,
+                padding: "6px 10px",
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={12} />Quitar zona
             </button>
           )}
           {onResetLayout && layout.entries.length > 0 && (
@@ -2217,6 +2263,7 @@ export default function RoofPreview({
               pendiente={pendiente}
               selectedGi={selectedGi}
               onZonaDimensionPatch={onZonaDimensionPatch}
+              onRemoveZona={onRemoveZona}
               emphasize={estructuraHintsByGi != null}
               noRootFlex
             />
