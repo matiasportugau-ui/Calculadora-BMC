@@ -423,7 +423,7 @@ function mapStockEcommerceToCanonical(row) {
   };
 }
 
-async function getSheetData(sheetId, sheetName, useWrite = false, options = {}) {
+export async function getSheetData(sheetId, sheetName, useWrite = false, options = {}) {
   const { schema, headerRowOffset = 0 } = options;
   const auth = new google.auth.GoogleAuth({
     scopes: [useWrite ? SCOPE_WRITE : SCOPE_READ],
@@ -728,7 +728,7 @@ async function getOptionalSheetRows(sheetId, sheetName) {
   }
 }
 
-function getCotizacionesSheetOpts(schema) {
+export function getCotizacionesSheetOpts(schema) {
   if (schema === "CRM_Operativo") {
     return { sheetName: "CRM_Operativo", opts: { schema, headerRowOffset: 2 } };
   }

@@ -6,11 +6,12 @@
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
 Respondés en español rioplatense (Uruguay), en tono profesional y cercano. Sos conciso pero completo.
-Tu objetivo es guiar al usuario en el proceso de cotización, responder preguntas técnicas y ayudarlo a elegir el producto correcto.
+Tu objetivo principal es guiar en la cotización con la calculadora, pero también asistís al equipo interno cuando preguntan por seguimiento operativo (CRM/planilla, pendientes, canal ML) usando el bloque "CONTEXTO INTERNO" si viene en esta conversación: resumí prioridades y próximos pasos sin inventar filas que no figuren ahí.
 Cuando el usuario confirma datos concretos, podés emitir acciones para auto-completar la calculadora (ver sección ACCIONES).
 Los montos totales y el BOM los calcula la aplicación a partir del estado de la calculadora: no afirmes totales finales si faltan datos o no podés contrastar con ese estado.
 Las listas de precio web/venta y USD/m² sin IVA deben coincidir con el catálogo de esta conversación (alineado a la MATRIZ en código). Si el usuario pide un número que no está en el catálogo, decilo y pedí confirmación o derivá a un asesor.
-Nunca inventés precios, dimensiones ni datos que el usuario no te dio. Si falta información, preguntala.`;
+Nunca inventés precios, dimensiones ni datos que el usuario no te dio. Si falta información, preguntala.
+Datos del bloque CONTEXTO INTERNO son confidenciales de equipo: no pegues teléfonos, mails ni datos personales en respuestas públicas de marketplace; en chat interno podés mencionar lo necesario para operar.`;
 
 const CATALOG = `## CATÁLOGO DE PRODUCTOS BMC URUGUAY
 
@@ -189,11 +190,11 @@ export function sanitizeForPrompt(val, maxLen = 200) {
 
 /**
  * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean }} options
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, opsContext?: string }} options
  * @returns {string}
  */
 export function buildSystemPrompt(calcState = {}, options = {}) {
-  const { trainingExamples = [], devMode = false } = options;
+  const { trainingExamples = [], devMode = false, opsContext = "" } = options;
   const {
     scenario = "sin seleccionar",
     listaPrecios = "sin seleccionar",
@@ -259,7 +260,9 @@ Si estimás un total o precio, mostrá claramente qué supuestos usaste.
 Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
     : "";
 
-  return [IDENTITY, CATALOG, WORKFLOW, ACTIONS_DOC, currentState, examplesBlock, devModeRules]
+  const opsBlock = typeof opsContext === "string" && opsContext.trim() ? opsContext.trim() : "";
+
+  return [IDENTITY, CATALOG, WORKFLOW, ACTIONS_DOC, currentState, opsBlock, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

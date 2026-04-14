@@ -25,8 +25,23 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
+import { buildAgentOpsContextText } from "../lib/agentOpsContext.js";
 
 const router = Router();
+
+/** @type {null | { resolveSellerId: () => Promise<string|null>, requestWithRetries: Function }} */
+let mercadoLibreForAgentChat = null;
+
+/** Cache dynamic import of dashboard sheet helpers (one load per process). */
+let bmcDashboardSheetsHelpersPromise = null;
+
+/**
+ * Inyecta el cliente ML ya configurado en `server/index.js` (evita import circular con bmcDashboard).
+ * @param {null | { resolveSellerId: () => Promise<string|null>, requestWithRetries: Function }} ml
+ */
+export function setMercadoLibreForAgentChat(ml) {
+  mercadoLibreForAgentChat = ml;
+}
 
 // 0.4 — Allowed origins (CSRF guard)
 const ALLOWED_ORIGINS = new Set([
@@ -349,7 +364,22 @@ router.post("/agent/chat", async (req, res) => {
   if (devMode) {
     send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode });
+  let opsContext = "";
+  try {
+    if (!bmcDashboardSheetsHelpersPromise) {
+      bmcDashboardSheetsHelpersPromise = import("./bmcDashboard.js");
+    }
+    const { getSheetData, getCotizacionesSheetOpts } = await bmcDashboardSheetsHelpersPromise;
+    opsContext = await buildAgentOpsContextText(
+      config,
+      { getSheetData, getCotizacionesSheetOpts },
+      lastUserMessage,
+      { ml: mercadoLibreForAgentChat }
+    );
+  } catch (err) {
+    req.log?.warn({ err: err?.message }, "agent ops context skipped");
+  }
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, opsContext });
   let filteredMsgs = messages
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
