@@ -1,5 +1,6 @@
 # Planilla Inventory — Inventario en vivo
 
+**Versión:** 2026-03-19  
 **Workbooks:** 5 workbooks BMC (multi-workbook). Principal: `1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg`  
 **Schema activo:** CRM_Operativo (BMC_SHEET_SCHEMA)  
 **Planilla principal (integra y genera info para el dashboard):** [BMC crm_automatizado](https://docs.google.com/spreadsheets/d/1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg/edit?usp=sharing). Service account con acceso: `bmc-dashboard-sheets@chatbot-bmc-live.iam.gserviceaccount.com`. Ver [PLANILLA-PRINCIPAL-DASHBOARD.md](PLANILLA-PRINCIPAL-DASHBOARD.md).

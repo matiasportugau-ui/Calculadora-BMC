@@ -2,6 +2,8 @@
 
 **Propósito:** Unificar la invocación del equipo completo en una sola frase: **"Invoque full team"**.
 
+**Alternativa:** Para un **diálogo interactivo** (preguntas y respuestas conversacionales con el equipo), decí **"Chat con el equipo"**. Ver [CHAT-EQUIPO-INTERACTIVO.md](./CHAT-EQUIPO-INTERACTIVO.md).
+
 **Definición canónica del Full Team Run** (objetivo central, loop, evaluación autónoma, documentación, próximas tareas pré-evaluadas, iteración hasta DoD): [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md).
 
 ---
@@ -74,11 +76,21 @@ Ver `docs/TEAM-MEMBERS.md` para personas y `docs/team/PROJECT-TEAM-FULL-COVERAGE
 
 ---
 
+## CEO AI Agent (iteración hasta goal)
+
+Para **iterar hasta que el proyecto funcione** (project working by end of week), usar el **CEO AI Agent**:
+- Triggers: "CEO run", "CEO agent", "project working by end of week", "make it work"
+- El CEO evalúa estado vs GO-LIVE-DASHBOARD-CHECKLIST, invoca full team, actualiza CEO-RUN-LOG, y repite hasta Tier 1 (MVP) o fin de semana.
+- Ver `.cursor/skills/ceo-ai-agent/SKILL.md` y `docs/team/CEO-RUN-LOG.md`.
+
+---
+
 ## Referencias
 
 - **Definición canónica Full Team Run (ciclo, evaluación, iteración):** [`FULL-TEAM-RUN-DEFINITION.md`](./FULL-TEAM-RUN-DEFINITION.md)
 - **Modos de run y triggers (siempre vs ocasional):** [`RUN-MODES-AND-TRIGGERS.md`](./RUN-MODES-AND-TRIGGERS.md)
 - **Orquestador:** `.cursor/agents/bmc-dashboard-team-orchestrator.md`
+- **CEO AI Agent:** `.cursor/agents/ceo-ai-agent.md` — lidera e invoca full team hasta goal
 - **Skill sync:** `.cursor/skills/bmc-project-team-sync/SKILL.md`
 - **Rule:** `.cursor/rules/bmc-project-team-sync.mdc` (triggers incl. "Invoque full team")
 - **Mejoras del equipo:** `docs/team/FULL-TEAM-IMPROVEMENT-ANALYSIS.md` — knowledge base por miembro, skills por flujo.

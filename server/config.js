@@ -55,6 +55,7 @@ export const config = {
   // AI providers — suggest-response endpoint
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
+  openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   grokApiKey: process.env.GROK_API_KEY || "",
   // WhatsApp Business Cloud API

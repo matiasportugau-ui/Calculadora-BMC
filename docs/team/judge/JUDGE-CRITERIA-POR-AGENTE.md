@@ -14,6 +14,8 @@
 
 ## Mapping (bmc-planilla-dashboard-mapper, google-sheets-mapping-agent)
 
+**Entregable:** planilla-inventory.md, planilla-map.md, DASHBOARD-INTERFACE-MAP (cross-reference)
+
 | Criterio | Entregable / Cómo juzgar |
 |----------|---------------------------|
 | **Completitud** | planilla-inventory.md y planilla-map.md actualizados; todas las tabs y columnas relevantes documentadas |

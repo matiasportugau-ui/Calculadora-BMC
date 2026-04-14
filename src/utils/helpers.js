@@ -513,6 +513,278 @@ ${warnHTML ? `<h3 style="margin:12px 0 6px;color:#FF9500;font-size:11pt">ADVERTE
 </body></html>`;
 }
 
+// ── Simulacro: gestión de especificaciones (demo local, mismo pipeline PDF) ───
+
+/**
+ * Datos demo para el simulacro (editable en UI). Formato alineado a generatePrintHTML.
+ */
+export const SPEC_SANDBOX_INITIAL = {
+  quotationId: "SIM-ESP-2026-001",
+  listaPrecios: "venta",
+  client: {
+    nombre: "Cliente demo — Obra piloto",
+    rut: "—",
+    telefono: "092 000 000",
+    direccion: "Maldonado, UY",
+  },
+  project: {
+    fecha: new Date().toLocaleDateString("es-UY"),
+    refInterna: "REF-DEMO-01",
+    descripcion: "Cubierta metálica — simulacro especificaciones",
+    validityDays: 10,
+  },
+  scenario: "solo_techo",
+  panel: {
+    label: "ISODEC EPS",
+    espesor: 150,
+    color: "Blanco",
+    au: 1.12,
+  },
+  autoportancia: { ok: true, maxSpan: 7.5, apoyos: 2 },
+  dimensions: {
+    zonas: [{ largo: 12, ancho: 8 }],
+    alto: 4.2,
+    perimetro: 40,
+    area: 96,
+    cantPaneles: 42,
+  },
+  checklist: [
+    { id: "c1", label: "Escenario y lista de precios confirmados", status: "ok" },
+    { id: "c2", label: "Panel, espesor y color vs. MATRIZ / stock", status: "ok" },
+    { id: "c3", label: "Medidas de obra y vanos (AU / autoportancia)", status: "pending" },
+    { id: "c4", label: "BOM revisado (SKU, cantidades, exclusiones)", status: "pending" },
+    { id: "c5", label: "Términos y validez de oferta comunicados al cliente", status: "na" },
+  ],
+  notes: [
+    "Simulacro para practicar el flujo: especificación → revisión → cotización PDF.",
+    "No reemplaza la cotización generada desde la calculadora con datos reales.",
+  ],
+  groups: [
+    {
+      title: "PANELES",
+      items: [
+        { label: "ISODEC EPS 150mm — Blanco", sku: "ISO-EPS-150-W", cant: 96, unidad: "m²", pu: 42.48, total: 4078.08 },
+      ],
+    },
+    {
+      title: "PERFILERÍA",
+      items: [
+        { label: "Perfil U techo (referencia demo)", sku: "PERF-U-DEMO", cant: 120, unidad: "m", pu: 8.5, total: 1020.0 },
+      ],
+    },
+    {
+      title: "FIJACIONES",
+      items: [
+        { label: "Kit fijación varilla/tuerca (demo)", sku: "FIJ-DEMO", cant: 1, unidad: "kit", pu: 185.0, total: 185.0 },
+      ],
+    },
+  ],
+  totals: {
+    subtotalSinIVA: 5283.08,
+    iva: 1162.28,
+    totalFinal: 6445.36,
+  },
+  warnings: ["Simulacro: verificar medidas y SKU antes de enviar al cliente."],
+};
+
+const CHECK_STATUS_LABEL = { ok: "OK", pending: "Pend.", na: "N/A" };
+
+function buildSpecChecklistTable(checklist) {
+  if (!checklist?.length) return "";
+  let rows = "";
+  checklist.forEach((row, idx) => {
+    const bg = idx % 2 ? "#FAFAFA" : "#fff";
+    const st = CHECK_STATUS_LABEL[row.status] || row.status;
+    rows += `<tr style="background:${bg}">
+      <td style="padding:6px 8px;font-size:9pt">${esc(row.label)}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:9pt;font-weight:600;color:${COMPANY.brandColor}">${esc(st)}</td>
+    </tr>`;
+  });
+  return `
+<div class="section" style="margin-bottom:12px">
+  <div style="font-size:10pt;font-weight:700;color:${COMPANY.brandColor};margin-bottom:6px">CHECKLIST DE ESPECIFICACIÓN</div>
+  <table style="font-size:9pt;width:100%">
+    <thead><tr style="background:#EDEDED;font-weight:700">
+      <th style="text-align:left;padding:5px 8px;width:82%">Ítem</th>
+      <th style="text-align:center;padding:5px 8px;width:18%">Estado</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</div>`;
+}
+
+function buildSandboxNotes(notes) {
+  if (!notes?.length) return "";
+  const items = notes.map(n => `<li style="margin-bottom:4px">${esc(n)}</li>`).join("");
+  return `
+<div class="section" style="background:#FFF9E6;padding:10px 14px;border-radius:6px;margin-bottom:12px;border-left:4px solid #FF9500;font-size:8.5pt">
+  <b style="color:#856404">Notas internas</b>
+  <ul style="margin:6px 0 0;padding-left:16px;line-height:1.5">${items}</ul>
+</div>`;
+}
+
+function buildSandboxBanner() {
+  return `
+<div class="section" style="background:#E8F4FD;padding:10px 14px;border-radius:6px;margin-bottom:12px;border:1pt dashed ${COMPANY.brandColor};font-size:9pt">
+  <b style="color:${COMPANY.brandColor}">SIMULACRO</b> — Gestión de especificaciones para práctica en el entorno Panelin/BMC.
+  Misma plantilla visual que la cotización; los importes son ilustrativos salvo que edites desde la pantalla de simulacro.
+</div>`;
+}
+
+/**
+ * HTML listo para vista previa / PDF del simulacro de especificaciones.
+ * @param {object} data — objeto con la misma forma que SPEC_SANDBOX_INITIAL (groups, totals, etc.)
+ */
+export function generateSpecManagementSandboxHTML(data) {
+  const {
+    quotationId, listaPrecios, client, project, scenario, panel, autoportancia,
+    dimensions, checklist, notes, groups, totals, warnings,
+  } = data;
+
+  const sections = [
+    buildPdfHead("Simulacro — Especificaciones BMC"),
+    buildPageFooter(),
+    buildSandboxBanner(),
+    buildQuoteHeader({ quotationId, listaPrecios }),
+    buildClientGrid({ client, project, validityDays: project?.validityDays ?? 10 }),
+    buildSpecChecklistTable(checklist),
+    buildProductBadge({ scenario, panel, autoportancia }),
+    buildDimensionsSection({ dimensions }),
+    buildBomTable({ groups, showSKU: true, showUnitPrices: true }),
+    buildTotalsBlock({ totals }),
+    buildSandboxNotes(notes),
+    buildTermsSection({ warnings, terms: QUOTE_TERMS }),
+    buildBankBlock(),
+    "</body></html>",
+  ];
+
+  return sections.join("\n");
+}
+
+// ── Presentación PDF — licitación / benchmark (uso comercial interno) ─────────
+
+function buildPresentationSlide(title, innerHtml, { breakBefore = true } = {}) {
+  return `
+<div class="section" style="${breakBefore ? "page-break-before:always;" : ""}margin-bottom:14px">
+  <div style="font-size:14pt;font-weight:800;color:${COMPANY.brandColor};border-bottom:2pt solid ${COMPANY.brandColor};padding-bottom:6px;margin-bottom:12px">${esc(title)}</div>
+  ${innerHtml}
+</div>`;
+}
+
+/**
+ * HTML A4 multipágina — presentación comparativa licitación (competidor vs BMC ISODEC PIR 50 mm).
+ * Listo para html2pdf / imprimir.
+ */
+export function generateBidPresentationHTML() {
+  const fecha = new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "long", year: "numeric" });
+
+  const cover = `
+<div class="section" style="padding-top:32px;margin-bottom:0;page-break-after:always">
+  <div style="margin-bottom:24px">${buildLogo()}</div>
+  <div style="font-size:22pt;font-weight:800;color:${COMPANY.brandColor};line-height:1.2;margin-bottom:8px">
+    Presentación comercial
+  </div>
+  <div style="font-size:15pt;font-weight:600;color:#1D1D1F;margin-bottom:6px">
+    Benchmark de licitación — Techo 50 mm PIR
+  </div>
+  <div style="font-size:10pt;color:#6E6E73;margin-bottom:28px">
+    Referencia: presupuesto tipo "Iso.Techo 50" (tercero) · ${esc(fecha)}
+  </div>
+  <div style="font-size:9pt;line-height:1.55;color:#3A3A3C;max-width:95%">
+    Documento orientado a equipos comerciales y técnicos BMC. Los importes del competidor se tomaron de una captura de presupuesto de suministro;
+    la propuesta BMC usa lista venta <b>ISODEC PIR 50 mm</b> (USD/m² sin IVA) según matriz vigente en la calculadora.
+  </div>
+</div>`;
+
+  const slide1 = buildPresentationSlide("1. Resumen del competidor (referencia)", `
+    <p style="font-size:9.5pt;line-height:1.55;margin:0 0 10px">
+      Escenario tipo: <b>Iso.Techo 50 mm</b>, dos líneas de panel que suman <b>70,00 m²</b>, más perfiles, terminaciones, anclajes y caños.
+      Total indicativo en la referencia: <b>USD ${fmtPrice(3328.54)}</b> (ejemplo de mercado; no es cotización BMC).
+    </p>
+    <table style="font-size:9pt;margin-top:8px">
+      <thead><tr style="background:#EDEDED;font-weight:700">
+        <th style="text-align:left;padding:6px 8px">Concepto</th>
+        <th style="text-align:right;padding:6px 8px">Monto USD</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding:5px 8px">Paneles 50 mm (70 m², dos partidas)</td><td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$${fmtPrice(2586.85)}</td></tr>
+        <tr style="background:#FAFAFA"><td style="padding:5px 8px">Accesorios (ángulos, term., anclajes, caños)</td><td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">$${fmtPrice(741.69)}</td></tr>
+        <tr style="font-weight:700;background:#EEF3F8"><td style="padding:6px 8px">Total referencia</td><td style="text-align:right;padding:6px 8px;font-variant-numeric:tabular-nums">$${fmtPrice(3328.54)}</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:8.5pt;color:#6E6E73;margin-top:10px;margin-bottom:0">
+      Precio efectivo aproximado solo en panel: 2.586,85 ÷ 70 ≈ <b>36,95 USD/m²</b> (líneas de techo en la referencia).
+    </p>
+  `, { breakBefore: false });
+
+  const slide2 = buildPresentationSlide("2. Propuesta BMC — ISODEC PIR 50 mm", `
+    <p style="font-size:9.5pt;line-height:1.55;margin:0 0 10px">
+      Producto alineado a <b>poliuretano PIR</b> para cubierta: <b>ISODEC PIR 50 mm</b>, lista venta <b>USD ${fmtPrice(41.82)}/m²</b> sin IVA
+      (≈ USD ${fmtPrice(41.82 * 1.22)}/m² con IVA 22 %). Ancho útil típico de cálculo AU 1,12 m; verificar escena en calculadora.
+    </p>
+    <table style="font-size:9pt">
+      <thead><tr style="background:#EDEDED;font-weight:700">
+        <th style="text-align:left;padding:6px 8px">Concepto</th>
+        <th style="text-align:right;padding:6px 8px">Cálculo</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="padding:5px 8px">70 m² × lista venta PIR 50</td><td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">70 × ${fmtPrice(41.82)} = $${fmtPrice(2927.40)}</td></tr>
+        <tr style="background:#FAFAFA"><td style="padding:5px 8px">Diferencial vs referencia (solo panel)</td><td style="text-align:right;padding:5px 8px;color:#C0392B;font-weight:600">+$${fmtPrice(340.55)}</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:8.5pt;color:#6E6E73;margin-top:10px;margin-bottom:0">
+      La matriz interna puede marcar 50 mm PIR como espesor a validar comercialmente antes de comprometer volumen.
+    </p>
+  `);
+
+  const slide3 = buildPresentationSlide("3. Cómo competir", `
+    <ul style="font-size:9.5pt;line-height:1.6;margin:0;padding-left:18px">
+      <li><b>Valor técnico:</b> PIR, trazabilidad fabricación local / cadena ISODEC–Kingspan Uruguay, desempeño térmico.</li>
+      <li><b>Precio:</b> para acercarse al ~36,95 USD/m² del referente en panel, hace falta orden de <b>12–13 %</b> de descuento sobre lista venta en ese ítem (indicativo; aprobar margen).</li>
+      <li><b>Accesorios:</b> cerrar ángulos, anclajes y estructura con <b>Presupuesto libre</b> o cotización detallada para no dejar gap frente a los 741,69 USD del tercero.</li>
+      <li><b>Deck grabado:</b> si el pliego pide chapa <i>deck</i> estética, confirmar con planta disponibilidad de lámina perfilada; el estándar ISODEC PIR suele ser chapa lisa prepintada.</li>
+    </ul>
+  `);
+
+  const slide4 = buildPresentationSlide("4. Benchmark de mercado (consulta)", `
+    <p style="font-size:9.5pt;line-height:1.55;margin:0 0 8px">
+      Referencias públicas para comparar oferta y soporte (no son precios cerrados de licitación):
+    </p>
+    <ul style="font-size:9pt;line-height:1.55;margin:0;padding-left:18px">
+      <li><b>BMC Uruguay</b> — ISODEC PIR (ficha y precio web): bmcuruguay.com.uy</li>
+      <li><b>Kingspan Uruguay</b> — ISODEC PIR: kingspan.com.uy</li>
+      <li><b>Panel Sandwich Group Uruguay</b> — panelsandwich.uy</li>
+    </ul>
+    <p style="font-size:8.5pt;color:#6E6E73;margin-top:10px;margin-bottom:0">
+      "IPS" en conversación suele confundirse con <b>PIR</b> (núcleo poliisocianurato). Para techo tipo <i>deck</i> con junta oculta, pedir ficha del fabricante.
+    </p>
+  `);
+
+  const slide5 = buildPresentationSlide("5. Descargo", `
+    <p style="font-size:9pt;line-height:1.55;margin:0">
+      Documento generado desde la calculadora BMC para apoyo comercial. Cifras del competidor basadas en ejemplo de presupuesto de terceros;
+      cifras BMC según lista venta en código. La cotización formal se emite con <b>Presupuesto libre</b> o flujo estándar de cotización y condiciones vigentes.
+    </p>
+    <div style="margin-top:14px;font-size:9pt">
+      <b>${esc(COMPANY.name)}</b> · ${esc(COMPANY.website)} · ${esc(COMPANY.phone)} · ${esc(COMPANY.location)}
+    </div>
+  `);
+
+  const parts = [
+    buildPdfHead("Presentación — Benchmark licitación BMC"),
+    buildPageFooter(),
+    cover,
+    slide1,
+    slide2,
+    slide3,
+    slide4,
+    slide5,
+    "</body></html>",
+  ];
+
+  return parts.join("\n");
+}
+
 // ── Print / preview utilities ─────────────────────────────────────────────────
 
 export function openPrintWindow(html) {
