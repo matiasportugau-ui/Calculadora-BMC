@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BMC">
+<meta name="theme-color" content="#000300">
+<title>BMC Connect</title>
+<script>
+const manifest = {
+  name: "BMC Connect",
+  short_name: "BMC",
+  description: "Acceso remoto · Depósito Maldonado",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#000300",
+  theme_color: "#000300",
+  orientation: "portrait",
+  icons: [{
+    src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%23000300'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle' fill='%2300ff41' font-family='monospace'%3E⬡%3C/text%3E%3C/svg%3E",
+    sizes: "192x192", type: "image/svg+xml"
+  }]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+const link = document.createElement('link');
+link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+document.head.appendChild(link);
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+:root {
+  --green:#00ff41;--green2:#00cc33;--green3:#008f11;--green4:#003300;--green5:#001a00;
+  --black:#000300;--surface:#000d00;--white:#ccffcc;--cyan:#00ffcc;
+  --yellow:#ffe600;--red:#ff4444;--dim:#004400;--font:'Share Tech Mono',monospace;
+  --safe-top:env(safe-area-inset-top,44px);--safe-bottom:env(safe-area-inset-bottom,34px);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;width:100%;background:var(--black);font-family:var(--font);color:var(--green);overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch;}
+body::before{content:'';position:fixed;inset:0;z-index:1000;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.08) 3px,rgba(0,0,0,0.08) 6px);}
+#rain{position:fixed;inset:0;z-index:0;opacity:0.06;pointer-events:none;}
+.app{position:relative;z-index:10;height:100dvh;display:flex;flex-direction:column;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);}
+.statusbar{padding:10px 20px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--green4);flex-shrink:0;}
+.statusbar-left{display:flex;align-items:center;gap:10px;}
+.logo{font-size:18px;font-weight:bold;color:var(--green);text-shadow:0 0 12px var(--green3);letter-spacing:.1em;}
+.logo span{color:var(--green3);font-size:11px;margin-left:4px;}
+.net-badge{font-size:9px;letter-spacing:.12em;padding:2px 8px;border:1px solid var(--green4);color:var(--green3);border-radius:2px;text-transform:uppercase;}
+.net-badge.local{border-color:var(--green);color:var(--green);}
+.clock{font-size:12px;color:var(--green3);}
+.tabs{display:flex;border-bottom:1px solid var(--green4);flex-shrink:0;background:var(--surface);}
+.tab{flex:1;padding:11px 0;text-align:center;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;font-family:var(--font);-webkit-user-select:none;}
+.tab.active{color:var(--green);border-bottom-color:var(--green);}
+.views{flex:1;overflow:hidden;position:relative;}
+.view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 18px 24px;opacity:0;pointer-events:none;transition:opacity .2s;display:flex;flex-direction:column;gap:0;}
+.view.active{opacity:1;pointer-events:all;position:relative;}
+.sec{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--green3);margin:14px 0 8px;}
+.sec:first-child{margin-top:2px;}
+.pc-card{background:var(--surface);border:1px solid var(--green4);border-radius:6px;margin-bottom:10px;overflow:hidden;transition:border-color .15s,transform .1s;cursor:pointer;-webkit-user-select:none;}
+.pc-card:active{transform:scale(0.98);border-color:var(--green);}
+.pc-card.offline{opacity:.38;pointer-events:none;}
+.pc-card-inner{padding:14px 16px;display:flex;align-items:center;gap:14px;}
+.pc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.pc-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2.5s infinite;}
+.pc-dot.off{background:var(--red);}
+.pc-dot.scanning{background:var(--yellow);animation:blink .8s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+@keyframes blink{50%{opacity:.1;}}
+.pc-info{flex:1;min-width:0;}
+.pc-name{font-size:15px;font-weight:bold;color:var(--white);letter-spacing:.04em;margin-bottom:3px;}
+.pc-meta{font-size:11px;color:var(--green3);display:flex;gap:10px;flex-wrap:wrap;}
+.pc-badge{font-size:9px;font-weight:bold;letter-spacing:.1em;padding:2px 7px;border-radius:3px;}
+.pc-badge.rdp{color:var(--yellow);background:rgba(255,230,0,.1);border:1px solid rgba(255,230,0,.2);}
+.pc-badge.vnc{color:var(--cyan);background:rgba(0,255,204,.08);border:1px solid rgba(0,255,204,.15);}
+.pc-arrow{font-size:18px;color:var(--green3);flex-shrink:0;}
+.scan-card{background:var(--surface);border:1px solid var(--green4);border-radius:6px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+.scan-spinner{font-size:18px;animation:spin 1.2s linear infinite;color:var(--green3);}
+@keyframes spin{to{transform:rotate(360deg);}}
+.scan-text{font-size:12px;color:var(--green3);}
+.empty{padding:32px 0;text-align:center;font-size:12px;color:var(--green4);line-height:2;}
+.empty-icon{font-size:32px;margin-bottom:12px;opacity:.4;}
+.conn-header{margin-bottom:18px;}
+.conn-name{font-size:22px;font-weight:bold;color:var(--white);margin-bottom:4px;}
+.conn-meta{font-size:11px;color:var(--green3);}
+.log-scroll{flex:1;overflow-y:auto;}
+.log-line{font-size:11px;line-height:1.7;padding:1px 0;opacity:0;transform:translateY(3px);transition:opacity .18s,transform .18s;}
+.log-line.show{opacity:1;transform:none;}
+.log-ts{color:var(--green4);margin-right:8px;}
+.log-ok{color:var(--green);}
+.log-info{color:var(--cyan);}
+.log-warn{color:var(--yellow);}
+.log-txt{color:var(--white);opacity:.8;}
+.conn-result{margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--green);border-radius:6px;text-align:center;opacity:0;transition:opacity .4s;}
+.conn-result.show{opacity:1;}
+.conn-check{font-size:28px;color:var(--green);text-shadow:0 0 16px var(--green);}
+.conn-result-text{font-size:13px;font-weight:bold;color:var(--green);margin-top:6px;}
+.conn-result-sub{font-size:10px;color:var(--green3);margin-top:4px;}
+.btn-back{margin-top:16px;padding:12px 20px;background:transparent;border:1px solid var(--green4);color:var(--green3);font-family:var(--font);font-size:12px;border-radius:6px;width:100%;cursor:pointer;letter-spacing:.08em;transition:border-color .15s,color .15s;-webkit-user-select:none;}
+.btn-back:active{border-color:var(--green);color:var(--green);}
+.setup-step{background:var(--surface);border:1px solid var(--green4);border-radius:6px;padding:14px 16px;margin-bottom:10px;}
+.setup-step-num{font-size:10px;color:var(--green3);letter-spacing:.15em;margin-bottom:6px;}
+.setup-step-title{font-size:13px;color:var(--white);margin-bottom:6px;}
+.setup-step-body{font-size:11px;color:var(--green3);line-height:1.8;}
+.setup-step-body code{color:var(--cyan);background:rgba(0,255,204,.06);padding:1px 5px;border-radius:3px;font-family:var(--font);}
+.sbadge{display:inline-block;font-size:8px;letter-spacing:.1em;padding:1px 6px;border-radius:2px;margin-left:8px;vertical-align:middle;}
+.sbadge.done{background:rgba(0,255,65,.1);color:var(--green);border:1px solid rgba(0,255,65,.2);}
+.sbadge.pend{background:rgba(255,68,68,.1);color:var(--red);border:1px solid rgba(255,68,68,.2);}
+.inv-card{background:var(--surface);border:1px solid var(--green4);border-radius:6px;padding:14px 16px;margin-bottom:10px;}
+.inv-name{font-size:14px;color:var(--white);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.inv-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--green5);}
+.inv-row:last-child{border-bottom:none;}
+.inv-label{color:var(--green3);}
+.inv-val{color:var(--white);opacity:.8;font-family:var(--font);}
+.scan-progress{height:2px;background:var(--green4);margin:0 18px 4px;border-radius:1px;overflow:hidden;flex-shrink:0;}
+.scan-progress-fill{height:100%;background:var(--green3);transition:width 1s linear;}
+.scan-status{font-size:9px;color:var(--green4);text-align:right;padding:0 18px 10px;letter-spacing:.1em;flex-shrink:0;}
+.install-banner{margin:8px 18px 0;padding:10px 14px;background:rgba(0,255,65,.04);border:1px solid rgba(0,255,65,.12);border-radius:6px;font-size:11px;color:var(--green3);display:none;align-items:center;gap:10px;flex-shrink:0;}
+.install-banner.show{display:flex;}
+.install-banner strong{color:var(--green);}
+.install-btn{margin-left:auto;padding:5px 12px;flex-shrink:0;background:rgba(0,255,65,.1);border:1px solid rgba(0,255,65,.3);color:var(--green);font-family:var(--font);font-size:10px;border-radius:4px;cursor:pointer;letter-spacing:.06em;}
+</style>
+</head>
+<body>
+<canvas id="rain"></canvas>
+<div class="app">
+  <div class="statusbar">
+    <div class="statusbar-left">
+      <div class="logo">BMC<span>v1.0</span></div>
+      <div class="net-badge" id="net-badge">buscando red...</div>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+  <div class="install-banner" id="install-banner">
+    <span><strong>Instalar:</strong> Compartir ⎙ → "Agregar a pantalla de inicio"</span>
+    <button class="install-btn" onclick="document.getElementById('install-banner').classList.remove('show')">✕</button>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="main">● red</div>
+    <div class="tab" data-tab="connect" id="tab-connect" style="display:none">⬡ sesión</div>
+    <div class="tab" data-tab="setup">⚙ setup</div>
+    <div class="tab" data-tab="inventory">≡ inv</div>
+  </div>
+  <div class="scan-progress"><div class="scan-progress-fill" id="pbar" style="width:20%"></div></div>
+  <div class="scan-status" id="scan-status">iniciando...</div>
+  <div class="views">
+    <div class="view active" id="view-main"><div id="main-content"></div></div>
+    <div class="view" id="view-connect">
+      <div class="conn-header">
+        <div class="conn-name" id="conn-name">—</div>
+        <div class="conn-meta" id="conn-meta">—</div>
+      </div>
+      <div class="log-scroll" id="log-scroll"><div id="log-area"></div></div>
+      <div class="conn-result" id="conn-result">
+        <div class="conn-check">✓</div>
+        <div class="conn-result-text" id="conn-result-text">Conexión establecida</div>
+        <div class="conn-result-sub" id="conn-result-sub"></div>
+      </div>
+      <button class="btn-back" id="btn-back" style="opacity:0;pointer-events:none" onclick="goBack()">← volver a red</button>
+    </div>
+    <div class="view" id="view-setup">
+      <div class="setup-step">
+        <div class="setup-step-num">PASO 01 · TAILSCALE</div>
+        <div class="setup-step-title">Crear cuenta Tailscale <span class="sbadge pend">pendiente</span></div>
+        <div class="setup-step-body">Ir a <code>tailscale.com</code> → cuenta con email BMC.<br>Instalar Tailscale en iPhone desde App Store.<br>Auth key en <code>Admin › Settings › Keys</code></div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">PASO 02 · MAC</div>
+        <div class="setup-step-title">Instalar bmc en Mac <span class="sbadge pend">pendiente</span></div>
+        <div class="setup-step-body">Descargar <code>bmc-connect-v1.0.zip</code><br>Ejecutar: <code>bash install-bmc.sh</code><br>Luego: <code>bmc --setup</code></div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">PASO 03 · PCs WINDOWS</div>
+        <div class="setup-step-title">Bootstrap en cada PC <span class="sbadge pend">visita física</span></div>
+        <div class="setup-step-body">Pendrive con <code>BMC-BOOTSTRAP.bat</code><br>Enchufar → doble click → SÍ → esperar LISTO<br>Una sola vez por PC.</div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">PASO 04 · iPhone</div>
+        <div class="setup-step-title">Instalar esta app <span class="sbadge done">ahora</span></div>
+        <div class="setup-step-body">Safari → botón Compartir ⎙<br>→ "Agregar a pantalla de inicio"<br>→ Ícono BMC en tu iPhone</div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">PASO 05 · RDP</div>
+        <div class="setup-step-title">Microsoft Remote Desktop <span class="sbadge pend">instalar</span></div>
+        <div class="setup-step-body">App Store: "Microsoft Remote Desktop"<br>Se abre automáticamente al conectar.<br>VNC: "RealVNC Viewer" (App Store)</div>
+      </div>
+    </div>
+    <div class="view" id="view-inventory"><div id="inv-content"></div></div>
+  </div>
+</div>
+<script>
+const PCS=[
+  {host:"BMC-PC-101",ip:"192.168.1.101",ip_ts:"100.64.0.1",method:"RDP",port:3389,win:"Windows 10 Pro",online:true},
+  {host:"BMC-PC-102",ip:"192.168.1.102",ip_ts:"100.64.0.2",method:"RDP",port:3389,win:"Windows 11 Pro",online:true},
+  {host:"BMC-PC-103",ip:"192.168.1.103",ip_ts:"100.64.0.3",method:"VNC",port:5900,win:"Windows 10 Home",online:false},
+];
+let state={phase:"scanning",discovered:[],activePC:null,countdown:20};
+function tick(){document.getElementById("clock").textContent=new Date().toTimeString().slice(0,8);}
+setInterval(tick,1000);tick();
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+const isStandalone=window.navigator.standalone;
+if(isIOS&&!isStandalone)document.getElementById("install-banner").classList.add("show");
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    const id=tab.dataset.tab;
+    if(id==="connect"&&!state.activePC)return;
+    if(id==="inventory")renderInventory();
+    switchView(id);
+  });
+});
+function switchView(name){
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById("view-"+name).classList.add("active");
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===name));
+}
+function goBack(){switchView("main");}
+function bootScan(){
+  state.phase="scanning";state.discovered=[];renderMain();
+  PCS.forEach((pc,i)=>{
+    setTimeout(()=>{
+      state.discovered.push(pc);renderMain();
+      if(i===PCS.length-1){
+        state.phase="done";
+        document.getElementById("net-badge").textContent="192.168.1.x";
+        document.getElementById("net-badge").classList.add("local");
+        renderMain();startCountdown();
+      }
+    },800+i*600+Math.random()*200);
+  });
+}
+let cdTimer=null;
+function startCountdown(){
+  clearInterval(cdTimer);state.countdown=20;
+  document.getElementById("pbar").style.width="100%";
+  cdTimer=setInterval(()=>{
+    state.countdown--;
+    document.getElementById("pbar").style.width=(state.countdown/20*100)+"%";
+    document.getElementById("scan-status").textContent=`próximo scan en ${state.countdown}s`;
+    if(state.countdown<=0){clearInterval(cdTimer);bootScan();}
+  },1000);
+}
+function renderMain(){
+  const el=document.getElementById("main-content");
+  const ss=document.getElementById("scan-status");
+  if(state.phase==="scanning"&&state.discovered.length===0){
+    el.innerHTML=`<div class="sec">Escaneando red local...</div><div class="scan-card"><div class="scan-spinner">◌</div><div class="scan-text">Buscando PCs en 192.168.1.0/24...</div></div>`;
+    ss.textContent="escaneando...";
+    document.getElementById("pbar").style.width="35%";
+    return;
+  }
+  let html="";
+  if(state.discovered.length){
+    const scanning=state.phase==="scanning";
+    html+=`<div class="sec">Red local ${scanning?'· <span style="color:var(--yellow);animation:blink .8s infinite">◉</span>':''}</div>`;
+    state.discovered.forEach((pc,i)=>{html+=pcCard(pc,i,false);});
+    html+=`<div class="sec">Tailscale · acceso remoto</div>`;
+    PCS.forEach((pc,i)=>{html+=pcCard(pc,state.discovered.length+i,true);});
+  }
+  if(!state.discovered.length&&state.phase==="done"){
+    html=`<div class="empty"><div class="empty-icon">◎</div><div>No se encontraron PCs</div><div>Verificar red del depósito</div></div>`;
+  }
+  el.innerHTML=html;
+  const all=[...state.discovered,...PCS.map(p=>({...p,via:"ts"}))];
+  el.querySelectorAll(".pc-card:not(.offline)").forEach(card=>{
+    card.addEventListener("click",()=>{triggerConnect(all[parseInt(card.dataset.i)]);});
+  });
+}
+function pcCard(pc,i,isRemote){
+  const dot=pc.online?`<div class="pc-dot on"></div>`:`<div class="pc-dot off"></div>`;
+  const badge=`<span class="pc-badge ${pc.method.toLowerCase()}">${pc.method}</span>`;
+  const ip=isRemote?pc.ip_ts:pc.ip;
+  const tag=isRemote?`<span style="font-size:9px;color:var(--green3)">ts</span>`:"";
+  return `<div class="pc-card ${pc.online?"online":"offline"}" data-i="${i}"><div class="pc-card-inner">${dot}<div class="pc-info"><div class="pc-name">${pc.host}</div><div class="pc-meta">${ip} ${badge} ${tag}</div></div>${pc.online?'<div class="pc-arrow">›</div>':''}</div></div>`;
+}
+function triggerConnect(pc){
+  state.activePC=pc;
+  document.getElementById("conn-name").textContent=pc.host;
+  document.getElementById("conn-meta").textContent=`${pc.ip_ts||pc.ip} · ${pc.method} · puerto ${pc.port}`;
+  document.getElementById("log-area").innerHTML="";
+  document.getElementById("conn-result").classList.remove("show");
+  const btn=document.getElementById("btn-back");
+  btn.style.opacity="0";btn.style.pointerEvents="none";
+  document.getElementById("tab-connect").style.display="flex";
+  switchView("connect");
+  const isRDP=pc.method==="RDP";
+  const t=new Date().toTimeString().slice(0,8);
+  const logs=isRDP?[
+    {d:200,c:"info",m:`Iniciando RDP → ${pc.ip_ts||pc.ip}:${pc.port}`},
+    {d:600,c:"info",m:`Verificando Tailscale mesh...`},
+    {d:1050,c:"ok",m:`Host alcanzable ✓  latencia 24ms`},
+    {d:1450,c:"info",m:`Protocolo RDP v10.6 (TLS 1.3)`},
+    {d:1900,c:"ok",m:`Protocolo aceptado ✓`},
+    {d:2250,c:"info",m:`Autenticando Administrador...`},
+    {d:2750,c:"ok",m:`Credenciales válidas ✓`},
+    {d:3100,c:"info",m:`Cargando escritorio remoto...`},
+    {d:3600,c:"ok",m:`Escritorio listo ✓  (1920×1080)`},
+    {d:3900,c:"ok",m:`▶ Abriendo Microsoft Remote Desktop`},
+  ]:[
+    {d:200,c:"info",m:`Iniciando VNC → ${pc.ip_ts||pc.ip}:${pc.port}`},
+    {d:600,c:"info",m:`Resolviendo ${pc.host} via Tailscale...`},
+    {d:1050,c:"ok",m:`Host alcanzable ✓`},
+    {d:1450,c:"info",m:`Handshake VNC RFB 003.008`},
+    {d:1900,c:"ok",m:`Protocolo aceptado ✓`},
+    {d:2250,c:"warn",m:`Windows Home: auth VNC básica`},
+    {d:2700,c:"ok",m:`Autenticado ✓`},
+    {d:3100,c:"info",m:`Stream activo · ZRLE`},
+    {d:3600,c:"ok",m:`Pantalla recibida ✓`},
+    {d:3900,c:"ok",m:`▶ Abriendo VNC Viewer`},
+  ];
+  const logArea=document.getElementById("log-area");
+  logs.forEach(({d,c,m})=>{
+    setTimeout(()=>{
+      const line=document.createElement("div");
+      line.className="log-line";
+      line.innerHTML=`<span class="log-ts">${t}</span><span class="log-${c}">▸</span> <span class="log-txt">${m}</span>`;
+      logArea.appendChild(line);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>line.classList.add("show")));
+      document.getElementById("log-scroll").scrollTop=99999;
+    },d);
+  });
+  setTimeout(()=>{
+    document.getElementById("conn-result-text").textContent=isRDP?"Microsoft Remote Desktop abierto":"VNC Viewer abierto";
+    document.getElementById("conn-result-sub").textContent=`${pc.host} · ${pc.ip_ts||pc.ip}`;
+    document.getElementById("conn-result").classList.add("show");
+    btn.style.opacity="1";btn.style.pointerEvents="all";
+    const url=isRDP?`rdp://full%20address=s:${pc.ip_ts||pc.ip}:${pc.port}`:`vnc://${pc.ip_ts||pc.ip}:${pc.port}`;
+    setTimeout(()=>window.location.href=url,400);
+  },4300);
+}
+function renderInventory(){
+  const el=document.getElementById("inv-content");
+  let html=`<div class="sec">PCs configuradas</div>`;
+  PCS.forEach(pc=>{
+    const dot=pc.online?`<div class="pc-dot on" style="width:7px;height:7px"></div>`:`<div class="pc-dot off" style="width:7px;height:7px"></div>`;
+    const badge=`<span class="pc-badge ${pc.method.toLowerCase()}">${pc.method}</span>`;
+    html+=`<div class="inv-card"><div class="inv-name">${dot} ${pc.host} ${badge}</div>
+      <div class="inv-row"><span class="inv-label">IP Local</span><span class="inv-val">${pc.ip}</span></div>
+      <div class="inv-row"><span class="inv-label">Tailscale</span><span class="inv-val">${pc.ip_ts}</span></div>
+      <div class="inv-row"><span class="inv-label">Sistema</span><span class="inv-val">${pc.win}</span></div>
+      <div class="inv-row"><span class="inv-label">Puerto</span><span class="inv-val">${pc.port}</span></div>
+      <div class="inv-row"><span class="inv-label">Estado</span><span class="inv-val" style="color:${pc.online?"var(--green)":"var(--red)"}">${pc.online?"online":"offline"}</span></div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+const canvas=document.getElementById("rain");
+const ctx=canvas.getContext("2d");
+function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resizeCanvas();window.addEventListener("resize",resizeCanvas);
+const chars="ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ01";
+const fontSize=12;
+let cols=Math.floor(canvas.width/fontSize);
+let drops=Array(cols).fill(1);
+function drawRain(){
+  ctx.fillStyle="rgba(0,3,0,0.05)";ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.font=fontSize+"px monospace";
+  for(let i=0;i<drops.length;i++){
+    ctx.fillStyle=Math.random()>0.97?"#ccffcc":"#00ff41";
+    ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*fontSize,drops[i]*fontSize);
+    if(drops[i]*fontSize>canvas.height&&Math.random()>0.975)drops[i]=0;
+    drops[i]++;
+  }
+}
+setInterval(drawRain,50);
+bootScan();
+</script>
+</body>
+</html>

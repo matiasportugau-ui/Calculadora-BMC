@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-14 (merge PR #53 — PR backlog Phases 1–5 + main updates through 2026-04-13)
+**Última actualización:** 2026-04-14 (BMC Connect iOS estático + deploy script; merge PR #53 en historial)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-14 (BMC Connect iOS — estático + script deploy):** Carpeta [`bmc-connect-ios/`](../../bmc-connect-ios/) con `index.html` (PWA demo matrix / RDP-VNC) y [`vercel.json`](../../bmc-connect-ios/vercel.json) con JSON ASCII válido (el copy-paste original usaba comillas tipográficas y fallaba en `vercel`). Script [`scripts/deploy-bmc-ios.sh`](../../scripts/deploy-bmc-ios.sh): copia a `~/bmc-connect-ios` (o `DEPLOY_TARGET=`) e indica `npx vercel@latest deploy --yes --name bmc-connect-ios` sin `npm install -g`.
 
 **2026-04-13 (Skill — ML operativo KB y publicación):** Nueva skill [`.cursor/skills/bmc-ml-operativo-respuestas/SKILL.md`](../../.cursor/skills/bmc-ml-operativo-respuestas/SKILL.md): ciclo **API → corpus → KB (human-in-the-loop) → cotizar → publicar** en Mercado Libre; [`.cursor/skills/bmc-ml-operativo-respuestas/reference.md`](../../.cursor/skills/bmc-ml-operativo-respuestas/reference.md) (`curl` / `jq`). Complementa [`.cursor/skills/bmc-mercadolibre-api/SKILL.md`](../../.cursor/skills/bmc-mercadolibre-api/SKILL.md).
 
