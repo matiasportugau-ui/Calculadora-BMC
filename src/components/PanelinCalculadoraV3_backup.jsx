@@ -93,6 +93,7 @@ import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
+import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
