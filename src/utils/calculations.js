@@ -678,8 +678,8 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
     techo.opciones?.bomComercial === true &&
     techo.familia === "ISODEC_PIR" &&
     panel.sist === "varilla_tuerca";
-  const pendienteModo = techo.pendienteModo ?? "incluye_pendiente";
-  const pendiente = techo.pendiente ?? 0;
+  const globalPendienteModo = techo.pendienteModo ?? "incluye_pendiente";
+  const globalPendiente = techo.pendiente ?? 0;
   const tipoEst = techo.tipoEst || "metal";
   const ptsHorm = techo.ptsHorm ?? 0;
   const ptsMetal = techo.ptsMetal ?? 0;
@@ -690,6 +690,8 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
     const largo = Number(z?.largo);
     const ancho = Number(z?.ancho);
     if (!(largo > 0) || !(ancho > 0)) continue;
+    const pendienteModo = z.pendienteModo ?? globalPendienteModo;
+    const pendiente = z.pendiente ?? globalPendiente;
     const alturaDif = z.alturaDif ?? techo.alturaDif ?? 0;
     const largoReal = calcLargoRealFromModo(largo, pendienteModo, pendiente, alturaDif);
     const anchoPlanta = techo.tipoAguas === "dos_aguas" ? ancho / 2 : ancho;

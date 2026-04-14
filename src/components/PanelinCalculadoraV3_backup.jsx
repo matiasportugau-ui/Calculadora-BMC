@@ -2185,6 +2185,15 @@ function RoofBorderSelector({
 // Adding a new scenario only requires adding it to SCENARIOS_DEF in constants.js.
 const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardSteps ?? [];
 
+/** Paso "Pendiente" (solo_techo): con varios cuerpos de techo se configura pendiente por zona en Dimensiones — saltar este paso. */
+const SOLO_TECHO_DIM_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones");
+const SOLO_TECHO_PENDIENTE_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "pendiente");
+const SOLO_TECHO_ESTRUCTURA_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "estructura");
+
+function soloTechoSkipPendienteStep(zonasCount) {
+  return zonasCount > 1 && SOLO_TECHO_PENDIENTE_STEP_INDEX >= 0 && SOLO_TECHO_ESTRUCTURA_STEP_INDEX >= 0 && SOLO_TECHO_DIM_STEP_INDEX >= 0;
+}
+
 /** Default roof color by panel line: ISODEC → Blanco, ISOROOF* → Gris when available (transcript preset / Enter-through wizard). */
 function defaultTechoColorForPanelFamilia(fam) {
   const pd = PANELS_TECHO[fam];
@@ -2451,15 +2460,42 @@ export default function PanelinCalculadoraV3() {
     }
   }, []);
 
+  /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
   const advanceWizardStep = useCallback(() => {
-    setWizardStep((s) => (s < SOLO_TECHO_STEPS.length - 1 ? s + 1 : s));
-  }, []);
+    setWizardStep((s) => {
+      if (s >= SOLO_TECHO_STEPS.length - 1) return s;
+      let next = s + 1;
+      if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && next === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
+        next = SOLO_TECHO_ESTRUCTURA_STEP_INDEX;
+      }
+      return next;
+    });
+  }, [techo.zonas?.length]);
+
+  const goPrevWizardSoloTecho = useCallback(() => {
+    setWizardStep((s) => {
+      if (s <= 0) return s;
+      let prev = s - 1;
+      if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && prev === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
+        prev = SOLO_TECHO_DIM_STEP_INDEX;
+      }
+      return prev;
+    });
+  }, [techo.zonas?.length]);
 
   useEffect(() => {
     const handler = () => advanceWizardStep();
     window.addEventListener("bmc-wizard-next", handler);
     return () => window.removeEventListener("bmc-wizard-next", handler);
   }, [advanceWizardStep]);
+
+  /** Si quedó en paso Pendiente con varios cuerpos (p. ej. clic en el indicador), saltar a Estructura. */
+  useEffect(() => {
+    if (!modoVendedor || scenario !== "solo_techo") return;
+    if (!soloTechoSkipPendienteStep(techo.zonas?.length ?? 0)) return;
+    if (wizardStep !== SOLO_TECHO_PENDIENTE_STEP_INDEX) return;
+    setWizardStep(SOLO_TECHO_ESTRUCTURA_STEP_INDEX);
+  }, [modoVendedor, scenario, wizardStep, techo.zonas?.length]);
 
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
@@ -2532,16 +2568,18 @@ export default function PanelinCalculadoraV3() {
       if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT" || editable) return;
       if ((e.key === "ArrowRight" || e.key === "Enter") && canNext && isValid) {
         e.preventDefault();
-        setWizardStep(s => s + 1);
+        if (scenario === "solo_techo") advanceWizardStep();
+        else setWizardStep((s) => s + 1);
       }
       if (e.key === "ArrowLeft" && canPrev) {
         e.preventDefault();
-        setWizardStep(s => s - 1);
+        if (scenario === "solo_techo") goPrevWizardSoloTecho();
+        else setWizardStep((s) => s - 1);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [modoVendedor, scenario, wizardStep, isWizardStepValid]);
+  }, [modoVendedor, scenario, wizardStep, isWizardStepValid, advanceWizardStep, goPrevWizardSoloTecho]);
 
   const vis = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
@@ -2680,13 +2718,12 @@ export default function PanelinCalculadoraV3() {
     return Object.keys(hints).length ? hints : null;
   }, [activeWizardStepId, scenarioDef?.hasTecho, techoPanelData, techo]);
 
-  const soloTechoWizardDimStepIndex = useMemo(() => SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones"), []);
   const useDockedRoofBorderSelector = Boolean(
     modoVendedor
     && scenario === "solo_techo"
     && showRoof3DHost
-    && soloTechoWizardDimStepIndex >= 0
-    && wizardStep >= soloTechoWizardDimStepIndex,
+    && SOLO_TECHO_DIM_STEP_INDEX >= 0
+    && wizardStep >= SOLO_TECHO_DIM_STEP_INDEX,
   );
 
   const bumpRoof3dHostReady = useCallback((el) => {
@@ -3535,8 +3572,11 @@ export default function PanelinCalculadoraV3() {
         onResetLayout={resetRoofPreviewLayout}
         onAnnexRankSwap={swapAnnexRank}
         onAddZona={addZona}
+        onRemoveZona={removeZona}
         onEncounterPairChange={onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
+        pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+        globalAlturaDif={techo.alturaDif ?? 0}
         estructuraHintsByGi={roofEstructuraHintsByGi}
         showPlantaExteriorCotas={showRoof2dInQuoteVisor}
         embedMetricsSidebar={embedMetrics}
@@ -4127,7 +4167,7 @@ export default function PanelinCalculadoraV3() {
                           }}
                           style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${scenario === sc.id ? C.primary : C.border}`, background: scenario === sc.id ? C.primarySoft : C.surface, transition: TR, boxShadow: scenario === sc.id ? `0 0 0 4px ${C.primarySoft}` : SHC }}
                         >
-                          <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
+                          <ScenarioStepIcon scenarioId={sc.id} size={28} selected={scenario === sc.id} color={scenario === sc.id ? C.primary : C.tp} />
                           <div style={{ fontSize: 14, fontWeight: 600, color: scenario === sc.id ? C.primary : C.tp }}>{sc.label}</div>
                           <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
                           {sc.id !== "solo_techo" && <div style={{ fontSize: 10, color: C.tt, marginTop: 6 }}>→ Modo Cliente</div>}
@@ -4362,6 +4402,41 @@ export default function PanelinCalculadoraV3() {
                               <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
                           </div>
+                          {(techo.zonas?.length || 0) > 1 && (() => {
+                            const zPendienteModo = zona.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente";
+                            const zPendiente = zona.pendiente ?? techo.pendiente ?? 0;
+                            const zAlturaDif = zona.alturaDif ?? techo.alturaDif ?? 0;
+                            const largoReal = calcLargoRealFromModo(zona.largo ?? 0, zPendienteModo, zPendiente, zAlturaDif);
+                            const largoChanged = Math.abs(largoReal - (zona.largo ?? 0)) > 0.001;
+                            return (
+                              <div style={{ padding: 12, background: C.surface, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendiente — {formatZonaDisplayTitle(techo.zonas || [], idx)}</div>
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                                  {PENDIENTE_MODOS.map(m => (
+                                    <button key={m.id} onClick={() => updateZona(idx, "pendienteModo", m.id)} style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${zPendienteModo === m.id ? C.primary : C.border}`, background: zPendienteModo === m.id ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: zPendienteModo === m.id ? C.primary : C.tp, fontWeight: zPendienteModo === m.id ? 700 : 400 }}>{m.label}</button>
+                                  ))}
+                                </div>
+                                {zPendienteModo === "calcular_pendiente" && (
+                                  <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+                                    <StepperInput label="Pendiente" value={zPendiente} onChange={v => updateZona(idx, "pendiente", v)} min={0} max={45} step={1} unit="°" decimals={0} />
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", paddingBottom: 4 }}>
+                                      {PENDIENTES_PRESET.map(pr => (
+                                        <button key={pr.valor} onClick={() => updateZona(idx, "pendiente", pr.valor)} style={{ padding: "4px 8px", borderRadius: 16, border: `1.5px solid ${zPendiente === pr.valor ? C.primary : C.border}`, background: zPendiente === pr.valor ? C.primarySoft : C.surface, fontSize: 11, cursor: "pointer", color: C.tp }}>{pr.label}</button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {zPendienteModo === "calcular_altura" && (
+                                  <StepperInput label="Diferencia de altura" value={zAlturaDif} onChange={v => updateZona(idx, "alturaDif", v)} min={0} max={10} step={0.1} unit="m" />
+                                )}
+                                {largoChanged && (
+                                  <div style={{ marginTop: 8, fontSize: 12, color: C.primary, fontWeight: 600 }}>
+                                    Largo real del panel: {largoReal.toFixed(3)} m <span style={{ fontWeight: 400, color: C.ts }}>(proyectado: {(zona.largo ?? 0).toFixed(2)} m)</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
                             <button
                               type="button"
@@ -4427,8 +4502,11 @@ export default function PanelinCalculadoraV3() {
                           onResetLayout={resetRoofPreviewLayout}
                           onAnnexRankSwap={swapAnnexRank}
                           onAddZona={addZona}
+                          onRemoveZona={removeZona}
                           onEncounterPairChange={onRoofEncounterPairChange}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                          pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+                          globalAlturaDif={techo.alturaDif ?? 0}
                           estructuraHintsByGi={roofEstructuraHintsByGi}
                           combinadaFijacionAssign={combinadaRoof2dAssignActive}
                           combinadaFijByGi={combinadaFijByGi}
@@ -4596,8 +4674,11 @@ export default function PanelinCalculadoraV3() {
                           zonas={techo.zonas || []}
                           tipoAguas={techo.tipoAguas}
                           pendiente={techo.pendiente}
+                          pendienteModo={techo.pendienteModo || "incluye_pendiente"}
+                          globalAlturaDif={techo.alturaDif ?? 0}
                           selectedGi={estructuraMetricsSelectedGi}
                           onZonaDimensionPatch={onRoofZonaDimensionPatch}
+                          onRemoveZona={removeZona}
                         />
                       ) : null}
                     </div>
@@ -4799,13 +4880,13 @@ export default function PanelinCalculadoraV3() {
                   )}
                   <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}` }}>
                     {canPrev && (
-                      <button type="button" onClick={() => setWizardStep(s => s - 1)} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
+                      <button type="button" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
                         Anterior
                       </button>
                     )}
                     <div style={{ flex: 1 }} />
                     {canNext ? (
-                      <button type="button" onClick={() => isValid && setWizardStep(s => s + 1)} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
+                      <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
                         Siguiente
                       </button>
                     ) : (
@@ -4862,7 +4943,7 @@ export default function PanelinCalculadoraV3() {
                 {SCENARIOS_DEF.map(sc => {
                   const isS = scenario === sc.id;
                   return <div key={sc.id} onMouseEnter={() => setScenarioHoverId(sc.id)} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
-                    <span style={{ fontSize: 28, display: "block", marginBottom: 6 }}>{sc.icon}</span>
+                    <ScenarioStepIcon scenarioId={sc.id} size={28} selected={isS} color={isS ? C.primary : C.tp} />
                     <div style={{ fontSize: 14, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 2 }}>{sc.label}</div>
                     <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
                   </div>;
@@ -5086,12 +5167,13 @@ export default function PanelinCalculadoraV3() {
 
           {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && !(scenario === "techo_fachada" && usePlanoTechoFachada) && (() => {
-            const fp = calcFactorPendiente(techo.pendiente);
-            const pm = techo.pendienteModo || "incluye_pendiente";
+            const globalPm = techo.pendienteModo || "incluye_pendiente";
             const is2A = techo.tipoAguas === "dos_aguas";
             const baseArea = zonasTotales.area;
             const areaReal = techo.zonas?.reduce((s, z) => {
-              const lr = calcLargoRealFromModo(z.largo, pm, techo.pendiente, z.alturaDif ?? techo.alturaDif ?? 0);
+              const zPm = z.pendienteModo ?? globalPm;
+              const zPend = z.pendiente ?? techo.pendiente ?? 0;
+              const lr = calcLargoRealFromModo(z.largo, zPm, zPend, z.alturaDif ?? techo.alturaDif ?? 0);
               return s + (lr * (is2A ? z.ancho / 2 : z.ancho));
             }, 0);
             const areaRealDisplay = areaReal != null && areaReal !== baseArea ? +areaReal.toFixed(1) : null;
@@ -5325,15 +5407,16 @@ export default function PanelinCalculadoraV3() {
                     </>
                   )}
                   {techo.zonas?.[0] && (
-                    <span>Largo real zona 1: <b style={{ color: C.tp }}>{calcLargoRealFromModo(techo.zonas[0].largo, techo.pendienteModo || "incluye_pendiente", techo.pendiente, techo.zonas[0].alturaDif ?? techo.alturaDif ?? 0).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
+                    <span>Largo real zona 1: <b style={{ color: C.tp }}>{calcLargoRealFromModo(techo.zonas[0].largo, techo.zonas[0].pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente", techo.zonas[0].pendiente ?? techo.pendiente ?? 0, techo.zonas[0].alturaDif ?? techo.alturaDif ?? 0).toFixed(2)}m</b> (de {techo.zonas[0].largo}m proy.)</span>
                   )}
                 </div>
               ) : null}
             </div>
 
             {techoPanelData && techo.zonas?.some(z => {
-              const pm = techo.pendienteModo || "incluye_pendiente";
-              const lr = calcLargoRealFromModo(z.largo, pm, techo.pendiente, z.alturaDif ?? techo.alturaDif ?? 0);
+              const zPm = z.pendienteModo ?? techo.pendienteModo ?? "incluye_pendiente";
+              const zPend = z.pendiente ?? techo.pendiente ?? 0;
+              const lr = calcLargoRealFromModo(z.largo, zPm, zPend, z.alturaDif ?? techo.alturaDif ?? 0);
               return lr < techoPanelData.lmin || lr > techoPanelData.lmax;
             }) && (
               <div style={{ marginTop: 8 }}>
