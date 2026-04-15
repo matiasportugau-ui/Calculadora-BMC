@@ -131,6 +131,15 @@ app.get("/health", asyncHandler(async (req, res) => {
   });
 }));
 
+// RUM: Core Web Vitals from the Vite app (sendBeacon) — register before any `app.use("/api", …)` so it is not shadowed
+app.post(
+  "/api/vitals",
+  express.text({ type: ["text/plain", "application/json"], limit: "32768" }),
+  (_req, res) => {
+    res.status(204).end();
+  },
+);
+
 app.get("/auth/ml/start", asyncHandler(async (req, res) => {
   const state = crypto.randomBytes(16).toString("hex");
   oauthStates.set(state, Date.now());

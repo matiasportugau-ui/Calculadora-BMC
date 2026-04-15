@@ -3,7 +3,31 @@ import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { mapErrorMessage } from "../utils/chatErrors.js";
 
 const STORAGE_KEY = "panelin-chat-history";
+const STORAGE_AI = "panelin-chat-ai-selection-v1";
 const MAX_STORED = 40; // keep last 40 messages in localStorage
+
+function loadAiSelection() {
+  try {
+    const raw = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_AI);
+    if (!raw) return { aiProvider: "auto", aiModel: "" };
+    const o = JSON.parse(raw);
+    const aiProvider = o?.aiProvider === "claude" || o?.aiProvider === "openai" || o?.aiProvider === "grok" || o?.aiProvider === "gemini"
+      ? o.aiProvider
+      : "auto";
+    const aiModel = typeof o?.aiModel === "string" ? o.aiModel : "";
+    return { aiProvider, aiModel };
+  } catch {
+    return { aiProvider: "auto", aiModel: "" };
+  }
+}
+
+function saveAiSelection(sel) {
+  try {
+    localStorage.setItem(STORAGE_AI, JSON.stringify(sel));
+  } catch {
+    // ignore
+  }
+}
 
 function loadHistory() {
   try {
@@ -41,7 +65,7 @@ function saveHistory(messages) {
  *   devAuthToken?: string,
  *   persistHistory?: boolean,
  * }} opts
- * @returns {{ messages, isStreaming, send, stop, retry, clear, error }}
+ * @returns {{ messages, isStreaming, aiProvider, aiModel, setAiProvider, setAiModel, setAiSelection, aiOptions, aiOptionsError, send, stop, retry, clear, error, ... }}
  */
 export function useChat({
   calcState,
@@ -58,12 +82,59 @@ export function useChat({
   const [trainingStats, setTrainingStats] = useState({ total: 0 });
   const [promptPreview, setPromptPreview] = useState("");
   const [promptSections, setPromptSections] = useState({});
+  const [{ aiProvider, aiModel }, setAiSelectionState] = useState(loadAiSelection);
+  const [aiOptions, setAiOptions] = useState(null);
+  const [aiOptionsError, setAiOptionsError] = useState(null);
   const abortRef = useRef(null);
   // Keep a ref to messages so send()/retry() closures see current history
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const aiSelectionRef = useRef({ aiProvider, aiModel });
+  aiSelectionRef.current = { aiProvider, aiModel };
   // 1.2 — Track last user text for retry
   const lastUserTextRef = useRef("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const apiBase = getCalcApiBase();
+        const res = await fetch(`${apiBase}/api/agent/ai-options`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setAiOptions(data);
+          setAiOptionsError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setAiOptions(null);
+          setAiOptionsError(e?.message || "ai-options");
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const setAiProvider = useCallback((p) => {
+    setAiSelectionState((prev) => {
+      const next = {
+        aiProvider: p,
+        // New provider → use server default unless user picks a model again
+        aiModel: p === "auto" || p !== prev.aiProvider ? "" : prev.aiModel,
+      };
+      saveAiSelection(next);
+      return next;
+    });
+  }, []);
+
+  const setAiModel = useCallback((m) => {
+    setAiSelectionState((prev) => {
+      const next = { ...prev, aiModel: typeof m === "string" ? m : "" };
+      saveAiSelection(next);
+      return next;
+    });
+  }, []);
 
   // Persist history only when explicitly enabled.
   useEffect(() => {
@@ -122,6 +193,7 @@ export function useChat({
           ...buildDevAuthHeaders(),
         };
 
+        const { aiProvider: ap } = aiSelectionRef.current;
         const res = await fetch(`${apiBase}/api/agent/chat`, {
           method: "POST",
           headers,
@@ -132,6 +204,7 @@ export function useChat({
             })),
             calcState,
             devMode,
+            aiProvider: ap,
           }),
           signal: controller.signal,
         });
@@ -227,6 +300,19 @@ export function useChat({
     },
     [isStreaming, calcState, onAction, devMode, buildDevAuthHeaders]
   );
+
+  const setAiSelection = useCallback((next) => {
+    setAiSelectionState(() => {
+      const merged = {
+        aiProvider: next?.aiProvider === "claude" || next?.aiProvider === "openai" || next?.aiProvider === "grok" || next?.aiProvider === "gemini"
+          ? next.aiProvider
+          : "auto",
+        aiModel: typeof next?.aiModel === "string" ? next.aiModel : "",
+      };
+      saveAiSelection(merged);
+      return merged;
+    });
+  }, []);
 
   const reloadTrainingKB = useCallback(async () => {
     if (!devMode || !devAuthToken) return null;
@@ -373,6 +459,13 @@ export function useChat({
   return {
     messages,
     isStreaming,
+    aiProvider,
+    aiModel,
+    setAiProvider,
+    setAiModel,
+    setAiSelection,
+    aiOptions,
+    aiOptionsError,
     send,
     stop,
     retry,

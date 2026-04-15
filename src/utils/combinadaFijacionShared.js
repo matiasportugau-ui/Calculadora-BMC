@@ -120,6 +120,36 @@ export function cycleDotMaterial(dotKey, byKey, dotOverrides) {
   };
 }
 
+/** Quita entradas de override para esas claves (vuelve al material base de fila / mapa). */
+export function stripDotOverrideKeys(dotOverrides, keys) {
+  const next = { ...(dotOverrides && typeof dotOverrides === "object" ? dotOverrides : {}) };
+  for (const k of keys || []) {
+    if (Object.prototype.hasOwnProperty.call(next, k)) delete next[k];
+  }
+  return next;
+}
+
+/** Asigna el mismo material a varios puntos y los deja habilitados (cotización los cuenta). */
+export function bulkSetDotsMaterialEnabled(dotKeys, newMat, byKey, dotOverrides) {
+  let next = { ...(dotOverrides && typeof dotOverrides === "object" ? dotOverrides : {}) };
+  const mat =
+    newMat === "hormigon" || newMat === "madera" || newMat === "metal" ? newMat : "metal";
+  for (const dotKey of dotKeys || []) {
+    next[dotKey] = { mat, enabled: true };
+  }
+  return next;
+}
+
+/** Deshabilita varios puntos (no entran al cómputo de fijaciones); conserva mat para si se restaura. */
+export function bulkDisableDots(dotKeys, byKey, dotOverrides) {
+  let next = { ...(dotOverrides && typeof dotOverrides === "object" ? dotOverrides : {}) };
+  for (const dotKey of dotKeys || []) {
+    const prev = resolveDotState(dotKey, byKey, next);
+    next[dotKey] = { mat: prev.mat, enabled: false };
+  }
+  return next;
+}
+
 /**
  * Derive ptsHorm / ptsMetal / ptsMadera from per-apoyo material array using
  * the isodec grid rule: perimeter rows (first & last) = 2 dots per panel,

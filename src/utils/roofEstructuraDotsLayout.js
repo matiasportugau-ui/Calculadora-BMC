@@ -171,3 +171,60 @@ export function fijacionDotsLayout(r, hints, exterior) {
   if (!(P > 0)) return [];
   return fijacionDotsLayoutDistributeTotal(r, hints);
 }
+
+/**
+ * Claves de puntos de grilla cerca de la junta vertical interior entre paneles (índice 1..cantP-1).
+ * Usa `^r{n}-p{pi}-` para no confundir `r1-p0-` con `p0` en otra posición, y filtra por `cx` si está disponible.
+ * @param {Array<{key: string, kind?: string, cx?: number}>} dotPts
+ * @param {number} jointIndex 1..cantP-1 (junta a la derecha del panel jointIndex-1)
+ * @param {{ x: number, w: number }} r rectángulo zona en m
+ * @param {number} cantP cantidad de paneles en ancho
+ */
+export function fijacionDotKeysForVerticalJoint(dotPts, jointIndex, r, cantP) {
+  const j = Math.round(Number(jointIndex));
+  const cp = Math.max(1, Math.round(Number(cantP)) || 1);
+  if (!(j >= 1) || j >= cp || !r || !(r.w > 0)) return [];
+  const a = j - 1;
+  const b = j;
+  const re = new RegExp(`^r\\d+-p(${a}|${b})-`);
+  const panelW = r.w / cp;
+  const xJoint = r.x + j * panelW;
+  const tol = Math.max(0.09, panelW * 0.22);
+  return (dotPts || [])
+    .filter((d) => {
+      if (d.kind !== "grid" || typeof d.key !== "string" || !re.test(d.key)) return false;
+      if (typeof d.cx === "number" && Number.isFinite(d.cx)) {
+        return Math.abs(d.cx - xJoint) <= tol;
+      }
+      return true;
+    })
+    .map((d) => d.key);
+}
+
+/**
+ * Puntos de fijación cerca de la junta vertical entre paneles (índice 1..cantP-1).
+ * En grilla ISODEC usa claves `r*-p*-`; en otros modos (p. ej. reparto total) filtra por `cx` vs la junta.
+ * @param {Array<{ key: string, kind?: string, cx?: number }>} dotPts
+ * @param {number} jointIndex
+ * @param {{ x: number, w: number }} r
+ * @param {number} cantP
+ * @param {{ fijacionSistema?: string, fijacionDotsMode?: string } | null | undefined} hints
+ */
+export function fijacionDotKeysNearPanelJoint(dotPts, jointIndex, r, cantP, hints) {
+  const useIsodec =
+    hints?.fijacionSistema === "varilla_tuerca" && hints?.fijacionDotsMode === "isodec_grid";
+  if (useIsodec) return fijacionDotKeysForVerticalJoint(dotPts, jointIndex, r, cantP);
+  const j = Math.round(Number(jointIndex));
+  const cp = Math.max(1, Math.round(Number(cantP)) || 1);
+  if (!(j >= 1) || j >= cp || !r || !(r.w > 0)) return [];
+  const panelW = r.w / cp;
+  const xJoint = r.x + j * panelW;
+  const tol = Math.max(0.09, panelW * 0.22);
+  return (dotPts || [])
+    .filter((d) => {
+      if (d.kind === "pv") return false;
+      if (typeof d.cx !== "number" || !Number.isFinite(d.cx)) return false;
+      return Math.abs(d.cx - xJoint) <= tol;
+    })
+    .map((d) => d.key);
+}

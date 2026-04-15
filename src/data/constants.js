@@ -505,6 +505,25 @@ export const ROOF_2D_QUOTE_VISOR_STEP_IDS = new Set([
   "perfil_5852",
 ]);
 
+/**
+ * Pasos donde el plano 2D sigue mostrando **overlay de estructura** (apoyos / grilla de fijación)
+ * y, en tipo Combinada, permite **asignar material por línea de apoyo** en el visor (p. ej. paso 9
+ * Estructura y paso 13 Proyecto en Solo techo, o tramo techo+fachada con planta visible).
+ */
+export const ROOF_ESTRUCTURA_OVERLAY_STEP_IDS = new Set([
+  "estructura",
+  "bordes",
+  "selladores",
+  "flete",
+  "proyecto",
+  "familia_pared",
+  "espesor_pared",
+  "color_pared",
+  "dimensiones_pared",
+  "aberturas",
+  "perfil_5852",
+]);
+
 // Derived backward-compatible object — visibility per scenario id
 export const VIS = Object.fromEntries(SCENARIOS_DEF.map(s => [s.id, s.visibility]));
 

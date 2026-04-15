@@ -26,10 +26,18 @@ import { listDueItems, parseDueInput, parseDays } from "../server/lib/followUpSt
 import { normalizeMlAnswerCurrencyText } from "../server/lib/mlAnswerText.js";
 import {
   buildInitialByKeyFromOrderedDots,
+  bulkDisableDots,
+  bulkSetDotsMaterialEnabled,
   countCombinadaMaterialsInDots,
+  countPtsWithOverrides,
   cycleCombinadaMaterial,
+  stripDotOverrideKeys,
 } from "../src/utils/combinadaFijacionShared.js";
-import { fijacionDotsLayoutDistributeTotal } from "../src/utils/roofEstructuraDotsLayout.js";
+import {
+  fijacionDotsLayoutDistributeTotal,
+  fijacionDotKeysForVerticalJoint,
+  fijacionDotKeysNearPanelJoint,
+} from "../src/utils/roofEstructuraDotsLayout.js";
 import { buildProgramSnapshot } from "../scripts/program-status.mjs";
 import {
   cuerpoFromMessage,
@@ -2185,6 +2193,60 @@ assert(
     laid.every((d) => typeof d.key === "string" && d.rowIndex != null && d.rowIndex >= 0),
   laid.length,
   7,
+);
+const jointDots = [
+  { key: "r0-p0-a", kind: "grid", cx: 4.55 },
+  { key: "r0-p1-b", kind: "grid", cx: 5.45 },
+  { key: "r1-p0-c", kind: "grid", cx: 2.5 },
+];
+const jointR = { x: 0, w: 10 };
+const jointKeys = fijacionDotKeysForVerticalJoint(jointDots, 1, jointR, 2);
+assert(
+  "fijacionDotKeysForVerticalJoint solo puntos cerca de la junta (cx)",
+  jointKeys.includes("r0-p0-a") && jointKeys.includes("r0-p1-b") && !jointKeys.includes("r1-p0-c"),
+  JSON.stringify(jointKeys),
+  "cerca de x=5 m, no el centro del panel 0",
+);
+const hintsCaballete = { puntosFijacion: 8, apoyos: 3, fijacionSistema: "caballete", fijacionDotsMode: "distribute" };
+const laidJoint = fijacionDotsLayoutDistributeTotal({ x: 0, y: 0, w: 10, h: 4, gi: 0 }, hintsCaballete);
+const nearJ = fijacionDotKeysNearPanelJoint(laidJoint, 1, { x: 0, w: 10 }, 2, hintsCaballete);
+assert(
+  "fijacionDotKeysNearPanelJoint modo no-ISODEC junta en x=5 m",
+  nearJ.length >= 1 && nearJ.every((k) => typeof k === "string"),
+  JSON.stringify(nearJ),
+  ">=1 keys",
+);
+const hintsIso = { fijacionSistema: "varilla_tuerca", fijacionDotsMode: "isodec_grid" };
+const nearIso = fijacionDotKeysNearPanelJoint(jointDots, 1, jointR, 2, hintsIso);
+assert(
+  "fijacionDotKeysNearPanelJoint delega a ISODEC",
+  JSON.stringify(nearIso.sort()) === JSON.stringify(jointKeys.sort()),
+  JSON.stringify(nearIso),
+  JSON.stringify(jointKeys),
+);
+const byJ = { "r0-p0-a": "metal", "r0-p1-b": "metal" };
+const ovBulk = bulkSetDotsMaterialEnabled(jointKeys, "hormigon", byJ, {});
+assert(
+  "bulkSetDotsMaterialEnabled fuerza material y enabled",
+  ovBulk["r0-p0-a"].mat === "hormigon" && ovBulk["r0-p0-a"].enabled === true,
+  JSON.stringify(ovBulk["r0-p0-a"]),
+  "hormigon true",
+);
+const ovOff = bulkDisableDots(jointKeys, byJ, ovBulk);
+const dotsCnt = jointKeys.map((k) => ({ key: k }));
+const cntJ = countPtsWithOverrides(dotsCnt, byJ, ovOff);
+assert(
+  "bulkDisableDots anula cómputo",
+  cntJ.ptsHorm === 0 && cntJ.ptsMetal === 0 && cntJ.ptsMadera === 0,
+  `${cntJ.ptsHorm}/${cntJ.ptsMetal}/${cntJ.ptsMadera}`,
+  "0/0/0",
+);
+const ovStrip = stripDotOverrideKeys(ovOff, jointKeys);
+assert(
+  "stripDotOverrideKeys limpia overrides",
+  Object.keys(ovStrip).length === 0,
+  String(Object.keys(ovStrip).length),
+  "0",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

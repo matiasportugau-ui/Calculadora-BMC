@@ -5,7 +5,8 @@
  *   different origin than the API (e.g. Vercel → Cloud Run).
  * - **VITE_SAME_ORIGIN_API** = `1` / `true`: at build time, use `window.location.origin`
  *   in the browser (same Cloud Run service serves `/calculadora` and `/api`).
- * - **import.meta.env.DEV**: local Vite dev → `http://localhost:3001` unless VITE_API_URL is set.
+ * - **import.meta.env.DEV** (browser): empty base → same origin + Vite `server.proxy` (`/api` → :3001).
+ * - **import.meta.env.DEV** (no `window`): `http://localhost:3001` for non-browser contexts.
  */
 
 function trimBase(url) {
@@ -18,6 +19,9 @@ export function getCalcApiBase() {
     return trimBase(fromEnv);
   }
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return "";
+    }
     return "http://localhost:3001";
   }
   const sameOrigin =

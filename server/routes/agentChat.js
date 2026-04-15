@@ -1,9 +1,9 @@
 /**
  * POST /api/agent/chat — SSE streaming endpoint for the Panelin AI agent.
  *
- * Provider chain: claude → grok → gemini → openai (first available key wins; falls through on error).
+ * Provider chain: default claude → grok → gemini → openai; optional `aiProvider` + `aiModel` (see GET /api/agent/ai-options).
  *
- * Request:  { messages: [{role, content}], calcState: {...} }
+ * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string }
  * Response: text/event-stream, events:
  *   {"type":"text","delta":"..."}
  *   {"type":"action","action":{"type":"setTecho","payload":{...}}}
@@ -27,6 +27,94 @@ import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
 
 const router = Router();
+
+const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
+/** @type {Record<string, Set<string>>} */
+const ALLOWED_MODELS = {
+  claude: new Set([
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-5-20250929",
+    "claude-sonnet-4-20250514",
+    "claude-3-5-haiku-20241022",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-opus-20240229",
+  ]),
+  openai: new Set(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "o4-mini", "o3-mini"]),
+  grok: new Set(["grok-3-mini", "grok-3", "grok-2-latest", "grok-2-vision-1212", "grok-2-1212"]),
+  gemini: new Set([
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro",
+  ]),
+};
+
+const PROVIDER_LABELS = {
+  claude: "Claude (Anthropic)",
+  openai: "OpenAI",
+  grok: "Grok (xAI)",
+  gemini: "Gemini (Google)",
+};
+
+function isSafeModelId(id) {
+  return typeof id === "string" && SAFE_MODEL_ID.test(id);
+}
+
+function resolveModelForProvider(provider, requested, configuredDefault) {
+  const def =
+    configuredDefault && isSafeModelId(String(configuredDefault))
+      ? String(configuredDefault)
+      : [...(ALLOWED_MODELS[provider] || [])][0] || "gpt-4o-mini";
+  if (!requested || !String(requested).trim()) return def;
+  const r = String(requested).trim();
+  if (!isSafeModelId(r)) return def;
+  if (ALLOWED_MODELS[provider]?.has(r)) return r;
+  if (r === def) return r;
+  return def;
+}
+
+function modelsForProviderUi(provider, defaultModel) {
+  const ids = ALLOWED_MODELS[provider] ? [...ALLOWED_MODELS[provider]] : [];
+  if (defaultModel && isSafeModelId(defaultModel) && !ids.includes(defaultModel)) ids.unshift(defaultModel);
+  ids.sort((a, b) => a.localeCompare(b));
+  return ids.map((id) => ({
+    id,
+    label: id === defaultModel ? `${id} (predeterminado)` : id,
+  }));
+}
+
+/** GET /api/agent/ai-options — which providers/models the server can use (no secrets). */
+router.get("/agent/ai-options", (_req, res) => {
+  const defs = {
+    claude: config.anthropicChatModel,
+    openai: config.openaiChatModel,
+    grok: config.grokChatModel,
+    gemini: config.geminiChatModel,
+  };
+  const keys = {
+    claude: !!config.anthropicApiKey,
+    openai: !!config.openaiApiKey,
+    grok: !!config.grokApiKey,
+    gemini: !!config.geminiApiKey,
+  };
+  const providers = [];
+  for (const id of ["claude", "openai", "grok", "gemini"]) {
+    if (!keys[id]) continue;
+    const defaultModel = resolveModelForProvider(id, undefined, defs[id]);
+    providers.push({
+      id,
+      label: PROVIDER_LABELS[id] || id,
+      defaultModel,
+      models: modelsForProviderUi(id, defaultModel),
+    });
+  }
+  res.json({
+    ok: true,
+    autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
+    providers,
+  });
+});
 
 // 0.4 — Allowed origins (CSRF guard)
 const ALLOWED_ORIGINS = new Set([
@@ -229,7 +317,15 @@ function buildCalcValidation(calcState, assistantText) {
 
 router.post("/agent/chat", async (req, res) => {
   // 0.1 — Apply rate limit (devMode gets higher limit, validated after auth)
-  const { messages = [], calcState = {}, devMode = false } = req.body || {};
+  const {
+    messages = [],
+    calcState = {},
+    devMode = false,
+    aiProvider: rawAiProvider,
+    aiModel: rawAiModel,
+  } = req.body || {};
+  const aiProvider = String(rawAiProvider || "auto").toLowerCase();
+  const aiModel = rawAiModel != null ? String(rawAiModel) : "";
 
   // 0.4 — CSRF origin check
   const origin = req.headers.origin;
@@ -370,20 +466,46 @@ router.post("/agent/chat", async (req, res) => {
   }
   const msgs = truncated;
 
-  const providerChain = [];
-  if (hasAnthropic) providerChain.push("claude");
-  if (hasGrok)      providerChain.push("grok");
-  if (hasGemini)    providerChain.push("gemini");
-  if (hasOpenAI)    providerChain.push("openai");
+  const defaultOrder = [];
+  if (hasAnthropic) defaultOrder.push("claude");
+  if (hasGrok) defaultOrder.push("grok");
+  if (hasGemini) defaultOrder.push("gemini");
+  if (hasOpenAI) defaultOrder.push("openai");
+
+  const pref =
+    aiProvider === "claude" || aiProvider === "grok" || aiProvider === "gemini" || aiProvider === "openai"
+      ? aiProvider
+      : "auto";
+  const prefOk =
+    (pref === "claude" && hasAnthropic) ||
+    (pref === "grok" && hasGrok) ||
+    (pref === "gemini" && hasGemini) ||
+    (pref === "openai" && hasOpenAI);
+
+  const providerChain =
+    pref !== "auto" && prefOk
+      ? [pref, ...defaultOrder.filter((p) => p !== pref)]
+      : defaultOrder;
+
+  const modelDefaults = {
+    claude: config.anthropicChatModel,
+    openai: config.openaiChatModel,
+    grok: config.grokChatModel,
+    gemini: config.geminiChatModel,
+  };
 
   for (const provider of providerChain) {
     try {
       let buf = "";
 
+      const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
+      const requestedId = useRequestedModel ? aiModel : "";
+
       if (provider === "claude") {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+        const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
         const stream = anthropic.messages.stream({
-          model: "claude-haiku-4-5-20251001",
+          model,
           max_tokens: 1024,
           system: systemPrompt,
           messages: msgs,
@@ -400,7 +522,8 @@ router.post("/agent/chat", async (req, res) => {
         }
       } else if (provider === "gemini") {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-        const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
+        const geminiModel = genAI.getGenerativeModel({ model });
         const geminiMessages = msgs.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
@@ -422,7 +545,10 @@ router.post("/agent/chat", async (req, res) => {
           provider === "grok"
             ? new OpenAI({ apiKey: config.grokApiKey, baseURL: "https://api.x.ai/v1" })
             : new OpenAI({ apiKey: config.openaiApiKey });
-        const model = provider === "grok" ? "grok-3-mini" : "gpt-4o-mini";
+        const model =
+          provider === "grok"
+            ? resolveModelForProvider("grok", requestedId, modelDefaults.grok)
+            : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
 
         const stream = await client.chat.completions.create({
           model,

@@ -12,7 +12,7 @@ import {
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
   Download, Save, Archive, Cloud, Settings,
-  Table, LayoutTemplate, CircleDollarSign
+  Table, LayoutTemplate, CircleDollarSign, MoreHorizontal,
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
@@ -27,6 +27,7 @@ import {
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
   PENDIENTES_PRESET, TIPO_AGUAS,
   ROOF_2D_QUOTE_VISOR_STEP_IDS,
+  ROOF_ESTRUCTURA_OVERLAY_STEP_IDS,
 } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { flattenPerfilesLibre, computePresupuestoLibreCatalogo } from "../utils/presupuestoLibreCatalogo.js";
@@ -45,7 +46,6 @@ import {
   exportLogsAsJSON, exportSingleBudget,
 } from "../utils/budgetLog.js";
 import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
-import { htmlToPdfBlob, downloadPdf } from "../utils/pdfGenerator.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
@@ -446,38 +446,94 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
   );
 }
 
-function MobileBottomBar({ total, onPrint, onWhatsApp }) {
+function MobileBottomBar({
+  total,
+  onPrint,
+  onWhatsApp,
+  onOpenDrive,
+  onClienteVisual,
+  onInternalReport,
+  onCosteo,
+  onCopyTSV,
+  onPdfEnriquecido,
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") setSheetOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+  const closeSheet = () => setSheetOpen(false);
+  const run = (fn) => { fn(); closeSheet(); };
+  const sheetBtn = {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 10,
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "none",
+    fontSize: 15,
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: FONT,
+  };
   return (
-    <div style={{
-      position: "fixed",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      background: C.dark,
-      color: "#fff",
-      padding: "12px 16px",
-      display: "none",
-      zIndex: 100,
-      boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
-      fontFamily: FONT,
-    }} className="bmc-mobile-bar">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>TOTAL USD</div>
-          <div style={{ fontSize: 24, fontWeight: 800, ...TN }}>${fmtPrice(total)}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <button onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
-          <button onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+    <>
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: C.dark,
+        color: "#fff",
+        padding: "12px 16px",
+        display: "none",
+        zIndex: 100,
+        boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
+        fontFamily: FONT,
+      }} className="bmc-mobile-bar">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>TOTAL USD</div>
+            <div style={{ fontSize: 24, fontWeight: 800, ...TN }}>${fmtPrice(total)}</div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
+            <button type="button" onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
+            <button type="button" onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+            <button type="button" aria-label="Más acciones" onClick={() => setSheetOpen(true)} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.35)", background: "transparent", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <MoreHorizontal size={22} strokeWidth={2.25} />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      <div
+        role="presentation"
+        className={`bmc-bottom-sheet-backdrop${sheetOpen ? " open" : ""}`}
+        onClick={closeSheet}
+      />
+      <div className={`bmc-bottom-sheet${sheetOpen ? " open" : ""}`} role="dialog" aria-label="Más acciones">
+        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, color: C.tp, fontFamily: FONT }}>Más acciones</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button type="button" onClick={() => run(onOpenDrive)} style={{ ...sheetBtn, background: "#4285F4", color: "#fff" }}><Cloud size={18} />Drive</button>
+          <button type="button" onClick={() => run(onClienteVisual)} style={{ ...sheetBtn, background: "#0ea5e9", color: "#fff" }}><LayoutTemplate size={18} />Hoja Cliente</button>
+          <button type="button" onClick={() => run(onCosteo)} style={{ ...sheetBtn, background: "#7c3aed", color: "#fff" }}><CircleDollarSign size={18} />Costeo</button>
+          <button type="button" onClick={() => run(onInternalReport)} style={{ ...sheetBtn, background: C.surface, color: C.brand, border: `1.5px solid ${C.brand}` }}><ClipboardList size={18} />Informe interno</button>
+          <button type="button" onClick={() => run(onCopyTSV)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Table size={18} />TSV Sheets</button>
+          <button type="button" onClick={() => run(onPdfEnriquecido)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Download size={18} />PDF+</button>
+        </div>
+      </div>
+    </>
   );
 }
 
 function PDFPreviewModal({ html, title, onClose }) {
   const [url, setUrl] = useState(null);
-  const [isCompact, setIsCompact] = useState(() => typeof window !== "undefined" ? window.innerWidth < 760 : false);
+  const [isCompact, setIsCompact] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 759px)").matches
+  ));
 
   useEffect(() => {
     if (!html) return;
@@ -496,9 +552,10 @@ function PDFPreviewModal({ html, title, onClose }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 759px)");
-    const handler = (e) => setIsCompact(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const sync = () => setIsCompact(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   if (!html || !url) return null;
@@ -2713,9 +2770,9 @@ export default function PanelinCalculadoraV3() {
     });
   }, [techo.zonas?.length]);
 
-  /** Overlay 2D apoyos + puntos fijación (mismo criterio que `calcTechoCompleto`), solo paso Estructura wizard solo techo. */
+  /** Overlay 2D apoyos + puntos fijación (mismo criterio que `calcTechoCompleto`); visible desde Estructura hasta Proyecto / fachada cuando el visor muestra planta. */
   const roofEstructuraHintsByGi = useMemo(() => {
-    if (activeWizardStepId !== "estructura") return null;
+    if (!activeWizardStepId || !ROOF_ESTRUCTURA_OVERLAY_STEP_IDS.has(activeWizardStepId)) return null;
     if (!scenarioDef?.hasTecho || !techoPanelData || !techo.espesor) return null;
     const hints = computeRoofEstructuraHintsByGi(techo, techoPanelData);
     return Object.keys(hints).length ? hints : null;
@@ -3276,9 +3333,10 @@ export default function PanelinCalculadoraV3() {
         appendix,
         snapshotImages,
       });
+      const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const fname = pdfFileName({ proyecto, scenario, listaPrecios });
-      downloadPdf(pdfBlob, fname);
+      downloadPdfBlob(pdfBlob, fname);
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
@@ -3453,7 +3511,10 @@ export default function PanelinCalculadoraV3() {
     [setTecho],
   );
   const combinadaRoof2dAssignActive = Boolean(
-    scenarioDef?.hasTecho && techo.tipoEst === "combinada" && activeWizardStepId === "estructura",
+    scenarioDef?.hasTecho &&
+      techo.tipoEst === "combinada" &&
+      activeWizardStepId &&
+      ROOF_ESTRUCTURA_OVERLAY_STEP_IDS.has(activeWizardStepId),
   );
 
   // ── Per-apoyo material management for combinada ──
@@ -3596,6 +3657,7 @@ export default function PanelinCalculadoraV3() {
         onFijDotOverridesSync={handleFijDotOverridesSync}
         apoyoMateriales={apoyoMateriales}
         onApoyoMaterialCycle={handleApoyoMaterialCycle}
+        onApoyoMaterialDirect={handleApoyoMaterialDirect}
         bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
         bordesPanelFamiliaKey={techo.familia || ""}
         techoBorders={techo.borders}
@@ -3634,6 +3696,7 @@ export default function PanelinCalculadoraV3() {
     handleFijDotOverridesSync,
     apoyoMateriales,
     handleApoyoMaterialCycle,
+    handleApoyoMaterialDirect,
     bordesPlantaRoof2dAssignActive,
     techo.familia,
     techo.borders,
@@ -3752,11 +3815,24 @@ export default function PanelinCalculadoraV3() {
   const [driveError, setDriveError] = useState(null);
   const [driveLastSave, setDriveLastSave] = useState(null);
 
+  const ensureDriveGsi = useCallback(async () => {
+    try {
+      await loadGsiScript();
+      initGoogleAuth();
+      setDriveAuth(gdriveIsAuth());
+    } catch {
+      /* GIS optional until Drive is used */
+    }
+  }, []);
+
   useEffect(() => {
     setAuthChangeCallback(setDriveAuth);
-    const timer = setTimeout(() => { loadGsiScript().then(() => { initGoogleAuth(); setDriveAuth(gdriveIsAuth()); }).catch(() => {}); }, 500);
-    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!showDrivePanel) return;
+    ensureDriveGsi();
+  }, [showDrivePanel, ensureDriveGsi]);
 
   const handleDriveRefresh = useCallback(async () => {
     setDriveLoading(true);
@@ -3773,13 +3849,14 @@ export default function PanelinCalculadoraV3() {
 
   const handleDriveSignIn = useCallback(async () => {
     try {
+      await ensureDriveGsi();
       await gdriveSignIn();
       setDriveAuth(true);
       handleDriveRefresh();
     } catch (err) {
       setDriveError(err.message || "Error al iniciar sesión");
     }
-  }, [handleDriveRefresh]);
+  }, [ensureDriveGsi, handleDriveRefresh]);
 
   const handleDriveSignOut = useCallback(() => {
     gdriveSignOut();
@@ -3808,6 +3885,7 @@ export default function PanelinCalculadoraV3() {
         showSKU: false,
         showUnitPrices: true,
       });
+      const { htmlToPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const projectData = serializeProject({
         scenario, listaPrecios, proyecto, techo, pared, camara, flete,
@@ -4537,6 +4615,7 @@ export default function PanelinCalculadoraV3() {
                           onFijDotOverridesSync={handleFijDotOverridesSync}
                           apoyoMateriales={apoyoMateriales}
                           onApoyoMaterialCycle={handleApoyoMaterialCycle}
+                          onApoyoMaterialDirect={handleApoyoMaterialDirect}
                           bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
                           bordesPanelFamiliaKey={techo.familia || ""}
                           techoBorders={techo.borders}
@@ -5879,6 +5958,12 @@ export default function PanelinCalculadoraV3() {
           total={grandTotal.totalFinal}
           onPrint={handlePrint}
           onWhatsApp={handleCopyWA}
+          onOpenDrive={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }}
+          onClienteVisual={handleClienteVisual}
+          onInternalReport={handleInternalReport}
+          onCosteo={handleCosteo}
+          onCopyTSV={handleCopyTSV}
+          onPdfEnriquecido={handlePdfEnriquecido}
         />
       )}
 

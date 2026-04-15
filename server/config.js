@@ -56,8 +56,12 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
+  /** Panelin calculator chat (/api/agent/chat) — model IDs must match server allowlist or these defaults */
+  anthropicChatModel: process.env.ANTHROPIC_CHAT_MODEL || "claude-haiku-4-5-20251001",
   geminiApiKey: process.env.GEMINI_API_KEY || "",
+  geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
   grokApiKey: process.env.GROK_API_KEY || "",
+  grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
   // WhatsApp Business Cloud API
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",

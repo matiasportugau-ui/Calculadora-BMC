@@ -1,9 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/utils/pdfGenerator.js — Generate real PDF Blob from print HTML
-// Uses html2pdf.js (wraps html2canvas + jsPDF)
+// Uses html2pdf.js (wraps html2canvas + jsPDF) — loaded on first PDF use only.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import html2pdf from "html2pdf.js";
+let _html2pdfLoader = null;
+async function getHtml2Pdf() {
+  if (!_html2pdfLoader) {
+    _html2pdfLoader = import("html2pdf.js").then((m) => m.default || m);
+  }
+  return _html2pdfLoader;
+}
 
 /**
  * Convert the print-ready HTML string into a PDF Blob.
@@ -39,6 +45,7 @@ export async function htmlToPdfBlob(htmlString) {
   document.body.appendChild(container);
 
   try {
+    const html2pdf = await getHtml2Pdf();
     const blob = await html2pdf()
       .set({
         margin: [8, 8, 12, 8],
@@ -71,6 +78,13 @@ export async function htmlToPdfBlob(htmlString) {
  */
 export async function downloadPdf(htmlString, filename = "cotizacion.pdf") {
   const blob = await htmlToPdfBlob(htmlString);
+  return downloadPdfBlob(blob, filename);
+}
+
+/**
+ * Trigger a browser download from an existing PDF Blob (e.g. after htmlToPdfBlob).
+ */
+export function downloadPdfBlob(blob, filename = "cotizacion.pdf") {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

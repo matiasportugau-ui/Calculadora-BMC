@@ -39,16 +39,21 @@ import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
 import {
   fijacionDotsLayout,
+  fijacionDotKeysNearPanelJoint,
   fijacionRowsFromHints,
   yForFijacionRowPlanta,
 } from "../utils/roofEstructuraDotsLayout.js";
 import {
+  COMBINADA_MATERIAL_ORDER,
+  bulkDisableDots,
+  bulkSetDotsMaterialEnabled,
   countCombinadaMaterialsInDots,
   countPtsWithOverrides,
   cycleDotMaterial,
   cycleCombinadaMaterial,
   mergeCombinadaByKeyWithDefaults,
   resolveDotState,
+  stripDotOverrideKeys,
   toggleDotEnabled,
 } from "../utils/combinadaFijacionShared.js";
 
@@ -271,9 +276,242 @@ function combinadaMaterialFill(mat) {
   return "#1e293b";
 }
 
+function combinadaMaterialUiLabel(m) {
+  if (m === "hormigon") return "Hormigón";
+  if (m === "madera") return "Madera";
+  return "Metal";
+}
+
+/** Popover fijo: elegir material de apoyo (Combinada, una línea punteada). */
+function CombinadaApoyoMaterialPopover({ anchor, zonaLabel, rowLabel, onPick, onRowDisable, popRef }) {
+  if (!anchor) return null;
+  const rawLeft = anchor.left;
+  const rawTop = anchor.top;
+  const estW = 220;
+  const estH = typeof onRowDisable === "function" ? 168 : 120;
+  let left = rawLeft;
+  let top = rawTop;
+  if (typeof window !== "undefined") {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
+    if (left + estW > vw - pad) left = Math.max(pad, vw - estW - pad);
+    if (top + estH > vh - pad) top = Math.max(pad, vh - estH - pad);
+    left = Math.max(pad, left);
+    top = Math.max(pad, top);
+  }
+  const body = (
+    <div
+      ref={popRef}
+      role="dialog"
+      aria-label="Material de apoyo"
+      style={{
+        position: "fixed",
+        left,
+        top,
+        zIndex: 10061,
+        width: estW,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "rgba(255,255,255,0.98)",
+        border: "1px solid #c4b5fd",
+        boxShadow: "0 10px 28px rgba(15,23,42,0.14)",
+        fontFamily: FONT,
+        fontSize: 12,
+        lineHeight: 1.45,
+        color: C.tp,
+        pointerEvents: "auto",
+      }}
+    >
+      <div style={{ fontWeight: 700, color: "#5b21b6", marginBottom: 6 }}>{zonaLabel}</div>
+      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>{rowLabel}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {COMBINADA_MATERIAL_ORDER.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              onPick(m);
+            }}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: `1.5px solid ${m === "hormigon" ? "#0ea5e9" : m === "madera" ? "#b45309" : "#1e293b"}`,
+              background: m === "hormigon" ? "#e0f2fe" : m === "madera" ? "#fef3c7" : "#f1f5f9",
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              color: m === "hormigon" ? "#0369a1" : m === "madera" ? "#92400e" : "#1e293b",
+            }}
+          >
+            {combinadaMaterialUiLabel(m)}
+          </button>
+        ))}
+      </div>
+      {typeof onRowDisable === "function" ? (
+        <button
+          type="button"
+          onPointerDown={(ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onRowDisable();
+          }}
+          style={{
+            marginTop: 8,
+            width: "100%",
+            padding: "7px 10px",
+            borderRadius: 8,
+            border: `1.5px solid ${C.danger}`,
+            background: "#fef2f2",
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: "pointer",
+            color: "#b91c1c",
+            textAlign: "left",
+          }}
+        >
+          Sin fijación (toda la fila de apoyo)
+        </button>
+      ) : null}
+    </div>
+  );
+  return typeof document !== "undefined" ? createPortal(body, document.body) : null;
+}
+
+/** Paleta fija: material + anular + restaurar base (puntos, perímetro, junta vertical). */
+function CombinadaFijacionDotsPalettePopover({
+  anchor,
+  title,
+  subtitle,
+  onPickMat,
+  onDisable,
+  onRestore,
+  popRef,
+}) {
+  if (!anchor || !Array.isArray(anchor.keys) || anchor.keys.length === 0) return null;
+  const rawLeft = anchor.left;
+  const rawTop = anchor.top;
+  const estW = 248;
+  const estH = 216;
+  let left = rawLeft;
+  let top = rawTop;
+  if (typeof window !== "undefined") {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 8;
+    if (left + estW > vw - pad) left = Math.max(pad, vw - estW - pad);
+    if (top + estH > vh - pad) top = Math.max(pad, vh - estH - pad);
+    left = Math.max(pad, left);
+    top = Math.max(pad, top);
+  }
+  const body = (
+    <div
+      ref={popRef}
+      role="dialog"
+      aria-label="Fijación — material"
+      style={{
+        position: "fixed",
+        left,
+        top,
+        zIndex: 10062,
+        width: estW,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "rgba(255,255,255,0.98)",
+        border: "1px solid #c4b5fd",
+        boxShadow: "0 10px 28px rgba(15,23,42,0.14)",
+        fontFamily: FONT,
+        fontSize: 12,
+        lineHeight: 1.45,
+        color: C.tp,
+        pointerEvents: "auto",
+      }}
+    >
+      <div style={{ fontWeight: 700, color: "#5b21b6", marginBottom: 4 }}>{title}</div>
+      {subtitle ? (
+        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 8 }}>{subtitle}</div>
+      ) : null}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+        {COMBINADA_MATERIAL_ORDER.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onPointerDown={(ev) => {
+              ev.stopPropagation();
+              ev.preventDefault();
+              onPickMat(m);
+            }}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: `1.5px solid ${m === "hormigon" ? "#0ea5e9" : m === "madera" ? "#b45309" : "#1e293b"}`,
+              background: m === "hormigon" ? "#e0f2fe" : m === "madera" ? "#fef3c7" : "#f1f5f9",
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: "pointer",
+              color: m === "hormigon" ? "#0369a1" : m === "madera" ? "#92400e" : "#1e293b",
+            }}
+          >
+            {combinadaMaterialUiLabel(m)}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <button
+          type="button"
+          onPointerDown={(ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onDisable();
+          }}
+          style={{
+            padding: "7px 10px",
+            borderRadius: 8,
+            border: `1.5px solid ${C.danger}`,
+            background: "#fef2f2",
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: "pointer",
+            color: "#b91c1c",
+            textAlign: "left",
+          }}
+        >
+          Sin fijación (anular selección)
+        </button>
+        <button
+          type="button"
+          onPointerDown={(ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onRestore();
+          }}
+          style={{
+            padding: "7px 10px",
+            borderRadius: 8,
+            border: `1.5px solid ${C.border}`,
+            background: C.surfaceAlt,
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: "pointer",
+            color: C.ts,
+            textAlign: "left",
+          }}
+        >
+          Restaurar base (quitar ajuste fino)
+        </button>
+      </div>
+    </div>
+  );
+  return typeof document !== "undefined" ? createPortal(body, document.body) : null;
+}
+
 /**
  * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
- * Modo Combinada: clic en apoyos, bandas de perímetro y puntos para asignar hormigón / metal / madera.
+ * Modo Combinada: por defecto todos los puntos cuentan (incluidos). Clic en un punto = quitar/restaurar
+ * (no cotiza esa fijación; se ve atenuado). Mayús+clic o pulsación larga (~0,45 s) en el punto = paleta
+ * de material. Clic en líneas de apoyo, juntas verticales y bandas de perímetro = material por “vía”.
  */
 function EstructuraZonaOverlay({
   r,
@@ -291,15 +529,38 @@ function EstructuraZonaOverlay({
   onDotToggleEnabled = null,
   apoyoMateriales = null,
   onApoyoMaterialCycle = null,
+  onApoyoMaterialDirect = null,
+  onFijacionPaletteBulk = null,
 }) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
+  const [apoyoMatPick, setApoyoMatPick] = useState(null);
+  const [fijPalette, setFijPalette] = useState(null);
+  const apoyoMatPopRef = useRef(null);
+  const fijPalettePopRef = useRef(null);
   const hidePopTimer = useRef(null);
+  /** Clic corto = toggle punto; pulsación larga / Mayús+clic = paleta (cuando hay bulk handler). */
+  const dotPointerRef = useRef({ timer: null, key: null, longFired: false });
 
   const clearHideTimer = useCallback(() => {
     if (hidePopTimer.current != null) {
       window.clearTimeout(hidePopTimer.current);
       hidePopTimer.current = null;
     }
+  }, []);
+
+  const clearDotPointerTimer = useCallback(() => {
+    const d = dotPointerRef.current;
+    if (d.timer != null) {
+      window.clearTimeout(d.timer);
+      d.timer = null;
+    }
+    d.key = null;
+    d.longFired = false;
+  }, []);
+
+  useEffect(() => () => {
+    const d = dotPointerRef.current;
+    if (d.timer != null) window.clearTimeout(d.timer);
   }, []);
 
   const scheduleHidePopover = useCallback(() => {
@@ -322,10 +583,51 @@ function EstructuraZonaOverlay({
 
   useEffect(() => () => clearHideTimer(), [clearHideTimer]);
 
+  useEffect(() => {
+    if (!apoyoMatPick) return undefined;
+    let removeDoc = null;
+    let cleaned = false;
+    const tid = window.setTimeout(() => {
+      if (cleaned) return;
+      const handler = (e) => {
+        if (apoyoMatPopRef.current?.contains(e.target)) return;
+        setApoyoMatPick(null);
+      };
+      document.addEventListener("pointerdown", handler, true);
+      removeDoc = () => document.removeEventListener("pointerdown", handler, true);
+    }, 0);
+    return () => {
+      cleaned = true;
+      window.clearTimeout(tid);
+      if (removeDoc) removeDoc();
+    };
+  }, [apoyoMatPick]);
+
+  useEffect(() => {
+    if (!fijPalette) return undefined;
+    let removeDoc = null;
+    let cleaned = false;
+    const tid = window.setTimeout(() => {
+      if (cleaned) return;
+      const handler = (e) => {
+        if (fijPalettePopRef.current?.contains(e.target)) return;
+        setFijPalette(null);
+      };
+      document.addEventListener("pointerdown", handler, true);
+      removeDoc = () => document.removeEventListener("pointerdown", handler, true);
+    }, 0);
+    return () => {
+      cleaned = true;
+      window.clearTimeout(tid);
+      if (removeDoc) removeDoc();
+    };
+  }, [fijPalette]);
+
   if (!hints) return null;
 
   const zm = svgTy?.m ?? 1;
   const rows = fijacionRowsFromHints(hints);
+  const dotPts = fijacionDotsLayout(r, hints, exterior);
   const supportLinesVisual = [];
   const supportLinesHit = [];
   if (rows >= 2 && r.h > 1e-6) {
@@ -348,43 +650,51 @@ function EstructuraZonaOverlay({
           pointerEvents="none"
         />,
       );
-      if (combinadaAssign && typeof onApoyoMaterialCycle === "function") {
-        supportLinesHit.push(
-          <line
-            key={`est-ap-hit-${r.gi}-${i}`}
-            x1={r.x}
-            y1={yy}
-            x2={r.x + r.w}
-            y2={yy}
-            stroke="transparent"
-            strokeWidth={0.22 * zm}
-            pointerEvents="stroke"
-            style={{ cursor: "pointer" }}
-            onPointerDown={(ev) => {
-              ev.stopPropagation();
-              ev.preventDefault();
+      if (!combinadaAssign) continue;
+      const keysInRow = dotPts.filter((d) => d.rowIndex === i).map((d) => d.key);
+      const canPalette = typeof onFijacionPaletteBulk === "function" && keysInRow.length > 0;
+      const canApoyoPop =
+        Boolean(apoyoMateriales?.length) && typeof onApoyoMaterialDirect === "function";
+      const canApoyoCycle =
+        Boolean(apoyoMateriales?.length) && typeof onApoyoMaterialCycle === "function";
+      const canZoneCycle = typeof onCombinadaZoneInteraction === "function" && keysInRow.length > 0;
+      if (!canPalette && !canApoyoPop && !canApoyoCycle && !canZoneCycle) continue;
+      const hitStroke = Math.max(0.22 * zm, canPalette ? 0.3 * zm : 0.22 * zm);
+      supportLinesHit.push(
+        <line
+          key={`est-ap-hit-${r.gi}-${i}`}
+          x1={r.x}
+          y1={yy}
+          x2={r.x + r.w}
+          y2={yy}
+          stroke="transparent"
+          strokeWidth={hitStroke}
+          pointerEvents="stroke"
+          style={{ cursor: "pointer" }}
+          onPointerDown={(ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            if (canPalette) {
+              setApoyoMatPick(null);
+              setFijPalette({
+                left: ev.clientX + 10,
+                top: ev.clientY + 6,
+                keys: keysInRow,
+                title: i === 0 || i === n - 1 ? "Línea de apoyo (perímetro)" : "Línea de apoyo (intermedia)",
+                subtitle: `${keysInRow.length} punto(s) en esta fila`,
+              });
+              return;
+            }
+            setFijPalette(null);
+            if (canApoyoPop) {
+              setApoyoMatPick({ rowIndex: i, left: ev.clientX + 10, top: ev.clientY + 6 });
+              return;
+            }
+            if (canApoyoCycle) {
               onApoyoMaterialCycle(r.gi, i);
-            }}
-          />,
-        );
-      } else if (combinadaAssign && typeof onCombinadaZoneInteraction === "function") {
-        supportLinesHit.push(
-          <line
-            key={`est-ap-hit-${r.gi}-${i}`}
-            x1={r.x}
-            y1={yy}
-            x2={r.x + r.w}
-            y2={yy}
-            stroke="transparent"
-            strokeWidth={0.22 * zm}
-            pointerEvents="stroke"
-            style={{ cursor: "pointer" }}
-            onPointerDown={(ev) => {
-              ev.stopPropagation();
-              ev.preventDefault();
-              const pts = fijacionDotsLayout(r, hints, exterior);
-              const keysInRow = pts.filter((d) => d.rowIndex === i).map((d) => d.key);
-              if (!keysInRow.length) return;
+              return;
+            }
+            if (canZoneCycle) {
               onCombinadaZoneInteraction(r.gi, (prev) => {
                 const first = prev[keysInRow[0]] || "metal";
                 const nm = cycleCombinadaMaterial(first);
@@ -392,14 +702,13 @@ function EstructuraZonaOverlay({
                 for (const k of keysInRow) next[k] = nm;
                 return next;
               });
-            }}
-          />,
-        );
-      }
+            }
+          }}
+        />,
+      );
     }
   }
 
-  const dotPts = fijacionDotsLayout(r, hints, exterior);
   const dotKeys = dotPts.map((d) => d.key);
   const mergedByKey =
     combinadaAssign && apoyoMateriales && apoyoMateriales.length
@@ -417,7 +726,9 @@ function EstructuraZonaOverlay({
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
   const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
   const perimeterBands =
-    combinadaAssign && typeof onCombinadaZoneInteraction === "function" && rows >= 2
+    combinadaAssign &&
+    rows >= 2 &&
+    (typeof onFijacionPaletteBulk === "function" || typeof onCombinadaZoneInteraction === "function")
       ? [
           {
             key: "perim-top",
@@ -473,6 +784,15 @@ function EstructuraZonaOverlay({
       : `Cada punto ≈ 1 unidad del cómputo (${totalFij} total).`;
   const dotR = 0.032 * zm;
   const hitR = Math.max(0.048 * zm, dotR * 2.35);
+  const cantPGrid =
+    hints.fijacionDotsMode === "isodec_grid" ? Math.max(1, Math.round(Number(hints.cantPaneles)) || 1) : 1;
+
+  const bandPaletteTitle = (k) => {
+    if (k === "perim-top") return "Perímetro superior";
+    if (k === "perim-bot") return "Perímetro inferior";
+    if (k === "perim-left") return "Perímetro izquierdo";
+    return "Perímetro derecho";
+  };
 
   return (
     <>
@@ -492,11 +812,22 @@ function EstructuraZonaOverlay({
             style={{ cursor: "pointer" }}
             pointerEvents="auto"
             onPointerDown={(ev) => {
-              if (typeof onCombinadaZoneInteraction !== "function") return;
               ev.stopPropagation();
               ev.preventDefault();
+              setApoyoMatPick(null);
               const keysPick = band.pick(dotPts);
               if (!keysPick.length) return;
+              if (typeof onFijacionPaletteBulk === "function") {
+                setFijPalette({
+                  left: ev.clientX + 10,
+                  top: ev.clientY + 6,
+                  keys: keysPick,
+                  title: bandPaletteTitle(band.key),
+                  subtitle: `${keysPick.length} punto(s) en este borde`,
+                });
+                return;
+              }
+              if (typeof onCombinadaZoneInteraction !== "function") return;
               onCombinadaZoneInteraction(r.gi, (prev) => {
                 const first = prev[keysPick[0]] || "metal";
                 const nm = cycleCombinadaMaterial(first);
@@ -507,6 +838,46 @@ function EstructuraZonaOverlay({
             }}
           />
         ))}
+        {combinadaAssign &&
+        typeof onFijacionPaletteBulk === "function" &&
+        cantPGrid >= 2
+          ? (() => {
+              const panelW = r.w / cantPGrid;
+              const hitW = Math.max(0.11 * zm, panelW * 0.18);
+              const els = [];
+              for (let j = 1; j < cantPGrid; j += 1) {
+                const xj = r.x + j * panelW;
+                const keysJ = fijacionDotKeysNearPanelJoint(dotPts, j, r, cantPGrid, hints);
+                if (!keysJ.length) continue;
+                els.push(
+                  <line
+                    key={`est-vjoint-hit-${r.gi}-${j}`}
+                    x1={xj}
+                    y1={r.y}
+                    x2={xj}
+                    y2={r.y + r.h}
+                    stroke="rgba(124,58,237,0.14)"
+                    strokeWidth={hitW}
+                    pointerEvents="stroke"
+                    style={{ cursor: "pointer" }}
+                    onPointerDown={(ev) => {
+                      ev.stopPropagation();
+                      ev.preventDefault();
+                      setApoyoMatPick(null);
+                      setFijPalette({
+                        left: ev.clientX + 10,
+                        top: ev.clientY + 6,
+                        keys: keysJ,
+                        title: "Junta vertical (entre paneles)",
+                        subtitle: `Paneles ${j} y ${j + 1} · ${keysJ.length} punto(s)`,
+                      });
+                    }}
+                  />,
+                );
+              }
+              return els.length ? <g pointerEvents="auto">{els}</g> : null;
+            })()
+          : null}
         <g pointerEvents="auto">
           {dotPts.map((d) => {
             const resolved = combinadaAssign
@@ -516,7 +887,7 @@ function EstructuraZonaOverlay({
             const fill = combinadaAssign ? combinadaMaterialFill(mat) : "#1e293b";
             const xSz = dotR * 0.7;
             return (
-              <g key={`fij-dot-${r.gi}-${d.key}`} opacity={enabled ? 1 : 0.3}>
+              <g key={`fij-dot-${r.gi}-${d.key}`} opacity={enabled ? 1 : 0.14}>
                 <circle
                   cx={d.cx}
                   cy={d.cy}
@@ -527,13 +898,59 @@ function EstructuraZonaOverlay({
                   onMouseLeave={scheduleHidePopover}
                   aria-label={
                     combinadaAssign
-                      ? `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para rotar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`
+                      ? (typeof onFijacionPaletteBulk === "function"
+                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: ${enabled ? "quitar" : "incluir"} del cómputo. Mayús+clic o pulsación larga: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"}.`
+                        : `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para cambiar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`)
                       : "Ver productos de fijación incluidos en la cotización"
                   }
                   onPointerDown={(ev) => {
                     if (!combinadaAssign) return;
                     ev.stopPropagation();
                     ev.preventDefault();
+                    setApoyoMatPick(null);
+                    if (typeof onFijacionPaletteBulk === "function" && typeof onDotToggleEnabled === "function") {
+                      if (ev.shiftKey) {
+                        clearDotPointerTimer();
+                        setFijPalette({
+                          left: ev.clientX + 10,
+                          top: ev.clientY + 6,
+                          keys: [d.key],
+                          title: "Punto de fijación",
+                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
+                        });
+                        return;
+                      }
+                      clearDotPointerTimer();
+                      const dotKeyFull = `${r.gi}:${d.key}`;
+                      dotPointerRef.current.key = dotKeyFull;
+                      dotPointerRef.current.longFired = false;
+                      dotPointerRef.current.timer = window.setTimeout(() => {
+                        dotPointerRef.current.longFired = true;
+                        dotPointerRef.current.timer = null;
+                        dotPointerRef.current.key = null;
+                        setFijPalette({
+                          left: ev.clientX + 10,
+                          top: ev.clientY + 6,
+                          keys: [d.key],
+                          title: "Punto de fijación",
+                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
+                        });
+                      }, 450);
+                      try {
+                        ev.currentTarget.setPointerCapture(ev.pointerId);
+                      } catch { /* ignore */ }
+                      return;
+                    }
+                    if (typeof onFijacionPaletteBulk === "function") {
+                      setFijPalette({
+                        left: ev.clientX + 10,
+                        top: ev.clientY + 6,
+                        keys: [d.key],
+                        title: "Punto de fijación",
+                        subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
+                      });
+                      return;
+                    }
                     if (typeof onDotCycleMaterial === "function") {
                       onDotCycleMaterial(r.gi, d.key);
                     } else if (typeof onCombinadaZoneInteraction === "function") {
@@ -544,10 +961,36 @@ function EstructuraZonaOverlay({
                       });
                     }
                   }}
+                  onPointerUp={(ev) => {
+                    if (!combinadaAssign || typeof onFijacionPaletteBulk !== "function" || typeof onDotToggleEnabled !== "function") return;
+                    const dotKeyFull = `${r.gi}:${d.key}`;
+                    if (dotPointerRef.current.key !== dotKeyFull) return;
+                    dotPointerRef.current.key = null;
+                    if (dotPointerRef.current.timer != null) {
+                      window.clearTimeout(dotPointerRef.current.timer);
+                      dotPointerRef.current.timer = null;
+                      if (!dotPointerRef.current.longFired) onDotToggleEnabled(r.gi, d.key);
+                    }
+                    dotPointerRef.current.longFired = false;
+                    try {
+                      if (ev.currentTarget.hasPointerCapture?.(ev.pointerId)) {
+                        ev.currentTarget.releasePointerCapture(ev.pointerId);
+                      }
+                    } catch { /* ignore */ }
+                  }}
+                  onPointerCancel={(ev) => {
+                    clearDotPointerTimer();
+                    try {
+                      if (ev.currentTarget.hasPointerCapture?.(ev.pointerId)) {
+                        ev.currentTarget.releasePointerCapture(ev.pointerId);
+                      }
+                    } catch { /* ignore */ }
+                  }}
                   onContextMenu={(ev) => {
                     if (!combinadaAssign || typeof onDotToggleEnabled !== "function") return;
                     ev.stopPropagation();
                     ev.preventDefault();
+                    clearDotPointerTimer();
                     onDotToggleEnabled(r.gi, d.key);
                   }}
                 />
@@ -589,6 +1032,61 @@ function EstructuraZonaOverlay({
         sysLabel={sysLabel}
         gridExpl={gridExpl}
         productLines={hints.fijacionProductLines}
+      />
+      <CombinadaApoyoMaterialPopover
+        anchor={apoyoMatPick}
+        zonaLabel={`Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`}
+        rowLabel={
+          apoyoMatPick && apoyoMateriales?.length
+            ? `Línea de apoyo ${apoyoMatPick.rowIndex + 1}${
+                apoyoMatPick.rowIndex === 0 || apoyoMatPick.rowIndex === apoyoMateriales.length - 1
+                  ? " (perímetro)"
+                  : " (intermedio)"
+              }`
+            : ""
+        }
+        popRef={apoyoMatPopRef}
+        onPick={(mat) => {
+          setFijPalette(null);
+          if (apoyoMatPick && typeof onApoyoMaterialDirect === "function") {
+            onApoyoMaterialDirect(apoyoMatPick.rowIndex, mat);
+          }
+          setApoyoMatPick(null);
+        }}
+        onRowDisable={
+          typeof onFijacionPaletteBulk === "function" && apoyoMatPick
+            ? () => {
+                const pts = fijacionDotsLayout(r, hints, exterior);
+                const keysInRow = pts
+                  .filter((p) => p.rowIndex === apoyoMatPick.rowIndex)
+                  .map((p) => p.key);
+                if (keysInRow.length) onFijacionPaletteBulk(r.gi, keysInRow, { type: "disable" });
+                setApoyoMatPick(null);
+                setFijPalette(null);
+              }
+            : undefined
+        }
+      />
+      <CombinadaFijacionDotsPalettePopover
+        anchor={fijPalette}
+        title={fijPalette?.title || ""}
+        subtitle={fijPalette?.subtitle || ""}
+        popRef={fijPalettePopRef}
+        onPickMat={(mat) => {
+          if (!fijPalette || typeof onFijacionPaletteBulk !== "function") return;
+          onFijacionPaletteBulk(r.gi, fijPalette.keys, { type: "mat", mat });
+          setFijPalette(null);
+        }}
+        onDisable={() => {
+          if (!fijPalette || typeof onFijacionPaletteBulk !== "function") return;
+          onFijacionPaletteBulk(r.gi, fijPalette.keys, { type: "disable" });
+          setFijPalette(null);
+        }}
+        onRestore={() => {
+          if (!fijPalette || typeof onFijacionPaletteBulk !== "function") return;
+          onFijacionPaletteBulk(r.gi, fijPalette.keys, { type: "restore" });
+          setFijPalette(null);
+        }}
       />
     </>
   );
@@ -1013,7 +1511,7 @@ export function RoofPreviewMetricsSidebar({
  * @param {number|null} [props.selectedZonaGi] - zona seleccionada si `embedMetricsSidebar` es false
  * @param {(gi: number|null) => void} [props.onSelectedZonaGiChange] - al elegir zona en el SVG (con métricas externas)
  * @param {boolean} [props.denseChrome] - true en visor embebido: menos padding y el bloque SVG crece con el host (flex + altura máxima)
- * @param {boolean} [props.combinadaFijacionAssign] - paso Estructura + tipo Combinada: clic en 2D para materiales (una sola zona en planta)
+ * @param {boolean} [props.combinadaFijacionAssign] - tipo Combinada + pasos con overlay de estructura: clic en 2D para materiales (multizona usa mapa por punto; una zona + apoyoMateriales usa líneas de apoyo)
  * @param {Record<number, Record<string, string>>|null} [props.combinadaFijByGi] - mapa punto → hormigon|metal|madera por zona
  * @param {(payload: { byGi: Record<number, Record<string, string>>, ptsHorm: number, ptsMetal: number, ptsMadera: number }) => void} [props.onCombinadaFijacionSync]
  * @param {number} [props.combinadaPtsH] - conteos actuales (para inicializar puntos sin mapa)
@@ -1025,7 +1523,8 @@ export function RoofPreviewMetricsSidebar({
  * @param {(side: string, val: string) => void} [props.onTechoBorderChange] - una sola zona efectiva en planta
  * @param {(gi: number, side: string, val: string) => void} [props.onZonaBorderChange] - multizona
  * @param {string[]|null} [props.apoyoMateriales] - per-apoyo material array (combinada mode)
- * @param {(gi: number, rowIndex: number) => void} [props.onApoyoMaterialCycle] - cycle apoyo material on click
+ * @param {(gi: number, rowIndex: number) => void} [props.onApoyoMaterialCycle] - cycle apoyo material on click (si no hay `onApoyoMaterialDirect`)
+ * @param {(rowIndex: number, mat: string) => void} [props.onApoyoMaterialDirect] - asignar material a una línea de apoyo (popover en el plano)
  */
 export default function RoofPreview({
   zonas = [],
@@ -1064,6 +1563,7 @@ export default function RoofPreview({
   onZonaBorderChange = null,
   apoyoMateriales = null,
   onApoyoMaterialCycle = null,
+  onApoyoMaterialDirect = null,
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
@@ -1196,9 +1696,9 @@ export default function RoofPreview({
 
   const handleCombinadaZoneInteraction = useCallback(
     (gi, updater) => {
-      if (!combinadaSingleZona || typeof onCombinadaFijacionSync !== "function") return;
-      const entry = layout.entries[0];
-      if (!entry || entry.gi !== gi) return;
+      if (!combinadaFijacionAssign || typeof onCombinadaFijacionSync !== "function") return;
+      const entry = layout.entries.find((e) => e.gi === gi);
+      if (!entry) return;
       const hints = estructuraHintsByGi?.[gi];
       if (!hints) return;
       const ext = planEdges?.exterior ?? [];
@@ -1212,21 +1712,49 @@ export default function RoofPreview({
         combinadaPtsMadera,
       );
       const next = updater(prev);
-      const c = countCombinadaMaterialsInDots(dots, next);
+
+      let ptsHorm = 0;
+      let ptsMetal = 0;
+      let ptsMadera = 0;
+      for (const ent of layout.entries) {
+        const g = ent.gi;
+        const hz = estructuraHintsByGi?.[g];
+        if (!hz) continue;
+        const dts = fijacionDotsLayout(ent, hz, ext);
+        const ks = dts.map((d) => d.key);
+        const existing = (combinadaFijByGi && combinadaFijByGi[g]) || {};
+        const byKey = mergeCombinadaByKeyWithDefaults(
+          ks,
+          g === gi ? next : existing,
+          combinadaPtsH,
+          combinadaPtsMetal,
+          combinadaPtsMadera,
+        );
+        const ov = (fijDotOverridesByGi && fijDotOverridesByGi[g]) || {};
+        const c =
+          ov && typeof ov === "object" && Object.keys(ov).length
+            ? countPtsWithOverrides(dts, byKey, ov)
+            : countCombinadaMaterialsInDots(dts, byKey);
+        ptsHorm += c.ptsHorm;
+        ptsMetal += c.ptsMetal;
+        ptsMadera += c.ptsMadera;
+      }
+
       onCombinadaFijacionSync({
         byGi: { [gi]: next },
-        ptsHorm: c.ptsHorm,
-        ptsMetal: c.ptsMetal,
-        ptsMadera: c.ptsMadera,
+        ptsHorm,
+        ptsMetal,
+        ptsMadera,
       });
     },
     [
-      combinadaSingleZona,
+      combinadaFijacionAssign,
       onCombinadaFijacionSync,
       layout.entries,
       estructuraHintsByGi,
       planEdges,
       combinadaFijByGi,
+      fijDotOverridesByGi,
       combinadaPtsH,
       combinadaPtsMetal,
       combinadaPtsMadera,
@@ -1287,6 +1815,50 @@ export default function RoofPreview({
       );
       const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
       const nextOv = toggleDotEnabled(dotKey, byKey, prevOv);
+      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
+    },
+    [
+      onFijDotOverridesSync,
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      fijDotOverridesByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
+  const handleFijacionPaletteBulk = useCallback(
+    (gi, keys, action) => {
+      if (typeof onFijDotOverridesSync !== "function" || !keys?.length) return;
+      const entry = layout.entries.find((e) => e.gi === gi);
+      if (!entry) return;
+      const hints = estructuraHintsByGi?.[gi];
+      if (!hints) return;
+      const ext = planEdges?.exterior ?? [];
+      const dots = fijacionDotsLayout(entry, hints, ext);
+      const allKeys = dots.map((d) => d.key);
+      const byKey = mergeCombinadaByKeyWithDefaults(
+        allKeys,
+        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+        combinadaPtsH,
+        combinadaPtsMetal,
+        combinadaPtsMadera,
+      );
+      const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
+      let nextOv = prevOv;
+      if (action?.type === "restore") {
+        nextOv = stripDotOverrideKeys(prevOv, keys);
+      } else if (action?.type === "disable") {
+        nextOv = bulkDisableDots(keys, byKey, prevOv);
+      } else if (action?.type === "mat" && action.mat) {
+        nextOv = bulkSetDotsMaterialEnabled(keys, action.mat, byKey, prevOv);
+      } else {
+        return;
+      }
       const c = countPtsWithOverrides(dots, byKey, nextOv);
       onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
     },
@@ -2040,7 +2612,7 @@ export default function RoofPreview({
                       hints={estructuraHintsByGi[r.gi]}
                       svgTy={svgTy}
                       exterior={planEdges?.exterior ?? []}
-                      combinadaAssign={combinadaSingleZona}
+                      combinadaAssign={combinadaFijacionAssign}
                       combinadaByKey={combinadaFijByGi?.[r.gi] ?? null}
                       combinadaPtsH={combinadaPtsH}
                       combinadaPtsMetal={combinadaPtsMetal}
@@ -2051,6 +2623,8 @@ export default function RoofPreview({
                       onDotToggleEnabled={handleDotToggleEnabled}
                       apoyoMateriales={combinadaSingleZona ? apoyoMateriales : null}
                       onApoyoMaterialCycle={combinadaSingleZona ? onApoyoMaterialCycle : null}
+                      onApoyoMaterialDirect={combinadaSingleZona ? onApoyoMaterialDirect : null}
+                      onFijacionPaletteBulk={typeof onFijDotOverridesSync === "function" ? handleFijacionPaletteBulk : null}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
