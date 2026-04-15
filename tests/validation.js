@@ -2249,6 +2249,32 @@ assert(
   "0",
 );
 
+// ── combinada: conteos por material → reglas de varilla/tuerca/tacos (calcFijacionesVarilla) ──
+const fijComb = calcFijacionesVarilla(2, 3, 5, "combinada", 4, 6, 2, { espesorMm: 100 });
+const skuCant = (sku) => {
+  const it = (fijComb.items || []).find((x) => x.sku === sku);
+  return it ? Math.round(Number(it.cant)) : -1;
+};
+assert(
+  "calcFijacionesVarilla combinada: tacos = puntos hormigón",
+  skuCant("taco_expansivo") === 4,
+  String(skuCant("taco_expansivo")),
+  "4",
+);
+const tuercasEsp = 6 * 2 + 4 * 1 + 2 * 2;
+assert(
+  "calcFijacionesVarilla combinada: tuercas metal×2 + horm×1 + madera×2",
+  skuCant("tuerca_38") === tuercasEsp,
+  String(skuCant("tuerca_38")),
+  String(tuercasEsp),
+);
+assert(
+  "calcFijacionesVarilla combinada: arandela plana solo metal+madera",
+  skuCant("arandela_plana") === 6 + 2,
+  String(skuCant("arandela_plana")),
+  "8",
+);
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
 // ═══════════════════════════════════════════════════════════════════════════

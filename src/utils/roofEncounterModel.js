@@ -57,6 +57,153 @@ export function encounterBorderPerfil(raw) {
   return p && p !== "none" ? p : "none";
 }
 
+/** Claves de encuentro que puede pisar un tramo (`segments[]`). */
+const ENCOUNTER_SEGMENT_OVERLAY_KEYS = ["tipo", "modo", "perfil", "perfilVecino", "cumbreraUnida", "desnivel"];
+
+/**
+ * Objeto encuentro por par **sin** `segments` (base para herencia por tramo).
+ * @param {object|null|undefined} raw
+ */
+export function pairEncounterBaseRaw(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  const { segments: _s, ...rest } = raw;
+  return rest;
+}
+
+/**
+ * Fusiona base del par + overlay opcional del tramo → objeto bruto para `normalizeEncounter`.
+ * @param {object|null|undefined} baseRaw
+ * @param {object|null|undefined} overlay
+ */
+export function mergePairEncounterOverlay(baseRaw, overlay) {
+  const base = pairEncounterBaseRaw(baseRaw);
+  const o = overlay && typeof overlay === "object" ? overlay : {};
+  const out = { ...base };
+  for (const k of ENCOUNTER_SEGMENT_OVERLAY_KEYS) {
+    if (o[k] !== undefined) out[k] = o[k];
+  }
+  return out;
+}
+
+function clampUnitT(t) {
+  const n = Number(t);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}
+
+/**
+ * Normaliza lista `segments` guardada en `preview.encounterByPair[pk]`.
+ * Cada tramo: `{ id, t0, t1, includeInBom?, encounter? }` con `t0<t1` en [0,1] a lo largo del segmento geométrico.
+ * @param {object|null|undefined} raw
+ * @returns {Array<{ id: string, t0: number, t1: number, includeInBom: boolean, encounter: object }>}
+ */
+export function normalizeEncounterPairSegments(raw) {
+  const base = raw && typeof raw === "object" ? raw : {};
+  const segsIn = Array.isArray(base.segments) ? base.segments : null;
+  if (!segsIn?.length) {
+    return [{
+      id: "full",
+      t0: 0,
+      t1: 1,
+      includeInBom: base.includeInBom !== false,
+      encounter: {},
+    }];
+  }
+  const out = [];
+  for (let i = 0; i < segsIn.length; i++) {
+    const s = segsIn[i] && typeof segsIn[i] === "object" ? segsIn[i] : {};
+    const t0 = clampUnitT(s.t0);
+    const t1 = clampUnitT(s.t1);
+    if (!(t1 > t0 + 1e-9)) continue;
+    const id = String(s.id || `s${out.length}`);
+    const enc = s.encounter && typeof s.encounter === "object" ? s.encounter : {};
+    out.push({
+      id,
+      t0,
+      t1,
+      includeInBom: s.includeInBom !== false,
+      encounter: { ...enc },
+    });
+  }
+  if (!out.length) {
+    return [{
+      id: "full",
+      t0: 0,
+      t1: 1,
+      includeInBom: base.includeInBom !== false,
+      encounter: {},
+    }];
+  }
+  out.sort((a, b) => a.t0 - b.t0);
+  return out;
+}
+
+/**
+ * Runs listos para BOM / UI: intervalo en t + `effectiveRaw` normalizado por tramo.
+ * @param {object|null|undefined} pairRaw
+ */
+export function listEncounterPairSegmentRuns(pairRaw) {
+  const base = pairRaw && typeof pairRaw === "object" ? pairRaw : {};
+  const segs = normalizeEncounterPairSegments(base);
+  return segs.map((s) => {
+    const effectiveRaw = mergePairEncounterOverlay(base, s.encounter);
+    return {
+      id: s.id,
+      t0: s.t0,
+      t1: s.t1,
+      includeInBom: s.includeInBom,
+      effectiveRaw,
+      normalized: normalizeEncounter(effectiveRaw),
+    };
+  });
+}
+
+/**
+ * Parte un tramo en dos a la mitad (mismo overlay en ambos mitades; el usuario puede editar después).
+ * @param {object|null|undefined} pairRaw
+ * @param {string} segmentId
+ * @returns {object|null} nuevo objeto para `encounterByPair[pk]` o null si no aplica
+ */
+export function splitEncounterPairSegmentMid(pairRaw, segmentId) {
+  if (!pairRaw || typeof pairRaw !== "object") return null;
+  const segs = normalizeEncounterPairSegments(pairRaw);
+  const idx = segs.findIndex((s) => s.id === segmentId);
+  if (idx < 0) return null;
+  const s = segs[idx];
+  const mid = (s.t0 + s.t1) / 2;
+  if (!(mid > s.t0 + 1e-6 && s.t1 > mid + 1e-6)) return null;
+  const next = [...segs];
+  next.splice(idx, 1,
+    { ...s, id: `${s.id}-a`, t0: s.t0, t1: mid, encounter: { ...s.encounter } },
+    { ...s, id: `${s.id}-b`, t0: mid, t1: s.t1, encounter: { ...s.encounter } },
+  );
+  return { ...pairEncounterBaseRaw(pairRaw), segments: next };
+}
+
+/**
+ * Actualiza un tramo (overlay parcial, includeInBom, o reemplazo de `encounter`).
+ * @param {object|null|undefined} pairRaw
+ * @param {string} segmentId
+ * @param {{ includeInBom?: boolean, encounter?: object|null }} patch
+ */
+export function patchEncounterPairSegment(pairRaw, segmentId, patch) {
+  const base = pairRaw && typeof pairRaw === "object" ? pairRaw : {};
+  const segs = normalizeEncounterPairSegments(base);
+  const idx = segs.findIndex((s) => s.id === segmentId);
+  if (idx < 0) return base;
+  const cur = segs[idx];
+  const nextSegs = segs.map((s, i) => {
+    if (i !== idx) return s;
+    const includeInBom = patch?.includeInBom !== undefined ? Boolean(patch.includeInBom) : cur.includeInBom;
+    let enc = cur.encounter;
+    if (patch && Object.prototype.hasOwnProperty.call(patch, "encounter")) {
+      enc = patch.encounter == null ? {} : { ...patch.encounter };
+    }
+    return { ...cur, includeInBom, encounter: enc && typeof enc === "object" ? enc : {} };
+  });
+  return { ...pairEncounterBaseRaw(base), segments: nextSegs };
+}
+
 /**
  * Resuelve el índice de zona vecina y el lado opuesto en un encuentro de planta.
  * @param {number} gi

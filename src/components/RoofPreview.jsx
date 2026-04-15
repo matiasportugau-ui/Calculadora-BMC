@@ -511,7 +511,9 @@ function CombinadaFijacionDotsPalettePopover({
  * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
  * Modo Combinada: por defecto todos los puntos cuentan (incluidos). Clic en un punto = quitar/restaurar
  * (no cotiza esa fijación; se ve atenuado). Mayús+clic o pulsación larga (~0,45 s) en el punto = paleta
- * de material. Clic en líneas de apoyo, juntas verticales y bandas de perímetro = material por “vía”.
+ * de material. Clic en líneas de apoyo, juntas verticales (2+ paneles, ISODEC o reparto) y bandas de
+ * perímetro = misma paleta; los conteos globales ptsHorm/ptsMetal/ptsMadera se recalculan en todas las zonas
+ * para alinear el BOM con `calcFijacionesVarilla` (tacos en hormigón, tuercas y varillas según mix).
  */
 function EstructuraZonaOverlay({
   r,
@@ -778,14 +780,15 @@ function EstructuraZonaOverlay({
   const totalFij = Math.round(Number(hints.puntosFijacion) || 0);
   const grillaFij = Math.round(Number(hints.puntosFijacionGrilla ?? hints.puntosFijacion) || 0);
   const perimV = Math.round(Number(hints.puntosFijacionPerimetroVertical) || 0);
+  const cantPanelesHint = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
   const gridExpl =
     hints.fijacionDotsMode === "isodec_grid"
-      ? `Puntos dibujados: ${dotPts.length} (grilla en líneas de apoyo: 2/panel en perímetro en tercios del ancho, 1/panel centrado en intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro exterior (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m en vertical)` : ""}). Total presupuesto: ${totalFij} (grilla base ${grillaFij}${perimV > 0 ? ` + lateral perím. ${perimV}` : ""}).`
-      : `Cada punto ≈ 1 unidad del cómputo (${totalFij} total).`;
+      ? `Puntos en planta: ${dotPts.length} (grilla ISODEC: 2/panel en perímetro, 1/panel centrado en apoyos intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m)` : ""}).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical entre columnas (misma paleta que perímetro o línea de apoyo).` : ""} Total cómputo ${totalFij} (base ${grillaFij}${perimV > 0 ? ` + lateral ${perimV}` : ""}). El presupuesto aplica por material: hormigón → tacos + tuerca simple; metal/madera → varilla roscada + tuercas dobles y arandela plana; madera usa tramo de rosca distinto al metal/hormigón.`
+      : `Puntos en planta: ${dotPts.length} (reparto en líneas de apoyo; ${totalFij} unidades de cómputo).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical alineada a la columna (misma paleta).` : ""} En varilla/tuerca, el listado inferior sigue los puntos activos por material (hormigón: tacos; metal/madera: varilla + tuercas según reglas ISODEC).`;
   const dotR = 0.032 * zm;
   const hitR = Math.max(0.048 * zm, dotR * 2.35);
   const cantPGrid =
-    hints.fijacionDotsMode === "isodec_grid" ? Math.max(1, Math.round(Number(hints.cantPaneles)) || 1) : 1;
+    hints.fijacionDotsMode === "isodec_grid" ? cantPanelesHint : 1;
 
   const bandPaletteTitle = (k) => {
     if (k === "perim-top") return "Perímetro superior";
@@ -840,14 +843,14 @@ function EstructuraZonaOverlay({
         ))}
         {combinadaAssign &&
         typeof onFijacionPaletteBulk === "function" &&
-        cantPGrid >= 2
+        cantPanelesHint >= 2
           ? (() => {
-              const panelW = r.w / cantPGrid;
+              const panelW = r.w / cantPanelesHint;
               const hitW = Math.max(0.11 * zm, panelW * 0.18);
               const els = [];
-              for (let j = 1; j < cantPGrid; j += 1) {
+              for (let j = 1; j < cantPanelesHint; j += 1) {
                 const xj = r.x + j * panelW;
-                const keysJ = fijacionDotKeysNearPanelJoint(dotPts, j, r, cantPGrid, hints);
+                const keysJ = fijacionDotKeysNearPanelJoint(dotPts, j, r, cantPanelesHint, hints);
                 if (!keysJ.length) continue;
                 els.push(
                   <line
@@ -1694,6 +1697,52 @@ export default function RoofPreview({
     [plantaBorderPick, multiZonaBordes, onZonaBorderChange, onTechoBorderChange],
   );
 
+  /** Suma ptsHorm / ptsMetal / ptsMadera de todas las zonas tras cambiar overrides en `changedGi` (multizona coherente con `calcFijacionesVarilla`). */
+  const sumCombinadaPtsAllZonesForDotOverrides = useCallback(
+    (changedGi, nextOverridesForGi) => {
+      const ext = planEdges?.exterior ?? [];
+      let ptsHorm = 0;
+      let ptsMetal = 0;
+      let ptsMadera = 0;
+      for (const ent of layout.entries) {
+        const g = ent.gi;
+        const hz = estructuraHintsByGi?.[g];
+        if (!hz) continue;
+        const dts = fijacionDotsLayout(ent, hz, ext);
+        const ks = dts.map((d) => d.key);
+        const byKey = mergeCombinadaByKeyWithDefaults(
+          ks,
+          (combinadaFijByGi && combinadaFijByGi[g]) || {},
+          combinadaPtsH,
+          combinadaPtsMetal,
+          combinadaPtsMadera,
+        );
+        const ov =
+          g === changedGi
+            ? nextOverridesForGi
+            : (fijDotOverridesByGi && fijDotOverridesByGi[g]) || {};
+        const c =
+          ov && typeof ov === "object" && Object.keys(ov).length
+            ? countPtsWithOverrides(dts, byKey, ov)
+            : countCombinadaMaterialsInDots(dts, byKey);
+        ptsHorm += c.ptsHorm;
+        ptsMetal += c.ptsMetal;
+        ptsMadera += c.ptsMadera;
+      }
+      return { ptsHorm, ptsMetal, ptsMadera };
+    },
+    [
+      layout.entries,
+      estructuraHintsByGi,
+      planEdges,
+      combinadaFijByGi,
+      fijDotOverridesByGi,
+      combinadaPtsH,
+      combinadaPtsMetal,
+      combinadaPtsMadera,
+    ],
+  );
+
   const handleCombinadaZoneInteraction = useCallback(
     (gi, updater) => {
       if (!combinadaFijacionAssign || typeof onCombinadaFijacionSync !== "function") return;
@@ -1780,11 +1829,12 @@ export default function RoofPreview({
       );
       const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
       const nextOv = cycleDotMaterial(dotKey, byKey, prevOv);
-      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      const c = sumCombinadaPtsAllZonesForDotOverrides(gi, nextOv);
       onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
     },
     [
       onFijDotOverridesSync,
+      sumCombinadaPtsAllZonesForDotOverrides,
       layout.entries,
       estructuraHintsByGi,
       planEdges,
@@ -1815,11 +1865,12 @@ export default function RoofPreview({
       );
       const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
       const nextOv = toggleDotEnabled(dotKey, byKey, prevOv);
-      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      const c = sumCombinadaPtsAllZonesForDotOverrides(gi, nextOv);
       onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
     },
     [
       onFijDotOverridesSync,
+      sumCombinadaPtsAllZonesForDotOverrides,
       layout.entries,
       estructuraHintsByGi,
       planEdges,
@@ -1859,11 +1910,12 @@ export default function RoofPreview({
       } else {
         return;
       }
-      const c = countPtsWithOverrides(dots, byKey, nextOv);
+      const c = sumCombinadaPtsAllZonesForDotOverrides(gi, nextOv);
       onFijDotOverridesSync({ gi, overrides: nextOv, ...c });
     },
     [
       onFijDotOverridesSync,
+      sumCombinadaPtsAllZonesForDotOverrides,
       layout.entries,
       estructuraHintsByGi,
       planEdges,

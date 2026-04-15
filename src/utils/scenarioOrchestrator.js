@@ -13,7 +13,12 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "./calculations.js";
 import { buildEdgeBOM, encounterPairKey, getSharedSidesPerZona, layoutZonasLogico } from "./roofPlanGeometry.js";
-import { encounterEsContinuo, encounterBorderPerfil, resolveNeighborSharedSide } from "./roofEncounterModel.js";
+import {
+  encounterEsContinuo,
+  encounterBorderPerfil,
+  resolveNeighborSharedSide,
+  listEncounterPairSegmentRuns,
+} from "./roofEncounterModel.js";
 import { getPricing } from "../data/pricing.js";
 
 const EMPTY_BORDERS = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };

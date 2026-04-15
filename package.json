@@ -28,6 +28,7 @@
     "prebuild": "npm run disk:precheck && npm run version:data",
     "build": "vite build",
     "preview": "vite preview",
+    "demo:combinada-fijacion": "node scripts/demo-combinada-fijacion-planta.mjs",
     "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js",
     "test:api": "node tests/calc-routes.validation.js",
     "test:chat": "node tests/chat-hardening.js",

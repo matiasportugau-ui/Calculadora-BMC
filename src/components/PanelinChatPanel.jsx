@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
+import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 
 const FONT =
   "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -65,7 +66,6 @@ const BUILTIN_SKINS = [
     },
   },
 ];
-const VIDEO_SRC = `${typeof import.meta !== "undefined" ? import.meta.env?.BASE_URL ?? "/" : "/"}video/panelin-lista-loop.mp4`;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 function buildSkinMap() {
@@ -160,7 +160,7 @@ if (typeof document !== "undefined" && !document.getElementById("panelin-chat-kf
 function Avatar({ size = 28 }) {
   return (
     <video
-      src={VIDEO_SRC}
+      src={PANELIN_AGENT_VIDEO_SRC}
       autoPlay
       muted
       loop
@@ -204,11 +204,6 @@ function Avatar({ size = 28 }) {
  *   onVerifyCalculation?: (text: string) => Promise<void>,
  *   detachedMode?: boolean,
  *   onOpenDetachedWindow?: () => void,
- *   aiProvider?: string,
- *   setAiProvider?: (p: string) => void,
- *   setAiModel?: (m: string) => void,
- *   aiOptions?: { ok?: boolean, providers?: Array<{ id: string, label: string, defaultModel: string, models: Array<{ id: string, label: string }> }> } | null,
- *   aiOptionsError?: string | null,
  * }} props
  */
 export default function PanelinChatPanel({
@@ -223,11 +218,6 @@ export default function PanelinChatPanel({
   error,
   devMode = false,
   onToggleDevMode,
-  aiProvider = "auto",
-  setAiProvider,
-  setAiModel,
-  aiOptions = null,
-  aiOptionsError = null,
   devMeta,
   trainingEntries,
   trainingStats,
@@ -629,18 +619,6 @@ export default function PanelinChatPanel({
   };
 
   const isEmpty = messages.length === 0;
-  const aiProvidersList = Array.isArray(aiOptions?.providers) ? aiOptions.providers : [];
-  const aiOptionsLoading = aiOptions === null && !aiOptionsError;
-  const selectBase = {
-    fontSize: 11,
-    maxWidth: "min(100%, 220px)",
-    padding: "4px 8px",
-    borderRadius: 6,
-    border: "1px solid rgba(255,255,255,0.35)",
-    background: "rgba(255,255,255,0.12)",
-    color: HEADER_TEXT_COLOR,
-    cursor: "pointer",
-  };
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
   const devDrawerMax = Math.min(860, Math.floor(viewportWidth * 0.95));
   const drawerMaxWidth = devMode ? clamp(devDrawerWidth, 320, devDrawerMax) : 380;
@@ -741,52 +719,6 @@ export default function PanelinChatPanel({
             <div style={{ fontSize: 11, opacity: 0.7 }}>
               Asistente BMC Uruguay{devMode ? " · Developer Mode" : ""}
             </div>
-            {setAiProvider && (
-              <div
-                style={{
-                  marginTop: 6,
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <label style={{ fontSize: 10, opacity: 0.9, display: "flex", alignItems: "center", gap: 6, margin: 0 }}>
-                  <span>IA</span>
-                  <select
-                    aria-label="Motor de IA (simple)"
-                    value={aiProvider}
-                    disabled={isStreaming || aiOptionsLoading}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setAiProvider(v);
-                      setAiModel?.("");
-                    }}
-                    style={selectBase}
-                    title="Automático prueba proveedores en orden. Elegí un proveedor para fijar el motor (modelo por defecto del servidor)."
-                  >
-                    <option value="auto">
-                      {aiOptionsLoading ? "Cargando…" : "Automático"}
-                    </option>
-                    {aiProvidersList.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {aiOptionsError && (
-                  <span style={{ fontSize: 10, opacity: 0.75 }} title={aiOptionsError}>
-                    Sin lista (¿API en :3001?)
-                  </span>
-                )}
-                {!aiOptionsLoading && !aiOptionsError && aiProvidersList.length === 0 && (
-                  <span style={{ fontSize: 10, opacity: 0.75 }} title="Definí al menos una key en .env del servidor">
-                    Sin keys en API
-                  </span>
-                )}
-              </div>
-            )}
           </div>
           {onToggleDevMode && (
             <button
