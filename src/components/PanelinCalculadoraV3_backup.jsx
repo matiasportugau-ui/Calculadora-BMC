@@ -2310,7 +2310,7 @@ export default function PanelinCalculadoraV3() {
   const [estructuraMetricsSelectedGi, setEstructuraMetricsSelectedGi] = useState(0);
   const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
   const [scenario, _setScenario] = useState("solo_techo");
-  const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
+  const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
@@ -2615,7 +2615,11 @@ export default function PanelinCalculadoraV3() {
       }
       case "selladores": return true;
       case "flete": return typeof flete === "number";
-      case "proyecto": return !!(proyecto.nombre?.trim() && proyecto.telefono?.trim());
+      case "proyecto":
+        if (proyecto.tipoCliente === "empresa") {
+          return !!(proyecto.razonSocial?.trim() && proyecto.rut?.trim() && proyecto.telefono?.trim());
+        }
+        return !!(proyecto.nombre?.trim() && proyecto.telefono?.trim());
       default: return false;
     }
   }, [scenario, listaPrecios, techo, flete, proyecto]);
@@ -3498,7 +3502,7 @@ export default function PanelinCalculadoraV3() {
   const handleReset = () => {
     setScenario("solo_techo");
     setLP(getListaDefault());
-    setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", telefono: "", direccion: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
+    setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
     setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setTechoAnchoModo("metros");
@@ -5078,9 +5082,24 @@ export default function PanelinCalculadoraV3() {
                   )}
                   {stepId === "proyecto" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} placeholder="Obligatorio" /></div>
-                      <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
-                      <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                      <div style={{ marginBottom: 4 }}>
+                        <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Cliente Final" }]} />
+                      </div>
+                      {proyecto.tipoCliente === "empresa" ? (
+                        <>
+                          <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                          <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
+                        </>
+                      ) : (
+                        <>
+                          <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                        </>
+                      )}
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}` }}>
@@ -5177,10 +5196,21 @@ export default function PanelinCalculadoraV3() {
                 <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 10 }}>
-                <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
-                {proyecto.tipoCliente === "empresa" && <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>}
-                <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                {proyecto.tipoCliente === "empresa" ? (
+                  <>
+                    <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} /></div>
+                    <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>
+                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                    <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
+                  </>
+                ) : (
+                  <>
+                    <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
+                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                  </>
+                )}
                 <div style={{ gridColumn: "1/-1" }}>
                   <div style={labelS}>Descripción obra</div>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
