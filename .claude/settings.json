@@ -1,11 +1,29 @@
 {
   "permissions": {
     "allow": [
+      "Bash(ls *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(npx *)",
+      "Bash(npm run *)",
       "Bash(node -e \":*)",
       "Bash(find '/Users/matias/Panelin calc loca/Calculadora-BMC' -type f -name *email*)",
       "Bash(grep -r \"BMC_EMAIL_INBOX_REPO\\\\|panelsim.*email\\\\|email.*inbox\" '/Users/matias/Panelin calc loca/Calculadora-BMC' --include=*.md --include=*.js --include=*.sh)",
       "Bash(grep -r \"IMAP\\\\|email\\\\|inbox\" '/Users/matias/Panelin calc loca/Calculadora-BMC/docs/team/panelsim' --include=*.md)",
       "Bash(gcloud logging:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run env:ensure && node -e \"console.log(''); console.log('=== Calculadora BMC ==='); console.log(''); console.log('  npm run dev:full    API :3001 + Vite :5173'); console.log('  npm run dev         Vite only'); console.log('  npm run gate:local  lint + test (before commit)'); console.log('');\""
+          }
+        ]
+      }
     ]
   }
 }
