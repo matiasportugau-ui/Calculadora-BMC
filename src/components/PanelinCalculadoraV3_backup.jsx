@@ -99,6 +99,7 @@ import { wrapSetter } from "../utils/interactionLogger.js";
 import { getListaDefault, getFleteDefault } from "../utils/calculatorConfig.js";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { useChat } from "../hooks/useChat.js";
+import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
 
@@ -2705,6 +2706,51 @@ export default function PanelinCalculadoraV3() {
   const scenarioGridCols = isPhone ? "1fr" : "1fr 1fr";
   const compactSectionPadding = isPhone ? 16 : isTablet ? 20 : 24;
 
+  const panelinHeaderAiSelect = useMemo(() => {
+    const providers = Array.isArray(chat.aiOptions?.providers) ? chat.aiOptions.providers : [];
+    const loading = chat.aiOptions === null && !chat.aiOptionsError;
+    const storedValue =
+      chat.aiProvider === "auto" ? "auto" : chat.aiModel ? `${chat.aiProvider}|${chat.aiModel}` : `${chat.aiProvider}|`;
+    const selValue = loading ? "auto" : storedValue;
+    const selStyle = {
+      fontSize: 12,
+      maxWidth: isPhone ? 152 : 300,
+      width: isPhone ? 152 : 300,
+      flex: "0 1 auto",
+      padding: "6px 10px",
+      borderRadius: 8,
+      border: "1px solid rgba(255,255,255,0.35)",
+      background: "rgba(255,255,255,0.12)",
+      color: "#fff",
+      cursor: chat.isStreaming ? "not-allowed" : "pointer",
+    };
+    const errTitle = chat.aiOptionsError ? String(chat.aiOptionsError) : "";
+    return (
+      <select
+        aria-label="Motor y modelo de IA (Panelin)"
+        title={errTitle || "Automático o proveedor y modelo. Requiere API con keys de IA (puerto 3001 o proxy /api)."}
+        value={selValue}
+        disabled={chat.isStreaming || loading}
+        onChange={(e) => chat.setAiPick(e.target.value)}
+        style={selStyle}
+      >
+        <option value="auto">{loading ? "Cargando motores…" : "Automático (fallback)"}</option>
+        {providers.map((p) => (
+          <optgroup key={p.id} label={p.label}>
+            <option value={`${p.id}|`}>{`Predeterminado (${p.defaultModel})`}</option>
+            {(p.models || [])
+              .filter((m) => m.id !== p.defaultModel)
+              .map((m) => (
+                <option key={`${p.id}|${m.id}`} value={`${p.id}|${m.id}`}>
+                  {m.id}
+                </option>
+              ))}
+          </optgroup>
+        ))}
+      </select>
+    );
+  }, [chat.aiOptions, chat.aiOptionsError, chat.aiProvider, chat.aiModel, chat.isStreaming, chat.setAiPick, isPhone]);
+
   // ── Available families for current scenario (separate techo/pared) ──
   const techoFamilyOptions = useMemo(() => {
     if (!scenarioDef?.hasTecho) return [];
@@ -4138,12 +4184,33 @@ export default function PanelinCalculadoraV3() {
           )}
           <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
           <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
-          <button
-            onClick={() => setChatOpen((o) => !o)}
-            style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
-          >
-            💬 Panelin
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <video
+              src={PANELIN_AGENT_VIDEO_SRC}
+              autoPlay
+              muted
+              loop
+              playsInline
+              aria-hidden
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "1px solid rgba(255,255,255,0.35)",
+                background: "rgba(0,0,0,0.2)",
+                flexShrink: 0,
+              }}
+            />
+            {panelinHeaderAiSelect}
+            <button
+              type="button"
+              onClick={() => setChatOpen((o) => !o)}
+              style={{ padding: "6px 12px", borderRadius: 8, border: chatOpen ? "none" : "1px solid rgba(255,255,255,0.3)", background: chatOpen ? "rgba(255,255,255,0.2)" : "transparent", color: "#fff", fontSize: 13, fontWeight: chatOpen ? 600 : 400, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+            >
+              💬 Panelin
+            </button>
+          </div>
           <button
             onClick={toggleDevMode}
             style={{

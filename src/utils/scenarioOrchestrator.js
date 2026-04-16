@@ -37,14 +37,22 @@ function junctionListForZonaGi(gi, encounters, zonas) {
     if (Math.min(a, b) !== gi) continue;
     const pk = encounterPairKey(a, b);
     const raw = zonas[gi]?.preview?.encounterByPair?.[pk];
-    if (!raw || encounterEsContinuo(raw)) continue;
-    const perfil = encounterBorderPerfil(raw);
-    if (!perfil || perfil === "none") continue;
-    out.push({
-      perfil,
-      lengthM: e.length,
-      label: `Encuentro (${pk}): ${perfil}`,
-    });
+    if (!raw) continue;
+    const runs = listEncounterPairSegmentRuns(raw);
+    for (const run of runs) {
+      if (!run.includeInBom) continue;
+      if (encounterEsContinuo(run.effectiveRaw)) continue;
+      const perfil = encounterBorderPerfil(run.effectiveRaw);
+      if (!perfil || perfil === "none") continue;
+      const frac = Math.max(0, Math.min(1, run.t1) - Math.max(0, Math.min(1, run.t0)));
+      const len = +(e.length * frac).toFixed(4);
+      if (!(len > 0)) continue;
+      out.push({
+        perfil,
+        lengthM: len,
+        label: `Encuentro (${pk})[${run.id}]: ${perfil}`,
+      });
+    }
   }
   return out;
 }

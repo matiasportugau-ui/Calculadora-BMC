@@ -4,6 +4,7 @@ import { mapErrorMessage } from "../utils/chatErrors.js";
 
 const STORAGE_KEY = "panelin-chat-history";
 const STORAGE_AI = "panelin-chat-ai-selection-v1";
+const ALLOWED_AI_PROVIDERS = new Set(["claude", "openai", "grok", "gemini"]);
 const MAX_STORED = 40; // keep last 40 messages in localStorage
 
 function loadAiSelection() {
@@ -136,6 +137,29 @@ export function useChat({
     });
   }, []);
 
+  /** `auto` | `${provider}|` (default) | `${provider}|${modelId}` */
+  const setAiPick = useCallback((pick) => {
+    const raw = String(pick || "").trim();
+    if (!raw || raw === "auto") {
+      const next = { aiProvider: "auto", aiModel: "" };
+      saveAiSelection(next);
+      setAiSelectionState(next);
+      return;
+    }
+    const pipe = raw.indexOf("|");
+    const prov = pipe >= 0 ? raw.slice(0, pipe) : raw;
+    const model = pipe >= 0 ? raw.slice(pipe + 1) : "";
+    if (!ALLOWED_AI_PROVIDERS.has(prov)) {
+      const next = { aiProvider: "auto", aiModel: "" };
+      saveAiSelection(next);
+      setAiSelectionState(next);
+      return;
+    }
+    const next = { aiProvider: prov, aiModel: model };
+    saveAiSelection(next);
+    setAiSelectionState(next);
+  }, []);
+
   // Persist history only when explicitly enabled.
   useEffect(() => {
     if (!persistHistory) return;
@@ -193,7 +217,7 @@ export function useChat({
           ...buildDevAuthHeaders(),
         };
 
-        const { aiProvider: ap } = aiSelectionRef.current;
+        const { aiProvider: ap, aiModel: am } = aiSelectionRef.current;
         const res = await fetch(`${apiBase}/api/agent/chat`, {
           method: "POST",
           headers,
@@ -205,6 +229,7 @@ export function useChat({
             calcState,
             devMode,
             aiProvider: ap,
+            ...(ap !== "auto" && am ? { aiModel: am } : {}),
           }),
           signal: controller.signal,
         });
@@ -463,6 +488,7 @@ export function useChat({
     aiModel,
     setAiProvider,
     setAiModel,
+    setAiPick,
     setAiSelection,
     aiOptions,
     aiOptionsError,
