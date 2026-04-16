@@ -545,6 +545,7 @@ function EstructuraZonaOverlay({
   onApoyoMaterialCycle = null,
   onApoyoMaterialDirect = null,
   onFijacionPaletteBulk = null,
+  tipoEst = "metal",
 }) {
   const [fijPopAnchor, setFijPopAnchor] = useState(null);
   const [apoyoMatPick, setApoyoMatPick] = useState(null);
@@ -724,6 +725,7 @@ function EstructuraZonaOverlay({
   }
 
   const dotKeys = dotPts.map((d) => d.key);
+  const canToggleDots = !combinadaAssign && typeof onDotToggleEnabled === "function";
   const mergedByKey =
     combinadaAssign && apoyoMateriales && apoyoMateriales.length
       ? Object.fromEntries(dotPts.map((d) => [d.key, d.rowIndex >= 0 && d.rowIndex < apoyoMateriales.length ? (apoyoMateriales[d.rowIndex] || "metal") : "metal"]))
@@ -735,7 +737,9 @@ function EstructuraZonaOverlay({
             combinadaPtsMetal,
             combinadaPtsMadera,
           )
-        : {};
+        : canToggleDots
+          ? Object.fromEntries(dotKeys.map((k) => [k, tipoEst || "metal"]))
+          : {};
 
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
   const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
@@ -853,11 +857,11 @@ function EstructuraZonaOverlay({
         ))}
         <g pointerEvents="auto">
           {dotPts.map((d) => {
-            const resolved = combinadaAssign
+            const resolved = (combinadaAssign || canToggleDots)
               ? resolveDotState(d.key, mergedByKey, dotOverrides)
-              : { mat: "metal", enabled: true };
+              : { mat: tipoEst || "metal", enabled: true };
             const { mat, enabled } = resolved;
-            const fill = combinadaAssign ? combinadaMaterialFill(mat) : "#1e293b";
+            const fill = (combinadaAssign || canToggleDots) ? combinadaMaterialFill(mat) : "#1e293b";
             const xSz = dotR * 0.7;
             return (
               <g key={`fij-dot-${r.gi}-${d.key}`} opacity={enabled ? 1 : 0.14}>
@@ -866,7 +870,7 @@ function EstructuraZonaOverlay({
                   cy={d.cy}
                   r={hitR}
                   fill="transparent"
-                  style={{ cursor: combinadaAssign ? "pointer" : "pointer" }}
+                  style={{ cursor: (combinadaAssign || canToggleDots) ? "pointer" : "default" }}
                   onMouseEnter={showPopoverAt}
                   onMouseLeave={scheduleHidePopover}
                   aria-label={
@@ -874,9 +878,17 @@ function EstructuraZonaOverlay({
                       ? (typeof onFijacionPaletteBulk === "function"
                         ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: ${enabled ? "quitar" : "incluir"} del cómputo. Mayús+clic o pulsación larga: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"}.`
                         : `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para cambiar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`)
-                      : "Ver productos de fijación incluidos en la cotización"
+                      : canToggleDots
+                        ? `Fijación (${mat})${enabled ? "" : " — no incluida"}. Clic para ${enabled ? "quitar" : "incluir"} del cómputo.`
+                        : "Ver productos de fijación incluidos en la cotización"
                   }
                   onPointerDown={(ev) => {
+                    if (canToggleDots) {
+                      ev.stopPropagation();
+                      ev.preventDefault();
+                      onDotToggleEnabled(r.gi, d.key);
+                      return;
+                    }
                     if (!combinadaAssign) return;
                     ev.stopPropagation();
                     ev.preventDefault();
@@ -960,7 +972,7 @@ function EstructuraZonaOverlay({
                     } catch { /* ignore */ }
                   }}
                   onContextMenu={(ev) => {
-                    if (!combinadaAssign || typeof onDotToggleEnabled !== "function") return;
+                    if ((!combinadaAssign && !canToggleDots) || typeof onDotToggleEnabled !== "function") return;
                     ev.stopPropagation();
                     ev.preventDefault();
                     clearDotPointerTimer();
@@ -1625,6 +1637,7 @@ export default function RoofPreview({
   apoyoMateriales = null,
   onApoyoMaterialCycle = null,
   onApoyoMaterialDirect = null,
+  tipoEst = "metal",
 }) {
   const svgRef = useRef(null);
   const dragRef = useRef(null);
@@ -1762,19 +1775,22 @@ export default function RoofPreview({
       let ptsHorm = 0;
       let ptsMetal = 0;
       let ptsMadera = 0;
+      const isCombinada = combinadaFijacionAssign || tipoEst === "combinada";
       for (const ent of layout.entries) {
         const g = ent.gi;
         const hz = estructuraHintsByGi?.[g];
         if (!hz) continue;
         const dts = fijacionDotsLayout(ent, hz, ext);
         const ks = dts.map((d) => d.key);
-        const byKey = mergeCombinadaByKeyWithDefaults(
-          ks,
-          (combinadaFijByGi && combinadaFijByGi[g]) || {},
-          combinadaPtsH,
-          combinadaPtsMetal,
-          combinadaPtsMadera,
-        );
+        const byKey = isCombinada
+          ? mergeCombinadaByKeyWithDefaults(
+              ks,
+              (combinadaFijByGi && combinadaFijByGi[g]) || {},
+              combinadaPtsH,
+              combinadaPtsMetal,
+              combinadaPtsMadera,
+            )
+          : Object.fromEntries(ks.map((k) => [k, tipoEst || "metal"]));
         const ov =
           g === changedGi
             ? nextOverridesForGi
@@ -1793,6 +1809,8 @@ export default function RoofPreview({
       layout.entries,
       estructuraHintsByGi,
       planEdges,
+      tipoEst,
+      combinadaFijacionAssign,
       combinadaFijByGi,
       fijDotOverridesByGi,
       combinadaPtsH,
@@ -1878,13 +1896,16 @@ export default function RoofPreview({
       const ext = planEdges?.exterior ?? [];
       const dots = fijacionDotsLayout(entry, hints, ext);
       const keys = dots.map((d) => d.key);
-      const byKey = mergeCombinadaByKeyWithDefaults(
-        keys,
-        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
-        combinadaPtsH,
-        combinadaPtsMetal,
-        combinadaPtsMadera,
-      );
+      const isCombinada = combinadaFijacionAssign || tipoEst === "combinada";
+      const byKey = isCombinada
+        ? mergeCombinadaByKeyWithDefaults(
+            keys,
+            (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+            combinadaPtsH,
+            combinadaPtsMetal,
+            combinadaPtsMadera,
+          )
+        : Object.fromEntries(keys.map((k) => [k, tipoEst || "metal"]));
       const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
       const nextOv = cycleDotMaterial(dotKey, byKey, prevOv);
       const c = sumCombinadaPtsAllZonesForDotOverrides(gi, nextOv);
@@ -1896,6 +1917,8 @@ export default function RoofPreview({
       layout.entries,
       estructuraHintsByGi,
       planEdges,
+      tipoEst,
+      combinadaFijacionAssign,
       combinadaFijByGi,
       fijDotOverridesByGi,
       combinadaPtsH,
@@ -1914,13 +1937,16 @@ export default function RoofPreview({
       const ext = planEdges?.exterior ?? [];
       const dots = fijacionDotsLayout(entry, hints, ext);
       const keys = dots.map((d) => d.key);
-      const byKey = mergeCombinadaByKeyWithDefaults(
-        keys,
-        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
-        combinadaPtsH,
-        combinadaPtsMetal,
-        combinadaPtsMadera,
-      );
+      const isCombinada = combinadaFijacionAssign || tipoEst === "combinada";
+      const byKey = isCombinada
+        ? mergeCombinadaByKeyWithDefaults(
+            keys,
+            (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+            combinadaPtsH,
+            combinadaPtsMetal,
+            combinadaPtsMadera,
+          )
+        : Object.fromEntries(keys.map((k) => [k, tipoEst || "metal"]));
       const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
       const nextOv = toggleDotEnabled(dotKey, byKey, prevOv);
       const c = sumCombinadaPtsAllZonesForDotOverrides(gi, nextOv);
@@ -1932,6 +1958,8 @@ export default function RoofPreview({
       layout.entries,
       estructuraHintsByGi,
       planEdges,
+      tipoEst,
+      combinadaFijacionAssign,
       combinadaFijByGi,
       fijDotOverridesByGi,
       combinadaPtsH,
@@ -1950,13 +1978,16 @@ export default function RoofPreview({
       const ext = planEdges?.exterior ?? [];
       const dots = fijacionDotsLayout(entry, hints, ext);
       const allKeys = dots.map((d) => d.key);
-      const byKey = mergeCombinadaByKeyWithDefaults(
-        allKeys,
-        (combinadaFijByGi && combinadaFijByGi[gi]) || {},
-        combinadaPtsH,
-        combinadaPtsMetal,
-        combinadaPtsMadera,
-      );
+      const isCombinada = combinadaFijacionAssign || tipoEst === "combinada";
+      const byKey = isCombinada
+        ? mergeCombinadaByKeyWithDefaults(
+            allKeys,
+            (combinadaFijByGi && combinadaFijByGi[gi]) || {},
+            combinadaPtsH,
+            combinadaPtsMetal,
+            combinadaPtsMadera,
+          )
+        : Object.fromEntries(allKeys.map((k) => [k, tipoEst || "metal"]));
       const prevOv = (fijDotOverridesByGi && fijDotOverridesByGi[gi]) || {};
       let nextOv = prevOv;
       if (action?.type === "restore") {
@@ -1977,6 +2008,8 @@ export default function RoofPreview({
       layout.entries,
       estructuraHintsByGi,
       planEdges,
+      tipoEst,
+      combinadaFijacionAssign,
       combinadaFijByGi,
       fijDotOverridesByGi,
       combinadaPtsH,
@@ -2881,6 +2914,7 @@ export default function RoofPreview({
                       onApoyoMaterialCycle={combinadaSingleZona ? onApoyoMaterialCycle : null}
                       onApoyoMaterialDirect={combinadaSingleZona ? onApoyoMaterialDirect : null}
                       onFijacionPaletteBulk={typeof onFijDotOverridesSync === "function" ? handleFijacionPaletteBulk : null}
+                      tipoEst={tipoEst}
                     />
                   ) : null}
                   {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (

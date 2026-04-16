@@ -2249,14 +2249,6 @@ const SOLO_TECHO_STEPS = SCENARIOS_DEF.find(s => s.id === "solo_techo")?.wizardS
 const SOLO_TECHO_DIM_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "dimensiones");
 const SOLO_TECHO_PENDIENTE_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "pendiente");
 const SOLO_TECHO_ESTRUCTURA_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "estructura");
-const SOLO_TECHO_COLOR_STEP_INDEX = SOLO_TECHO_STEPS.findIndex((s) => s.id === "color");
-
-/** Nombre visible del cliente (empresa → razón social). */
-function proyectoClienteDisplay(p) {
-  if (!p) return "";
-  if (p.tipoCliente === "empresa") return String(p.razonSocial || p.nombre || "").trim();
-  return String(p.nombre || "").trim();
-}
 
 function soloTechoSkipPendienteStep(zonasCount) {
   return zonasCount > 1 && SOLO_TECHO_PENDIENTE_STEP_INDEX >= 0 && SOLO_TECHO_ESTRUCTURA_STEP_INDEX >= 0 && SOLO_TECHO_DIM_STEP_INDEX >= 0;
@@ -2312,24 +2304,13 @@ export default function PanelinCalculadoraV3() {
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
-  /** Índice máximo del asistente alcanzado con **Siguiente** válido (solo navegación hacia atrás o a pasos ya desbloqueados). */
-  const [wizardMaxReachedStep, setWizardMaxReachedStep] = useState(0);
+  /** Máximo paso alcanzado — controla cuáles pasos están desbloqueados para navegación directa. */
+  const [maxReachedStep, setMaxReachedStep] = useState(0);
   /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
   const [estructuraMetricsSelectedGi, setEstructuraMetricsSelectedGi] = useState(0);
   const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
   const [scenario, _setScenario] = useState("solo_techo");
-  const [proyecto, _setProyecto] = useState({
-    tipoCliente: "empresa",
-    nombre: "",
-    rut: "",
-    razonSocial: "",
-    telefono: "",
-    direccion: "",
-    descripcion: "",
-    refInterna: "",
-    contactoRef: "",
-    fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
-  });
+  const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
   const [pared, _setPared] = useState({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
   const [techoAnchoModo, _setTechoAnchoModo] = useState("paneles"); // "metros" | "paneles"
@@ -2550,14 +2531,10 @@ export default function PanelinCalculadoraV3() {
       if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && next === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
         next = SOLO_TECHO_ESTRUCTURA_STEP_INDEX;
       }
+      setMaxReachedStep((mr) => Math.max(mr, next));
       return next;
     });
   }, [techo.zonas?.length]);
-
-  const commitAdvanceSoloTecho = useCallback(() => {
-    setWizardMaxReachedStep((m) => Math.max(m, wizardStep + 1));
-    advanceWizardStep();
-  }, [wizardStep, advanceWizardStep]);
 
   const goPrevWizardSoloTecho = useCallback(() => {
     setWizardStep((s) => {
@@ -2571,13 +2548,10 @@ export default function PanelinCalculadoraV3() {
   }, [techo.zonas?.length]);
 
   useEffect(() => {
-    const handler = () => {
-      if (scenario === "solo_techo") commitAdvanceSoloTecho();
-      else advanceWizardStep();
-    };
+    const handler = () => advanceWizardStep();
     window.addEventListener("bmc-wizard-next", handler);
     return () => window.removeEventListener("bmc-wizard-next", handler);
-  }, [advanceWizardStep, commitAdvanceSoloTecho, scenario]);
+  }, [advanceWizardStep]);
 
   /** Si quedó en paso Pendiente con varios cuerpos (p. ej. clic en el indicador), saltar a Estructura. */
   useEffect(() => {
@@ -2585,20 +2559,17 @@ export default function PanelinCalculadoraV3() {
     if (!soloTechoSkipPendienteStep(techo.zonas?.length ?? 0)) return;
     if (wizardStep !== SOLO_TECHO_PENDIENTE_STEP_INDEX) return;
     setWizardStep(SOLO_TECHO_ESTRUCTURA_STEP_INDEX);
-    if (SOLO_TECHO_ESTRUCTURA_STEP_INDEX >= 0) {
-      setWizardMaxReachedStep((m) => Math.max(m, SOLO_TECHO_ESTRUCTURA_STEP_INDEX));
-    }
   }, [modoVendedor, scenario, wizardStep, techo.zonas?.length]);
+
+  // Sync maxReachedStep cuando el paso actual supera el máximo previo
+  useEffect(() => { setMaxReachedStep(mr => Math.max(mr, wizardStep)); }, [wizardStep]);
 
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
 
   // Reset wizard al cambiar escenario o al activar modo vendedor
   useEffect(() => {
-    if (modoVendedor && scenario !== "solo_techo") {
-      setWizardStep(0);
-      setWizardMaxReachedStep(0);
-    }
+    if (modoVendedor && scenario !== "solo_techo") { setWizardStep(0); setMaxReachedStep(0); }
   }, [scenario, modoVendedor]);
 
   // Reset modo plano al salir de techo_fachada
@@ -2621,6 +2592,7 @@ export default function PanelinCalculadoraV3() {
   const isWizardStepValid = useCallback((stepId) => {
     switch (stepId) {
       case "escenario": return !!scenario;
+      // "lista" step removed — price list selected via right-panel toggle
       case "tipoAguas": return !!techo.tipoAguas;
       case "familia": return !!techo.familia;
       case "espesor": return !!techo.espesor;
@@ -2643,20 +2615,14 @@ export default function PanelinCalculadoraV3() {
       }
       case "selladores": return true;
       case "flete": return typeof flete === "number";
-      case "proyecto": {
+      case "proyecto":
         if (proyecto.tipoCliente === "empresa") {
-          return !!(
-            proyecto.rut?.trim()
-            && proyecto.razonSocial?.trim()
-            && proyecto.telefono?.trim()
-            && proyecto.direccion?.trim()
-          );
+          return !!(proyecto.razonSocial?.trim() && proyecto.rut?.trim() && proyecto.telefono?.trim());
         }
         return !!(proyecto.nombre?.trim() && proyecto.telefono?.trim());
-      }
       default: return false;
     }
-  }, [scenario, techo, flete, proyecto]);
+  }, [scenario, listaPrecios, techo, flete, proyecto]);
 
   // Enter / ArrowRight → Siguiente | ArrowLeft → Anterior (all wizard scenarios)
   useEffect(() => {
@@ -2673,11 +2639,8 @@ export default function PanelinCalculadoraV3() {
       if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT" || editable) return;
       if ((e.key === "ArrowRight" || e.key === "Enter") && canNext && isValid) {
         e.preventDefault();
-        if (scenario === "solo_techo") commitAdvanceSoloTecho();
-        else {
-          setWizardMaxReachedStep((m) => Math.max(m, wizardStep + 1));
-          setWizardStep((s) => s + 1);
-        }
+        if (scenario === "solo_techo") advanceWizardStep();
+        else setWizardStep((s) => s + 1);
       }
       if (e.key === "ArrowLeft" && canPrev) {
         e.preventDefault();
@@ -2687,7 +2650,7 @@ export default function PanelinCalculadoraV3() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [modoVendedor, scenario, wizardStep, isWizardStepValid, advanceWizardStep, goPrevWizardSoloTecho, commitAdvanceSoloTecho]);
+  }, [modoVendedor, scenario, wizardStep, isWizardStepValid, advanceWizardStep, goPrevWizardSoloTecho]);
 
   const vis = SCENARIOS_DEF.find(s => s.id === scenario)?.visibility ?? SCENARIOS_DEF[0].visibility;
   const scenarioDef = SCENARIOS_DEF.find(s => s.id === scenario);
@@ -2702,7 +2665,7 @@ export default function PanelinCalculadoraV3() {
     }
   }, [activeWizardStepId]);
 
-  /** Al entrar a Dimensiones (wizard Solo techo), foco en Largo de la zona principal para escribir sin clic. */
+  /** Al entrar a Dimensiones (paso 7/13 Solo techo), foco en Largo de la zona principal para escribir sin clic. */
   useEffect(() => {
     if (activeWizardStepId !== "dimensiones") return;
     let raf = 0;
@@ -3539,18 +3502,7 @@ export default function PanelinCalculadoraV3() {
   const handleReset = () => {
     setScenario("solo_techo");
     setLP(getListaDefault());
-    setProyecto({
-      tipoCliente: "empresa",
-      nombre: "",
-      rut: "",
-      razonSocial: "",
-      telefono: "",
-      direccion: "",
-      descripcion: "",
-      refInterna: "",
-      contactoRef: "",
-      fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
-    });
+    setProyecto({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
     setTecho(modoVendedor ? { ...TECHO_INITIAL_VENDEDOR } : { familia: "", espesor: "", color: "Blanco", zonas: [{ largo: 6.0, ancho: 5.0 }], pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0, borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" }, opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false } });
     setPared({ familia: "", espesor: "", color: "Blanco", alto: 3.5, perimetro: 40, numEsqExt: 4, numEsqInt: 0, aberturas: [], tipoEst: "metal", inclSell: true, incl5852: false });
     setTechoAnchoModo("metros");
@@ -3574,7 +3526,21 @@ export default function PanelinCalculadoraV3() {
   };
 
   // ── Input updaters ──
-  const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
+  const uT = (k, v) => setTecho(t => {
+    if (k === "tipoEst" && v !== t.tipoEst) {
+      // Clear dot overrides and pts counts when structure type changes
+      return {
+        ...t,
+        [k]: v,
+        ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
+        zonas: (t.zonas || []).map((z) => {
+          const { fijDotOverrides: _drop, ...rest } = z;
+          return rest;
+        }),
+      };
+    }
+    return { ...t, [k]: v };
+  });
   const patchTechoCombinadaPts = useCallback(
     (k, v) => {
       if (k !== "ptsHorm" && k !== "ptsMetal" && k !== "ptsMadera") return;
@@ -3726,17 +3692,6 @@ export default function PanelinCalculadoraV3() {
     [setTecho],
   );
 
-  const handleRestoreFijacionDotsSuggested = useCallback(() => {
-    setTecho((t) => ({
-      ...t,
-      zonas: (t.zonas || []).map((z) => {
-        if (!z || typeof z !== "object") return z;
-        const { fijDotOverrides: _fd, ...rest } = z;
-        return rest;
-      }),
-    }));
-  }, [setTecho]);
-
   const roof2DPreviewForVisor = useMemo(() => {
     if (!showRoof2dInQuoteVisor) return null;
     const embedMetrics = activeWizardStepId !== "estructura";
@@ -3752,7 +3707,7 @@ export default function PanelinCalculadoraV3() {
         onAnnexRankSwap={swapAnnexRank}
         onAddZona={addZona}
         onRemoveZona={removeZona}
-        onEncounterPairChange={onRoofEncounterPairChange}
+        onEncounterPairChange={activeWizardStepId === "estructura" ? null : onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
         pendienteModo={techo.pendienteModo || "incluye_pendiente"}
         globalAlturaDif={techo.alturaDif ?? 0}
@@ -3770,6 +3725,7 @@ export default function PanelinCalculadoraV3() {
         combinadaPtsMadera={techo.ptsMadera ?? 0}
         fijDotOverridesByGi={fijDotOverridesByGi}
         onFijDotOverridesSync={handleFijDotOverridesSync}
+        tipoEst={techo.tipoEst || "metal"}
         apoyoMateriales={apoyoMateriales}
         onApoyoMaterialCycle={handleApoyoMaterialCycle}
         onApoyoMaterialDirect={handleApoyoMaterialDirect}
@@ -4011,7 +3967,7 @@ export default function PanelinCalculadoraV3() {
       const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
       const result = await saveQuotation({
         quotationCode: code,
-        clientName: proyectoClienteDisplay(proyecto) || proyecto.nombre,
+        clientName: proyecto.nombre,
         pdfBlob,
         projectData,
       });
@@ -4116,7 +4072,7 @@ export default function PanelinCalculadoraV3() {
     const productoStr = panelInfo.espesor
       ? `${panelInfo.label} ${panelInfo.espesor}mm`
       : panelInfo.label;
-    const hash = `${scenario}|${productoStr}|${proyectoClienteDisplay(proyecto)}|${grandTotal.totalFinal.toFixed(2)}`;
+    const hash = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
     if (hash === lastSavedHash.current) return;
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -4126,7 +4082,7 @@ export default function PanelinCalculadoraV3() {
         libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
       };
       const entry = saveBudget({
-        cliente: proyectoClienteDisplay(proyecto) || proyecto.nombre,
+        cliente: proyecto.nombre,
         producto: productoStr,
         escenario: scenarioLabels.current[scenario] || scenario,
         listaPrecios,
@@ -4151,7 +4107,7 @@ export default function PanelinCalculadoraV3() {
       libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter,
     };
     const entry = saveBudget({
-      cliente: proyectoClienteDisplay(proyecto) || proyecto.nombre,
+      cliente: proyecto.nombre,
       producto: productoStr,
       escenario: scenarioLabels.current[scenario] || scenario,
       listaPrecios,
@@ -4161,7 +4117,7 @@ export default function PanelinCalculadoraV3() {
     });
     setCurrentBudgetCode(entry.id);
     setLogEntries(getAllLogs());
-    lastSavedHash.current = `${scenario}|${productoStr}|${proyectoClienteDisplay(proyecto)}|${grandTotal.totalFinal.toFixed(2)}`;
+    lastSavedHash.current = `${scenario}|${productoStr}|${proyecto.nombre}|${grandTotal.totalFinal.toFixed(2)}`;
     showToast(`Guardado ${entry.id}`);
   }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast]);
 
@@ -4217,7 +4173,7 @@ export default function PanelinCalculadoraV3() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", width: isCompactLayout ? "100%" : "auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
-            <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setWizardMaxReachedStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
+            <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
             <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
           </div>
           <button
@@ -4331,153 +4287,94 @@ export default function PanelinCalculadoraV3() {
               const canNext = wizardStep < SOLO_TECHO_STEPS.length - 1;
               const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
               const uPr = (k, v) => setProyecto(p => ({ ...p, [k]: v }));
-              const comfortPct =
-                SOLO_TECHO_STEPS.length > 1
-                  ? Math.min(100, Math.round((wizardMaxReachedStep / (SOLO_TECHO_STEPS.length - 1)) * 100))
-                  : 100;
+              // Índice del paso "proyecto" — siempre accesible
+              const proyectoStepIdx = SOLO_TECHO_STEPS.findIndex(s => s.id === "proyecto");
               return (
                 <>
-                <details
-                  open
-                  style={{
-                    ...sectionS,
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 5,
-                    marginBottom: 16,
-                    background: C.surface,
-                  }}
-                >
-                  <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 13, color: C.tp, listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span>Datos del proyecto</span>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: C.ts }}>Siempre visible</span>
-                  </summary>
-                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <SegmentedControl
-                      value={proyecto.tipoCliente === "empresa" ? "empresa" : "persona"}
-                      onChange={(v) => uPr("tipoCliente", v)}
-                      options={[
-                        { id: "persona", label: "Cliente final" },
-                        { id: "empresa", label: "Empresa" },
-                      ]}
-                    />
-                    {proyecto.tipoCliente === "empresa" ? (
-                      <>
-                        <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={(e) => uPr("rut", e.target.value)} placeholder="Obligatorio" /></div>
-                        <div><div style={labelS}>Razón social</div><input style={inputS} value={proyecto.razonSocial} onChange={(e) => uPr("razonSocial", e.target.value)} placeholder="Obligatorio" /></div>
-                        <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={(e) => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
-                        <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={(e) => uPr("direccion", e.target.value)} placeholder="Obligatorio" /></div>
-                        <div><div style={labelS}>Nombre de contacto / referencia (opcional)</div><input style={inputS} value={proyecto.contactoRef} onChange={(e) => uPr("contactoRef", e.target.value)} /></div>
-                      </>
-                    ) : (
-                      <>
-                        <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={(e) => uPr("nombre", e.target.value)} placeholder="Obligatorio" /></div>
-                        <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={(e) => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
-                        <div><div style={labelS}>Dirección (opcional)</div><input style={inputS} value={proyecto.direccion} onChange={(e) => uPr("direccion", e.target.value)} /></div>
-                      </>
-                    )}
-                  </div>
-                </details>
                 <div style={sectionS}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Avance (confort térmico)
-                  </div>
-                  <div
-                    style={{
-                      height: 10,
-                      borderRadius: 999,
-                      background: "linear-gradient(90deg, #bae6fd 0%, #fed7aa 100%)",
-                      overflow: "hidden",
-                      marginBottom: 10,
-                      border: `1px solid ${C.border}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${comfortPct}%`,
-                        height: "100%",
-                        borderRadius: 999,
-                        background: "linear-gradient(90deg, #0ea5e9 0%, #ea580c 100%)",
-                        transition: "width 200ms ease",
-                      }}
-                    />
-                  </div>
-                  <div style={{ fontSize: 11, color: C.ts }}>
-                    {comfortPct}% desbloqueado
-                    {wizardMaxReachedStep < SOLO_TECHO_STEPS.length - 1
-                      ? ` · próximo paso: ${SOLO_TECHO_STEPS[wizardMaxReachedStep + 1]?.label ?? "—"}`
-                      : " · flujo completo desbloqueado"}
-                  </div>
-                  {/* Step indicators */}
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginTop: 16, marginBottom: 20, flexWrap: "wrap" }}>
+                  {/* Step indicators — navegación con bloqueo secuencial */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
                     {SOLO_TECHO_STEPS.map((s, i) => {
                       const isDone = i < wizardStep;
                       const isCurrent = i === wizardStep;
+                      const isProyecto = s.id === "proyecto";
+                      // Accesible si: ya completado, es el actual, o es "proyecto"
+                      const isAccessible = i <= maxReachedStep || isProyecto;
+                      const isLocked = !isAccessible;
                       const isHovered = hoveredDotIdx === i;
-                      const unlocked = i <= wizardMaxReachedStep;
-                      const locked = !unlocked;
-                      const pending = unlocked && !isDone && !isCurrent;
                       return (
-                        <div key={s.id} style={{ position: "relative", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: unlocked ? 44 : 32 }}
+                        <div key={s.id} style={{ position: "relative", flexShrink: 0 }}
                           onMouseEnter={() => setHoveredDotIdx(i)}
                           onMouseLeave={() => setHoveredDotIdx(null)}
                           onClick={() => {
-                            if (!unlocked) return;
-                            setWizardStep(i);
+                            if (isAccessible) {
+                              setWizardStep(i);
+                              setMaxReachedStep(mr => Math.max(mr, i));
+                            }
                           }}
                         >
-                          {/* Tooltip */}
+                          {/* Tooltip con nombre del paso */}
                           {isHovered && (
                             <div style={{
                               position: "absolute", bottom: "calc(100% + 7px)", left: "50%",
                               transform: "translateX(-50%)",
-                              background: "#1e293b", color: "#fff",
+                              background: isLocked ? "#64748b" : "#1e293b", color: "#fff",
                               borderRadius: 6, padding: "4px 9px",
                               fontSize: 11, fontWeight: 500, whiteSpace: "nowrap",
                               zIndex: 200, pointerEvents: "none",
                               boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
                             }}>
-                              {locked ? "Avanzá con «Siguiente» para desbloquear" : s.label}
+                              {isLocked ? `🔒 ${s.label}` : s.label}
                               <div style={{
                                 position: "absolute", top: "100%", left: "50%",
                                 transform: "translateX(-50%)",
                                 borderLeft: "4px solid transparent",
                                 borderRight: "4px solid transparent",
-                                borderTop: "4px solid #1e293b",
+                                borderTop: `4px solid ${isLocked ? "#64748b" : "#1e293b"}`,
                               }} />
                             </div>
                           )}
-                          {/* Dot */}
+                          {/* Dot — verde si completado, azul si actual, gris bloqueado, gris claro si pendiente accesible */}
                           <div style={{
-                            width: isCurrent ? 24 : 8, height: 8, borderRadius: 4,
-                            background: locked ? C.border : isDone ? C.success : isCurrent ? C.primary : C.warning,
-                            opacity: locked ? 0.28 : pending ? 0.95 : isDone || isCurrent ? 1 : 0.55,
-                            cursor: locked ? "not-allowed" : "pointer",
+                            width: isCurrent ? 24 : isProyecto ? 10 : 8,
+                            height: isProyecto ? 10 : 8,
+                            borderRadius: isProyecto ? 5 : 4,
+                            background: isDone ? C.success : isCurrent ? C.primary : isLocked ? C.border : isProyecto ? C.warning : C.border,
+                            opacity: isDone ? 1 : isCurrent ? 1 : isLocked ? 0.25 : isProyecto ? 0.9 : 0.55,
+                            cursor: isAccessible ? "pointer" : "not-allowed",
                             transition: "all 150ms ease",
-                            transform: isHovered && unlocked ? "scaleY(1.35)" : "scaleY(1)",
+                            transform: isHovered && isAccessible ? "scaleY(1.4)" : "scaleY(1)",
+                            boxShadow: isProyecto && !isDone && !isCurrent ? `0 0 0 2px ${C.warning}40` : undefined,
                           }} />
-                          <div
-                            style={{
-                              fontSize: 9,
-                              fontWeight: 600,
-                              color: locked ? C.tt : pending ? C.primary : C.ts,
-                              maxWidth: 72,
-                              textAlign: "center",
-                              lineHeight: 1.15,
-                              overflow: "hidden",
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                            }}
-                          >
-                            {s.label}
-                          </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Paso {wizardStep + 1} de {SOLO_TECHO_STEPS.length}
+                  {/* Barra de progreso visual */}
+                  <div style={{ height: 3, background: C.border, borderRadius: 2, marginBottom: 10, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%",
+                      width: `${((wizardStep) / Math.max(1, SOLO_TECHO_STEPS.length - 1)) * 100}%`,
+                      background: `linear-gradient(90deg, ${C.primary}, ${C.success})`,
+                      borderRadius: 2,
+                      transition: "width 300ms ease",
+                    }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Paso {wizardStep + 1} de {SOLO_TECHO_STEPS.length}
+                    </div>
+                    {/* Acceso rápido a Datos del proyecto */}
+                    {proyectoStepIdx >= 0 && wizardStep !== proyectoStepIdx && (
+                      <button
+                        type="button"
+                        onClick={() => { setWizardStep(proyectoStepIdx); setMaxReachedStep(mr => Math.max(mr, proyectoStepIdx)); }}
+                        title="Datos del proyecto — siempre accesible"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        📋 Proyecto
+                      </button>
+                    )}
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, marginBottom: 20, overflow: "visible", minWidth: 0 }}>{step?.label}</div>
                   {stepId === "escenario" && (
@@ -4492,7 +4389,7 @@ export default function PanelinCalculadoraV3() {
                           onClick={() => setScenario(sc.id)}
                           onDoubleClick={() => {
                             setScenario(sc.id);
-                            if (sc.id === "solo_techo") commitAdvanceSoloTecho();
+                            advanceWizardStep();
                           }}
                           style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${scenario === sc.id ? C.primary : C.border}`, background: scenario === sc.id ? C.primarySoft : C.surface, transition: TR, boxShadow: scenario === sc.id ? `0 0 0 4px ${C.primarySoft}` : SHC }}
                         >
@@ -4506,7 +4403,7 @@ export default function PanelinCalculadoraV3() {
                   )}
                   {stepId === "tipoAguas" && (
                     <div onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
-                      <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => commitAdvanceSoloTecho()} onChange={v => {
+                      <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => advanceWizardStep()} onChange={v => {
                         if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
                         else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
                       }} />
@@ -4532,13 +4429,13 @@ export default function PanelinCalculadoraV3() {
                                 // Fallback for environments where onDoubleClick is flaky:
                                 // second consecutive click still reports detail >= 2.
                                 if ((e?.detail || 0) >= 2) {
-                                  commitAdvanceSoloTecho();
+                                  advanceWizardStep();
                                 }
                               }}
                               onDoubleClick={() => {
                                 setTechoFamilia(opt.value);
                                 setHoverTechoFamilia("");
-                                commitAdvanceSoloTecho();
+                                advanceWizardStep();
                               }}
                               style={{
                                 borderRadius: 12,
@@ -4661,7 +4558,7 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "color" && techoPanelData && (
-                    <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onColorDoubleClick={() => commitAdvanceSoloTecho()} onHover={setHoverTechoColor} notes={techoPanelData.colNotes || {}} familia={techo.familia} />
+                    <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onColorDoubleClick={() => advanceWizardStep()} onHover={setHoverTechoColor} notes={techoPanelData.colNotes || {}} familia={techo.familia} />
                   )}
                   {stepId === "dimensiones" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -4842,6 +4739,7 @@ export default function PanelinCalculadoraV3() {
                           combinadaPtsMadera={techo.ptsMadera ?? 0}
                           fijDotOverridesByGi={fijDotOverridesByGi}
                           onFijDotOverridesSync={handleFijDotOverridesSync}
+                          tipoEst={techo.tipoEst || "metal"}
                           apoyoMateriales={apoyoMateriales}
                           onApoyoMaterialCycle={handleApoyoMaterialCycle}
                           onApoyoMaterialDirect={handleApoyoMaterialDirect}
@@ -4943,25 +4841,6 @@ export default function PanelinCalculadoraV3() {
                   {stepId === "estructura" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       <SegmentedControl value={techo.tipoEst} onChange={v => uT("tipoEst", v)} options={ESTRUCTURA_OPTIONS} />
-                      {fijDotOverridesByGi ? (
-                        <button
-                          type="button"
-                          onClick={handleRestoreFijacionDotsSuggested}
-                          style={{
-                            alignSelf: "flex-start",
-                            padding: "8px 14px",
-                            borderRadius: 10,
-                            border: `1.5px solid ${C.border}`,
-                            background: C.surfaceAlt,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            color: C.tp,
-                          }}
-                        >
-                          Restaurar fijaciones sugeridas (plano 2D)
-                        </button>
-                      ) : null}
                       {techo.tipoEst === "combinada" && (
                         <div style={{ padding: 12, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                           <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>Material por apoyo</div>
@@ -5218,25 +5097,25 @@ export default function PanelinCalculadoraV3() {
                     </div>
                   )}
                   {stepId === "proyecto" && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 14, background: C.surfaceAlt, borderRadius: 12, border: `1px solid ${C.border}` }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.tp }}>Revisión — Datos del proyecto</div>
-                      <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5 }}>
-                        Los datos se cargan en el bloque fijo <strong>«Datos del proyecto»</strong> arriba. Verificá que estén completos antes de cerrar la cotización.
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ marginBottom: 4 }}>
+                        <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Cliente Final" }]} />
                       </div>
-                      <div style={{ fontSize: 12, color: C.tp }}>
-                        <strong>Cliente:</strong> {proyectoClienteDisplay(proyecto) || "—"}
-                        {proyecto.tipoCliente === "empresa" && proyecto.contactoRef?.trim() ? (
-                          <span style={{ color: C.ts }}> · Ref. {proyecto.contactoRef.trim()}</span>
-                        ) : null}
-                        <br />
-                        <strong>Tel:</strong> {proyecto.telefono?.trim() || "—"}
-                        {proyecto.direccion?.trim() ? (
-                          <>
-                            <br />
-                            <strong>Dir.:</strong> {proyecto.direccion.trim()}
-                          </>
-                        ) : null}
-                      </div>
+                      {proyecto.tipoCliente === "empresa" ? (
+                        <>
+                          <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                          <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
+                        </>
+                      ) : (
+                        <>
+                          <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} placeholder="Obligatorio" /></div>
+                          <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                        </>
+                      )}
                     </div>
                   )}
                   <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}` }}>
@@ -5247,7 +5126,7 @@ export default function PanelinCalculadoraV3() {
                     )}
                     <div style={{ flex: 1 }} />
                     {canNext ? (
-                      <button type="button" onClick={() => isValid && commitAdvanceSoloTecho()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
+                      <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
                         Siguiente
                       </button>
                     ) : (
@@ -5326,24 +5205,27 @@ export default function PanelinCalculadoraV3() {
           {/* Datos proyecto (colapsable) */}
           <details style={{ ...sectionS, padding: 0 }}>
             <summary style={{ padding: "16px 20px", cursor: "pointer", fontWeight: 600, fontSize: 12, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              DATOS DEL PROYECTO {(proyectoClienteDisplay(proyecto) || proyecto.nombre) && <span style={{ fontSize: 11, fontWeight: 400, color: C.tp }}>· {proyectoClienteDisplay(proyecto) || proyecto.nombre}</span>}
+              DATOS DEL PROYECTO {proyecto.nombre && <span style={{ fontSize: 11, fontWeight: 400, color: C.tp }}>· {proyecto.nombre}</span>}
             </summary>
             <div style={{ padding: "0 20px 20px" }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Cliente final" }]} />
+                <SegmentedControl value={proyecto.tipoCliente} onChange={v => uPr("tipoCliente", v)} options={[{ id: "empresa", label: "Empresa" }, { id: "persona", label: "Persona" }]} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 10 }}>
-                {proyecto.tipoCliente === "persona" && <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>}
-                {proyecto.tipoCliente === "empresa" && (
+                {proyecto.tipoCliente === "empresa" ? (
                   <>
+                    <div><div style={labelS}>Razón Social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} /></div>
                     <div><div style={labelS}>RUT</div><input style={inputS} value={proyecto.rut} onChange={e => uPr("rut", e.target.value)} /></div>
-                    <div><div style={labelS}>Razón social</div><input style={inputS} value={proyecto.razonSocial || ""} onChange={e => uPr("razonSocial", e.target.value)} /></div>
+                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                    <div><div style={labelS}>Nombre del cliente de referencia <span style={{ fontWeight: 400, color: C.tt }}>(opcional)</span></div><input style={inputS} value={proyecto.nombreRefCliente || ""} onChange={e => uPr("nombreRefCliente", e.target.value)} placeholder="Persona de contacto" /></div>
                   </>
-                )}
-                <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
-                <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
-                {proyecto.tipoCliente === "empresa" && (
-                  <div style={{ gridColumn: "1/-1" }}><div style={labelS}>Nombre de contacto / referencia (opcional)</div><input style={inputS} value={proyecto.contactoRef || ""} onChange={e => uPr("contactoRef", e.target.value)} placeholder="Ej. encargado de obra" /></div>
+                ) : (
+                  <>
+                    <div><div style={labelS}>Nombre</div><input style={inputS} value={proyecto.nombre} onChange={e => uPr("nombre", e.target.value)} /></div>
+                    <div><div style={labelS}>Teléfono</div><input style={inputS} value={proyecto.telefono} onChange={e => uPr("telefono", e.target.value)} /></div>
+                    <div><div style={labelS}>Dirección</div><input style={inputS} value={proyecto.direccion} onChange={e => uPr("direccion", e.target.value)} /></div>
+                  </>
                 )}
                 <div style={{ gridColumn: "1/-1" }}>
                   <div style={labelS}>Descripción obra</div>
@@ -5915,7 +5797,7 @@ export default function PanelinCalculadoraV3() {
             )}
             
             {/* Referencia estructural en la columna izquierda cuando corresponda (a partir del paso 5) */}
-            {SOLO_TECHO_COLOR_STEP_INDEX >= 0 && wizardStep >= SOLO_TECHO_COLOR_STEP_INDEX && (
+            {wizardStep >= 5 && (
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>Referencia de montaje</div>
                 <div style={{ borderRadius: 10, border: `1px solid ${C.border}`, overflow: "hidden", background: C.surfaceAlt }}>
@@ -6039,8 +5921,26 @@ export default function PanelinCalculadoraV3() {
               if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
               else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
             } : null}
-            onNext={activeWizardStepId === "tipoAguas" ? commitAdvanceSoloTecho : null}
+            onNext={activeWizardStepId === "tipoAguas" ? advanceWizardStep : null}
           />
+          {/* Lista de precios — toggle siempre visible en panel derecho */}
+          {modoVendedor && !scenarioDef?.isLibre && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "8px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", flex: 1 }}>Lista de precios</span>
+              <SegmentedControl
+                value={listaPrecios || getListaDefault()}
+                onChange={v => setLP(v)}
+                options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
+              />
+            </div>
+          )}
+          {/* KPI Row */}
+          {results && !results.error && !scenarioDef?.isLibre && activeWizardStepId !== "estructura" && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
+            <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
+            <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
+            <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
+            <KPICard label="Pts fijación" value={kpiFij || "—"} borderColor={C.brand} />
+          </div>}
 
           {/* Descarte informativo */}
           {!scenarioDef?.isLibre && results?.paneles?.descarte && results.paneles.descarte.anchoM > 0 && (
@@ -6060,21 +5960,6 @@ export default function PanelinCalculadoraV3() {
           {/* Autoportancia */}
           {vis.autoportancia && results?.autoportancia && <div style={{ marginBottom: 16 }}>
             <AlertBanner type={results.autoportancia.ok ? "success" : "danger"} message={results.autoportancia.ok ? `Autoportante ✓ · Vano máx: ${results.autoportancia.maxSpan}m · ${results.autoportancia.apoyos} apoyos` : `Largo excede autoportancia (${results.autoportancia.maxSpan}m). Requiere ${results.autoportancia.apoyos} apoyos intermedios.`} />
-          </div>}
-
-          {!scenarioDef?.isLibre && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Lista de precios</div>
-              <SegmentedControl value={listaPrecios || "web"} onChange={(v) => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
-            </div>
-          )}
-
-          {/* KPI Row (tras alertas y lista) */}
-          {results && !results.error && !scenarioDef?.isLibre && activeWizardStepId !== "estructura" && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
-            <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
-            <KPICard label="Paneles" value={kpiPaneles} borderColor={C.success} />
-            <KPICard label={vis.autoportancia ? "Apoyos" : "Esquinas"} value={kpiApoyos || "—"} borderColor={C.warning} />
-            <KPICard label="Pts fijación" value={kpiFij || "—"} borderColor={C.brand} />
           </div>}
 
           {/* No data message */}
