@@ -66,7 +66,8 @@ const ENCOUNTER_SEGMENT_OVERLAY_KEYS = ["tipo", "modo", "perfil", "perfilVecino"
  */
 export function pairEncounterBaseRaw(raw) {
   if (!raw || typeof raw !== "object") return {};
-  const { segments: _s, ...rest } = raw;
+  const rest = { ...raw };
+  delete rest.segments;
   return rest;
 }
 

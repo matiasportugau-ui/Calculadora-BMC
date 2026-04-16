@@ -16,6 +16,8 @@
     "dev:full-stack": "./run_full_stack.sh",
     "local:view": "bash scripts/local-view-autolaunch.sh",
     "local:view:open": "bash scripts/local-view-autolaunch.sh --open",
+    "local:stack:launchd:install": "bash scripts/install-local-stack-launchagent.sh",
+    "local:stack:launchd:uninstall": "bash scripts/uninstall-local-stack-launchagent.sh",
     "dev:full:watch": "concurrently -n api,vite -c blue,green \"npm run dev:api\" \"npm run dev\"",
     "bmc-dashboard": "node docs/bmc-dashboard-modernization/sheets-api-server.js",
     "ml:cloud-run": "./run_ml_cloud_run_setup.sh",

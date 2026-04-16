@@ -73,7 +73,7 @@ const hintsIso = {
 const dotsIso = fijacionDotsLayout(rect, hintsIso, []);
 line(`  Zona 10×4 m, 3 apoyos, 2 paneles → ${dotsIso.length} puntos en planta (motor real).`);
 const keysJ1Real = fijacionDotKeysNearPanelJoint(dotsIso, 1, rect, 2, hintsIso);
-line(`  Junta j=1 con esos puntos: ${keysJ1Real.length} claves (si 0: ningún cx cae dentro de la tolerancia; el overlay usa franja ancha de golpeo).`);
+line(`  Junta j=1 con esos puntos: ${keysJ1Real.length} claves (tolerancia angosta o, si hace falta, media anchura de panel).`);
 const jointDotsStub = [
   { key: "r0-p0-a", kind: "grid", cx: 4.55, rowIndex: 0 },
   { key: "r0-p1-b", kind: "grid", cx: 5.45, rowIndex: 0 },

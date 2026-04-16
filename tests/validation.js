@@ -34,6 +34,7 @@ import {
   stripDotOverrideKeys,
 } from "../src/utils/combinadaFijacionShared.js";
 import {
+  fijacionDotsLayout,
   fijacionDotsLayoutDistributeTotal,
   fijacionDotKeysForVerticalJoint,
   fijacionDotKeysNearPanelJoint,
@@ -105,6 +106,9 @@ import {
   resolveNeighborSharedSide,
   encounterEsContinuo,
   encounterBorderPerfil,
+  listEncounterPairSegmentRuns,
+  splitEncounterPairSegmentMid,
+  patchEncounterPairSegment,
 } from "../src/utils/roofEncounterModel.js";
 import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
 import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
@@ -1632,6 +1636,38 @@ assert(
   "1/fondo",
 );
 
+{
+  const fullPretil = { tipo: "perfil", modo: "pretil", perfil: "pretil", perfilVecino: "pretil" };
+  const runs0 = listEncounterPairSegmentRuns(fullPretil);
+  assert(
+    "listEncounterPairSegmentRuns sin segments → 1 run [0,1]",
+    runs0.length === 1 && runs0[0].t0 === 0 && runs0[0].t1 === 1,
+    runs0.length,
+    1,
+  );
+  const split = splitEncounterPairSegmentMid(fullPretil, "full");
+  assert("splitEncounterPairSegmentMid → 2 segmentos", split && split.segments.length === 2, split?.segments?.length, 2);
+  const runs1 = listEncounterPairSegmentRuns(split);
+  const spanSum = runs1.reduce((s, r) => s + (r.t1 - r.t0), 0);
+  assert("runs tras split cubren t=1", Math.abs(spanSum - 1) < 1e-6, spanSum, 1);
+  const halfCont = patchEncounterPairSegment(split, runs1[0].id, {
+    encounter: { tipo: "continuo", modo: "continuo", perfil: null, perfilVecino: null, cumbreraUnida: false },
+  });
+  const runs2 = listEncounterPairSegmentRuns(halfCont);
+  assert(
+    "patch tramo 0 → continuo (sin perfil BOM)",
+    encounterBorderPerfil(runs2[0].effectiveRaw) === "none",
+    encounterBorderPerfil(runs2[0].effectiveRaw),
+    "none",
+  );
+  assert(
+    "patch tramo 1 → sigue pretil",
+    encounterBorderPerfil(runs2[1].effectiveRaw) === "pretil",
+    encounterBorderPerfil(runs2[1].effectiveRaw),
+    "pretil",
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 32c: roofSlopeMark (ciclo UI pendiente / 3D)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2197,7 +2233,8 @@ assert(
 const jointDots = [
   { key: "r0-p0-a", kind: "grid", cx: 4.55 },
   { key: "r0-p1-b", kind: "grid", cx: 5.45 },
-  { key: "r1-p0-c", kind: "grid", cx: 2.5 },
+  /** Mismo panel p0; lejos de la junta x=5 m (no debe entrar ni con tolerancia amplia ~media anchura). */
+  { key: "r1-p0-c", kind: "grid", cx: 0.35 },
 ];
 const jointR = { x: 0, w: 10 };
 const jointKeys = fijacionDotKeysForVerticalJoint(jointDots, 1, jointR, 2);
@@ -2223,6 +2260,23 @@ assert(
   JSON.stringify(nearIso.sort()) === JSON.stringify(jointKeys.sort()),
   JSON.stringify(nearIso),
   JSON.stringify(jointKeys),
+);
+const rIsoReal = { x: 0, y: 0, w: 10, h: 4, gi: 0 };
+const hintsIsoReal = {
+  apoyos: 3,
+  cantPaneles: 2,
+  fijacionSistema: "varilla_tuerca",
+  fijacionDotsMode: "isodec_grid",
+  puntosFijacion: 99,
+  fijacionEspaciadoPerimetroM: 2.5,
+};
+const dotsIsoReal = fijacionDotsLayout(rIsoReal, hintsIsoReal, []);
+const jkReal = fijacionDotKeysForVerticalJoint(dotsIsoReal, 1, rIsoReal, 2);
+assert(
+  "fijacionDotKeysForVerticalJoint ISODEC real 10×4 m 2 paneles: junta con claves (fallback ancho)",
+  jkReal.length >= 2,
+  JSON.stringify(jkReal),
+  ">=2 keys",
 );
 const byJ = { "r0-p0-a": "metal", "r0-p1-b": "metal" };
 const ovBulk = bulkSetDotsMaterialEnabled(jointKeys, "hormigon", byJ, {});

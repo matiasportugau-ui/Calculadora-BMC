@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-14 (merge PR #53 — PR backlog Phases 1–5 + main updates through 2026-04-13)
+**Última actualización:** 2026-04-15
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,12 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-15 (Docs — integración IA calculadora):** Nuevo [`docs/AI-INTEGRATION-CALCULADORA.md`](../../docs/AI-INTEGRATION-CALCULADORA.md): rutas `GET /api/agent/ai-options` y `POST /api/agent/chat`, variables de entorno, hook [`useChat.js`](../../src/hooks/useChat.js), selector de motor/modelo junto al avatar en [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx), proxy Vite y notas del transcript de sesión.
+
+**2026-04-15 (Calculadora — encuentros multizona por tramo):** `preview.encounterByPair[pk]` admite opcional `segments[]` (t0/t1 en [0,1], `includeInBom`, overlay `encounter`). Helpers en [`src/utils/roofEncounterModel.js`](../../src/utils/roofEncounterModel.js); BOM `encounterJunctions` por tramo en [`src/utils/scenarioOrchestrator.js`](../../src/utils/scenarioOrchestrator.js). UI planta: sub-líneas, panel “Tramos del encuentro” (checkbox BOM, continuo/pretil por tramo, partir mitad) y `encounterLength` al abrir desde línea o tras drag en [`src/components/RoofPreview.jsx`](../../src/components/RoofPreview.jsx). Tests SUITE 32b en [`tests/validation.js`](../../tests/validation.js).
+
+**2026-04-15 (Dev — stack local persistente macOS):** LaunchAgent opcional `com.bmc.calculadora-localstack`: al iniciar sesión ejecuta `npm run dev:full` si `:3001` y `:5173` no responden; `KeepAlive` con `SuccessfulExit=false` evita bucle cuando el stack ya está sano. Scripts [`scripts/install-local-stack-launchagent.sh`](../../scripts/install-local-stack-launchagent.sh), [`scripts/uninstall-local-stack-launchagent.sh`](../../scripts/uninstall-local-stack-launchagent.sh), entry [`scripts/local-stack-launchd-entry.sh`](../../scripts/local-stack-launchd-entry.sh). Comandos: `npm run local:stack:launchd:install` / `local:stack:launchd:uninstall`. Logs bajo `.runtime/local-stack-launchd*.log`.
 
 **2026-04-15 (UX — informe transcript: encuentros por tramo + perfiles):** Requisito multizona: tramos de encuentros compartidos **seleccionables**, inclusión BOM **por tramo**, perfil independiente en **tramo sobresaliente**. Informe con plan por fases y brecha vs modelo actual (`encounterByPair`, `junctionListForZonaGi`): [`docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-15-transcript-encuentros-tramos-perfiles.md`](./ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-15-transcript-encuentros-tramos-perfiles.md). MCP DevTools no corrido en el hilo (evidencia código).
 

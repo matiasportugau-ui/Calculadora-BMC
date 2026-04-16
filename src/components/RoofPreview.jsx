@@ -14,7 +14,11 @@ import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
 import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
 import { encounterPairKey, findEncounters, getSharedSidesPerZona } from "../utils/roofPlanGeometry.js";
-import { normalizeEncounter } from "../utils/roofEncounterModel.js";
+import {
+  listEncounterPairSegmentRuns,
+  patchEncounterPairSegment,
+  splitEncounterPairSegmentMid,
+} from "../utils/roofEncounterModel.js";
 import {
   formatZonaDisplayTitle,
   getLateralAnnexRootBodyGi,
@@ -204,6 +208,15 @@ function encounterStrokeForModo(modo) {
   if (modo === "cumbrera") return "#3b82f6";
   if (modo === "desnivel") return "#ef4444";
   return "#f59e0b";
+}
+
+/** Punto a lo largo del segmento geométrico del encuentro; `t` en [0,1] de (x1,y1) a (x2,y2). */
+function encInterp(enc, t) {
+  const u = Math.max(0, Math.min(1, Number(t) || 0));
+  return {
+    x: enc.x1 + (enc.x2 - enc.x1) * u,
+    y: enc.y1 + (enc.y2 - enc.y1) * u,
+  };
 }
 
 /** Popover fijo al viewport: productos de fijación que entran al presupuesto (BOM). */
@@ -1186,13 +1199,6 @@ function PlantaBordesEdgeStrips({
       })}
     </g>
   );
-}
-
-function getEncounterConfigFromZonas(zonas, ga, gb) {
-  const pk = encounterPairKey(ga, gb);
-  const low = Math.min(ga, gb);
-  const raw = zonas[low]?.preview?.encounterByPair?.[pk];
-  return normalizeEncounter(raw);
 }
 
 /**
@@ -2192,7 +2198,12 @@ export default function RoofPreview({
           });
           if (missing.length) {
             const [a, b] = missing[0].zoneIndices;
-            setEncounterPrompt({ pairKey: encounterPairKey(a, b), ga: a, gb: b });
+            setEncounterPrompt({
+              pairKey: encounterPairKey(a, b),
+              ga: a,
+              gb: b,
+              encounterLength: missing[0].length,
+            });
           }
         } catch {
           /* ignore */
@@ -2386,71 +2397,173 @@ export default function RoofPreview({
             border: `1px solid ${C.border}`,
             background: C.surface,
             display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            alignItems: "center",
+            flexDirection: "column",
+            gap: 10,
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.tp, marginRight: 4 }}>
-            Encuentro zonas {encounterPrompt.pairKey}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "continuo", modo: "continuo" });
-              setEncounterPrompt(null);
-            }}
-            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#ecfdf5", color: "#166534", cursor: "pointer" }}
-          >
-            Continuo
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "pretil", perfil: "pretil" });
-              setEncounterPrompt(null);
-            }}
-            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff7ed", color: "#9a3412", cursor: "pointer" }}
-          >
-            Pretil
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "cumbrera", perfil: "cumbrera", cumbreraUnida: true });
-              setEncounterPrompt(null);
-            }}
-            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#eff6ff", color: "#1d4ed8", cursor: "pointer" }}
-          >
-            Cumbrera
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "desnivel", perfil: "pretil", desnivel: { perfilBajo: "pretil", perfilAlto: "cumbrera" } });
-              setEncounterPrompt(null);
-            }}
-            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fef2f2", color: "#b91c1c", cursor: "pointer" }}
-          >
-            Desnivel
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onEncounterPairChange(encounterPrompt.pairKey, null);
-              setEncounterPrompt(null);
-            }}
-            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.ts, cursor: "pointer" }}
-          >
-            Desconectar (exterior)
-          </button>
-          <button
-            type="button"
-            onClick={() => setEncounterPrompt(null)}
-            style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.tp, cursor: "pointer", marginLeft: "auto" }}
-          >
-            Cerrar
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.tp, marginRight: 4 }}>
+              Encuentro zonas {encounterPrompt.pairKey}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                onEncounterPairChange(encounterPrompt.pairKey, { tipo: "continuo", modo: "continuo" });
+                setEncounterPrompt(null);
+              }}
+              style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#ecfdf5", color: "#166534", cursor: "pointer" }}
+            >
+              Continuo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "pretil", perfil: "pretil" });
+                setEncounterPrompt(null);
+              }}
+              style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fff7ed", color: "#9a3412", cursor: "pointer" }}
+            >
+              Pretil
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "cumbrera", perfil: "cumbrera", cumbreraUnida: true });
+                setEncounterPrompt(null);
+              }}
+              style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#eff6ff", color: "#1d4ed8", cursor: "pointer" }}
+            >
+              Cumbrera
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onEncounterPairChange(encounterPrompt.pairKey, { tipo: "perfil", modo: "desnivel", perfil: "pretil", desnivel: { perfilBajo: "pretil", perfilAlto: "cumbrera" } });
+                setEncounterPrompt(null);
+              }}
+              style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "#fef2f2", color: "#b91c1c", cursor: "pointer" }}
+            >
+              Desnivel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onEncounterPairChange(encounterPrompt.pairKey, null);
+                setEncounterPrompt(null);
+              }}
+              style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surfaceAlt, color: C.ts, cursor: "pointer" }}
+            >
+              Desconectar (exterior)
+            </button>
+            <button
+              type="button"
+              onClick={() => setEncounterPrompt(null)}
+              style={{ fontSize: 11, fontWeight: 600, padding: "6px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.tp, cursor: "pointer", marginLeft: "auto" }}
+            >
+              Cerrar
+            </button>
+          </div>
+          {(() => {
+            const pk = encounterPrompt.pairKey;
+            const low = Math.min(encounterPrompt.ga, encounterPrompt.gb);
+            const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
+            if (rawPair == null) return null;
+            const encLenM = Number(encounterPrompt.encounterLength);
+            const runs = listEncounterPairSegmentRuns(rawPair);
+            const lenLabel = Number.isFinite(encLenM) && encLenM > 0 ? `${encLenM.toFixed(2)} m` : "—";
+            return (
+              <div
+                style={{
+                  borderTop: `1px solid ${C.border}`,
+                  paddingTop: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Tramos del encuentro · longitud {lenLabel}
+                </div>
+                {runs.map((run) => {
+                  const span = run.t1 - run.t0;
+                  const lenM = Number.isFinite(encLenM) && encLenM > 0 ? encLenM * span : null;
+                  const canSplit = span > 0.12;
+                  return (
+                    <div
+                      key={run.id}
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: `1px solid ${C.border}`,
+                        background: C.surfaceAlt,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.tp, minWidth: 120 }}>
+                        {run.id}
+                        <span style={{ fontWeight: 500, color: C.ts }}>
+                          {" "}
+                          ({(span * 100).toFixed(0)}%{lenM != null ? ` · ~${lenM.toFixed(2)} m` : ""})
+                        </span>
+                      </span>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.tp, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={run.includeInBom}
+                          onChange={() => {
+                            const next = patchEncounterPairSegment(rawPair, run.id, { includeInBom: !run.includeInBom });
+                            onEncounterPairChange(pk, next);
+                          }}
+                        />
+                        Incluir perfilería (BOM)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = patchEncounterPairSegment(rawPair, run.id, {
+                            encounter: { tipo: "continuo", modo: "continuo", perfil: null, perfilVecino: null, cumbreraUnida: false },
+                          });
+                          onEncounterPairChange(pk, next);
+                        }}
+                        style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: "#ecfdf5", color: "#166534", cursor: "pointer" }}
+                      >
+                        Continuo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = patchEncounterPairSegment(rawPair, run.id, {
+                            encounter: { tipo: "perfil", modo: "pretil", perfil: "pretil", perfilVecino: "pretil" },
+                          });
+                          onEncounterPairChange(pk, next);
+                        }}
+                        style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: "#fff7ed", color: "#9a3412", cursor: "pointer" }}
+                      >
+                        Pretil
+                      </button>
+                      {canSplit ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = splitEncounterPairSegmentMid(rawPair, run.id);
+                            if (next) onEncounterPairChange(pk, next);
+                          }}
+                          style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.primary, cursor: "pointer", marginLeft: "auto" }}
+                        >
+                          Partir mitad
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
       {bordesPlantaAssign && bordesPlantaHandlersOk && (
@@ -2469,7 +2582,7 @@ export default function RoofPreview({
       )}
       <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
         Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
-        Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir.
+        Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y asignar continuo/pretil por tramo.
         Doble clic en la superficie: pendiente visual. <strong style={{ color: C.tp }}>+ Otra medida</strong> en cada tarjeta
         suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
         independiente en planta.
@@ -2573,30 +2686,42 @@ export default function RoofPreview({
                 ))}
               </g>
             )}
-            {encounters.map((enc) => {
+            {encounters.flatMap((enc) => {
               const [ga, gb] = enc.zoneIndices;
-              const cfg = getEncounterConfigFromZonas(zonas, ga, gb);
-              const stroke = encounterStrokeForModo(cfg.modo);
-              return (
-                <line
-                  key={enc.id}
-                  x1={enc.x1}
-                  y1={enc.y1}
-                  x2={enc.x2}
-                  y2={enc.y2}
-                  stroke={stroke}
-                  strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
-                  strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
-                  pointerEvents="stroke"
-                  opacity={0.95}
-                  style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
-                  onPointerDown={(ev) => {
-                    if (!onEncounterPairChange) return;
-                    ev.stopPropagation();
-                    setEncounterPrompt({ pairKey: encounterPairKey(ga, gb), ga, gb });
-                  }}
-                />
-              );
+              const pk = encounterPairKey(ga, gb);
+              const low = Math.min(ga, gb);
+              const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
+              const runs = listEncounterPairSegmentRuns(rawPair ?? {});
+              return runs.map((run) => {
+                const p0 = encInterp(enc, run.t0);
+                const p1 = encInterp(enc, run.t1);
+                const stroke = encounterStrokeForModo(run.normalized.modo);
+                return (
+                  <line
+                    key={`${enc.id}-${run.id}`}
+                    x1={p0.x}
+                    y1={p0.y}
+                    x2={p1.x}
+                    y2={p1.y}
+                    stroke={stroke}
+                    strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
+                    strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
+                    pointerEvents="stroke"
+                    opacity={run.includeInBom ? 0.95 : 0.35}
+                    style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
+                    onPointerDown={(ev) => {
+                      if (!onEncounterPairChange) return;
+                      ev.stopPropagation();
+                      setEncounterPrompt({
+                        pairKey: pk,
+                        ga,
+                        gb,
+                        encounterLength: enc.length,
+                      });
+                    }}
+                  />
+                );
+              });
             })}
             {layout.entries.map((r) => {
               const sm = r.z.preview?.slopeMark;

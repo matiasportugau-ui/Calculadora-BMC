@@ -62,6 +62,8 @@ Lee este archivo antes de cualquier tarea.
 | `npm run magazine:daily:send` | Igual + correo SMTP si `SMTP_USER` / `SMTP_PASS` en `.env` (default TO: `matias.portugau@gmail.com`). Doc: [`docs/team/orientation/MAGAZINE-DAILY-EMAIL.md`](docs/team/orientation/MAGAZINE-DAILY-EMAIL.md) |
 | `npm run magazine:daily:dry` | Muestra asunto y tamaño; no escribe ni envía |
 | `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
+| `npm run local:stack:launchd:install` | macOS: LaunchAgent `com.bmc.calculadora-localstack` — al login levanta API `:3001` + Vite `:5173` si no están arriba; logs `.runtime/local-stack-launchd*.log` |
+| `npm run local:stack:launchd:uninstall` | Quita el LaunchAgent del stack local (`unload` + borra plist en `~/Library/LaunchAgents/`) |
 
 **Loops de validación:**
 

@@ -174,7 +174,9 @@ export function fijacionDotsLayout(r, hints, exterior) {
 
 /**
  * Claves de puntos de grilla cerca de la junta vertical interior entre paneles (índice 1..cantP-1).
- * Usa `^r{n}-p{pi}-` para no confundir `r1-p0-` con `p0` en otra posición, y filtra por `cx` si está disponible.
+ * Usa `^r{n}-p{pi}-` para no confundir `r1-p0-` con `p0` en otra posición. Primero filtra por `cx` con tolerancia
+ * angosta; si no hay coincidencias (p. ej. filas intermedias centradas en panel), usa media anchura de panel
+ * alrededor de la junta; si aún no hay `cx`, conserva coincidencias por regex sin coordenada.
  * @param {Array<{key: string, kind?: string, cx?: number}>} dotPts
  * @param {number} jointIndex 1..cantP-1 (junta a la derecha del panel jointIndex-1)
  * @param {{ x: number, w: number }} r rectángulo zona en m
@@ -189,16 +191,19 @@ export function fijacionDotKeysForVerticalJoint(dotPts, jointIndex, r, cantP) {
   const re = new RegExp(`^r\\d+-p(${a}|${b})-`);
   const panelW = r.w / cp;
   const xJoint = r.x + j * panelW;
-  const tol = Math.max(0.09, panelW * 0.22);
-  return (dotPts || [])
-    .filter((d) => {
-      if (d.kind !== "grid" || typeof d.key !== "string" || !re.test(d.key)) return false;
-      if (typeof d.cx === "number" && Number.isFinite(d.cx)) {
-        return Math.abs(d.cx - xJoint) <= tol;
-      }
-      return true;
-    })
-    .map((d) => d.key);
+  const tolStrict = Math.max(0.09, panelW * 0.22);
+  const list = dotPts || [];
+  const matchRegex = (d) => d.kind === "grid" && typeof d.key === "string" && re.test(d.key);
+  const withCx = list.filter((d) => {
+    if (!matchRegex(d)) return false;
+    return typeof d.cx === "number" && Number.isFinite(d.cx);
+  });
+  const strict = withCx.filter((d) => Math.abs(d.cx - xJoint) <= tolStrict).map((d) => d.key);
+  if (strict.length) return strict;
+  const tolWide = Math.max(tolStrict + 1e-6, panelW * 0.5 + 1e-6);
+  const wide = withCx.filter((d) => Math.abs(d.cx - xJoint) <= tolWide).map((d) => d.key);
+  if (wide.length) return wide;
+  return list.filter((d) => matchRegex(d) && (!(typeof d.cx === "number" && Number.isFinite(d.cx)))).map((d) => d.key);
 }
 
 /**
