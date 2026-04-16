@@ -1,15 +1,19 @@
 {
-  // Allow tasks with runOn: folderOpen (On folder open: workspace + local stack).
+  // Calculadora-BMC workspace: autostart + ESLint flat (see CURSOR-SETUP-GUIDE-BMC for optional shell aliases).
   "task.allowAutomaticTasks": "on",
-  // Calculadora-BMC — editor alineado a `npm run lint` (ESLint flat config). Sin Prettier en repo.
   "editor.formatOnSave": true,
+  "editor.rulers": [100, 120],
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.wordWrap": "on",
+  "editor.renderWhitespace": "trailing",
+  "editor.trimAutoWhitespace": true,
+  "editor.smoothScrolling": true,
+  "editor.mouseWheelZoom": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "always"
   },
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact"
-  ],
+  "eslint.validate": ["javascript", "javascriptreact"],
   "eslint.useFlatConfig": true,
   "[javascript]": {
     "editor.defaultFormatter": null,
@@ -28,6 +32,44 @@
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features"
   },
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "files.associations": {
+    "*.jsx": "javascriptreact",
+    ".env.example": "properties"
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/node_modules/*/**": true,
+    "**/dist/**": true,
+    "**/.runtime/**": true,
+    "**/coverage/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.git": true,
+    "**/coverage": true,
+    "**/.runtime": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json, pnpm-lock.yaml, yarn.lock, vercel.json",
+    ".env.example": ".env, .env.local, .env.*.local",
+    "vite.config.*": "vitest.config.*, postcss.config.*"
+  },
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  "terminal.integrated.profiles.osx": {
+    "zsh": {
+      "path": "/bin/zsh",
+      "args": ["-l"],
+      "icon": "terminal",
+      "env": {
+        "CALCULADORA_BMC_ROOT": "${workspaceFolder}"
+      }
+    }
+  },
+  "terminal.integrated.scrollback": 5000,
+  "terminal.integrated.inheritEnv": true,
   "python.analysis.enableParallelIndexing": true,
   "python.analysis.userFileIndexingLimit": 10000
 }

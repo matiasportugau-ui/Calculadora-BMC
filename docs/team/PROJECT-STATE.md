@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-15
+**Última actualización:** 2026-04-16
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-16 (Dev — integración guía Cursor en workspace):** [`.vscode/settings.json`](../../.vscode/settings.json): perfil terminal **zsh** con `CALCULADORA_BMC_ROOT=${workspaceFolder}`, scrollback, nesting de archivos, excludes de búsqueda/watcher (incl. `.runtime`). [`.vscode/extensions.json`](../../.vscode/extensions.json): recomendaciones GitLens, Error Lens, Todo Tree, snippets React (sin Prettier; el repo sigue **ESLint flat** + formatter null en JS). Script opcional para zsh: [`scripts/shell-aliases-calculadora-bmc.zsh`](../../scripts/shell-aliases-calculadora-bmc.zsh) (`calc`, `calcdev` → `npm run dev:full`, `calcgate`, etc.). Carpeta guía: `CURSOR-SETUP-GUIDE-BMC/`.
 
 **2026-04-16 (UX — inventario modificaciones por tipo y paso wizard):** [`docs/team/ux-feedback/MODIFICACIONES-PROPUESTAS-ORGANIZADAS-2026-04-16.md`](./ux-feedback/MODIFICACIONES-PROPUESTAS-ORGANIZADAS-2026-04-16.md): propuestas agrupadas (producto, planta 2D, multizona encuentros, estructura+fijación, QA) y mapeo a pasos `solo_techo` (`lista`…`proyecto`) + sets `ROOF_2D_*`.
 

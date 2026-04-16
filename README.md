@@ -1,310 +1,296 @@
-# Calculadora BMC — Panelin v3.0
+# Calculadora BMC / Panelin
 
-Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC Uruguay (METALOG SAS)**.
+**Production quotation calculator and operations stack for BMC Uruguay (METALOG SAS)** — insulation sandwich panels (roof, wall, cold room), with a React (Vite) client, Express API, Google Sheets–backed dashboard flows, Mercado Libre OAuth, CRM/AI helpers, and Cloud Run + Vercel deployment targets.
 
 [![CI](https://github.com/matiasportugau-ui/Calculadora-BMC/actions/workflows/ci.yml/badge.svg)](https://github.com/matiasportugau-ui/Calculadora-BMC/actions/workflows/ci.yml)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
 ![Node](https://img.shields.io/badge/Node-20-339933?logo=node.js&logoColor=white)
-![License](https://img.shields.io/badge/license-proprietary-red)
+![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
+![License](https://img.shields.io/badge/license-UNLICENSED-red)
+
+| | |
+|---|---|
+| **Package** | `calculadora-bmc` **v3.1.5** |
+| **Private** | Yes — proprietary |
+| **Module system** | ES modules (`"type": "module"`) |
+| **Public app (front)** | [calculadora-bmc.vercel.app](https://calculadora-bmc.vercel.app) |
+| **API (reference)** | Google Cloud Run service `panelin-calc` (see deploy docs in `docs/procedimientos/`) |
 
 ---
 
-## ¿Qué hace?
+## Table of contents
 
-Genera cotizaciones de materiales en tiempo real para obras con paneles sandwich. Ingresás las dimensiones, elegís el tipo de panel y el escenario, y obtenés:
-
-- Lista de materiales (BOM) desglosada por grupo
-- Subtotal + IVA 22% = total final
-- PDF A4 listo para imprimir
-- Texto preformateado para compartir por WhatsApp
+1. [What this repository is](#1-what-this-repository-is)
+2. [High-level architecture](#2-high-level-architecture)
+3. [Repository map](#3-repository-map)
+4. [Quick start](#4-quick-start)
+5. [Environment variables](#5-environment-variables)
+6. [NPM scripts (cheat sheet)](#6-npm-scripts-cheat-sheet)
+7. [Calculator domain (product)](#7-calculator-domain-product)
+8. [Backend API surface (orientation)](#8-backend-api-surface-orientation)
+9. [Testing, quality gates, and CI](#9-testing-quality-gates-and-ci)
+10. [Deployment](#10-deployment)
+11. [Conventions](#11-conventions)
+12. [Documentation index](#12-documentation-index)
+13. [AI and automation](#13-ai-and-automation)
+14. [Company](#14-company)
+15. [License](#15-license)
 
 ---
 
-## Inicio rápido
+## 1. What this repository is
 
-**Requisitos:** Node.js 20+
+- **Primary app:** Browser-based **quote builder** for panel quantities, BOM groups, USD list pricing, PDF/WhatsApp export, and (in full stack) **Finanzas** views fed by Google Sheets.
+- **Backend:** **Express 5** on **Node 20** — calculator routes, Mercado Libre OAuth and resources, BMC dashboard JSON APIs, optional Shopify/webhooks, AI/chat routes where configured.
+- **Data & ops:** Google Sheets integration (CRM/Admin spreadsheets), optional **PostgreSQL** for Transportista features, optional GCS for token storage — all via env-driven configuration.
+- **Operator language:** Spanish UI copy and much internal documentation; **list prices and money amounts are in USD** unless a feature states otherwise.
+
+---
+
+## 2. High-level architecture
+
+```mermaid
+flowchart LR
+  subgraph client [Browser]
+    Vite[Vite SPA :5173]
+  end
+  subgraph server [Node API]
+    API[Express :3001]
+  end
+  subgraph external [External]
+    Sheets[Google Sheets]
+    ML[Mercado Libre]
+    Vercel[Vercel static]
+    CR[Cloud Run API]
+  end
+  Vite --> API
+  API --> Sheets
+  API --> ML
+  Vite --> Vercel
+  API --> CR
+```
+
+- **Frontend:** `src/` — React 18, Vite 7, main calculator component `src/components/PanelinCalculadoraV3.jsx`; shared logic in `src/utils/`, catalog and pricing in `src/data/constants.js` (and related data/version files).
+- **Backend:** `server/index.js` mounts `/calc`, `/api/*`, `/auth/ml/*`, `/capabilities`, static/finanzas as applicable; route modules under `server/routes/`.
+- **Production split:** Static UI on **Vercel**; API on **Google Cloud Run** (see `docs/procedimientos/` checklists).
+
+---
+
+## 3. Repository map
+
+| Path | Role |
+|------|------|
+| `src/` | React app (Vite) — UI, calculators, roof plan viewer features, chat panels where present |
+| `server/` | Express app — `index.js`, `config.js`, `routes/*`, `agentCapabilitiesManifest.js`, integrations |
+| `tests/` | Offline tests (`validation.js`, `roofVisualQuoteConsistency.js`) + optional API/chat tests |
+| `scripts/` | Automation: smoke prod, contracts, MATRIZ/panelsim, knowledge antenna, migrations, etc. |
+| `docs/` | Technical docs, team runbooks, Sheets hub, procedures |
+| `.cursor/` | Cursor rules, skills, agent definitions — **read alongside `AGENTS.md`** |
+| `AGENTS.md` | **Canonical command and convention index for AI coding agents** |
+| `CLAUDE.md` | Short project identity and commands for Claude Code |
+| `.env.example` | Template for required optional secrets (never commit `.env`) |
+
+---
+
+## 4. Quick start
+
+**Requirements:** Node.js **20+**, npm.
 
 ```bash
 git clone https://github.com/matiasportugau-ui/Calculadora-BMC.git
 cd Calculadora-BMC
 npm install
-npm run dev        # http://localhost:5173
+npm run env:ensure          # creates .env from .env.example if missing
+npm run dev                 # Vite only → http://localhost:5173
 ```
 
-### Scripts
-
-| Comando | Descripción |
-|---------|-------------|
-| `npm run dev` | Servidor de desarrollo Vite (puerto 5173) |
-| `npm run dev:full` | API (3001) + Vite (5173) — app completa con pestaña Finanzas |
-| `npm run dev:full-stack` | API + Vite + Panelin Evolution viewer (3847) si existe |
-| `npm run start:api` | Solo API Express (3001) |
-| `npm run bmc-dashboard` | Dashboard Finanzas standalone (3849) |
-| `npm run build` | Build de producción → `dist/` |
-| `npm run preview` | Preview local del build |
-| `npm test` | Suite de validación (63 assertions) |
-| `npm run lint` | ESLint sobre `src/` (0 errores, 0 advertencias) |
-
----
-
-## Escenarios soportados
-
-| Escenario | Techo | Fachada | Esquineros |
-|-----------|:-----:|:-------:|:----------:|
-| 🏠 Solo Techo | ✅ | — | — |
-| 🏢 Solo Fachada | — | ✅ | ✅ |
-| 🏗 Techo + Fachada | ✅ | ✅ | ✅ |
-| ❄️ Cámara Frigorífica | — | ✅ | ✅ |
-
----
-
-## Catálogo de paneles
-
-### Techo
-
-| Familia | Ancho útil | Largo (m) | Fijación | Espesores (mm) |
-|---------|-----------|-----------|----------|----------------|
-| ISODEC EPS | 1.12 m | 2.3 – 14.0 | Varilla + tuerca + arandela | 100, 150, 200, 250 |
-| ISODEC PIR | 1.12 m | 3.5 – 14.0 | Varilla + tuerca + arandela | 50, 80, 120 |
-| ISOROOF 3G | 1.00 m | 3.5 – 8.5 | Caballete + tornillo | 30, 40, 50, 80, 100 |
-| ISOROOF FOIL | 1.00 m | 3.5 – 8.5 | Caballete + tornillo | 30, 50 |
-| ISOROOF PLUS | 1.00 m | 3.5 – 8.5 | Caballete + tornillo | 50, 80 |
-
-### Fachada / Pared
-
-| Familia | Ancho útil | Largo (m) | Espesores (mm) |
-|---------|-----------|-----------|----------------|
-| ISOPANEL EPS | 1.14 m | 2.3 – 14.0 | 50, 100, 150, 200, 250 |
-| ISOWALL PIR | 1.10 m | 3.5 – 14.0 | 50, 80, 100 |
-
----
-
-## Arquitectura
-
-```
-src/
-├── main.jsx                          # Punto de entrada React
-├── App.jsx                           # Componente raíz
-├── data/
-│   └── constants.js                  # Tokens, precios, paneles, perfiles, escenarios
-├── utils/
-│   ├── calculations.js               # Motores de cálculo puros (sin React)
-│   └── helpers.js                    # BOM, PDF, WhatsApp
-└── components/
-    └── PanelinCalculadoraV3.jsx      # Componente principal
-```
-
-### `src/data/constants.js` — fuente de verdad
-
-| Sección | Contenido |
-|---------|-----------|
-| §1 Design Tokens | Colores (`C`), tipografía (`FONT`) |
-| §2 Motor de Precios | `LISTA_ACTIVA`, `p()`, `pIVA()` |
-| §3 Paneles Techo | `PANELS_TECHO` — 5 familias |
-| §4 Paneles Pared | `PANELS_PARED` — 2 familias |
-| §5 Fijaciones | `FIJACIONES` — varilla, tuerca, arandela, anclaje, tornillo T2, remaches |
-| §6 Selladores | `SELLADORES` — silicona, cinta, membrana, espuma PU |
-| §7 Perfilería | `PERFIL_TECHO`, `PERFIL_PARED` |
-| §8 Escenarios | `SCENARIOS_DEF`, `VIS`, `BORDER_OPTIONS` |
-
-### `src/utils/calculations.js` — motores de cálculo
-
-Funciones puras, sin dependencias de React.
-
-**Techo:** `calcTechoCompleto()` orquesta `calcPanelesTecho`, `calcAutoportancia`, `calcFijacionesVarilla` / `calcFijacionesCaballete`, `calcPerfileriaTecho`, `calcSelladoresTecho`.
-
-**Pared:** `calcParedCompleto()` orquesta `calcPanelesPared`, `calcPerfilesU`, `calcEsquineros`, `calcFijacionesPared`, `calcPerfilesParedExtra`, `calcSelladorPared`.
-
-**General:** `calcTotalesSinIVA()` — subtotal + IVA 22% = total final.
-
-### `src/utils/helpers.js` — utilidades de salida
-
-| Función | Propósito |
-|---------|-----------|
-| `applyOverrides()` | Aplica ediciones del usuario al BOM |
-| `bomToGroups()` | Transforma resultados de cálculo en grupos de BOM |
-| `fmtPrice()` | Formatea números como moneda |
-| `generatePrintHTML()` | Genera HTML A4 para PDF |
-| `openPrintWindow()` | Abre diálogo de impresión |
-| `buildWhatsAppText()` | Formatea el BOM para WhatsApp |
-
----
-
-## Sistema de precios
-
-Todos los precios son **sin IVA**. El IVA 22% se aplica una sola vez al total final con `calcTotalesSinIVA()`.
-
-| Lista | Variable | Uso |
-|-------|----------|-----|
-| `venta` | `LISTA_ACTIVA = "venta"` | Precio BMC directo — clientes y presupuestos |
-| `web` | `LISTA_ACTIVA = "web"` | Precio público Shopify |
-
-La función `p(item)` resuelve el precio activo:
-
-```js
-p({ venta: 37.76, web: 45.97 })
-// → 37.76 si LISTA_ACTIVA === "venta"
-// → 45.97 si LISTA_ACTIVA === "web"
-```
-
-Ver [`docs/PRICING-ENGINE.md`](docs/PRICING-ENGINE.md) para más detalles.
-
----
-
-## Backend MercadoLibre
-
-El repositorio incluye un servidor Express en `server/` para integrar OAuth de MercadoLibre.
+**Full stack (API + Vite):**
 
 ```bash
-cp .env.example .env   # completar ML_CLIENT_SECRET y TOKEN_ENCRYPTION_KEY
-npm run dev:api        # http://localhost:3001
+npm run dev:full            # API :3001 + Vite :5173
+# or: ./run_full_stack.sh
 ```
 
-Endpoints disponibles:
-- `GET /auth/ml/start` — inicia el flujo OAuth (abrir en navegador la primera vez)
-- `GET /ml/users/me` — datos del usuario autenticado
-- `GET /ml/items/:id` — detalle de ítem de MercadoLibre
-
----
-
-## Desarrollo completo — Dashboard BMC
-
-El proyecto integra un **dashboard de Finanzas** (cotizaciones, entregas, pagos pendientes, KPIs) alimentado por Google Sheets. Todo el stack se configura con un solo comando.
-
-### One-Click Setup
+**Health check (with API running):**
 
 ```bash
-./run_dashboard_setup.sh
+curl -s http://localhost:3001/health
 ```
 
-El script valida `.env`, credenciales de Google, instala dependencias, inicia la API y opcionalmente ngrok. Opciones:
-
-- `--check-only` — solo verifica configuración, no inicia servicios
-- `--no-ngrok` — no inicia túnel ngrok
-
-### Requisitos previos (manual, una vez)
-
-1. **Google Cloud:** Crear service account con Sheets API (lectura + escritura). Descargar JSON → guardar en `docs/bmc-dashboard-modernization/service-account.json`.
-2. **Spreadsheet:** Compartir "2.0 - Administrador de Cotizaciones" con el email del service account como **Editor**.
-3. **Apps Script (Phase 1–2):** Pegar `Code.gs`, agregar `DialogEntregas.html`, ejecutar `runInitialSetup`, configurar triggers según [`docs/bmc-dashboard-modernization/IMPLEMENTATION.md`](docs/bmc-dashboard-modernization/IMPLEMENTATION.md).
-
-### Stack del dashboard
-
-| Componente | Puerto | Descripción |
-|------------|--------|-------------|
-| **API principal** | 3001 | Express: `/calc`, `/api/*`, `/auth/ml`, `/finanzas` |
-| **Vite (front)** | 5173 | App React con pestañas Invocar Panelin + Finanzas |
-| **Dashboard standalone** | 3849 | `npm run bmc-dashboard` — solo dashboard (opcional) |
-| **ngrok** | — | Túnel HTTPS para OAuth/webhooks externos |
-
-### Variables de entorno (`.env`)
-
-| Variable | Uso |
-|----------|-----|
-| `BMC_SHEET_ID` | ID del spreadsheet (de la URL de Google Sheets) |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Ruta absoluta al JSON del service account |
-| `ML_CLIENT_ID`, `ML_CLIENT_SECRET` | OAuth MercadoLibre |
-| `ML_REDIRECT_URI_DEV` | Callback HTTPS (ej. ngrok) para OAuth |
-
-### Versionado y changelog
+**Pre-commit quality gate (after `src/` edits):**
 
 ```bash
-./scripts/bump_version.sh [major|minor|patch] ["Mensaje para el changelog"]
+npm run gate:local          # lint + test
+# stricter:
+npm run gate:local:full     # lint + test + build
 ```
 
-Criterios: **MAJOR** = breaking; **MINOR** = nuevas features; **PATCH** = fixes, refactors, docs.
+---
+
+## 5. Environment variables
+
+Copy **`.env.example`** → **`.env`** (`npm run env:ensure`). Do not commit secrets.
+
+| Variable (examples) | Purpose |
+|---------------------|---------|
+| `BMC_SHEET_ID` | Google Spreadsheet ID for dashboard/Admin flows |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account JSON |
+| `BMC_MATRIZ_SHEET_ID` / MATRIZ-related | Price matrix / calculator CSV pipeline (see skills and deploy docs) |
+| `ML_CLIENT_ID`, `ML_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY` | Mercado Libre OAuth and token encryption |
+| `ML_REDIRECT_URI_DEV` | HTTPS callback (e.g. ngrok) for local OAuth |
+| `PUBLIC_BASE_URL` | Canonical public API base for callbacks and smoke tests |
+| `API_AUTH_TOKEN` / `API_KEY` | Protect sensitive HTTP routes (cockpit, drafts, etc.) |
+| `DATABASE_URL` | PostgreSQL for Transportista (`npm run transportista:migrate`) |
+| `OPENAI_API_KEY` / model provider keys | AI suggest-response, chat, audits — only where features are enabled |
+
+Full matrices live in **`.env.example`** and deployment procedure docs.
 
 ---
 
-## Deploy
+## 6. NPM scripts (cheat sheet)
 
-### Vercel (recomendado)
+Grouped for humans and **AI agents** (use `AGENTS.md` for the exhaustive list).
 
-```bash
-npx vercel --prod
-```
-
-Configuración en `vercel.json` (framework: vite, output: `dist/`).
-
-### Docker
-
-```bash
-docker build -t calculadora-bmc:latest .
-docker run --rm -p 8080:80 calculadora-bmc:latest
-# Disponible en http://localhost:8080
-```
-
-### Build estático
-
-```bash
-npm run build
-# Servir la carpeta dist/ con cualquier servidor HTTP estático
-```
-
-Ver [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) para más opciones.
+| Area | Commands |
+|------|----------|
+| **Dev** | `dev`, `start:api`, `dev:full`, `dev:api` (watch), `dev:full-stack` |
+| **Build** | `build`, `preview` (`prebuild` runs disk precheck + version data) |
+| **Quality** | `lint`, `test`, `gate:local`, `gate:local:full`, `test:contracts` (needs API on :3001), `test:api`, `pre-deploy` |
+| **Production checks** | `smoke:prod`, `capabilities:snapshot` |
+| **Mercado Libre** | `ml:verify`, `ml:cloud-run`, corpus/export/audit scripts |
+| **Team / program** | `project:compass`, `program:status`, `followup`, `channels:automated` |
+| **Sheets / MATRIZ** | `panelsim:env`, `matriz:pull-csv`, `matriz:reconcile`, etc. |
 
 ---
 
-## CI/CD
+## 7. Calculator domain (product)
 
-Pipeline de GitHub Actions en `.github/workflows/ci.yml`. Se ejecuta en push a `main`/`develop` y en PR a `main`.
+### Scenarios
 
-| Job | Pasos |
-|-----|-------|
-| **validate** | `npm ci` → `node tests/validation.js` → `npm run build` |
-| **lint** | `npm ci` → `npm run lint` |
+| Scenario | Roof | Facade | Corners |
+|----------|:----:|:------:|:-------:|
+| Solo techo | Yes | — | — |
+| Solo fachada | — | Yes | Yes |
+| Techo + fachada | Yes | Yes | Yes |
+| Cámara frigorífica | — | Yes | Yes |
 
----
+### Catalog (summary)
 
-## Reglas de desarrollo
+- **Roof families:** ISODEC EPS/PIR, ISOROOF 3G / FOIL / PLUS (usable widths, lengths, thicknesses, and fixation logic in `src/data/`).
+- **Wall families:** ISOPANEL EPS, ISOWALL PIR.
 
-| Regla | Detalle |
-|-------|---------|
-| Cantidades | `Math.ceil()` siempre — nunca `round()` ni `floor()` |
-| Precios | `p(item)` para resolver precios — nunca hardcodeados |
-| IVA | Una sola vez al final en `calcTotalesSinIVA()` |
-| Estilos | Inline styles únicamente — tokens `C` y `FONT` de `constants.js` |
-| Estado | Solo `React.useState` — sin `localStorage` ni fetch externo |
-| Props | El componente principal no requiere props |
+### Pricing rules (orientation)
 
-Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución.
+- Core list data and design tokens live in **`src/data/constants.js`** (sections for tokens, `LISTA_ACTIVA`, panels, fixation, sealants, profiles, scenarios).
+- Business rules: use **`p()`** / **`pIVA()`** for list resolution; **IVA applied once** at totals via **`calcTotalesSinIVA()`** in `src/utils/calculations.js` — see `docs/PRICING-ENGINE.md`.
+- **MATRIZ / BROMYROS sync:** operational updates flow through documented API and skills (e.g. `.cursor/skills/actualizar-precios-calculadora/SKILL.md`), not ad-hoc hardcoding.
 
----
+### Outputs
 
-## Documentación adicional
-
-| Documento | Contenido |
-|-----------|-----------|
-| [`docs/bmc-dashboard-modernization/IMPLEMENTATION.md`](docs/bmc-dashboard-modernization/IMPLEMENTATION.md) | Setup completo del dashboard (4 fases, triggers, testing) |
-| [`docs/bmc-dashboard-modernization/README.md`](docs/bmc-dashboard-modernization/README.md) | Quick start Phase 1–2 + dashboard |
-| [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) | Configuración OAuth MercadoLibre |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Arquitectura técnica detallada |
-| [`docs/CALC-TECHO.md`](docs/CALC-TECHO.md) | Motor de cálculo de techos |
-| [`docs/CALC-PARED.md`](docs/CALC-PARED.md) | Motor de cálculo de paredes |
-| [`docs/PRICING-ENGINE.md`](docs/PRICING-ENGINE.md) | Motor de precios y listas |
-| [`docs/SCENARIOS.md`](docs/SCENARIOS.md) | Escenarios y reglas de visibilidad |
-| [`docs/UI-COMPONENTS.md`](docs/UI-COMPONENTS.md) | Componentes de interfaz |
-| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Referencia de funciones |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Guía de deploy |
-| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Historial de cambios |
+- BOM grouped by category, **PDF** print HTML, **WhatsApp** text — see `src/utils/helpers.js`.
 
 ---
 
-## Empresa
+## 8. Backend API surface (orientation)
 
-| Campo | Valor |
-|-------|-------|
-| Razón social | METALOG SAS |
-| Marca | BMC Uruguay |
+**Not OpenAPI-complete in this README** — treat `server/routes/*.js` and `GET /capabilities` as sources of truth.
+
+| Area | Examples |
+|------|----------|
+| Health / meta | `GET /health`, `GET /capabilities` |
+| Calculator | Routes mounted from `server/routes/calc.js` under `/calc/*` |
+| Dashboard BMC | `server/routes/bmcDashboard.js` — `/api/*` (Sheets-backed JSON; **503** when Sheets unavailable per project rules) |
+| Mercado Libre | `/auth/ml/*`, `/ml/*` |
+| Chat / AI | `server/routes/agentChat.js` and related (SSE, feature-flagged by env) |
+| CRM cockpit (auth) | `/api/crm/cockpit/*` — requires `Authorization: Bearer` or `X-Api-Key` matching `API_AUTH_TOKEN` |
+| Follow-ups | `/api/followups` (see `AGENTS.md`) |
+
+Contract validation: `npm run test:contracts` with API running.
+
+---
+
+## 9. Testing, quality gates, and CI
+
+- **Offline unit tests:** `npm test` runs `tests/validation.js` and `tests/roofVisualQuoteConsistency.js` (hundreds of assertions; exit code 0 = all passed).
+- **Lint:** ESLint on `src/` via `npm run lint`.
+- **Contract tests:** `npm run test:contracts` against local API.
+- **CI:** `.github/workflows/ci.yml` — install, tests, lint, build (and additional jobs as defined in repo).
+
+Recommended before merging changes touching **`src/`:** `npm run gate:local:full`.
+
+---
+
+## 10. Deployment
+
+| Target | Notes |
+|--------|------|
+| **Vercel** | Static SPA; `vercel.json` sets Vite build output `dist/` and SPA rewrites. Install may use `npm install --ignore-scripts` in platform config — see file. |
+| **Cloud Run** | Node API; sync env from `.env` per `docs/ML-OAUTH-SETUP.md` and `docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`. |
+| **Docker** | `Dockerfile` at repo root (and `Dockerfile.bmc-dashboard` for the standalone dashboard server) — see `docs/DEPLOYMENT.md`. |
+
+**Smoke production API:** `npm run smoke:prod` (public health, capabilities, MATRIZ CSV route — critical for pricing pipeline).
+
+---
+
+## 11. Conventions
+
+- **Modules:** ES modules only (`import`/`export`).
+- **Secrets:** Never in source; use `.env` / Secret Manager in production.
+- **Sheet IDs:** Never hardcode; use `config` / `process.env`.
+- **API errors:** Documented semantics for Sheets (e.g. 503 vs empty 200) — see `AGENTS.md`.
+- **Logging:** `pino` / `pino-http` on server; avoid raw `console.log` in production paths.
+- **Frontend calculation style:** Quantities use `Math.ceil` where applicable; pricing through `p()`; align with `CONTRIBUTING.md`.
+
+---
+
+## 12. Documentation index
+
+| Doc | Content |
+|-----|---------|
+| [`AGENTS.md`](AGENTS.md) | **Start here for AI agents** — commands, structure, rules |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Deep architecture |
+| [`docs/PRICING-ENGINE.md`](docs/PRICING-ENGINE.md) | Pricing engine |
+| [`docs/CALC-TECHO.md`](docs/CALC-TECHO.md) / [`docs/CALC-PARED.md`](docs/CALC-PARED.md) | Roof / wall engines |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Deployment options |
+| [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) | Mercado Libre + Cloud Run env |
+| [`docs/bmc-dashboard-modernization/`](docs/bmc-dashboard-modernization/) | Dashboard modernization, interface map |
+| [`docs/google-sheets-module/README.md`](docs/google-sheets-module/README.md) | Sheets hub |
+| [`docs/team/PROJECT-STATE.md`](docs/team/PROJECT-STATE.md) | Live project state (team process) |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contributor rules for calculator code |
+
+---
+
+## 13. AI and automation
+
+This repo is **optimized for human + AI collaboration**:
+
+- **`AGENTS.md`** — command matrix, loops (lint → test → contracts), CRM/cockpit auth notes.
+- **`.cursor/rules/`** and **`.cursor/skills/`** — workspace automation (deploy smoke, MATRIZ, disk recovery, panel chat, etc.).
+- **`GET /capabilities`** + `server/agentCapabilitiesManifest.js` — discoverable tool/action surface for agents.
+- **MCP:** `npm run mcp:panelin` exposes a stdio MCP proxy to the HTTP API (requires API running).
+
+For coordinated multi-agent workflows and PROJECT-STATE updates, see `docs/team/PROJECT-TEAM-FULL-COVERAGE.md` and related team docs.
+
+---
+
+## 14. Company
+
+| Field | Value |
+|-------|--------|
+| Legal name | METALOG SAS |
+| Brand | BMC Uruguay |
 | RUT | 120403430012 |
-| Ubicación | Maldonado, Uruguay |
+| Location | Maldonado, Uruguay |
 | Web | [bmcuruguay.com.uy](https://bmcuruguay.com.uy) |
-| Contacto | 092 663 245 |
-| Banco | BROU · Cta. Dólares: 110520638-00002 |
 
 ---
 
-## Licencia
+## 15. License
 
-Código propietario de BMC Uruguay / METALOG SAS. Todos los derechos reservados.
+**UNLICENSED** — proprietary. All rights reserved by BMC Uruguay / METALOG SAS.  
+Do not redistribute or reuse without permission.
+
+---
+
+*README generated for discoverability by developers and AI tooling. For day-to-day technical detail and exact command coverage, prefer [`AGENTS.md`](AGENTS.md) and the `docs/` tree.*
