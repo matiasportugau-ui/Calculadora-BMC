@@ -1,3 +1,9 @@
 {
-  "recommendations": ["dbaeumer.vscode-eslint"]
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "eamodio.gitlens",
+    "usernamehw.errorlens",
+    "gruntfuggly.todo-tree",
+    "dsznajder.es7-react-js-snippets"
+  ]
 }
