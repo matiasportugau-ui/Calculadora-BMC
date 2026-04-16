@@ -800,8 +800,6 @@ function EstructuraZonaOverlay({
       : `Puntos en planta: ${dotPts.length} (reparto en líneas de apoyo; ${totalFij} unidades de cómputo).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical alineada a la columna (misma paleta).` : ""} En varilla/tuerca, el listado inferior sigue los puntos activos por material (hormigón: tacos; metal/madera: varilla + tuercas según reglas ISODEC).`;
   const dotR = 0.032 * zm;
   const hitR = Math.max(0.048 * zm, dotR * 2.35);
-  const cantPGrid =
-    hints.fijacionDotsMode === "isodec_grid" ? cantPanelesHint : 1;
 
   const bandPaletteTitle = (k) => {
     if (k === "perim-top") return "Perímetro superior";
