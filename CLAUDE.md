@@ -36,7 +36,7 @@
 
 ### Key frontend files
 
-- `src/components/PanelinCalculadoraV3.jsx` — main calculator component
+- `src/components/PanelinCalculadoraV3_backup.jsx` — main calculator component (canonical; `src/PanelinCalculadoraV3.jsx` is a re-export)
 - `src/data/constants.js` — pricing, panels, profiles, scenarios
 - `src/utils/calculations.js` — core calculation logic
 - `src/utils/helpers.js` — shared utilities
