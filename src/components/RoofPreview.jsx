@@ -1143,11 +1143,28 @@ function PlantaBordesEdgeStrips({
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
   const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
   const gi = r.gi;
+
+  // ── Hover state local — sin afectar al padre ──
+  const [hoveredSide, setHoveredSide] = useState(null);
+
+  // Label corta para mostrar inline en la banda
+  const SHORT_LABELS = {
+    gotero_frontal:        "Gotero",
+    gotero_frontal_greca:  "Greca",
+    gotero_lateral:        "Lateral",
+    gotero_lateral_camara: "Cámara",
+    babeta_adosar:         "Babeta ↗",
+    babeta_empotrar:       "Babeta ↙",
+    canalon:               "Canalón",
+    cumbrera:              "Cumbrera",
+    none:                  "Sin perfil",
+  };
+
   const sideDefs = [
-    { side: "latIzq", x: r.x, y: r.y, w: wStrip, h: r.h },
-    { side: "latDer", x: r.x + r.w - wStrip, y: r.y, w: wStrip, h: r.h },
-    { side: "fondo", x: r.x, y: r.y, w: r.w, h: hStrip },
-    { side: "frente", x: r.x, y: r.y + r.h - hStrip, w: r.w, h: hStrip },
+    { side: "latIzq", x: r.x,                 y: r.y, w: wStrip, h: r.h },
+    { side: "latDer", x: r.x + r.w - wStrip,  y: r.y, w: wStrip, h: r.h },
+    { side: "fondo",  x: r.x,                 y: r.y, w: r.w,    h: hStrip },
+    { side: "frente", x: r.x,                 y: r.y + r.h - hStrip, w: r.w, h: hStrip },
   ];
 
   const currentVal = (side) => {
@@ -1164,6 +1181,14 @@ function PlantaBordesEdgeStrips({
     return false;
   };
 
+  // Tamaño de fuente y centro para el label inline
+  const labelProps = (x, y, w, h) => {
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const fontSize = Math.max(0.065 * zm, Math.min(0.13 * zm, Math.min(w, h) * 0.38));
+    return { cx, cy, fontSize };
+  };
+
   return (
     <g data-bmc-layer="planta-bordes-assign" pointerEvents="auto">
       {sideDefs.map(({ side, x, y, w, h }) => {
@@ -1171,30 +1196,100 @@ function PlantaBordesEdgeStrips({
         const val = currentVal(side);
         const active = val && val !== "none";
         const isOpen = openGi === gi && openSide === side;
-        let fill = "rgba(147,197,253,0.20)";
-        if (dis) fill = "rgba(200,205,216,0.28)";
-        else if (isOpen) fill = "rgba(59,130,246,0.40)";
-        else if (active) fill = "rgba(96,165,250,0.35)";
-        const stroke = isOpen ? C.primary : active ? C.primary : "rgba(37,99,235,0.5)";
+        const isHovered = hoveredSide === side && !dis;
+
+        // Fill progresivo: idle → hover → open
+        let fill = active
+          ? "rgba(96,165,250,0.22)"
+          : "rgba(147,197,253,0.12)";
+        if (dis)       fill = "rgba(200,205,216,0.18)";
+        if (isHovered) fill = active
+          ? "rgba(96,165,250,0.48)"
+          : "rgba(147,197,253,0.36)";
+        if (isOpen)    fill = "rgba(59,130,246,0.50)";
+
+        const stroke = isOpen
+          ? C.primary
+          : isHovered
+            ? "#93c5fd"
+            : active
+              ? "rgba(37,99,235,0.55)"
+              : "rgba(37,99,235,0.28)";
+
+        const strokeW = isOpen
+          ? 0.07 * zm
+          : isHovered
+            ? 0.055 * zm
+            : 0.028 * zm;
+
+        const { cx, cy, fontSize } = labelProps(x, y, w, h);
+        const shortLabel = SHORT_LABELS[val] ?? (active ? val : null);
+        const showLabel = (isHovered || isOpen || active) && shortLabel;
+        const isVertical = side === "latIzq" || side === "latDer";
+        const textTransform = isVertical ? `rotate(-90, ${cx}, ${cy})` : undefined;
+
         return (
-          <rect
-            key={`planta-bd-${gi}-${side}`}
-            x={x}
-            y={y}
-            width={w}
-            height={h}
-            rx={0.05 * zm}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth={isOpen ? 0.06 * zm : 0.035 * zm}
-            style={{ cursor: dis ? "not-allowed" : "pointer" }}
-            onPointerDown={(ev) => {
-              if (dis) return;
-              ev.stopPropagation();
-              ev.preventDefault();
-              onStripPointerDown(ev, gi, side);
-            }}
-          />
+          <g key={`planta-bd-${gi}-${side}`}>
+            {/* ── Banda hit area ── */}
+            <rect
+              x={x}
+              y={y}
+              width={w}
+              height={h}
+              rx={0.05 * zm}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={strokeW}
+              style={{
+                cursor: dis ? "not-allowed" : "pointer",
+                transition: "fill 120ms ease, stroke 120ms ease",
+              }}
+              onMouseEnter={() => { if (!dis) setHoveredSide(side); }}
+              onMouseLeave={() => setHoveredSide(null)}
+              onPointerDown={(ev) => {
+                if (dis) return;
+                ev.stopPropagation();
+                ev.preventDefault();
+                onStripPointerDown(ev, gi, side);
+              }}
+            />
+
+            {/* ── Label inline — aparece cuando hay valor activo o en hover ── */}
+            {showLabel && (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSize}
+                fontFamily="'SF Pro Display', system-ui, sans-serif"
+                fontWeight={isOpen || isHovered ? 600 : 400}
+                fill={isOpen || isHovered ? "#dbeafe" : "rgba(186,213,255,0.65)"}
+                transform={textTransform}
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                {shortLabel}
+              </text>
+            )}
+
+            {/* ── "+" cuando hover sin valor asignado ── */}
+            {isHovered && !active && !isOpen && (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSize * 1.2}
+                fill="rgba(147,197,253,0.75)"
+                transform={textTransform}
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                +
+              </text>
+            )}
+          </g>
         );
       })}
     </g>
