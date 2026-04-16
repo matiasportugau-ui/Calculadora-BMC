@@ -381,7 +381,7 @@ function TeamAssistPanel({ data, assistHealth }) {
     } finally {
       setSending(false);
     }
-  }, [agentId, messages, data, sending]);
+  }, [agentId, messages, data, sending, draft]);
 
   const ready = assistHealth?.openai_configured === true;
   const needServer = assistHealth && assistHealth.ok === false && !assistHealth.openai_configured;

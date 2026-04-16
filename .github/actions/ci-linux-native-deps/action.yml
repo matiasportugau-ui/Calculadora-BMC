@@ -1,0 +1,11 @@
+# easymidi pulls native `midi` (RtMidi); on Ubuntu CI, node-gyp needs ALSA dev headers.
+name: CI Linux native deps
+description: APT packages for optional native npm dependencies (easymidi / midi)
+runs:
+  using: composite
+  steps:
+    - name: Install ALSA headers for node-gyp (midi)
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libasound2-dev
