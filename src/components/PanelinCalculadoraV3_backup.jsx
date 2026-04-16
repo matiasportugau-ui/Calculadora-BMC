@@ -3526,7 +3526,21 @@ export default function PanelinCalculadoraV3() {
   };
 
   // ── Input updaters ──
-  const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
+  const uT = (k, v) => setTecho(t => {
+    if (k === "tipoEst" && v !== t.tipoEst) {
+      // Clear dot overrides and pts counts when structure type changes
+      return {
+        ...t,
+        [k]: v,
+        ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
+        zonas: (t.zonas || []).map((z) => {
+          const { fijDotOverrides: _drop, ...rest } = z;
+          return rest;
+        }),
+      };
+    }
+    return { ...t, [k]: v };
+  });
   const patchTechoCombinadaPts = useCallback(
     (k, v) => {
       if (k !== "ptsHorm" && k !== "ptsMetal" && k !== "ptsMadera") return;
@@ -3711,6 +3725,7 @@ export default function PanelinCalculadoraV3() {
         combinadaPtsMadera={techo.ptsMadera ?? 0}
         fijDotOverridesByGi={fijDotOverridesByGi}
         onFijDotOverridesSync={handleFijDotOverridesSync}
+        tipoEst={techo.tipoEst || "metal"}
         apoyoMateriales={apoyoMateriales}
         onApoyoMaterialCycle={handleApoyoMaterialCycle}
         onApoyoMaterialDirect={handleApoyoMaterialDirect}
@@ -4724,6 +4739,7 @@ export default function PanelinCalculadoraV3() {
                           combinadaPtsMadera={techo.ptsMadera ?? 0}
                           fijDotOverridesByGi={fijDotOverridesByGi}
                           onFijDotOverridesSync={handleFijDotOverridesSync}
+                          tipoEst={techo.tipoEst || "metal"}
                           apoyoMateriales={apoyoMateriales}
                           onApoyoMaterialCycle={handleApoyoMaterialCycle}
                           onApoyoMaterialDirect={handleApoyoMaterialDirect}

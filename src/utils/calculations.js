@@ -160,6 +160,13 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
     else if (tipoEst === "hormigon") { pMetal = 0; pH = puntosFijacion; pMadera = 0; }
     else if (tipoEst === "madera") { pMetal = 0; pH = 0; pMadera = puntosFijacion; }
     else { pH = Math.min(ptsHorm || 0, puntosFijacion); pMetal = puntosFijacion - pH; pMadera = 0; }
+  } else if (tipoEst !== "combinada" && (ptsHorm + ptsMetal + ptsMadera) > 0) {
+    // Non-combinada with per-dot overrides: use the provided pts counts directly
+    pH = Math.max(0, Math.floor(ptsHorm || 0));
+    pMetal = Math.max(0, Math.floor(ptsMetal || 0));
+    pMadera = Math.max(0, Math.floor(ptsMadera || 0));
+    puntosFijacion = pH + pMetal + pMadera;
+    puntosFijacionGrilla = puntosFijacion;
   } else {
     const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
     puntosFijacionGrilla = countPuntosFijacionVarillaGrilla(cantP, apoyos);
@@ -245,11 +252,13 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
  * @param {string} [tipoEst="metal"] - "metal" | "madera" | "hormigon" | "combinada"
  * @param {number} [espesorMm=30] - panel thickness in mm (30→4" screws; 50/80→6" screws)
  */
-export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesorMm = 30) {
+export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesorMm = 30, overridePuntos = null) {
   const { FIJACIONES } = getPricing();
   const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9);
   const factorAncho = getDimensioningParam("FIJACIONES_CABALETE.factor_ancho", 0.3);
-  const caballetes = Math.ceil((cantP * 3 * (largo / factorLargo + 1)) + ((largo * 2) / factorAncho));
+  const caballetes = overridePuntos != null && overridePuntos > 0
+    ? Math.round(overridePuntos)
+    : Math.ceil((cantP * 3 * (largo / factorLargo + 1)) + ((largo * 2) / factorAncho));
   const items = [];
   const c = (x) => (x?.costo ?? 0);
 
@@ -644,7 +653,8 @@ export function calcTechoCompleto(inputs) {
       espesorMm: espesor,
     });
   } else {
-    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst || "metal", espesor);
+    const cabOverride = tipoEst !== "combinada" && (ptsHorm + ptsMetal + ptsMadera) > 0 ? (ptsHorm + ptsMetal + ptsMadera) : null;
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst || "metal", espesor, cabOverride);
   }
 
   let perfileria;
@@ -765,7 +775,8 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
         fijOpts,
       );
     } else {
-      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst, techo.espesor);
+      const cabOv = tipoEst !== "combinada" && (ptsHorm + ptsMetal + ptsMadera) > 0 ? (ptsHorm + ptsMetal + ptsMadera) : null;
+      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst, techo.espesor, cabOv);
     }
     const fijacionProductLines = (fij.items || []).map(
       (it) => `${it.label} — ${it.cant} ${it.unidad || "unid"}`,
