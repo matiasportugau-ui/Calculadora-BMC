@@ -184,19 +184,26 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   let varillas;
   if (espM != null) {
     const rodLen = getDimensioningParam("FIJACIONES_VARILLA.largo_comercial_m", 1);
-    const exMetalHorm = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", 0.1);
-    const exMadera = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_madera_m", 0.05);
-    const Lmh = espM + exMetalHorm;
-    const Lmad = espM + exMadera;
+    const exMetalLegacy = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", 0.1);
+    const LMetal = espM + getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_m", exMetalLegacy);
+    const LHorm = espM + getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_hormigon_m", 0.2);
+    const LMadera = espM + getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_madera_m", 0.2);
     if (tipoEst === "combinada") {
-      const nMH = pMetal + pH;
       varillas =
-        countVarillasRoscadasDesdeBarras1m(nMH, Lmh, rodLen) +
-        countVarillasRoscadasDesdeBarras1m(pMadera, Lmad, rodLen);
+        countVarillasRoscadasDesdeBarras1m(pMetal, LMetal, rodLen) +
+        countVarillasRoscadasDesdeBarras1m(pH, LHorm, rodLen) +
+        countVarillasRoscadasDesdeBarras1m(pMadera, LMadera, rodLen);
     } else if (tipoEst === "madera") {
-      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lmad, rodLen);
+      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, LMadera, rodLen);
+    } else if (tipoEst === "hormigon") {
+      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, LHorm, rodLen);
+    } else if (tipoEst === "metal") {
+      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, LMetal, rodLen);
     } else {
-      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lmh, rodLen);
+      varillas =
+        countVarillasRoscadasDesdeBarras1m(pMetal, LMetal, rodLen) +
+        countVarillasRoscadasDesdeBarras1m(pH, LHorm, rodLen) +
+        countVarillasRoscadasDesdeBarras1m(pMadera, LMadera, rodLen);
     }
   } else {
     const varillasPorPunto = getDimensioningParam("FIJACIONES_VARILLA.varillas_por_punto", 4);
@@ -238,20 +245,71 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   };
 }
 
-export function calcFijacionesCaballete(cantP, largo) {
+/**
+ * Fijaciones caballete / tornillería (ISOROOF y simil.). `opts.tipoEst` = metal | madera | hormigon (default metal).
+ * 1 caballete y 1 tornillo (o kit hormigón) por punto de cómputo.
+ * @param {object} [opts]
+ * @param {string} [opts.tipoEst]
+ * @param {number} [opts.espesorMm]
+ */
+export function calcFijacionesCaballete(cantP, largo, opts = {}) {
   const { FIJACIONES } = getPricing();
+  const tipoEst = opts.tipoEst || "metal";
+  const espMm = Number(opts.espesorMm);
   const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9);
   const factorAncho = getDimensioningParam("FIJACIONES_CABALETE.factor_ancho", 0.3);
   const caballetes = Math.ceil((cantP * 3 * (largo / factorLargo + 1)) + ((largo * 2) / factorAncho));
-  const tornillosAguja = caballetes * 2;
+  const pts = Math.max(0, Math.round(caballetes));
   const items = [];
   const c = (x) => (x?.costo ?? 0);
   const puCab = p(FIJACIONES.caballete);
-  items.push({ label: FIJACIONES.caballete.label, sku: "caballete", cant: caballetes, unidad: "unid", pu: puCab, costo: c(FIJACIONES.caballete), total: +(caballetes * puCab).toFixed(2) });
-  const puAguja = p(FIJACIONES.tornillo_aguja);
-  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: tornillosAguja, unidad: "unid", pu: puAguja, costo: c(FIJACIONES.tornillo_aguja), total: +(tornillosAguja * puAguja).toFixed(2) });
+  items.push({ label: FIJACIONES.caballete.label, sku: "caballete", cant: pts, unidad: "unid", pu: puCab, costo: c(FIJACIONES.caballete), total: +(pts * puCab).toFixed(2) });
+
+  if (tipoEst === "hormigon") {
+    const rodLen = getDimensioningParam("FIJACIONES_VARILLA.largo_comercial_m", 1);
+    const espM = Number.isFinite(espMm) && espMm > 0 ? espMm / 1000 : 0.03;
+    const cutM = espM + 0.14;
+    const var8 = FIJACIONES.varilla_roscada_8_1m ?? FIJACIONES.varilla_38;
+    const taco8 = FIJACIONES.taco_expansivo_8 ?? FIJACIONES.taco_expansivo;
+    const nVar = countVarillasRoscadasDesdeBarras1m(pts, cutM, rodLen);
+    const puVar = p(var8);
+    const varSku = FIJACIONES.varilla_roscada_8_1m ? "varilla_roscada_8_1m" : "varilla_38";
+    items.push({
+      label: var8.label,
+      sku: varSku,
+      cant: nVar,
+      unidad: "unid",
+      pu: puVar,
+      costo: c(var8),
+      total: +(nVar * puVar).toFixed(2),
+    });
+    const puT8 = p(taco8);
+    const tacoSku = FIJACIONES.taco_expansivo_8 ? "taco_expansivo_8" : "taco_expansivo";
+    items.push({
+      label: taco8.label,
+      sku: tacoSku,
+      cant: pts,
+      unidad: "unid",
+      pu: puT8,
+      costo: c(taco8),
+      total: +(pts * puT8).toFixed(2),
+    });
+  } else if (tipoEst === "madera") {
+    const thin = Number.isFinite(espMm) && espMm > 0 && espMm <= 30;
+    const sk = thin ? FIJACIONES.tornillo_punta_aguja_12x2 : FIJACIONES.tornillo_punta_aguja_12x3;
+    const sku = thin ? "tornillo_punta_aguja_12x2" : "tornillo_punta_aguja_12x3";
+    const pu = p(sk);
+    items.push({ label: sk.label, sku, cant: pts, unidad: "unid", pu, costo: c(sk), total: +(pts * pu).toFixed(2) });
+  } else {
+    const thin = Number.isFinite(espMm) && espMm > 0 && espMm <= 30;
+    const sk = thin ? FIJACIONES.tornillo_exagonal_12_1_pm : FIJACIONES.tornillo_exagonal_12_212_pm;
+    const sku = thin ? "tornillo_exagonal_12_1_pm" : "tornillo_exagonal_12_212_pm";
+    const pu = p(sk);
+    items.push({ label: sk.label, sku, cant: pts, unidad: "unid", pu, costo: c(sk), total: +(pts * pu).toFixed(2) });
+  }
+
   const total = items.reduce((s, i) => s + i.total, 0);
-  return { items, total: +total.toFixed(2), puntosFijacion: caballetes };
+  return { items, total: +total.toFixed(2), puntosFijacion: pts };
 }
 
 export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espesor, opciones) {
@@ -609,7 +667,10 @@ export function calcTechoCompleto(inputs) {
       espesorMm: espesor,
     });
   } else {
-    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal, {
+      tipoEst: tipoEst || "metal",
+      espesorMm: espesor,
+    });
   }
 
   let perfileria;
@@ -730,7 +791,10 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
         fijOpts,
       );
     } else {
-      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
+      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal, {
+        tipoEst,
+        espesorMm: techo.espesor,
+      });
     }
     const fijacionProductLines = (fij.items || []).map(
       (it) => `${it.label} — ${it.cant} ${it.unidad || "unid"}`,

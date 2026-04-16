@@ -175,6 +175,9 @@ export const FIJACIONES = {
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.272, web: 1.484, costo: 1.06, unidad: "unid" },
   arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.368, web: 1.596, costo: 1.14, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.8, unidad: "unid" },
+  /** ISOROOF / caballete a hormigón: tramo varilla = espesor (m) + 0,14 m por punto (MATRIZ). */
+  varilla_roscada_8_1m: { label: 'Varilla roscada 8" (1m)', venta: 6.5, web: 7.9, costo: 5.2, unidad: "unid" },
+  taco_expansivo_8:   { label: 'Taco expansivo metálico 8"', venta: 1.4, web: 1.7, costo: 1.0, unidad: "unid" },
   caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
   anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
@@ -398,7 +401,6 @@ export const SCENARIOS_DEF = [
     wizardSteps: [
       { id: "escenario", label: "Escenario de obra" },
       { id: "tipoAguas", label: "Caída del techo" },
-      { id: "lista", label: "Lista de precios" },
       { id: "familia", label: "Familia panel techo" },
       { id: "espesor", label: "Espesor techo" },
       { id: "color", label: "Color techo" },
@@ -418,7 +420,6 @@ export const SCENARIOS_DEF = [
     visibility: { borders: false, largoAncho: false, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: false, canalGot: false, p5852: true },
     wizardSteps: [
       { id: "escenario", label: "Escenario de obra" },
-      { id: "lista", label: "Lista de precios" },
       { id: "familia_pared", label: "Familia panel pared" },
       { id: "espesor_pared", label: "Espesor pared" },
       { id: "color_pared", label: "Color pared" },
@@ -438,7 +439,6 @@ export const SCENARIOS_DEF = [
     wizardSteps: [
       { id: "escenario", label: "Escenario de obra" },
       { id: "tipoAguas", label: "Caída del techo" },
-      { id: "lista", label: "Lista de precios" },
       { id: "familia", label: "Familia panel techo" },
       { id: "espesor", label: "Espesor techo" },
       { id: "color", label: "Color techo" },
@@ -464,7 +464,6 @@ export const SCENARIOS_DEF = [
     visibility: { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
     wizardSteps: [
       { id: "escenario", label: "Escenario de obra" },
-      { id: "lista", label: "Lista de precios" },
       { id: "familia_pared", label: "Familia panel" },
       { id: "espesor_pared", label: "Espesor" },
       { id: "color_pared", label: "Color" },
@@ -576,7 +575,7 @@ export const BORDER_OPTIONS = {
 // STEP_SECTIONS: maps each progress tab index to the section keys visible in the left panel.
 // Tab 0=Proyecto, 1=Panel, 2=Bordes, 3=Opciones
 export const STEP_SECTIONS = {
-  0: ["lista", "escenario", "proyecto"],
+  0: ["escenario", "proyecto"],
   1: ["panel", "categorias", "dimensiones"],
   2: ["bordes", "estructura"],
   3: ["opciones", "aberturas", "flete"],

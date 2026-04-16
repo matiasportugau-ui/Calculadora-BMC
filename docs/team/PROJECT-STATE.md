@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-15
+**Última actualización:** 2026-04-16
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-16 (Calculadora — plan wizard cotización):** Wizard `solo_techo` y afines: sin paso `lista` (lista vía `getListaDefault` + toggle **Precio BMC / Web** en `bmc-right-panel` tras alertas, KPI debajo); `wizardMaxReachedStep` + barra confort + dots acotados; **Datos del proyecto** sticky y modo cliente con **Cliente final** / **Empresa** (`razonSocial`, `contactoRef`); paso `proyecto` como revisión; **Estructura** sin selección en juntas verticales panel–panel (`RoofPreview`); fijaciones ISODEC con tramos de rosca por material (`dimensioningFormulas` + `calcFijacionesVarilla`); Isoroof/hormigón: SKUs `varilla_roscada_8_1m` / `taco_expansivo_8` y `calcFijacionesCaballete` ampliado. Archivos: [`constants.js`](../../src/data/constants.js), [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx), [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx), [`calculations.js`](../../src/utils/calculations.js), [`projectFile.js`](../../src/utils/projectFile.js). `npm test` + `npm run lint` OK (warning preexistente en `SpecManagementSandbox.jsx`).
 
 **2026-04-16 (UX — inventario modificaciones por tipo y paso wizard):** [`docs/team/ux-feedback/MODIFICACIONES-PROPUESTAS-ORGANIZADAS-2026-04-16.md`](./ux-feedback/MODIFICACIONES-PROPUESTAS-ORGANIZADAS-2026-04-16.md): propuestas agrupadas (producto, planta 2D, multizona encuentros, estructura+fijación, QA) y mapeo a pasos `solo_techo` (`lista`…`proyecto`) + sets `ROOF_2D_*`.
 

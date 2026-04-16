@@ -43,7 +43,6 @@ import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
 import {
   fijacionDotsLayout,
-  fijacionDotKeysNearPanelJoint,
   fijacionRowsFromHints,
   yForFijacionRowPlanta,
 } from "../utils/roofEstructuraDotsLayout.js";
@@ -524,9 +523,9 @@ function CombinadaFijacionDotsPalettePopover({
  * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
  * Modo Combinada: por defecto todos los puntos cuentan (incluidos). Clic en un punto = quitar/restaurar
  * (no cotiza esa fijación; se ve atenuado). Mayús+clic o pulsación larga (~0,45 s) en el punto = paleta
- * de material. Clic en líneas de apoyo, juntas verticales (2+ paneles, ISODEC o reparto) y bandas de
- * perímetro = misma paleta; los conteos globales ptsHorm/ptsMetal/ptsMadera se recalculan en todas las zonas
- * para alinear el BOM con `calcFijacionesVarilla` (tacos en hormigón, tuercas y varillas según mix).
+ * de material. Clic en líneas de apoyo y bandas de perímetro = paleta; las juntas verticales panel–panel
+ * no son seleccionables (solo encuentro geométrico). Los conteos globales ptsHorm/ptsMetal/ptsMadera se
+ * alinean al BOM con `calcFijacionesVarilla` / caballete según familia.
  */
 function EstructuraZonaOverlay({
   r,
@@ -796,12 +795,10 @@ function EstructuraZonaOverlay({
   const cantPanelesHint = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
   const gridExpl =
     hints.fijacionDotsMode === "isodec_grid"
-      ? `Puntos en planta: ${dotPts.length} (grilla ISODEC: 2/panel en perímetro, 1/panel centrado en apoyos intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m)` : ""}).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical entre columnas (misma paleta que perímetro o línea de apoyo).` : ""} Total cómputo ${totalFij} (base ${grillaFij}${perimV > 0 ? ` + lateral ${perimV}` : ""}). El presupuesto aplica por material: hormigón → tacos + tuerca simple; metal/madera → varilla roscada + tuercas dobles y arandela plana; madera usa tramo de rosca distinto al metal/hormigón.`
-      : `Puntos en planta: ${dotPts.length} (reparto en líneas de apoyo; ${totalFij} unidades de cómputo).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical alineada a la columna (misma paleta).` : ""} En varilla/tuerca, el listado inferior sigue los puntos activos por material (hormigón: tacos; metal/madera: varilla + tuercas según reglas ISODEC).`;
+      ? `Puntos en planta: ${dotPts.length} (grilla ISODEC: 2/panel en perímetro, 1/panel centrado en apoyos intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m)` : ""}).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles en ancho, las líneas verticales entre columnas son solo referencia visual (no se seleccionan).` : ""} Total cómputo ${totalFij} (base ${grillaFij}${perimV > 0 ? ` + lateral ${perimV}` : ""}). El presupuesto aplica por material: hormigón → tacos + tuerca simple; metal/madera → varilla roscada + tuercas dobles y arandela plana; madera usa tramo de rosca distinto al metal/hormigón.`
+      : `Puntos en planta: ${dotPts.length} (reparto en líneas de apoyo; ${totalFij} unidades de cómputo).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles, las juntas verticales en planta son solo referencia (no seleccionables).` : ""} En varilla/tuerca, el listado inferior sigue los puntos activos por material (hormigón: tacos; metal/madera: varilla + tuercas según reglas ISODEC).`;
   const dotR = 0.032 * zm;
   const hitR = Math.max(0.048 * zm, dotR * 2.35);
-  const cantPGrid =
-    hints.fijacionDotsMode === "isodec_grid" ? cantPanelesHint : 1;
 
   const bandPaletteTitle = (k) => {
     if (k === "perim-top") return "Perímetro superior";
@@ -854,46 +851,6 @@ function EstructuraZonaOverlay({
             }}
           />
         ))}
-        {combinadaAssign &&
-        typeof onFijacionPaletteBulk === "function" &&
-        cantPanelesHint >= 2
-          ? (() => {
-              const panelW = r.w / cantPanelesHint;
-              const hitW = Math.max(0.11 * zm, panelW * 0.18);
-              const els = [];
-              for (let j = 1; j < cantPanelesHint; j += 1) {
-                const xj = r.x + j * panelW;
-                const keysJ = fijacionDotKeysNearPanelJoint(dotPts, j, r, cantPanelesHint, hints);
-                if (!keysJ.length) continue;
-                els.push(
-                  <line
-                    key={`est-vjoint-hit-${r.gi}-${j}`}
-                    x1={xj}
-                    y1={r.y}
-                    x2={xj}
-                    y2={r.y + r.h}
-                    stroke="rgba(124,58,237,0.14)"
-                    strokeWidth={hitW}
-                    pointerEvents="stroke"
-                    style={{ cursor: "pointer" }}
-                    onPointerDown={(ev) => {
-                      ev.stopPropagation();
-                      ev.preventDefault();
-                      setApoyoMatPick(null);
-                      setFijPalette({
-                        left: ev.clientX + 10,
-                        top: ev.clientY + 6,
-                        keys: keysJ,
-                        title: "Junta vertical (entre paneles)",
-                        subtitle: `Paneles ${j} y ${j + 1} · ${keysJ.length} punto(s)`,
-                      });
-                    }}
-                  />,
-                );
-              }
-              return els.length ? <g pointerEvents="auto">{els}</g> : null;
-            })()
-          : null}
         <g pointerEvents="auto">
           {dotPts.map((d) => {
             const resolved = combinadaAssign
