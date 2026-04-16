@@ -43,7 +43,6 @@ import { buildPanelLayout } from "../utils/panelLayout.js";
 import { verifyPanelLayout } from "../utils/panelLayoutVerification.js";
 import {
   fijacionDotsLayout,
-  fijacionDotKeysNearPanelJoint,
   fijacionRowsFromHints,
   yForFijacionRowPlanta,
 } from "../utils/roofEstructuraDotsLayout.js";
@@ -524,9 +523,9 @@ function CombinadaFijacionDotsPalettePopover({
  * Paso Estructura: líneas de apoyo (violetas), puntos de fijación (hover → BOM).
  * Modo Combinada: por defecto todos los puntos cuentan (incluidos). Clic en un punto = quitar/restaurar
  * (no cotiza esa fijación; se ve atenuado). Mayús+clic o pulsación larga (~0,45 s) en el punto = paleta
- * de material. Clic en líneas de apoyo, juntas verticales (2+ paneles, ISODEC o reparto) y bandas de
- * perímetro = misma paleta; los conteos globales ptsHorm/ptsMetal/ptsMadera se recalculan en todas las zonas
- * para alinear el BOM con `calcFijacionesVarilla` (tacos en hormigón, tuercas y varillas según mix).
+ * de material. Clic en líneas de apoyo y bandas de perímetro = paleta; las juntas verticales panel–panel
+ * no son seleccionables (solo encuentro geométrico). Los conteos globales ptsHorm/ptsMetal/ptsMadera se
+ * alinean al BOM con `calcFijacionesVarilla` / caballete según familia.
  */
 function EstructuraZonaOverlay({
   r,
@@ -800,12 +799,10 @@ function EstructuraZonaOverlay({
   const cantPanelesHint = Math.max(1, Math.round(Number(hints.cantPaneles)) || 1);
   const gridExpl =
     hints.fijacionDotsMode === "isodec_grid"
-      ? `Puntos en planta: ${dotPts.length} (grilla ISODEC: 2/panel en perímetro, 1/panel centrado en apoyos intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m)` : ""}).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical entre columnas (misma paleta que perímetro o línea de apoyo).` : ""} Total cómputo ${totalFij} (base ${grillaFij}${perimV > 0 ? ` + lateral ${perimV}` : ""}). El presupuesto aplica por material: hormigón → tacos + tuerca simple; metal/madera → varilla roscada + tuercas dobles y arandela plana; madera usa tramo de rosca distinto al metal/hormigón.`
-      : `Puntos en planta: ${dotPts.length} (reparto en líneas de apoyo; ${totalFij} unidades de cómputo).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles tocá la junta vertical alineada a la columna (misma paleta).` : ""} En varilla/tuerca, el listado inferior sigue los puntos activos por material (hormigón: tacos; metal/madera: varilla + tuercas según reglas ISODEC).`;
+      ? `Puntos en planta: ${dotPts.length} (grilla ISODEC: 2/panel en perímetro, 1/panel centrado en apoyos intermedios${perimV > 0 ? `; +${perimV} en laterales de perímetro (~cada ${Number(hints.fijacionEspaciadoPerimetroM) || 2.5} m)` : ""}).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles en ancho, las líneas verticales entre columnas son solo referencia visual (no se seleccionan).` : ""} Total cómputo ${totalFij} (base ${grillaFij}${perimV > 0 ? ` + lateral ${perimV}` : ""}). El presupuesto aplica por material: hormigón → tacos + tuerca simple; metal/madera → varilla roscada + tuercas dobles y arandela plana; madera usa tramo de rosca distinto al metal/hormigón.`
+      : `Puntos en planta: ${dotPts.length} (reparto en líneas de apoyo; ${totalFij} unidades de cómputo).${cantPanelesHint >= 2 ? ` Con ${cantPanelesHint} paneles, las juntas verticales en planta son solo referencia (no seleccionables).` : ""} En varilla/tuerca, el listado inferior sigue los puntos activos por material (hormigón: tacos; metal/madera: varilla + tuercas según reglas ISODEC).`;
   const dotR = 0.032 * zm;
   const hitR = Math.max(0.048 * zm, dotR * 2.35);
-  const cantPGrid =
-    hints.fijacionDotsMode === "isodec_grid" ? cantPanelesHint : 1;
 
   const bandPaletteTitle = (k) => {
     if (k === "perim-top") return "Perímetro superior";
@@ -858,46 +855,6 @@ function EstructuraZonaOverlay({
             }}
           />
         ))}
-        {combinadaAssign &&
-        typeof onFijacionPaletteBulk === "function" &&
-        cantPanelesHint >= 2
-          ? (() => {
-              const panelW = r.w / cantPanelesHint;
-              const hitW = Math.max(0.11 * zm, panelW * 0.18);
-              const els = [];
-              for (let j = 1; j < cantPanelesHint; j += 1) {
-                const xj = r.x + j * panelW;
-                const keysJ = fijacionDotKeysNearPanelJoint(dotPts, j, r, cantPanelesHint, hints);
-                if (!keysJ.length) continue;
-                els.push(
-                  <line
-                    key={`est-vjoint-hit-${r.gi}-${j}`}
-                    x1={xj}
-                    y1={r.y}
-                    x2={xj}
-                    y2={r.y + r.h}
-                    stroke="rgba(124,58,237,0.14)"
-                    strokeWidth={hitW}
-                    pointerEvents="stroke"
-                    style={{ cursor: "pointer" }}
-                    onPointerDown={(ev) => {
-                      ev.stopPropagation();
-                      ev.preventDefault();
-                      setApoyoMatPick(null);
-                      setFijPalette({
-                        left: ev.clientX + 10,
-                        top: ev.clientY + 6,
-                        keys: keysJ,
-                        title: "Junta vertical (entre paneles)",
-                        subtitle: `Paneles ${j} y ${j + 1} · ${keysJ.length} punto(s)`,
-                      });
-                    }}
-                  />,
-                );
-              }
-              return els.length ? <g pointerEvents="auto">{els}</g> : null;
-            })()
-          : null}
         <g pointerEvents="auto">
           {dotPts.map((d) => {
             const resolved = (combinadaAssign || canToggleDots)
@@ -1155,11 +1112,28 @@ function PlantaBordesEdgeStrips({
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
   const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
   const gi = r.gi;
+
+  // ── Hover state local — sin afectar al padre ──
+  const [hoveredSide, setHoveredSide] = useState(null);
+
+  // Label corta para mostrar inline en la banda
+  const SHORT_LABELS = {
+    gotero_frontal:        "Gotero",
+    gotero_frontal_greca:  "Greca",
+    gotero_lateral:        "Lateral",
+    gotero_lateral_camara: "Cámara",
+    babeta_adosar:         "Babeta ↗",
+    babeta_empotrar:       "Babeta ↙",
+    canalon:               "Canalón",
+    cumbrera:              "Cumbrera",
+    none:                  "Sin perfil",
+  };
+
   const sideDefs = [
-    { side: "latIzq", x: r.x, y: r.y, w: wStrip, h: r.h },
-    { side: "latDer", x: r.x + r.w - wStrip, y: r.y, w: wStrip, h: r.h },
-    { side: "fondo", x: r.x, y: r.y, w: r.w, h: hStrip },
-    { side: "frente", x: r.x, y: r.y + r.h - hStrip, w: r.w, h: hStrip },
+    { side: "latIzq", x: r.x,                 y: r.y, w: wStrip, h: r.h },
+    { side: "latDer", x: r.x + r.w - wStrip,  y: r.y, w: wStrip, h: r.h },
+    { side: "fondo",  x: r.x,                 y: r.y, w: r.w,    h: hStrip },
+    { side: "frente", x: r.x,                 y: r.y + r.h - hStrip, w: r.w, h: hStrip },
   ];
 
   const currentVal = (side) => {
@@ -1176,6 +1150,14 @@ function PlantaBordesEdgeStrips({
     return false;
   };
 
+  // Tamaño de fuente y centro para el label inline
+  const labelProps = (x, y, w, h) => {
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const fontSize = Math.max(0.065 * zm, Math.min(0.13 * zm, Math.min(w, h) * 0.38));
+    return { cx, cy, fontSize };
+  };
+
   return (
     <g data-bmc-layer="planta-bordes-assign" pointerEvents="auto">
       {sideDefs.map(({ side, x, y, w, h }) => {
@@ -1183,30 +1165,100 @@ function PlantaBordesEdgeStrips({
         const val = currentVal(side);
         const active = val && val !== "none";
         const isOpen = openGi === gi && openSide === side;
-        let fill = "rgba(147,197,253,0.20)";
-        if (dis) fill = "rgba(200,205,216,0.28)";
-        else if (isOpen) fill = "rgba(59,130,246,0.40)";
-        else if (active) fill = "rgba(96,165,250,0.35)";
-        const stroke = isOpen ? C.primary : active ? C.primary : "rgba(37,99,235,0.5)";
+        const isHovered = hoveredSide === side && !dis;
+
+        // Fill progresivo: idle → hover → open
+        let fill = active
+          ? "rgba(96,165,250,0.22)"
+          : "rgba(147,197,253,0.12)";
+        if (dis)       fill = "rgba(200,205,216,0.18)";
+        if (isHovered) fill = active
+          ? "rgba(96,165,250,0.48)"
+          : "rgba(147,197,253,0.36)";
+        if (isOpen)    fill = "rgba(59,130,246,0.50)";
+
+        const stroke = isOpen
+          ? C.primary
+          : isHovered
+            ? "#93c5fd"
+            : active
+              ? "rgba(37,99,235,0.55)"
+              : "rgba(37,99,235,0.28)";
+
+        const strokeW = isOpen
+          ? 0.07 * zm
+          : isHovered
+            ? 0.055 * zm
+            : 0.028 * zm;
+
+        const { cx, cy, fontSize } = labelProps(x, y, w, h);
+        const shortLabel = SHORT_LABELS[val] ?? (active ? val : null);
+        const showLabel = (isHovered || isOpen || active) && shortLabel;
+        const isVertical = side === "latIzq" || side === "latDer";
+        const textTransform = isVertical ? `rotate(-90, ${cx}, ${cy})` : undefined;
+
         return (
-          <rect
-            key={`planta-bd-${gi}-${side}`}
-            x={x}
-            y={y}
-            width={w}
-            height={h}
-            rx={0.05 * zm}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth={isOpen ? 0.06 * zm : 0.035 * zm}
-            style={{ cursor: dis ? "not-allowed" : "pointer" }}
-            onPointerDown={(ev) => {
-              if (dis) return;
-              ev.stopPropagation();
-              ev.preventDefault();
-              onStripPointerDown(ev, gi, side);
-            }}
-          />
+          <g key={`planta-bd-${gi}-${side}`}>
+            {/* ── Banda hit area ── */}
+            <rect
+              x={x}
+              y={y}
+              width={w}
+              height={h}
+              rx={0.05 * zm}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={strokeW}
+              style={{
+                cursor: dis ? "not-allowed" : "pointer",
+                transition: "fill 120ms ease, stroke 120ms ease",
+              }}
+              onMouseEnter={() => { if (!dis) setHoveredSide(side); }}
+              onMouseLeave={() => setHoveredSide(null)}
+              onPointerDown={(ev) => {
+                if (dis) return;
+                ev.stopPropagation();
+                ev.preventDefault();
+                onStripPointerDown(ev, gi, side);
+              }}
+            />
+
+            {/* ── Label inline — aparece cuando hay valor activo o en hover ── */}
+            {showLabel && (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSize}
+                fontFamily="'SF Pro Display', system-ui, sans-serif"
+                fontWeight={isOpen || isHovered ? 600 : 400}
+                fill={isOpen || isHovered ? "#dbeafe" : "rgba(186,213,255,0.65)"}
+                transform={textTransform}
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                {shortLabel}
+              </text>
+            )}
+
+            {/* ── "+" cuando hover sin valor asignado ── */}
+            {isHovered && !active && !isOpen && (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSize * 1.2}
+                fill="rgba(147,197,253,0.75)"
+                transform={textTransform}
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                +
+              </text>
+            )}
+          </g>
         );
       })}
     </g>

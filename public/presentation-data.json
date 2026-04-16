@@ -1,0 +1,39 @@
+{
+  "schema": "bmc-presentation-data@1",
+  "generatedAt": "2026-04-16T09:42:38.375Z",
+  "packageVersion": "3.1.5",
+  "name": "calculadora-bmc",
+  "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
+  "git": {
+    "short": "15a2972",
+    "branch": "main"
+  },
+  "calculatorData": {
+    "hash": "ddbdddc9b4",
+    "date": "2026-04-16T09:42:38.279Z"
+  },
+  "tests": {
+    "validationPassed": 335,
+    "roofVisualOk": 10,
+    "skipped": false
+  },
+  "stack": {
+    "react": "18",
+    "vite": "7",
+    "express": "5"
+  },
+  "links": {
+    "matrixLocal": "http://localhost:5173/matrix-presentation.html",
+    "matrixProd": "https://calculadora-bmc.vercel.app/matrix-presentation.html",
+    "vercelApp": "https://calculadora-bmc.vercel.app",
+    "repo": "https://github.com/matiasportugau-ui/Calculadora-BMC"
+  },
+  "matrixLines": [
+    "PANELIN CALCULADORA BMC — METALOG SAS",
+    "WAKE UP — THE MATRIZ HAS YOU — UPDATE README: npm run readme:sync",
+    "THERE IS NO SPOON — ONLY p() AND Math.ceil()",
+    "FOLLOW THE WHITE RABBIT — docs/team/PROJECT-STATE.md",
+    "LOADING SHEETS — REALITY IS A CONFIG OBJECT",
+    "KANSAS IS GOING BYE-BYE — SHIP TO VERCEL + CLOUD RUN"
+  ]
+}

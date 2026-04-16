@@ -74,8 +74,8 @@ export function deserializeProject(data) {
     scenario: "solo_techo",
     listaPrecios: "web",
     proyecto: {
-      tipoCliente: "empresa", nombre: "", rut: "", telefono: "",
-      direccion: "", descripcion: "", refInterna: "",
+      tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "",
+      direccion: "", descripcion: "", refInterna: "", contactoRef: "",
       fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }),
     },
     techo: {
