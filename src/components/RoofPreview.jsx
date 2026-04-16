@@ -1981,11 +1981,15 @@ export default function RoofPreview({
     return result;
   }, [panelLayouts, bomPanelResultsByGi, layout.entries]);
 
-  /** Espacio extra para cotas exteriores (planta / Estructura). */
-  const svgViewBox = useMemo(() => {
-    if (!layout.viewMetrics) return layout.viewBox;
+  /**
+   * ViewBox ampliado + marco útil para chrome (escala, título) sin superponer cotas/cadena.
+   * `chrome.minX` / `chrome.maxY` coinciden con el rectángulo SVG expandido.
+   */
+  const svgFrame = useMemo(() => {
+    const fallback = { viewBox: layout.viewBox, chrome: null };
+    if (!layout.viewMetrics) return fallback;
     const chainActive = !!panelLayouts;
-    if ((!plantaCotaChromeActive && !chainActive) || layout.entries.length === 0) return layout.viewBox;
+    if ((!plantaCotaChromeActive && !chainActive) || layout.entries.length === 0) return fallback;
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
@@ -1997,10 +2001,33 @@ export default function RoofPreview({
     const padT = (0.55 + nSide("top") * 0.14) * vbPadScale;
     // chainPad: reserva espacio para chain dim lines (yEdge + dimStackBottom + 3×CHAIN_STEP)
     const chainPad = chainActive ? (svgTy.dimStackBottom ?? 0.3) + 0.56 : 0;
-    const padB = (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad + envExtra;
+    // Banda inferior para la escala gráfica (evita solaparse con cadena mm / AU)
+    const fontT = svgTy.dimFontTertiary ?? svgTy.dimFont * 0.72;
+    const scaleBarBand =
+      plantaCotaChromeActive ? 0.06 * svgTy.m + fontT * 0.55 + 0.12 * svgTy.m : 0;
+    const padB =
+      (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad + envExtra + scaleBarBand;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
-    return `${vbX - padL} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`;
-  }, [layout.viewBox, layout.viewMetrics, layout.entries.length, plantaCotaChromeActive, planEdges?.exterior, planEdges?.envelope, svgTy.m, svgTy.dimStackBottom, svgTy.dimStackStep, panelLayouts]);
+    const minX = vbX - padL;
+    const maxY = vbY + vbH + padB;
+    return {
+      viewBox: `${minX} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`,
+      chrome: { minX, maxY, vbX, vbY, vbW, vbH },
+    };
+  }, [
+    layout.viewBox,
+    layout.viewMetrics,
+    layout.entries.length,
+    plantaCotaChromeActive,
+    planEdges?.exterior,
+    planEdges?.envelope,
+    svgTy.m,
+    svgTy.dimFont,
+    svgTy.dimFontTertiary,
+    svgTy.dimStackBottom,
+    svgTy.dimStackStep,
+    panelLayouts,
+  ]);
 
   const encounters = planEdges?.encounters ?? [];
 
@@ -2645,7 +2672,7 @@ export default function RoofPreview({
             <svg
               ref={svgRef}
               data-bmc-capture="roof-plan-2d"
-              viewBox={svgViewBox}
+              viewBox={svgFrame.viewBox}
               width="100%"
               height="100%"
               preserveAspectRatio="xMidYMid meet"
@@ -2978,12 +3005,29 @@ export default function RoofPreview({
               );
             })()}
             {plantaCotaChromeActive && layout.viewMetrics && (() => {
-              const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
+              const { vbW, vbH } = layout.viewMetrics;
               const spanM = Math.max(vbW, vbH, 2.5);
+              const ch = svgFrame.chrome;
+              const fontT = svgTy.dimFontTertiary ?? svgTy.dimFont * 0.72;
+              const barH = 0.06 * svgTy.m;
+              const footprint = barH + fontT * 0.55;
+              const margin = 0.05 * svgTy.m;
+              if (ch) {
+                return (
+                  <ScaleBar
+                    x={ch.minX + margin}
+                    y={ch.maxY - margin - footprint}
+                    spanM={spanM}
+                    svgTy={svgTy}
+                  />
+                );
+              }
+              const { vbX, vbY } = layout.viewMetrics;
               return (
                 <ScaleBar
                   x={vbX}
-                  y={vbY + vbH + (svgTy.dimStackBottom ?? 0.24)}                  spanM={spanM}
+                  y={vbY + vbH + (svgTy.dimStackBottom ?? 0.24)}
+                  spanM={spanM}
                   svgTy={svgTy}
                 />
               );

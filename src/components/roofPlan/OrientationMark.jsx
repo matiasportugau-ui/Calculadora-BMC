@@ -13,12 +13,18 @@ export default function OrientationMark({ x, y, svgTy }) {
   if (!svgTy?.m) return null;
   const m = svgTy.m;
   const fontSize = svgTy.dimFontPrimary ?? svgTy.dimFont;
+  const fs = fontSize * 1.1;
   const arrowH = fontSize * 2.2;
   const arrowW = fontSize * 0.6;
 
+  // Keep "PLANTA" and north mark separated (no overlap): estimate label width + gap, then arrow.
+  const letterGap = fontSize * 0.15;
+  const estLabelW = fs * 4.35 + letterGap * 6;
+  const gap = Math.max(0.1 * m, fontSize * 0.4);
+
   // Arrow tip at (ax, ay), pointing up (negative Y in SVG)
-  const ax = x + fontSize * 3.5;
-  const ay = y;
+  const ax = x + estLabelW + gap;
+  const ay = y + fs * 0.28;
 
   return (
     <g data-bmc-layer="orientation-mark" pointerEvents="none" opacity={0.6}>
@@ -26,12 +32,12 @@ export default function OrientationMark({ x, y, svgTy }) {
       <text
         x={x}
         y={y + fontSize * 0.3}
-        fontSize={fontSize * 1.1}
+        fontSize={fs}
         fontWeight={600}
         fontFamily={FONT}
         fill="#212121"
         stroke="none"
-        letterSpacing={fontSize * 0.15}
+        letterSpacing={letterGap}
       >
         PLANTA
       </text>

@@ -8,7 +8,7 @@ const FONT = "'Inter', 'Helvetica Neue', sans-serif";
 
 /**
  * @param {{ x: number, y: number, spanM: number, svgTy: object }} props
- * x, y = bottom-left anchor in SVG user space (meters).
+ * x, y = top-left of the bar rectangles in SVG user space (meters); value labels sit above.
  * spanM = max of viewBox width/height — used to pick scale unit.
  */
 export default function ScaleBar({ x, y, spanM, svgTy }) {
