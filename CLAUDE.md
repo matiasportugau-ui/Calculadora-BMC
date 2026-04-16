@@ -52,7 +52,7 @@
 ## Deployment
 
 - **Frontend:** Vercel — **https://calculadora-bmc.vercel.app**
-- **API:** Google **Cloud Run** — service **`panelin-calc-web`**, region **us-central1** (see deploy docs in `docs/procedimientos/`)
+- **API:** Google **Cloud Run** — service **`panelin-calc`**, region **us-central1** (see deploy docs in `docs/procedimientos/`)
 - **CI:** GitHub Actions (`.github/workflows/ci.yml` on push to main)
 
 ## Agent ecosystem (Claude Code)
