@@ -7,6 +7,9 @@
   "main": "src/components/PanelinCalculadoraV3.jsx",
   "scripts": {
     "version:data": "node scripts/update-calculator-data-version.js",
+    "readme:generate": "node scripts/generate-readme-presentation.mjs",
+    "readme:sync": "npm run version:data && node scripts/generate-readme-presentation.mjs",
+    "readme:check": "node scripts/generate-readme-presentation.mjs --check",
     "disk:precheck": "bash scripts/disk-space-precheck.sh .",
     "predev": "npm run disk:precheck",
     "dev": "npm run version:data && vite",

@@ -1,29 +1,10 @@
-# Calculadora BMC — Panelin v3.1.5
+# Calculadora BMC — Panelin v{{PKG_VERSION}}
 
 Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC Uruguay (METALOG SAS)**.
 
-[![CI](https://github.com/matiasportugau-ui/Calculadora-BMC/actions/workflows/ci.yml/badge.svg)](https://github.com/matiasportugau-ui/Calculadora-BMC/actions/workflows/ci.yml)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
-![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
-![Node](https://img.shields.io/badge/Node-20-339933?logo=node.js&logoColor=white)
-![License](https://img.shields.io/badge/license-UNLICENSED-red)
+{{BADGES}}
 
-<!-- AUTO-GENERATED-BLOCK: scripts/generate-readme-presentation.mjs -->
-
-## Estado del repo (auto)
-
-| Campo | Valor |
-|-------|-------|
-| **Fecha generación (UTC)** | `2026-04-16` · timestamp ISO en `public/presentation-data.json` |
-| **package.json** | `3.1.5` |
-| **Git** | `15a2972` · `main` |
-| **CALCULATOR_DATA_VERSION** | `ddbdddc9b4` |
-| **Tests** | `335` passed (`validation.js`) + `10` ok (`roofVisualQuoteConsistency.js`) |
-| **Presentación Matrix** | [Local :5173](http://localhost:5173/matrix-presentation.html) · [Vercel](https://calculadora-bmc.vercel.app/matrix-presentation.html) |
-
-**Regenerar:** `npm run readme:sync` · solo README/JSON: `npm run readme:generate` · comprobar: `npm run readme:check`.
-
+{{AUTO_METADATA}}
 
 ---
 
@@ -62,7 +43,7 @@ npm run dev           # http://localhost:5173
 | `npm run bmc-dashboard` | Dashboard Finanzas standalone (3849) |
 | `npm run build` | Build de producción → `dist/` |
 | `npm run preview` | Preview local del build |
-| `npm test` | Suite offline: `validation.js` **335** passed + `roofVisualQuoteConsistency.js` **10** ok → **345** checks |
+| `npm test` | {{TEST_CELL}} |
 | `npm run lint` | ESLint sobre `src/` |
 | `npm run readme:sync` | `version:data` + README generado + `public/presentation-data.json` (presentación Matrix) |
 | `npm run readme:generate` | Solo README + JSON de presentación (sin recalcular `CALCULATOR_DATA_VERSION`) |
