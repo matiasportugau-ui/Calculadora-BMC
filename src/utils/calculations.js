@@ -238,18 +238,53 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   };
 }
 
-export function calcFijacionesCaballete(cantP, largo) {
+/**
+ * Fijaciones caballete (ISOROOF families).
+ * @param {number} cantP - panel count across width
+ * @param {number} largo - panel length (m)
+ * @param {string} [tipoEst="metal"] - "metal" | "madera" | "hormigon" | "combinada"
+ * @param {number} [espesorMm=30] - panel thickness in mm (30→4" screws; 50/80→6" screws)
+ */
+export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesorMm = 30) {
   const { FIJACIONES } = getPricing();
   const factorLargo = getDimensioningParam("FIJACIONES_CABALETE.factor_largo", 2.9);
   const factorAncho = getDimensioningParam("FIJACIONES_CABALETE.factor_ancho", 0.3);
   const caballetes = Math.ceil((cantP * 3 * (largo / factorLargo + 1)) + ((largo * 2) / factorAncho));
-  const tornillosAguja = caballetes * 2;
   const items = [];
   const c = (x) => (x?.costo ?? 0);
+
+  // 1 caballete (arandela trapezoidal) per fixation point — equal for all families/types/thicknesses
   const puCab = p(FIJACIONES.caballete);
   items.push({ label: FIJACIONES.caballete.label, sku: "caballete", cant: caballetes, unidad: "unid", pu: puCab, costo: c(FIJACIONES.caballete), total: +(caballetes * puCab).toFixed(2) });
-  const puAguja = p(FIJACIONES.tornillo_aguja);
-  items.push({ label: FIJACIONES.tornillo_aguja.label, sku: "tornillo_aguja", cant: tornillosAguja, unidad: "unid", pu: puAguja, costo: c(FIJACIONES.tornillo_aguja), total: +(tornillosAguja * puAguja).toFixed(2) });
+
+  const espNorm = Number(espesorMm) || 30;
+  const use6in = espNorm >= 50; // 50mm or 80mm → 6"; 30mm → 4"
+
+  if (tipoEst === "hormigon") {
+    // ISOROOF a Hormigón: caballete + varilla roscada 8mm (1m) + taco expansivo metálico 8mm
+    // Rod length per fixation: (espesor_cm + 14cm) meters
+    const espCm = espNorm / 10;
+    const cutLengthM = (espCm + 14) / 100; // convert cm to m
+    const nVarillas = countVarillasRoscadasDesdeBarras1m(caballetes, cutLengthM, 1);
+    const puVar = p(FIJACIONES.varilla_roscada_8mm);
+    items.push({ label: FIJACIONES.varilla_roscada_8mm.label, sku: "varilla_roscada_8mm", cant: nVarillas, unidad: "unid", pu: puVar, costo: c(FIJACIONES.varilla_roscada_8mm), total: +(nVarillas * puVar).toFixed(2) });
+    const puTaco = p(FIJACIONES.taco_expansivo_8mm);
+    items.push({ label: FIJACIONES.taco_expansivo_8mm.label, sku: "taco_expansivo_8mm", cant: caballetes, unidad: "unid", pu: puTaco, costo: c(FIJACIONES.taco_expansivo_8mm), total: +(caballetes * puTaco).toFixed(2) });
+  } else if (tipoEst === "madera") {
+    // ISOROOF a Madera: caballete + tornillo hex galv punta aguja (4" para 30mm, 6" para 50/80mm)
+    const skuAguja = use6in ? "tornillo_hex_galv_6_aguja" : "tornillo_hex_galv_4_aguja";
+    const fijAguja = FIJACIONES[skuAguja];
+    const puA = p(fijAguja);
+    items.push({ label: fijAguja.label, sku: skuAguja, cant: caballetes, unidad: "unid", pu: puA, costo: c(fijAguja), total: +(caballetes * puA).toFixed(2) });
+  } else {
+    // ISOROOF a Metal (default, also combinada falls here as metal-dominant)
+    // Tornillo hex galv punta mecha (4" para 30mm, 6" para 50/80mm)
+    const skuMecha = use6in ? "tornillo_hex_galv_6_mecha" : "tornillo_hex_galv_4_mecha";
+    const fijMecha = FIJACIONES[skuMecha];
+    const puM = p(fijMecha);
+    items.push({ label: fijMecha.label, sku: skuMecha, cant: caballetes, unidad: "unid", pu: puM, costo: c(fijMecha), total: +(caballetes * puM).toFixed(2) });
+  }
+
   const total = items.reduce((s, i) => s + i.total, 0);
   return { items, total: +total.toFixed(2), puntosFijacion: caballetes };
 }
@@ -609,7 +644,7 @@ export function calcTechoCompleto(inputs) {
       espesorMm: espesor,
     });
   } else {
-    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
+    fijaciones = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst || "metal", espesor);
   }
 
   let perfileria;
@@ -730,7 +765,7 @@ export function computeRoofEstructuraHintsByGi(techo, panel) {
         fijOpts,
       );
     } else {
-      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal);
+      fij = calcFijacionesCaballete(paneles.cantPaneles, largoReal, tipoEst, techo.espesor);
     }
     const fijacionProductLines = (fij.items || []).map(
       (it) => `${it.label} — ${it.cant} ${it.unidad || "unid"}`,

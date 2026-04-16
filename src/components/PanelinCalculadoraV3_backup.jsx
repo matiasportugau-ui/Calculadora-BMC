@@ -2304,6 +2304,8 @@ export default function PanelinCalculadoraV3() {
   // ── State ──
   const [modoVendedor, setModoVendedor] = useState(true);
   const [wizardStep, setWizardStep] = useState(0);
+  /** Máximo paso alcanzado — controla cuáles pasos están desbloqueados para navegación directa. */
+  const [maxReachedStep, setMaxReachedStep] = useState(0);
   /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
   const [estructuraMetricsSelectedGi, setEstructuraMetricsSelectedGi] = useState(0);
   const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
@@ -2529,6 +2531,7 @@ export default function PanelinCalculadoraV3() {
       if (soloTechoSkipPendienteStep(techo.zonas?.length ?? 0) && next === SOLO_TECHO_PENDIENTE_STEP_INDEX) {
         next = SOLO_TECHO_ESTRUCTURA_STEP_INDEX;
       }
+      setMaxReachedStep((mr) => Math.max(mr, next));
       return next;
     });
   }, [techo.zonas?.length]);
@@ -2558,12 +2561,15 @@ export default function PanelinCalculadoraV3() {
     setWizardStep(SOLO_TECHO_ESTRUCTURA_STEP_INDEX);
   }, [modoVendedor, scenario, wizardStep, techo.zonas?.length]);
 
+  // Sync maxReachedStep cuando el paso actual supera el máximo previo
+  useEffect(() => { setMaxReachedStep(mr => Math.max(mr, wizardStep)); }, [wizardStep]);
+
   // Sync LISTA_ACTIVA (solo cuando hay valor)
   useEffect(() => { if (listaPrecios) setListaPrecios(listaPrecios); }, [listaPrecios]);
 
   // Reset wizard al cambiar escenario o al activar modo vendedor
   useEffect(() => {
-    if (modoVendedor && scenario !== "solo_techo") setWizardStep(0);
+    if (modoVendedor && scenario !== "solo_techo") { setWizardStep(0); setMaxReachedStep(0); }
   }, [scenario, modoVendedor]);
 
   // Reset modo plano al salir de techo_fachada
@@ -2586,7 +2592,7 @@ export default function PanelinCalculadoraV3() {
   const isWizardStepValid = useCallback((stepId) => {
     switch (stepId) {
       case "escenario": return !!scenario;
-      case "lista": return !!listaPrecios;
+      // "lista" step removed — price list selected via right-panel toggle
       case "tipoAguas": return !!techo.tipoAguas;
       case "familia": return !!techo.familia;
       case "espesor": return !!techo.espesor;
@@ -3683,7 +3689,7 @@ export default function PanelinCalculadoraV3() {
         onAnnexRankSwap={swapAnnexRank}
         onAddZona={addZona}
         onRemoveZona={removeZona}
-        onEncounterPairChange={onRoofEncounterPairChange}
+        onEncounterPairChange={activeWizardStepId === "estructura" ? null : onRoofEncounterPairChange}
         onZonaDimensionPatch={onRoofZonaDimensionPatch}
         pendienteModo={techo.pendienteModo || "incluye_pendiente"}
         globalAlturaDif={techo.alturaDif ?? 0}
@@ -4262,57 +4268,94 @@ export default function PanelinCalculadoraV3() {
               const canNext = wizardStep < SOLO_TECHO_STEPS.length - 1;
               const uT = (k, v) => setTecho(t => ({ ...t, [k]: v }));
               const uPr = (k, v) => setProyecto(p => ({ ...p, [k]: v }));
+              // Índice del paso "proyecto" — siempre accesible
+              const proyectoStepIdx = SOLO_TECHO_STEPS.findIndex(s => s.id === "proyecto");
               return (
                 <>
                 <div style={sectionS}>
-                  {/* Step indicators */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 20 }}>
+                  {/* Step indicators — navegación con bloqueo secuencial */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
                     {SOLO_TECHO_STEPS.map((s, i) => {
                       const isDone = i < wizardStep;
                       const isCurrent = i === wizardStep;
+                      const isProyecto = s.id === "proyecto";
+                      // Accesible si: ya completado, es el actual, o es "proyecto"
+                      const isAccessible = i <= maxReachedStep || isProyecto;
+                      const isLocked = !isAccessible;
                       const isHovered = hoveredDotIdx === i;
                       return (
                         <div key={s.id} style={{ position: "relative", flexShrink: 0 }}
                           onMouseEnter={() => setHoveredDotIdx(i)}
                           onMouseLeave={() => setHoveredDotIdx(null)}
-                          onClick={() => setWizardStep(i)}
+                          onClick={() => {
+                            if (isAccessible) {
+                              setWizardStep(i);
+                              setMaxReachedStep(mr => Math.max(mr, i));
+                            }
+                          }}
                         >
-                          {/* Tooltip */}
+                          {/* Tooltip con nombre del paso */}
                           {isHovered && (
                             <div style={{
                               position: "absolute", bottom: "calc(100% + 7px)", left: "50%",
                               transform: "translateX(-50%)",
-                              background: "#1e293b", color: "#fff",
+                              background: isLocked ? "#64748b" : "#1e293b", color: "#fff",
                               borderRadius: 6, padding: "4px 9px",
                               fontSize: 11, fontWeight: 500, whiteSpace: "nowrap",
                               zIndex: 200, pointerEvents: "none",
                               boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
                             }}>
-                              {s.label}
+                              {isLocked ? `🔒 ${s.label}` : s.label}
                               <div style={{
                                 position: "absolute", top: "100%", left: "50%",
                                 transform: "translateX(-50%)",
                                 borderLeft: "4px solid transparent",
                                 borderRight: "4px solid transparent",
-                                borderTop: "4px solid #1e293b",
+                                borderTop: `4px solid ${isLocked ? "#64748b" : "#1e293b"}`,
                               }} />
                             </div>
                           )}
-                          {/* Dot */}
+                          {/* Dot — verde si completado, azul si actual, gris bloqueado, gris claro si pendiente accesible */}
                           <div style={{
-                            width: isCurrent ? 24 : 8, height: 8, borderRadius: 4,
-                            background: isDone ? C.success : isCurrent ? C.primary : C.border,
-                            opacity: isDone ? 1 : isCurrent ? 1 : 0.4,
-                            cursor: "pointer",
+                            width: isCurrent ? 24 : isProyecto ? 10 : 8,
+                            height: isProyecto ? 10 : 8,
+                            borderRadius: isProyecto ? 5 : 4,
+                            background: isDone ? C.success : isCurrent ? C.primary : isLocked ? C.border : isProyecto ? C.warning : C.border,
+                            opacity: isDone ? 1 : isCurrent ? 1 : isLocked ? 0.25 : isProyecto ? 0.9 : 0.55,
+                            cursor: isAccessible ? "pointer" : "not-allowed",
                             transition: "all 150ms ease",
-                            transform: isHovered ? "scaleY(1.35)" : "scaleY(1)",
+                            transform: isHovered && isAccessible ? "scaleY(1.4)" : "scaleY(1)",
+                            boxShadow: isProyecto && !isDone && !isCurrent ? `0 0 0 2px ${C.warning}40` : undefined,
                           }} />
                         </div>
                       );
                     })}
                   </div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Paso {wizardStep + 1} de {SOLO_TECHO_STEPS.length}
+                  {/* Barra de progreso visual */}
+                  <div style={{ height: 3, background: C.border, borderRadius: 2, marginBottom: 10, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%",
+                      width: `${((wizardStep) / Math.max(1, SOLO_TECHO_STEPS.length - 1)) * 100}%`,
+                      background: `linear-gradient(90deg, ${C.primary}, ${C.success})`,
+                      borderRadius: 2,
+                      transition: "width 300ms ease",
+                    }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Paso {wizardStep + 1} de {SOLO_TECHO_STEPS.length}
+                    </div>
+                    {/* Acceso rápido a Datos del proyecto */}
+                    {proyectoStepIdx >= 0 && wizardStep !== proyectoStepIdx && (
+                      <button
+                        type="button"
+                        onClick={() => { setWizardStep(proyectoStepIdx); setMaxReachedStep(mr => Math.max(mr, proyectoStepIdx)); }}
+                        title="Datos del proyecto — siempre accesible"
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        📋 Proyecto
+                      </button>
+                    )}
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, marginBottom: 20, overflow: "visible", minWidth: 0 }}>{step?.label}</div>
                   {stepId === "escenario" && (
@@ -4346,9 +4389,6 @@ export default function PanelinCalculadoraV3() {
                         else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
                       }} />
                     </div>
-                  )}
-                  {stepId === "lista" && (
-                    <SegmentedControl value={listaPrecios || getListaDefault()} onChange={v => setLP(v)} onOptionDoubleClick={() => advanceWizardStep()} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
                   )}
                   {stepId === "familia" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setHoverTechoFamilia("")}>
@@ -5837,6 +5877,17 @@ export default function PanelinCalculadoraV3() {
             } : null}
             onNext={activeWizardStepId === "tipoAguas" ? advanceWizardStep : null}
           />
+          {/* Lista de precios — toggle siempre visible en panel derecho */}
+          {modoVendedor && !scenarioDef?.isLibre && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "8px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", flex: 1 }}>Lista de precios</span>
+              <SegmentedControl
+                value={listaPrecios || getListaDefault()}
+                onChange={v => setLP(v)}
+                options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
+              />
+            </div>
+          )}
           {/* KPI Row */}
           {results && !results.error && !scenarioDef?.isLibre && activeWizardStepId !== "estructura" && <div ref={pdfCaptureSummaryRef} style={{ display: "grid", gridTemplateColumns: fourCol, gap: 12, marginBottom: 16 }}>
             <KPICard label="Área" value={`${kpiArea.toFixed(1)}m²`} borderColor={C.primary} />
