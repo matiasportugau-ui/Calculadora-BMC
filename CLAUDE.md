@@ -19,6 +19,7 @@
 | `npm run dev:full` | API (`start:api`) + Vite via `concurrently` |
 | `npm run lint` | ESLint on `src/` |
 | `npm test` | `tests/validation.js` + `tests/roofVisualQuoteConsistency.js` |
+| `npm run test:api` | API route tests |
 | `npm run build` | Production Vite build |
 | `npm run gate:local` | **lint** + **test** |
 | `npm run gate:local:full` | **lint** + **test** + **build** |
@@ -27,22 +28,50 @@
 
 ## Architecture (repo layout)
 
-- `src/` — React SPA (Vite)
+- `src/` — React SPA (Vite): components, hooks, utils, `data/constants.js`
 - `server/` — Express entry and routes (`server/index.js`, `server/routes/*`)
 - `tests/` — offline tests and checks
 - `scripts/` — automation, smoke, tooling
 - `docs/` — team docs, Sheets hub, procedures (`docs/team/PROJECT-STATE.md` for live status)
 
+### Key frontend files
+
+- `src/components/PanelinCalculadoraV3.jsx` — main calculator component
+- `src/data/constants.js` — pricing, panels, profiles, scenarios
+- `src/utils/calculations.js` — core calculation logic
+- `src/utils/helpers.js` — shared utilities
+
+### Key backend files
+
+- `server/index.js` — Express app entry point
+- `server/config.js` — environment config and feature flags
+- `server/routes/calc.js` — calculation API
+- `server/routes/agentChat.js` — AI chat (SSE)
+- `server/routes/bmcDashboard.js` — financial dashboard
+
 ## Deployment
 
 - **Frontend:** Vercel — **https://calculadora-bmc.vercel.app**
 - **API:** Google **Cloud Run** — service **`panelin-calc-web`**, region **us-central1** (see deploy docs in `docs/procedimientos/`)
+- **CI:** GitHub Actions (`.github/workflows/ci.yml` on push to main)
 
 ## Agent ecosystem (Claude Code)
 
 Eleven agent definitions live under **`.claude/agents/`**:
 
-`bmc-orchestrator`, `bmc-calc-specialist`, `bmc-security`, `bmc-deployment`, `bmc-fiscal`, `bmc-docs-sync`, `bmc-judge`, `bmc-sheets-mapping`, `bmc-panelin-chat`, `bmc-api-contract`, `calculo-especialist`.
+| Agent | Role |
+|-------|------|
+| `bmc-orchestrator` | Coordinates full team runs |
+| `bmc-calc-specialist` | Pricing, BOM, panel calculations |
+| `bmc-panelin-chat` | Chat UI, training KB, dev mode |
+| `bmc-api-contract` | API response drift detection |
+| `bmc-security` | OAuth, CORS, credential audits |
+| `bmc-deployment` | Vercel + Cloud Run deploy/rollback |
+| `bmc-fiscal` | IVA/IRAE/BPS fiscal oversight |
+| `bmc-docs-sync` | PROJECT-STATE.md and docs/ sync |
+| `bmc-judge` | Run reports, agent rankings |
+| `bmc-sheets-mapping` | Google Sheets CRM integration |
+| `calculo-especialist` | 2D roof plan SVG dimensioning |
 
 Canonical human/agent instructions also live in **`AGENTS.md`**.
 
@@ -51,6 +80,7 @@ Canonical human/agent instructions also live in **`AGENTS.md`**.
 - **ES modules** everywhere; align with patterns in existing `server/` and `src/` code.
 - **Secrets:** see **`.env.example`** for variable names — **never** commit `.env` or paste credentials into docs or chat.
 - **Sheet IDs / tokens:** do not hardcode; read from `config` / `process.env` (see `AGENTS.md`).
+- Commit messages: concise, in English, prefixed with type (feat/fix/refactor/docs).
 
 ## Session bootstrap
 
