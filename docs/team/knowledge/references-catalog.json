@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-12T13:19:26.894Z",
+  "updatedAt": "2026-04-16T13:53:01.061Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -4462,6 +4462,670 @@
       "rankHint": "tier-1",
       "eventIds": [
         "evt_7004a3b8ce167b72"
+      ]
+    },
+    {
+      "id": "ref_ca7824a8d94927cc",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Accelerating the cyber defense ecosystem that protects us all]]>",
+      "url": "https://openai.com/index/accelerating-cyber-defense-ecosystem",
+      "summary": "",
+      "publishedAt": "2026-04-16T00:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:58.311Z",
+      "lastSeenAt": "2026-04-16T13:52:58.311Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ef44c4bc1b48591f"
+      ]
+    },
+    {
+      "id": "ref_c35982cdccbb7f12",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[The next evolution of the Agents SDK]]>",
+      "url": "https://openai.com/index/the-next-evolution-of-the-agents-sdk",
+      "summary": "",
+      "publishedAt": "2026-04-15T10:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:58.312Z",
+      "lastSeenAt": "2026-04-16T13:52:58.312Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8e8911d48cc9413a"
+      ]
+    },
+    {
+      "id": "ref_0a8de193a8eca781",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Trusted access for the next era of cyber defense]]>",
+      "url": "https://openai.com/index/scaling-trusted-access-for-cyber-defense",
+      "summary": "",
+      "publishedAt": "2026-04-14T00:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:58.312Z",
+      "lastSeenAt": "2026-04-16T13:52:58.312Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_a4a8d43b3388f7cb"
+      ]
+    },
+    {
+      "id": "ref_f68884a17fe35985",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Enterprises power agentic workflows in Cloudflare Agent Cloud with OpenAI]]>",
+      "url": "https://openai.com/index/cloudflare-openai-agent-cloud",
+      "summary": "",
+      "publishedAt": "2026-04-13T06:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:58.312Z",
+      "lastSeenAt": "2026-04-16T13:52:58.312Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_36d00ffa85cdae6d"
+      ]
+    },
+    {
+      "id": "ref_2bd08708ddd35874",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.89.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.89.0",
+      "summary": "## 0.89.0 (2026-04-14) Full Changelog: [sdk-v0.88.0...sdk-v0.89.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.88.0...sdk-v0.89.0) ### Features * **api:** manual updates ([57c2a11](https://github.com/anthropics/anthropic-sdk-typescript/commit/57c2a11c61ef9dfdad49a3ab91c4c567d13d1f73)) * **api:** mark Sonnet and Opus 4 as deprecated ([eff41b7](https://github.com/anthropics/anthropic-sdk-typescript/commit/eff41b717f16435167e53c5227774ef5bf079523)) ### Bug Fixes * **streaming:** add missing events ([4c52919](https://github.com/anthropics/anthropic-sdk-typescript/commit/4c52919187d17c15d53b08d818d7dd9a5728267e))",
+      "publishedAt": "2026-04-14T19:08:56Z",
+      "firstSeenAt": "2026-04-16T13:52:58.448Z",
+      "lastSeenAt": "2026-04-16T13:52:58.448Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c622756d29611294"
+      ]
+    },
+    {
+      "id": "ref_0e0391fd1436f30c",
+      "sourceId": "vercel-releases",
+      "title": "vercel@51.5.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4051.5.0",
+      "summary": "### Minor Changes - Add `vercel connex create` command ([#15988](https://github.com/vercel/vercel/pull/15988)) - Add `vercel deploy-hooks` command to create, list, and remove deploy hooks. ([#15935](https://github.com/vercel/vercel/pull/15935)) ### Patch Changes - Enable functions beta hint when flag is true ([#15965](https://github.com/vercel/vercel/pull/15965)) - Improve the `vercel metrics` CLI by making it generally available, simplifying metric selection, and cleaning up schema output. ([#15904](https://github.com/vercel/vercel/pull/15904)) - Updated dependencies \\[[`bb834e53bca374d44f86bda3892e77ded226a26a`](https://github.com/vercel/vercel/commit/bb834e53bca374d44f86bda3892e77ded226a26a), [`bab75d7ff6b7a188167bbd7583a8b36d9d250d5a`](https://github.com/vercel/vercel/commit/bab75d7ff6b7a188167bbd7583a8b36d9d250d5a), [`2243233194c6e38d75ed2a1ca040acaaf3b2e686`](https://github.com/vercel/vercel/commit/2243233194c6e38d75ed2a1ca040acaaf3b2e686), [`232b45fd82adf4a8d538a853bfc1df7a5d16f4c9`](https://github.com/vercel/vercel/commit/232b45fd82adf4a8d538a853bfc1df7a5d16f4c9)]: - @vercel/python@6.33.1 - @vercel/rust@1.1.1",
+      "publishedAt": "2026-04-16T13:41:59Z",
+      "firstSeenAt": "2026-04-16T13:52:58.483Z",
+      "lastSeenAt": "2026-04-16T13:52:58.483Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_08591a294b505d11"
+      ]
+    },
+    {
+      "id": "ref_be8b1cad46ed5adb",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/rust@1.1.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/rust%401.1.1",
+      "summary": "### Patch Changes - Support entry point without extension for dev server ([#15998](https://github.com/vercel/vercel/pull/15998))",
+      "publishedAt": "2026-04-16T13:41:53Z",
+      "firstSeenAt": "2026-04-16T13:52:58.483Z",
+      "lastSeenAt": "2026-04-16T13:52:58.483Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d644011b7210c089"
+      ]
+    },
+    {
+      "id": "ref_40fb217562bff598",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python@6.33.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python%406.33.1",
+      "summary": "### Patch Changes - Enable functions beta hint when flag is true ([#15965](https://github.com/vercel/vercel/pull/15965)) - [services] don't catch all routes for non-web Python services ([#15960](https://github.com/vercel/vercel/pull/15960)) - Remove duplicated error message. ([#16000](https://github.com/vercel/vercel/pull/16000))",
+      "publishedAt": "2026-04-16T13:41:56Z",
+      "firstSeenAt": "2026-04-16T13:52:58.483Z",
+      "lastSeenAt": "2026-04-16T13:52:58.483Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_3290e76136df2a36"
+      ]
+    },
+    {
+      "id": "ref_b21e4ed9c760f75f",
+      "sourceId": "vercel-releases",
+      "title": "vercel@51.4.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4051.4.0",
+      "summary": "### Minor Changes - Support dynamically specifying crons from a python service ([#15930](https://github.com/vercel/vercel/pull/15930)) ### Patch Changes - Add `vercel flags rollout` for progressive rollouts. ([#15963](https://github.com/vercel/vercel/pull/15963)) Examples: ```bash vercel flags rollout redesigned-checkout \\ --environment production \\ --by user.userId \\ --stage 5,6h \\ --stage 10,6h \\ --stage 25,12h \\ --stage 50,1d ``` ```bash vercel flags rollout redesigned-checkout \\ --environment production \\ --by user.userId \\ --stage 5,30m \\ --stage 25,2h \\ --stage 50,8h \\ --start now ``` ```bash vercel flags rollout welcome-message \\ --environment production \\ --by user.userId \\ --from-variant control \\ --to-variant treatment \\ --default-variant control \\ --stage 10,2h \\ --stage 50,12h \\ --start 2026-04-16T09:00:00Z ``` ```bash vercel flags rollout redesigned-checkout \\ --environment production \\ --stage 10,6h \\ --stage 50,1d \\ --message \"Adjust production rollout schedule\" ``` - Updated dependencies \\[[`16aca7dadcea2f877ffae79afa72c14a95f682e3`](https://github.com/vercel/vercel/commit/16aca7dadcea2f877ffae79afa72c14a95f682e3), [`1a7423debdd453e4c3a6297119fc8f7b4efc14c3`](https://github.com/vercel/vercel/commit/1a7423debdd453e4c3a6297119fc8f7b4efc14c3), [`2fd561868cd4b0960ba790deed54ca77263212ec`](https://github.com/vercel/vercel/commit/2fd561868cd4b0960ba790deed54ca77263212ec), [`44897297d569742e93725d71ca481803c9b0b9cc`](https://github.com/vercel/vercel/commit/44897297d569742e93725d71ca481803c9b0b9cc)]: - @vercel/node@5.7.7 - @vercel/python@6.33.0 - @vercel/next@4.16.8 - @vercel/build-utils@13.17.0 - @vercel/elysia@0.1.65 - @vercel/express@0.1.75 - @vercel/fastify@0.1.68 - @vercel/h3@0.1.74 - @vercel/hono@0.2.68 - @vercel/koa@0.1.48 - @vercel/nestjs@0.2.69 - @vercel/static-build@2.9.15 - @vercel/backends@0.0.62 - @vercel/go@3.5.0 - @vercel/hydrogen@1.3.6 - @vercel/redwood@2.4.12 - @vercel/remix-builder@5.7.2 - @vercel/ruby@2.3.2 - @vercel/rust@1.1.0",
+      "publishedAt": "2026-04-15T18:35:40Z",
+      "firstSeenAt": "2026-04-16T13:52:58.486Z",
+      "lastSeenAt": "2026-04-16T13:52:58.486Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_c4e6988fac8a4efb"
+      ]
+    },
+    {
+      "id": "ref_7e2e1bf27cf86380",
+      "sourceId": "vercel-releases",
+      "title": "vercel@51.3.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4051.3.0",
+      "summary": "### Minor Changes - Add `vercel alerts inspect` to fetch a single alert group by id with linked project, explicit `--project`, or `--all` scope. ([#15850](https://github.com/vercel/vercel/pull/15850)) - Add root to experimentalServices to set a service's working directory. ([#15929](https://github.com/vercel/vercel/pull/15929)) - Add a new flag to vercel deploy to let users deploy to hive ([#15892](https://github.com/vercel/vercel/pull/15892)) ### Patch Changes - Return 3xx responses directly in `client.fetch()` when `redirect: 'manual'` is passed, instead of entering the error/retry path. ([#15953](https://github.com/vercel/vercel/pull/15953)) - Add JSON feature flag support to the CLI so flags can be created, updated, listed, inspected, and set with JSON variant values just like existing boolean, string, and number kinds. ([#15741](https://github.com/vercel/vercel/pull/15741)) This aligns the CLI with the recent API and dashboard changes for `json` flags, including parsing raw JSON inputs and preserving structured values in output. - Display case-insensitive feature flag rule comparisons correctly in the CLI. ([#15743](https://github.com/vercel/vercel/pull/15743)) - Updated dependencies \\[[`86d1f5b3cbd520af2632d4a3d6a1f24557448c0e`](https://github.com/vercel/vercel/commit/86d1f5b3cbd520af2632d4a3d6a1f24557448c0e), [`1056be976b6ba9b42cc1e2ffe895d255ab6c9850`](https://github.com/vercel/vercel/commit/1056be976b6ba9b42cc1e2ffe895d255ab6c9850), [`c27eedaa1b0e3f6e3770b578f62e5463d82f06e0`](https://github.com/vercel/vercel/commit/c27eedaa1b0e3f6e3770b578f62e5463d82f06e0)]: - @vercel/build-utils@13.16.0 - @vercel/python@6.32.0 - @vercel/backends@0.0.61 - @vercel/elysia@0.1.64 - @vercel/express@0.1.74 - @vercel/fastify@0.1.67 - @vercel/go@3.5.0 - @vercel/h3@0.1.73 - @vercel/hono@0.2.67 - @vercel/hydrogen@1.3.6 - @vercel/koa@0.1.47 - @vercel/nestjs@0.2.68 - @vercel/next@4.16.7 - @vercel/node@5.7.6 - @vercel/redwood@2.4.12 - @vercel/remix-builder@5.7.2 - @vercel/ruby@2.3.2 - @vercel/rust@1.1.0 - @vercel/static-build@2.9.14",
+      "publishedAt": "2026-04-15T13:55:40Z",
+      "firstSeenAt": "2026-04-16T13:52:58.486Z",
+      "lastSeenAt": "2026-04-16T13:52:58.486Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5e794a1c9e8d25a8"
+      ]
+    },
+    {
+      "id": "ref_03b9395c903d4ca5",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/static-build@2.9.15",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/static-build%402.9.15",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/gatsby-plugin-vercel-builder@2.1.15",
+      "publishedAt": "2026-04-15T18:35:43Z",
+      "firstSeenAt": "2026-04-16T13:52:58.486Z",
+      "lastSeenAt": "2026-04-16T13:52:58.486Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5a01a5b692859a23"
+      ]
+    },
+    {
+      "id": "ref_e1c41426e9249040",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/static-build@2.9.14",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/static-build%402.9.14",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/gatsby-plugin-vercel-builder@2.1.14",
+      "publishedAt": "2026-04-15T13:56:34Z",
+      "firstSeenAt": "2026-04-16T13:52:58.486Z",
+      "lastSeenAt": "2026-04-16T13:52:58.486Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f046edcf81ff7a61"
+      ]
+    },
+    {
+      "id": "ref_41ba7dca6e704e56",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python@6.33.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python%406.33.0",
+      "summary": "### Minor Changes - Fix local builds when pinned Python version is not on PATH. ([#15897](https://github.com/vercel/vercel/pull/15897)) - Support dynamically specifying crons from a python service ([#15930](https://github.com/vercel/vercel/pull/15930))",
+      "publishedAt": "2026-04-15T18:35:22Z",
+      "firstSeenAt": "2026-04-16T13:52:58.487Z",
+      "lastSeenAt": "2026-04-16T13:52:58.487Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_80ddeaa5505dac84"
+      ]
+    },
+    {
+      "id": "ref_eddd4104180fd745",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "The Non-Optimality of Scientific Knowledge: Path Dependence, Lock-In, and The Local Minimum Trap",
+      "url": "https://arxiv.org/abs/2604.11828",
+      "summary": "arXiv:2604.11828v2 Announce Type: new Abstract: Science is widely regarded as humanity's most reliable method for uncovering truths about the natural world. Yet the \\emph{trajectory} of scientific discovery is rarely examined as an optimization problem in its own right. This paper argues that the body of scientific knowledge, at any given historical moment, represents a \\emph{local optimum} rather than a global one--that the frameworks, formalisms, and paradigms through which we understand nature are substantially shaped by historical contingency, cognitive path dependence, and institutional lock-in. Drawing an analogy to gradient descent in machine learning, we propose that science follows the steepest local gradient of tractability, empirical accessibility, and institutional reward, and in doing so may bypass fundamentally superior descriptions of nature. We develop this thesis through detailed case studies spanning mathematics, physics, chemistry, biology, neuroscience, and statistical methodology. We identify three interlocking mechanisms of lock-in--cognitive, formal, and institutional--and argue that recognizing these mechanisms is a prerequisite for designing meta-scientific strategies capable of escaping local optima. We conclude by proposing concrete interventions and discussing the epistemological implications of our thesis for the philosophy of science.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.396Z",
+      "lastSeenAt": "2026-04-16T13:52:59.396Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d4fbc56278096fbe"
+      ]
+    },
+    {
+      "id": "ref_bbffd31265991bb0",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Self-Monitoring Benefits from Structural Integration: Lessons from Metacognition in Continuous-Time Multi-Timescale Agents",
+      "url": "https://arxiv.org/abs/2604.11914",
+      "summary": "arXiv:2604.11914v1 Announce Type: new Abstract: Self-monitoring capabilities -- metacognition, self-prediction, and subjective duration -- are often proposed as useful additions to reinforcement learning agents. But do they actually help? We investigate this question in a continuous-time multi-timescale agent operating in predator-prey survival environments of varying complexity, including a 2D partially observable variant. We first show that three self-monitoring modules, implemented as auxiliary-loss add-ons to a multi-timescale cortical hierarchy, provide no statistically significant benefit across 20 random seeds, 1D and 2D predator-prey environments with standard and non-stationary variants, and training horizons up to 50,000 steps. Diagnosing the failure, we find the modules collapse to near-constant outputs (confidence std < 0.006, attention allocation std < 0.011) and the subjective duration mechanism shifts the discount factor by less than 0.03%. Policy sensitivity analysis confirms the agent's decisions are unaffected by module outputs in this design. We then show that structurally integrating the module outputs -- using confidence to gate exploration, surprise to trigger workspace broadcasts, and self-model predictions as policy input -- produces a medium-large improvement over the add-on approach (Cohen's d = 0.62, p = 0.06, paired) in a non-stationary environment. Component-wise ablations reveal that the TSM-to-policy pathway contributes most of this gain. However, structural integration does not significantly outperform a baseline with no self-monitoring (d = 0.15, p = 0.67), and a parameter-matched control without modules performs comparably, so the benefit may lie in recovering from the trend-level harm of ignored modules rather than in self-monitoring content. The architectural implication is that self-monitoring should sit on the decision pathway, not beside it.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_98957bec6502ef94"
+      ]
+    },
+    {
+      "id": "ref_0896dcd29baa11d0",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "GoodPoint: Learning Constructive Scientific Paper Feedback from Author Responses",
+      "url": "https://arxiv.org/abs/2604.11924",
+      "summary": "arXiv:2604.11924v1 Announce Type: new Abstract: While LLMs hold significant potential to transform scientific research, we advocate for their use to augment and empower researchers rather than to automate research without human oversight. To this end, we study constructive feedback generation, the task of producing targeted, actionable feedback that helps authors improve both their research and its presentation. In this work, we operationalize the effectiveness of feedback along two author-centric axes-validity and author action. We first curate GoodPoint-ICLR, a dataset of 19K ICLR papers with reviewer feedback annotated along both dimensions using author responses. Building on this, we introduce GoodPoint, a training recipe that leverages success signals from author responses through fine-tuning on valid and actionable feedback, together with preference optimization on both real and synthetic preference pairs. Our evaluation on a benchmark of 1.2K ICLR papers shows that a GoodPoint-trained Qwen3-8B improves the predicted success rate by 83.7% over the base model and sets a new state-of-the-art among LLMs of similar size in feedback matching on a golden human feedback set, even surpassing Gemini-3-flash in precision. We further validate these findings through an expert human study, demonstrating that GoodPoint consistently delivers higher practical value as perceived by authors.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ba4afd9bd1d2b0e9"
+      ]
+    },
+    {
+      "id": "ref_7f85391df8bd4ff0",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Narrative-Driven Paper-to-Slide Generation via ArcDeck",
+      "url": "https://arxiv.org/abs/2604.11969",
+      "summary": "arXiv:2604.11969v1 Announce Type: new Abstract: We introduce ArcDeck, a multi-agent framework that formulates paper-to-slide generation as a structured narrative reconstruction task. Unlike existing methods that directly summarize raw text into slides, ArcDeck explicitly models the source paper's logical flow. It first parses the input to construct a discourse tree and establish a global commitment document, ensuring the high-level intent is preserved. These structural priors then guide an iterative multi-agent refinement process, where specialized agents iteratively critique and revise the presentation outline before rendering the final visual layouts and designs. To evaluate our approach, we also introduce ArcBench, a newly curated benchmark of academic paper-slide pairs. Experimental results demonstrate that explicit discourse modeling, combined with role-specific agent coordination, significantly improves the narrative flow and logical coherence of the generated presentations.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_2975ab02f2d96fea"
+      ]
+    },
+    {
+      "id": "ref_463f491279cbda9e",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "The Long-Horizon Task Mirage? Diagnosing Where and Why Agentic Systems Break",
+      "url": "https://arxiv.org/abs/2604.11978",
+      "summary": "arXiv:2604.11978v1 Announce Type: new Abstract: Large language model (LLM) agents perform strongly on short- and mid-horizon tasks, but often break down on long-horizon tasks that require extended, interdependent action sequences. Despite rapid progress in agentic systems, these long-horizon failures remain poorly characterized, hindering principled diagnosis and comparison across domains. To address this gap, we introduce HORIZON, an initial cross-domain diagnostic benchmark for systematically constructing tasks and analyzing long-horizon failure behaviors in LLM-based agents. Using HORIZON, we evaluate state-of-the-art (SOTA) agents from multiple model families (GPT-5 variants and Claude models), collecting 3100+ trajectories across four representative agentic domains to study horizon-dependent degradation patterns. We further propose a trajectory-grounded LLM-as-a-Judge pipeline for scalable and reproducible failure attribution, and validate it with human annotation on trajectories, achieving strong agreement (inter-annotator \\kappa=0.61; human-judge \\kappa=0.84). Our findings offer an initial methodological step toward systematic, cross-domain analysis of long-horizon agent failures and offer practical guidance for building more reliable long-horizon agents. We release our project website at \\href{https://xwang2775.github.io/horizon-leaderboard/}{HORIZON Leaderboard} and welcome contributions from the community.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9ab68a1887a7fb8c"
+      ]
+    },
+    {
+      "id": "ref_054ebc582c696a3b",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "When to Forget: A Memory Governance Primitive",
+      "url": "https://arxiv.org/abs/2604.12007",
+      "summary": "arXiv:2604.12007v1 Announce Type: new Abstract: Agent memory systems accumulate experience but currently lack a principled operational metric for memory quality governance -- deciding which memories to trust, suppress, or deprecate as the agent's task distribution shifts. Write-time importance scores are static; dynamic management systems use LLM judgment or structural heuristics rather than outcome feedback. This paper proposes Memory Worth (MW): a two-counter per-memory signal that tracks how often a memory co-occurs with successful versus failed outcomes, providing a lightweight, theoretically grounded foundation for staleness detection, retrieval suppression, and deprecation decisions. We prove that MW converges almost surely to the conditional success probability p+(m) = Pr[y_t = +1 | m in M_t] -- the probability of task success given that memory m is retrieved -- under a stationary retrieval regime with a minimum exploration condition. Importantly, p+(m) is an associational quantity, not a causal one: it measures outcome co-occurrence rather than causal contribution. We argue this is still a useful operational signal for memory governance, and we validate it empirically in a controlled synthetic environment where ground-truth utility is known: after 10,000 episodes, the Spearman rank-correlation between Memory Worth and true utilities reaches rho = 0.89 +/- 0.02 across 20 independent seeds, compared to rho = 0.00 for systems that never update their assessments. A retrieval-realistic micro-experiment with real text and neural embedding retrieval (all-MiniLM-L6-v2) further shows stale memories crossing the low-value threshold (MW = 0.17) while specialist memories remain high-value (MW = 0.77) across 3,000 episodes. The estimator requires only two scalar counters per memory unit and can be added to architectures that already log retrievals and episode outcomes.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_df2e78bd432156c8"
+      ]
+    },
+    {
+      "id": "ref_4f828d985bb2389b",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Identity as Attractor: Geometric Evidence for Persistent Agent Architecture in LLM Activation Space",
+      "url": "https://arxiv.org/abs/2604.12016",
+      "summary": "arXiv:2604.12016v1 Announce Type: new Abstract: Large language models map semantically related prompts to similar internal representations -- a phenomenon interpretable as attractor-like dynamics. We ask whether the identity document of a persistent cognitive agent (its cognitive_core) exhibits analogous attractor-like behavior. We present a controlled experiment on Llama 3.1 8B Instruct, comparing hidden states of an original cognitive_core (Condition A), seven paraphrases (Condition B), and seven structurally matched controls (Condition C). Mean-pooled states at layers 8, 16, and 24 show that paraphrases converge to a tighter cluster than controls (Cohen's d > 1.88, p < 10^{-27}, Bonferroni-corrected). Replication on Gemma 2 9B confirms cross-architecture generalizability. Ablations suggest the effect is primarily semantic rather than structural, and that structural completeness appears necessary to reach the attractor region. An exploratory experiment shows that reading a scientific description of the agent shifts internal state toward the attractor -- closer than a sham preprint -- distinguishing knowing about an identity from operating as that identity. These results provide representational evidence that agent identity documents induce attractor-like geometry in LLM activation space.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_b338247cb9ce7b13"
+      ]
+    },
+    {
+      "id": "ref_ac7777f53f738cd5",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "A longitudinal health agent framework",
+      "url": "https://arxiv.org/abs/2604.12019",
+      "summary": "arXiv:2604.12019v1 Announce Type: new Abstract: Although artificial intelligence (AI) agents are increasingly proposed to support potentially longitudinal health tasks, such as symptom management, behavior change, and patient support, most current implementations fall short of facilitating user intent and fostering accountability. This contrasts with prior work on supporting longitudinal needs, where follow-up, coherent reasoning, and sustained alignment with individuals' goals are critical for both effectiveness and safety. In this paper, we draw on established clinical and personal health informatics frameworks to define what it would mean to orchestrate longitudinal health interactions with AI agents. We propose a multi-layer framework and corresponding agent architecture that operationalizes adaptation, coherence, continuity, and agency across repeated interactions. Through representative use cases, we demonstrate how longitudinal agents can maintain meaningful engagement, adapt to evolving goals, and support safe, personalized decision-making over time. Our findings underscore both the promise and the complexity of designing systems capable of supporting health trajectories beyond isolated interactions, and we offer guidance for future research and development in multi-session, user-centered health AI.",
+      "publishedAt": "2026-04-16T04:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:52:59.397Z",
+      "lastSeenAt": "2026-04-16T13:52:59.397Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d5b083a7117bcbb1"
+      ]
+    },
+    {
+      "id": "ref_021a11e5880f5613",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.164",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.164",
+      "summary": "### Patch Changes - Updated dependencies [83434a9] - @ai-sdk/gateway@3.0.101",
+      "publishedAt": "2026-04-16T07:54:05Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_49572aef6156cb5a"
+      ]
+    },
+    {
+      "id": "ref_a022d04592d08e64",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.163",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.163",
+      "summary": "### Patch Changes - Updated dependencies [a27a631] - @ai-sdk/gateway@3.0.100",
+      "publishedAt": "2026-04-16T07:23:25Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_3407e539f72a07eb"
+      ]
+    },
+    {
+      "id": "ref_f5c598e92b60c770",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.175",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.175",
+      "summary": "### Patch Changes - Updated dependencies [d4fbea5] - @ai-sdk/gateway@2.0.79",
+      "publishedAt": "2026-04-16T08:31:17Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e9072b54f9d6910b"
+      ]
+    },
+    {
+      "id": "ref_815bdfa74eefaccd",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.174",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.174",
+      "summary": "### Patch Changes - Updated dependencies [140640d] - @ai-sdk/gateway@2.0.78",
+      "publishedAt": "2026-04-16T08:14:04Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_641d1573b5bd03b3"
+      ]
+    },
+    {
+      "id": "ref_6b9784975f2af5f2",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.164",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.164",
+      "summary": "### Patch Changes - ai@6.0.164",
+      "publishedAt": "2026-04-16T07:54:11Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_4fea9ef3c7db1a3f"
+      ]
+    },
+    {
+      "id": "ref_54e25075b2e251cd",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.163",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.163",
+      "summary": "### Patch Changes - ai@6.0.163",
+      "publishedAt": "2026-04-16T07:23:33Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_7cb3ee3f70fce8ef"
+      ]
+    },
+    {
+      "id": "ref_4c45c3f8806e829d",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@2.0.175",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%402.0.175",
+      "summary": "### Patch Changes - ai@5.0.175",
+      "publishedAt": "2026-04-16T08:31:08Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9efd6e9ebfff92aa"
+      ]
+    },
+    {
+      "id": "ref_a97aa3fd3bc9264e",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@2.0.174",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%402.0.174",
+      "summary": "### Patch Changes - ai@5.0.174",
+      "publishedAt": "2026-04-16T08:13:49Z",
+      "firstSeenAt": "2026-04-16T13:53:00.079Z",
+      "lastSeenAt": "2026-04-16T13:53:00.079Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_dfca63d66ab354a6"
+      ]
+    },
+    {
+      "id": "ref_afac9fd7055fb960",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Training and Finetuning Multimodal Embedding & Reranker Models with Sentence Transformers",
+      "url": "https://huggingface.co/blog/train-multimodal-sentence-transformers",
+      "summary": "",
+      "publishedAt": "2026-04-16T00:00:00.000Z",
+      "firstSeenAt": "2026-04-16T13:53:01.060Z",
+      "lastSeenAt": "2026-04-16T13:53:01.060Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_867b5be6af26c3db"
+      ]
+    },
+    {
+      "id": "ref_2289a6ea94cfed37",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Inside VAKRA: Reasoning, Tool Use, and Failure Modes of Agents",
+      "url": "https://huggingface.co/blog/ibm-research/vakra-benchmark-analysis",
+      "summary": "",
+      "publishedAt": "2026-04-15T12:07:25.000Z",
+      "firstSeenAt": "2026-04-16T13:53:01.060Z",
+      "lastSeenAt": "2026-04-16T13:53:01.060Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_9639fb38a5fc59d0"
+      ]
+    },
+    {
+      "id": "ref_a6b3ac2bc2fd6f5d",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Meet HoloTab by HCompany. Your AI browser companion.",
+      "url": "https://huggingface.co/blog/Hcompany/holotab",
+      "summary": "",
+      "publishedAt": "2026-04-15T09:25:20.000Z",
+      "firstSeenAt": "2026-04-16T13:53:01.060Z",
+      "lastSeenAt": "2026-04-16T13:53:01.060Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_98b03aa8758d4055"
       ]
     }
   ]
