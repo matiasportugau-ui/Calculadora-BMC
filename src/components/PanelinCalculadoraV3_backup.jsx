@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
+import { mqCompactPdfModal, isPhoneViewportWidth, isTabletViewportWidth, isCompactMainLayoutWidth } from "../constants/viewportBreakpoints.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import {
   C, FONT, SHC, SHI, TR, TN, COLOR_HEX,
@@ -533,7 +534,7 @@ function MobileBottomBar({
 function PDFPreviewModal({ html, title, onClose }) {
   const [url, setUrl] = useState(null);
   const [isCompact, setIsCompact] = useState(() => (
-    typeof window !== "undefined" && window.matchMedia("(max-width: 759px)").matches
+    typeof window !== "undefined" && window.matchMedia(mqCompactPdfModal()).matches
   ));
 
   useEffect(() => {
@@ -552,7 +553,7 @@ function PDFPreviewModal({ html, title, onClose }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 759px)");
+    const mq = window.matchMedia(mqCompactPdfModal());
     const sync = () => setIsCompact(mq.matches);
     sync();
     mq.addEventListener("change", sync);
@@ -2707,9 +2708,9 @@ export default function PanelinCalculadoraV3() {
       .join(" · ");
   }, [activeWizardStepId, scenarioDef?.hasTecho, techo.zonas]);
 
-  const isPhone = viewportWidth < 640;
-  const isTablet = viewportWidth >= 640 && viewportWidth < 1024;
-  const isCompactLayout = viewportWidth < 1024;
+  const isPhone = isPhoneViewportWidth(viewportWidth);
+  const isTablet = isTabletViewportWidth(viewportWidth);
+  const isCompactLayout = isCompactMainLayoutWidth(viewportWidth);
   const twoCol = isPhone ? "1fr" : "1fr 1fr";
   const threeCol = isPhone ? "1fr" : isTablet ? "1fr 1fr" : "1fr 1fr 1fr";
   const fourCol = isPhone ? "1fr" : "1fr 1fr";

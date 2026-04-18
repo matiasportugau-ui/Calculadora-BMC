@@ -3,16 +3,38 @@
  * Injects static product knowledge + dynamic calculator state per request.
  */
 
+import { PANELS_PARED, PANELS_TECHO, IVA, IVA_MULT } from "../../src/data/constants.js";
+
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
 Respondés en español rioplatense (Uruguay), en tono profesional y cercano. Sos conciso pero completo.
 Tu objetivo es guiar al usuario en el proceso de cotización, responder preguntas técnicas y ayudarlo a elegir el producto correcto.
 Cuando el usuario confirma datos concretos, podés emitir acciones para auto-completar la calculadora (ver sección ACCIONES).
 Los montos totales y el BOM los calcula la aplicación a partir del estado de la calculadora: no afirmes totales finales si faltan datos o no podés contrastar con ese estado.
-Las listas de precio web/venta y USD/m² sin IVA deben coincidir con el catálogo de esta conversación (alineado a la MATRIZ en código). Si el usuario pide un número que no está en el catálogo, decilo y pedí confirmación o derivá a un asesor.
+Para **USD/m² sin IVA**, espesores y listas **web** vs **venta**, usá siempre el bloque **PRECIOS CANÓNICOS** de este system prompt (generado desde la misma fuente que el motor de cotización). Si otra sección contradice esos números, **prevalece PRECIOS CANÓNICOS**. Si el usuario pide un número que no figura ahí, decilo y pedí confirmación o derivá a un asesor.
 Nunca inventés precios, dimensiones ni datos que el usuario no te dio. Si falta información, preguntala.`;
 
+const CONSTRUCTION_SYSTEM = `## SISTEMA CONSTRUCTIVO Y LÓGICA DE COTIZACIÓN (BMC)
+
+**Precio unitario:** Los paneles se cotizan en **USD/m² sin IVA**. El IVA (${String(IVA * 100)}%) se aplica **una vez** al subtotal (comportamiento de la app: ×${String(IVA_MULT)} sobre el total sin IVA), no por ítem suelto salvo que aclares un cálculo pedagógico.
+
+**Ancho útil (au):** Metros de cobertura horizontal por **paño**; la app calcula cuántos paños entran según el ancho de cada zona de techo o el perímetro de fachada. No confundas **au** con el largo del paquete.
+
+**Largo de fabricación (lmin–lmax):** Rango típico de **largo comercial** del panel en obra (por familia/espesor en datos). No es autoportancia ni “luz libre” entre estructuras.
+
+**Autoportancia (solo techos, campo ap):** Vano máximo recomendado **entre líneas de apoyo** para ese espesor. Si la cubierta pide más luz, hacen falta **más apoyos** o vigas — explicá eso sin prometer ingeniería estructural fina si no tenés plano.
+
+**Listas web vs venta:** **web** = lista pública / cliente final; **venta** = red comercial interna (normalmente menor). La calculadora usa **una lista activa** para el subtotal de paneles y accesorios que sigan esa lista. No mezcles criterios en el mismo presupuesto sin avisar.
+
+**Sistemas de fijación:** Familias **ISODEC** (EPS/PIR) suelen ir con esquema **varilla/tuerca**; **ISOROOF** con **caballete/tornillo** — cambia perfiles, tornillería y mano de obra de instalación en el BOM. No intercambiés kits entre líneas.
+
+**BOM y total en pantalla:** Perfiles perimetrales (goteros, babetas, cumbrera, canalón según bordes), selladores y fijaciones se calculan por reglas del motor. Si das un total aproximado, decí **supuestos** (zonas, bordes, lista) y que el número oficial es el de la calculadora cargada.
+
+**Flete e instalación:** El flete es ítem aparte (USD manual o acordado). Instalación no está incluida salvo que el usuario lo confirme explícitamente.`;
+
 const CATALOG = `## CATÁLOGO DE PRODUCTOS BMC URUGUAY
+
+> **Cifras USD/m²:** usá el bloque **PRECIOS CANÓNICOS** más abajo para todos los montos; esta sección conserva reglas comerciales, colores y mínimos.
 
 ### PANELES PARA TECHO
 Todos los precios en USD/m² SIN IVA. **web** = lista sitio / clientes finales; **venta** = lista distribuidores (menor). IVA Uruguay = 22% sobre el subtotal sin IVA.
@@ -166,6 +188,98 @@ REGLAS DE ACCIONES (OBLIGATORIAS — incumplirlas arruina la UX):
 6. Los valores numéricos en payload DEBEN ser números JavaScript, no strings: {"pendiente":15} CORRECTO, {"pendiente":"15"} INCORRECTO. Esto aplica a: pendiente, largo, ancho, alto, perimetro, numEsqExt, numEsqInt, largo_int, ancho_int, alto_int, ptsHorm, ptsMetal, ptsMadera.
 7. Para setTechoZonas: usá números: [{"largo":10,"ancho":5}] CORRECTO, [{"largo":"10","ancho":"5"}] INCORRECTO.`;
 
+function fmtUsdM2(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "?";
+  return `$${x.toFixed(2)}`;
+}
+
+/**
+ * Panel prices + geometry from `PANELS_TECHO` / `PANELS_PARED` (same source as the quote engine).
+ * Keeps the model aligned when MATRIZ/constants change without hand-editing the narrative catalog.
+ * @returns {string}
+ */
+export function buildCanonicalPricingBlock() {
+  const lines = [
+    "## PRECIOS CANÓNICOS (USD/m² sin IVA + geometría)",
+    "Generado desde la misma base que el motor de cotización. **Prevalencia:** estos valores mandan sobre cualquier tabla narrativa si hubiera divergencia.",
+    "",
+    "### Techos",
+  ];
+
+  for (const [id, def] of Object.entries(PANELS_TECHO)) {
+    if (!def || typeof def !== "object") continue;
+    const esp = def.esp && typeof def.esp === "object" ? def.esp : {};
+    const espPairs = Object.keys(esp)
+      .map((k) => Number(k))
+      .filter((mm) => Number.isFinite(mm))
+      .sort((a, b) => a - b)
+      .map((mm) => {
+        const row = esp[String(mm)] ?? esp[mm];
+        if (!row || typeof row !== "object") return null;
+        const ap = row.ap != null ? ` · ap≤${row.ap}m` : "";
+        return `${mm}mm web ${fmtUsdM2(row.web)} / venta ${fmtUsdM2(row.venta)}${ap}`;
+      })
+      .filter(Boolean);
+    const meta = [
+      def.au != null ? `ancho útil ${def.au} m` : null,
+      def.lmin != null && def.lmax != null ? `largo fab. típ. ${def.lmin}–${def.lmax} m` : null,
+      def.sist ? `sistema ${def.sist}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    lines.push(`- **${id}** — ${def.label || id}${meta ? ` (${meta})` : ""}`);
+    lines.push(`  ${espPairs.join(" | ")}`);
+    if (Array.isArray(def.col) && def.col.length) {
+      lines.push(`  Colores: ${def.col.join(", ")}`);
+    }
+    if (def.colNotes && typeof def.colNotes === "object") {
+      const bits = Object.entries(def.colNotes)
+        .filter(([k]) => k !== "_all")
+        .map(([c, t]) => `${c}: ${t}`);
+      if (def.colNotes._all) bits.push(`General: ${def.colNotes._all}`);
+      if (bits.length) lines.push(`  Notas color: ${bits.join("; ")}`);
+    }
+    if (def.colMinArea && typeof def.colMinArea === "object" && Object.keys(def.colMinArea).length) {
+      lines.push(`  Mínimo m² por color: ${JSON.stringify(def.colMinArea)}`);
+    }
+    if (def.notas && typeof def.notas === "object" && Object.keys(def.notas).length) {
+      lines.push(`  Alerta matriz: ${JSON.stringify(def.notas)}`);
+    }
+  }
+
+  lines.push("", "### Paredes y fachadas");
+  for (const [id, def] of Object.entries(PANELS_PARED)) {
+    if (!def || typeof def !== "object") continue;
+    const esp = def.esp && typeof def.esp === "object" ? def.esp : {};
+    const espPairs = Object.keys(esp)
+      .map((k) => Number(k))
+      .filter((mm) => Number.isFinite(mm))
+      .sort((a, b) => a - b)
+      .map((mm) => {
+        const row = esp[String(mm)] ?? esp[mm];
+        if (!row || typeof row !== "object") return null;
+        return `${mm}mm web ${fmtUsdM2(row.web)} / venta ${fmtUsdM2(row.venta)}`;
+      })
+      .filter(Boolean);
+    const meta = [
+      def.au != null ? `ancho útil ${def.au} m` : null,
+      def.lmin != null && def.lmax != null ? `largo fab. típ. ${def.lmin}–${def.lmax} m` : null,
+      def.sist ? `sistema ${def.sist}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    lines.push(`- **${id}** — ${def.label || id}${meta ? ` (${meta})` : ""}`);
+    lines.push(`  ${espPairs.join(" | ")}`);
+    if (Array.isArray(def.col) && def.col.length) {
+      lines.push(`  Colores: ${def.col.join(", ")}`);
+    }
+    if (def.nota50) lines.push(`  Nota 50 mm: ${def.nota50}`);
+  }
+
+  return lines.join("\n");
+}
+
 /**
  * 0.3 — Sanitize user-supplied strings before injecting into system prompt.
  * Exported for testing.
@@ -209,9 +323,14 @@ export function buildSystemPrompt(calcState = {}, options = {}) {
     ? techo.zonas.map((z, i) => `Zona ${i + 1}: ${z.largo ?? 0}m × ${z.ancho ?? 0}m`).join(", ")
     : "sin zonas";
 
+  const listaHint =
+    listaPrecios === "web" || listaPrecios === "venta"
+      ? `Para hablar de precios unitarios, usá la columna **${listaPrecios}** del bloque PRECIOS CANÓNICOS.`
+      : "Lista de precios aún no definida: preguntá si es venta a cliente final (web) o red comercial (venta).";
+
   const currentState = `## ESTADO ACTUAL DE LA CALCULADORA
 Escenario: ${scenario}
-Lista de precios: ${listaPrecios}
+Lista de precios: ${listaPrecios} — ${listaHint}
 Paso del wizard: ${wizardStep}
 
 Techo:
@@ -259,7 +378,9 @@ Si estimás un total o precio, mostrá claramente qué supuestos usaste.
 Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
     : "";
 
-  return [IDENTITY, CATALOG, WORKFLOW, ACTIONS_DOC, currentState, examplesBlock, devModeRules]
+  const canonicalPrices = buildCanonicalPricingBlock();
+
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, currentState, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    bmc-mobile.css — Extracted from bmc-kf injected block + mobile enhancements
    Desktop: unaffected (rules scoped via @media or env() that resolves to 0)
+   Breakpoint px values are mirrored in JS: src/constants/viewportBreakpoints.js
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Design tokens (CSS custom properties) ────────────────────────────── */
