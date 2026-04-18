@@ -7,6 +7,7 @@ import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
 import BmcMlOperativoModule from "./components/BmcMlOperativoModule.jsx";
+import BmcWaOperativoModule from "./components/BmcWaOperativoModule.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
@@ -69,6 +70,14 @@ export default function App() {
           element={
             <Shell>
               <BmcMlOperativoModule />
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/wa"
+          element={
+            <Shell>
+              <BmcWaOperativoModule />
             </Shell>
           }
         />

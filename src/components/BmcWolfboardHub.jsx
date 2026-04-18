@@ -107,6 +107,15 @@ export default function BmcWolfboardHub() {
               Abrir ML operativo
             </Link>
           </div>
+          <div style={card}>
+            <h2 style={cardTitle}>WhatsApp · Operativo</h2>
+            <p style={cardDesc}>
+              Cola CRM con origen WA, aprobar y enviar respuestas vía WhatsApp Cloud API.
+            </p>
+            <Link to="/hub/wa" style={{ ...cta, background: "#25d366" }}>
+              Abrir WA operativo
+            </Link>
+          </div>
         </div>
       </div>
       {/* Floating Panelin bubble */}

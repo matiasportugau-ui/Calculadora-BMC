@@ -2709,6 +2709,31 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
+  router.get("/crm/cockpit/wa-queue", requireCrmCockpitAuth, async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    const estadoFilter = String(req.query.estado || "").trim().toLowerCase();
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const r = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+      });
+      const rawRows = r.data.values || [];
+      const items = [];
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = FIRST_DATA_ROW + i;
+        const parsed = parseCrmRowAtoAK([rawRows[i]]);
+        const origen = String(parsed.origen || "");
+        if (!/WA/i.test(origen) && !/WhatsApp/i.test(origen)) continue;
+        if (estadoFilter && !String(parsed.estado || "").toLowerCase().includes(estadoFilter)) continue;
+        items.push({ row: rowNum, parsed });
+      }
+      return res.json({ ok: true, items });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   router.post("/crm/cockpit/sync-ml", requireCrmCockpitAuth, async (req, res) => {
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
     if (!sheetId) return noConfig(res);
