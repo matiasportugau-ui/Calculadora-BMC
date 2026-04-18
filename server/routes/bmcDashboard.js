@@ -20,6 +20,9 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
+import { syncUnansweredQuestions } from "../ml-crm-sync.js";
+import { createTokenStore } from "../tokenStore.js";
+import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -2673,6 +2676,62 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         error: "Unsupported origen for send-approved (need ML + Q:id in W, or WA in F)",
         origen,
       });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.get("/crm/cockpit/ml-queue", requireCrmCockpitAuth, async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    const estadoFilter = String(req.query.estado || "").trim().toLowerCase();
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const r = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+      });
+      const rawRows = r.data.values || [];
+      const items = [];
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = FIRST_DATA_ROW + i;
+        const parsed = parseCrmRowAtoAK([rawRows[i]]);
+        const qid = extractMlQuestionId(parsed.observaciones);
+        if (!qid) continue;
+        const origen = String(parsed.origen || "").toUpperCase();
+        const obs = String(parsed.observaciones || "");
+        if (!origen.includes("ML") && !obs.includes("Q:")) continue;
+        if (estadoFilter && !String(parsed.estado || "").toLowerCase().includes(estadoFilter)) continue;
+        items.push({ row: rowNum, parsed, questionId: qid });
+      }
+      return res.json({ ok: true, items });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/crm/cockpit/sync-ml", requireCrmCockpitAuth, async (req, res) => {
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    if (!sheetId) return noConfig(res);
+    try {
+      const ts = createTokenStore({
+        storageType: config.tokenStorage,
+        filePath: config.tokenFile,
+        gcsBucket: config.tokenGcsBucket,
+        gcsObject: config.tokenGcsObject,
+        encryptionKey: config.tokenEncryptionKey,
+      });
+      const tokens = await ts.read();
+      if (!tokens?.access_token) {
+        return res.status(503).json({ ok: false, error: "No ML tokens — run /auth/ml/start first" });
+      }
+      const mlClient = createMercadoLibreClient({ config, tokenStore: ts, logger: req.log });
+      const result = await syncUnansweredQuestions({
+        ml: mlClient,
+        sheetId,
+        credsPath,
+        logger: req.log,
+      });
+      return res.json({ ok: true, synced: result.synced });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }

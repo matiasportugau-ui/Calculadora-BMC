@@ -67,12 +67,6 @@ const cta = {
   textDecoration: "none",
 };
 
-const disabled = {
-  ...card,
-  opacity: 0.55,
-  pointerEvents: "none",
-};
-
 export default function BmcWolfboardHub() {
   return (
     <div style={wrap}>
@@ -104,10 +98,14 @@ export default function BmcWolfboardHub() {
               Hablar con Panelin
             </Link>
           </div>
-          <div style={disabled} aria-disabled="true">
-            <h2 style={cardTitle}>Próximo módulo</h2>
-            <p style={cardDesc}>Reservado para el siguiente despliegue.</p>
-            <span style={{ ...cta, background: "#aeaeb2", cursor: "default" }}>Próximamente</span>
+          <div style={card}>
+            <h2 style={cardTitle}>Mercado Libre · Operativo</h2>
+            <p style={cardDesc}>
+              Cola CRM, respuesta sugerida (AF), aprobar y publicar en ML (mismo flujo cockpit).
+            </p>
+            <Link to="/hub/ml" style={{ ...cta, background: "#1a3a5c" }}>
+              Abrir ML operativo
+            </Link>
           </div>
         </div>
       </div>

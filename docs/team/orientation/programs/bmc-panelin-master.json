@@ -5,7 +5,7 @@
   "updatedAt": "2026-03-27",
   "owner": "Matias",
   "horizonWeeks": 24,
-  "notes": "Orden de magnitud. Actualizar weekly. currentPhaseId y status de tareas al cerrar trabajo.",
+  "notes": "Orden de magnitud. Actualizar weekly. currentPhaseId y status de tareas al cerrar trabajo. Última verificación pipeline (2026-04-17): gate:local + smoke:prod + project:compass + channels:automated --write; humanGate cm-0 (ver PROJECT-STATE).",
   "currentPhaseId": "p2",
   "phases": [
     {

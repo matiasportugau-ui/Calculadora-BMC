@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-16
+**Última actualización:** 2026-04-17
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-17 (Ops — pipeline verificación / plan BMC run):** Modo **pipeline ligero** ([`orientation/ASYNC-RUNBOOK-UNATTENDED.md`](./orientation/ASYNC-RUNBOOK-UNATTENDED.md)): `npm run gate:local` OK (1 warning ESLint preexistente en `SpecManagementSandbox.jsx`; tests **335** + `roofVisualQuoteConsistency` **10** OK); `npm run smoke:prod` OK (base `https://panelin-calc-642127786762.us-central1.run.app`); `npm run project:compass` OK; `npm run channels:automated -- --write` → `.channels/last-pipeline.json`. **`humanGate.firstBlockingTask`:** **cm-0** (E2E WhatsApp → fila CRM; ver [`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md)). No **Invoque full team** 0→9 en esta sesión. Cierre comercial p2 sigue sujeto a evidencia humana en cm-0 / cm-1 / cm-2.
 
 **2026-04-16 (Calculadora — plan wizard cotización):** Wizard `solo_techo` y afines: sin paso `lista` (lista vía `getListaDefault` + toggle **Precio BMC / Web** en `bmc-right-panel` tras alertas, KPI debajo); `wizardMaxReachedStep` + barra confort + dots acotados; **Datos del proyecto** sticky y modo cliente con **Cliente final** / **Empresa** (`razonSocial`, `contactoRef`); paso `proyecto` como revisión; **Estructura** sin selección en juntas verticales panel–panel (`RoofPreview`); fijaciones ISODEC con tramos de rosca por material (`dimensioningFormulas` + `calcFijacionesVarilla`); Isoroof/hormigón: SKUs `varilla_roscada_8_1m` / `taco_expansivo_8` y `calcFijacionesCaballete` ampliado. Archivos: [`constants.js`](../../src/data/constants.js), [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx), [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx), [`calculations.js`](../../src/utils/calculations.js), [`projectFile.js`](../../src/utils/projectFile.js). `npm test` + `npm run lint` OK (warning preexistente en `SpecManagementSandbox.jsx`).
 

@@ -1,5 +1,7 @@
 # Backlog de mejoras por agente — Hasta equipo completamente desarrollado
 
+**Nota 2026-04-17:** Pipeline ligero (plan BMC run) — sin cambios de criterios por fila §2; estado KB/reference sin delta. Ver `PROJECT-STATE.md` → Cambios recientes y `PROMPT-FOR-EQUIPO-COMPLETO.md` (entrada 2026-04-17).
+
 **Estado 2026-03-20:** ✅ **Todos los roles §2 desarrollados** (incl. **MATPROMT**). Solo mantenimiento: actualizar knowledge cuando cambie el dominio; completar reference.md y examples.md donde falten.
 
 **Alta 2026-03-28:** Nuevo rol §2 **Docs & Repos Organizer** (`bmc-docs-and-repos-organizer`). KB: [`knowledge/DocsOrganizer.md`](./knowledge/DocsOrganizer.md). Skill: [`reference.md`](../.cursor/skills/bmc-docs-and-repos-organizer/reference.md); `examples.md` opcional / N/A.

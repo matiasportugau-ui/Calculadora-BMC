@@ -6,6 +6,7 @@ import { getRouterBasename } from "./utils/routerBasename.js";
 import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
+import BmcMlOperativoModule from "./components/BmcMlOperativoModule.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
@@ -63,6 +64,14 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <Routes>
         <Route path="/hub" element={<BmcWolfboardHub />} />
+        <Route
+          path="/hub/ml"
+          element={
+            <Shell>
+              <BmcMlOperativoModule />
+            </Shell>
+          }
+        />
         <Route
           path="/"
           element={

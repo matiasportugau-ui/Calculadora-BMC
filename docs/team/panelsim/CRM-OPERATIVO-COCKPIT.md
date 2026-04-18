@@ -56,6 +56,8 @@ Si el token no está configurado, las mutaciones devuelven **503**.
 | Método | Ruta | Body (JSON) | Efecto |
 |--------|------|-------------|--------|
 | GET | `/api/crm/cockpit/row/:rowNum` | — | Devuelve la fila parseada (A→AK). `rowNum` ≥ 4. |
+| GET | `/api/crm/cockpit/ml-queue` | Query opcional: `?estado=` (substring en columna Estado) | Lista filas **CRM_Operativo** (aprox. filas 4–500) con `Q:<id>` en **W** y origen ML; cada ítem: `{ row, parsed, questionId }`. |
+| POST | `/api/crm/cockpit/sync-ml` | `{}` | Ejecuta `syncUnansweredQuestions` (ML → planilla). Requiere tokens ML en el servidor y `BMC_SHEET_ID`. Respuesta: `{ ok, synced }`. |
 | POST | `/api/crm/cockpit/quote-link` | `{ "row": 12, "url": "https://..." }` | Escribe **AH** (link presupuesto). |
 | POST | `/api/crm/cockpit/approval` | `{ "row": 12, "approved": true }` | Escribe **AI** (`Sí` / `No`). |
 | POST | `/api/crm/cockpit/mark-sent` | `{ "row": 12, "sentAt": "2026-03-24T12:00:00.000Z" }` | Escribe **AJ** (opcional `sentAt`, default ahora ISO). |
@@ -63,12 +65,14 @@ Si el token no está configurado, las mutaciones devuelven **503**.
 
 **send-approved — reglas:** Texto enviado = **AF** (o **G** si AF vacío). **ML:** `Q:<id>` en observaciones (W) y OAuth ML válido en el servidor. **WhatsApp:** **F** debe sugerir WA y **D** = teléfono; requiere `WHATSAPP_ACCESS_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`. Llamada ML interna usa `PUBLIC_BASE_URL` o `http://127.0.0.1:PORT` en local.
 
+**UI (Calculadora Vite):** ruta **`/hub/ml`** (Wolfboard) — cola, copiar AF, aprobar y enviar usando el mismo token cockpit en sesión (`sessionStorage`).
+
 ---
 
 ## 5. Pendientes / mejoras
 
 1. **Planilla:** Títulos en **fila 3** para **AG–AK** si aún no están.
-2. **Contrato:** Opcional — incluir cockpit en `scripts/validate-api-contracts.js` con token de prueba.
+2. **Contrato:** `GET /api/crm/cockpit/ml-queue` está incluido en `scripts/validate-api-contracts.js` cuando `API_AUTH_TOKEN` está definido y el servidor responde 200.
 3. **Generación de cotización:** Automatizar rellenado de **AH** desde `/calc` o Drive (además del POST manual `quote-link`).
 
 ---

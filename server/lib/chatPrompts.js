@@ -4,6 +4,7 @@
  */
 
 import { PANELS_PARED, PANELS_TECHO, IVA, IVA_MULT } from "../../src/data/constants.js";
+import { loadKnowledgeDocs } from "./knowledgeLoader.js";
 
 const IDENTITY = `Tu nombre es Panelin. Sos el asistente experto de ventas de BMC Uruguay (METALOG SAS).
 BMC Uruguay fabrica y vende paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
@@ -380,7 +381,12 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
 
   const canonicalPrices = buildCanonicalPricingBlock();
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, currentState, examplesBlock, devModeRules]
+  const knowledgeDocs = loadKnowledgeDocs();
+  const knowledgeBlock = knowledgeDocs
+    ? `## DOCUMENTACIÓN TÉCNICA ADICIONAL\n${knowledgeDocs}`
+    : "";
+
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, currentState, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

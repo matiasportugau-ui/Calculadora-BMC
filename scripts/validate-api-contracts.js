@@ -114,6 +114,12 @@ function checkPanelsimEmailSummary(data) {
   return { ok: true };
 }
 
+function checkMlCockpitQueue(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
+  if (!Array.isArray(data.items)) return { ok: false, msg: "items must be array" };
+  return { ok: true };
+}
+
 function checkTransportistaHealth(data) {
   if (!data || typeof data !== "object") return { ok: false, msg: "not an object" };
   if (data.ok !== true) return { ok: false, msg: "ok must be true" };
@@ -222,6 +228,40 @@ async function main() {
     }
   } else {
     console.log("  ⚠️  GET /api/email/panelsim-summary — skip (set API_AUTH_TOKEN for contract check)");
+    passed++;
+  }
+
+  if (apiToken) {
+    const nameMl = "GET /api/crm/cockpit/ml-queue (auth)";
+    try {
+      const { status, data } = await fetchJson("/api/crm/cockpit/ml-queue", {
+        headers: { Authorization: `Bearer ${apiToken}` },
+      });
+      if (status === 503 && data?.error?.includes?.("API_AUTH_TOKEN")) {
+        console.log(`  ⚠️  ${nameMl} — 503 cockpit auth not configured on server`);
+        passed++;
+      } else if (status === 503 && String(data?.error || "").toLowerCase().includes("sheet")) {
+        console.log(`  ⚠️  ${nameMl} — 503 Sheets unavailable, skip contract`);
+        passed++;
+      } else if (status !== 200) {
+        console.log(`  ❌ ${nameMl} — HTTP ${status}`);
+        failed++;
+      } else {
+        const result = checkMlCockpitQueue(data);
+        if (result.ok) {
+          console.log(`  ✅ ${nameMl}`);
+          passed++;
+        } else {
+          console.log(`  ❌ ${nameMl} — ${result.msg}`);
+          failed++;
+        }
+      }
+    } catch (err) {
+      console.log(`  ❌ ${nameMl} — ${err.message}`);
+      failed++;
+    }
+  } else {
+    console.log("  ⚠️  GET /api/crm/cockpit/ml-queue — skip (set API_AUTH_TOKEN for contract check)");
     passed++;
   }
 
