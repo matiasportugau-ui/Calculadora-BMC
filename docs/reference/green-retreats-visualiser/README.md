@@ -27,6 +27,7 @@ Files were fetched with `curl` from `https://www.greenretreats.co.uk/visualiser-
 | `gr_visualiser_v2_code.js` | App logic: UI bridge, scene control, pricing helpers |
 | `gr_visualiser_v2_code.gltf.xz` | **Compressed** scene asset loaded at runtime (`url = './gr_visualiser_v2_code.gltf.xz'` in app JS) |
 | `gr_visualiser_v2_code.gltf` / `.bin` | Uncompressed glTF + buffer (useful for glTF tools; runtime prefers `.xz`) |
+| `gr_visualiser_v2_code.gltf.xz` | **Runtime** asset (XZ-compressed glTF) loaded by `gr_visualiser_v2_code.js` |
 | `*.jpg`, `ar-image.png`, `green-retreats-logo-2019.png` | Textures / AR / preloader branding |
 | `pricing.json.sample` | Snapshot of `pricing.php` response (JSONP-style callback `configuratorPricing(...)`) |
 

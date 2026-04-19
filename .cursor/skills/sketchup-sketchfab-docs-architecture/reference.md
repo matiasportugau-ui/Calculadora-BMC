@@ -12,6 +12,11 @@ Material de apoyo para [SKILL.md](SKILL.md). El agente debe **confirmar rutas y 
 | **Viewer API** | Embed y control del visor 3D en páginas propias | API JS del viewer vs REST; versión del script |
 | **oEmbed** | Incrustar a partir de URL de modelo | Formato oEmbed, parámetros permitidos |
 
+**3D Configurators (producto / marketing, alineado a developers):**
+
+- Página oficial: [https://sketchfab.com/3d-configurators](https://sketchfab.com/3d-configurators)
+- Mensaje útil para agentes: los configuradores son **experiencias de venta personalizadas**; el flujo resumido en el sitio es **crear u optimizar modelos 3D → subirlos a Sketchfab → desarrollar el configurador usando el Viewer API** (aplicación front-end JavaScript), con enlaces a white paper, planes y partners — **no** sustituye la lectura de [Viewer API](https://sketchfab.com/developers/viewer) para implementación.
+
 **Enlaces de entrada (canónicos a nivel “portal”):**
 
 - Overview developers: `https://sketchfab.com/developers`

@@ -146,16 +146,20 @@ export default function BmcWaOperativoModule() {
   const [tokenLoadError, setTokenLoadError] = useState("");
 
   useEffect(() => {
+<<<<<<< HEAD
 <<<<<<< Current (Your changes)
     setTokenInput(getStoredToken());
     setToken(getStoredToken());
 =======
+=======
+>>>>>>> 3d097f05e08098a9fd92be9052f08fd70cfc8bc4
     const stored = getStoredToken();
     if (stored) {
       setTokenInput(stored);
       setToken(stored);
       return;
     }
+<<<<<<< HEAD
     const base = getCalcApiBase();
     const url = `${base.replace(/\/+$/, "")}/api/crm/cockpit-token`;
     fetch(url, { credentials: "omit" })
@@ -169,11 +173,17 @@ export default function BmcWaOperativoModule() {
           console.error("cockpit-token fetch failed", { status: r.status, data });
           return;
         }
+=======
+    fetch("/api/crm/cockpit-token")
+      .then((r) => r.json())
+      .then((data) => {
+>>>>>>> 3d097f05e08098a9fd92be9052f08fd70cfc8bc4
         const t = String(data?.token || "").trim();
         if (t) {
           setStoredToken(t);
           setTokenInput(t);
           setToken(t);
+<<<<<<< HEAD
           setTokenLoadError("");
         } else {
           setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
@@ -187,6 +197,11 @@ export default function BmcWaOperativoModule() {
         console.error("Failed to fetch cockpit token from /api/crm/cockpit-token", err);
       });
 >>>>>>> Incoming (Background Agent changes)
+=======
+        }
+      })
+      .catch(() => {});
+>>>>>>> 3d097f05e08098a9fd92be9052f08fd70cfc8bc4
   }, []);
 
   const showToast = (msg) => {
