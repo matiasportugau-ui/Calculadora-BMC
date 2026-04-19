@@ -552,6 +552,43 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "8c0027718ae336378b2f719d6c2447d74ad19e5f",
+      "short_hash": "8c00277",
+      "date": "2026-04-18",
+      "time": "21:39:19",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "ops",
+      "title": "Cloud Run 300s timeout; sync dev-trace",
+      "subject": "chore(ops): Cloud Run 300s timeout; sync dev-trace",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/fbc024b.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-18.md",
+        "docs/team/PROJECT-STATE.md",
+        "docs/team/SESSION-WORKSPACE-CRM.md",
+        "scripts/cloud-run-panelin-calc-request-timeout.sh",
+        "scripts/deploy-cloud-run.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs",
+          "scripts"
+        ]
+      }
     }
   ]
 }
