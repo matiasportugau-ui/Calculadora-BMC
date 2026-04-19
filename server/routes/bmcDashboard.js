@@ -2376,6 +2376,22 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
 
+  // Delivers the cockpit token to the browser at runtime so it never needs to
+  // be baked into the Vite bundle via VITE_BMC_API_AUTH_TOKEN.
+  // Restricted to same-origin requests (no Authorization header required).
+  router.get("/crm/cockpit-token", (req, res) => {
+    const token = config.apiAuthToken;
+    if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+    const origin = String(req.headers.origin || "");
+    const referer = String(req.headers.referer || "");
+    const host = String(req.headers.host || "");
+    const allowedPatterns = [/localhost/, /127\.0\.0\.1/, /calculadora-bmc\.vercel\.app/, /vercel\.app/];
+    const source = origin || referer;
+    const isSameOrigin = !origin || allowedPatterns.some((p) => p.test(source)) || source.includes(host.split(":")[0]);
+    if (!isSameOrigin) return res.status(403).json({ ok: false, error: "Forbidden" });
+    res.json({ ok: true, token });
+  });
+
   /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
   router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitAuth, async (req, res) => {
     if (!checkVentasAvailable(config)) return noConfig(res);

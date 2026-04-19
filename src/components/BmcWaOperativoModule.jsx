@@ -145,16 +145,22 @@ export default function BmcWaOperativoModule() {
 
   useEffect(() => {
     const stored = getStoredToken();
-    const env =
-      typeof import.meta !== "undefined"
-        ? String(import.meta.env?.VITE_BMC_API_AUTH_TOKEN || "").trim()
-        : "";
-    const resolved = env || stored;
-    if (resolved) {
-      if (resolved !== stored) setStoredToken(resolved);
-      setTokenInput(resolved);
-      setToken(resolved);
+    if (stored) {
+      setTokenInput(stored);
+      setToken(stored);
+      return;
     }
+    fetch("/api/crm/cockpit-token")
+      .then((r) => r.json())
+      .then((data) => {
+        const t = String(data?.token || "").trim();
+        if (t) {
+          setStoredToken(t);
+          setTokenInput(t);
+          setToken(t);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
