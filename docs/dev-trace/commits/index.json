@@ -589,6 +589,38 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "fa3e4009265934c12d000ffc75323800dfc0f4e3",
+      "short_hash": "fa3e400",
+      "date": "2026-04-18",
+      "time": "21:39:34",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes",
+      "subject": "docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/8c00277.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-18.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }

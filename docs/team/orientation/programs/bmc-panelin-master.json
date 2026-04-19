@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "programId": "bmc-panelin-master",
   "title": "BMC / Panelin — programa maestro (multi-área)",
-  "updatedAt": "2026-04-18",
+  "updatedAt": "2026-04-19",
   "owner": "Matias",
   "horizonWeeks": 24,
-  "notes": "Orden de magnitud. Actualizar weekly. currentPhaseId y status de tareas al cerrar trabajo. Última verificación pipeline (2026-04-18): smoke:prod + wa:cloud-check --probe + ml:verify prod + email:ingest-snapshot --dry-run; DEFAULT_BASE smoke alineado a public_base_url; cm-0/cm-1 cerradas automatización; cm-2 dry-run OK — ingest real CRM opcional.",
+  "notes": "Orden de magnitud. Actualizar weekly. currentPhaseId y status de tareas al cerrar trabajo. Última verificación (2026-04-19): Cloud Run --timeout=300 + ingest email prod OK (crmRow=31); cm-0/1/2 done en canales.",
   "currentPhaseId": "p2",
   "phases": [
     {
@@ -118,13 +118,14 @@
         {
           "id": "cm-2",
           "title": "Bridge email ingest (snapshot ventas → ingest-email → CRM)",
-          "status": "doing",
+          "status": "done",
           "phaseHint": "p2",
           "estHours": 12,
           "dependsOn": [],
           "refs": [
             "docs/team/PROJECT-STATE.md",
             "docs/team/reports/CM2-EMAIL-INGEST-DRYRUN-2026-04-18.md",
+            "scripts/cloud-run-panelin-calc-request-timeout.sh",
             "npm run email:ingest-snapshot",
             "scripts/email-snapshot-ingest.mjs",
             "server/lib/emailSnapshotIngest.js"
