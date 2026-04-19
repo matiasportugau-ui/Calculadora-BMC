@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -142,6 +143,7 @@ export default function BmcWaOperativoModule() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [tokenLoadError, setTokenLoadError] = useState("");
 
   useEffect(() => {
     const stored = getStoredToken();
@@ -150,17 +152,36 @@ export default function BmcWaOperativoModule() {
       setToken(stored);
       return;
     }
-    fetch("/api/crm/cockpit-token")
-      .then((r) => r.json())
-      .then((data) => {
+    const base = getCalcApiBase();
+    const url = `${base.replace(/\/+$/, "")}/api/crm/cockpit-token`;
+    fetch(url, { credentials: "omit" })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data?.ok) {
+          const msg = data?.error || `HTTP ${r.status}`;
+          setTokenLoadError(
+            `No se pudo cargar el token del servidor (${msg}). Pegá API_AUTH_TOKEN manualmente.`,
+          );
+          console.error("cockpit-token fetch failed", { status: r.status, data });
+          return;
+        }
         const t = String(data?.token || "").trim();
         if (t) {
           setStoredToken(t);
           setTokenInput(t);
           setToken(t);
+          setTokenLoadError("");
+        } else {
+          setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
+          console.error("cockpit-token: empty token in ok response", data);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        setTokenLoadError(
+          "Error de red al pedir el token del servidor. Pegá API_AUTH_TOKEN manualmente.",
+        );
+        console.error("Failed to fetch cockpit token from /api/crm/cockpit-token", err);
+      });
   }, []);
 
   const showToast = (msg) => {
@@ -286,6 +307,20 @@ export default function BmcWaOperativoModule() {
             </button>
           </div>
         </div>
+
+        {tokenLoadError ? (
+          <div
+            style={{
+              ...card,
+              borderColor: "#ffe066",
+              background: "#fffbeb",
+              color: "#5c4d00",
+              fontSize: 13,
+            }}
+          >
+            {tokenLoadError}
+          </div>
+        ) : null}
 
         {error ? (
           <div
