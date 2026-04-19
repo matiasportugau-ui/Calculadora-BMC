@@ -654,6 +654,33 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "680cf980ac682b09956386374cd0d4cb016251ab",
+      "short_hash": "680cf98",
+      "date": "2026-04-18",
+      "time": "22:08:22",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docs",
+      "title": "correct typo in Atlas Browser Go-Live manual steps prompt title",
+      "subject": "fix(docs): correct typo in Atlas Browser Go-Live manual steps prompt title",
+      "files": [
+        "docs/ATLAS-BROWSER-PROMPT-GO-LIVE.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }
