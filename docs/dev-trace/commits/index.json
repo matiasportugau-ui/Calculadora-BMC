@@ -681,6 +681,38 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "bc5c1fc8c8e39377284e9b550d79824bb26a10f0",
+      "short_hash": "bc5c1fc",
+      "date": "2026-04-18",
+      "time": "22:26:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docs",
+      "title": "update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title",
+      "subject": "fix(docs): update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/680cf98.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-18.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }

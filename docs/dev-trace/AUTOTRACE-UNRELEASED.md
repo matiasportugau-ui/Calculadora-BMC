@@ -17,6 +17,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 ## Fixes
 
 - `680cf98` fix(docs): correct typo in Atlas Browser Go-Live manual steps prompt title
+- `bc5c1fc` fix(docs): update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title
 
 ## Documentation
 

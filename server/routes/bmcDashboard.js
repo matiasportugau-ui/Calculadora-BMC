@@ -20,6 +20,7 @@ import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
+import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.js";
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
@@ -2375,6 +2376,20 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     if (bearer === token || xKey === token) return next();
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
+
+  // Delivers the cockpit token to the browser at runtime so it never needs to
+  // be baked into the Vite bundle via VITE_BMC_API_AUTH_TOKEN.
+  // Browser-only: requires a verified Origin or Referer against an explicit allowlist
+  // (curl / scripts without those headers get 403). See server/lib/cockpitTokenOrigin.js.
+  router.get("/crm/cockpit-token", (req, res) => {
+    const token = config.apiAuthToken;
+    if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+    const allowedOrigin = getCockpitTokenRequestBrowserOrigin(req, config);
+    if (!allowedOrigin) {
+      return res.status(403).json({ ok: false, error: "Forbidden" });
+    }
+    res.json({ ok: true, token });
+  });
 
   /** Logística: escribe fecha de entrega en columna G de Ventas (fila = cliente; pestaña por gid). Auth = CRM cockpit. */
   router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitAuth, async (req, res) => {

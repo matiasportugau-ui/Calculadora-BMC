@@ -1,0 +1,63 @@
+.html-embed.w-embed.w-iframe {
+    display: block;
+}
+  
+#window_on,
+#garden_on,
+#sidescreen_on {
+    display: none;
+}
+
+#width_slider,
+#depth_slider {
+    position: relative;
+    width: 100%;
+    bottom: 3px;
+}
+
+.widthblock,
+.depthblock {
+    height: 50px;
+}
+
+.widthblock .arrow-width-left,
+.widthblock .arrow-width-right,
+.depthblock .arrow-width-left,
+.depthblock .arrow-width-right {
+    display: none;
+}
+
+.summary-wrapper {
+    z-index: 9999999;
+}
+
+.button-bar {
+    display: none;
+}
+
+#v-notification {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 30%;
+    width: 60%;
+    height: auto;
+    padding: 30px;
+    text-align: center;
+    z-index: 99999;
+    background-color: #fff;
+    border: 1px solid #ccc;
+}
+
+#v-notification:hover {
+    cursor: pointer;
+    background: #f0f0f0;
+}
+
+@media screen and (max-width: 991px)
+{
+    #v-notification {
+        top: 15%;
+        left: 25%;
+    }
+}
