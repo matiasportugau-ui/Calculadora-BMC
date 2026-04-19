@@ -313,9 +313,10 @@ export function EstructuraGlobalExteriorOverlay({ exterior = [], encounters = []
  * @param {number} x0 — borde izquierdo de la zona en planta (m)
  * @param {number} yEdge — borde inferior de la zona (m)
  * @param {object} svgTy — de buildRoofPlanSvgTypography
+ * @param {number} [au] — ancho útil del panel (m); si se omite, se deduce del primer strip estándar
  * @param {Array<{minX,maxX,minY,maxY}>} [obstacleRects=[]] — AABBs de computeCotaObstacles
  */
-export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects = [] }) {
+export function PanelChainDimensions({ strips, x0, yEdge, svgTy, au: auProp, obstacleRects = [] }) {
   if (!strips?.length) return null;
 
   const chainXMin = x0 + (strips[0]?.x0 ?? 0);
@@ -323,7 +324,10 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, obstacleRects =
   const chainXMax = x0 + (lastStrip?.x0 ?? 0) + (lastStrip?.width ?? 0);
 
   const tick = svgTy.tickLen;
-  const au = strips[0]?.width ?? 1;
+  // Use the explicit au prop when available; fall back to the widest strip (full panel width).
+  // Never use strips[0].width as au because the first strip is always full-width in LTR layout,
+  // but passing auProp is safer and makes cut detection unambiguous.
+  const au = auProp ?? Math.max(...strips.map((s) => s.width));
   const labelFontSz = svgTy.dimFontTertiary;
 
   let yDimLine = yEdge + svgTy.dimStackBottom + DIM_THEME.CHAIN_OFFSET;

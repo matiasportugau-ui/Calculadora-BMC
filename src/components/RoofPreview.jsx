@@ -3046,7 +3046,7 @@ export default function RoofPreview({
                   />
                   {verifications?.[r.gi] && (
                     <VerificationBadge
-                      x={r.x + r.w} y={r.y}
+                      x={r.x} y={r.y + r.h}
                       verification={verifications[r.gi]}
                       svgTy={svgTy}
                     />
@@ -3057,14 +3057,14 @@ export default function RoofPreview({
             {panelLayouts && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
-              const strips = buildAnchoStripsPlanta(r.w, effectivePanelAu);
               return (
                 <PanelChainDimensions
                   key={`chain-${r.gi}`}
-                  strips={strips}
+                  strips={pl.layout.panels}
                   x0={r.x}
                   yEdge={r.y + r.h}
                   svgTy={svgTy}
+                  au={pl.layout.au}
                   obstacleRects={cotaObstacles}
                 />
               );

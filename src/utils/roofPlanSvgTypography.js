@@ -75,7 +75,12 @@ export function fmtDimMm(m) {
   return String(Math.round(m * 1000));
 }
 
-/** Formatea metros para etiqueta de cota general. 1.12 → "1,12 m" */
+/**
+ * Formatea metros para etiqueta de cota general (ISO 129 / convención ES-UY).
+ * 8.36 → "8,36 m", 10 → "10 m"
+ */
 export function fmtDimOverall(m) {
-  return `${fmtArchMeters(m)} m`;
+  if (!Number.isFinite(m)) return "— m";
+  const s = fmtArchMeters(m).replace('.', ',');
+  return `${s} m`;
 }
