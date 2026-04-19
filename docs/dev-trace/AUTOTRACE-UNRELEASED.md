@@ -11,3 +11,4 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `fa2ba6a` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `553941e` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `57932df` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
+- `f3d6153` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
