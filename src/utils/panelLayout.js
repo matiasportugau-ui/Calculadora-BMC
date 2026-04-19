@@ -44,7 +44,9 @@ export function buildPanelLayout({ panel, largo, ancho }) {
   const totalPanels = panels.length;
   const fullPanels = panels.filter((p) => !p.isCut).length;
   const cutPanels = totalPanels - fullPanels;
-  const anchoTotal = totalPanels * au;
+  // Round to avoid IEEE-754 dust on exact multiples (e.g. 5 * 1.12 = 5.6000000000000005).
+  // Uses same precision as calcPanelesTecho which passes anchoTotal to BOM comparisons.
+  const anchoTotal = +( totalPanels * au ).toFixed(10);
   const wasteM = +(anchoTotal - ancho).toFixed(6);
 
   return { panels, totalPanels, fullPanels, cutPanels, anchoTotal, wasteM, au };

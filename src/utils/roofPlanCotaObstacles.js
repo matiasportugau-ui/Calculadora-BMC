@@ -19,7 +19,7 @@ export function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
 
   const bottoms = exterior.filter((s) => s.side === "bottom").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
   for (const s of bottoms) {
-    const idx = nextBottom(+s.y1.toFixed(3));
+    const idx = nextBottom(+s.y1.toFixed(2));
     const yDimLine = s.y1 + svgTy.dimStackBottom + idx * svgTy.dimStackStep;
     const x0 = s.x1;
     const w = s.length;
@@ -34,7 +34,7 @@ export function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
 
   const tops = exterior.filter((s) => s.side === "top").sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1);
   for (const s of tops) {
-    const idx = nextTop(+s.y1.toFixed(3));
+    const idx = nextTop(+s.y1.toFixed(2));
     const yDimLine = s.y1 - svgTy.dimStackTop - idx * svgTy.dimStackStep;
     const yText = yDimLine - svgTy.dimFont * 0.35;
     const x0 = s.x1;
@@ -49,7 +49,7 @@ export function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
 
   const lefts = exterior.filter((s) => s.side === "left").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
   for (const s of lefts) {
-    const idx = nextLeft(+s.x1.toFixed(3));
+    const idx = nextLeft(+s.x1.toFixed(2));
     const xDim = s.x1 - svgTy.sideOffset - idx * svgTy.sideStep;
     const tx = xDim - svgTy.dimFont * 0.85;
     const y1 = Math.min(s.y1, s.y2);
@@ -64,7 +64,7 @@ export function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
 
   const rights = exterior.filter((s) => s.side === "right").sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
   for (const s of rights) {
-    const idx = nextRight(+s.x1.toFixed(3));
+    const idx = nextRight(+s.x1.toFixed(2));
     const xDim = s.x1 + svgTy.sideOffset + idx * svgTy.sideStep;
     const tx = xDim + svgTy.dimFont * 0.85;
     const y1 = Math.min(s.y1, s.y2);
@@ -77,14 +77,32 @@ export function buildEstructuraCotaObstacleRects(exterior, encounters, svgTy) {
     });
   }
 
+  // Mirror the sign-flip logic from EstructuraGlobalExteriorOverlay so AABBs match real positions.
+  const rightExtXSet = new Set(rights.map((s) => +s.x1.toFixed(2)));
+  const leftExtXSet  = new Set(lefts.map((s)  => +s.x1.toFixed(2)));
+  const topExtYSet   = new Set(tops.map((s)   => +s.y1.toFixed(2)));
+
   const encList = encounters ?? [];
   for (let i = 0; i < encList.length; i++) {
     const enc = encList[i];
     const mx = (enc.x1 + enc.x2) / 2;
     const my = (enc.y1 + enc.y2) / 2;
     const isVert = enc.orientation === "vertical";
-    const tx = isVert ? mx + svgTy.encOffX : mx;
-    const ty = isVert ? my : my - svgTy.encOffY;
+
+    let tx, ty;
+    if (isVert) {
+      const encX = +enc.x1.toFixed(2);
+      const nearRight = rightExtXSet.has(encX);
+      const nearLeft  = leftExtXSet.has(encX);
+      const xSign = nearRight ? -1 : nearLeft ? 1 : 1;
+      tx = mx + xSign * svgTy.encOffX;
+      ty = my;
+    } else {
+      const encY = +enc.y1.toFixed(2);
+      const nearTop = topExtYSet.has(encY);
+      tx = mx;
+      ty = nearTop ? my + svgTy.encOffY : my - svgTy.encOffY;
+    }
     const label = `${fmtArchMeters(enc.length)} m`;
     const ew = Math.max(svgTy.encFont * 1.15, label.length * svgTy.encFont * 0.52);
     const eh = svgTy.encFont * 1.4;

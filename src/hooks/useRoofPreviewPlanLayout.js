@@ -40,7 +40,7 @@ export function useRoofPreviewPlanLayout(zonas, tipoAguas, padOverride = null) {
       curMaxX = Math.max(curMaxX, r.x + r.w);
       curMaxY = Math.max(curMaxY, r.y + r.h);
     }
-    const pad = padOverride ?? 0.42;
+    const pad = padOverride ?? 0.60;
     const cw = Math.max(0, curMaxX - curMinX);
     const ch = Math.max(0, curMaxY - curMinY);
     const slack = viewBoxSlackMeters(Math.max(cw, ch, 0.01));

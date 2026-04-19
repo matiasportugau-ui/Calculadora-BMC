@@ -937,6 +937,35 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "0a5667bcb82a12eb81cdf00f8d7e1bf1ebf25d73",
+      "short_hash": "0a5667b",
+      "date": "2026-04-19",
+      "time": "07:36:10",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "",
+      "title": "adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "subject": "fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "src/components/roofPlan/RoofPlanDimensions.jsx",
+        "src/utils/roofPlanSvgTypography.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }
