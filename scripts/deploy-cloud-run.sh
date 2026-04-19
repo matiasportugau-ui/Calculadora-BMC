@@ -51,7 +51,8 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --project "$PROJECT" \
   --platform managed \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --timeout=300
 
 echo ""
 echo "=== Deploy complete ==="
