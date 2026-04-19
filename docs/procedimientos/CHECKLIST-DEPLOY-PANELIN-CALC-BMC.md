@@ -4,6 +4,8 @@ Lista corta con **valores concretos** que ya usa el repo. Los **secretos** (JSON
 
 **Runbook largo:** [`PROCEDIMIENTO-CALCULADORA-Y-API-CLOUD-RUN-COMPLETO.md`](./PROCEDIMIENTO-CALCULADORA-Y-API-CLOUD-RUN-COMPLETO.md).
 
+**Mapa fases 0–9 (producción operativa “100%”, enlaces a runbooks):** [`PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md`](./PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md).
+
 **Calculadora — decisión canónica y release:** [`docs/calculadora/CANONICAL-PRODUCTION.md`](../calculadora/CANONICAL-PRODUCTION.md), checklist producto [`docs/calculadora/RELEASE-CHECKLIST-CALCULADORA.md`](../calculadora/RELEASE-CHECKLIST-CALCULADORA.md), gaps pre-launch [`docs/calculadora/CALCULADORA-LAUNCH-GAPS.md`](../calculadora/CALCULADORA-LAUNCH-GAPS.md).
 
 ---

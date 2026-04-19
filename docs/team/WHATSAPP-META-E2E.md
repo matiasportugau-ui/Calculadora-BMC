@@ -67,6 +67,12 @@ Mapeo en código: `server/config.js` (`whatsappVerifyToken`, `whatsappAccessToke
 
 Tras cambiar vars: **nuevo deploy** o revisión del servicio en Cloud Run.
 
+### 1.1 `WHATSAPP_APP_SECRET` en Google Cloud Run (recomendado)
+
+1. En [Meta Developer](https://developers.facebook.com/) → tu app → **App settings** → **Basic**: copiá **App secret** (no lo pegues en chat).
+2. En [Google Cloud Console](https://console.cloud.google.com/) → **Cloud Run** → servicio **panelin-calc** → **Editar y desplegar nueva revisión** → **Variables y secretos** → agregá `WHATSAPP_APP_SECRET` con ese valor.
+3. **Deploy**. Los `POST` a `/webhooks/whatsapp` deberán llevar `x-hub-signature-256` válido; si falta o es inválida, el servidor responde **401** (ver [server/index.js](../../server/index.js)).
+
 ---
 
 ## 2. Meta Developer / Business Suite

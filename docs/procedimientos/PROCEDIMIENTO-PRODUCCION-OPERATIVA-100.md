@@ -41,6 +41,7 @@ Alineado a [`CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md`](./CHECKLIST-DEPLOY-PANELIN-C
 - **[H0]** Service account: JSON en Secret Manager + volumen en Cloud Run; `GOOGLE_APPLICATION_CREDENTIALS` = ruta dentro del contenedor que coincida con el mount.
 - **[H0]** Compartir con el email `…@…gserviceaccount.com`: MATRIZ (`BMC_MATRIZ_SHEET_ID`), workbook CRM (`BMC_SHEET_ID`) y pestañas usadas por [`server/routes/bmcDashboard.js`](../../server/routes/bmcDashboard.js).
 - **[H0]** Variables mínimas en Cloud Run: `NODE_ENV=production`, MATRIZ + CRM según [`.env.example`](../../.env.example); `API_AUTH_TOKEN` o `API_KEY` si se usan cockpit / rutas protegidas ([`CRM-OPERATIVO-COCKPIT.md`](../team/panelsim/CRM-OPERATIVO-COCKPIT.md)).
+- **[H0]** `PUBLIC_BASE_URL` = misma base que `gcloud … status.url` (sin barra final). Si queda desalineada, `npm run smoke:prod` advierte que `/capabilities` `public_base_url` no coincide con la base probada (OAuth ML / enlaces).
 - **[A]** Verificación CSV: `curl -sS "$BASE/api/actualizar-precios-calculadora" | head` debe ser CSV, no JSON de error.
 
 **Criterio listo:** health + CSV MATRIZ + `/calculadora/` + “Cargar desde MATRIZ” en navegador con `BASE` actual.
