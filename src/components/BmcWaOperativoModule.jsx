@@ -312,6 +312,20 @@ export default function BmcWaOperativoModule() {
           />
         </div>
 
+        {tokenLoadError ? (
+          <div
+            style={{
+              ...card,
+              borderColor: "#ffe066",
+              background: "#fffbeb",
+              color: "#5c4d00",
+              fontSize: 13,
+            }}
+          >
+            {tokenLoadError}
+          </div>
+        ) : null}
+
         {error ? (
           <div
             style={{

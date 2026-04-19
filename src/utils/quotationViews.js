@@ -154,6 +154,53 @@ export function svgParedStrip(wallBlock) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${vW} ${totalH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Esquema fachada" style="display:block"><rect x="0" y="0" width="${vW}" height="${vH}" fill="none" stroke="#ccc" stroke-width="1"/>${rects}<text x="6" y="${vH + 28}" font-size="18" fill="#444">Alto ${Number(alto).toFixed(2)} m · Perímetro ${Number(perimetro).toFixed(2)} m · ${n} paneles × AU ${au} m</text></svg>`;
 }
 
+/**
+ * Plano en planta SVG desde datos de zonas — vectorial, nítido en PDF.
+ * Todas las zonas se dibujan a la misma escala real entre sí.
+ */
+export function svgFloorPlan(roofBlocks) {
+  if (!Array.isArray(roofBlocks) || roofBlocks.length === 0) return "";
+  const vW = 1000;
+  const GAP_M = 0.5;
+  const LABEL_H = 52;
+  const blocks = roofBlocks.filter(rb => (rb.anchoTotal || rb.ancho || 0) > 0 && (rb.largo || 0) > 0);
+  if (blocks.length === 0) return "";
+  const totalW_m = blocks.reduce((s, rb) => s + (rb.anchoTotal || rb.ancho || 0), 0) + GAP_M * (blocks.length - 1);
+  const scale = vW / totalW_m;
+  const maxH_coord = Math.round(Math.max(...blocks.map(rb => rb.largo * scale)));
+  const totalH = maxH_coord + LABEL_H;
+  let inner = "";
+  let curX = 0;
+  blocks.forEach((rb, idx) => {
+    const ancho = rb.anchoTotal || rb.ancho || 0;
+    const largo = rb.largo || 0;
+    const n = Math.max(1, Math.min(40, Number(rb.cantPaneles) || 1));
+    const zW = Math.round(ancho * scale);
+    const zH = Math.round(largo * scale);
+    const zY = maxH_coord - zH;
+    const stripe = zW / n;
+    for (let i = 0; i < n; i++) {
+      const rx = +(curX + i * stripe + 0.5).toFixed(1);
+      const rw = +(Math.max(stripe - 1, 1)).toFixed(1);
+      const fill = i % 2 ? "#D6E9F8" : "#EBF4FC";
+      inner += `<rect x="${rx}" y="${zY}" width="${rw}" height="${zH}" fill="${fill}" stroke="#4A7FB5" stroke-width="0.8"/>`;
+    }
+    inner += `<rect x="${curX}" y="${zY}" width="${zW}" height="${zH}" fill="none" stroke="#003366" stroke-width="2.2"/>`;
+    const cx = (curX + zW / 2).toFixed(0);
+    const multiZona = blocks.length > 1;
+    const y1 = maxH_coord + 20;
+    const y2 = maxH_coord + 37;
+    if (multiZona) {
+      inner += `<text x="${cx}" y="${y1}" font-size="15" font-weight="800" fill="#003366" text-anchor="middle">Z${idx + 1}</text>`;
+      inner += `<text x="${cx}" y="${y2}" font-size="12" fill="#64748B" text-anchor="middle">${largo.toFixed(1)}m × ${ancho.toFixed(2)}m · ${n}p</text>`;
+    } else {
+      inner += `<text x="${cx}" y="${y1 + 4}" font-size="12" fill="#64748B" text-anchor="middle">${largo.toFixed(1)}m × ${ancho.toFixed(2)}m · ${n} paneles</text>`;
+    }
+    curX += zW + Math.round(GAP_M * scale);
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${vW} ${totalH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Planta 2D cubierta" style="display:block">${inner}</svg>`;
+}
+
 /** Sección HTML con capturas/snapshots para incluir en PDF. */
 export function buildSnapshotSectionHtml(snapshots, clientMode = false) {
   if (!snapshots || typeof snapshots !== "object") return "";
@@ -426,6 +473,11 @@ export function generateClientVisualHTML(data) {
   const productoCliente = scenario === "presupuesto_libre"
     ? `Líneas cotizadas · ${esc(scenarioLabel)}`
     : `${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} · ${esc(scenarioLabel)}`;
+  const _fpBlocks = appendix?.roofBlocks?.length > 0 ? appendix.roofBlocks : (appendix?.roofBlock ? [appendix.roofBlock] : []);
+  const _fpSvg = svgFloorPlan(_fpBlocks);
+  const floorPlanHtml = _fpSvg
+    ? `<div style="margin-bottom:8px;padding:8px 10px;background:#F8FAFC;border-radius:6px;border:0.5pt solid #E2E8F0;page-break-inside:avoid;break-inside:avoid"><div style="font-size:8pt;font-weight:700;color:#003366;margin-bottom:5px">Planta 2D · cubierta</div>${_fpSvg}</div>`
+    : "";
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Hoja visual cliente — BMC Uruguay</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:10pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}th,td{border:0.4pt solid #D0D0D0}.pdf-page2{page-break-before:always;break-before:page}@media screen{html{background:#dce3ec;min-height:100%}body{max-width:794px;margin:40px auto 60px;padding:32px 36px;background:#fff;box-shadow:0 4px 28px rgba(0,0,0,0.14);border-radius:3px}.pdf-page2{margin-top:48px;padding-top:20px;border-top:2pt solid #003366}}</style></head><body>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">${buildLogo()}<div style="background:#003366;color:#fff;font-size:11pt;font-weight:800;padding:4px 12px;border-radius:4px;letter-spacing:0.04em">HOJA VISUAL CLIENTE</div></div>
 <div style="border-bottom:2.5pt solid #003366;margin-bottom:4px"></div>
@@ -436,7 +488,7 @@ export function generateClientVisualHTML(data) {
 <div><b>Tel:</b> ${esc(client.telefono)}</div><div><b>Dir:</b> ${esc(client.direccion)}</div>
 </div>
 <div style="background:#F0F4F8;padding:6px 10px;border-radius:4px;margin-bottom:6px"><b style="color:#003366">Producto / alcance:</b> ${productoCliente}</div>
-${snaps.roofPlan2d ? `<div style="margin-bottom:8px;padding:8px 10px;background:#F8FAFC;border-radius:6px;border:0.5pt solid #E2E8F0;page-break-inside:avoid;break-inside:avoid"><div style="font-size:8pt;font-weight:700;color:#003366;margin-bottom:5px">Planta 2D · cubierta</div><img src="${snaps.roofPlan2d}" style="width:100%;height:auto;display:block;border-radius:4px;max-height:180px;object-fit:contain" alt="Planta 2D cubierta" /></div>` : ""}
+${floorPlanHtml}
 <table style="font-size:9pt;margin-bottom:6px"><thead><tr style="background:#EDEDED;font-weight:700"><th style="text-align:left;width:42%;padding:3px 6px">Descripción</th><th style="text-align:right;width:12%;padding:3px 6px">Cant.</th><th style="text-align:center;width:10%;padding:3px 6px">Unid.</th><th style="text-align:right;width:16%;padding:3px 6px">P.U. USD</th><th style="text-align:right;width:20%;padding:3px 6px">Total USD</th></tr></thead><tbody>${tableBody}</tbody></table>
 <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><table style="min-width:260px;font-size:10pt"><tr><td style="padding:2px 8px">Subtotal s/IVA</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.subtotalSinIVA)}</td></tr><tr><td style="padding:2px 8px">IVA 22%</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.iva)}</td></tr><tr style="border-top:1pt solid #000;font-size:14pt;font-weight:800"><td style="padding:2px 8px">TOTAL USD</td><td style="text-align:right;color:#003366;padding:2px 8px">$${fmtPrice(totals.totalFinal)}</td></tr></table></div>
 <div style="font-size:8pt;line-height:1.4;margin-bottom:6px"><b>Condiciones comerciales:</b><ul style="margin:0;padding-left:14px"><li style="font-weight:700">Fabricación y entrega 10 a 45 días (depende producción).</li><li style="color:#FF3B30;font-weight:600">Oferta válida 10 días.</li><li style="font-weight:700;color:#FF3B30">Seña 60% al confirmar. Saldo 40% previo a retiro de fábrica.</li><li>Precios en USD; IVA incluido en el total indicado.</li></ul></div>
