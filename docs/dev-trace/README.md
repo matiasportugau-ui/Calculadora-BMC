@@ -26,6 +26,12 @@ Desde la raíz del repo:
 bash tools/release-traceability/bootstrap/install_hooks.sh
 ```
 
+Para **un commit sin** regenerar AUTOTRACE (p. ej. cierre de lotes de docs):
+
+```bash
+SKIP_AUTOTRACE=1 git commit ...
+```
+
 ## Comandos npm
 
 - `npm run dev-trace:rebuild` — regenera markdown desde el índice.

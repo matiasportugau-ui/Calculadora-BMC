@@ -3,6 +3,10 @@ set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 cd "$ROOT_DIR"
 
+if [ "${SKIP_AUTOTRACE:-}" = "1" ]; then
+  exit 0
+fi
+
 if command -v python3 >/dev/null 2>&1; then
   python3 tools/release-traceability/scripts/rebuild_changelog.py || true
 else
