@@ -158,7 +158,6 @@
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@vitejs/plugin-react": "^4.0.0",
     "concurrently": "^9.1.0",
-    "easymidi": "^2.1.1",
     "eslint": "^9.39.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
