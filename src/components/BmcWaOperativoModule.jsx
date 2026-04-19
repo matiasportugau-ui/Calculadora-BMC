@@ -144,8 +144,17 @@ export default function BmcWaOperativoModule() {
   const [toast, setToast] = useState("");
 
   useEffect(() => {
-    setTokenInput(getStoredToken());
-    setToken(getStoredToken());
+    const stored = getStoredToken();
+    const env =
+      typeof import.meta !== "undefined"
+        ? String(import.meta.env?.VITE_BMC_API_AUTH_TOKEN || "").trim()
+        : "";
+    const resolved = env || stored;
+    if (resolved) {
+      if (resolved !== stored) setStoredToken(resolved);
+      setTokenInput(resolved);
+      setToken(resolved);
+    }
   }, []);
 
   const showToast = (msg) => {

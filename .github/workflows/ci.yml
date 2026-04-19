@@ -23,8 +23,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install ALSA headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Run validation tests
         run: node tests/validation.js
@@ -46,8 +51,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install ALSA headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Run ESLint
         run: npm run lint
@@ -69,8 +79,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install ALSA headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
+
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: channels:automated (JSON)
         run: node scripts/channels-automated-pipeline.mjs
