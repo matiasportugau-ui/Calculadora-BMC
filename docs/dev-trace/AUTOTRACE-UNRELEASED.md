@@ -14,7 +14,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f3d6153` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `5a907b8` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `efa9f65` feat: add Sketchfab integration and enhance documentation
-- `efa9f65` feat: add Sketchfab integration and enhance documentation
+- `c7c660b` feat: add Sketchfab integration and enhance documentation
+- `f62400e` feat: log Sketchfab integration commit in worklog
 
 ## Fixes
 
