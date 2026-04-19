@@ -24,7 +24,9 @@ jobs:
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: sudo apt-get install -y libasound2-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -50,7 +52,9 @@ jobs:
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: sudo apt-get install -y libasound2-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -76,7 +80,9 @@ jobs:
           cache: 'npm'
 
       - name: Install ALSA headers
-        run: sudo apt-get install -y libasound2-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libasound2-dev
 
       - name: Install dependencies
         run: npm ci --include=dev

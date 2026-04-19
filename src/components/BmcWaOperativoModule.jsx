@@ -149,9 +149,9 @@ export default function BmcWaOperativoModule() {
       typeof import.meta !== "undefined"
         ? String(import.meta.env?.VITE_BMC_API_AUTH_TOKEN || "").trim()
         : "";
-    const resolved = stored || env;
+    const resolved = env || stored;
     if (resolved) {
-      setStoredToken(resolved);
+      if (resolved !== stored) setStoredToken(resolved);
       setTokenInput(resolved);
       setToken(resolved);
     }
