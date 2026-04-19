@@ -4,8 +4,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, useTexture, Html, Line } from "@react-three/drei";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { OrbitControls, useTexture, Html, Line, useProgress } from "@react-three/drei";
 import * as THREE from "three";
 import { buildZoneLayoutsForRoof3d } from "../utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../utils/roof3dLateralStepInfill.js";
@@ -99,12 +99,28 @@ function computeSceneBounds(zoneLayouts, theta, fovDeg = 36) {
   };
 }
 
+function SceneLoader() {
+  const { active, progress } = useProgress();
+  if (!active) return null;
+  return (
+    <Html center>
+      <div style={{ color: "#fff", fontSize: 13, textAlign: "center", pointerEvents: "none" }}>
+        <div style={{ width: 140, height: 4, background: "rgba(0,0,0,0.4)", borderRadius: 2 }}>
+          <div style={{ width: `${progress}%`, height: "100%", background: "#60a5fa", borderRadius: 2, transition: "width 0.1s" }} />
+        </div>
+        <div style={{ marginTop: 4, opacity: 0.85 }}>{Math.round(progress)}%</div>
+      </div>
+    </Html>
+  );
+}
+
 function CameraRig({ position, target, bounds }) {
   const { camera, size } = useThree();
-  useEffect(() => {
-    camera.position.set(position[0], position[1], position[2]);
-    camera.lookAt(target[0], target[1], target[2]);
+  const targetPos = useRef(new THREE.Vector3(...position));
+  const targetLookAt = useRef(new THREE.Vector3(...target));
+  const initialized = useRef(false);
 
+  useEffect(() => {
     const aspect = size.width / (size.height || 1);
     const { minX, maxX, minZ, maxZ, maxH } = bounds;
     const dx = (maxX - minX) / 2;
@@ -115,35 +131,53 @@ function CameraRig({ position, target, bounds }) {
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
     const effectiveFov = Math.min(vFov, hFov);
     const minDist = (radius * 1.35) / Math.sin(effectiveFov / 2);
-    const currentDist = camera.position.distanceTo(
-      new THREE.Vector3(target[0], target[1], target[2])
-    );
-    if (currentDist < minDist) {
-      const dir = new THREE.Vector3()
-        .subVectors(camera.position, new THREE.Vector3(target[0], target[1], target[2]))
-        .normalize();
-      camera.position.copy(
-        new THREE.Vector3(target[0], target[1], target[2]).add(dir.multiplyScalar(minDist))
-      );
+
+    const desired = new THREE.Vector3(...position);
+    const tgt = new THREE.Vector3(...target);
+    const dist = desired.distanceTo(tgt);
+    if (dist < minDist) {
+      const dir = desired.clone().sub(tgt).normalize();
+      desired.copy(tgt).add(dir.multiplyScalar(minDist));
     }
-    camera.updateProjectionMatrix();
+    targetPos.current.copy(desired);
+    targetLookAt.current.copy(tgt);
+
+    if (!initialized.current) {
+      camera.position.copy(desired);
+      camera.lookAt(tgt);
+      camera.updateProjectionMatrix();
+      initialized.current = true;
+    }
   }, [camera, position, target, bounds, size]);
+
+  useFrame(() => {
+    camera.position.lerp(targetPos.current, 0.06);
+    const currentDir = new THREE.Vector3();
+    camera.getWorldDirection(currentDir);
+    const desiredDir = targetLookAt.current.clone().sub(camera.position).normalize();
+    currentDir.lerp(desiredDir, 0.06);
+    if (currentDir.lengthSq() > 1e-6) {
+      camera.lookAt(camera.position.clone().add(currentDir));
+    }
+  });
+
   return null;
 }
 
 /** Una franja en X (ancho en planta); misma lógica de anchos que `RoofPreview` / `buildAnchoStripsPlanta`. */
-function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, map, panelAu, profile }) {
+function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, maps, panelAu, profile }) {
   const mat = useMemo(() => {
     const auRep = panelAu > 0 ? panelAu : Math.max(stripW, 1e-6);
     const baseColor = stripIdx % 2 === 0 ? 0xb8c4d4 : 0xa3b0c2;
+    const diffuse = maps?.map ?? maps ?? null;
     const m = new THREE.MeshStandardMaterial({
-      color: map ? "#ffffff" : baseColor,
+      color: diffuse ? "#ffffff" : baseColor,
       roughness: profile.roughness,
       metalness: profile.metalness,
       side: THREE.DoubleSide,
     });
-    if (map) {
-      const t = map.clone();
+    if (diffuse) {
+      const t = diffuse.clone();
       t.wrapS = THREE.RepeatWrapping;
       t.wrapT = THREE.RepeatWrapping;
       t.repeat.set(stripW / auRep, Math.max(0.4, largo / auRep));
@@ -152,13 +186,32 @@ function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, map, pane
       t.needsUpdate = true;
       m.map = t;
     }
+    if (maps?.normalMap) {
+      const nt = maps.normalMap.clone();
+      nt.wrapS = THREE.RepeatWrapping;
+      nt.wrapT = THREE.RepeatWrapping;
+      nt.repeat.set(stripW / auRep, Math.max(0.4, largo / auRep));
+      nt.needsUpdate = true;
+      m.normalMap = nt;
+      m.normalScale.set(1, 1);
+    }
+    if (maps?.roughnessMap) {
+      const rt = maps.roughnessMap.clone();
+      rt.wrapS = THREE.RepeatWrapping;
+      rt.wrapT = THREE.RepeatWrapping;
+      rt.repeat.set(stripW / auRep, Math.max(0.4, largo / auRep));
+      rt.needsUpdate = true;
+      m.roughnessMap = rt;
+    }
     return m;
-  }, [stripX, stripW, stripIdx, largo, map, panelAu, profile]);
+  }, [stripX, stripW, stripIdx, largo, maps, panelAu, profile]);
 
   useEffect(
     () => () => {
       mat.dispose();
       if (mat.map) mat.map.dispose();
+      if (mat.normalMap) mat.normalMap.dispose();
+      if (mat.roughnessMap) mat.roughnessMap.dispose();
     },
     [mat]
   );
@@ -170,7 +223,7 @@ function RoofStripMesh({ stripX, stripW, stripIdx, largo, cy, cz, rot, map, pane
   );
 }
 
-function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slopeMark, profile, map, panelAu }) {
+function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slopeMark, profile, maps, panelAu }) {
   const strips = useMemo(() => {
     if (!(ancho > 0)) return [];
     if (!(panelAu > 0)) return [{ x0: 0, width: ancho, idx: 0 }];
@@ -200,7 +253,7 @@ function SlopeZoneStripedMeshes({ ancho, largo, ox, oy = 0, oz, thetaBase, slope
           cy={cy}
           cz={cz}
           rot={rot}
-          map={map}
+          maps={maps}
           panelAu={auForUv}
           profile={profile}
         />
@@ -248,18 +301,29 @@ function RoofLateralStepInfillMesh({ positions, indices }) {
   );
 }
 
-function MapLoader({ mapUrl, render }) {
-  const map = useTexture(mapUrl);
+function MapLoader({ mapUrl, normalMapUrl, roughnessMapUrl, render }) {
+  const urlObj = {
+    map: mapUrl,
+    ...(normalMapUrl ? { normalMap: normalMapUrl } : {}),
+    ...(roughnessMapUrl ? { roughnessMap: roughnessMapUrl } : {}),
+  };
+  const maps = useTexture(urlObj);
   const gl = useThree((s) => s.gl);
   useEffect(() => {
-    map.colorSpace = THREE.SRGBColorSpace;
-    map.wrapS = THREE.ClampToEdgeWrapping;
-    map.wrapT = THREE.ClampToEdgeWrapping;
     const maxAni = gl.capabilities.getMaxAnisotropy?.() ?? 8;
-    map.anisotropy = Math.min(16, maxAni);
-    map.needsUpdate = true;
-  }, [map, gl]);
-  return render(map);
+    const configure = (t, isSRGB = true) => {
+      if (!t) return;
+      if (isSRGB) t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = THREE.ClampToEdgeWrapping;
+      t.wrapT = THREE.ClampToEdgeWrapping;
+      t.anisotropy = Math.min(16, maxAni);
+      t.needsUpdate = true;
+    };
+    configure(maps.map, true);
+    configure(maps.normalMap, false);
+    configure(maps.roughnessMap, false);
+  }, [maps, gl]);
+  return render(maps);
 }
 
 function RoofRealisticSceneContent({
@@ -271,9 +335,11 @@ function RoofRealisticSceneContent({
   bounds,
   panelAu,
   encounters3d = [],
+  onGlReady,
 }) {
   const orbitRef = useRef(null);
   const { minX, maxX, maxH, maxD, maxLargo, camTarget, camPos } = bounds;
+  const { gl } = useThree();
 
   useEffect(() => {
     const oc = orbitRef.current;
@@ -282,7 +348,11 @@ function RoofRealisticSceneContent({
     oc.update();
   }, [camTarget]);
 
-  const sceneBody = (map) => (
+  useEffect(() => {
+    onGlReady?.(gl);
+  }, [gl, onGlReady]);
+
+  const sceneBody = (maps) => (
     <>
       <CameraRig position={camPos} target={camTarget} bounds={bounds} />
       <color attach="background" args={["#e8edf5"]} />
@@ -307,7 +377,7 @@ function RoofRealisticSceneContent({
           thetaBase={theta}
           slopeMark={z.slopeMark}
           profile={profile}
-          map={map}
+          maps={maps}
           panelAu={panelAu}
         />
       ))}
@@ -365,7 +435,14 @@ function RoofRealisticSceneContent({
   if (!mapUrl) {
     return sceneBody(null);
   }
-  return <MapLoader mapUrl={mapUrl} render={sceneBody} />;
+  return (
+    <MapLoader
+      mapUrl={mapUrl}
+      normalMapUrl={profile.normalMapUrl ?? null}
+      roughnessMapUrl={profile.roughnessMapUrl ?? null}
+      render={sceneBody}
+    />
+  );
 }
 
 /**
@@ -377,6 +454,7 @@ function RoofRealisticSceneContent({
  *   espesorMm?: number|string,
  *   panelAu?: number,
  *   techoColor?: string,
+ *   onGlReady?: (gl: import('three').WebGLRenderer) => void,
  * }} props
  */
 export default function RoofPanelRealisticScene({
@@ -387,6 +465,7 @@ export default function RoofPanelRealisticScene({
   espesorMm,
   panelAu = 1.12,
   techoColor = "",
+  onGlReady,
 }) {
   const tipoAguasStr = tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua";
   const theta = Math.max(0.05, (Number(pendiente) || 15) * (Math.PI / 180));
@@ -462,6 +541,7 @@ export default function RoofPanelRealisticScene({
       data-bmc-view="roof-panel-realistic-3d"
       data-bmc-component="RoofPanelRealisticScene"
       data-bmc-state="canvas"
+      data-bmc-capture="roof-3d"
       title="Render 3D referencial techo (textura catálogo, rejilla au)"
       style={{
         position: "relative",
@@ -481,6 +561,7 @@ export default function RoofPanelRealisticScene({
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
         style={{ width: "100%", height: "100%", display: "block" }}
       >
+        <SceneLoader />
         <Suspense fallback={null}>
           <RoofRealisticSceneContent
             zoneLayouts={zoneLayouts}
@@ -491,6 +572,7 @@ export default function RoofPanelRealisticScene({
             bounds={bounds}
             panelAu={panelAu}
             encounters3d={encounters3d}
+            onGlReady={onGlReady}
           />
         </Suspense>
       </Canvas>

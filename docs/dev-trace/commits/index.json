@@ -793,6 +793,29 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "386507c1882919c2d99286ea13a48bd6ea5554e9",
+      "short_hash": "386507c",
+      "date": "2026-04-19",
+      "time": "05:24:07",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "other",
+      "scope": "",
+      "title": "Merge branch 'main' of https://github.com/matiasportugau-ui/Calculadora-BMC",
+      "subject": "Merge branch 'main' of https://github.com/matiasportugau-ui/Calculadora-BMC",
+      "files": [],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
     }
   ]
 }

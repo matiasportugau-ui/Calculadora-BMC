@@ -2379,7 +2379,6 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 
   // Delivers the cockpit token to the browser at runtime so it never needs to
   // be baked into the Vite bundle via VITE_BMC_API_AUTH_TOKEN.
-<<<<<<< HEAD
   // Browser-only: requires a verified Origin or Referer against an explicit allowlist
   // (curl / scripts without those headers get 403). See server/lib/cockpitTokenOrigin.js.
   router.get("/crm/cockpit-token", (req, res) => {
@@ -2389,19 +2388,6 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     if (!allowedOrigin) {
       return res.status(403).json({ ok: false, error: "Forbidden" });
     }
-=======
-  // Restricted to same-origin requests (no Authorization header required).
-  router.get("/crm/cockpit-token", (req, res) => {
-    const token = config.apiAuthToken;
-    if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
-    const origin = String(req.headers.origin || "");
-    const referer = String(req.headers.referer || "");
-    const host = String(req.headers.host || "");
-    const allowedPatterns = [/localhost/, /127\.0\.0\.1/, /calculadora-bmc\.vercel\.app/, /vercel\.app/];
-    const source = origin || referer;
-    const isSameOrigin = !origin || allowedPatterns.some((p) => p.test(source)) || source.includes(host.split(":")[0]);
-    if (!isSameOrigin) return res.status(403).json({ ok: false, error: "Forbidden" });
->>>>>>> 3d097f05e08098a9fd92be9052f08fd70cfc8bc4
     res.json({ ok: true, token });
   });
 

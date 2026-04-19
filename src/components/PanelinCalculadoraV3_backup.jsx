@@ -94,6 +94,7 @@ import FloorPlanEditor from "./FloorPlanEditor.jsx";
 import RoofPreview, { RoofPreviewMetricsSidebar } from "./RoofPreview.jsx";
 
 const RoofPanelRealisticScene = lazy(() => import("./RoofPanelRealisticScene.jsx"));
+import { PanelFamilyShowcase } from "./PanelFamilyShowcase.jsx";
 import QuoteVisualVisor from "./QuoteVisualVisor.jsx";
 import ScenarioStepIcon from "./ScenarioStepIcon.jsx";
 import { wrapSetter } from "../utils/interactionLogger.js";
@@ -4486,6 +4487,18 @@ export default function PanelinCalculadoraV3() {
                           );
                         })}
                       </div>
+                      <details style={{ marginTop: 4 }}>
+                        <summary style={{ fontSize: 11, fontWeight: 600, color: C.ts, cursor: "pointer", userSelect: "none", listStyle: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                          <span>▸ Ver catálogo de familias</span>
+                        </summary>
+                        <div style={{ marginTop: 8 }}>
+                          <PanelFamilyShowcase
+                            familiaKey={techo.familia}
+                            onSelect={(fk) => setTechoFamilia(fk)}
+                            compact
+                          />
+                        </div>
+                      </details>
                     </div>
                   )}
                   {stepId === "espesor" && (
