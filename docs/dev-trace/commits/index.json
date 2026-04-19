@@ -816,6 +816,33 @@
         "src_touched": false,
         "areas": []
       }
+    },
+    {
+      "hash": "efa9f65928d26dfeb3faec4686c28d5b44682d10",
+      "short_hash": "efa9f65",
+      "date": "2026-04-19",
+      "time": "07:11:17",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "add Sketchfab integration and enhance documentation",
+      "subject": "feat: add Sketchfab integration and enhance documentation",
+      "files": [
+        "docs/dev-trace/commits/2026/04/977b3a7.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }

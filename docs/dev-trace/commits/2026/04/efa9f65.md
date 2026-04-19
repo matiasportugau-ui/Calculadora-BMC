@@ -1,0 +1,44 @@
+# Commit efa9f65
+
+- Fecha: 2026-04-19
+- Hora: 07:11:17
+- Autor: matiasportugau-ui
+- Email: matias.portugau@gmail.com
+- Branch: main
+- Tipo: feat
+- Scope: -
+- Commit: feat: add Sketchfab integration and enhance documentation
+
+## Resumen
+add Sketchfab integration and enhance documentation
+
+## Descripción
+Este cambio registra el commit `feat: add Sketchfab integration and enhance documentation` dentro del sistema de trazabilidad del proyecto. Se modificó 1 archivo: docs/dev-trace/commits/2026/04/977b3a7.md.
+
+Contexto del commit:
+- Introduced new environment variables for Sketchfab model IDs in `.env.example`.
+- Added `PanelFamilyShowcase` component for displaying family cards with Sketchfab embeds.
+- Updated `PanelinCalculadoraV3` to incorporate the new component.
+- Enhanced `roofPanelVisualProfiles.js` for improved visual fidelity with normal and roughness maps.
+- Updated AUTOTRACE documentation to reflect recent changes and commit statistics.
+
+This commit improves user experience by integrating 3D model previews and refining documentation structure.
+
+## Señales automáticas (QA / release)
+- Posible regresión (heurística): **no**
+- Tests / validación tocados: **no**
+- Breaking mencionado: **no**
+- Impacto release sugerido: **low**
+- Áreas (prefijos): docs
+
+## Archivos modificados
+- docs/dev-trace/commits/2026/04/977b3a7.md
+
+## Diff summary
+```text
+docs/dev-trace/commits/2026/04/977b3a7.md | 70 +++++++++++++++++++++++++++++++
+ 1 file changed, 70 insertions(+)
+```
+
+## Riesgo de cambio (tamaño / extensiones)
+Verde
