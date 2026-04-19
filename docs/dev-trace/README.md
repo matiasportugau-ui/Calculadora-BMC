@@ -32,6 +32,8 @@ Para **un commit sin** regenerar AUTOTRACE (p. ej. cierre de lotes de docs):
 SKIP_AUTOTRACE=1 git commit ...
 ```
 
+Durante `git rebase`, los hooks **no** ejecutan AUTOTRACE (evita ensuciar el índice a mitad del rebase).
+
 ## Comandos npm
 
 - `npm run dev-trace:rebuild` — regenera markdown desde el índice.
