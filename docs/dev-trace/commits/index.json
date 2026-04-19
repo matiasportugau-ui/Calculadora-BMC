@@ -1,4 +1,60 @@
 {
   "EXPORT_SEAL": true,
-  "commits": []
+  "commits": [
+    {
+      "hash": "352f730c6038ad309de037ccf585bb5a75c0d2b9",
+      "short_hash": "352f730",
+      "date": "2026-04-18",
+      "time": "21:12:17",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "Enhance WhatsApp integration and add AUTOTRACE system",
+      "subject": "feat: Enhance WhatsApp integration and add AUTOTRACE system",
+      "files": [
+        ".env.example",
+        ".githooks/post-commit",
+        ".githooks/post-merge",
+        ".github/workflows/dev-trace.yml",
+        ".gitignore",
+        "docs/calculadora/BROWSER-QA-CHECKLIST.md",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-RELEASE.html",
+        "docs/dev-trace/AUTOTRACE-RELEASE.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/README.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md",
+        "docs/team/WHATSAPP-META-E2E.md",
+        "package.json",
+        "scripts/smoke-prod-api.mjs",
+        "scripts/whatsapp-cloud-check.mjs",
+        "tools/release-traceability/bootstrap/install_hooks.sh",
+        "tools/release-traceability/config/release_notes.config.json",
+        "tools/release-traceability/scripts/common.py",
+        "tools/release-traceability/scripts/generate_commit_doc.py",
+        "tools/release-traceability/scripts/rebuild_changelog.py",
+        "tools/release-traceability/scripts/release_notes.py",
+        "tools/release-traceability/scripts/render_release_html.py"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".githooks",
+          ".github",
+          "docs",
+          "scripts",
+          "tools"
+        ]
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-17
+**Última actualización:** 2026-04-18
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-18 (Ops — procedimiento producción 100% en repo):** Runbook único [`docs/procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md`](../procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md) (Fases 0–9, enlaces a runbooks canónicos). **BASE** Cloud Run alineada a `gcloud run services describe panelin-calc … status.url` → `https://panelin-calc-q74zutv7dq-uc.a.run.app`. **`scripts/smoke-prod-api.mjs`:** `DEFAULT_BASE` actualizado a esa URL (el hostname `…642127786762…` quedaba desalineado con `gcloud`). Pre-check en [`BROWSER-QA-CHECKLIST.md`](../calculadora/BROWSER-QA-CHECKLIST.md) con comando `gcloud` para evitar drift. Modo canónico **B** (Cloud Run unificado) según [`CANONICAL-PRODUCTION.md`](../calculadora/CANONICAL-PRODUCTION.md). Cierres [H0]/[H] (Sheets, Meta, ML OAuth, QA manual) siguen en gates humanos; no se redeclara cierre comercial p2 sin evidencia en CRM.
 
 **2026-04-17 (Ops — pipeline verificación / plan BMC run):** Modo **pipeline ligero** ([`orientation/ASYNC-RUNBOOK-UNATTENDED.md`](./orientation/ASYNC-RUNBOOK-UNATTENDED.md)): `npm run gate:local` OK (1 warning ESLint preexistente en `SpecManagementSandbox.jsx`; tests **335** + `roofVisualQuoteConsistency` **10** OK); `npm run smoke:prod` OK (base `https://panelin-calc-642127786762.us-central1.run.app`); `npm run project:compass` OK; `npm run channels:automated -- --write` → `.channels/last-pipeline.json`. **`humanGate.firstBlockingTask`:** **cm-0** (E2E WhatsApp → fila CRM; ver [`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md)). No **Invoque full team** 0→9 en esta sesión. Cierre comercial p2 sigue sujeto a evidencia humana en cm-0 / cm-1 / cm-2.
 
