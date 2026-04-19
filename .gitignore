@@ -91,3 +91,6 @@ docs/team/ux-feedback/sessions/**/*.m4v
 docs/team/ux-feedback/sessions/**/audio.wav
 docs/team/ux-feedback/sessions/**/extracted-*/**
 docs/team/ux-feedback/sessions/**/extracted/**
+
+# AUTOTRACE (Python helpers)
+tools/release-traceability/scripts/__pycache__/

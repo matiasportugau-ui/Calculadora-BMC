@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+if command -v python3 >/dev/null 2>&1; then
+  python3 tools/release-traceability/scripts/rebuild_changelog.py || true
+else
+  echo "[WARN] python3 no disponible; se omite rebuild AUTOTRACE"
+fi

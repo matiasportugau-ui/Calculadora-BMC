@@ -1,0 +1,34 @@
+{
+  "EXPORT_SEAL": true,
+  "project_name": "Panelin Calculadora BMC",
+  "timezone": "America/Montevideo",
+  "author_fallback": "unknown",
+  "risk_rules": {
+    "high_extensions": [".sql", ".env", ".tf"],
+    "elevated_extensions": [".yml", ".yaml"],
+    "medium_threshold_files": 12,
+    "high_threshold_files": 28
+  },
+  "types_map": {
+    "feat": "Features",
+    "fix": "Fixes",
+    "refactor": "Refactors",
+    "docs": "Documentation",
+    "perf": "Performance",
+    "test": "Tests",
+    "chore": "Chores",
+    "build": "Build",
+    "ci": "CI"
+  },
+  "paths": {
+    "docs_root": "docs/dev-trace",
+    "commits_root": "docs/dev-trace/commits",
+    "worklog_root": "docs/dev-trace/worklog",
+    "index_file": "docs/dev-trace/commits/index.json",
+    "unreleased_file": "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+    "changelog_file": "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+    "release_notes_file": "docs/dev-trace/AUTOTRACE-RELEASE.md",
+    "release_notes_html": "docs/dev-trace/AUTOTRACE-RELEASE.html",
+    "development_status_file": "docs/dev-trace/AUTOTRACE-STATUS.md"
+  }
+}

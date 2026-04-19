@@ -4,6 +4,8 @@ Usar este documento en **pasadas manuales** o con un asistente que tenga **Brows
 
 **URL recomendada (prod):** `https://panelin-calc-q74zutv7dq-uc.a.run.app/calculadora/`
 
+**BASE canónica (evitar drift):** obtener con `gcloud run services describe panelin-calc --region=us-central1 --project=chatbot-bmc-live --format='value(status.url)'` y usar ese host sin barra final como `BASE` en los `curl` de abajo. Detalle: [`docs/procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md`](../procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md).
+
 **Pre-check API (opcional, terminal):**
 
 ```bash

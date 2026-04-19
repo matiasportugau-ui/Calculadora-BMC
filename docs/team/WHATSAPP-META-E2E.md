@@ -2,11 +2,19 @@
 
 **Objetivo:** que un mensaje del cliente llegue al webhook, se acumule en memoria y, tras **5 minutos sin mensajes** (o al mandar **🚀** en el texto), se ejecute `processWaConversation` → `POST /api/crm/parse-conversation` → filas en **Form responses 1** y **CRM_Operativo** (Google Sheets).
 
-**URL base canónica del servicio (2026-03):**  
-`https://panelin-calc-q74zutv7dq-uc.a.run.app`
+**URL del webhook (Phase C/D):** debe ser exactamente  
+`{PUBLIC_BASE_URL sin barra final}/webhooks/whatsapp`  
+donde `PUBLIC_BASE_URL` es la misma base pública del API (Cloud Run / ngrok). No confíes en URLs viejas copiadas de un doc: verificá en consola Cloud Run o con `npm run smoke:prod` / variable `BMC_API_BASE`.
+
+**Comprobación rápida en el repo:** `npm run wa:cloud-check` (lista env enmascaradas y la URL de callback). Con despliegue accesible y token cargado: `npm run wa:cloud-check -- --probe` (GET de verificación Meta contra `PUBLIC_BASE_URL`).
+
+**Migración de número en Meta:** si aparece *“El número de teléfono ya está en uso”*, completá en Meta/WhatsApp Manager el flujo **migrar** o **desconectar** el número de la app de teléfono; luego reintentá. El código del repo no migra números: solo consume `WHATSAPP_*` una vez el número está en la WABA.
+
+**URL base canónica del API (alineada con `npm run smoke:prod` / `scripts/smoke-prod-api.mjs`):**  
+`https://panelin-calc-642127786762.us-central1.run.app`
 
 **Webhook completo (suscribir en Meta):**  
-`https://panelin-calc-q74zutv7dq-uc.a.run.app/webhooks/whatsapp`
+`https://panelin-calc-642127786762.us-central1.run.app/webhooks/whatsapp`
 
 **Modo “solo clics” (mapa de URLs + qué botón tocar):** [`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md) — sección *Mapa rápido* y bloque **cm-0**.
 
@@ -27,7 +35,7 @@
 3. **Meta** (developers.facebook.com o Business Suite, según cómo tengas la app):
    - Entrá a tu **app** → producto **WhatsApp** → **Configuration** (o **API Setup**).
    - **Webhook** → **Callback URL:** pegá exactamente  
-     `https://panelin-calc-q74zutv7dq-uc.a.run.app/webhooks/whatsapp`
+     `https://panelin-calc-642127786762.us-central1.run.app/webhooks/whatsapp`
    - **Verify token:** el **mismo** string del paso 1 (debe coincidir **carácter por carácter** con `WHATSAPP_VERIFY_TOKEN` en Cloud Run).
    - Tocá **Verify and save** (o equivalente). Si falla: revisá que el deploy de Cloud Run terminó y que el token es idéntico.
    - En **Webhook fields**, activá al menos **`messages`** (mensajes entrantes).
@@ -49,9 +57,13 @@ Documentación oficial Meta (inglés): [Webhooks — Getting Started](https://de
 | `WHATSAPP_VERIFY_TOKEN` | Mismo string que pegás en Meta como **Verify Token** (GET webhook). |
 | `WHATSAPP_ACCESS_TOKEN` | Token de la app de WhatsApp (Graph API). |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID del número de la API (no el número en sí). |
+| `WHATSAPP_APP_SECRET` | (Recomendado prod) App Secret de Meta — HMAC `x-hub-signature-256` en `POST /webhooks/whatsapp`. Sin esto el servidor acepta POST sin firma y loguea warning. |
+| `PUBLIC_BASE_URL` | Base pública del API; define la URL exacta del callback `{PUBLIC_BASE_URL}/webhooks/whatsapp`. |
 | `PORT` | Lo asigna Cloud Run (no hace falta tocarlo). |
 | `BMC_SHEET_ID` + `GOOGLE_APPLICATION_CREDENTIALS` | Obligatorio para escribir en Sheets. |
 | Claves IA (`GROK_API_KEY`, etc.) | Para rellenar col **AF** (respuesta sugerida). |
+
+Mapeo en código: `server/config.js` (`whatsappVerifyToken`, `whatsappAccessToken`, `whatsappPhoneNumberId`, `whatsappAppSecret`, `publicBaseUrl`). Rutas: `server/index.js` (`GET`/`POST` `/webhooks/whatsapp`), envío saliente `server/lib/whatsappOutbound.js`, firma `server/lib/whatsappSignature.js`. Envío desde dashboard: `server/routes/bmcDashboard.js` (comprueba token + phone number id).
 
 Tras cambiar vars: **nuevo deploy** o revisión del servicio en Cloud Run.
 
@@ -60,7 +72,7 @@ Tras cambiar vars: **nuevo deploy** o revisión del servicio en Cloud Run.
 ## 2. Meta Developer / Business Suite
 
 1. **WhatsApp → Configuration → Webhook**  
-   - **Callback URL:** `https://panelin-calc-q74zutv7dq-uc.a.run.app/webhooks/whatsapp`  
+   - **Callback URL:** `https://panelin-calc-642127786762.us-central1.run.app/webhooks/whatsapp`  
    - **Verify token:** el mismo valor que `WHATSAPP_VERIFY_TOKEN` en el servicio.
 
 2. Suscribir el campo **`messages`** (y lo que pida tu flujo; mínimo mensajes entrantes).
@@ -74,7 +86,7 @@ Tras cambiar vars: **nuevo deploy** o revisión del servicio en Cloud Run.
 Sustituí `TU_TOKEN` por `WHATSAPP_VERIFY_TOKEN`:
 
 ```bash
-curl -sS "https://panelin-calc-q74zutv7dq-uc.a.run.app/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=TU_TOKEN&hub.challenge=OK_META"
+curl -sS "https://panelin-calc-642127786762.us-central1.run.app/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=TU_TOKEN&hub.challenge=OK_META"
 ```
 
 **Esperado:** cuerpo de respuesta exactamente `OK_META` y HTTP **200**. Si ves **403**, el token no coincide con Cloud Run.
