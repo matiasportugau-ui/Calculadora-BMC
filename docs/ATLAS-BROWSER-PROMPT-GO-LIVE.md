@@ -1,4 +1,4 @@
-# Atlas Browser — Go-Live Manual Steps Prompt
+# Atlas Browmos ser — Go-Live Manual Steps Prompt
 
 **Purpose:** Run this prompt in OpenAI Atlas Browser (agent mode) to complete the manual steps that cannot be automated. The browser agent will navigate Google Sheets and Apps Script to finish the BMC Dashboard go-live.
 
