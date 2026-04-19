@@ -14,6 +14,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f3d6153` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `5a907b8` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 
+## Documentation
+
+- `ed9e830` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
+
 ## Chores
 
 - `3dc1e29` chore(dev-trace): complete AUTOTRACE sync and PROJECT-STATE

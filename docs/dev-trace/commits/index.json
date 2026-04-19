@@ -458,6 +458,36 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "ed9e830817d145f1e4f650e045d22d6fb547a38b",
+      "short_hash": "ed9e830",
+      "date": "2026-04-18",
+      "time": "21:34:39",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes",
+      "subject": "docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes",
+      "files": [
+        "docs/team/PROJECT-STATE.md",
+        "docs/team/SESSION-WORKSPACE-CRM.md",
+        "scripts/smoke-prod-api.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs",
+          "scripts"
+        ]
+      }
     }
   ]
 }
