@@ -32,7 +32,15 @@ Para **un commit sin** regenerar AUTOTRACE (p. ej. cierre de lotes de docs):
 SKIP_AUTOTRACE=1 git commit ...
 ```
 
-Durante `git rebase`, los hooks **no** ejecutan AUTOTRACE (evita ensuciar el índice a mitad del rebase).
+Durante `git rebase`, los hooks intentan no ejecutar AUTOTRACE (`rebase-merge` / `REBASE_HEAD`). Si Git aún disparara el hook en tu entorno, usa hooks vacíos **solo para ese rebase**:
+
+```bash
+mkdir -p /tmp/bmc-hooks-off
+printf '#!/bin/sh\nexit 0\n' > /tmp/bmc-hooks-off/post-commit
+printf '#!/bin/sh\nexit 0\n' > /tmp/bmc-hooks-off/post-merge
+chmod +x /tmp/bmc-hooks-off/post-commit /tmp/bmc-hooks-off/post-merge
+git -c core.hooksPath=/tmp/bmc-hooks-off rebase …
+```
 
 ## Comandos npm
 
