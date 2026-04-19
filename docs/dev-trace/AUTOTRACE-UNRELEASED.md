@@ -17,6 +17,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 ## Documentation
 
 - `ed9e830` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
+- `9bbae4b` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 
 ## Chores
 
