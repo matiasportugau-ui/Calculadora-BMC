@@ -7,6 +7,9 @@ GIT_DIR_ABS="$(git rev-parse --git-dir)"
 if [ -d "$GIT_DIR_ABS/rebase-merge" ] || [ -d "$GIT_DIR_ABS/rebase-apply" ]; then
   exit 0
 fi
+if git rev-parse -q --verify REBASE_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
 
 if [ "${SKIP_AUTOTRACE:-}" = "1" ]; then
   exit 0
