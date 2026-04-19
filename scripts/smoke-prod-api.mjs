@@ -17,8 +17,8 @@
  *
  * Omitir solo MATRIZ (p. ej. entorno sin Sheets): SMOKE_SKIP_MATRIZ=1 o --skip-matriz.
  */
-/** Default prod base — alinear con `GET /capabilities` → `public_base_url` (y `gcloud run services describe panelin-calc … status.url`). */
-const DEFAULT_BASE = "https://panelin-calc-642127786762.us-central1.run.app";
+/** Default prod base — misma que `gcloud run services describe panelin-calc … status.url` y `PUBLIC_BASE_URL` en Cloud Run. */
+const DEFAULT_BASE = "https://panelin-calc-q74zutv7dq-uc.a.run.app";
 const TIMEOUT_MS = 25_000;
 
 function parseArgs(argv) {
