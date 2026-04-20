@@ -80,7 +80,7 @@ export function buildAntiRepetitionContext(messages = [], opts = {}) {
 Se detectaron patrones repetitivos en tus últimas respuestas. OBLIGATORIO:
 1. NO repitas frases, párrafos o estructuras que ya usaste en esta conversación.
 2. Variá el formato: si antes usaste lista con viñetas, ahora usá prosa o tabla.
-3. Si ya diste una explicación, no la repitas — referenciala brevemente y avanzá.
+3. Si ya diste una explicación, no la repitas — referenciála brevemente y avanzá.
 4. Si el usuario repite la misma pregunta, respondé de forma diferente o preguntá qué parte no quedó clara.
 5. Cada respuesta debe aportar información NUEVA o un ángulo distinto.${avoidList}`;
   }

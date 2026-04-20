@@ -51,7 +51,8 @@ function getConversationFilePath(conversationId) {
   const filePath = path.join(conversationsDir, `${safeId}.json`);
   // Double-check resolved path is within the conversations directory
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(path.resolve(conversationsDir) + path.sep)) {
+  const resolvedDir = path.resolve(conversationsDir);
+  if (!resolved.startsWith(resolvedDir + path.sep) && resolved !== resolvedDir) {
     throw new Error("Invalid conversation ID — path traversal blocked");
   }
   return filePath;

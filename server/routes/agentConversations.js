@@ -92,6 +92,9 @@ router.get("/agent/conversations/:id/analysis", requireDevModeAuth, (req, res) =
   }
 });
 
+/** Maximum number of top issues/suggestions returned in aggregate reports */
+const MAX_TOP_ITEMS = 10;
+
 /**
  * GET /api/agent/conversations/report/aggregate — Aggregate report across all conversations.
  * Returns overall stats, common issues, and improvement recommendations.
@@ -148,7 +151,7 @@ router.get("/agent/conversations/report/aggregate", requireDevModeAuth, (req, re
     }
     const topIssues = Object.entries(issueCounts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
+      .slice(0, MAX_TOP_ITEMS)
       .map(([issue, count]) => ({ issue, count }));
 
     const suggestionCounts = {};
@@ -157,7 +160,7 @@ router.get("/agent/conversations/report/aggregate", requireDevModeAuth, (req, re
     }
     const topSuggestions = Object.entries(suggestionCounts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
+      .slice(0, MAX_TOP_ITEMS)
       .map(([suggestion, count]) => ({ suggestion, count }));
 
     res.json({
