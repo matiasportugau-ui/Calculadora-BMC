@@ -1002,6 +1002,47 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "0f9ab57f30e7bb0671baf43d91da7ebe3fbe88d7",
+      "short_hash": "0f9ab57",
+      "date": "2026-04-20",
+      "time": "20:33:19",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "",
+      "title": "update positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "subject": "fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/dec007b.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-19.md",
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/impact-map.json",
+        "docs/team/knowledge/references-catalog.json",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-19.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-20.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-19.md",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-20.md",
+        "docs/team/knowledge/sources-registry.json"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }

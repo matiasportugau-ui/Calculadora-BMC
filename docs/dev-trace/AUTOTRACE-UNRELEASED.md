@@ -23,6 +23,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `bc5c1fc` fix(docs): update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title
 - `0a5667b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
+- `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 
 ## Documentation
 
