@@ -14,8 +14,47 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
 const conversationsDir = path.join(repoRoot, "data", "conversations");
 
+/** Maximum length for user messages stored in logs */
+const MAX_USER_MESSAGE_LENGTH = 8000;
+/** Maximum length for assistant messages stored in logs */
+const MAX_ASSISTANT_MESSAGE_LENGTH = 16000;
+/** Similarity threshold above which two consecutive messages are considered repetitive */
+const REPETITION_SIMILARITY_THRESHOLD = 0.7;
+/** Regex to validate conversation IDs — only alphanumeric, hyphens, and underscores */
+const SAFE_ID_PATTERN = /^[a-zA-Z0-9_-]{1,80}$/;
+
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+}
+
+/**
+ * Sanitize and validate a conversation ID to prevent path traversal.
+ * @param {string} id
+ * @returns {string} Safe conversation ID
+ * @throws {Error} If the ID is invalid
+ */
+function sanitizeConversationId(id) {
+  const safeId = String(id || "").trim();
+  if (!SAFE_ID_PATTERN.test(safeId)) {
+    throw new Error("Invalid conversation ID format");
+  }
+  return safeId;
+}
+
+/**
+ * Get the file path for a conversation, ensuring it stays within the conversations directory.
+ * @param {string} conversationId
+ * @returns {string}
+ */
+function getConversationFilePath(conversationId) {
+  const safeId = sanitizeConversationId(conversationId);
+  const filePath = path.join(conversationsDir, `${safeId}.json`);
+  // Double-check resolved path is within the conversations directory
+  const resolved = path.resolve(filePath);
+  if (!resolved.startsWith(path.resolve(conversationsDir) + path.sep)) {
+    throw new Error("Invalid conversation ID — path traversal blocked");
+  }
+  return filePath;
 }
 
 /**
@@ -25,7 +64,7 @@ function ensureDir(dirPath) {
  */
 export function createConversation(meta = {}) {
   ensureDir(conversationsDir);
-  const id = meta.conversationId || crypto.randomUUID();
+  const id = meta.conversationId ? sanitizeConversationId(meta.conversationId) : crypto.randomUUID();
   const now = new Date().toISOString();
   const conversation = {
     id,
@@ -40,7 +79,7 @@ export function createConversation(meta = {}) {
     summary: null,
     analysis: null,
   };
-  const filePath = path.join(conversationsDir, `${id}.json`);
+  const filePath = getConversationFilePath(id);
   fs.writeFileSync(filePath, JSON.stringify(conversation, null, 2), "utf8");
   return { id, filePath };
 }
@@ -54,7 +93,8 @@ export function createConversation(meta = {}) {
  */
 export function appendTurn(conversationId, turn = {}) {
   ensureDir(conversationsDir);
-  const filePath = path.join(conversationsDir, `${conversationId}.json`);
+  const safeId = sanitizeConversationId(conversationId);
+  const filePath = getConversationFilePath(safeId);
 
   let conversation;
   if (fs.existsSync(filePath)) {
@@ -67,7 +107,7 @@ export function appendTurn(conversationId, turn = {}) {
 
   if (!conversation) {
     conversation = {
-      id: conversationId,
+      id: safeId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       provider: turn.provider || "unknown",
@@ -84,8 +124,8 @@ export function appendTurn(conversationId, turn = {}) {
   const turnRecord = {
     turnIndex: conversation.turnCount,
     timestamp: new Date().toISOString(),
-    userMessage: String(turn.userMessage || "").slice(0, 8000),
-    assistantMessage: String(turn.assistantMessage || "").slice(0, 16000),
+    userMessage: String(turn.userMessage || "").slice(0, MAX_USER_MESSAGE_LENGTH),
+    assistantMessage: String(turn.assistantMessage || "").slice(0, MAX_ASSISTANT_MESSAGE_LENGTH),
     actions: Array.isArray(turn.actions) ? turn.actions : [],
     kbMatches: Number(turn.kbMatches) || 0,
     calcValidation: turn.calcValidation || null,
@@ -112,9 +152,9 @@ export function appendTurn(conversationId, turn = {}) {
  * @returns {object|null}
  */
 export function loadConversation(conversationId) {
-  const filePath = path.join(conversationsDir, `${conversationId}.json`);
-  if (!fs.existsSync(filePath)) return null;
   try {
+    const filePath = getConversationFilePath(conversationId);
+    if (!fs.existsSync(filePath)) return null;
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
   } catch {
     return null;
@@ -184,7 +224,7 @@ export function updateConversationMeta(conversationId, data = {}) {
   if (data.analysis !== undefined) conv.analysis = data.analysis;
   conv.updatedAt = new Date().toISOString();
 
-  const filePath = path.join(conversationsDir, `${conversationId}.json`);
+  const filePath = getConversationFilePath(conversationId);
   fs.writeFileSync(filePath, JSON.stringify(conv, null, 2), "utf8");
   return conv;
 }
@@ -264,7 +304,7 @@ function detectRepetitions(texts) {
   for (let i = 1; i < texts.length; i++) {
     if (!texts[i] || texts[i].length < 30) continue;
     const similarity = computeSimilarity(texts[i], texts[i - 1]);
-    if (similarity > 0.7) repetitive.push(i);
+    if (similarity > REPETITION_SIMILARITY_THRESHOLD) repetitive.push(i);
   }
   return repetitive;
 }

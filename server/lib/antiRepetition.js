@@ -6,6 +6,27 @@
  * from repeating itself.
  */
 
+/** Default Jaccard similarity threshold above which two messages are considered repetitive */
+const DEFAULT_REPETITION_THRESHOLD = 0.55;
+/** Default number of recent assistant messages to analyze */
+const DEFAULT_WINDOW_SIZE = 6;
+/** Minimum word length for phrase extraction */
+const MIN_WORD_LENGTH = 3;
+
+/**
+ * Extract words of at least `minLength` characters from text.
+ * @param {string} text
+ * @param {number} [minLength]
+ * @returns {string[]}
+ */
+function extractWords(text, minLength = MIN_WORD_LENGTH) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\wáéíóúñü\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length >= minLength);
+}
+
 /**
  * Analyze recent conversation turns for repetition patterns.
  * Returns instructions to inject into the system prompt.
@@ -15,7 +36,7 @@
  * @returns {{ hasRepetition: boolean, instructions: string, patterns: string[] }}
  */
 export function buildAntiRepetitionContext(messages = [], opts = {}) {
-  const { threshold = 0.55, windowSize = 6 } = opts;
+  const { threshold = DEFAULT_REPETITION_THRESHOLD, windowSize = DEFAULT_WINDOW_SIZE } = opts;
 
   const assistantMsgs = messages
     .filter((m) => m.role === "assistant" && m.content && m.content.length >= 30)
@@ -77,7 +98,7 @@ function findRepeatedPhrases(texts) {
 
   const phraseCount = new Map();
   for (const text of texts) {
-    const words = text.toLowerCase().replace(/[^\wáéíóúñü\s]/g, "").split(/\s+/).filter((w) => w.length >= 3);
+    const words = extractWords(text);
     const seen = new Set();
     for (let i = 0; i <= words.length - 3; i++) {
       const phrase = words.slice(i, i + 3).join(" ");

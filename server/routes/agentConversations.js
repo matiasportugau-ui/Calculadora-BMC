@@ -30,6 +30,12 @@ function requireDevModeAuth(req, res, next) {
   return res.status(401).json({ ok: false, error: "Unauthorized" });
 }
 
+/** Clamp a pagination value between min and max with a default fallback. */
+function clampPagination(value, defaultVal, min, max) {
+  const num = Number(value) || defaultVal;
+  return Math.min(Math.max(num, min), max);
+}
+
 /**
  * GET /api/agent/conversations — List conversations with optional filters.
  * Query params: limit, offset, since (ISO date), devMode (true/false), provider
@@ -37,7 +43,7 @@ function requireDevModeAuth(req, res, next) {
 router.get("/agent/conversations", requireDevModeAuth, (req, res) => {
   try {
     const filters = {
-      limit: Math.min(Math.max(Number(req.query.limit) || 50, 1), 200),
+      limit: clampPagination(req.query.limit, 50, 1, 200),
       offset: Math.max(Number(req.query.offset) || 0, 0),
       since: req.query.since || undefined,
       devMode: req.query.devMode === "true" ? true : req.query.devMode === "false" ? false : undefined,

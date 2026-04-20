@@ -29,8 +29,12 @@ import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainin
 import { appendTurn } from "../lib/chatLogger.js";
 import { buildAntiRepetitionContext } from "../lib/antiRepetition.js";
 
+/** Minimum allowed max_tokens value */
+const MIN_ALLOWED_TOKENS = 512;
+/** Maximum allowed max_tokens value */
+const MAX_ALLOWED_TOKENS = 4096;
 /** Configurable max tokens — default 2048, env override via PANELIN_CHAT_MAX_TOKENS */
-const MAX_TOKENS = Math.max(512, Math.min(4096, Number(process.env.PANELIN_CHAT_MAX_TOKENS) || 2048));
+const MAX_TOKENS = Math.max(MIN_ALLOWED_TOKENS, Math.min(MAX_ALLOWED_TOKENS, Number(process.env.PANELIN_CHAT_MAX_TOKENS) || 2048));
 
 const router = Router();
 
@@ -333,7 +337,9 @@ router.post("/agent/chat", async (req, res) => {
   } = req.body || {};
   const aiProvider = String(rawAiProvider || "auto").toLowerCase();
   const aiModel = rawAiModel != null ? String(rawAiModel) : "";
-  const conversationId = typeof rawConversationId === "string" && rawConversationId.length <= 80
+  // Validate conversationId: must be alphanumeric/hyphens/underscores only, max 80 chars
+  const SAFE_CONV_ID = /^[a-zA-Z0-9_-]{1,80}$/;
+  const conversationId = typeof rawConversationId === "string" && SAFE_CONV_ID.test(rawConversationId)
     ? rawConversationId
     : crypto.randomUUID();
 
