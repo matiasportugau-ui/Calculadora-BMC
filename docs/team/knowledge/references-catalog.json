@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-17T13:00:14.761Z",
+  "updatedAt": "2026-04-20T13:06:30.466Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -5748,6 +5748,565 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_79a22c2d65d8f528"
+      ]
+    },
+    {
+      "id": "ref_a27142ab1c91dbc9",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Creating images with ChatGPT]]>",
+      "url": "https://openai.com/academy/image-generation",
+      "summary": "",
+      "publishedAt": "2026-04-10T00:00:00.000Z",
+      "firstSeenAt": "2026-04-19T13:00:10.336Z",
+      "lastSeenAt": "2026-04-19T13:00:10.336Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_2a796aeec26ef85f"
+      ]
+    },
+    {
+      "id": "ref_305ac9b1048eec62",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[ChatGPT for research]]>",
+      "url": "https://openai.com/academy/research",
+      "summary": "",
+      "publishedAt": "2026-04-10T00:00:00.000Z",
+      "firstSeenAt": "2026-04-19T13:00:10.337Z",
+      "lastSeenAt": "2026-04-19T13:00:10.337Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_7453b3fe92bd6311"
+      ]
+    },
+    {
+      "id": "ref_9d1853a8b0230abf",
+      "sourceId": "vercel-releases",
+      "title": "vercel@51.7.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4051.7.0",
+      "summary": "### Minor Changes - [detect-services] If a vercel.toml exists, update the vercel.toml ([#15895](https://github.com/vercel/vercel/pull/15895)) - Use correct filename in messages when config file is not vercel.json ([#15893](https://github.com/vercel/vercel/pull/15893)) - [services] move Python workers to v2beta triggers with private routing ([#15920](https://github.com/vercel/vercel/pull/15920)) ### Patch Changes - Include `action` and `resource` fields from API 403 responses in non-interactive agent error payloads. ([#15940](https://github.com/vercel/vercel/pull/15940)) - Use POST for `vercel connex create` with a browser registration fallback. ([#16026](https://github.com/vercel/vercel/pull/16026)) - Add table formatting for OpenAPI CLI responses. ([#16011](https://github.com/vercel/vercel/pull/16011)) Renders API JSON responses as CLI tables and cards with relative timestamp formatting, null/undefined display as `--`, human-readable column headers, and configurable display columns via `VercelCliTableDisplay`. - Updated dependencies \\[[`93be6d188176cdd4451a6c62155f3ccd7dfa89e1`](https://github.com/vercel/vercel/commit/93be6d188176cdd4451a6c62155f3ccd7dfa89e1), [`0793b7d31e4ff21dd12ff727f2906be2fd63fe3e`](https://github.com/vercel/vercel/commit/0793b7d31e4ff21dd12ff727f2906be2fd63fe3e)]: - @vercel/build-utils@13.19.0 - @vercel/python@6.35.0 - @vercel/backends@0.1.1 - @vercel/elysia@0.1.69 - @vercel/express@0.1.79 - @vercel/fastify@0.1.72 - @vercel/go@3.5.0 - @vercel/h3@0.1.78 - @vercel/hono@0.2.72 - @vercel/hydrogen@1.3.6 - @vercel/koa@0.1.52 - @vercel/nestjs@0.2.73 - @vercel/next@4.16.8 - @vercel/node@5.7.11 - @vercel/redwood@2.4.12 - @vercel/remix-builder@5.7.2 - @vercel/ruby@2.3.2 - @vercel/rust@1.1.1 - @vercel/static-build@2.9.19",
+      "publishedAt": "2026-04-17T22:38:37Z",
+      "firstSeenAt": "2026-04-19T13:00:10.492Z",
+      "lastSeenAt": "2026-04-19T13:00:10.492Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_b7069884adf5f641"
+      ]
+    },
+    {
+      "id": "ref_e44563be00c0b383",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/static-build@2.9.19",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/static-build%402.9.19",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/gatsby-plugin-vercel-builder@2.1.19",
+      "publishedAt": "2026-04-17T22:38:13Z",
+      "firstSeenAt": "2026-04-19T13:00:10.492Z",
+      "lastSeenAt": "2026-04-19T13:00:10.492Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9d932a9f2a7869c5"
+      ]
+    },
+    {
+      "id": "ref_e7dd541d431e2eed",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python@6.35.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python%406.35.0",
+      "summary": "### Minor Changes - [services] move Python workers to v2beta triggers with private routing ([#15920](https://github.com/vercel/vercel/pull/15920))",
+      "publishedAt": "2026-04-17T22:38:49Z",
+      "firstSeenAt": "2026-04-19T13:00:10.492Z",
+      "lastSeenAt": "2026-04-19T13:00:10.492Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_162ecad6862a27a5"
+      ]
+    },
+    {
+      "id": "ref_7e3e23fa74784848",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python-workers@0.0.17",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python-workers%400.0.17",
+      "summary": "### Patch Changes - [services] move Python workers to v2beta triggers with private routing ([#15920](https://github.com/vercel/vercel/pull/15920))",
+      "publishedAt": "2026-04-17T22:38:31Z",
+      "firstSeenAt": "2026-04-19T13:00:10.492Z",
+      "lastSeenAt": "2026-04-19T13:00:10.492Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_16f90a69ff813734"
+      ]
+    },
+    {
+      "id": "ref_ce6e8a947bbe62bc",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/node@5.7.11",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/node%405.7.11",
+      "summary": "### Patch Changes - Updated dependencies \\[[`93be6d188176cdd4451a6c62155f3ccd7dfa89e1`](https://github.com/vercel/vercel/commit/93be6d188176cdd4451a6c62155f3ccd7dfa89e1), [`0793b7d31e4ff21dd12ff727f2906be2fd63fe3e`](https://github.com/vercel/vercel/commit/0793b7d31e4ff21dd12ff727f2906be2fd63fe3e)]: - @vercel/build-utils@13.19.0",
+      "publishedAt": "2026-04-17T22:38:46Z",
+      "firstSeenAt": "2026-04-19T13:00:10.493Z",
+      "lastSeenAt": "2026-04-19T13:00:10.493Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_86c62c1c4abcf119"
+      ]
+    },
+    {
+      "id": "ref_085c639ec8139656",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/voyage@1.0.0",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/voyage%401.0.0",
+      "summary": "### Major Changes - c136e16: add voyage ai provider with embedding and reranking support on v6",
+      "publishedAt": "2026-04-17T18:54:33Z",
+      "firstSeenAt": "2026-04-19T13:00:11.743Z",
+      "lastSeenAt": "2026-04-19T13:00:11.743Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_60d09a440935a6d3"
+      ]
+    },
+    {
+      "id": "ref_5c4e8e357d2af7ec",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Building a Fast Multilingual OCR Model with Synthetic Data",
+      "url": "https://huggingface.co/blog/nvidia/nemotron-ocr-v2",
+      "summary": "",
+      "publishedAt": "2026-04-17T16:17:55.000Z",
+      "firstSeenAt": "2026-04-19T13:00:12.427Z",
+      "lastSeenAt": "2026-04-19T13:00:12.427Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_cd3e9205c8a4b4e5"
+      ]
+    },
+    {
+      "id": "ref_7f68f8cbae90a936",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[OpenAI helps Hyatt advance AI among colleagues ]]>",
+      "url": "https://openai.com/index/hyatt-advances-ai-with-chatgpt-enterprise",
+      "summary": "",
+      "publishedAt": "2026-04-20T00:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:27.984Z",
+      "lastSeenAt": "2026-04-20T13:06:27.984Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_dddf88c31c9a7877"
+      ]
+    },
+    {
+      "id": "ref_44bd55be71b5faee",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Brainstorming with ChatGPT]]>",
+      "url": "https://openai.com/academy/brainstorming",
+      "summary": "",
+      "publishedAt": "2026-04-10T00:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:27.985Z",
+      "lastSeenAt": "2026-04-20T13:06:27.985Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_bdb1449a44fda814"
+      ]
+    },
+    {
+      "id": "ref_b9fa5c453357fddf",
+      "sourceId": "vercel-releases",
+      "title": "vercel@51.8.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4051.8.0",
+      "summary": "### Minor Changes - `vercel env add` now defaults Environment Variables to **sensitive** on Production and Preview. Sensitive values are encrypted at rest and cannot be retrieved later via the dashboard or CLI; they are still resolved for builds, deployments, `vercel env pull`, and runtime. ([#16041](https://github.com/vercel/vercel/pull/16041)) Behavior per target: - **Production** or **Preview**: defaults to `sensitive`. Pass `--no-sensitive` to opt back in to the previous `encrypted` behavior (value remains readable later). - **Development**: always stored as `encrypted` (sensitive is not supported by the Vercel API for Development). Passing `--sensitive` alongside a Development target now errors up-front instead of silently falling back. - **Mixed selection** (e.g., interactive checkbox picks `production + preview + development`): errors and asks you to run `vercel env add` separately for Development, because Development cannot share a record type with Production/Preview. Flag summary: - `--sensitive`: unchanged in meaning (request a sensitive variable); now errors when combined with Development. - `--no-sensitive`: new; opt out of the new default for Production/Preview. - `--sensitive --no-sensitive` together: errors. On teams that enable the \"Enforce Sensitive Environment Variables\" policy in team settings, the CLI now reads the policy from the team object and notes in the output that the policy is active; the server already promotes Production/Preview variables to sensitive silently, and the CLI's own logs are now honest about it. Passing `--no-sensitive` on a policy-on team for Production/Preview now emits a warning — the flag is a no-op because the server promotes the variable regardless — and the CLI sends `type: 'sensitive'` so its own `--debug` output matches what gets stored. ### Patch Changes - Updated dependencies \\[[`c1866cf1add2107f91cae8292e38e4854bfe0aca`](https://github.com/vercel/vercel/commit/c1866cf1add2107f91cae8292e38e4854bfe0aca)]: - @vercel/build-utils@13.19.1 - @vercel/backends@0.1.2 - @vercel/elysia@0.1.70 - @vercel/express@0.1.80 - @vercel/fastify@0.1.73 - @vercel/go@3.5.0 - @vercel/h3@0.1.79 - @vercel/hono@0.2.73 - @vercel/hydrogen@1.3.6 - @vercel/koa@0.1.53 - @vercel/nestjs@0.2.74 - @vercel/next@4.16.8 - @vercel/node@5.7.12 - @vercel/python@6.35.0 - @vercel/redwood@2.4.12 - @vercel/remix-builder@5.7.2 - @vercel/ruby@2.3.2 - @vercel/rust@1.1.1 - @vercel/static-build@2.9.20",
+      "publishedAt": "2026-04-20T07:25:48Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f95e6a42a1994c1a"
+      ]
+    },
+    {
+      "id": "ref_21e0ae054b8062b0",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/static-build@2.9.20",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/static-build%402.9.20",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/gatsby-plugin-vercel-builder@2.1.20",
+      "publishedAt": "2026-04-20T07:25:39Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9a52243c8b241d0e"
+      ]
+    },
+    {
+      "id": "ref_53fc222675a3bc6f",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/node@5.7.12",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/node%405.7.12",
+      "summary": "### Patch Changes - Updated dependencies \\[[`c1866cf1add2107f91cae8292e38e4854bfe0aca`](https://github.com/vercel/vercel/commit/c1866cf1add2107f91cae8292e38e4854bfe0aca)]: - @vercel/build-utils@13.19.1",
+      "publishedAt": "2026-04-20T07:26:00Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_77b5d871e5364cb5"
+      ]
+    },
+    {
+      "id": "ref_5c7c88158150238c",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/nestjs@0.2.74",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/nestjs%400.2.74",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.12",
+      "publishedAt": "2026-04-20T07:25:54Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_de723e52b2896e25"
+      ]
+    },
+    {
+      "id": "ref_ab9e3d87f7ae385a",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/koa@0.1.53",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/koa%400.1.53",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.12",
+      "publishedAt": "2026-04-20T07:25:42Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_2c8216f7a26ff411"
+      ]
+    },
+    {
+      "id": "ref_e267ee4547855c2b",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/hono@0.2.73",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/hono%400.2.73",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.12",
+      "publishedAt": "2026-04-20T07:25:30Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d83da02765d1a011"
+      ]
+    },
+    {
+      "id": "ref_b2fb381a5138c845",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/h3@0.1.79",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/h3%400.1.79",
+      "summary": "### Patch Changes - Updated dependencies \\[]: - @vercel/node@5.7.12",
+      "publishedAt": "2026-04-20T07:25:45Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_691cabbd25622c79"
+      ]
+    },
+    {
+      "id": "ref_43d64745abab8018",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/gatsby-plugin-vercel-builder@2.1.20",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/gatsby-plugin-vercel-builder%402.1.20",
+      "summary": "### Patch Changes - Updated dependencies \\[[`c1866cf1add2107f91cae8292e38e4854bfe0aca`](https://github.com/vercel/vercel/commit/c1866cf1add2107f91cae8292e38e4854bfe0aca)]: - @vercel/build-utils@13.19.1",
+      "publishedAt": "2026-04-20T07:25:57Z",
+      "firstSeenAt": "2026-04-20T13:06:28.149Z",
+      "lastSeenAt": "2026-04-20T13:06:28.149Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ee30b2eccdebfe74"
+      ]
+    },
+    {
+      "id": "ref_c387f86e59abed71",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "DeepER-Med: Advancing Deep Evidence-Based Research in Medicine Through Agentic AI",
+      "url": "https://arxiv.org/abs/2604.15456",
+      "summary": "arXiv:2604.15456v1 Announce Type: new Abstract: Trustworthiness and transparency are essential for the clinical adoption of artificial intelligence (AI) in healthcare and biomedical research. Recent deep research systems aim to accelerate evidence-grounded scientific discovery by integrating AI agents with multi-hop information retrieval, reasoning, and synthesis. However, most existing systems lack explicit and inspectable criteria for evidence appraisal, creating a risk of compounding errors and making it difficult for researchers and clinicians to assess the reliability of their outputs. In parallel, current benchmarking approaches rarely evaluate performance on complex, real-world medical questions. Here, we introduce DeepER-Med, a Deep Evidence-based Research framework for Medicine with an agentic AI system. DeepER-Med frames deep medical research as an explicit and inspectable workflow of evidence-based generation, consisting of three modules: research planning, agentic collaboration, and evidence synthesis. To support realistic evaluation, we also present DeepER-MedQA, an evidence-grounded dataset comprising 100 expert-level research questions derived from authentic medical research scenarios and curated by a multidisciplinary panel of 11 biomedical experts. Expert manual evaluation demonstrates that DeepER-Med consistently outperforms widely used production-grade platforms across multiple criteria, including the generation of novel scientific insights. We further demonstrate the practical utility of DeepER-Med through eight real-world clinical cases. Human clinician assessment indicates that DeepER-Med's conclusions align with clinical recommendations in seven cases, highlighting its potential for medical research and decision support.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.170Z",
+      "lastSeenAt": "2026-04-20T13:06:29.170Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d8b16cb11867b8b6"
+      ]
+    },
+    {
+      "id": "ref_bb589c9efabc45c2",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "GIST: Multimodal Knowledge Extraction and Spatial Grounding via Intelligent Semantic Topology",
+      "url": "https://arxiv.org/abs/2604.15495",
+      "summary": "arXiv:2604.15495v1 Announce Type: new Abstract: Navigating complex, densely packed environments like retail stores, warehouses, and hospitals poses a significant spatial grounding challenge for humans and embodied AI. In these spaces, dense visual features quickly become stale given the quasi-static nature of items, and long-tail semantic distributions challenge traditional computer vision. While Vision-Language Models (VLMs) help assistive systems navigate semantically-rich spaces, they still struggle with spatial grounding in cluttered environments. We present GIST (Grounded Intelligent Semantic Topology), a multimodal knowledge extraction pipeline that transforms a consumer-grade mobile point cloud into a semantically annotated navigation topology. Our architecture distills the scene into a 2D occupancy map, extracts its topological layout, and overlays a lightweight semantic layer via intelligent keyframe and semantic selection. We demonstrate the versatility of this structured spatial knowledge through critical downstream Human-AI interaction tasks: (1) an intent-driven Semantic Search engine that actively infers categorical alternatives and zones when exact matches fail; (2) a one-shot Semantic Localizer achieving a 1.04 m top-5 mean translation error; (3) a Zone Classification module that segments the walkable floor plan into high-level semantic regions; and (4) a Visually-Grounded Instruction Generator that synthesizes optimal paths into egocentric, landmark-rich natural language routing. In multi-criteria LLM evaluations, GIST outperforms sequence-based instruction generation baselines. Finally, an in-situ formative evaluation (N=5) yields an 80% navigation success rate relying solely on verbal cues, validating the system's capacity for universal design.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.171Z",
+      "lastSeenAt": "2026-04-20T13:06:29.171Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_83250d0ec0e43c9f"
+      ]
+    },
+    {
+      "id": "ref_31d232a263e33d94",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Bureaucratic Silences: What the Canadian AI Register Reveals, Omits, and Obscures",
+      "url": "https://arxiv.org/abs/2604.15514",
+      "summary": "arXiv:2604.15514v1 Announce Type: new Abstract: In November 2025, the Government of Canada operationalized its commitment to transparency by releasing its first Federal AI Register. In this paper, we argue that such registers are not neutral mirrors of government activity, but active instruments of ontological design that configure the boundaries of accountability. We analyzed the Register's complete dataset of 409 systems using the Algorithmic Decision-Making Adapted for the Public Sector (ADMAPS) framework, combining quantitative mapping with deductive qualitative coding. Our findings reveal a sharp divergence between the rhetoric of \"sovereign AI\" and the reality of bureaucratic practice: while 86\\% of systems are deployed internally for efficiency, the Register systematically obscures the human discretion, training, and uncertainty management required to operate them. By privileging technical descriptions over sociotechnical context, the Register constructs an ontology of AI as \"reliable tooling\" rather than \"contestable decision-making.\" We conclude that without a shift in design, such transparency artifacts risk automating accountability into a performative compliance exercise, offering visibility without contestability.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.171Z",
+      "lastSeenAt": "2026-04-20T13:06:29.171Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_28dc075f39922603"
+      ]
+    },
+    {
+      "id": "ref_5c1f91b03f7aea92",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "LACE: Lattice Attention for Cross-thread Exploration",
+      "url": "https://arxiv.org/abs/2604.15529",
+      "summary": "arXiv:2604.15529v1 Announce Type: new Abstract: Current large language models reason in isolation. Although it is common to sample multiple reasoning paths in parallel, these trajectories do not interact, and often fail in the same redundant ways. We introduce LACE, a framework that transforms reasoning from a collection of independent trials into a coordinated, parallel process. By repurposing the model architecture to enable cross-thread attention, LACE allows concurrent reasoning paths to share intermediate insights and correct one another during inference. A central challenge is the absence of natural training data that exhibits such collaborative behavior. We address this gap with a synthetic data pipeline that explicitly teaches models to communicate and error-correct across threads. Experiments show that this unified exploration substantially outperforms standard parallel search, improving reasoning accuracy by over 7 points. Our results suggest that large language models can be more effective when parallel reasoning paths are allowed to interact.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.171Z",
+      "lastSeenAt": "2026-04-20T13:06:29.171Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ebb63f753a3df4b5"
+      ]
+    },
+    {
+      "id": "ref_5a55e464b84f778e",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Preregistered Belief Revision Contracts",
+      "url": "https://arxiv.org/abs/2604.15558",
+      "summary": "arXiv:2604.15558v1 Announce Type: new Abstract: Deliberative multi-agent systems allow agents to exchange messages and revise beliefs over time. While this interaction is meant to improve performance, it can also create dangerous conformity effects: agreement, confidence, prestige, or majority size may be treated as if they were evidence, producing high-confidence convergence to false conclusions. To address this, we introduce PBRC (Preregistered Belief Revision Contracts), a protocol-level mechanism that strictly separates open communication from admissible epistemic change. A PBRC contract publicly fixes first-order evidence triggers, admissible revision operators, a priority rule, and a fallback policy. A non-fallback step is accepted only when it cites a preregistered trigger and provides a nonempty witness set of externally validated evidence tokens. This ensures that every substantive belief change is both enforceable by a router and auditable after the fact. In this paper, (a) we prove that under evidential contracts with conservative fallback, social-only rounds cannot increase confidence and cannot generate purely conformity-driven wrong-but-sure cascades. (b) We show that auditable trigger protocols admit evidential PBRC normal forms that preserve belief trajectories and canonicalized audit traces. (c) We demonstrate that sound enforcement yields epistemic accountability: any change of top hypothesis is attributable to a concrete validated witness set. For token-invariant contracts, (d) we prove that enforced trajectories depend only on token-exposure traces; under flooding dissemination, these traces are characterized exactly by truncated reachability, giving tight diameter bounds for universal evidence closure. Finally, we introduce a companion contractual dynamic doxastic logic to specify trace invariants, and provide simulations illustrating cascade suppression, auditability, and robustness-liveness trade-offs.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.171Z",
+      "lastSeenAt": "2026-04-20T13:06:29.171Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_76eb201667c3f476"
+      ]
+    },
+    {
+      "id": "ref_4b9afae052bde960",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Subliminal Transfer of Unsafe Behaviors in AI Agent Distillation",
+      "url": "https://arxiv.org/abs/2604.15559",
+      "summary": "arXiv:2604.15559v1 Announce Type: new Abstract: Recent work on subliminal learning demonstrates that language models can transmit semantic traits through data that is semantically unrelated to those traits. However, it remains unclear whether behavioral traits can transfer in agentic systems, where policies are learned from trajectories rather than static text. In this work, we provide the first empirical evidence that unsafe agent behaviors can transfer subliminally through model distillation across two complementary experimental settings. In our primary setting, we construct a teacher agent exhibiting a strong deletion bias, a tendency to perform destructive file-system actions via an API-style tool interface, and distill it into a student using only trajectories from ostensibly safe tasks, with all explicit deletion keywords rigorously filtered. In our secondary setting, we replicate the threat model in a native Bash environment, replacing API tool calls with shell commands and operationalizing the bias as a preference for issuing chmod as the first permission-related command over semantically equivalent alternatives such as chown or setfacl. Despite full keyword sanitation in both settings, students inherit measurable behavioral biases. In the API setting the student's deletion rate reaches 100% (versus a 5% baseline) under homogeneous distillation; in the Bash setting the student's chmod-first rate reaches 30%-55% (versus a 0%-10% baseline), with the strongest transfer observed in large-to-small distillation. Our results demonstrate that explicit data sanitation is an insufficient defense, and behavioral biases are encoded implicitly in trajectory dynamics regardless of the tool interface.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.171Z",
+      "lastSeenAt": "2026-04-20T13:06:29.171Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_735e1eea8452d899"
+      ]
+    },
+    {
+      "id": "ref_d3e7e63f038f4121",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Bilevel Optimization of Agent Skills via Monte Carlo Tree Search",
+      "url": "https://arxiv.org/abs/2604.15709",
+      "summary": "arXiv:2604.15709v1 Announce Type: new Abstract: Agent \\texttt{skills} are structured collections of instructions, tools, and supporting resources that help large language model (LLM) agents perform particular classes of tasks. Empirical evidence shows that the design of \\texttt{skills} can materially affect agent task performance, yet systematically optimizing \\texttt{skills} remains challenging. Since a \\texttt{skill} comprises instructions, tools, and supporting resources in a structured way, optimizing it requires jointly determining both the structure of these components and the content each component contains. This gives rise to a complex decision space with strong interdependence across structure and components. We therefore represent these two coupled decisions as \\texttt{skill} structure and component content, and formulate \\texttt{skill} optimization as a bilevel optimization problem. We propose a bilevel optimization framework in which an outer loop employs Monte Carlo Tree Search to determine the \\texttt{skill} structure, while an inner loop refines the component content within the structure selected by the outer loop. In both loops, we employ LLMs to assist the optimization procedure. We evaluate the proposed framework on an open-source Operations Research Question Answering dataset, and the experimental results suggest that the bilevel optimization framework improves the performance of the agents with the optimized \\texttt{skill}.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.171Z",
+      "lastSeenAt": "2026-04-20T13:06:29.171Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_23fb7022847d61ea"
+      ]
+    },
+    {
+      "id": "ref_a1d79e0be46e5138",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "The World Leaks the Future: Harness Evolution for Future Prediction Agents",
+      "url": "https://arxiv.org/abs/2604.15719",
+      "summary": "arXiv:2604.15719v1 Announce Type: new Abstract: Many consequential decisions must be made before the relevant outcome is known. Such problems are commonly framed as \\emph{future prediction}, where an LLM agent must form a prediction for an unresolved question using only the public information available at the prediction time. The setting is difficult because public evidence evolves while useful supervision arrives only after the question is resolved, so most existing approaches still improve mainly from final outcomes. Yet final outcomes are too coarse to guide earlier factor tracking, evidence gathering and interpretation, or uncertainty handling. When the same unresolved question is revisited over time, temporal contrasts between earlier and later predictions can expose omissions in the earlier prediction process; we call this signal \\emph{internal feedback}. We introduce \\emph{Milkyway}, a self-evolving agent system that keeps the base model fixed and instead updates a persistent \\emph{future prediction harness} for factor tracking, evidence gathering and interpretation, and uncertainty handling. Across repeated predictions on the same unresolved question, \\emph{Milkyway} extracts internal feedback and writes reusable guidance back into the harness, so later predictions on that question can improve before the outcome is known. After the question is resolved, the final outcome provides a \\emph{retrospective check} before the updated harness is carried forward to subsequent questions. On FutureX and FutureWorld, Milkyway achieves the best overall score among the compared methods, improving FutureX from 44.07 to 60.90 and FutureWorld from 62.22 to 77.96.",
+      "publishedAt": "2026-04-20T04:00:00.000Z",
+      "firstSeenAt": "2026-04-20T13:06:29.172Z",
+      "lastSeenAt": "2026-04-20T13:06:29.172Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_a7a1fb843bebf7e5"
       ]
     }
   ]
