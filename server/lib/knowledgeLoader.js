@@ -7,7 +7,7 @@ const knowledgeDir = path.resolve(__dirname, "../../data/knowledge");
 
 let _cache = null;
 let _cacheTime = 0;
-const CACHE_TTL_MS = 60_000; // reload every 60s in dev
+const CACHE_TTL_MS = Number(process.env.KNOWLEDGE_CACHE_TTL_MS) || 60_000;
 
 export function loadKnowledgeDocs() {
   const now = Date.now();
@@ -31,4 +31,9 @@ export function loadKnowledgeDocs() {
   _cache = sections.join("\n\n---\n\n");
   _cacheTime = now;
   return _cache;
+}
+
+export function clearKnowledgeCache() {
+  _cache = null;
+  _cacheTime = 0;
 }

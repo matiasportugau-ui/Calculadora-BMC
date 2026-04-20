@@ -4,8 +4,25 @@ import { mapErrorMessage } from "../utils/chatErrors.js";
 
 const STORAGE_KEY = "panelin-chat-history";
 const STORAGE_AI = "panelin-chat-ai-selection-v1";
+const STORAGE_CONV_ID = "panelin-conversation-id";
 const ALLOWED_AI_PROVIDERS = new Set(["claude", "openai", "grok", "gemini"]);
 const MAX_STORED = 40; // keep last 40 messages in localStorage
+
+function loadConversationId() {
+  try {
+    return sessionStorage.getItem(STORAGE_CONV_ID) || null;
+  } catch { return null; }
+}
+
+function saveConversationId(id) {
+  try { sessionStorage.setItem(STORAGE_CONV_ID, id); } catch { /* ignore */ }
+}
+
+function freshConversationId() {
+  const id = crypto.randomUUID();
+  saveConversationId(id);
+  return id;
+}
 
 function loadAiSelection() {
   try {
@@ -78,6 +95,7 @@ export function useChat({
   const [messages, setMessages] = useState(() => (persistHistory ? loadHistory() : []));
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState(null);
+  const [conversationId, setConversationId] = useState(() => loadConversationId() || freshConversationId());
   const [devMeta, setDevMeta] = useState({ kbMatches: 0, calcValidation: null });
   const [trainingEntries, setTrainingEntries] = useState([]);
   const [trainingStats, setTrainingStats] = useState({ total: 0 });
@@ -176,6 +194,23 @@ export function useChat({
     }
   }, [persistHistory]);
 
+  // Auto-load dev panel data when devMode activates — no manual reload clicks needed
+  const devAutoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!devMode || !devAuthToken) {
+      devAutoLoadedRef.current = false;
+      return;
+    }
+    if (devAutoLoadedRef.current) return;
+    devAutoLoadedRef.current = true;
+    Promise.all([
+      reloadTrainingKB().catch(() => {}),
+      reloadPromptSections().catch(() => {}),
+      reloadPromptPreview().catch(() => {}),
+    ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devMode, devAuthToken]);
+
   const buildDevAuthHeaders = useCallback(() => {
     if (!devMode || !devAuthToken) return {};
     return {
@@ -230,6 +265,7 @@ export function useChat({
             devMode,
             aiProvider: ap,
             ...(ap !== "auto" && am ? { aiModel: am } : {}),
+            conversationId,
           }),
           signal: controller.signal,
         });
@@ -355,6 +391,14 @@ export function useChat({
 
   const saveCorrection = useCallback(
     async ({ category, question, badAnswer, goodAnswer, context }) => {
+      // Duplicate detection before saving
+      const normalQ = String(question || "").toLowerCase().trim();
+      const duplicate = trainingEntries.find(
+        (e) => String(e.question || "").toLowerCase().trim() === normalQ
+      );
+      if (duplicate) {
+        return { ok: false, duplicate: true, existingId: duplicate.id };
+      }
       const apiBase = getCalcApiBase();
       const res = await fetch(`${apiBase}/api/agent/train`, {
         method: "POST",
@@ -376,8 +420,55 @@ export function useChat({
       await reloadTrainingKB();
       return data;
     },
-    [buildDevAuthHeaders, reloadTrainingKB]
+    [buildDevAuthHeaders, reloadTrainingKB, trainingEntries]
   );
+
+  const bulkDeleteKB = useCallback(async (ids) => {
+    if (!devMode || !devAuthToken || !Array.isArray(ids) || ids.length === 0) return null;
+    const apiBase = getCalcApiBase();
+    const res = await fetch(`${apiBase}/api/agent/train/bulk`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", ...buildDevAuthHeaders() },
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await reloadTrainingKB();
+    return res.json();
+  }, [devMode, devAuthToken, buildDevAuthHeaders, reloadTrainingKB]);
+
+  const bulkArchiveKB = useCallback(async (ids) => {
+    if (!devMode || !devAuthToken || !Array.isArray(ids) || ids.length === 0) return null;
+    const apiBase = getCalcApiBase();
+    const res = await fetch(`${apiBase}/api/agent/train/bulk`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...buildDevAuthHeaders() },
+      body: JSON.stringify({ ids, patch: { archived: true } }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await reloadTrainingKB();
+    return res.json();
+  }, [devMode, devAuthToken, buildDevAuthHeaders, reloadTrainingKB]);
+
+  const loadConversationList = useCallback(async ({ days = 30, page = 1, limit = 20 } = {}) => {
+    if (!devMode || !devAuthToken) return null;
+    const apiBase = getCalcApiBase();
+    const params = new URLSearchParams({ days, page, limit });
+    const res = await fetch(`${apiBase}/api/agent/conversations?${params}`, {
+      headers: buildDevAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+
+  const loadConversationAnalysis = useCallback(async (convId) => {
+    if (!devMode || !devAuthToken || !convId) return null;
+    const apiBase = getCalcApiBase();
+    const res = await fetch(`${apiBase}/api/agent/conversations/${convId}/analysis`, {
+      headers: buildDevAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }, [devMode, devAuthToken, buildDevAuthHeaders]);
 
   const reloadPromptPreview = useCallback(async () => {
     if (!devMode || !devAuthToken) return null;
@@ -478,6 +569,9 @@ export function useChat({
     setError(null);
     setIsStreaming(false);
     lastUserTextRef.current = "";
+    devAutoLoadedRef.current = false;
+    const newId = freshConversationId();
+    setConversationId(newId);
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
@@ -508,5 +602,10 @@ export function useChat({
     reloadPromptSections,
     savePromptSection,
     verifyCalculation,
+    bulkDeleteKB,
+    bulkArchiveKB,
+    loadConversationList,
+    loadConversationAnalysis,
+    conversationId,
   };
 }

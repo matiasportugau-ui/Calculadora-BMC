@@ -6109,6 +6109,10 @@ export default function PanelinCalculadoraV3() {
         onReloadPromptSections={chat.reloadPromptSections}
         onSavePromptSection={chat.savePromptSection}
         onVerifyCalculation={chat.verifyCalculation}
+        onBulkDeleteKB={chat.bulkDeleteKB}
+        onBulkArchiveKB={chat.bulkArchiveKB}
+        onLoadConversations={chat.loadConversationList}
+        onLoadConversationAnalysis={chat.loadConversationAnalysis}
       />
 
       <Toast message={toast} visible={!!toast} />

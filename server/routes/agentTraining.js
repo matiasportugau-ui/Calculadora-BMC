@@ -3,15 +3,22 @@ import { config } from "../config.js";
 import {
   addTrainingEntry,
   appendTrainingSessionEvent,
+  bulkDeleteEntries,
+  bulkPatchEntries,
   deleteTrainingEntry,
   findRelevantExamples,
   getTrainingPaths,
   getTrainingStats,
   listTrainingEntries,
+  loadPromptSectionHistory,
   loadPromptSections,
+  revertPromptSection,
+  saveScoringConfig,
+  DEFAULT_SCORING_CONFIG,
   updatePromptSection,
   updateTrainingEntry,
 } from "../lib/trainingKB.js";
+import { clearKnowledgeCache } from "../lib/knowledgeLoader.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 
 const router = Router();
@@ -100,6 +107,73 @@ router.post("/agent/prompt-preview", requireDevModeAuth, (req, res) => {
 router.post("/agent/training/log-event", requireDevModeAuth, (req, res) => {
   const filePath = appendTrainingSessionEvent(req.body || {});
   res.json({ ok: true, filePath });
+});
+
+router.delete("/agent/train/bulk", requireDevModeAuth, (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
+    const result = bulkDeleteEntries(ids);
+    appendTrainingSessionEvent({ type: "train_bulk_deleted", count: ids.length });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.patch("/agent/train/bulk", requireDevModeAuth, (req, res) => {
+  try {
+    const { ids, patch } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
+    const result = bulkPatchEntries(ids, patch || {});
+    appendTrainingSessionEvent({ type: "train_bulk_patched", count: ids.length });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.get("/agent/dev-config/:section/history", requireDevModeAuth, (req, res) => {
+  const section = String(req.params.section || "").toUpperCase();
+  const history = loadPromptSectionHistory(section);
+  res.json({ ok: true, section, versions: history });
+});
+
+router.post("/agent/dev-config/:section/revert", requireDevModeAuth, (req, res) => {
+  try {
+    const section = String(req.params.section || "").toUpperCase();
+    const { versionIndex } = req.body || {};
+    const result = revertPromptSection(section, Number(versionIndex));
+    appendTrainingSessionEvent({ type: "prompt_section_reverted", section, versionIndex });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.post("/agent/knowledge/clear-cache", requireDevModeAuth, (req, res) => {
+  clearKnowledgeCache();
+  res.json({ ok: true, message: "Knowledge docs cache cleared" });
+});
+
+router.get("/agent/training-kb/score-config", requireDevModeAuth, (req, res) => {
+  res.json({ ok: true, config: DEFAULT_SCORING_CONFIG, defaults: DEFAULT_SCORING_CONFIG });
+});
+
+router.post("/agent/training-kb/score-config", requireDevModeAuth, (req, res) => {
+  try {
+    const { permanentBonus, questionMatchWeight, contextMatchWeight, answerMatchWeight } = req.body || {};
+    const cfg = {
+      permanentBonus: Number(permanentBonus) || DEFAULT_SCORING_CONFIG.permanentBonus,
+      questionMatchWeight: Number(questionMatchWeight) || DEFAULT_SCORING_CONFIG.questionMatchWeight,
+      contextMatchWeight: Number(contextMatchWeight) || DEFAULT_SCORING_CONFIG.contextMatchWeight,
+      answerMatchWeight: Number(answerMatchWeight) || DEFAULT_SCORING_CONFIG.answerMatchWeight,
+    };
+    saveScoringConfig(cfg);
+    res.json({ ok: true, config: cfg });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
 });
 
 export default router;
