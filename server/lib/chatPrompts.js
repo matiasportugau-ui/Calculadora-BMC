@@ -304,11 +304,11 @@ export function sanitizeForPrompt(val, maxLen = 200) {
 
 /**
  * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean }} options
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, antiRepetitionBlock?: string }} options
  * @returns {string}
  */
 export function buildSystemPrompt(calcState = {}, options = {}) {
-  const { trainingExamples = [], devMode = false } = options;
+  const { trainingExamples = [], devMode = false, antiRepetitionBlock = "" } = options;
   const {
     scenario = "sin seleccionar",
     listaPrecios = "sin seleccionar",
@@ -386,7 +386,7 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
     ? `## DOCUMENTACIÓN TÉCNICA ADICIONAL\n${knowledgeDocs}`
     : "";
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, currentState, examplesBlock, devModeRules]
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, currentState, examplesBlock, devModeRules, antiRepetitionBlock]
     .filter(Boolean)
     .join("\n\n");
 }

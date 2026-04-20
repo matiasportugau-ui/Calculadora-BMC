@@ -83,6 +83,7 @@ bmc-logistica-transport-bundle.zip
 data/transportista-evidence/
 data/training-kb.json
 data/training-sessions/
+data/conversations/
 
 # UX — sesiones de vídeo locales (pesadas / posible PII; ver docs/team/ux-feedback/sessions/README.md)
 docs/team/ux-feedback/sessions/**/*.mp4

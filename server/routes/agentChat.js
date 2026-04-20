@@ -10,6 +10,7 @@
  *   {"type":"done"}
  *   {"type":"error","message":"..."}
  */
+import crypto from "node:crypto";
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
@@ -25,6 +26,11 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
+import { appendTurn } from "../lib/chatLogger.js";
+import { buildAntiRepetitionContext } from "../lib/antiRepetition.js";
+
+/** Configurable max tokens — default 2048, env override via PANELIN_CHAT_MAX_TOKENS */
+const MAX_TOKENS = Math.max(512, Math.min(4096, Number(process.env.PANELIN_CHAT_MAX_TOKENS) || 2048));
 
 const router = Router();
 
@@ -323,9 +329,13 @@ router.post("/agent/chat", async (req, res) => {
     devMode = false,
     aiProvider: rawAiProvider,
     aiModel: rawAiModel,
+    conversationId: rawConversationId,
   } = req.body || {};
   const aiProvider = String(rawAiProvider || "auto").toLowerCase();
   const aiModel = rawAiModel != null ? String(rawAiModel) : "";
+  const conversationId = typeof rawConversationId === "string" && rawConversationId.length <= 80
+    ? rawConversationId
+    : crypto.randomUUID();
 
   // 0.4 — CSRF origin check
   const origin = req.headers.origin;
@@ -379,9 +389,16 @@ router.post("/agent/chat", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no"); // disable nginx / Cloud Run buffering
 
-  const send = (obj) => { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
+  const emittedActions = [];
+  const send = (obj) => {
+    if (!aborted) {
+      res.write(`data: ${JSON.stringify(obj)}\n\n`);
+      if (obj.type === "action" && obj.action) emittedActions.push(obj.action);
+    }
+  };
   let visibleAssistantText = "";
   let aborted = false;
+  const turnStartMs = Date.now();
 
   // 1.5 — Abort LLM stream on client disconnect
   const disconnectController = new AbortController();
@@ -441,11 +458,16 @@ router.post("/agent/chat", async (req, res) => {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-  const trainingExamples = devMode ? findRelevantExamples(lastUserMessage, { limit: 5 }) : [];
+  // Always use KB matching — training examples improve all responses, not just devMode
+  const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
   if (devMode) {
     send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode });
+
+  // Anti-repetition: analyze recent messages for repetitive patterns
+  const antiRep = buildAntiRepetitionContext(messages, { threshold: 0.55 });
+
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, antiRepetitionBlock: antiRep.instructions });
   let filteredMsgs = messages
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
@@ -506,7 +528,7 @@ router.post("/agent/chat", async (req, res) => {
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
         const stream = anthropic.messages.stream({
           model,
-          max_tokens: 1024,
+          max_tokens: MAX_TOKENS,
           system: systemPrompt,
           messages: msgs,
         });
@@ -552,7 +574,7 @@ router.post("/agent/chat", async (req, res) => {
 
         const stream = await client.chat.completions.create({
           model,
-          max_tokens: 1024,
+          max_tokens: MAX_TOKENS,
           stream: true,
           messages: [{ role: "system", content: systemPrompt }, ...msgs],
         });
@@ -567,9 +589,30 @@ router.post("/agent/chat", async (req, res) => {
 
       flushTail(buf);
       if (!aborted) {
+        const validation = buildCalcValidation(calcState, visibleAssistantText);
         if (devMode) {
-          const validation = buildCalcValidation(calcState, visibleAssistantText);
           send({ type: "calc_validation", validation });
+        }
+
+        // Log conversation turn (all users, not just devMode)
+        try {
+          appendTurn(conversationId, {
+            userMessage: lastUserMessage,
+            assistantMessage: visibleAssistantText,
+            actions: emittedActions,
+            kbMatches: trainingExamples.length,
+            calcValidation: validation.available ? validation : null,
+            provider,
+            model: resolveModelForProvider(provider, requestedId, modelDefaults[provider]),
+            devMode,
+            durationMs: Date.now() - turnStartMs,
+          });
+        } catch (logErr) {
+          req.log?.warn({ err: logErr.message }, "conversation logging failed");
+        }
+
+        // Legacy dev training session event
+        if (devMode) {
           appendTrainingSessionEvent({
             type: "chat_turn",
             mode: "developer",
@@ -579,7 +622,8 @@ router.post("/agent/chat", async (req, res) => {
             calcValidation: validation,
           });
         }
-        send({ type: "done" });
+
+        send({ type: "done", conversationId });
       }
       clearInterval(heartbeat);
       res.end();

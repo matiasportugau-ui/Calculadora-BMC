@@ -94,6 +94,8 @@ export function useChat({
   aiSelectionRef.current = { aiProvider, aiModel };
   // 1.2 — Track last user text for retry
   const lastUserTextRef = useRef("");
+  // Conversation ID — persisted across turns in a session, reset on clear()
+  const conversationIdRef = useRef(crypto.randomUUID());
 
   useEffect(() => {
     let cancelled = false;
@@ -228,6 +230,7 @@ export function useChat({
             })),
             calcState,
             devMode,
+            conversationId: conversationIdRef.current,
             aiProvider: ap,
             ...(ap !== "auto" && am ? { aiModel: am } : {}),
           }),
@@ -452,6 +455,38 @@ export function useChat({
     [buildDevAuthHeaders, calcState]
   );
 
+  /** Load conversation logs from the server (dev mode). */
+  const loadConversations = useCallback(
+    async (filters = {}) => {
+      if (!devMode || !devAuthToken) return null;
+      const apiBase = getCalcApiBase();
+      const params = new URLSearchParams();
+      if (filters.limit) params.set("limit", String(filters.limit));
+      if (filters.offset) params.set("offset", String(filters.offset));
+      if (filters.since) params.set("since", filters.since);
+      const res = await fetch(`${apiBase}/api/agent/conversations?${params}`, {
+        headers: buildDevAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    [devMode, devAuthToken, buildDevAuthHeaders]
+  );
+
+  /** Load analysis for a specific conversation (dev mode). */
+  const loadConversationAnalysis = useCallback(
+    async (conversationId) => {
+      if (!devMode || !devAuthToken) return null;
+      const apiBase = getCalcApiBase();
+      const res = await fetch(`${apiBase}/api/agent/conversations/${conversationId}/analysis`, {
+        headers: buildDevAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    [devMode, devAuthToken, buildDevAuthHeaders]
+  );
+
   // 1.3 — Stop generating without clearing history
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -478,6 +513,7 @@ export function useChat({
     setError(null);
     setIsStreaming(false);
     lastUserTextRef.current = "";
+    conversationIdRef.current = crypto.randomUUID();
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
@@ -508,5 +544,8 @@ export function useChat({
     reloadPromptSections,
     savePromptSection,
     verifyCalculation,
+    loadConversations,
+    loadConversationAnalysis,
+    conversationId: conversationIdRef.current,
   };
 }

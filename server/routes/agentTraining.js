@@ -102,4 +102,49 @@ router.post("/agent/training/log-event", requireDevModeAuth, (req, res) => {
   res.json({ ok: true, filePath });
 });
 
+/**
+ * POST /api/agent/training-kb/bulk — Import multiple training entries at once.
+ * Body: { entries: [{ category, question, goodAnswer, ... }] }
+ */
+router.post("/agent/training-kb/bulk", requireDevModeAuth, (req, res) => {
+  try {
+    const entries = Array.isArray(req.body?.entries) ? req.body.entries : [];
+    if (entries.length === 0) {
+      return res.status(400).json({ ok: false, error: "entries array required" });
+    }
+    if (entries.length > 100) {
+      return res.status(400).json({ ok: false, error: "Max 100 entries per bulk import" });
+    }
+    const results = [];
+    const errors = [];
+    for (const [i, entry] of entries.entries()) {
+      try {
+        const created = addTrainingEntry(entry);
+        results.push({ index: i, id: created.id, ok: true });
+      } catch (err) {
+        errors.push({ index: i, error: err.message || String(err) });
+      }
+    }
+    appendTrainingSessionEvent({ type: "bulk_import", count: results.length, errors: errors.length });
+    res.json({ ok: true, imported: results.length, errors, results });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+/**
+ * GET /api/agent/training-kb/export — Export all training entries as JSON.
+ */
+router.get("/agent/training-kb/export", requireDevModeAuth, (req, res) => {
+  const entries = listTrainingEntries();
+  const stats = getTrainingStats();
+  res.json({
+    ok: true,
+    version: "1.0.0",
+    exportedAt: new Date().toISOString(),
+    stats,
+    entries,
+  });
+});
+
 export default router;
