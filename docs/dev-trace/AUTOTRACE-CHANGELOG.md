@@ -32,3 +32,4 @@
 - 2026-04-19 07:36:10 — `0a5667b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-19 07:45:36 — `dec007b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-20 20:33:19 — `0f9ab57` — fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
+- 2026-04-20 20:53:27 — `bcefb3e` — chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor

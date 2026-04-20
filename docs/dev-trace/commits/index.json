@@ -1043,6 +1043,34 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "bcefb3e5ee6330bb8e16f994ace7c494951e2e30",
+      "short_hash": "bcefb3e",
+      "date": "2026-04-20",
+      "time": "20:53:27",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "editor",
+      "title": "ocultar dev-trace en UI y excluirlo del contexto Cursor",
+      "subject": "chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor",
+      "files": [
+        ".cursorignore",
+        ".vscode/settings.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".vscode"
+        ]
+      }
     }
   ]
 }

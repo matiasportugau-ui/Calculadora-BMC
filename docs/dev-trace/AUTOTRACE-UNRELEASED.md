@@ -41,6 +41,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f08ea7c` chore(dev-trace): update AUTOTRACE documentation and status
 - `8c00277` chore(ops): Cloud Run 300s timeout; sync dev-trace
 - `ef8734c` chore: sync autotrace docs and data version for Sketchfab integration commits
+- `bcefb3e` chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor
 
 ## Other
 
