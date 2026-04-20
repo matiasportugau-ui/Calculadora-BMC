@@ -30,10 +30,10 @@ function requireDevModeAuth(req, res, next) {
   return res.status(401).json({ ok: false, error: "Unauthorized" });
 }
 
-/** Clamp a pagination value between min and max with a default fallback. */
+/** Clamp a pagination value between min and max with a default fallback. Handles 0 correctly. */
 function clampPagination(value, defaultVal, min, max) {
-  const num = Number(value) || defaultVal;
-  return Math.min(Math.max(num, min), max);
+  const num = value != null && value !== "" ? Number(value) : defaultVal;
+  return Math.min(Math.max(Number.isFinite(num) ? num : defaultVal, min), max);
 }
 
 /**

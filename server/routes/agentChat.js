@@ -33,7 +33,7 @@ import { buildAntiRepetitionContext } from "../lib/antiRepetition.js";
 const MIN_ALLOWED_TOKENS = 512;
 /** Maximum allowed max_tokens value */
 const MAX_ALLOWED_TOKENS = 4096;
-/** Configurable max tokens — default 2048, env override via PANELIN_CHAT_MAX_TOKENS */
+/** Configurable max tokens — default 2048, env override via PANELIN_CHAT_MAX_TOKENS (clamped to 512–4096 range) */
 const MAX_TOKENS = Math.max(MIN_ALLOWED_TOKENS, Math.min(MAX_ALLOWED_TOKENS, Number(process.env.PANELIN_CHAT_MAX_TOKENS) || 2048));
 
 const router = Router();
@@ -614,7 +614,7 @@ router.post("/agent/chat", async (req, res) => {
             durationMs: Date.now() - turnStartMs,
           });
         } catch (logErr) {
-          req.log?.warn({ err: logErr.message }, "conversation logging failed");
+          req.log?.warn({ err: logErr instanceof Error ? logErr : new Error(String(logErr)) }, "conversation logging failed");
         }
 
         // Legacy dev training session event
