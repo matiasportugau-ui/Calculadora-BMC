@@ -29,5 +29,16 @@
     "editor.defaultFormatter": "vscode.json-language-features"
   },
   "python.analysis.enableParallelIndexing": true,
-  "python.analysis.userFileIndexingLimit": 10000
+  "python.analysis.userFileIndexingLimit": 10000,
+  // AUTOTRACE (`docs/dev-trace`): sigue generándose con el hook; ocultamos UI para no saturar el árbol.
+  // Para abrir algo puntual: Cmd/Ctrl+Shift+P → “Open File” y pegá la ruta, o comentá estas claves.
+  "files.exclude": {
+    "**/docs/dev-trace/**": true
+  },
+  "search.exclude": {
+    "**/docs/dev-trace/**": true
+  },
+  "files.watcherExclude": {
+    "**/docs/dev-trace/**": true
+  }
 }
