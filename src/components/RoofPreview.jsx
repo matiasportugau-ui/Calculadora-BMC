@@ -19,11 +19,8 @@ import {
   patchEncounterPairSegment,
   splitEncounterPairSegmentMid,
 } from "../utils/roofEncounterModel.js";
-import {
-  formatZonaDisplayTitle,
-  getLateralAnnexRootBodyGi,
-  isLateralAnnexZona,
-} from "../utils/roofLateralAnnexLayout.js";
+import { formatZonaDisplayTitle, isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
+import { buildZoneBorderExteriorLines } from "../utils/roofPlanEdgeSegments.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
@@ -86,22 +83,6 @@ function clientToSvg(svgEl, cx, cy) {
   if (!m) return { x: 0, y: 0 };
   const p = pt.matrixTransform(m.inverse());
   return { x: p.x, y: p.y };
-}
-
-/** Evita doble trazo entre rectángulos del mismo cuerpo (misma fila, mismo root en planta). */
-function suppressSharedVerticalStroke(r, entries, zonas) {
-  const eps = 0.006;
-  const root = getLateralAnnexRootBodyGi(zonas, r.gi);
-  let left = false;
-  let right = false;
-  for (const e of entries) {
-    if (e.gi === r.gi) continue;
-    if (getLateralAnnexRootBodyGi(zonas, e.gi) !== root) continue;
-    if (Math.abs(e.y - r.y) > eps || Math.abs(e.h - r.h) > eps) continue;
-    if (Math.abs(e.x + e.w - r.x) < eps) left = true;
-    if (Math.abs(r.x + r.w - e.x) < eps) right = true;
-  }
-  return { left, right };
 }
 
 /** Snapshot { gi: { x, y } } para deshacer/rehacer posiciones en planta 2D. */
@@ -1667,6 +1648,12 @@ export default function RoofPreview({
 
   const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas, panelObj ? 0.60 : null);
 
+  /** Perímetro azul por tramos: sin línea en juntas internas mismo cuerpo (`roofPlanEdgeSegments.js`). */
+  const zoneBorderExteriorLines = useMemo(
+    () => buildZoneBorderExteriorLines(layout.entries, zonas),
+    [layout.entries, zonas],
+  );
+
   const combinadaSingleZona = Boolean(combinadaFijacionAssign && layout.entries.length === 1);
 
   const bordersGlobalForPlanta = techoBorders && typeof techoBorders === "object" ? techoBorders : {};
@@ -2842,7 +2829,7 @@ export default function RoofPreview({
               const fs = Math.max(0.2 * zm, Math.min(0.38 * zm, r.w * 0.125 * Math.min(zm, 1.2)));
               const annex = isLateralAnnexZona(r.z);
               const canDrag = Boolean(onZonaPreviewChange);
-              const supV = suppressSharedVerticalStroke(r, layout.entries, zonas);
+              const zoneOutline = zoneBorderExteriorLines[r.gi] ?? [];
               const showAnnexCtl = annex && onAnnexRankSwap;
               return (
                 <g key={r.gi}>
@@ -2890,10 +2877,9 @@ export default function RoofPreview({
                     strokeLinecap="square"
                     opacity={0.92}
                   >
-                    <line x1={r.x} y1={r.y} x2={r.x + r.w} y2={r.y} />
-                    <line x1={r.x} y1={r.y + r.h} x2={r.x + r.w} y2={r.y + r.h} />
-                    {!supV.left && <line x1={r.x} y1={r.y} x2={r.x} y2={r.y + r.h} />}
-                    {!supV.right && <line x1={r.x + r.w} y1={r.y} x2={r.x + r.w} y2={r.y + r.h} />}
+                    {zoneOutline.map((ln, li) => (
+                      <line key={`zb-${r.gi}-${li}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} />
+                    ))}
                   </g>
                   {estructuraHintsByGi != null && estructuraHintsByGi[r.gi] ? (
                     <EstructuraZonaOverlay

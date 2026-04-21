@@ -101,6 +101,7 @@ import {
   mirrorBedXForView,
 } from "../src/utils/bmcLogisticaBedView.js";
 import { buildRoofPlanEdges, layoutZonasEnPlanta } from "../src/utils/roofPlanGeometry.js";
+import { buildZoneBorderExteriorLines } from "../src/utils/roofPlanEdgeSegments.js";
 import {
   normalizeEncounter,
   resolveNeighborSharedSide,
@@ -125,6 +126,7 @@ import {
   isLateralAnnexZona,
   snapLateralAnnexPlanta,
   zonasToPlantRectsLogical,
+  zonasToPlantRectsWithAutoGap,
 } from "../src/utils/roofLateralAnnexLayout.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta, countPanels } from "../src/utils/roofPanelStripsPlanta.js";
 import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
@@ -1881,6 +1883,80 @@ assert(
   xsCand.some((x) => Math.abs(x - (r0s.x + r0s.w)) < 1e-5),
   xsCand.join(","),
   "has parent right",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32e2: roofPlanEdgeSegments (perímetro dibujable: junta interna vs 2 raíces)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32e2: roofPlanEdgeSegments ═══");
+
+function mapEntriesFromRects(rects) {
+  return rects.map((r) => ({ gi: r.gi, x: r.x, y: r.y, w: r.w, h: r.h }));
+}
+
+function verticalLinesAtX(lines, xTarget, eps = 1e-3) {
+  return (lines || []).filter(
+    (ln) => Math.abs(ln.x1 - xTarget) < eps && Math.abs(ln.x2 - xTarget) < eps,
+  );
+}
+
+const edgeSegZsSameH = [
+  { largo: 5, ancho: 4 },
+  { largo: 5, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+];
+const edgeSegEntriesSameH = mapEntriesFromRects(zonasToPlantRectsLogical(edgeSegZsSameH, "una_agua"));
+const edgeSegExtSameH = buildZoneBorderExteriorLines(edgeSegEntriesSameH, edgeSegZsSameH);
+const r0Same = edgeSegEntriesSameH.find((e) => e.gi === 0);
+const r1Same = edgeSegEntriesSameH.find((e) => e.gi === 1);
+const xJointSame = r0Same.x + r0Same.w;
+const vertParentSame = verticalLinesAtX(edgeSegExtSameH[0], xJointSame);
+const vertAnnexSame = verticalLinesAtX(edgeSegExtSameH[1], r1Same.x);
+assert(
+  "buildZoneBorderExteriorLines mismo cuerpo misma altura: sin trazo en junta vertical (padre)",
+  vertParentSame.length === 0,
+  vertParentSame.length,
+  0,
+);
+assert(
+  "buildZoneBorderExteriorLines mismo cuerpo misma altura: sin trazo en junta vertical (anexo)",
+  vertAnnexSame.length === 0,
+  vertAnnexSame.length,
+  0,
+);
+
+const edgeSegZsShortAnnex = [
+  { largo: 6, ancho: 4 },
+  { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+];
+const edgeSegEntriesShort = mapEntriesFromRects(zonasToPlantRectsLogical(edgeSegZsShortAnnex, "una_agua"));
+const edgeSegExtShort = buildZoneBorderExteriorLines(edgeSegEntriesShort, edgeSegZsShortAnnex);
+const r0Short = edgeSegEntriesShort.find((e) => e.gi === 0);
+const xJointShort = r0Short.x + r0Short.w;
+const vertParentShort = verticalLinesAtX(edgeSegExtShort[0], xJointShort);
+assert(
+  "buildZoneBorderExteriorLines solape parcial: solo tramo libre del lateral del padre",
+  vertParentShort.length === 1 &&
+    Math.abs(vertParentShort[0].y1 - 4) < 0.02 &&
+    Math.abs(vertParentShort[0].y2 - 6) < 0.02,
+  vertParentShort,
+  "one segment y≈4..6",
+);
+
+const edgeSegZsTwoRoots = [
+  { largo: 10, ancho: 21.28, preview: { x: 0, y: 0 } },
+  { largo: 5.6, ancho: 6, preview: { x: 21.28, y: 0 } },
+];
+const edgeSegEntriesTwo = mapEntriesFromRects(zonasToPlantRectsWithAutoGap(edgeSegZsTwoRoots, "una_agua"));
+const edgeSegExtTwo = buildZoneBorderExteriorLines(edgeSegEntriesTwo, edgeSegZsTwoRoots);
+const r0Two = edgeSegEntriesTwo.find((e) => e.gi === 0);
+const xRight0 = r0Two.x + r0Two.w;
+const vertTwoRoots = verticalLinesAtX(edgeSegExtTwo[0], xRight0);
+const lenVertTwo = vertTwoRoots.reduce((s, ln) => s + Math.abs(ln.y2 - ln.y1), 0);
+assert(
+  "buildZoneBorderExteriorLines dos raíces: mantiene trazo en encuentro vertical",
+  lenVertTwo >= 5.5,
+  lenVertTwo,
+  ">= 5.5",
 );
 
 // ═══════════════════════════════════════════════════════════════════════════

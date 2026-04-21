@@ -1130,6 +1130,65 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "1306642e881343e8e693b59ecb14b7110459b1b2",
+      "short_hash": "1306642",
+      "date": "2026-04-20",
+      "time": "22:23:18",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "add Google Drive OAuth setup scripts and documentation",
+      "subject": "chore: add Google Drive OAuth setup scripts and documentation",
+      "files": [
+        ".cursor/agents/bmc-google-drive-oauth.md",
+        ".cursor/skills/bmc-google-drive-oauth/SKILL.md",
+        ".cursorindexingignore",
+        ".env.example",
+        ".github/workflows/drive-oauth-dist-verify.yml",
+        ".github/workflows/drive-oauth-verify.yml",
+        ".vscode/settings.json",
+        "AGENTS.md",
+        "docs/GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md",
+        "docs/GOOGLE_DRIVE_SETUP_PROMPT.md",
+        "docs/VERCEL-CALCULADORA-SETUP.md",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/c57f6f4.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-20.md",
+        "package.json",
+        "panelsim-email.code-workspace",
+        "run_dashboard_setup.sh",
+        "run_drive_setup.sh",
+        "scripts/deploy-vercel.sh",
+        "scripts/drive-oauth-bootstrap.sh",
+        "scripts/drive-oauth-one-shot.sh",
+        "scripts/set-vite-google-client.mjs",
+        "scripts/shell-aliases-calculadora-bmc.zsh",
+        "scripts/vercel-drive-env-push.sh",
+        "scripts/verify-google-drive-oauth-env.mjs",
+        "scripts/verify-vite-google-client-in-dist.mjs"
+      ],
+      "risk": "Rojo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".cursor",
+          ".github",
+          ".vscode",
+          "docs",
+          "scripts"
+        ]
+      }
     }
   ]
 }

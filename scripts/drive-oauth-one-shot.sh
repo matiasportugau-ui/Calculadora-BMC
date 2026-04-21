@@ -52,7 +52,7 @@ npm run verify:google-drive-oauth
 if [[ "${SKIP_VERCEL:-}" == "1" ]]; then
   echo "=== 4/6 Vercel (omitido: SKIP_VERCEL=1) ==="
 else
-  echo "=== 4/6 Vercel env (production + preview) ==="
+  echo "=== 4/6 Vercel env (production; preview solo si VERCEL_PREVIEW_GIT_BRANCH) ==="
   npm run drive:vercel-env -- "$CLIENT_ID" || {
     echo "[WARN] drive:vercel-env falló (¿vercel login / proyecto enlazado?). Corregí a mano en Vercel o reintentá." >&2
   }

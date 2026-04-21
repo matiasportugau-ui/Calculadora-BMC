@@ -6,8 +6,12 @@
 #   npm run drive:vercel-env -- 'xxx.apps.googleusercontent.com'
 #   VITE_GOOGLE_CLIENT_ID='xxx.apps.googleusercontent.com' npm run drive:vercel-env
 #
-# Solo production:
+# Solo production (default si no definís rama de preview):
 #   ONLY_PROD=1 npm run drive:vercel-env -- 'xxx.apps.googleusercontent.com'
+#
+# Preview requiere una rama Git distinta de la Production Branch (p. ej. main en prod → no sirve para Preview).
+# Si tu preview usa una rama concreta en Vercel:
+#   VERCEL_PREVIEW_GIT_BRANCH=feat/mi-rama npm run drive:vercel-env -- 'xxx.apps.googleusercontent.com'
 #
 set -e
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,24 +34,51 @@ if [[ ! "$CLIENT" =~ \.apps\.googleusercontent\.com$ ]]; then
   exit 1
 fi
 
-ENVS=(production preview)
-if [[ "${ONLY_PROD:-}" == "1" ]]; then
-  ENVS=(production)
-fi
-
-for e in "${ENVS[@]}"; do
+push_prod() {
   echo ""
-  echo "=== Vercel env: VITE_GOOGLE_CLIENT_ID → $e ==="
-  vercel env add VITE_GOOGLE_CLIENT_ID "$e" \
+  echo "=== Vercel env: VITE_GOOGLE_CLIENT_ID → production ==="
+  vercel env add VITE_GOOGLE_CLIENT_ID production \
     --value "$CLIENT" \
     -y \
     --force \
+    --non-interactive \
     --cwd "$REPO" || {
-    echo "Fallo vercel env add ($e). ¿Proyecto enlazado (.vercel)? ¿VERCEL_TOKEN o vercel login?" >&2
+    echo "Fallo vercel env add (production). ¿Proyecto enlazado (.vercel)? ¿VERCEL_TOKEN o vercel login?" >&2
     exit 1
   }
-done
+}
 
-echo ""
-echo "[OK] Variable actualizada en Vercel para: ${ENVS[*]}"
+push_preview_branch() {
+  local branch="$1"
+  echo ""
+  echo "=== Vercel env: VITE_GOOGLE_CLIENT_ID → preview (rama: $branch) ==="
+  vercel env add VITE_GOOGLE_CLIENT_ID preview "$branch" \
+    --value "$CLIENT" \
+    -y \
+    --force \
+    --non-interactive \
+    --cwd "$REPO" || {
+    echo "Fallo vercel env add (preview / $branch). ¿La rama existe en el remoto conectado a Vercel?" >&2
+    exit 1
+  }
+}
+
+push_prod
+
+if [[ "${ONLY_PROD:-}" == "1" ]]; then
+  echo ""
+  echo "[OK] Solo production. Preview omitido (ONLY_PROD=1)."
+elif [[ -n "${VERCEL_PREVIEW_GIT_BRANCH:-}" ]]; then
+  push_preview_branch "$VERCEL_PREVIEW_GIT_BRANCH"
+  echo ""
+  echo "[OK] Variable actualizada en Vercel: production + preview ($VERCEL_PREVIEW_GIT_BRANCH)"
+else
+  echo ""
+  echo "[INFO] Preview omitido: Vercel exige una rama Git para variables de Preview (no puede ser la Production Branch)."
+  echo "       Para preview: VERCEL_PREVIEW_GIT_BRANCH=nombre-rama npm run drive:vercel-env -- '…'"
+  echo "       O configurá Preview en el dashboard de Vercel."
+  echo ""
+  echo "[OK] Variable actualizada en Vercel: production"
+fi
+
 echo "  Siguiente paso: redeploy (p. ej. ./scripts/deploy-vercel.sh --prod) para que el bundle incluya el Client ID."
