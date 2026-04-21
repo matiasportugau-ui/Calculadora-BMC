@@ -1324,6 +1324,120 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "04f7b41037060f914580cf356bdbfb36c5137e3c",
+      "short_hash": "04f7b41",
+      "date": "2026-04-21",
+      "time": "02:46:10",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)",
+      "subject": "feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/9a0dc85.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "6d95be95c6e703b286b44c1a50d23d70ac36d3c6",
+      "short_hash": "6d95be9",
+      "date": "2026-04-21",
+      "time": "02:57:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "render encounter lines as clickable SVG elements",
+      "subject": "feat(roof): render encounter lines as clickable SVG elements",
+      "files": [
+        "src/components/RoofPreview.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "fe5530989e381959078f8ace25225ef85b6a7a67",
+      "short_hash": "fe55309",
+      "date": "2026-04-21",
+      "time": "03:38:14",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "split border strips by exterior intervals on partial encounters",
+      "subject": "feat(roof): split border strips by exterior intervals on partial encounters",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "src/utils/roofPlanEdgeSegments.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "773e0df2393662417fecd5af00fe2584b5e567b1",
+      "short_hash": "773e0df",
+      "date": "2026-04-21",
+      "time": "03:49:34",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "catalog",
+      "title": "add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR",
+      "subject": "feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR",
+      "files": [
+        "src/data/constants.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }

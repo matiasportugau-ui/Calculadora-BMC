@@ -24,7 +24,7 @@ import {
   encounterEsContinuo,
   resolveNeighborSharedSide,
 } from "../utils/roofEncounterModel.js";
-import { formatZonaDisplayTitle, isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
+import { formatZonaDisplayTitle, isLateralAnnexZona, getLateralAnnexRootBodyGi } from "../utils/roofLateralAnnexLayout.js";
 import { buildZoneBorderExteriorLines, buildZoneBorderExteriorIntervals } from "../utils/roofPlanEdgeSegments.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
@@ -1122,6 +1122,13 @@ function encounterPairNeedsSplitProfiles(rawPair) {
   return n.modo === "pretil" || n.modo === "desnivel";
 }
 
+/** Effective slopeMark for a zone, falling back to root body's mark for lateral annexes. */
+function effectiveSlopeMark(r, zonas) {
+  if (r.z?.preview?.slopeMark) return r.z.preview.slopeMark;
+  const rootGi = getLateralAnnexRootBodyGi(zonas, r.gi);
+  return zonas[rootGi]?.preview?.slopeMark ?? "along_largo_pos";
+}
+
 /**
  * Arista multizona totalmente compartida: una sola UI si el encuentro no es pretil/desnivel;
  * si es pretil/desnivel, dos áreas (una por zona).
@@ -1249,6 +1256,7 @@ function PlantaBordesOutsideCaptions({
     return `${s.slice(0, Math.max(8, budget - 1))}…`;
   };
 
+  const frenteAtTop = effectiveSlopeMark(r, zonas) === "along_largo_neg";
   const sides = ["fondo", "frente", "latIzq", "latDer"];
 
   return (
@@ -1262,15 +1270,17 @@ function PlantaBordesOutsideCaptions({
         const weight = isOpen ? 700 : 600;
 
         if (side === "fondo") {
+          // fondo = high side. With frenteAtTop it's at SVG bottom, else at SVG top.
           const cx = r.x + r.w / 2;
-          const cy = r.y - gap;
+          const atBottom = frenteAtTop;
+          const cy = atBottom ? r.y + r.h + gap + fs * 0.05 : r.y - gap;
           return (
             <text
               key={`cap-${gi}-fondo`}
               x={cx}
               y={cy}
               textAnchor="middle"
-              dominantBaseline="auto"
+              dominantBaseline={atBottom ? "hanging" : "auto"}
               fontSize={fs}
               fontWeight={weight}
               fill={fill}
@@ -1282,15 +1292,17 @@ function PlantaBordesOutsideCaptions({
           );
         }
         if (side === "frente") {
+          // frente = drip/eave side. With frenteAtTop it's at SVG top, else at SVG bottom.
           const cx = r.x + r.w / 2;
-          const cy = r.y + r.h + gap + fs * 0.05;
+          const atTop = frenteAtTop;
+          const cy = atTop ? r.y - gap : r.y + r.h + gap + fs * 0.05;
           return (
             <text
               key={`cap-${gi}-frente`}
               x={cx}
               y={cy}
               textAnchor="middle"
-              dominantBaseline="hanging"
+              dominantBaseline={atTop ? "auto" : "hanging"}
               fontSize={fs}
               fontWeight={weight}
               fill={fill}
@@ -1385,12 +1397,18 @@ function PlantaBordesEdgeStrips({
     none:                  "Sin perfil",
   };
 
-  const SIDE_GEOM = { latIzq: "left", latDer: "right", fondo: "top", frente: "bottom" };
+  const frenteAtTop = effectiveSlopeMark(r, zonas) === "along_largo_neg";
+  const SIDE_GEOM = {
+    latIzq: "left",
+    latDer: "right",
+    fondo:  frenteAtTop ? "bottom" : "top",
+    frente: frenteAtTop ? "top"    : "bottom",
+  };
   const sideDefs = [
-    { side: "latIzq", x: r.x,                 y: r.y, w: wStrip, h: r.h },
-    { side: "latDer", x: r.x + r.w - wStrip,  y: r.y, w: wStrip, h: r.h },
-    { side: "fondo",  x: r.x,                 y: r.y, w: r.w,    h: hStrip },
-    { side: "frente", x: r.x,                 y: r.y + r.h - hStrip, w: r.w, h: hStrip },
+    { side: "latIzq",                      x: r.x,                y: r.y,              w: wStrip, h: r.h     },
+    { side: "latDer",                      x: r.x + r.w - wStrip, y: r.y,              w: wStrip, h: r.h     },
+    { side: frenteAtTop ? "frente" : "fondo",  x: r.x,            y: r.y,              w: r.w,    h: hStrip  },
+    { side: frenteAtTop ? "fondo"  : "frente", x: r.x,            y: r.y + r.h - hStrip, w: r.w,  h: hStrip },
   ].flatMap(({ side, x, y, w, h }, _i) => {
     const ivs = exteriorIntervals?.[SIDE_GEOM[side]];
     if (!ivs) return [{ side, x, y, w, h }]; // sin datos: comportamiento original

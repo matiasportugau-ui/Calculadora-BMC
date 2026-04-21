@@ -39,3 +39,7 @@
 - 2026-04-20 22:53:49 — `0f3f008` — chore: update Google Drive OAuth setup scripts and documentation
 - 2026-04-21 01:52:11 — `691b550` — chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation
 - 2026-04-21 02:45:30 — `9a0dc85` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
+- 2026-04-21 02:46:10 — `04f7b41` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
+- 2026-04-21 02:57:44 — `6d95be9` — feat(roof): render encounter lines as clickable SVG elements
+- 2026-04-21 03:38:14 — `fe55309` — feat(roof): split border strips by exterior intervals on partial encounters
+- 2026-04-21 03:49:34 — `773e0df` — feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR

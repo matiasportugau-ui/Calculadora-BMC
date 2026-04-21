@@ -17,6 +17,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c7c660b` feat: add Sketchfab integration and enhance documentation
 - `f62400e` feat: log Sketchfab integration commit in worklog
 - `9a0dc85` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3) `[tests]`
+- `04f7b41` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
+- `6d95be9` feat(roof): render encounter lines as clickable SVG elements
+- `fe55309` feat(roof): split border strips by exterior intervals on partial encounters
+- `773e0df` feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
 
 ## Fixes
 
