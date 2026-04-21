@@ -554,6 +554,7 @@ export const BORDER_OPTIONS = {
     { id: "none", label: "Sin perfil" },
   ],
   fondo: [
+    { id: "gotero_frontal", label: "Gotero frontal Superior", familias: ["ISODEC", "ISODEC_PIR"], descripcion: "Borde superior expuesto" },
     { id: "gotero_lateral", label: "Gotero Lateral", familias: ["ISODEC", "ISODEC_PIR"], descripcion: "Cuando techo volado" },
     { id: "gotero_frontal", label: "Gotero frontal Superior", familias: ["ISOROOF", "ISOROOF_COLONIAL"], descripcion: "Frente superior ISOROOF" },
     { id: "babeta_adosar", label: "Babeta de adosar Superior", descripcion: "Encuentros con muros. Colocación atornillada" },
