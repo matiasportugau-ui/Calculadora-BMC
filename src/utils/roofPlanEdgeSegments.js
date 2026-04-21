@@ -126,6 +126,28 @@ function collectInternalXOnBottom(r, rects, zonas) {
  * @param {object[]} zonas - mismo array que RoofPreview (índices = gi)
  * @returns {Record<number, Array<{ x1: number, y1: number, x2: number, y2: number }>>}
  */
+/**
+ * Intervalos exteriores por zona y lado geométrico (top/bottom/left/right en coords planta).
+ * Usado para dividir los border-strips en sub-strips cuando hay encuentro parcial.
+ *
+ * @returns {Record<number, { top: [number,number][], bottom: [number,number][], left: [number,number][], right: [number,number][] }>}
+ */
+export function buildZoneBorderExteriorIntervals(entries, zonas) {
+  const rects = Array.isArray(entries) ? entries : [];
+  const z = Array.isArray(zonas) ? zonas : [];
+  const out = {};
+  for (const r of rects) {
+    const filter = (ivs) => ivs.filter(([a, b]) => b - a > ROOF_PLAN_EPS);
+    out[r.gi] = {
+      top:    filter(subtractIntervals1D(r.x, r.x + r.w, collectInternalXOnTop(r, rects, z))),
+      bottom: filter(subtractIntervals1D(r.x, r.x + r.w, collectInternalXOnBottom(r, rects, z))),
+      left:   filter(subtractIntervals1D(r.y, r.y + r.h, collectInternalYOnLeft(r, rects, z))),
+      right:  filter(subtractIntervals1D(r.y, r.y + r.h, collectInternalYOnRight(r, rects, z))),
+    };
+  }
+  return out;
+}
+
 export function buildZoneBorderExteriorLines(entries, zonas) {
   const rects = Array.isArray(entries) ? entries : [];
   const z = Array.isArray(zonas) ? zonas : [];

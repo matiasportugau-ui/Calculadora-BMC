@@ -25,7 +25,7 @@ import {
   resolveNeighborSharedSide,
 } from "../utils/roofEncounterModel.js";
 import { formatZonaDisplayTitle, isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
-import { buildZoneBorderExteriorLines } from "../utils/roofPlanEdgeSegments.js";
+import { buildZoneBorderExteriorLines, buildZoneBorderExteriorIntervals } from "../utils/roofPlanEdgeSegments.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
 import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
@@ -1362,6 +1362,7 @@ function PlantaBordesEdgeStrips({
   onStripPointerDown,
   bordesPanelFamiliaKey = "",
   plantRects,
+  exteriorIntervals = null,
 }) {
   const zm = svgTy?.m ?? 1;
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
@@ -1384,12 +1385,33 @@ function PlantaBordesEdgeStrips({
     none:                  "Sin perfil",
   };
 
+  const SIDE_GEOM = { latIzq: "left", latDer: "right", fondo: "top", frente: "bottom" };
   const sideDefs = [
     { side: "latIzq", x: r.x,                 y: r.y, w: wStrip, h: r.h },
     { side: "latDer", x: r.x + r.w - wStrip,  y: r.y, w: wStrip, h: r.h },
     { side: "fondo",  x: r.x,                 y: r.y, w: r.w,    h: hStrip },
     { side: "frente", x: r.x,                 y: r.y + r.h - hStrip, w: r.w, h: hStrip },
-  ];
+  ].flatMap(({ side, x, y, w, h }, _i) => {
+    const ivs = exteriorIntervals?.[SIDE_GEOM[side]];
+    if (!ivs) return [{ side, x, y, w, h }]; // sin datos: comportamiento original
+    if (ivs.length === 0) return []; // lado totalmente compartido: sin strip (el encuentro lo maneja)
+    const isVert = side === "latIzq" || side === "latDer";
+    // Verificar si el único intervalo cubre el lado completo
+    if (ivs.length === 1) {
+      const [a, b] = ivs[0];
+      const fullA = isVert ? r.y : r.x;
+      const fullB = isVert ? r.y + r.h : r.x + r.w;
+      if (Math.abs(a - fullA) < 0.01 && Math.abs(b - fullB) < 0.01) {
+        return [{ side, x, y, w, h }]; // Un solo intervalo completo: strip normal
+      }
+    }
+    // Parcial o múltiple: dividir en sub-strips
+    return ivs.map(([a, b], idx) =>
+      isVert
+        ? { side, x, y: a, w, h: b - a, _subIdx: idx }
+        : { side, x: a, y, w: b - a, h, _subIdx: idx }
+    );
+  });
 
   const currentVal = (side) =>
     resolvePlantaBorderEffectiveValue(gi, side, multiZona, techoBorders, zonas, sharedSidesMap, plantRects);
@@ -1412,7 +1434,7 @@ function PlantaBordesEdgeStrips({
 
   return (
     <g data-bmc-layer="planta-bordes-assign" pointerEvents="auto">
-      {sideDefs.map(({ side, x, y, w, h }) => {
+      {sideDefs.map(({ side, x, y, w, h, _subIdx }) => {
         const meta = computePlantaSharedEdgeMeta(gi, side, multiZona, sharedSidesMap, plantRects, zonas);
         if (meta.hideDuplicate) return null;
         const dis = isDisabled(side);
@@ -1456,7 +1478,7 @@ function PlantaBordesEdgeStrips({
         })();
 
         return (
-          <g key={`planta-bd-${gi}-${side}`}>
+          <g key={`planta-bd-${gi}-${side}${_subIdx != null ? `-${_subIdx}` : ""}`}>
             {/* ── Banda hit area ── */}
             <rect
               x={x}
@@ -1910,6 +1932,12 @@ export default function RoofPreview({
   /** Perímetro azul por tramos: sin línea en juntas internas mismo cuerpo (`roofPlanEdgeSegments.js`). */
   const zoneBorderExteriorLines = useMemo(
     () => buildZoneBorderExteriorLines(layout.entries, zonas),
+    [layout.entries, zonas],
+  );
+
+  /** Intervalos exteriores por zona para dividir border-strips en sub-strips (encuentro parcial). */
+  const zoneBorderExteriorIntervals = useMemo(
+    () => buildZoneBorderExteriorIntervals(layout.entries, zonas),
     [layout.entries, zonas],
   );
 
@@ -3471,6 +3499,7 @@ export default function RoofPreview({
                         onStripPointerDown={handlePlantaBordeStripDown}
                         bordesPanelFamiliaKey={bordesPanelFamiliaKey}
                         plantRects={layout.entries}
+                        exteriorIntervals={zoneBorderExteriorIntervals[r.gi] ?? null}
                       />
                     </>
                   ) : null}
@@ -3588,21 +3617,19 @@ export default function RoofPreview({
               const low = Math.min(a, b);
               const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
               const isCumbrera = rawPair?.modo === "cumbrera" || rawPair?.cumbreraUnida;
-              const hitW = Math.max(0.18, (LINE_WEIGHTS.zoneBorder ?? 0.04) * 3) * svgTy.m;
+              const color = isCumbrera ? "#1d4ed8" : "#16a34a";
+              const visualW = (LINE_WEIGHTS.zoneBorder ?? 0.025) * svgTy.m * 1.5;
+              const hitW = visualW * 8;
+              const dashLen = enc.orientation === "horizontal" ? 0.22 : 0.18;
+              const handleClick = (e) => {
+                e.stopPropagation();
+                setEncounterPrompt({ pairKey: pk, ga: a, gb: b, encounterLength: enc.length, orientation: enc.orientation });
+              };
               return (
-                <line
-                  key={`enc-hit-${pk}-${i}`}
-                  x1={enc.x1} y1={enc.y1} x2={enc.x2} y2={enc.y2}
-                  stroke={isCumbrera ? "#1d4ed8" : "#16a34a"}
-                  strokeWidth={hitW}
-                  strokeLinecap="round"
-                  opacity={0.7}
-                  style={{ cursor: "pointer" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEncounterPrompt({ pairKey: pk, ga: a, gb: b, encounterLength: enc.length, orientation: enc.orientation });
-                  }}
-                />
+                <g key={`enc-${pk}-${i}`} style={{ cursor: "pointer" }} onClick={handleClick}>
+                  <line x1={enc.x1} y1={enc.y1} x2={enc.x2} y2={enc.y2} stroke="transparent" strokeWidth={hitW} strokeLinecap="butt" />
+                  <line x1={enc.x1} y1={enc.y1} x2={enc.x2} y2={enc.y2} stroke={color} strokeWidth={visualW} strokeLinecap="butt" strokeDasharray={`${dashLen} ${dashLen * 0.55}`} opacity={0.85} pointerEvents="none" />
+                </g>
               );
             })}
             </svg>
