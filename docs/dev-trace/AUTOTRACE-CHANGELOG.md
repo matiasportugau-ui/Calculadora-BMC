@@ -43,3 +43,4 @@
 - 2026-04-21 02:57:44 — `6d95be9` — feat(roof): render encounter lines as clickable SVG elements
 - 2026-04-21 03:38:14 — `fe55309` — feat(roof): split border strips by exterior intervals on partial encounters
 - 2026-04-21 03:49:34 — `773e0df` — feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
+- 2026-04-21 04:07:02 — `5715776` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering

@@ -1438,6 +1438,44 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "57157768e356d9db517f96f849c34305a42e07d7",
+      "short_hash": "5715776",
+      "date": "2026-04-21",
+      "time": "04:07:02",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "subject": "feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/04f7b41.md",
+        "docs/dev-trace/commits/2026/04/6d95be9.md",
+        "docs/dev-trace/commits/2026/04/773e0df.md",
+        "docs/dev-trace/commits/2026/04/fe55309.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md",
+        "src/components/RoofPreview.jsx",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }
