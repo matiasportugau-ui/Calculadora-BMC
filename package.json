@@ -35,6 +35,7 @@
     "preview": "vite preview",
     "demo:combinada-fijacion": "node scripts/demo-combinada-fijacion-planta.mjs",
     "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js && node tests/cockpitTokenOrigin.js",
+    "test:playwright:roof-bordes-local": "node scripts/playwright-roof-bordes-local.mjs",
     "test:api": "node tests/calc-routes.validation.js",
     "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",

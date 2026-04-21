@@ -18,6 +18,11 @@ import {
   listEncounterPairSegmentRuns,
   patchEncounterPairSegment,
   splitEncounterPairSegmentMid,
+  normalizeEncounter,
+  pairEncounterBaseRaw,
+  encounterBorderPerfil,
+  encounterEsContinuo,
+  resolveNeighborSharedSide,
 } from "../utils/roofEncounterModel.js";
 import { formatZonaDisplayTitle, isLateralAnnexZona } from "../utils/roofLateralAnnexLayout.js";
 import { buildZoneBorderExteriorLines } from "../utils/roofPlanEdgeSegments.js";
@@ -1074,6 +1079,273 @@ function plantaBorderOptsForSide(side, panelFamiliaKey) {
   return (BORDER_OPTIONS[side] || []).filter((o) => !o.familias || o.familias.includes(fam));
 }
 
+/** Opciones de catálogo para un encuentro entre zonas (eje vertical = laterales; horizontal = fusión frente+fondo). */
+function plantaBorderOptsForEncounter(orientation, panelFamiliaKey) {
+  const fam = resolvePlantaBorderPanelFam(panelFamiliaKey);
+  if (orientation === "vertical") {
+    return plantaBorderOptsForSide("latIzq", panelFamiliaKey);
+  }
+  const seen = new Set();
+  const out = [];
+  for (const side of ["frente", "fondo"]) {
+    for (const o of BORDER_OPTIONS[side] || []) {
+      if (o.familias && !o.familias.includes(fam)) continue;
+      if (seen.has(o.id)) continue;
+      seen.add(o.id);
+      out.push(o);
+    }
+  }
+  return out;
+}
+
+/** Mapea id de BORDER_OPTIONS a overlay `encounter` por tramo. */
+function segmentEncounterFromCatalogOption(optionId) {
+  if (optionId == null || optionId === "" || optionId === "none") {
+    return { tipo: "continuo", modo: "continuo", perfil: null, perfilVecino: null, cumbreraUnida: false };
+  }
+  if (optionId === "cumbrera") {
+    return { tipo: "perfil", modo: "cumbrera", perfil: "cumbrera", perfilVecino: "cumbrera", cumbreraUnida: true };
+  }
+  return { tipo: "perfil", modo: "pretil", perfil: optionId, perfilVecino: optionId };
+}
+
+function catalogSelectValueFromSegmentNormalized(n) {
+  if (!n || n.modo === "continuo") return "none";
+  if (n.modo === "cumbrera") return "cumbrera";
+  if (n.modo === "desnivel") return "__desnivel__";
+  const p = n.perfil;
+  return p && p !== "none" ? p : "none";
+}
+
+function encounterPairNeedsSplitProfiles(rawPair) {
+  const n = normalizeEncounter(pairEncounterBaseRaw(rawPair));
+  return n.modo === "pretil" || n.modo === "desnivel";
+}
+
+/**
+ * Arista multizona totalmente compartida: una sola UI si el encuentro no es pretil/desnivel;
+ * si es pretil/desnivel, dos áreas (una por zona).
+ */
+function computePlantaSharedEdgeMeta(gi, side, multiZona, sharedSidesMap, plantRects, zonas) {
+  const empty = {
+    fully: false,
+    hideDuplicate: false,
+    split: false,
+    neighborGi: null,
+    neighborSide: null,
+    pairKey: "",
+    low: null,
+    encNorm: normalizeEncounter(null),
+    rawPair: null,
+  };
+  if (!multiZona || !sharedSidesMap?.get || !plantRects?.length) return empty;
+  const fully = Boolean(sharedSidesMap.get(gi)?.get(side)?.fullySide);
+  const { neighborGi, neighborSide } = resolveNeighborSharedSide(gi, side, plantRects);
+  if (!fully || neighborGi == null || !neighborSide) {
+    return { ...empty, neighborGi: neighborGi ?? null, neighborSide: neighborSide ?? null };
+  }
+  const pairKey = encounterPairKey(gi, neighborGi);
+  const low = Math.min(gi, neighborGi);
+  const rawPair = zonas[low]?.preview?.encounterByPair?.[pairKey];
+  const encNorm = normalizeEncounter(pairEncounterBaseRaw(rawPair));
+  const split = encounterPairNeedsSplitProfiles(rawPair);
+  const ownerGi = Math.min(gi, neighborGi);
+  const ownerSide = gi === ownerGi ? side : neighborSide;
+  const hideDuplicate = !split && !(gi === ownerGi && side === ownerSide);
+  return {
+    fully: true,
+    hideDuplicate,
+    split,
+    neighborGi,
+    neighborSide,
+    pairKey,
+    low,
+    encNorm,
+    rawPair,
+  };
+}
+
+function resolvePlantaBorderEffectiveValue(gi, side, multiZona, techoBorders, zonas, sharedSidesMap, plantRects) {
+  const meta = computePlantaSharedEdgeMeta(gi, side, multiZona, sharedSidesMap, plantRects, zonas);
+  if (meta.hideDuplicate) return "";
+  if (meta.fully && !meta.split) {
+    if (encounterEsContinuo(meta.encNorm)) return "none";
+    const p = encounterBorderPerfil(meta.rawPair);
+    return p && p !== "none" ? p : "none";
+  }
+  if (meta.fully && meta.split && meta.encNorm.modo === "pretil") {
+    const v = gi === meta.low ? meta.encNorm.perfil : meta.encNorm.perfilVecino;
+    return v && v !== "none" ? v : "";
+  }
+  if (meta.fully && meta.split && meta.encNorm.modo === "desnivel" && meta.encNorm.desnivel) {
+    const d = meta.encNorm.desnivel;
+    const v = gi === meta.low ? d.perfilBajo : d.perfilAlto;
+    return v && v !== "none" ? v : "";
+  }
+  if (multiZona) {
+    const zb = zonas[gi]?.preview?.borders ?? {};
+    return zb[side] ?? techoBorders[side] ?? "";
+  }
+  return techoBorders[side] ?? "";
+}
+
+/**
+ * Texto de perfil **fuera** del rectángulo de zona (márgenes del viewBox), para lectura clara en planta 2D.
+ */
+function PlantaBordesOutsideCaptions({
+  r,
+  svgTy,
+  multiZona,
+  sharedSidesMap,
+  disabledSidesGlobal,
+  techoBorders,
+  zonas,
+  bordesPanelFamiliaKey = "",
+  openGi,
+  openSide,
+  plantRects,
+}) {
+  const zm = svgTy?.m ?? 1;
+  const gi = r.gi;
+  const gap = Math.max(0.18 * zm, 0.11);
+  const fsBase = Math.max(0.09 * zm, Math.min(0.135 * zm, Math.min(r.w, r.h) * 0.042));
+  const fs = Math.min(fsBase, Math.max(0.07 * zm, Math.min(r.w, r.h) * 0.11));
+
+  const SHORT_LABELS = {
+    gotero_frontal: "Gotero",
+    gotero_frontal_greca: "Greca",
+    gotero_lateral: "Lateral",
+    gotero_lateral_camara: "Cámara",
+    babeta_adosar: "Babeta ↗",
+    babeta_empotrar: "Babeta ↙",
+    canalon: "Canalón",
+    cumbrera: "Cumbrera",
+    none: "Sin perfil",
+  };
+
+  const resolveFullLabel = (side, val) => {
+    if (!val || val === "none") return null;
+    const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
+    const hit = opts.find((o) => o.id === val);
+    return hit?.label ?? SHORT_LABELS[val] ?? val;
+  };
+
+  const captionLine = (side) => {
+    const meta = computePlantaSharedEdgeMeta(gi, side, multiZona, sharedSidesMap, plantRects, zonas);
+    if (meta.hideDuplicate) return null;
+    if (!multiZona && (disabledSidesGlobal || []).includes(side)) return null;
+    const val = resolvePlantaBorderEffectiveValue(gi, side, multiZona, techoBorders, zonas, sharedSidesMap, plantRects);
+    if (!val || val === "none") return null;
+    const prof = resolveFullLabel(side, val);
+    return prof || val;
+  };
+
+  const truncate = (s, side) => {
+    const horiz = side === "fondo" || side === "frente";
+    const budget = horiz
+      ? Math.max(16, Math.min(48, Math.floor((r.w + 0.4 * zm) / (fs * 0.52))))
+      : Math.max(14, Math.min(36, Math.floor((r.h + 0.35 * zm) / (fs * 0.52))));
+    if (s.length <= budget) return s;
+    return `${s.slice(0, Math.max(8, budget - 1))}…`;
+  };
+
+  const sides = ["fondo", "frente", "latIzq", "latDer"];
+
+  return (
+    <g data-bmc-layer="planta-bordes-captions" pointerEvents="none">
+      {sides.map((side) => {
+        const raw = captionLine(side);
+        if (raw == null) return null;
+        const line = truncate(raw, side);
+        const isOpen = openGi === gi && openSide === side;
+        const fill = isOpen ? "#1d4ed8" : "#0f172a";
+        const weight = isOpen ? 700 : 600;
+
+        if (side === "fondo") {
+          const cx = r.x + r.w / 2;
+          const cy = r.y - gap;
+          return (
+            <text
+              key={`cap-${gi}-fondo`}
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="auto"
+              fontSize={fs}
+              fontWeight={weight}
+              fill={fill}
+              fontFamily={FONT}
+              style={{ userSelect: "none" }}
+            >
+              {line}
+            </text>
+          );
+        }
+        if (side === "frente") {
+          const cx = r.x + r.w / 2;
+          const cy = r.y + r.h + gap + fs * 0.05;
+          return (
+            <text
+              key={`cap-${gi}-frente`}
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="hanging"
+              fontSize={fs}
+              fontWeight={weight}
+              fill={fill}
+              fontFamily={FONT}
+              style={{ userSelect: "none" }}
+            >
+              {line}
+            </text>
+          );
+        }
+        if (side === "latIzq") {
+          const cx = r.x - gap;
+          const cy = r.y + r.h / 2;
+          return (
+            <text
+              key={`cap-${gi}-latIzq`}
+              x={cx}
+              y={cy}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={fs}
+              fontWeight={weight}
+              fill={fill}
+              fontFamily={FONT}
+              transform={`rotate(-90, ${cx}, ${cy})`}
+              style={{ userSelect: "none" }}
+            >
+              {line}
+            </text>
+          );
+        }
+        const cx = r.x + r.w + gap;
+        const cy = r.y + r.h / 2;
+        return (
+          <text
+            key={`cap-${gi}-latDer`}
+            x={cx}
+            y={cy}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={fs}
+            fontWeight={weight}
+            fill={fill}
+            fontFamily={FONT}
+            transform={`rotate(90, ${cx}, ${cy})`}
+            style={{ userSelect: "none" }}
+          >
+            {line}
+          </text>
+        );
+      })}
+    </g>
+  );
+}
+
 /**
  * Paso «Accesorios perimetrales»: bandas en planta (fondo=borde superior SVG, frente=inferior), misma convención que RoofBorderSelector / 3D.
  */
@@ -1088,6 +1360,8 @@ function PlantaBordesEdgeStrips({
   openGi,
   openSide,
   onStripPointerDown,
+  bordesPanelFamiliaKey = "",
+  plantRects,
 }) {
   const zm = svgTy?.m ?? 1;
   const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
@@ -1117,21 +1391,11 @@ function PlantaBordesEdgeStrips({
     { side: "frente", x: r.x,                 y: r.y + r.h - hStrip, w: r.w, h: hStrip },
   ];
 
-  const currentVal = (side) => {
-    if (multiZona) {
-      const zb = zonas[gi]?.preview?.borders ?? {};
-      return zb[side] ?? techoBorders[side] ?? "";
-    }
-    return techoBorders[side] ?? "";
-  };
+  const currentVal = (side) =>
+    resolvePlantaBorderEffectiveValue(gi, side, multiZona, techoBorders, zonas, sharedSidesMap, plantRects);
 
-  const isDisabled = (side) => {
-    if (!multiZona && (disabledSidesGlobal || []).includes(side)) return true;
-    if (multiZona && sharedSidesMap.get(gi)?.get(side)?.fullySide) return true;
-    return false;
-  };
+  const isDisabled = (side) => !multiZona && (disabledSidesGlobal || []).includes(side);
 
-  // Tamaño de fuente y centro para el label inline
   const labelProps = (x, y, w, h) => {
     const cx = x + w / 2;
     const cy = y + h / 2;
@@ -1139,9 +1403,18 @@ function PlantaBordesEdgeStrips({
     return { cx, cy, fontSize };
   };
 
+  const resolveFullLabel = (side, val) => {
+    if (!val || val === "none") return null;
+    const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
+    const hit = opts.find((o) => o.id === val);
+    return hit?.label ?? SHORT_LABELS[val] ?? val;
+  };
+
   return (
     <g data-bmc-layer="planta-bordes-assign" pointerEvents="auto">
       {sideDefs.map(({ side, x, y, w, h }) => {
+        const meta = computePlantaSharedEdgeMeta(gi, side, multiZona, sharedSidesMap, plantRects, zonas);
+        if (meta.hideDuplicate) return null;
         const dis = isDisabled(side);
         const val = currentVal(side);
         const active = val && val !== "none";
@@ -1173,10 +1446,14 @@ function PlantaBordesEdgeStrips({
             : 0.028 * zm;
 
         const { cx, cy, fontSize } = labelProps(x, y, w, h);
-        const shortLabel = SHORT_LABELS[val] ?? (active ? val : null);
-        const showLabel = (isHovered || isOpen || active) && shortLabel;
         const isVertical = side === "latIzq" || side === "latDer";
         const textTransform = isVertical ? `rotate(-90, ${cx}, ${cy})` : undefined;
+        const titleFull = (() => {
+          if (dis && !multiZona && side === "fondo") return `${PLANTA_BORDER_SIDE_LABELS[side] || side} — Cumbrera`;
+          const dl = resolveFullLabel(side, val) ?? (active ? val : null);
+          if (!dl && !active) return `${PLANTA_BORDER_SIDE_LABELS[side] || side}`;
+          return `${PLANTA_BORDER_SIDE_LABELS[side] || side} — ${dl || "Sin perfil"}`;
+        })();
 
         return (
           <g key={`planta-bd-${gi}-${side}`}>
@@ -1203,27 +1480,9 @@ function PlantaBordesEdgeStrips({
                 onStripPointerDown(ev, gi, side);
               }}
             />
+            <title>{titleFull}</title>
 
-            {/* ── Label inline — aparece cuando hay valor activo o en hover ── */}
-            {showLabel && (
-              <text
-                x={cx}
-                y={cy}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={fontSize}
-                fontFamily="'SF Pro Display', system-ui, sans-serif"
-                fontWeight={isOpen || isHovered ? 600 : 400}
-                fill={isOpen || isHovered ? "#dbeafe" : "rgba(186,213,255,0.65)"}
-                transform={textTransform}
-                pointerEvents="none"
-                style={{ userSelect: "none" }}
-              >
-                {shortLabel}
-              </text>
-            )}
-
-            {/* ── "+" cuando hover sin valor asignado ── */}
+            {/* ── "+" cuando hover sin valor asignado (el nombre del perfil va en leyendas fuera del plano) ── */}
             {isHovered && !active && !isOpen && (
               <text
                 x={cx}
@@ -1744,6 +2003,86 @@ export default function RoofPreview({
     (optId) => {
       if (!plantaBorderPick) return;
       const { gi, side } = plantaBorderPick;
+      const meta = computePlantaSharedEdgeMeta(
+        gi,
+        side,
+        multiZonaBordes,
+        bordesSharedSidesMap,
+        layout.entries,
+        zonas,
+      );
+
+      if (meta.fully && meta.pairKey && typeof onEncounterPairChange === "function") {
+        const low = meta.low;
+        const prevFull = zonas[low]?.preview?.encounterByPair?.[meta.pairKey];
+        const seed = prevFull && typeof prevFull === "object" ? { ...prevFull } : {};
+        const base = pairEncounterBaseRaw(prevFull || {});
+        let nextFull = null;
+
+        if (!meta.split) {
+          if (optId === "none") {
+            nextFull = {
+              ...seed,
+              ...base,
+              tipo: "continuo",
+              modo: "continuo",
+              perfil: null,
+              perfilVecino: null,
+              cumbreraUnida: false,
+            };
+          } else {
+            nextFull = {
+              ...seed,
+              ...base,
+              tipo: "perfil",
+              modo: "cumbrera",
+              perfil: optId,
+              perfilVecino: optId,
+              cumbreraUnida: true,
+            };
+          }
+        } else if (meta.encNorm.modo === "pretil") {
+          const perf = base.perfil ?? "none";
+          const pVec = base.perfilVecino ?? "none";
+          let pSelf = perf;
+          let pNbr = pVec;
+          if (gi === meta.low) pSelf = optId;
+          else pNbr = optId;
+          nextFull = {
+            ...seed,
+            ...base,
+            tipo: "perfil",
+            modo: "pretil",
+            perfil: pSelf,
+            perfilVecino: pNbr,
+          };
+        } else if (meta.encNorm.modo === "desnivel") {
+          const d0 = meta.encNorm.desnivel || {};
+          const patch = gi === meta.low ? { perfilBajo: optId } : { perfilAlto: optId };
+          const nextD = {
+            perfilBajo: d0.perfilBajo ?? meta.encNorm.perfil ?? "none",
+            perfilAlto: d0.perfilAlto ?? meta.encNorm.perfil ?? "none",
+            ...patch,
+          };
+          const bom = nextD.perfilBajo || nextD.perfilAlto || "none";
+          nextFull = {
+            ...seed,
+            ...base,
+            tipo: "perfil",
+            modo: "desnivel",
+            perfil: bom,
+            desnivel: nextD,
+          };
+        }
+
+        if (nextFull) {
+          onEncounterPairChange(meta.pairKey, nextFull);
+          setPlantaBorderPick(null);
+          setPlantaBorderPopoverStyle(null);
+          return;
+        }
+      }
+
       if (multiZonaBordes && typeof onZonaBorderChange === "function") {
         onZonaBorderChange(gi, side, optId);
       } else if (typeof onTechoBorderChange === "function") {
@@ -1752,7 +2091,16 @@ export default function RoofPreview({
       setPlantaBorderPick(null);
       setPlantaBorderPopoverStyle(null);
     },
-    [plantaBorderPick, multiZonaBordes, onZonaBorderChange, onTechoBorderChange],
+    [
+      plantaBorderPick,
+      multiZonaBordes,
+      onZonaBorderChange,
+      onTechoBorderChange,
+      bordesSharedSidesMap,
+      layout.entries,
+      zonas,
+      onEncounterPairChange,
+    ],
   );
 
   /** Suma ptsHorm / ptsMetal / ptsMadera de todas las zonas tras cambiar overrides en `changedGi` (multizona coherente con `calcFijacionesVarilla`). */
@@ -2009,6 +2357,10 @@ export default function RoofPreview({
 
   /** Margen SVG y leyenda: cotas de planta (gris grafito) y/o overlay completo Estructura. */
   const plantaCotaChromeActive = estructuraHintsByGi != null || showPlantaExteriorCotas;
+  /** Paso accesorios perimetrales: simplificar interior (cadena mm, L×W, T-xx); mantener cotas exteriores. */
+  const plantaPerimeterLiteMode = Boolean(bordesPlantaAssign && bordesPlantaHandlersOk);
+  const showPlantaDimensionChrome =
+    plantaCotaChromeActive || plantaPerimeterLiteMode;
 
   const effectivePanelAu = panelObj?.au ?? panelAu;
 
@@ -2033,9 +2385,9 @@ export default function RoofPreview({
   }, [layoutPanelSource, layout.entries, tipoAguas]);
 
   const cotaObstacles = useMemo(() => {
-    if (!plantaCotaChromeActive) return [];
+    if (!showPlantaDimensionChrome) return [];
     return computeCotaObstacles(planEdges?.exterior ?? [], planEdges?.encounters ?? [], svgTy);
-  }, [plantaCotaChromeActive, planEdges, svgTy]);
+  }, [showPlantaDimensionChrome, planEdges, svgTy]);
 
   const verifications = useMemo(() => {
     if (!panelLayouts) return null;
@@ -2060,8 +2412,21 @@ export default function RoofPreview({
   const svgFrame = useMemo(() => {
     const fallback = { viewBox: layout.viewBox, chrome: null };
     if (!layout.viewMetrics) return fallback;
-    const chainActive = !!panelLayouts;
-    if ((!plantaCotaChromeActive && !chainActive) || layout.entries.length === 0) return fallback;
+    if (layout.entries.length === 0) return fallback;
+    const chainActive = !!panelLayouts && !plantaPerimeterLiteMode;
+    const bordesChrome = bordesPlantaAssign && bordesPlantaHandlersOk;
+    /** Sin cadena ni chrome de cotas: vista compacta; si hace falta chrome exterior (p. ej. paso perimetral), usar rama con márgenes completos. */
+    if (!plantaCotaChromeActive && !chainActive && !showPlantaDimensionChrome) {
+      if (!bordesChrome) return fallback;
+      const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
+      const bordesCap = Math.max(0.4 * svgTy.m, 0.28);
+      const minX = vbX - bordesCap;
+      const minY = vbY - bordesCap;
+      return {
+        viewBox: `${minX} ${minY} ${vbW + 2 * bordesCap} ${vbH + 2 * bordesCap}`,
+        chrome: { minX, maxY: vbY + vbH + bordesCap, vbX, vbY, vbW, vbH },
+      };
+    }
     const { vbX, vbY, vbW, vbH } = layout.viewMetrics;
     const ext = planEdges?.exterior ?? [];
     const nSide = (side) => Math.min(8, ext.filter((s) => s.side === side).length);
@@ -2076,14 +2441,17 @@ export default function RoofPreview({
     // Banda inferior para la escala gráfica (evita solaparse con cadena mm / AU)
     const fontT = svgTy.dimFontTertiary ?? svgTy.dimFont * 0.72;
     const scaleBarBand =
-      plantaCotaChromeActive ? 0.06 * svgTy.m + fontT * 0.55 + 0.12 * svgTy.m : 0;
+      showPlantaDimensionChrome ? 0.06 * svgTy.m + fontT * 0.55 + 0.12 * svgTy.m : 0;
     const padB =
       (0.68 + nSide("bottom") * 0.14) * vbPadScale + chainPad + envExtra + scaleBarBand;
     const padR = (0.45 + nSide("right") * 0.14) * vbPadScale;
-    const minX = vbX - padL;
-    const maxY = vbY + vbH + padB;
+    /** Espacio extra para leyendas de accesorio perimetral fuera del rectángulo (planta 2D). */
+    const bordesCap =
+      bordesPlantaAssign && bordesPlantaHandlersOk ? Math.max(0.34 * svgTy.m, 0.22) : 0;
+    const minX = vbX - padL - bordesCap;
+    const maxY = vbY + vbH + padB + bordesCap;
     return {
-      viewBox: `${minX} ${vbY - padT} ${vbW + padL + padR} ${vbH + padT + padB}`,
+      viewBox: `${minX} ${vbY - padT - bordesCap} ${vbW + padL + padR + 2 * bordesCap} ${vbH + padT + padB + 2 * bordesCap}`,
       chrome: { minX, maxY, vbX, vbY, vbW, vbH },
     };
   }, [
@@ -2091,6 +2459,8 @@ export default function RoofPreview({
     layout.viewMetrics,
     layout.entries.length,
     plantaCotaChromeActive,
+    plantaPerimeterLiteMode,
+    showPlantaDimensionChrome,
     planEdges?.exterior,
     planEdges?.envelope,
     svgTy.m,
@@ -2099,6 +2469,8 @@ export default function RoofPreview({
     svgTy.dimStackBottom,
     svgTy.dimStackStep,
     panelLayouts,
+    bordesPlantaAssign,
+    bordesPlantaHandlersOk,
   ]);
 
   const encounters = planEdges?.encounters ?? [];
@@ -2302,6 +2674,7 @@ export default function RoofPreview({
               ga: a,
               gb: b,
               encounterLength: missing[0].length,
+              orientation: missing[0].orientation,
             });
           }
         } catch {
@@ -2456,7 +2829,7 @@ export default function RoofPreview({
           )}
         </div>
       </div>
-      {plantaCotaChromeActive && (
+      {showPlantaDimensionChrome && (
         <div
           style={{
             fontSize: 11,
@@ -2570,6 +2943,8 @@ export default function RoofPreview({
             const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
             if (rawPair == null) return null;
             const encLenM = Number(encounterPrompt.encounterLength);
+            const encOrientation = encounterPrompt.orientation === "horizontal" ? "horizontal" : "vertical";
+            const encCatalogOpts = plantaBorderOptsForEncounter(encOrientation, bordesPanelFamiliaKey);
             const runs = listEncounterPairSegmentRuns(rawPair);
             const lenLabel = Number.isFinite(encLenM) && encLenM > 0 ? `${encLenM.toFixed(2)} m` : "—";
             return (
@@ -2585,78 +2960,122 @@ export default function RoofPreview({
                 <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   Tramos del encuentro · longitud {lenLabel}
                 </div>
+                <div style={{ fontSize: 10, color: C.ts, lineHeight: 1.35 }}>
+                  Partí el encuentro en tramos y asigná un perfil del catálogo por tramo (p. ej. un tramo con babeta en la zona en contacto y otro con gotero donde no).
+                </div>
                 {runs.map((run) => {
                   const span = run.t1 - run.t0;
                   const lenM = Number.isFinite(encLenM) && encLenM > 0 ? encLenM * span : null;
                   const canSplit = span > 0.12;
+                  const selVal = catalogSelectValueFromSegmentNormalized(run.normalized);
+                  const catalogIds = new Set(encCatalogOpts.map((o) => o.id));
+                  let selectValue = "none";
+                  if (selVal === "__desnivel__") selectValue = "__desnivel__";
+                  else if (selVal !== "none" && catalogIds.has(selVal)) selectValue = selVal;
+                  else if (selVal !== "none" && selVal !== "__desnivel__") selectValue = selVal;
                   return (
                     <div
                       key={run.id}
                       style={{
                         display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
+                        flexDirection: "column",
                         gap: 8,
-                        padding: "8px 10px",
+                        padding: "10px 10px",
                         borderRadius: 8,
                         border: `1px solid ${C.border}`,
                         background: C.surfaceAlt,
                       }}
                     >
-                      <span style={{ fontSize: 11, fontWeight: 600, color: C.tp, minWidth: 120 }}>
-                        {run.id}
-                        <span style={{ fontWeight: 500, color: C.ts }}>
-                          {" "}
-                          ({(span * 100).toFixed(0)}%{lenM != null ? ` · ~${lenM.toFixed(2)} m` : ""})
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.tp }}>
+                          Tramo {run.id}
+                          <span style={{ fontWeight: 500, color: C.ts }}>
+                            {" "}
+                            · {(span * 100).toFixed(0)}%
+                            {lenM != null ? ` (~${lenM.toFixed(2)} m)` : ""}
+                          </span>
                         </span>
-                      </span>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.tp, cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={run.includeInBom}
-                          onChange={() => {
-                            const next = patchEncounterPairSegment(rawPair, run.id, { includeInBom: !run.includeInBom });
-                            onEncounterPairChange(pk, next);
-                          }}
-                        />
-                        Incluir perfilería (BOM)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = patchEncounterPairSegment(rawPair, run.id, {
-                            encounter: { tipo: "continuo", modo: "continuo", perfil: null, perfilVecino: null, cumbreraUnida: false },
-                          });
-                          onEncounterPairChange(pk, next);
-                        }}
-                        style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: "#ecfdf5", color: "#166534", cursor: "pointer" }}
-                      >
-                        Continuo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = patchEncounterPairSegment(rawPair, run.id, {
-                            encounter: { tipo: "perfil", modo: "pretil", perfil: "pretil", perfilVecino: "pretil" },
-                          });
-                          onEncounterPairChange(pk, next);
-                        }}
-                        style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: "#fff7ed", color: "#9a3412", cursor: "pointer" }}
-                      >
-                        Pretil
-                      </button>
-                      {canSplit ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = splitEncounterPairSegmentMid(rawPair, run.id);
-                            if (next) onEncounterPairChange(pk, next);
-                          }}
-                          style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.primary, cursor: "pointer", marginLeft: "auto" }}
-                        >
-                          Partir mitad
-                        </button>
-                      ) : null}
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.tp, cursor: "pointer", marginLeft: "auto" }}>
+                          <input
+                            type="checkbox"
+                            checked={run.includeInBom}
+                            onChange={() => {
+                              const next = patchEncounterPairSegment(rawPair, run.id, { includeInBom: !run.includeInBom });
+                              onEncounterPairChange(pk, next);
+                            }}
+                          />
+                          BOM
+                        </label>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 600, color: C.ts, flex: "1 1 200px", minWidth: 0 }}>
+                          Perfil (catálogo)
+                          <select
+                            value={selectValue}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === "__desnivel__") return;
+                              const encPatch = segmentEncounterFromCatalogOption(v);
+                              const next = patchEncounterPairSegment(rawPair, run.id, { encounter: encPatch });
+                              onEncounterPairChange(pk, next);
+                            }}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: C.tp,
+                              padding: "6px 8px",
+                              borderRadius: 6,
+                              border: `1px solid ${C.border}`,
+                              background: C.surface,
+                              maxWidth: "100%",
+                            }}
+                          >
+                            <option value="none">Continuo / sin perfil</option>
+                            {encCatalogOpts.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {o.label}
+                              </option>
+                            ))}
+                            {selVal !== "none" && selVal !== "__desnivel__" && !catalogIds.has(selVal) ? (
+                              <option value={selVal}>Actual (id: {selVal})</option>
+                            ) : null}
+                            {selVal === "__desnivel__" ? (
+                              <option value="__desnivel__">Desnivel (elegí otro valor para reemplazar)</option>
+                            ) : null}
+                          </select>
+                        </label>
+                        {selVal === "__desnivel__" ? (
+                          <span style={{ fontSize: 10, color: C.ts, flex: "1 1 140px" }}>
+                            Desnivel: usá los botones superiores o elegí un perfil único en el catálogo para reemplazar el tramo.
+                          </span>
+                        ) : null}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = patchEncounterPairSegment(rawPair, run.id, {
+                                encounter: { tipo: "continuo", modo: "continuo", perfil: null, perfilVecino: null, cumbreraUnida: false },
+                              });
+                              onEncounterPairChange(pk, next);
+                            }}
+                            style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: "#ecfdf5", color: "#166534", cursor: "pointer" }}
+                          >
+                            Continuo
+                          </button>
+                          {canSplit ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = splitEncounterPairSegmentMid(rawPair, run.id);
+                                if (next) onEncounterPairChange(pk, next);
+                              }}
+                              style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.primary, cursor: "pointer" }}
+                            >
+                              Partir mitad
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -2681,7 +3100,7 @@ export default function RoofPreview({
       )}
       <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
         Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
-        Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y asignar continuo/pretil por tramo.
+        Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y elegir perfil del catálogo por tramo (laterales o frente/fondo según el eje del encuentro).
         Doble clic en la superficie: pendiente visual. <strong style={{ color: C.tp }}>+ Otra medida</strong> en cada tarjeta
         suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
         independiente en planta.
@@ -2816,6 +3235,7 @@ export default function RoofPreview({
                         ga,
                         gb,
                         encounterLength: enc.length,
+                        orientation: enc.orientation,
                       });
                     }}
                   />
@@ -2831,6 +3251,10 @@ export default function RoofPreview({
               const canDrag = Boolean(onZonaPreviewChange);
               const zoneOutline = zoneBorderExteriorLines[r.gi] ?? [];
               const showAnnexCtl = annex && onAnnexRankSwap;
+              const showEstructuraOverlay =
+                estructuraHintsByGi != null &&
+                estructuraHintsByGi[r.gi] &&
+                !(bordesPlantaAssign && bordesPlantaHandlersOk);
               return (
                 <g key={r.gi}>
                   <rect
@@ -2881,7 +3305,7 @@ export default function RoofPreview({
                       <line key={`zb-${r.gi}-${li}`} x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2} />
                     ))}
                   </g>
-                  {estructuraHintsByGi != null && estructuraHintsByGi[r.gi] ? (
+                  {showEstructuraOverlay ? (
                     <EstructuraZonaOverlay
                       r={r}
                       hints={estructuraHintsByGi[r.gi]}
@@ -2903,7 +3327,7 @@ export default function RoofPreview({
                       tipoEst={tipoEst}
                     />
                   ) : null}
-                  {!(estructuraHintsByGi != null && estructuraHintsByGi[r.gi]) ? (
+                  {!showEstructuraOverlay && !plantaPerimeterLiteMode ? (
                     <g pointerEvents="none">
                       <text
                         x={r.x + r.w / 2}
@@ -3004,23 +3428,40 @@ export default function RoofPreview({
                     </g>
                   )}
                   {bordesPlantaAssign && bordesPlantaHandlersOk ? (
-                    <PlantaBordesEdgeStrips
-                      r={r}
-                      svgTy={svgTy}
-                      multiZona={multiZonaBordes}
-                      sharedSidesMap={bordesSharedSidesMap}
-                      disabledSidesGlobal={disabledSidesGlobalBordes}
-                      techoBorders={bordersGlobalForPlanta}
-                      zonas={zonas}
-                      openGi={plantaBorderPick?.gi ?? null}
-                      openSide={plantaBorderPick?.side ?? null}
-                      onStripPointerDown={handlePlantaBordeStripDown}
-                    />
+                    <>
+                      <PlantaBordesOutsideCaptions
+                        r={r}
+                        svgTy={svgTy}
+                        multiZona={multiZonaBordes}
+                        sharedSidesMap={bordesSharedSidesMap}
+                        disabledSidesGlobal={disabledSidesGlobalBordes}
+                        techoBorders={bordersGlobalForPlanta}
+                        zonas={zonas}
+                        openGi={plantaBorderPick?.gi ?? null}
+                        openSide={plantaBorderPick?.side ?? null}
+                        bordesPanelFamiliaKey={bordesPanelFamiliaKey}
+                        plantRects={layout.entries}
+                      />
+                      <PlantaBordesEdgeStrips
+                        r={r}
+                        svgTy={svgTy}
+                        multiZona={multiZonaBordes}
+                        sharedSidesMap={bordesSharedSidesMap}
+                        disabledSidesGlobal={disabledSidesGlobalBordes}
+                        techoBorders={bordersGlobalForPlanta}
+                        zonas={zonas}
+                        openGi={plantaBorderPick?.gi ?? null}
+                        openSide={plantaBorderPick?.side ?? null}
+                        onStripPointerDown={handlePlantaBordeStripDown}
+                        bordesPanelFamiliaKey={bordesPanelFamiliaKey}
+                        plantRects={layout.entries}
+                      />
+                    </>
                   ) : null}
                 </g>
               );
             })}
-            {panelLayouts && layout.entries.map((r) => {
+            {panelLayouts && !plantaPerimeterLiteMode && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
               return (
@@ -3040,7 +3481,7 @@ export default function RoofPreview({
                 </g>
               );
             })}
-            {panelLayouts && layout.entries.map((r) => {
+            {panelLayouts && !plantaPerimeterLiteMode && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
               return (
@@ -3055,14 +3496,14 @@ export default function RoofPreview({
                 />
               );
             })}
-            {plantaCotaChromeActive && planEdges?.exterior?.length ? (
+            {showPlantaDimensionChrome && planEdges?.exterior?.length ? (
               <EstructuraGlobalExteriorOverlay
                 exterior={planEdges.exterior}
                 encounters={planEdges.encounters ?? []}
                 svgTy={svgTy}
               />
             ) : null}
-            {plantaCotaChromeActive && planEdges?.envelope && (() => {
+            {showPlantaDimensionChrome && planEdges?.envelope && (() => {
               const ext = planEdges.exterior ?? [];
               const maxBottomBump = ext.filter(s => s.side === 'bottom')
                 .reduce((mx, s) => Math.max(mx, ext.filter(b => b.side === 'bottom' && +b.y1.toFixed(2) === +s.y1.toFixed(2)).length), 0);
@@ -3076,7 +3517,7 @@ export default function RoofPreview({
                 />
               );
             })()}
-            {plantaCotaChromeActive && layout.viewMetrics && (() => {
+            {showPlantaDimensionChrome && layout.viewMetrics && (() => {
               const { vbW, vbH } = layout.viewMetrics;
               const spanM = Math.max(vbW, vbH, 2.5);
               const ch = svgFrame.chrome;
@@ -3104,7 +3545,7 @@ export default function RoofPreview({
                 />
               );
             })()}
-            {plantaCotaChromeActive && layout.viewMetrics && (() => {
+            {showPlantaDimensionChrome && layout.viewMetrics && (() => {
               const { vbX, vbY } = layout.viewMetrics;
               return (
                 <OrientationMark
@@ -3114,7 +3555,7 @@ export default function RoofPreview({
                 />
               );
             })()}
-            {plantaCotaChromeActive && planEdges?.envelope && (() => {
+            {showPlantaDimensionChrome && planEdges?.envelope && (() => {
               const env = planEdges.envelope;
               return (
                 <DatumMark
@@ -3161,18 +3602,24 @@ export default function RoofPreview({
             (() => {
               const { gi, side } = plantaBorderPick;
               const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
-              let curVal = "";
-              if (multiZonaBordes) {
-                curVal = zonas[gi]?.preview?.borders?.[side] ?? bordersGlobalForPlanta[side] ?? "";
-              } else {
-                curVal = bordersGlobalForPlanta[side] ?? "";
-              }
-              const title = multiZonaBordes
-                ? `Zona ${gi + 1} — ${PLANTA_BORDER_SIDE_LABELS[side] || side}`
-                : PLANTA_BORDER_SIDE_LABELS[side] || side;
+              const curVal = resolvePlantaBorderEffectiveValue(
+                gi,
+                side,
+                multiZonaBordes,
+                bordersGlobalForPlanta,
+                zonas,
+                bordesSharedSidesMap,
+                layout.entries,
+              );
+              const curLabel =
+                !curVal || curVal === "none"
+                  ? "Sin perfil"
+                  : opts.find((o) => o.id === curVal)?.label ?? curVal;
               return (
                 <div
                   ref={plantaBorderPopRef}
+                  role="dialog"
+                  aria-label={PLANTA_BORDER_SIDE_LABELS[side] || side}
                   style={{
                     position: "fixed",
                     zIndex: 10070,
@@ -3193,19 +3640,14 @@ export default function RoofPreview({
                 >
                   <div
                     style={{
-                      padding: "6px 12px",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: C.ts,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
+                      padding: "12px 14px",
+                      background: C.primarySoft,
                       borderBottom: `1px solid ${C.border}`,
-                      background: C.surfaceAlt,
                       borderRadius: "10px 10px 0 0",
                       flexShrink: 0,
                     }}
                   >
-                    {title}
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#1e40af", lineHeight: 1.35 }}>{curLabel}</div>
                   </div>
                   <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
                     {opts.map((opt, oi) => {

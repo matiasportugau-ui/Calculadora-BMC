@@ -6,7 +6,7 @@ import { p } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
-import { buildRoofPlanEdges, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
+import { buildEdgeBOM, countExposedVerticalPerimeterFixingInteriorPointsForZona } from "./roofPlanGeometry.js";
 import { countPanels } from "./roofPanelStripsPlanta.js";
 
 // ── §0 PENDIENTE ─────────────────────────────────────────────────────────────
@@ -112,12 +112,12 @@ export function countPuntosFijacionVarillaGrilla(cantP, apoyos) {
  * el remanente se descarta salvo que otro tramo completo quepa en él (modelo greedy por barra = máximo de tramos iguales por metro).
  */
 /**
- * Puntos de refuerzo en **laterales verticales** expuestos al perímetro (planta), alineado al visor 2D / `buildRoofPlanEdges`.
+ * Puntos de refuerzo en **laterales verticales** expuestos al perímetro (planta), mismo criterio que `buildEdgeBOM` (layout lógico / BOM).
  */
 export function perimetroVerticalInteriorPuntosDesdePlanta(zonas, tipoAguas, gi) {
   const espPerim = getDimensioningParam("FIJACIONES_VARILLA.espaciado_perimetro", 2.5);
-  const { exterior } = buildRoofPlanEdges(zonas || [], tipoAguas ?? "una_agua");
-  return countExposedVerticalPerimeterFixingInteriorPointsForZona(exterior, gi, espPerim);
+  const { exteriorEdges } = buildEdgeBOM(zonas || [], tipoAguas ?? "una_agua");
+  return countExposedVerticalPerimeterFixingInteriorPointsForZona(exteriorEdges, gi, espPerim);
 }
 
 export function countVarillasRoscadasDesdeBarras1m(nCuts, cutLengthM, rodLengthM = 1) {

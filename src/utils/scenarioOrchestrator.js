@@ -24,6 +24,27 @@ import { getPricing } from "../data/pricing.js";
 const EMPTY_BORDERS = { frente: "none", fondo: "none", latIzq: "none", latDer: "none" };
 
 /**
+ * Escenario techo+fachada (sin `encounterByPair`): anula perfilería solo en lados **enteros** compartidos con otra zona.
+ * Solape parcial: se conserva el tipo de borde del usuario; `edgeML` en `calcPerfileriaTecho` acorta la longitud al tramo libre.
+ *
+ * @param {Record<string, string>} mergedBorders
+ * @param {Map<string, { fullySide: boolean }>|undefined|null} sharedSideMapForGi - `getSharedSidesPerZona(...).get(gi)`
+ */
+export function effectiveBordersTechoFachada(mergedBorders, sharedSideMapForGi) {
+  const m = mergedBorders && typeof mergedBorders === "object" ? mergedBorders : {};
+  if (!sharedSideMapForGi || typeof sharedSideMapForGi.get !== "function" || sharedSideMapForGi.size === 0) {
+    return { ...m };
+  }
+  return Object.fromEntries(
+    Object.entries(m).map(([k, v]) => {
+      const entry = sharedSideMapForGi.get(k);
+      if (!entry) return [k, v];
+      return [k, entry.fullySide ? "none" : v];
+    }),
+  );
+}
+
+/**
  * Perfiles en encuentros (geometría): una fila por tramo compartido, solo en la zona dueña `min(a,b)`.
  * @param {number} gi
  * @param {object[]} encounters
@@ -102,11 +123,7 @@ function computeTechoZonas(techo, useEncounterBorders) {
           }))
         : mergedBorders;
     } else {
-      // techo_fachada: blank any shared side without encounter lookup
-      const sharedSides = sharedSideMap ?? new Set();
-      effectiveBorders = sharedSides.size > 0
-        ? Object.fromEntries(Object.entries(mergedBorders).map(([k, v]) => [k, sharedSides.has(k) ? "none" : v]))
-        : mergedBorders;
+      effectiveBorders = effectiveBordersTechoFachada(mergedBorders, sharedSideMap);
     }
 
     const edgeML = !is2Aguas && edgePack?.mlByZona?.[gi]

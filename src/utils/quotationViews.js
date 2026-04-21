@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { BORDER_OPTIONS } from "../data/constants.js";
+import { COMPANY } from "./helpers.js";
 
 export const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -50,10 +51,24 @@ export function buildPdfAppendixPayload({
   const { roof, wall } = resolveRoofWallPaneles(scenario, results);
   const roofFam = PANELS_TECHO[techo.familia];
   const wallFam = PANELS_PARED[pared.familia];
+  /** Techo multi-zona: `techo.largo` suele ir vacío; derivar de zonas o de área/ancho útil. */
+  const resolveRoofLargoM = () => {
+    const direct = Number(techo.largo);
+    if (direct > 0) return direct;
+    const zonas = Array.isArray(techo.zonas) ? techo.zonas : [];
+    if (zonas.length > 0) {
+      const maxL = Math.max(0, ...zonas.map((z) => Number(z?.largo) || 0));
+      if (maxL > 0) return maxL;
+    }
+    const au = Number(roof?.anchoTotal) || 0;
+    const area = Number(roof?.areaTotal ?? roof?.areaNeta) || 0;
+    if (au > 0 && area > 0) return area / au;
+    return 0;
+  };
   let roofBlock = null;
   if (roof && roofFam && scenarioDef.hasTecho && techo.familia && techo.espesor) {
     roofBlock = {
-      largo: Number(techo.largo) || 0,
+      largo: resolveRoofLargoM(),
       ancho: Number(techo.ancho) || 0,
       anchoTotal: roof.anchoTotal,
       cantPaneles: roof.cantPaneles,
@@ -213,12 +228,164 @@ ${body}
 </div>`;
 }
 
+const PDF_PLANTA_BRAND = COMPANY.brandColor || "#003366";
+
+/**
+ * Página extra PDF (diseño hero marca + Planta en card + resumen de partidas).
+ * Usada en export PDF+ cuando `includePlantaResumenPage` está activo.
+ */
+export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMode = false, quoteCtx = {}) {
+  if (!ap) return "";
+  const { groups = [], totals, client, project, scenarioLabel: sl } = quoteCtx;
+  const scenarioLabel = sl || ap.scenarioLabel || "—";
+  const { roofBlock, wallBlock, showBorders, borders, borderExtras, kpi, totals: apTotals } = ap;
+  const t = totals || apTotals;
+  const snaps = snapshots && typeof snapshots === "object" ? snapshots : {};
+  const snapsNoRoof = { ...snaps };
+  delete snapsNoRoof.roofPlan2d;
+  const snapBlock = buildSnapshotSectionHtml(snapsNoRoof, clientMode);
+
+  const roofPlanImg =
+    snaps.roofPlan2d && typeof snaps.roofPlan2d === "string" && snaps.roofPlan2d.startsWith("data:")
+      ? `<div style="margin-bottom:12px;padding:12px;background:#F8FAFC;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.07)">
+          <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:8px;letter-spacing:0.02em">Planta 2D · cubierta</div>
+          <img src="${snaps.roofPlan2d}" style="max-width:100%;height:auto;display:block;border-radius:6px" alt="" />
+        </div>`
+      : "";
+
+  let diagrams = "";
+  if (roofBlock) {
+    diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+      <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:4px">Esquema en planta · cubierta</div>
+      <div style="font-size:8pt;color:#64748B;margin-bottom:8px">${esc(roofBlock.label)} · ${esc(String(roofBlock.cantPaneles))} paneles</div>
+      ${svgTechoStrip(roofBlock)}
+    </div>`;
+  }
+  if (wallBlock) {
+    diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+      <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:4px">Esquema · cerramiento</div>
+      <div style="font-size:8pt;color:#64748B;margin-bottom:8px">${esc(wallBlock.label)}${wallBlock.area != null ? ` · área neta ${Number(wallBlock.area).toFixed(2)} m²` : ""}</div>
+      ${svgParedStrip(wallBlock)}
+    </div>`;
+  }
+  if (showBorders && borders) {
+    const sides = [
+      ["Fondo ▲", borderOptionLabel("fondo", borders.fondo)],
+      ["Frente ▼", borderOptionLabel("frente", borders.frente)],
+      ["Lateral izq. ◀", borderOptionLabel("latIzq", borders.latIzq)],
+      ["Lateral der. ▶", borderOptionLabel("latDer", borders.latDer)],
+    ];
+    const cells = sides.map(([a, b]) => `<div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:${PDF_PLANTA_BRAND}">${esc(a)}</div><div style="font-size:8.5pt;margin-top:2px">${esc(b)}</div></div>`).join("");
+    const extras = (borderExtras || []).length
+      ? `<div style="margin-top:8px;font-size:8.5pt;color:#475467"><b>Perimetral:</b> ${esc(borderExtras.join(", "))}</div>`
+      : "";
+    diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+      <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:8px">Bordes y accesorios (cubierta)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${cells}</div>${extras}
+    </div>`;
+  }
+
+  const kpiChips = [
+    ["Área paneles", typeof kpi.area === "number" ? `${kpi.area.toFixed(1)} m²` : "—"],
+    ["Paneles", kpi.paneles ?? "—"],
+    [kpi.useApoyosLabel ? "Apoyos" : "Esquinas", kpi.apoyosOrEsq ?? "—"],
+    ["Pts. fijación", kpi.ptsFij ?? "—"],
+  ];
+  const kpiHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${kpiChips.map(([a, b]) => `<div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">${esc(a)}</div><div style="font-size:11pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-top:2px">${esc(String(b))}</div></div>`).join("")}</div>`;
+
+  const MAX_LINES = 22;
+  let lineCount = 0;
+  let truncated = false;
+  let compactRows = "";
+  const groupList = groups || [];
+  outer: for (let gi = 0; gi < groupList.length; gi += 1) {
+    const g = groupList[gi];
+    if (lineCount >= MAX_LINES) {
+      truncated = true;
+      break outer;
+    }
+    compactRows += `<tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:${PDF_PLANTA_BRAND}">${esc(g.title)}</td></tr>`;
+    lineCount += 1;
+    const items = g.items || [];
+    for (let ii = 0; ii < items.length; ii += 1) {
+      if (lineCount >= MAX_LINES) {
+        truncated = true;
+        break outer;
+      }
+      const item = items[ii];
+      const lab = String(item.label ?? "");
+      const shortLabel = lab.length > 58 ? `${lab.slice(0, 55)}…` : lab;
+      compactRows += `<tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">${esc(shortLabel)}</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$${fmtPrice(item.total)}</td></tr>`;
+      lineCount += 1;
+    }
+  }
+  if (truncated) {
+    compactRows += `<tr><td colspan="2" style="padding:6px 8px;font-size:8pt;color:#64748B;font-style:italic">… líneas adicionales en la cotización principal</td></tr>`;
+  }
+
+  const clientLine = client && project
+    ? `<div style="padding:10px 0 12px;font-size:9pt;color:#475467;border-bottom:0.5pt solid #E2E8F0;line-height:1.45">
+        <b style="color:${PDF_PLANTA_BRAND}">Cliente:</b> ${esc(client.nombre)} · <b>Obra:</b> ${esc(project.descripcion)} · <b>Ref:</b> ${esc(project.refInterna)}
+      </div>`
+    : "";
+
+  const hero = `<div style="background:linear-gradient(115deg, ${PDF_PLANTA_BRAND} 0%, #0a4c78 52%, #0c5a8f 100%);color:#fff;padding:16px 18px;border-radius:10px 10px 0 0;box-shadow:0 4px 14px rgba(0,51,102,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:17pt;font-weight:800;letter-spacing:0.03em">${esc(COMPANY.name)}</div>
+        <div style="font-size:8.5pt;opacity:0.95;margin-top:6px;font-weight:600">Panelin · resumen visual de obra</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10pt;font-weight:800">${esc(scenarioLabel)}</div>
+        <div style="font-size:8.5pt;opacity:0.9;margin-top:4px">${esc(COMPANY.website)} · ${esc(COMPANY.phone)}</div>
+      </div>
+    </div>
+  </div>`;
+
+  const shellOpen = `<div class="pdf-page2 pdf-planta-resumen" style="page-break-before:always;break-before:page;padding-top:6px">`;
+  const shellCard = `<div style="border:0.5pt solid #E2E8F0;border-top:none;border-radius:0 0 10px 10px;padding:14px 16px 16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,0.06)">`;
+
+  const noDiagramFallback = !roofPlanImg && !diagrams
+    ? `<div style="padding:12px;background:#FFF8ED;border-radius:8px;border:0.5pt solid #F5D78E;font-size:9pt;color:#6E4B00;margin-bottom:12px">Sin esquema de paneles en este escenario. Indicadores de obra y resumen de partidas a continuación.</div>`
+    : "";
+
+  const totalsBar = t
+    ? `<div style="margin-top:14px;padding:12px 14px;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-radius:10px;border:0.5pt solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div style="font-size:9pt;color:#64748B">
+          <div><b style="color:${PDF_PLANTA_BRAND}">Subtotal s/IVA</b> USD ${fmtPrice(t.subtotalSinIVA)} · <b>IVA 22%</b> USD ${fmtPrice(t.iva)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:8.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.06em">Total USD</div>
+          <div style="font-size:18pt;font-weight:900;color:${PDF_PLANTA_BRAND};font-variant-numeric:tabular-nums">$${fmtPrice(t.totalFinal)}</div>
+        </div>
+      </div>`
+    : "";
+
+  const footNote = `<p style="margin:12px 0 0;font-size:7.5pt;color:#94A3B8;line-height:1.4">Vista esquemática para obra (no escala de plano). ${clientMode ? "Propuesta comercial BMC Uruguay." : ""}</p>`;
+
+  return `${shellOpen}${hero}${shellCard}
+    ${clientLine}
+    ${roofPlanImg}
+    ${noDiagramFallback}
+    ${diagrams}
+    ${snapBlock ? `<div style="margin-bottom:12px">${snapBlock}</div>` : ""}
+    ${kpiHtml}
+    <div style="margin-top:4px;margin-bottom:8px;font-size:10.5pt;font-weight:900;color:${PDF_PLANTA_BRAND};letter-spacing:0.02em">Resumen de partidas</div>
+    <table style="width:100%;border-collapse:collapse;font-size:9pt"><tbody>${compactRows || `<tr><td colspan="2" style="padding:8px;color:#94A3B8">Sin líneas en el presupuesto.</td></tr>`}</tbody></table>
+    ${totalsBar}
+    ${footNote}
+  </div></div>`;
+}
+
 /**
  * Hoja visual cliente — HTML A4 imprimible.
  * No incluye SKU ni datos internos de costo.
  */
 export function generateClientVisualHTML(data) {
-  const { client, project, scenario, panel, groups, totals, appendix, snapshotImages } = data;
+  const {
+    client, project, scenario, panel, groups, totals, appendix, snapshotImages,
+    includePlantaResumenPage = true,
+  } = data;
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const scenarioLabel = { solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica", presupuesto_libre: "Presupuesto libre" }[scenario] || scenario;
   let tableBody = "";
@@ -230,7 +397,18 @@ export function generateClientVisualHTML(data) {
     });
   });
   const snaps = snapshotImages && typeof snapshotImages === "object" ? snapshotImages : {};
-  let appendixHtml = appendix ? buildPdfAppendixHtml(esc, appendix, snaps, true) : "";
+  let appendixHtml = "";
+  if (appendix) {
+    appendixHtml = includePlantaResumenPage
+      ? buildPdfPlantaResumenPageHtml(esc, appendix, snaps, true, {
+        groups,
+        totals,
+        client,
+        project,
+        scenarioLabel,
+      })
+      : buildPdfAppendixHtml(esc, appendix, snaps, true);
+  }
   if (!appendixHtml && (snaps.summary || snaps.totals || snaps.borders)) {
     appendixHtml = `<div class="pdf-page2" style="page-break-before:always;break-before:page;padding-top:8px"><h2 class="pdf-h2" style="font-size:13pt;font-weight:800;color:#003366;margin:0 0 8px">Vistas de la propuesta</h2><p style="margin:0 0 12px;font-size:9pt;color:#555">Escenario: <b>${esc(scenarioLabel)}</b></p>${buildSnapshotSectionHtml(snaps, true)}</div>`;
   }

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Muestra PDF+ — Planta + resumen (BMC)</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 10pt;
+      color: #1d1d1f;
+      margin: 0;
+      padding: 16px;
+      background: #e5e7eb;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .sheet {
+      max-width: 210mm;
+      margin: 0 auto 24px;
+      background: #fff;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      padding: 8px;
+    }
+    .banner {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <p class="banner">
+    <strong>Muestra estática</strong> — misma plantilla que PDF+ (página “Planta + resumen”).
+    Generado con <code>node scripts/generate-pdf-planta-sample.mjs</code>.
+  </p>
+  <div class="sheet">
+<div class="pdf-page2 pdf-planta-resumen" style="page-break-before:always;break-before:page;padding-top:6px"><div style="background:linear-gradient(115deg, #003366 0%, #0a4c78 52%, #0c5a8f 100%);color:#fff;padding:16px 18px;border-radius:10px 10px 0 0;box-shadow:0 4px 14px rgba(0,51,102,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:17pt;font-weight:800;letter-spacing:0.03em">BMC Uruguay</div>
+        <div style="font-size:8.5pt;opacity:0.95;margin-top:6px;font-weight:600">Panelin · resumen visual de obra</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10pt;font-weight:800">Techo</div>
+        <div style="font-size:8.5pt;opacity:0.9;margin-top:4px">bmcuruguay.com.uy · 092 663 245</div>
+      </div>
+    </div>
+  </div><div style="border:0.5pt solid #E2E8F0;border-top:none;border-radius:0 0 10px 10px;padding:14px 16px 16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,0.06)">
+    <div style="padding:10px 0 12px;font-size:9pt;color:#475467;border-bottom:0.5pt solid #E2E8F0;line-height:1.45">
+        <b style="color:#003366">Cliente:</b> Cliente ejemplo S.A. · <b>Obra:</b> Nave industrial — MVD · <b>Ref:</b> BMC-2026-0420
+      </div>
+    <div style="margin-bottom:12px;padding:12px;background:#F8FAFC;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.07)">
+          <div style="font-size:9.5pt;font-weight:800;color:#003366;margin-bottom:8px;letter-spacing:0.02em">Planta 2D · cubierta</div>
+          <img src="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22520%22%20height%3D%22280%22%20viewBox%3D%220%200%20520%20280%22%3E%0A%20%20%20%20%3Crect%20fill%3D%22%23f1f5f9%22%20width%3D%22520%22%20height%3D%22280%22%20rx%3D%228%22%2F%3E%0A%20%20%20%20%3Crect%20x%3D%2240%22%20y%3D%2240%22%20width%3D%22440%22%20height%3D%22180%22%20fill%3D%22%23dbeafe%22%20stroke%3D%22%23003366%22%20stroke-width%3D%222%22%20rx%3D%224%22%2F%3E%0A%20%20%20%20%3Ctext%20x%3D%22260%22%20y%3D%22135%22%20text-anchor%3D%22middle%22%20fill%3D%22%23003366%22%20font-family%3D%22system-ui%2Csans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22700%22%3EPlanta%202D%20(muestra)%3C%2Ftext%3E%0A%20%20%3C%2Fsvg%3E" style="max-width:100%;height:auto;display:block;border-radius:6px" alt="" />
+        </div>
+    
+    <div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+      <div style="font-size:9.5pt;font-weight:800;color:#003366;margin-bottom:4px">Esquema en planta · cubierta</div>
+      <div style="font-size:8pt;color:#64748B;margin-bottom:8px">ISODEC EPS 100mm · 31 paneles</div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="420" height="142.9193548387097" viewBox="0 0 420 142.9193548387097" role="img" aria-label="Esquema techo"><rect x="0" y="0" width="420" height="114.91935483870968" fill="none" stroke="#ccc" stroke-width="0.5"/><rect x="0.5" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="14.048387096774194" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="27.596774193548388" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="41.145161290322584" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="54.693548387096776" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="68.24193548387098" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="81.79032258064517" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="95.33870967741936" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="108.88709677419355" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="122.43548387096774" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="135.98387096774195" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="149.53225806451613" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="163.08064516129033" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="176.6290322580645" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="190.17741935483872" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="203.7258064516129" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="217.2741935483871" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="230.8225806451613" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="244.3709677419355" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="257.9193548387097" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="271.4677419354839" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="285.01612903225805" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="298.56451612903226" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="312.11290322580646" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="325.66129032258067" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="339.2096774193549" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="352.758064516129" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="366.30645161290323" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="379.85483870967744" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><rect x="393.40322580645164" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#E8EEF5" stroke="#003366" stroke-width="0.8"/><rect x="406.9516129032258" y="0.5" width="12.548387096774194" height="113.91935483870968" fill="#F5F8FC" stroke="#003366" stroke-width="0.8"/><text x="4" y="128.9193548387097" font-size="9" fill="#444">Largo 9.50 m · Ancho útil 34.72 m · 31 paneles × AU 1.12 m</text></svg>
+    </div><div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+      <div style="font-size:9.5pt;font-weight:800;color:#003366;margin-bottom:8px">Bordes y accesorios (cubierta)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:#003366">Fondo ▲</div><div style="font-size:8.5pt;margin-top:2px">pretil_std</div></div><div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:#003366">Frente ▼</div><div style="font-size:8.5pt;margin-top:2px">gotero</div></div><div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:#003366">Lateral izq. ◀</div><div style="font-size:8.5pt;margin-top:2px">u</div></div><div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:#003366">Lateral der. ▶</div><div style="font-size:8.5pt;margin-top:2px">u</div></div></div>
+    </div>
+    
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"><div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Área paneles</div><div style="font-size:11pt;font-weight:800;color:#003366;margin-top:2px">293.4 m²</div></div><div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Paneles</div><div style="font-size:11pt;font-weight:800;color:#003366;margin-top:2px">31</div></div><div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Apoyos</div><div style="font-size:11pt;font-weight:800;color:#003366;margin-top:2px">3</div></div><div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Pts. fijación</div><div style="font-size:11pt;font-weight:800;color:#003366;margin-top:2px">165</div></div></div>
+    <div style="margin-top:4px;margin-bottom:8px;font-size:10.5pt;font-weight:900;color:#003366;letter-spacing:0.02em">Resumen de partidas</div>
+    <table style="width:100%;border-collapse:collapse;font-size:9pt"><tbody><tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:#003366">PANELES</td></tr><tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">ISODEC EPS 100mm</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$11,080.30</td></tr><tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:#003366">PERFILERÍA</td></tr><tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">Frente Sup: babeta adosar</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$45.20</td></tr><tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">Encuentro: cumbrera</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$80.00</td></tr><tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:#003366">FIJACIONES</td></tr><tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">Varilla / tuercas / arandelas (kit)</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$665.76</td></tr><tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:#003366">SELLADORES</td></tr><tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">Siliconas + cinta butilo</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$858.22</td></tr><tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:#003366">SERVICIOS</td></tr><tr><td style="padding:5px 8px;font-size:8.5pt;border-bottom:0.5pt solid #ECECEC;color:#1D1D1F">Flete con entrega en obra</td><td style="padding:5px 8px;font-size:8.5pt;text-align:right;font-weight:700;border-bottom:0.5pt solid #ECECEC;font-variant-numeric:tabular-nums">$280.00</td></tr></tbody></table>
+    <div style="margin-top:14px;padding:12px 14px;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-radius:10px;border:0.5pt solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div style="font-size:9pt;color:#64748B">
+          <div><b style="color:#003366">Subtotal s/IVA</b> USD 13,042.69 · <b>IVA 22%</b> USD 2,869.39</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:8.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.06em">Total USD</div>
+          <div style="font-size:18pt;font-weight:900;color:#003366;font-variant-numeric:tabular-nums">$15,912.08</div>
+        </div>
+      </div>
+    <p style="margin:12px 0 0;font-size:7.5pt;color:#94A3B8;line-height:1.4">Vista esquemática para obra (no escala de plano). Propuesta comercial BMC Uruguay.</p>
+  </div></div>
+  </div>
+</body>
+</html>
