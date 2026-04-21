@@ -5,6 +5,7 @@
  */
 
 import { sanitizeForPrompt } from "../server/lib/chatPrompts.js";
+import { estimateTokensSystem, estimateTokensText } from "../server/lib/tokenEstimator.js";
 import { mapErrorMessage } from "../src/utils/chatErrors.js";
 
 let passed = 0, failed = 0;
@@ -157,11 +158,11 @@ for (const t of shouldBeBlocked) {
 console.log("\n── 1.7  History truncation (token budget logic) ──");
 
 function simulateTruncation(messages, systemPrompt, TOKEN_BUDGET = 8000) {
-  const SYSTEM_ESTIMATE = Math.ceil(systemPrompt.length / 4);
+  const SYSTEM_ESTIMATE = estimateTokensSystem(systemPrompt);
   let tokenSum = SYSTEM_ESTIMATE;
   const truncated = [];
   for (let i = messages.length - 1; i >= 0; i--) {
-    const t = Math.ceil(messages[i].content.length / 4) + 5;
+    const t = estimateTokensText(messages[i].content);
     if (tokenSum + t > TOKEN_BUDGET && truncated.length >= 2) break;
     tokenSum += t;
     truncated.unshift(messages[i]);
@@ -169,6 +170,12 @@ function simulateTruncation(messages, systemPrompt, TOKEN_BUDGET = 8000) {
   return truncated;
 }
 
+{
+  assert("estimateTokensText adds Spanish prose overhead", estimateTokensText("x".repeat(38)) === 15, estimateTokensText("x".repeat(38)), 15);
+}
+{
+  assert("estimateTokensSystem uses tighter system ratio", estimateTokensSystem("x".repeat(35)) === 10, estimateTokensSystem("x".repeat(35)), 10);
+}
 {
   const msgs = Array.from({ length: 10 }, (_, i) => ({
     role: i % 2 === 0 ? "user" : "assistant",

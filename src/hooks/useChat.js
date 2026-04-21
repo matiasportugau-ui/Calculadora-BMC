@@ -359,7 +359,7 @@ export function useChat({
         abortRef.current = null;
       }
     },
-    [isStreaming, calcState, onAction, devMode, buildDevAuthHeaders]
+    [isStreaming, calcState, onAction, devMode, buildDevAuthHeaders, conversationId]
   );
 
   const setAiSelection = useCallback((next) => {
