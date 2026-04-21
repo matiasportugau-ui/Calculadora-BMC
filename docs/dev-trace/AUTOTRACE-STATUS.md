@@ -1,18 +1,18 @@
 # AUTOTRACE — Development status
 
-- Total commits documentados: **42**
+- Total commits documentados: **43**
 - Distribución por tipo:
   - chore: 12
   - docs: 5
-  - feat: 18
+  - feat: 19
   - fix: 5
   - other: 2
 - Distribución por riesgo (tamaño/extensiones):
   - Amarillo: 6
   - Rojo: 2
-  - Verde: 34
+  - Verde: 35
 - Impacto release sugerido (heurística):
-  - low: 35
+  - low: 36
   - med: 7
 
 ## Atención QA — posible regresión (heurística)

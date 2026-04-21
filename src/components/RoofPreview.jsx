@@ -1197,169 +1197,8 @@ function resolvePlantaBorderEffectiveValue(gi, side, multiZona, techoBorders, zo
 }
 
 /**
- * Texto de perfil **fuera** del rectángulo de zona (márgenes del viewBox), para lectura clara en planta 2D.
- */
-function PlantaBordesOutsideCaptions({
-  r,
-  svgTy,
-  multiZona,
-  sharedSidesMap,
-  disabledSidesGlobal,
-  techoBorders,
-  zonas,
-  bordesPanelFamiliaKey = "",
-  openGi,
-  openSide,
-  plantRects,
-}) {
-  const zm = svgTy?.m ?? 1;
-  const gi = r.gi;
-  const gap = Math.max(0.18 * zm, 0.11);
-  const fsBase = Math.max(0.09 * zm, Math.min(0.135 * zm, Math.min(r.w, r.h) * 0.042));
-  const fs = Math.min(fsBase, Math.max(0.07 * zm, Math.min(r.w, r.h) * 0.11));
-
-  const SHORT_LABELS = {
-    gotero_frontal: "Gotero",
-    gotero_frontal_greca: "Greca",
-    gotero_lateral: "Lateral",
-    gotero_lateral_camara: "Cámara",
-    babeta_adosar: "Babeta ↗",
-    babeta_empotrar: "Babeta ↙",
-    canalon: "Canalón",
-    cumbrera: "Cumbrera",
-    none: "Sin perfil",
-  };
-
-  const resolveFullLabel = (side, val) => {
-    if (!val || val === "none") return null;
-    const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
-    const hit = opts.find((o) => o.id === val);
-    return hit?.label ?? SHORT_LABELS[val] ?? val;
-  };
-
-  const captionLine = (side) => {
-    const meta = computePlantaSharedEdgeMeta(gi, side, multiZona, sharedSidesMap, plantRects, zonas);
-    if (meta.hideDuplicate) return null;
-    if (!multiZona && (disabledSidesGlobal || []).includes(side)) return null;
-    const val = resolvePlantaBorderEffectiveValue(gi, side, multiZona, techoBorders, zonas, sharedSidesMap, plantRects);
-    if (!val || val === "none") return null;
-    const prof = resolveFullLabel(side, val);
-    return prof || val;
-  };
-
-  const truncate = (s, side) => {
-    const horiz = side === "fondo" || side === "frente";
-    const budget = horiz
-      ? Math.max(16, Math.min(48, Math.floor((r.w + 0.4 * zm) / (fs * 0.52))))
-      : Math.max(14, Math.min(36, Math.floor((r.h + 0.35 * zm) / (fs * 0.52))));
-    if (s.length <= budget) return s;
-    return `${s.slice(0, Math.max(8, budget - 1))}…`;
-  };
-
-  const frenteAtTop = effectiveSlopeMark(r, zonas) === "along_largo_neg";
-  const sides = ["fondo", "frente", "latIzq", "latDer"];
-
-  return (
-    <g data-bmc-layer="planta-bordes-captions" pointerEvents="none">
-      {sides.map((side) => {
-        const raw = captionLine(side);
-        if (raw == null) return null;
-        const line = truncate(raw, side);
-        const isOpen = openGi === gi && openSide === side;
-        const fill = isOpen ? "#1d4ed8" : "#0f172a";
-        const weight = isOpen ? 700 : 600;
-
-        if (side === "fondo") {
-          // fondo = high side. With frenteAtTop it's at SVG bottom, else at SVG top.
-          const cx = r.x + r.w / 2;
-          const atBottom = frenteAtTop;
-          const cy = atBottom ? r.y + r.h + gap + fs * 0.05 : r.y - gap;
-          return (
-            <text
-              key={`cap-${gi}-fondo`}
-              x={cx}
-              y={cy}
-              textAnchor="middle"
-              dominantBaseline={atBottom ? "hanging" : "auto"}
-              fontSize={fs}
-              fontWeight={weight}
-              fill={fill}
-              fontFamily={FONT}
-              style={{ userSelect: "none" }}
-            >
-              {line}
-            </text>
-          );
-        }
-        if (side === "frente") {
-          // frente = drip/eave side. With frenteAtTop it's at SVG top, else at SVG bottom.
-          const cx = r.x + r.w / 2;
-          const atTop = frenteAtTop;
-          const cy = atTop ? r.y - gap : r.y + r.h + gap + fs * 0.05;
-          return (
-            <text
-              key={`cap-${gi}-frente`}
-              x={cx}
-              y={cy}
-              textAnchor="middle"
-              dominantBaseline={atTop ? "auto" : "hanging"}
-              fontSize={fs}
-              fontWeight={weight}
-              fill={fill}
-              fontFamily={FONT}
-              style={{ userSelect: "none" }}
-            >
-              {line}
-            </text>
-          );
-        }
-        if (side === "latIzq") {
-          const cx = r.x - gap;
-          const cy = r.y + r.h / 2;
-          return (
-            <text
-              key={`cap-${gi}-latIzq`}
-              x={cx}
-              y={cy}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={fs}
-              fontWeight={weight}
-              fill={fill}
-              fontFamily={FONT}
-              transform={`rotate(-90, ${cx}, ${cy})`}
-              style={{ userSelect: "none" }}
-            >
-              {line}
-            </text>
-          );
-        }
-        const cx = r.x + r.w + gap;
-        const cy = r.y + r.h / 2;
-        return (
-          <text
-            key={`cap-${gi}-latDer`}
-            x={cx}
-            y={cy}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={fs}
-            fontWeight={weight}
-            fill={fill}
-            fontFamily={FONT}
-            transform={`rotate(90, ${cx}, ${cy})`}
-            style={{ userSelect: "none" }}
-          >
-            {line}
-          </text>
-        );
-      })}
-    </g>
-  );
-}
-
-/**
  * Paso «Accesorios perimetrales»: bandas en planta (fondo=borde superior SVG, frente=inferior), misma convención que RoofBorderSelector / 3D.
+ * Etiquetas de perfil centradas dentro de cada sub-franja (inline), sin texto fuera del plano.
  */
 function PlantaBordesEdgeStrips({
   r,
@@ -1436,10 +1275,12 @@ function PlantaBordesEdgeStrips({
 
   const isDisabled = (side) => !multiZona && (disabledSidesGlobal || []).includes(side);
 
-  const labelProps = (x, y, w, h) => {
+  const labelProps = (x, y, w, h, isVert) => {
     const cx = x + w / 2;
     const cy = y + h / 2;
-    const fontSize = Math.max(0.065 * zm, Math.min(0.13 * zm, Math.min(w, h) * 0.38));
+    // Constraining dimension: strip thickness (h for horiz bands, w for vert bands)
+    const thick = isVert ? w : h;
+    const fontSize = Math.max(0.055 * zm, Math.min(0.115 * zm, thick * 0.52));
     return { cx, cy, fontSize };
   };
 
@@ -1485,9 +1326,10 @@ function PlantaBordesEdgeStrips({
             ? 0.055 * zm
             : 0.028 * zm;
 
-        const { cx, cy, fontSize } = labelProps(x, y, w, h);
         const isVertical = side === "latIzq" || side === "latDer";
+        const { cx, cy, fontSize } = labelProps(x, y, w, h, isVertical);
         const textTransform = isVertical ? `rotate(-90, ${cx}, ${cy})` : undefined;
+        const clipId = `clip-bd-${gi}-${side}${_subIdx != null ? `-${_subIdx}` : ""}`;
         const titleFull = (() => {
           if (dis && !multiZona && side === "fondo") return `${PLANTA_BORDER_SIDE_LABELS[side] || side} — Cumbrera`;
           const dl = resolveFullLabel(side, val) ?? (active ? val : null);
@@ -1495,8 +1337,22 @@ function PlantaBordesEdgeStrips({
           return `${PLANTA_BORDER_SIDE_LABELS[side] || side} — ${dl || "Sin perfil"}`;
         })();
 
+        const shortLabel = (() => {
+          if (!active) return null;
+          return SHORT_LABELS[val] ?? resolveFullLabel(side, val) ?? val;
+        })();
+
+        // Minimum size to show label: avoid rendering unreadable text in tiny sub-strips
+        const thick = isVertical ? w : h;
+        const span = isVertical ? h : w;
+        const showLabel = shortLabel && thick >= 0.06 && span >= fontSize * 1.8;
+
         return (
           <g key={`planta-bd-${gi}-${side}${_subIdx != null ? `-${_subIdx}` : ""}`}>
+            <title>{titleFull}</title>
+            <clipPath id={clipId}>
+              <rect x={x} y={y} width={w} height={h} />
+            </clipPath>
             {/* ── Banda hit area ── */}
             <rect
               x={x}
@@ -1520,16 +1376,33 @@ function PlantaBordesEdgeStrips({
                 onStripPointerDown(ev, gi, side);
               }}
             />
-            <title>{titleFull}</title>
-
-            {/* ── "+" cuando hover sin valor asignado (el nombre del perfil va en leyendas fuera del plano) ── */}
+            {/* ── Inline profile label, centered on this strip ── */}
+            {showLabel && (
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSize}
+                fontWeight={isOpen ? 700 : 500}
+                fill={isOpen ? "#1d4ed8" : "rgba(15,23,42,0.78)"}
+                fontFamily={FONT}
+                transform={textTransform}
+                clipPath={`url(#${clipId})`}
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                {shortLabel}
+              </text>
+            )}
+            {/* ── "+" hint on hover when no value assigned ── */}
             {isHovered && !active && !isOpen && (
               <text
                 x={cx}
                 y={cy}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={fontSize * 1.2}
+                fontSize={fontSize * 1.3}
                 fill="rgba(147,197,253,0.75)"
                 transform={textTransform}
                 pointerEvents="none"
@@ -3491,19 +3364,6 @@ export default function RoofPreview({
                   )}
                   {bordesPlantaAssign && bordesPlantaHandlersOk ? (
                     <>
-                      <PlantaBordesOutsideCaptions
-                        r={r}
-                        svgTy={svgTy}
-                        multiZona={multiZonaBordes}
-                        sharedSidesMap={bordesSharedSidesMap}
-                        disabledSidesGlobal={disabledSidesGlobalBordes}
-                        techoBorders={bordersGlobalForPlanta}
-                        zonas={zonas}
-                        openGi={plantaBorderPick?.gi ?? null}
-                        openSide={plantaBorderPick?.side ?? null}
-                        bordesPanelFamiliaKey={bordesPanelFamiliaKey}
-                        plantRects={layout.entries}
-                      />
                       <PlantaBordesEdgeStrips
                         r={r}
                         svgTy={svgTy}

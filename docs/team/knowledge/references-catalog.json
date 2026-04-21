@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-20T13:06:30.466Z",
+  "updatedAt": "2026-04-21T14:09:29.291Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -6307,6 +6307,187 @@
       "rankHint": "tier-1",
       "eventIds": [
         "evt_a7a1fb843bebf7e5"
+      ]
+    },
+    {
+      "id": "ref_9700facbf855b7ef",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Scaling Codex to enterprises worldwide]]>",
+      "url": "https://openai.com/index/scaling-codex-to-enterprises-worldwide",
+      "summary": "",
+      "publishedAt": "2026-04-21T00:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:54.666Z",
+      "lastSeenAt": "2026-04-21T13:16:54.666Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5e56a325a9ccf7a2"
+      ]
+    },
+    {
+      "id": "ref_fe5075e1339883a1",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Governing the Agentic Enterprise: A Governance Maturity Model for Managing AI Agent Sprawl in Business Operations",
+      "url": "https://arxiv.org/abs/2604.16338",
+      "summary": "arXiv:2604.16338v1 Announce Type: new Abstract: The rapid adoption of agentic AI in enterprise business operations--autonomous systems capable of planning, reasoning, and executing multi-step workflows--has created an urgent governance crisis. Organizations face uncontrolled agent sprawl: the proliferation of redundant, ungoverned, and conflicting AI agents across business functions. Industry surveys report that only 21% of enterprises have mature governance models for autonomous agents, while 40% of agentic AI projects are projected to fail by 2027 due to inadequate governance and risk controls. Despite growing acknowledgment of this challenge, academic literature lacks a formal, empirically validated governance maturity model connecting governance capability to measurable business outcomes. This paper introduces the Agentic AI Governance Maturity Model (AAGMM), a five-level framework spanning 12 governance domains, grounded in NIST AI RMF and ISO/IEC 42001 standards. We additionally propose a novel taxonomy of agent sprawl patterns--functional duplication, shadow agents, orphaned agents, permission creep, and unmonitored delegation chains--each linked to quantifiable business cost models. The framework is validated through 750 simulation runs across five enterprise scenarios and five governance maturity levels, measuring business outcomes including cost containment, risk incident rates, operational efficiency, and decision quality. Results demonstrate statistically significant differences (p 2.0) between all governance maturity levels, with Level 4-5 organizations achieving 94.3% lower sprawl indices, 96.4% fewer risk incidents, and 32.6% higher effective task completion rates compared to Level 1. The AAGMM provides practitioners with an actionable roadmap for governing autonomous AI agents while maximizing business returns.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.971Z",
+      "lastSeenAt": "2026-04-21T13:16:55.971Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_adabc40961622ef3"
+      ]
+    },
+    {
+      "id": "ref_ed8d197de952618c",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Semantic Consensus: Process-Aware Conflict Detection and Resolution for Enterprise Multi-Agent LLM Systems",
+      "url": "https://arxiv.org/abs/2604.16339",
+      "summary": "arXiv:2604.16339v1 Announce Type: new Abstract: Multi-agent large language model (LLM) systems are rapidly emerging as the dominant architecture for enterprise AI automation, yet production deployments exhibit failure rates between 41% and 86.7%, with nearly 79% of failures originating from specification and coordination issues rather than model capability limitations. This paper identifies Semantic Intent Divergence--the phenomenon whereby cooperating LLM agents develop inconsistent interpretations of shared objectives due to siloed context and absent process models--as a primary yet formally unaddressed root cause of multi-agent failure in enterprise settings. We propose the Semantic Consensus Framework (SCF), a process-aware middleware comprising six components: a Process Context Layer for shared operational semantics, a Semantic Intent Graph for formal intent representation, a Conflict Detection Engine for real-time identification of contradictory, contention-based, and causally invalid intent combinations, a Consensus Resolution Protocol using a policy--authority--temporal hierarchy, a Drift Monitor for detecting gradual semantic divergence, and a Process-Aware Governance Integration layer for organizational policy enforcement. Evaluation across 600 runs spanning three multi-agent frameworks (AutoGen, CrewAI, LangGraph) and four enterprise scenarios demonstrates that SCF is the only approach to achieve 100% workflow completion--compared to 25.1% for the next-best baseline--while detecting 65.2% of semantic conflicts with 27.9% precision and providing complete governance audit trails. The framework is protocol-agnostic and compatible with MCP and A2A communication standards.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.971Z",
+      "lastSeenAt": "2026-04-21T13:16:55.971Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8649ef8a585fdc8e"
+      ]
+    },
+    {
+      "id": "ref_285ec0fa48ebb845",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Computational Hermeneutics: Evaluating generative AI as a cultural technology",
+      "url": "https://arxiv.org/abs/2604.16403",
+      "summary": "arXiv:2604.16403v1 Announce Type: new Abstract: Generative AI systems are increasingly recognized as cultural technologies, yet current evaluation frameworks often treat culture as a variable to be measured rather than fundamental to the system's operation. Drawing on hermeneutic theory from the humanities, we argue that GenAI systems function as \"context machines\" that must inherently address three interpretive challenges: situatedness (meaning only emerges in context), plurality (multiple valid interpretations coexist), and ambiguity (interpretations naturally conflict). We present computational hermeneutics as an emerging framework offering an interpretive account of what GenAI systems do, and how they might do it better. We offer three principles for hermeneutic evaluation -- that benchmarks should be iterative, not one-off; include people, not just machines; and measure cultural context, not just model output. This perspective offers a nascent paradigm for designing and evaluating contemporary AI systems: shifting from standardized questions about accuracy to contextual ones about meaning.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.972Z",
+      "lastSeenAt": "2026-04-21T13:16:55.972Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e66218244080cc6d"
+      ]
+    },
+    {
+      "id": "ref_6a65eb0a77a5de9f",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Heterogeneous Self-Play for Realistic Highway Traffic Simulation",
+      "url": "https://arxiv.org/abs/2604.16406",
+      "summary": "arXiv:2604.16406v1 Announce Type: new Abstract: Realistic highway simulation is critical for scalable safety evaluation of autonomous vehicles, particularly for interactions that are too rare to study from logged data alone. Yet highway traffic generation remains challenging because it requires broad coverage across speeds and maneuvers, controllable generation of rare safety-critical scenarios, and behavioral credibility in multi-agent interactions. We present PHASE, Policy for Heterogeneous Agent Self-play on Expressway, a context-aware self-play framework that addresses these three requirements through explicit per-agent conditioning for controllability, synthetic scenario generation for broad highway coverage, and closed-loop multi-agent training for realistic interaction dynamics. PHASE further supports different vehicle profiles, for example, passenger cars and articulated trailer trucks, within a single policy via vehicle-aware dynamics and context-conditioned actions, and stabilizes self-play with early termination of unrecoverable states, at-fault collision attribution, highway-aware reward shaping, coupled curricula, and robust policy optimization. Despite being trained only on synthetic data, PHASE transfers zero-shot to 512 unseen high-interaction real scenarios in exiD, achieving a 96.3% success rate and reducing ADE/FDE from 6.57/12.07 m to 2.44/5.25 m relative to a prior self-play baseline. In a learned trajectory embedding space, it also improves behavioral realism over IDM, reducing Frechet trajectory distance by 13.1% and energy distance by 20.2%. These results show that synthetic self-play can provide a scalable route to controllable and realistic highway scenario generation without direct imitation of expert logs.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.972Z",
+      "lastSeenAt": "2026-04-21T13:16:55.972Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_876321979746d495"
+      ]
+    },
+    {
+      "id": "ref_61f50f8fd9a439cf",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Support Sufficiency as Consequence-Sensitive Compression in Belief Arbitration",
+      "url": "https://arxiv.org/abs/2604.16434",
+      "summary": "arXiv:2604.16434v1 Announce Type: new Abstract: When a system commits to a hypothesis, much of the evidential structure behind that commitment is lost to compression. Standard accounts assume that selected content and scalar confidence suffice for downstream control. This paper argues that they do not, and that determining what must survive compression is itself a consequence-sensitive problem. We develop a recurrent arbitration architecture in which active constraint fields jointly determine a hypothesis geometry over candidates. Rather than carrying that geometry forward in full, the system compresses it into a support-aware control state whose resolution is regulated by current consequence geometry, arbitration memory, and resource constraints. A bounded objective formalizes the tradeoff. Too little retained support collapses policy-relevant distinctions, producing controllers that select content adequately while misrouting verification, abstention, and recovery. Too much retained support fragments learning across overly fine contexts, degrading adaptation even as discrimination improves. These failure modes yield ordered controller predictions confirmed by a minimal repeated-interaction simulation. Adaptive controllers that regulate support resolution outperform all fixed-resolution controllers in cumulative utility. Agile adaptive control outperforms sluggish adaptive control. Fixed high-resolution control achieves the best commitment accuracy but still trails adaptive controllers because resource cost and learning fragmentation offset the gains from richer retention. Support sufficiency should be understood not as a static representational threshold, but as a dynamic compression criterion. Robust arbitration depends on preserving the smallest support structure adequate for policy under the current consequence landscape, and on regulating that structure as conditions change across repeated cycles of inference and action.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.972Z",
+      "lastSeenAt": "2026-04-21T13:16:55.972Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d6ec9e6397e3f4e1"
+      ]
+    },
+    {
+      "id": "ref_ff34c3a5c173ce1b",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Healthcare AI for Automation or Allocation? A Transaction Cost Economics Framework",
+      "url": "https://arxiv.org/abs/2604.16465",
+      "summary": "arXiv:2604.16465v1 Announce Type: new Abstract: Healthcare productivity is shaped not only by clinical complexity but by the costs of coordinating work under uncertainty. Transaction-cost economics offers a theory of these coordination frictions, yet has rarely been operationalised at task level across health occupations. Using task statements and frequency weights from the O*NET occupational database, we characterised healthcare work at task granularity and coded each unique task using a constrained large language model into one dominant transaction-cost category (information search, decision and bargaining, monitoring and enforcement, or adaptation and coordination) together with an overall transaction-cost intensity score. Aggregating to the occupation level, clinician roles exhibited substantially higher transaction-cost intensity than non-clinician roles, driven primarily by greater burdens of information search and decision-related coordination, while dispersion of transaction costs within occupations did not differ. These findings demonstrate systematic heterogeneity in the nature of coordination work across healthcare roles and suggest that the opportunities for digital and AI interventions are unevenly distributed, shaped less by technical task complexity than by underlying coordination structure.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.972Z",
+      "lastSeenAt": "2026-04-21T13:16:55.972Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_c0f9f3b565c4784c"
+      ]
+    },
+    {
+      "id": "ref_849d4683e84e57b3",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Agentic Frameworks for Reasoning Tasks: An Empirical Study",
+      "url": "https://arxiv.org/abs/2604.16646",
+      "summary": "arXiv:2604.16646v1 Announce Type: new Abstract: Recent advances in agentic frameworks have enabled AI agents to perform complex reasoning and decision-making. However, evidence comparing their reasoning performance, efficiency, and practical suitability remains limited. To address this gap, we empirically evaluate 22 widely used agentic frameworks across three reasoning benchmarks: BBH, GSM8K, and ARC. The frameworks were selected from 1,200 GitHub repositories collected between January 2023 and July 2025 and organized into a taxonomy based on architectural design. We evaluated them under a unified setting, measuring reasoning accuracy, execution time, computational cost, and cross-benchmark consistency. Our results show that 19 of the 22 frameworks completed all three benchmarks. Among these, 12 showed stable performance, with mean accuracy of 74.6-75.9%, execution time of 4-6 seconds per task, and cost of 0.14-0.18 cents per task. Poorer results were mainly caused by orchestration problems rather than reasoning limits. For example, Camel failed to complete BBH after 11 days because of uncontrolled context growth, while Upsonic consumed USD 1,434 in one day because repeated extraction failures triggered costly retries. AutoGen and Mastra also exhausted API quotas through iterative interactions that increased prompt length without improving results. We also found a sharp drop in mathematical reasoning. Mean accuracy on GSM8K was 44.35%, compared with 89.80% on BBH and 89.56% on ARC. Overall, this study provides the first large-scale empirical comparison of agentic frameworks for reasoning-intensive software engineering tasks and shows that framework selection should prioritize orchestration quality, especially memory control, failure handling, and cost management.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.972Z",
+      "lastSeenAt": "2026-04-21T13:16:55.972Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_72b1bcd44fa5034d"
+      ]
+    },
+    {
+      "id": "ref_319db4470de6c86d",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "From Subsumption to Satisfiability: LLM-Assisted Active Learning for OWL Ontologies",
+      "url": "https://arxiv.org/abs/2604.16672",
+      "summary": "arXiv:2604.16672v1 Announce Type: new Abstract: In active learning, membership queries (MQs) allow a learner to pose questions to a teacher, such as ''Is every apple a fruit?'', to which the teacher responds correctly with yes or no. These MQs can be viewed as subsumption tests with respect to the target ontology. Inspired by the standard reduction of subsumption to satisfiability in description logics, we reformulate each candidate axiom into its corresponding counter-concept and verbalise it in controlled natural language before presenting it to Large Language Models (LLMs). We introduce LLMs as a third component that provides real-world examples approximating an instance of the counter-concept. This design property ensures that only Type II errors may occur in ontology modelling; in the worst case, these errors merely delay the construction process without introducing inconsistencies. Experimental results on 13 commercial LLMs show that recall, corresponding to Type II errors in our framework, remains stable across several well-established ontologies.",
+      "publishedAt": "2026-04-21T04:00:00.000Z",
+      "firstSeenAt": "2026-04-21T13:16:55.972Z",
+      "lastSeenAt": "2026-04-21T13:16:55.972Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ecf0ede2361baa1d"
       ]
     }
   ]

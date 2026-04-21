@@ -22,6 +22,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `fe55309` feat(roof): split border strips by exterior intervals on partial encounters
 - `773e0df` feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
 - `5715776` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
+- `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 
 ## Fixes
 
