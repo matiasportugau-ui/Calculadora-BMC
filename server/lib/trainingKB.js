@@ -142,7 +142,7 @@ export const DEFAULT_SCORING_CONFIG = {
   answerMatchWeight: 1,
 };
 
-function loadScoringConfig() {
+export function loadScoringConfig() {
   try {
     const p = path.join(dataDir, "kb-score-config.json");
     if (fs.existsSync(p)) return { ...DEFAULT_SCORING_CONFIG, ...JSON.parse(fs.readFileSync(p, "utf8")) };

@@ -147,7 +147,7 @@ export default function PanelinDevPanel({
   };
 
   // ── Save correction ────────────────────────────────────────────────────────
-  const handleSaveCorrection = async () => {
+  const handleSaveCorrection = async ({ allowDuplicate = false } = {}) => {
     if (!correction.trim() || !lastUser.trim() || saving) return;
     setSaving(true);
     setDuplicateWarning(null);
@@ -158,6 +158,7 @@ export default function PanelinDevPanel({
         badAnswer: lastAssistant,
         goodAnswer: correction,
         context,
+        allowDuplicate,
       });
       if (result?.duplicate) {
         setDuplicateWarning(result.existingId);
@@ -177,7 +178,13 @@ export default function PanelinDevPanel({
     try {
       const data = await onLoadConversations({ days: 30, page, limit: 15 });
       if (data?.ok) {
-        setSessions(data.conversations || []);
+        const incoming = data.conversations || [];
+        setSessions((prev) => {
+          if (page === 1) return incoming;
+          // Append and de-dup by conversationId
+          const existingIds = new Set(prev.map((c) => c.conversationId));
+          return [...prev, ...incoming.filter((c) => !existingIds.has(c.conversationId))];
+        });
         setSessionsTotal(data.total || 0);
         setSessionsPage(page);
       }
@@ -254,7 +261,7 @@ export default function PanelinDevPanel({
                 Ya existe una entrada con esta pregunta (id: {String(duplicateWarning).slice(0, 8)}…).
                 <button
                   type="button"
-                  onClick={() => { setDuplicateWarning(null); }}
+                  onClick={() => handleSaveCorrection({ allowDuplicate: true })}
                   style={{ marginLeft: 8, fontSize: 11, cursor: "pointer", background: "transparent", border: "none", textDecoration: "underline", color: "#856404" }}
                 >
                   Guardar igual

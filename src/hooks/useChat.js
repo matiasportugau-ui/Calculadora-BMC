@@ -390,14 +390,16 @@ export function useChat({
   }, [devMode, devAuthToken, buildDevAuthHeaders]);
 
   const saveCorrection = useCallback(
-    async ({ category, question, badAnswer, goodAnswer, context }) => {
-      // Duplicate detection before saving
-      const normalQ = String(question || "").toLowerCase().trim();
-      const duplicate = trainingEntries.find(
-        (e) => String(e.question || "").toLowerCase().trim() === normalQ
-      );
-      if (duplicate) {
-        return { ok: false, duplicate: true, existingId: duplicate.id };
+    async ({ category, question, badAnswer, goodAnswer, context, allowDuplicate = false, force = false }) => {
+      // Duplicate detection before saving (skippable via allowDuplicate or force flag)
+      if (!allowDuplicate && !force) {
+        const normalQ = String(question || "").toLowerCase().trim();
+        const duplicate = trainingEntries.find(
+          (e) => String(e.question || "").toLowerCase().trim() === normalQ
+        );
+        if (duplicate) {
+          return { ok: false, duplicate: true, existingId: duplicate.id };
+        }
       }
       const apiBase = getCalcApiBase();
       const res = await fetch(`${apiBase}/api/agent/train`, {

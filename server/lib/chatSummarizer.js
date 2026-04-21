@@ -27,7 +27,7 @@ export async function summarizeHistory(messages) {
     });
 
     const summaryMessage = {
-      role: "user",
+      role: "system",
       content: `[RESUMEN DE CONVERSACIÓN PREVIA]: ${summary}`,
     };
 

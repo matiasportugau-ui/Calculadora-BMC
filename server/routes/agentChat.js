@@ -472,10 +472,13 @@ router.post("/agent/chat", async (req, res) => {
 
   const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
 
-  // Log conversation meta on first turn (first user message in array)
+  // Log conversation meta on first turn using only known values (never log "pending")
   const turnIndex = messages.filter((m) => m.role === "user").length - 1;
   if (conversationId && turnIndex === 0) {
-    logConversationMeta(conversationId, { provider: "pending", model: "pending", devMode });
+    const meta = { devMode };
+    if (typeof aiProvider === "string" && aiProvider !== "auto") meta.provider = aiProvider;
+    if (typeof aiModel === "string" && aiModel.trim()) meta.model = aiModel.trim();
+    logConversationMeta(conversationId, meta);
   }
 
   // Log user turn
@@ -612,13 +615,14 @@ router.post("/agent/chat", async (req, res) => {
         const hedgeCount = countHedges(visibleAssistantText);
         const assistantTurnIndex = turnIndex + 1;
 
-        // Log assistant turn
+        // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
           logConversationTurn(conversationId, {
             turnIndex: assistantTurnIndex,
             role: "assistant",
             content: visibleAssistantText,
             kbMatchCount: trainingExamples.length,
+            hedgeCount,
           });
           // Log actions emitted this turn
           for (const action of emittedActions) {

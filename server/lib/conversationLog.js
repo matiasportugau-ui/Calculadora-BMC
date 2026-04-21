@@ -32,14 +32,14 @@ function appendEvent(event) {
   ensureConvDir();
   const row = { ts: new Date().toISOString(), ...event };
   const filePath = convFilePath();
-  fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf8");
+  fs.promises.appendFile(filePath, `${JSON.stringify(row)}\n`, "utf8").catch(() => {});
 }
 
 export function logConversationMeta(conversationId, { provider, model, devMode }) {
   appendEvent({ event: "meta", conversationId, provider, model, devMode: !!devMode });
 }
 
-export function logConversationTurn(conversationId, { turnIndex, role, content, latencyMs, kbMatchCount }) {
+export function logConversationTurn(conversationId, { turnIndex, role, content, latencyMs, kbMatchCount, hedgeCount }) {
   appendEvent({
     event: "turn",
     conversationId,
@@ -49,6 +49,7 @@ export function logConversationTurn(conversationId, { turnIndex, role, content, 
     charCount: String(content || "").length,
     ...(latencyMs != null ? { latencyMs } : {}),
     ...(kbMatchCount != null ? { kbMatchCount } : {}),
+    ...(hedgeCount != null ? { hedgeCount } : {}),
   });
 }
 
@@ -86,7 +87,8 @@ function groupByConversation(events) {
 function buildConversationFromEvents(id, events) {
   const turns = [];
   const actions = [];
-  let provider, model, devMode, startedAt, closedAt, turnCount, hedgeCount;
+  let provider, model, devMode, startedAt, closedAt, turnCount;
+  let totalHedgeCount = 0;
 
   for (const ev of events) {
     if (!startedAt) startedAt = ev.ts;
@@ -104,12 +106,15 @@ function buildConversationFromEvents(id, events) {
         ...(ev.latencyMs != null ? { latencyMs: ev.latencyMs } : {}),
         ...(ev.kbMatchCount != null ? { kbMatchCount: ev.kbMatchCount } : {}),
       });
+      // Sum hedge counts from each assistant turn for accurate per-conversation total
+      if (ev.role === "assistant" && ev.hedgeCount != null) {
+        totalHedgeCount += ev.hedgeCount;
+      }
     } else if (ev.event === "action") {
       actions.push({ turnIndex: ev.turnIndex, actionType: ev.actionType, payload: ev.payload });
     } else if (ev.event === "close") {
       closedAt = ev.ts;
       turnCount = ev.turnCount;
-      hedgeCount = ev.hedgeCount;
     }
   }
 
@@ -121,7 +126,7 @@ function buildConversationFromEvents(id, events) {
     model,
     devMode: !!devMode,
     turnCount: turnCount ?? turns.length,
-    hedgeCount: hedgeCount ?? 0,
+    hedgeCount: totalHedgeCount,
     actionsEmitted: [...new Set(actions.map((a) => a.actionType))],
     turns,
     actionsDetail: actions,

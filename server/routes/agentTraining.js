@@ -12,6 +12,7 @@ import {
   listTrainingEntries,
   loadPromptSectionHistory,
   loadPromptSections,
+  loadScoringConfig,
   revertPromptSection,
   saveScoringConfig,
   DEFAULT_SCORING_CONFIG,
@@ -157,17 +158,26 @@ router.post("/agent/knowledge/clear-cache", requireDevModeAuth, (req, res) => {
 });
 
 router.get("/agent/training-kb/score-config", requireDevModeAuth, (req, res) => {
-  res.json({ ok: true, config: DEFAULT_SCORING_CONFIG, defaults: DEFAULT_SCORING_CONFIG });
+  const config = loadScoringConfig();
+  res.json({ ok: true, config, defaults: DEFAULT_SCORING_CONFIG });
 });
+
+function parseScoreConfigNumber(value, defaultValue, fieldName) {
+  if (value === undefined || value === null || value === "") return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${fieldName} must be a finite number`);
+  if (parsed < 0) throw new Error(`${fieldName} must be non-negative`);
+  return parsed;
+}
 
 router.post("/agent/training-kb/score-config", requireDevModeAuth, (req, res) => {
   try {
     const { permanentBonus, questionMatchWeight, contextMatchWeight, answerMatchWeight } = req.body || {};
     const cfg = {
-      permanentBonus: Number(permanentBonus) || DEFAULT_SCORING_CONFIG.permanentBonus,
-      questionMatchWeight: Number(questionMatchWeight) || DEFAULT_SCORING_CONFIG.questionMatchWeight,
-      contextMatchWeight: Number(contextMatchWeight) || DEFAULT_SCORING_CONFIG.contextMatchWeight,
-      answerMatchWeight: Number(answerMatchWeight) || DEFAULT_SCORING_CONFIG.answerMatchWeight,
+      permanentBonus: parseScoreConfigNumber(permanentBonus, DEFAULT_SCORING_CONFIG.permanentBonus, "permanentBonus"),
+      questionMatchWeight: parseScoreConfigNumber(questionMatchWeight, DEFAULT_SCORING_CONFIG.questionMatchWeight, "questionMatchWeight"),
+      contextMatchWeight: parseScoreConfigNumber(contextMatchWeight, DEFAULT_SCORING_CONFIG.contextMatchWeight, "contextMatchWeight"),
+      answerMatchWeight: parseScoreConfigNumber(answerMatchWeight, DEFAULT_SCORING_CONFIG.answerMatchWeight, "answerMatchWeight"),
     };
     saveScoringConfig(cfg);
     res.json({ ok: true, config: cfg });

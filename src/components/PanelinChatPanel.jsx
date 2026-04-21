@@ -587,7 +587,7 @@ export default function PanelinChatPanel({
     a.href = url;
     a.download = "panelin-skins.json";
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const importSkinsRef = useRef(null);
@@ -602,14 +602,19 @@ export default function PanelinChatPanel({
         if (!Array.isArray(parsed)) throw new Error("Formato inválido");
         const valid = parsed.filter((s) => s && s.id && s.name && s.tokens);
         if (valid.length === 0) throw new Error("No se encontraron skins válidas");
+        let importedCount = 0;
+        let skippedCount = 0;
         setCustomSkins((prev) => {
           const existingIds = new Set(prev.map((s) => s.id));
           const toAdd = valid.filter((s) => !existingIds.has(s.id));
+          importedCount = toAdd.length;
+          skippedCount = valid.length - importedCount;
           const merged = [...prev, ...toAdd];
           saveCustomSkins(merged);
           return merged;
         });
-        window.alert(`${valid.length} skin(s) importadas correctamente.`);
+        const skippedMsg = skippedCount > 0 ? ` (${skippedCount} omitidas por id duplicado).` : ".";
+        window.alert(`${importedCount} skin(s) importadas correctamente${skippedMsg}`);
       } catch (err) {
         window.alert(`Error al importar skins: ${err.message}`);
       }

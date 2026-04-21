@@ -9,9 +9,10 @@ import { callAiCompletion } from "../lib/aiCompletion.js";
 
 const router = Router();
 
-// Simple in-memory analysis cache (10 min TTL)
+// Simple in-memory analysis cache (10 min TTL, max 200 entries)
 const analysisCache = new Map();
 const ANALYSIS_TTL_MS = 10 * 60 * 1000;
+const ANALYSIS_CACHE_MAX = 200;
 
 function requireDevModeAuth(req, res, next) {
   const token = config.apiAuthToken;
@@ -34,65 +35,60 @@ router.get("/agent/conversations", requireDevModeAuth, (req, res) => {
   res.json({ ok: true, total: result.total, page: result.page, limit: result.limit, conversations: resumes });
 });
 
-/** GET /api/agent/conversations/:id — full conversation record */
-router.get("/agent/conversations/:id", requireDevModeAuth, (req, res) => {
-  const conv = loadConversationById(req.params.id);
-  if (!conv) return res.status(404).json({ ok: false, error: "Conversation not found" });
-  res.json({ ok: true, conversation: conv, resume: computeResume(conv) });
-});
+/** GET /api/agent/conversations/weekly-digest — MUST be declared before /:id */
+router.get("/agent/conversations/weekly-digest", requireDevModeAuth, async (req, res) => {
+  const result = loadConversations({ days: 7, page: 1, limit: 500 });
+  const convs = result.items;
 
-/** GET /api/agent/conversations/:id/analysis — AI-generated pros/cons (cached 10 min) */
-router.get("/agent/conversations/:id/analysis", requireDevModeAuth, async (req, res) => {
-  const id = req.params.id;
-
-  const cached = analysisCache.get(id);
-  if (cached && Date.now() - cached.ts < ANALYSIS_TTL_MS) {
-    return res.json({ ok: true, cached: true, analysis: cached.analysis });
+  if (convs.length === 0) {
+    return res.json({ ok: true, stats: { totalConversations: 0 }, narrative: "No hay conversaciones en los últimos 7 días." });
   }
 
-  const conv = loadConversationById(id);
-  if (!conv) return res.status(404).json({ ok: false, error: "Conversation not found" });
+  const providerCounts = {};
+  let totalTurns = 0;
+  let totalHedges = 0;
+  const actionCounts = {};
 
-  const transcript = conv.turns
-    .map((t) => `[${t.role.toUpperCase()}]: ${t.content}`)
-    .join("\n");
+  for (const c of convs) {
+    const provider = c.provider || "unknown";
+    providerCounts[provider] = (providerCounts[provider] || 0) + 1;
+    totalTurns += c.turnCount || 0;
+    totalHedges += c.hedgeCount || 0;
+    for (const a of c.actionsEmitted || []) {
+      actionCounts[a] = (actionCounts[a] || 0) + 1;
+    }
+  }
+
+  const stats = {
+    totalConversations: convs.length,
+    totalTurns,
+    avgTurnsPerConv: +(totalTurns / convs.length).toFixed(1),
+    hedgeRate: +((totalHedges / Math.max(totalTurns, 1)) * 100).toFixed(1),
+    providerCounts,
+    topActions: Object.entries(actionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5),
+  };
 
   try {
-    const { text } = await callAiCompletion({
-      systemPrompt: `Sos un analista QA de chatbots de ventas. Analizá esta conversación y devolvé SOLO JSON válido con este esquema:
-{"pros":["..."],"cons":["..."],"kbSuggestions":[{"question":"...","answer":"...","category":"sales|math|product|conversational"}],"hedgeTopics":["..."],"improvementSuggestions":["..."]}
-- pros: qué hizo bien el bot
-- cons: qué falló o podría mejorar
-- kbSuggestions: pares pregunta/respuesta para agregar al KB de entrenamiento
-- hedgeTopics: temas donde el bot mostró incertidumbre
-- improvementSuggestions: cambios concretos al prompt o KB`,
-      userMessage: `Conversación:\n${transcript.slice(0, 8000)}`,
-      maxTokens: 800,
+    const { text: narrative } = await callAiCompletion({
+      systemPrompt: "Sos un analista de producto. Resumí estas estadísticas de uso de un chatbot en 5 puntos clave, en español, en formato bullets.",
+      userMessage: JSON.stringify(stats),
+      maxTokens: 400,
     });
-
-    let analysis;
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : text);
-    } catch {
-      analysis = { raw: text, parseError: true };
-    }
-
-    analysisCache.set(id, { ts: Date.now(), analysis });
-    res.json({ ok: true, cached: false, analysis });
-  } catch (err) {
-    res.status(502).json({ ok: false, error: err.message || "AI analysis failed" });
+    res.json({ ok: true, stats, narrative });
+  } catch {
+    res.json({ ok: true, stats, narrative: null });
   }
 });
 
-/** POST /api/agent/conversations/analyze-batch — analyze recent conversations → suggest KB entries */
+/** POST /api/agent/conversations/analyze-batch — MUST be declared before /:id */
 router.post("/agent/conversations/analyze-batch", requireDevModeAuth, async (req, res) => {
   const days = Math.max(1, Math.min(Number(req.body?.days) || 7, 30));
-  const minHedges = Number(req.body?.minHedges) ?? 2;
+  const rawHedges = Number(req.body?.minHedges);
+  const minHedges = Number.isFinite(rawHedges) ? rawHedges : 2;
   const limit = Math.max(1, Math.min(Number(req.body?.limit) || 30, 100));
 
   const result = loadConversations({ days, page: 1, limit });
-  const candidates = result.items.filter((c) => c.hedgeCount >= minHedges);
+  const candidates = result.items.filter((c) => (c.hedgeCount || 0) >= minHedges);
 
   if (candidates.length === 0) {
     return res.json({ ok: true, suggestions: [], analyzed: 0, message: "No conversations with hedges found" });
@@ -129,47 +125,64 @@ router.post("/agent/conversations/analyze-batch", requireDevModeAuth, async (req
   }
 });
 
-/** GET /api/agent/conversations/weekly-digest — usage stats + AI narrative */
-router.get("/agent/conversations/weekly-digest", requireDevModeAuth, async (req, res) => {
-  const result = loadConversations({ days: 7, page: 1, limit: 500 });
-  const convs = result.items;
+/** GET /api/agent/conversations/:id — full conversation record */
+router.get("/agent/conversations/:id", requireDevModeAuth, (req, res) => {
+  const conv = loadConversationById(req.params.id);
+  if (!conv) return res.status(404).json({ ok: false, error: "Conversation not found" });
+  res.json({ ok: true, conversation: conv, resume: computeResume(conv) });
+});
 
-  if (convs.length === 0) {
-    return res.json({ ok: true, stats: { totalConversations: 0 }, narrative: "No hay conversaciones en los últimos 7 días." });
+/** GET /api/agent/conversations/:id/analysis — AI-generated pros/cons (cached 10 min) */
+router.get("/agent/conversations/:id/analysis", requireDevModeAuth, async (req, res) => {
+  const id = req.params.id;
+
+  // Evict expired entries on read; enforce max size
+  const now = Date.now();
+  for (const [k, v] of analysisCache) {
+    if (now - v.ts >= ANALYSIS_TTL_MS) analysisCache.delete(k);
+  }
+  if (analysisCache.size >= ANALYSIS_CACHE_MAX) {
+    const oldest = [...analysisCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
+    if (oldest) analysisCache.delete(oldest[0]);
   }
 
-  const providerCounts = {};
-  let totalTurns = 0;
-  let totalHedges = 0;
-  const actionCounts = {};
-
-  for (const c of convs) {
-    providerCounts[c.provider] = (providerCounts[c.provider] || 0) + 1;
-    totalTurns += c.turnCount || 0;
-    totalHedges += c.hedgeCount || 0;
-    for (const a of c.actionsEmitted || []) {
-      actionCounts[a] = (actionCounts[a] || 0) + 1;
-    }
+  const cached = analysisCache.get(id);
+  if (cached && now - cached.ts < ANALYSIS_TTL_MS) {
+    return res.json({ ok: true, cached: true, analysis: cached.analysis });
   }
 
-  const stats = {
-    totalConversations: convs.length,
-    totalTurns,
-    avgTurnsPerConv: +(totalTurns / convs.length).toFixed(1),
-    hedgeRate: +((totalHedges / Math.max(totalTurns, 1)) * 100).toFixed(1),
-    providerCounts,
-    topActions: Object.entries(actionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5),
-  };
+  const conv = loadConversationById(id);
+  if (!conv) return res.status(404).json({ ok: false, error: "Conversation not found" });
+
+  const transcript = conv.turns
+    .map((t) => `[${t.role.toUpperCase()}]: ${t.content}`)
+    .join("\n");
 
   try {
-    const { text: narrative } = await callAiCompletion({
-      systemPrompt: "Sos un analista de producto. Resumí estas estadísticas de uso de un chatbot en 5 puntos clave, en español, en formato bullets.",
-      userMessage: JSON.stringify(stats),
-      maxTokens: 400,
+    const { text } = await callAiCompletion({
+      systemPrompt: `Sos un analista QA de chatbots de ventas. Analizá esta conversación y devolvé SOLO JSON válido con este esquema:
+{"pros":["..."],"cons":["..."],"kbSuggestions":[{"question":"...","answer":"...","category":"sales|math|product|conversational"}],"hedgeTopics":["..."],"improvementSuggestions":["..."]}
+- pros: qué hizo bien el bot
+- cons: qué falló o podría mejorar
+- kbSuggestions: pares pregunta/respuesta para agregar al KB de entrenamiento
+- hedgeTopics: temas donde el bot mostró incertidumbre
+- improvementSuggestions: cambios concretos al prompt o KB`,
+      userMessage: `Conversación:\n${transcript.slice(0, 8000)}`,
+      maxTokens: 800,
     });
-    res.json({ ok: true, stats, narrative });
-  } catch {
-    res.json({ ok: true, stats, narrative: null });
+
+    let analysis;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    } catch {
+      analysis = { raw: text, parseError: true };
+    }
+
+    analysisCache.set(id, { ts: now, analysis });
+    res.json({ ok: true, cached: false, analysis });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message || "AI analysis failed" });
   }
 });
 
