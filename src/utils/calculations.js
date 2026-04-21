@@ -298,6 +298,93 @@ export function calcFijacionesCaballete(cantP, largo, tipoEst = "metal", espesor
   return { items, total: +total.toFixed(2), puntosFijacion: caballetes };
 }
 
+/** Umbral mínimo (m) para mostrar merma / sugerencias de recorte (evita ruido). */
+const PERF_MERMA_HINT_MIN_M = 0.12;
+
+/**
+ * Textos de ayuda: perfilería por barras enteras, merma por trazo, y reaprovechamiento entre tramos (mismo SKU).
+ * @param {object[]} items - ítems devueltos por `calcPerfileriaTecho` (y fusionados en multizona).
+ * @returns {string[]}
+ */
+export function buildPerfileriaMermaSugerencias(items) {
+  const sugerencias = [];
+  const perf = (items || []).filter(
+    (i) =>
+      i &&
+      i.tipo !== "fijacion_perfileria" &&
+      Number(i.largoBarra) > 0 &&
+      typeof i.ml === "number" &&
+      typeof i.mlNecesario === "number",
+  );
+  if (!perf.length) return sugerencias;
+
+  sugerencias.push(
+    "Perfilería comercial: se cotiza por barras enteras; el excedente respecto al trazo es recorte (merma) incluido en la partida. En taller se puede aprovechar ese recorte para otros tramos del mismo perfil sin cambiar la cotización.",
+  );
+
+  for (const i of perf) {
+    const m = Number(i.mermaMl);
+    if (!Number.isFinite(m) || m < PERF_MERMA_HINT_MIN_M) continue;
+    const need = Number(i.mlNecesario);
+    const L = Number(i.largoBarra);
+    sugerencias.push(
+      `«${i.label}»: trazo ${need.toFixed(2)} m → ${i.cant} barra(s) de ${L.toFixed(2)} m (${Number(i.ml).toFixed(2)} m comprados); merma útil ~${m.toFixed(2)} m.`,
+    );
+  }
+
+  const bySku = new Map();
+  for (const i of perf) {
+    if (!i.sku) continue;
+    if (!bySku.has(i.sku)) bySku.set(i.sku, []);
+    bySku.get(i.sku).push(i);
+  }
+  let cross = 0;
+  const maxCross = 12;
+  const seenPair = new Set();
+  for (const [, arr] of bySku) {
+    if (arr.length < 2) continue;
+    for (let a = 0; a < arr.length && cross < maxCross; a++) {
+      for (let b = 0; b < arr.length && cross < maxCross; b++) {
+        if (a === b) continue;
+        const wa = Number(arr[a].mermaMl);
+        const nb = Number(arr[b].mlNecesario);
+        if (!Number.isFinite(wa) || !Number.isFinite(nb)) continue;
+        if (wa < PERF_MERMA_HINT_MIN_M || nb < PERF_MERMA_HINT_MIN_M) continue;
+        if (arr[a].label === arr[b].label) continue;
+        if (wa + 1e-3 < nb) continue;
+        const pk = [String(arr[a].label), String(arr[b].label)].sort().join("\n");
+        if (seenPair.has(pk)) continue;
+        seenPair.add(pk);
+        const sku = String(arr[a].sku);
+        sugerencias.push(
+          `Sugerencia de corte: la merma de «${arr[a].label}» (~${wa.toFixed(2)} m, SKU ${sku}) alcanza el trazo de «${arr[b].label}» (${nb.toFixed(2)} m). Coordinar orden de cortes; la cotización sigue igual.`,
+        );
+        cross++;
+      }
+    }
+  }
+
+  return sugerencias;
+}
+
+/**
+ * Sugerencias de merma / recortes desde el resultado agregado del escenario (techo y techo de cámara si aplica).
+ * @param {object|null|undefined} result
+ * @returns {string[]}
+ */
+export function getPerfileriaMermaSugerencias(result) {
+  if (!result || result.error) return [];
+  const out = [];
+  const take = (perf) => {
+    const raw = perf?.mermaSugerencias;
+    if (Array.isArray(raw) && raw.length) out.push(...raw);
+    else if (perf?.items?.length) out.push(...buildPerfileriaMermaSugerencias(perf.items));
+  };
+  take(result.perfileria);
+  take(result.techoResult?.perfileria);
+  return [...new Set(out)];
+}
+
 export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP, espesor, opciones) {
   const items = [];
   let totalML = 0;
@@ -307,10 +394,27 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     if (!resolved) return;
     const precio = p(resolved);
     const costoUn = resolved.costo ?? 0;
-    const pzas = Math.ceil(dim / resolved.largo);
-    const ml = pzas * resolved.largo;
+    const L = resolved.largo;
+    const dimN = Number(dim);
+    const pzas = Math.ceil(dimN / L);
+    const ml = pzas * L;
+    const mlNecesario = +dimN.toFixed(4);
+    const mermaMl = +(ml - mlNecesario).toFixed(4);
     totalML += ml;
-    items.push({ label, sku: resolved.sku, tipo, cant: pzas, unidad: "unid", pu: precio, costo: costoUn, total: +(pzas * precio).toFixed(2), ml: +ml.toFixed(2), largoBarra: resolved.largo });
+    items.push({
+      label,
+      sku: resolved.sku,
+      tipo,
+      cant: pzas,
+      unidad: "unid",
+      pu: precio,
+      costo: costoUn,
+      total: +(pzas * precio).toFixed(2),
+      ml: +ml.toFixed(2),
+      mlNecesario,
+      mermaMl,
+      largoBarra: L,
+    });
   };
 
   const em = opciones?.edgeML && typeof opciones.edgeML === "object" ? opciones.edgeML : null;
@@ -324,17 +428,51 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     const canData = resolveSKU_techo("canalon", familiaP, espesor);
     if (canData) {
       const precioCan = p(canData);
-      const pzasCan = Math.ceil(dimFrente / canData.largo);
-      totalML += pzasCan * canData.largo;
-      items.push({ label: "Frente Inf: Canalón", sku: canData.sku, tipo: "canalon", cant: pzasCan, unidad: "unid", pu: precioCan, costo: canData.costo ?? 0, total: +(pzasCan * precioCan).toFixed(2), largoBarra: canData.largo });
+      const Lc = canData.largo;
+      const pzasCan = Math.ceil(dimFrente / Lc);
+      const mlCan = pzasCan * Lc;
+      const mlNecCan = +Number(dimFrente).toFixed(4);
+      const mermaCan = +(mlCan - mlNecCan).toFixed(4);
+      totalML += mlCan;
+      items.push({
+        label: "Frente Inf: Canalón",
+        sku: canData.sku,
+        tipo: "canalon",
+        cant: pzasCan,
+        unidad: "unid",
+        pu: precioCan,
+        costo: canData.costo ?? 0,
+        total: +(pzasCan * precioCan).toFixed(2),
+        ml: +mlCan.toFixed(2),
+        mlNecesario: mlNecCan,
+        mermaMl: mermaCan,
+        largoBarra: Lc,
+      });
     }
     const sopData = resolveSKU_techo("soporte_canalon", familiaP, espesor);
     if (sopData) {
       const mlPorApoyo = getDimensioningParam("PERFILERIA.soporte_canalon_ml_por_apoyo", 0.30);
       const mlSoportes = (cantP + 1) * mlPorApoyo;
-      const barrasSoporte = Math.ceil(mlSoportes / sopData.largo);
+      const Ls = sopData.largo;
+      const barrasSoporte = Math.ceil(mlSoportes / Ls);
+      const mlSop = barrasSoporte * Ls;
+      const mlNecSop = +Number(mlSoportes).toFixed(4);
+      const mermaSop = +(mlSop - mlNecSop).toFixed(4);
       const precioSop = p(sopData);
-      items.push({ label: "Soporte canalón", sku: sopData.sku, tipo: "soporte_canalon", cant: barrasSoporte, unidad: "unid", pu: precioSop, costo: sopData.costo ?? 0, total: +(barrasSoporte * precioSop).toFixed(2), largoBarra: sopData.largo });
+      items.push({
+        label: "Soporte canalón",
+        sku: sopData.sku,
+        tipo: "soporte_canalon",
+        cant: barrasSoporte,
+        unidad: "unid",
+        pu: precioSop,
+        costo: sopData.costo ?? 0,
+        total: +(barrasSoporte * precioSop).toFixed(2),
+        ml: +mlSop.toFixed(2),
+        mlNecesario: mlNecSop,
+        mermaMl: mermaSop,
+        largoBarra: Ls,
+      });
     }
   } else if (borders.frente && borders.frente !== "none" && dimFrente > 0) {
     addPerfil("Frente Inf: " + borders.frente, borders.frente, dimFrente);
@@ -354,9 +492,26 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     const gs = resolveSKU_techo("gotero_superior", familiaP, espesor);
     if (gs) {
       const precio = p(gs);
-      const pzas = Math.ceil(dimFrente / gs.largo);
-      totalML += pzas * gs.largo;
-      items.push({ label: "Gotero superior", sku: gs.sku, tipo: "gotero_superior", cant: pzas, unidad: "unid", pu: precio, costo: gs.costo ?? 0, total: +(pzas * precio).toFixed(2), largoBarra: gs.largo });
+      const Lg = gs.largo;
+      const pzas = Math.ceil(dimFrente / Lg);
+      const mlGs = pzas * Lg;
+      const mlNecGs = +Number(dimFrente).toFixed(4);
+      const mermaGs = +(mlGs - mlNecGs).toFixed(4);
+      totalML += mlGs;
+      items.push({
+        label: "Gotero superior",
+        sku: gs.sku,
+        tipo: "gotero_superior",
+        cant: pzas,
+        unidad: "unid",
+        pu: precio,
+        costo: gs.costo ?? 0,
+        total: +(pzas * precio).toFixed(2),
+        ml: +mlGs.toFixed(2),
+        mlNecesario: mlNecGs,
+        mermaMl: mermaGs,
+        largoBarra: Lg,
+      });
     }
   }
 
@@ -377,7 +532,8 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
     items.push({ label: FIJACIONES.tornillo_t1.label, sku: "tornillo_t1", tipo: "fijacion_perfileria", cant: fijPerf, unidad: "unid", pu: puT1, costo: coT1, total: +(fijPerf * puT1).toFixed(2) });
   }
   const total = items.reduce((s, i) => s + i.total, 0);
-  return { items, total: +total.toFixed(2), totalML: +totalML.toFixed(2) };
+  const mermaSugerencias = buildPerfileriaMermaSugerencias(items);
+  return { items, total: +total.toFixed(2), totalML: +totalML.toFixed(2), mermaSugerencias };
 }
 
 /**
@@ -837,6 +993,29 @@ export function mergeZonaResults(zonaResults) {
       });
     };
 
+    const mergePerfileriaItems = (target, source) => {
+      source.forEach((item) => {
+        const existing = target.find((ci) => ci.sku === item.sku);
+        if (existing) {
+          existing.cant += item.cant;
+          existing.total = +(existing.total + item.total).toFixed(2);
+          if (typeof item.ml === "number") {
+            existing.ml = +((typeof existing.ml === "number" ? existing.ml : 0) + item.ml).toFixed(2);
+          }
+          if (typeof item.mlNecesario === "number") {
+            existing.mlNecesario = +(
+              (typeof existing.mlNecesario === "number" ? existing.mlNecesario : 0) + item.mlNecesario
+            ).toFixed(4);
+          }
+          if (typeof existing.ml === "number" && typeof existing.mlNecesario === "number") {
+            existing.mermaMl = +(existing.ml - existing.mlNecesario).toFixed(4);
+          }
+        } else {
+          target.push({ ...item });
+        }
+      });
+    };
+
     if (r.fijaciones) {
       mergeItemsBySku(combined.fijaciones.items, r.fijaciones.items);
       combined.fijaciones.total = +(combined.fijaciones.total + r.fijaciones.total).toFixed(2);
@@ -854,7 +1033,7 @@ export function mergeZonaResults(zonaResults) {
     }
 
     if (r.perfileria) {
-      mergeItemsBySku(combined.perfileria.items, r.perfileria.items);
+      mergePerfileriaItems(combined.perfileria.items, r.perfileria.items);
       combined.perfileria.total = +(combined.perfileria.total + r.perfileria.total).toFixed(2);
       combined.perfileria.totalML = +((combined.perfileria.totalML || 0) + (r.perfileria.totalML || 0)).toFixed(2);
     }
@@ -876,6 +1055,10 @@ export function mergeZonaResults(zonaResults) {
   };
   combined.allItems = [panelItem, ...combined.fijaciones.items, ...combined.perfileria.items, ...combined.selladores.items];
   combined.totales = calcTotalesSinIVA(combined.allItems);
+
+  if (combined.perfileria?.items?.length) {
+    combined.perfileria.mermaSugerencias = buildPerfileriaMermaSugerencias(combined.perfileria.items);
+  }
 
   return combined;
 }

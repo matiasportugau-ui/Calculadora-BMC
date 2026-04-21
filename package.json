@@ -7,6 +7,7 @@
   "main": "src/components/PanelinCalculadoraV3.jsx",
   "scripts": {
     "version:data": "node scripts/update-calculator-data-version.js",
+    "quotation-preview:render": "node scripts/render-quotation-preview-html.mjs",
     "readme:generate": "node scripts/generate-readme-presentation.mjs",
     "readme:sync": "npm run version:data && node scripts/generate-readme-presentation.mjs",
     "readme:check": "node scripts/generate-readme-presentation.mjs --check",

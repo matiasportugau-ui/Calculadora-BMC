@@ -46,6 +46,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c57f6f4` chore(dev-trace): refine autotrace logging and documentation updates
 - `1306642` chore: add Google Drive OAuth setup scripts and documentation
 - `0f3f008` chore: update Google Drive OAuth setup scripts and documentation `[tests]`
+- `691b550` chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation `[tests]`
 
 ## Other
 

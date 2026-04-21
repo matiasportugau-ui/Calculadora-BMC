@@ -2261,6 +2261,51 @@ console.log("\n═══ SUITE 33: scenarioOrchestrator ═══");
 }
 
 {
+  const r = executeScenario("solo_techo", {
+    techo: {
+      familia: "ISODEC_EPS",
+      espesor: 100,
+      tipoAguas: "dos_aguas",
+      tipoEst: "metal",
+      pendiente: 0,
+      pendienteModo: "incluye_pendiente",
+      alturaDif: 0,
+      borders: {
+        frente: "gotero_frontal",
+        fondo: "gotero_lateral",
+        latIzq: "gotero_lateral",
+        latDer: "gotero_lateral",
+      },
+      opciones: { inclSell: false, inclCanalon: false, inclGotSup: false, bomComercial: false },
+      zonas: [
+        {
+          largo: 6,
+          ancho: 4,
+          preview: {
+            encounterByPair: {
+              "0-1": { tipo: "perfil", modo: "pretil", perfil: "gotero_lateral" },
+            },
+          },
+        },
+        { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+      ],
+    },
+    pared: {},
+    camara: {},
+  });
+  assert("executeScenario solo_techo dos_aguas anexo + encuentro: resultado", !!r && Array.isArray(r.allItems), !!r, true);
+  const encLine2a = (r?.allItems || []).find(
+    (it) => String(it.label || "").includes("Encuentro (0-1)") && it.tipo === "gotero_lateral",
+  );
+  assert(
+    "executeScenario solo_techo dos_aguas: BOM encuentro usa longitud geométrica del tramo compartido",
+    !!encLine2a && Number(encLine2a.ml) >= 4,
+    encLine2a ? `${encLine2a.label} ml=${encLine2a.ml}` : "missing",
+    "Encuentro gotero_lateral ml≥4",
+  );
+}
+
+{
   const partialZsFach = [
     { largo: 6, ancho: 4 },
     { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },

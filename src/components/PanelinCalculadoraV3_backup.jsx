@@ -36,6 +36,7 @@ import {
   calcTotalesSinIVA,
   calcFactorPendiente, calcLargoRealFromModo, normalizarMedida,
   computeRoofEstructuraHintsByGi,
+  getPerfileriaMermaSugerencias,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -3322,6 +3323,11 @@ export default function PanelinCalculadoraV3() {
     })).filter(group => group.items.length > 0);
   }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion]);
 
+  const perfileriaMermaSugerencias = useMemo(
+    () => (categoriasActivas.PERFILERIA !== false ? getPerfileriaMermaSugerencias(results) : []),
+    [results, categoriasActivas.PERFILERIA],
+  );
+
   /** Líneas de selladores para el paso wizard (cantidades/precios); si el presupuesto aún no los incluye, vista previa con hipótesis inclSell=true. */
   const selladoresWizardRows = useMemo(() => {
     if (scenario === "presupuesto_libre") return { items: [], fromHypothesis: false, subtotal: 0 };
@@ -6096,6 +6102,18 @@ export default function PanelinCalculadoraV3() {
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
             {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
           </div>}
+          {perfileriaMermaSugerencias.length > 0 && (
+            <div style={{ ...sectionS, marginBottom: 16, background: "#f0fdf4", border: `1px solid ${C.brand}33`, borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.tp, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <Info size={14} color={C.brand} /> Merma y recortes (perfilería)
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.ts, lineHeight: 1.55 }}>
+                {perfileriaMermaSugerencias.map((t, i) => (
+                  <li key={i} style={{ marginBottom: i === perfileriaMermaSugerencias.length - 1 ? 0 : 6 }}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {results && !results.error && groups.length === 0 && (
             <AlertBanner type="warning" message="Todas las categorías están desactivadas. Activá al menos una para ver el presupuesto." />
           )}

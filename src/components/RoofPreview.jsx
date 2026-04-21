@@ -2668,13 +2668,24 @@ export default function RoofPreview({
             return zonas[low]?.preview?.encounterByPair?.[pk] == null;
           });
           if (missing.length) {
-            const [a, b] = missing[0].zoneIndices;
+            const enc = missing[0];
+            const [a, b] = enc.zoneIndices;
+            const pk = encounterPairKey(a, b);
+            if (enc.orientation === "horizontal" && tipoAguas === "dos_aguas") {
+              onEncounterPairChange(pk, {
+                tipo: "perfil",
+                modo: "cumbrera",
+                perfil: "cumbrera",
+                perfilVecino: "cumbrera",
+                cumbreraUnida: true,
+              });
+            }
             setEncounterPrompt({
-              pairKey: encounterPairKey(a, b),
+              pairKey: pk,
               ga: a,
               gb: b,
-              encounterLength: missing[0].length,
-              orientation: missing[0].orientation,
+              encounterLength: enc.length,
+              orientation: enc.orientation,
             });
           }
         } catch {
@@ -2683,7 +2694,7 @@ export default function RoofPreview({
       }
       dragRef.current = null;
     },
-    [cycleSlope, onEncounterPairChange, zonas, layout.entries],
+    [cycleSlope, onEncounterPairChange, zonas, layout.entries, tipoAguas],
   );
 
   const handleLostCapture = useCallback(() => {
@@ -2875,6 +2886,11 @@ export default function RoofPreview({
             boxSizing: "border-box",
           }}
         >
+          {encounterPrompt.orientation === "horizontal" && tipoAguas === "dos_aguas" && (
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", borderRadius: 6, padding: "4px 8px" }}>
+              Encuentro horizontal — dos aguas · Modo recomendado: Cumbrera
+            </div>
+          )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: C.tp, marginRight: 4 }}>
               Encuentro zonas {encounterPrompt.pairKey}

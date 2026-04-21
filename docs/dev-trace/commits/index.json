@@ -1230,6 +1230,52 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "691b5504f6f9c0676981e7c1d0d070e848783eed",
+      "short_hash": "691b550",
+      "date": "2026-04-21",
+      "time": "01:52:11",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "add Playwright test script for local roof borders and update Google Drive OAuth documentation",
+      "subject": "chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0f3f008.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-20.md",
+        "docs/samples/pdf-planta-resumen-sample.html",
+        "package.json",
+        "scripts/generate-pdf-planta-sample.mjs",
+        "scripts/playwright-roof-bordes-local.mjs",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/components/RoofPreview.jsx",
+        "src/data/calculatorDataVersion.js",
+        "src/utils/calculations.js",
+        "src/utils/quotationViews.js",
+        "src/utils/scenarioOrchestrator.js",
+        "tests/validation.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "scripts",
+          "src",
+          "tests"
+        ]
+      }
     }
   ]
 }

@@ -3,6 +3,9 @@
 // Generadores de HTML para salidas de cotización: Cotización completa,
 // Hoja Visual Cliente, Costeo Interno, y helpers de PDF/SVG.
 // Extraído de PanelinCalculadoraV3.jsx para uso compartido entre componentes.
+//
+// Previews HTML editables: npm run quotation-preview:render → public/quotation-preview/
+// (datos de ejemplo: src/utils/quotationPreviewSampleData.js)
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { BORDER_OPTIONS } from "../data/constants.js";

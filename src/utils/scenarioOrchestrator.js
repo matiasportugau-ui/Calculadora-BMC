@@ -91,7 +91,7 @@ function computeTechoZonas(techo, useEncounterBorders) {
     ? getSharedSidesPerZona(techo.zonas, techo.tipoAguas)
     : new Map();
 
-  const edgePack = !is2Aguas && Array.isArray(techo.zonas) && techo.zonas.length
+  const edgePack = Array.isArray(techo.zonas) && techo.zonas.length
     ? buildEdgeBOM(techo.zonas, techo.tipoAguas)
     : null;
   const layoutRects = edgePack?.rects ?? layoutZonasLogico(techo.zonas || [], techo.tipoAguas);
@@ -126,10 +126,10 @@ function computeTechoZonas(techo, useEncounterBorders) {
       effectiveBorders = effectiveBordersTechoFachada(mergedBorders, sharedSideMap);
     }
 
-    const edgeML = !is2Aguas && edgePack?.mlByZona?.[gi]
+    const edgeML = edgePack?.mlByZona?.[gi]
       ? { ...edgePack.mlByZona[gi] }
       : undefined;
-    const encounterJunctions = !is2Aguas && edgePack?.encounters?.length
+    const encounterJunctions = edgePack?.encounters?.length
       ? junctionListForZonaGi(gi, edgePack.encounters, techo.zonas)
       : [];
     const baseOpciones = inputs.opciones && typeof inputs.opciones === "object" ? inputs.opciones : {};
@@ -146,12 +146,19 @@ function computeTechoZonas(techo, useEncounterBorders) {
 
     if (is2Aguas) {
       const halfAncho = +(zona.ancho / 2).toFixed(2);
+      // Dos faldones: repetimos el cálculo de paneles por mitad de ancho. La perfilería de encuentros
+      // (cumbrera/pretil entre zonas) debe cargarse una sola vez para no duplicar líneas en el BOM.
+      const opcionesHalf0 = { ...opcionesMerged };
+      const opcionesHalf1 = {
+        ...baseOpciones,
+        ...(edgeML ? { edgeML } : {}),
+      };
       return [
         calcTechoCompleto({
           ...inputs,
           ancho: halfAncho,
           borders: { ...effectiveBorders, fondo: "cumbrera" },
-          opciones: { ...baseOpciones },
+          opciones: opcionesHalf0,
         }),
         calcTechoCompleto({
           ...inputs,
@@ -162,7 +169,7 @@ function computeTechoZonas(techo, useEncounterBorders) {
             latIzq: effectiveBorders.latIzq,
             latDer: effectiveBorders.latDer,
           },
-          opciones: { ...baseOpciones },
+          opciones: opcionesHalf1,
         }),
       ];
     }
