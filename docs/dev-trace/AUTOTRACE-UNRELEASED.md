@@ -16,6 +16,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `efa9f65` feat: add Sketchfab integration and enhance documentation
 - `c7c660b` feat: add Sketchfab integration and enhance documentation
 - `f62400e` feat: log Sketchfab integration commit in worklog
+- `9a0dc85` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3) `[tests]`
 
 ## Fixes
 

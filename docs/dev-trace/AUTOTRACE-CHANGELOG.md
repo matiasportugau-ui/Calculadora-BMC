@@ -38,3 +38,4 @@
 - 2026-04-20 22:23:18 — `1306642` — chore: add Google Drive OAuth setup scripts and documentation
 - 2026-04-20 22:53:49 — `0f3f008` — chore: update Google Drive OAuth setup scripts and documentation
 - 2026-04-21 01:52:11 — `691b550` — chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation
+- 2026-04-21 02:45:30 — `9a0dc85` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
