@@ -30,7 +30,7 @@ ensure_env() {
   if [[ ! -f "$ENV_FILE" ]]; then
     echo "  Creating .env from template..."
     {
-      echo "VITE_GOOGLE_CLIENT_ID=642127786762-a5vph6mfgf16qqv3c125cuin4dge6d6b.apps.googleusercontent.com"
+      echo "# VITE_GOOGLE_CLIENT_ID (opcional, calculadora / GIS): npm run drive:configure — no usar client_id obsoleto"
       echo "VITE_API_URL=http://localhost:3001"
       echo "BMC_SHEET_ID=$BMC_SHEET_ID_DEFAULT"
       echo "GOOGLE_APPLICATION_CREDENTIALS=\"$REPO_ROOT/docs/bmc-dashboard-modernization/service-account.json\""

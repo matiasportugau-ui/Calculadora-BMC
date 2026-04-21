@@ -9,5 +9,19 @@
       "path": "../conexion-cuentas-email-agentes-bmc"
     }
   ],
-  "settings": {}
+  "settings": {
+    "files.exclude": {
+      "**/docs/dev-trace/**": true,
+      "docs/dev-trace": true,
+      "docs/dev-trace/**": true
+    },
+    "search.exclude": {
+      "**/docs/dev-trace/**": true,
+      "docs/dev-trace/**": true
+    },
+    "files.watcherExclude": {
+      "**/docs/dev-trace/**": true,
+      "docs/dev-trace/**": true
+    }
+  }
 }

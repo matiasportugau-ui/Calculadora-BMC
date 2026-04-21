@@ -5,6 +5,7 @@
  *
  * Uso: node scripts/verify-google-drive-oauth-env.mjs
  *      npm run verify:google-drive-oauth
+ *      VITE_GOOGLE_CLIENT_ID='…' node scripts/verify-google-drive-oauth-env.mjs   (CI / Actions)
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -35,26 +36,46 @@ function parseEnvFile(filePath) {
   return out;
 }
 
-// Misma prioridad efectiva que Vite: .env.local sobrescribe .env
+// Archivos: .env.local gana sobre .env (como Vite). process.env gana para CI / inyección explícita.
 const fromEnv = parseEnvFile(path.join(root, ".env"));
 const fromLocal = parseEnvFile(path.join(root, ".env.local"));
 const merged = { ...fromEnv, ...fromLocal };
-const id = (merged.VITE_GOOGLE_CLIENT_ID || "").trim();
+const fromProcess = (process.env.VITE_GOOGLE_CLIENT_ID || "").trim();
+const id = fromProcess || (merged.VITE_GOOGLE_CLIENT_ID || "").trim();
+
+function looksLikePlaceholder(raw) {
+  const s = (raw || "").toLowerCase();
+  return (
+    /peg[áa]_?tu|paste[_-]?here|your[_-]?client|example\.com|changeme|replace[_-]?me/i.test(
+      raw || ""
+    ) || s === "chatbot-bmc-live"
+  );
+}
 
 function mask(s) {
   if (s.length <= 24) return `${s.slice(0, 6)}…`;
   return `${s.slice(0, 10)}…${s.slice(-18)}`;
 }
 
+if (id && looksLikePlaceholder(id)) {
+  console.error(
+    "[verify:google-drive-oauth] VITE_GOOGLE_CLIENT_ID parece un placeholder o un valor incorrecto (ej. texto «PEGÁ…» o el ID del proyecto GCP)."
+  );
+  console.error(
+    "  Copiá el Client ID real desde Google Cloud → Credenciales (termina en .apps.googleusercontent.com) y ejecutá: npm run drive:configure"
+  );
+  process.exit(1);
+}
+
 if (!id) {
   console.error(
-    "[verify:google-drive-oauth] Falta VITE_GOOGLE_CLIENT_ID en .env o .env.local."
+    "[verify:google-drive-oauth] Falta VITE_GOOGLE_CLIENT_ID (.env, .env.local o variable de entorno)."
   );
   console.error(
     "  Creá un cliente OAuth tipo «Web application» en Google Cloud y copiá el Client ID."
   );
   console.error(
-    "  Guía: docs/GOOGLE_DRIVE_SETUP_PROMPT.md — o: ./run_drive_setup.sh '<tu-client-id>'"
+    "  Guía: docs/GOOGLE_DRIVE_SETUP_PROMPT.md — o: npm run drive:configure  |  ./run_drive_setup.sh '<client-id>'"
   );
   process.exit(1);
 }
@@ -70,10 +91,15 @@ if (!looksGoogle || !noSpaces || id.length < 30) {
   process.exit(1);
 }
 
+const origin = fromProcess
+  ? "process.env"
+  : fromLocal.VITE_GOOGLE_CLIENT_ID
+    ? ".env.local"
+    : fromEnv.VITE_GOOGLE_CLIENT_ID
+      ? ".env"
+      : "archivos";
 console.log(
-  `[verify:google-drive-oauth] OK — Client ID cargado: ${mask(id)} (origen: ${
-    fromLocal.VITE_GOOGLE_CLIENT_ID ? ".env.local" : ".env"
-  })`
+  `[verify:google-drive-oauth] OK — Client ID cargado: ${mask(id)} (origen: ${origin})`
 );
 console.log(
   "  Si Google muestra 401 invalid_client / «OAuth client was not found», el ID no existe en GCP o es de otro proyecto: creá o corregé el cliente y actualizá la variable + reiniciá Vite."

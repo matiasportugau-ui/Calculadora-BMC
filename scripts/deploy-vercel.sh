@@ -2,6 +2,7 @@
 # Deploy Calculadora BMC to Vercel (calculadora-bmc.vercel.app)
 # Requires: vercel CLI (npm i -g vercel)
 # Set VITE_API_URL in Vercel project settings for "Cargar desde MATRIZ" to work.
+# Drive (GIS): `npm run drive:vercel-env -- '<client-id>'` luego redeploy — ver docs/VERCEL-CALCULADORA-SETUP.md
 #
 # Usage: ./scripts/deploy-vercel.sh [--prod]
 

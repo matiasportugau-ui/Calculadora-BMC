@@ -34,3 +34,4 @@
 - 2026-04-20 20:33:19 — `0f9ab57` — fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-20 20:53:27 — `bcefb3e` — chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor
 - 2026-04-20 20:53:41 — `6d1e0ac` — chore(dev-trace): record autotrace for editor ergonomics commit
+- 2026-04-20 21:01:25 — `c57f6f4` — chore(dev-trace): refine autotrace logging and documentation updates

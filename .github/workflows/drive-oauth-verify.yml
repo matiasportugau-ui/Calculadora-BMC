@@ -1,0 +1,31 @@
+# Opt-in: valida el formato de VITE_GOOGLE_CLIENT_ID (secret de Actions).
+# No corre en push/PR. No sube nada a Vercel.
+name: Drive OAuth — verify Client ID
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify format (secret optional)
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: |
+          if [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then
+            echo "Sin secret VITE_GOOGLE_CLIENT_ID: no hay nada que verificar (omitido, exit 0)."
+            echo "Para usar este workflow: Repo → Settings → Secrets and variables → Actions → New repository secret"
+            echo "  Name: VITE_GOOGLE_CLIENT_ID"
+            echo "  Value: tu Client ID (.apps.googleusercontent.com)"
+            exit 0
+          fi
+          node scripts/verify-google-drive-oauth-env.mjs

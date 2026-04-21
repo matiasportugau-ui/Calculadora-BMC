@@ -43,6 +43,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ef8734c` chore: sync autotrace docs and data version for Sketchfab integration commits
 - `bcefb3e` chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor
 - `6d1e0ac` chore(dev-trace): record autotrace for editor ergonomics commit
+- `c57f6f4` chore(dev-trace): refine autotrace logging and documentation updates
 
 ## Other
 
