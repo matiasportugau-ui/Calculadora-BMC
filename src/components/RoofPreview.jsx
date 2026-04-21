@@ -3581,6 +3581,30 @@ export default function RoofPreview({
                 />
               );
             })()}
+            {onEncounterPairChange && (planEdges?.encounters ?? []).map((enc, i) => {
+              const [a, b] = enc.zoneIndices ?? [];
+              if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+              const pk = encounterPairKey(a, b);
+              const low = Math.min(a, b);
+              const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
+              const isCumbrera = rawPair?.modo === "cumbrera" || rawPair?.cumbreraUnida;
+              const hitW = Math.max(0.18, (LINE_WEIGHTS.zoneBorder ?? 0.04) * 3) * svgTy.m;
+              return (
+                <line
+                  key={`enc-hit-${pk}-${i}`}
+                  x1={enc.x1} y1={enc.y1} x2={enc.x2} y2={enc.y2}
+                  stroke={isCumbrera ? "#1d4ed8" : "#16a34a"}
+                  strokeWidth={hitW}
+                  strokeLinecap="round"
+                  opacity={0.7}
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEncounterPrompt({ pairKey: pk, ga: a, gb: b, encounterLength: enc.length, orientation: enc.orientation });
+                  }}
+                />
+              );
+            })}
             </svg>
           </div>
         )}
