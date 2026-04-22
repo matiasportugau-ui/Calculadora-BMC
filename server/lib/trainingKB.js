@@ -12,6 +12,10 @@ const backupsDir = path.join(dataDir, "prompt-backups");
 const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
 const KB_VERSION = "1.0.0";
+let kbCache = null;
+let kbCacheSig = null;
+let scoringConfigCache = null;
+let scoringConfigSig = null;
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
@@ -27,6 +31,15 @@ function ensureKbFile() {
     entries: [],
   };
   fs.writeFileSync(kbPath, JSON.stringify(initial, null, 2), "utf8");
+}
+
+function fileSignature(filePath) {
+  try {
+    const stats = fs.statSync(filePath);
+    return `${stats.mtimeMs}:${stats.size}`;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeCategory(category) {
@@ -54,15 +67,21 @@ function scoreOverlap(query, text) {
 
 export function loadTrainingKB() {
   ensureKbFile();
+  const sig = fileSignature(kbPath);
+  if (kbCache && sig && sig === kbCacheSig) return kbCache;
   try {
     const raw = fs.readFileSync(kbPath, "utf8");
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.entries)) throw new Error("Invalid KB shape");
-    return parsed;
+    kbCache = parsed;
+    kbCacheSig = sig;
+    return kbCache;
   } catch {
     ensureKbFile();
     const fallback = fs.readFileSync(kbPath, "utf8");
-    return JSON.parse(fallback);
+    kbCache = JSON.parse(fallback);
+    kbCacheSig = fileSignature(kbPath);
+    return kbCache;
   }
 }
 
@@ -75,7 +94,9 @@ export function saveTrainingKB(kb) {
     entries: Array.isArray(kb.entries) ? kb.entries : [],
   };
   fs.writeFileSync(kbPath, JSON.stringify(safe, null, 2), "utf8");
-  return safe;
+  kbCache = safe;
+  kbCacheSig = fileSignature(kbPath);
+  return kbCache;
 }
 
 export function addTrainingEntry(payload = {}) {
@@ -128,11 +149,12 @@ export function deleteTrainingEntry(entryId) {
   return { ok: true };
 }
 
-export function listTrainingEntries({ category } = {}) {
+export function listTrainingEntries({ category, includeArchived = false } = {}) {
   const kb = loadTrainingKB();
-  if (!category) return kb.entries;
+  const entries = includeArchived ? kb.entries : kb.entries.filter((entry) => !entry.archived);
+  if (!category) return entries;
   const target = normalizeCategory(category);
-  return kb.entries.filter((e) => e.category === target);
+  return entries.filter((entry) => entry.category === target);
 }
 
 export const DEFAULT_SCORING_CONFIG = {
@@ -143,16 +165,27 @@ export const DEFAULT_SCORING_CONFIG = {
 };
 
 export function loadScoringConfig() {
+  const scoringPath = path.join(dataDir, "kb-score-config.json");
+  const sig = fileSignature(scoringPath);
+  if (scoringConfigCache && sig && sig === scoringConfigSig) return scoringConfigCache;
   try {
-    const p = path.join(dataDir, "kb-score-config.json");
-    if (fs.existsSync(p)) return { ...DEFAULT_SCORING_CONFIG, ...JSON.parse(fs.readFileSync(p, "utf8")) };
+    if (fs.existsSync(scoringPath)) {
+      scoringConfigCache = { ...DEFAULT_SCORING_CONFIG, ...JSON.parse(fs.readFileSync(scoringPath, "utf8")) };
+      scoringConfigSig = sig;
+      return scoringConfigCache;
+    }
   } catch { /* ignore */ }
-  return DEFAULT_SCORING_CONFIG;
+  scoringConfigCache = DEFAULT_SCORING_CONFIG;
+  scoringConfigSig = sig;
+  return scoringConfigCache;
 }
 
 export function saveScoringConfig(config) {
   ensureDir(dataDir);
-  fs.writeFileSync(path.join(dataDir, "kb-score-config.json"), JSON.stringify(config, null, 2), "utf8");
+  const scoringPath = path.join(dataDir, "kb-score-config.json");
+  fs.writeFileSync(scoringPath, JSON.stringify(config, null, 2), "utf8");
+  scoringConfigCache = { ...DEFAULT_SCORING_CONFIG, ...config };
+  scoringConfigSig = fileSignature(scoringPath);
 }
 
 export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
@@ -203,14 +236,16 @@ export function bulkPatchEntries(ids, patch) {
   return { ok: true, patchedCount, requestedCount: idSet.size };
 }
 
-export function getTrainingStats() {
-  const entries = listTrainingEntries();
+export function getTrainingStats({ includeArchived = false } = {}) {
+  const entries = listTrainingEntries({ includeArchived });
+  const kb = loadTrainingKB();
   const byCategory = entries.reduce((acc, e) => {
     acc[e.category] = (acc[e.category] || 0) + 1;
     return acc;
   }, {});
   return {
     total: entries.length,
+    archived: kb.entries.filter((entry) => entry.archived).length,
     byCategory,
     updatedAt: new Date().toISOString(),
   };

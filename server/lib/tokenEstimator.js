@@ -22,10 +22,37 @@ export const MODEL_CONTEXT_LIMITS = {
   "claude-3-opus-20240229": 200_000,
   "gpt-4o-mini": 128_000,
   "gpt-4o": 128_000,
+  "gpt-4-turbo": 128_000,
+  "gpt-4": 8_192,
+  "o4-mini": 200_000,
+  "o3-mini": 200_000,
   "grok-3-mini": 131_072,
   "grok-3": 131_072,
+  "grok-2-latest": 131_072,
+  "grok-2-vision-1212": 32_768,
+  "grok-2-1212": 131_072,
   "gemini-2.0-flash": 1_000_000,
+  "gemini-2.0-flash-lite": 1_000_000,
   "gemini-1.5-flash": 1_000_000,
+  "gemini-1.5-flash-8b": 1_000_000,
+  "gemini-1.5-pro": 1_000_000,
 };
 
 export const TOKEN_BUDGET = 10_000;
+
+export function getModelContextLimit(modelId) {
+  return MODEL_CONTEXT_LIMITS[String(modelId || "").trim()] || null;
+}
+
+export function getTokenBudgetForModel({
+  modelId,
+  requestedOutputTokens = CHAT_MAX_TOKENS,
+  baseBudget = TOKEN_BUDGET,
+  safetyMarginTokens = 1_024,
+} = {}) {
+  const contextLimit = getModelContextLimit(modelId);
+  if (!Number.isFinite(contextLimit)) return baseBudget;
+  const outputReserve = Math.max(1, Number(requestedOutputTokens) || CHAT_MAX_TOKENS);
+  const availableInput = contextLimit - outputReserve - Math.max(256, safetyMarginTokens);
+  return Math.max(256, Math.min(baseBudget, availableInput));
+}

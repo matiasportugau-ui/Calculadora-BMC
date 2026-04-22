@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { promises as fsPromises } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,15 +29,18 @@ function convFilePath(date) {
   return path.join(CONV_DIR, `CONV-${day}.jsonl`);
 }
 
+let writeQueue = Promise.resolve();
+
 function appendEvent(event) {
   ensureConvDir();
   const row = { ts: new Date().toISOString(), ...event };
   const filePath = convFilePath();
-  try {
-    fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf8");
-  } catch (error) {
-    console.error(`Failed to append conversation event to ${filePath}`, error);
-  }
+  writeQueue = writeQueue
+    .catch(() => undefined)
+    .then(() => fsPromises.appendFile(filePath, `${JSON.stringify(row)}\n`, "utf8"))
+    .catch((error) => {
+      console.error(`Failed to append conversation event to ${filePath}`, error);
+    });
 }
 
 export function logConversationMeta(conversationId, { provider, model, devMode }) {
@@ -69,11 +73,20 @@ export function closeConversation(conversationId, { turnCount, hedgeCount }) {
 
 function parseConvFile(filePath) {
   if (!fs.existsSync(filePath)) return [];
+  const sig = getFileSig(filePath);
+  const cached = _parsedConvFileCache.get(filePath);
+  if (cached && cached.sig === sig) return cached.events;
+
   const lines = fs.readFileSync(filePath, "utf8").split("\n").filter(Boolean);
   const events = [];
   for (const line of lines) {
     try { events.push(JSON.parse(line)); } catch { /* skip malformed */ }
   }
+  _parsedConvFileCache.set(filePath, {
+    sig,
+    events,
+    conversationIds: [...new Set(events.map((event) => event?.conversationId).filter(Boolean))],
+  });
   return events;
 }
 
@@ -190,6 +203,21 @@ export function loadConversations({ days = 7, page = 1, limit = 20 } = {}) {
 
 let _convIndexSig = null;
 let _convFilesById = new Map();
+let _parsedConvFileCache = new Map();
+
+function getFileSig(filePath) {
+  try {
+    const stats = fs.statSync(filePath);
+    return `${stats.mtimeMs}:${stats.size}`;
+  } catch {
+    return null;
+  }
+}
+
+function getConversationIdsForFile(filePath) {
+  parseConvFile(filePath);
+  return _parsedConvFileCache.get(filePath)?.conversationIds || [];
+}
 
 function _listConvFiles() {
   return fs.readdirSync(CONV_DIR).filter((f) => f.startsWith("CONV-") && f.endsWith(".jsonl")).sort();
@@ -211,10 +239,9 @@ function _refreshIndexIfNeeded() {
   const next = new Map();
   for (const file of files) {
     const fp = path.join(CONV_DIR, file);
-    for (const ev of parseConvFile(fp)) {
-      if (!ev?.conversationId) continue;
-      if (!next.has(ev.conversationId)) next.set(ev.conversationId, []);
-      const arr = next.get(ev.conversationId);
+    for (const conversationId of getConversationIdsForFile(fp)) {
+      if (!next.has(conversationId)) next.set(conversationId, []);
+      const arr = next.get(conversationId);
       if (!arr.includes(fp)) arr.push(fp);
     }
   }

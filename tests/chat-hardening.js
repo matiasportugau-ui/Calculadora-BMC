@@ -12,6 +12,7 @@ import {
   TOKEN_BUDGET,
   CHAT_MAX_TOKENS,
   MODEL_CONTEXT_LIMITS,
+  getTokenBudgetForModel,
 } from "../server/lib/tokenEstimator.js";
 
 let passed = 0, failed = 0;
@@ -255,6 +256,24 @@ assert("TOKEN_BUDGET >= 8000 (room for Spanish prompt + history)", TOKEN_BUDGET 
 assert("CHAT_MAX_TOKENS is a positive integer", Number.isInteger(CHAT_MAX_TOKENS) && CHAT_MAX_TOKENS > 0, CHAT_MAX_TOKENS, ">0");
 assert("CHAT_MAX_TOKENS >= 1024 (enough for real quotes)", CHAT_MAX_TOKENS >= 1024, CHAT_MAX_TOKENS, ">=1024");
 assert("TOKEN_BUDGET > CHAT_MAX_TOKENS (input budget > output cap)", TOKEN_BUDGET > CHAT_MAX_TOKENS, { TOKEN_BUDGET, CHAT_MAX_TOKENS }, "budget>max");
+assert(
+  "small-context models receive a tighter derived input budget",
+  getTokenBudgetForModel({ modelId: "gpt-4", requestedOutputTokens: CHAT_MAX_TOKENS }) < TOKEN_BUDGET,
+  getTokenBudgetForModel({ modelId: "gpt-4", requestedOutputTokens: CHAT_MAX_TOKENS }),
+  `<${TOKEN_BUDGET}`
+);
+assert(
+  "large-context models keep the base input budget",
+  getTokenBudgetForModel({ modelId: "claude-haiku-4-5-20251001", requestedOutputTokens: CHAT_MAX_TOKENS }) === TOKEN_BUDGET,
+  getTokenBudgetForModel({ modelId: "claude-haiku-4-5-20251001", requestedOutputTokens: CHAT_MAX_TOKENS }),
+  TOKEN_BUDGET
+);
+assert(
+  "unknown models fall back to the base input budget",
+  getTokenBudgetForModel({ modelId: "custom-model", requestedOutputTokens: CHAT_MAX_TOKENS }) === TOKEN_BUDGET,
+  getTokenBudgetForModel({ modelId: "custom-model", requestedOutputTokens: CHAT_MAX_TOKENS }),
+  TOKEN_BUDGET
+);
 
 // MODEL_CONTEXT_LIMITS: every declared limit must exceed TOKEN_BUDGET
 for (const [model, limit] of Object.entries(MODEL_CONTEXT_LIMITS)) {

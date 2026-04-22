@@ -32,7 +32,12 @@ import {
   closeConversation,
   countHedges,
 } from "../lib/conversationLog.js";
-import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
+import {
+  estimateTokensSystem,
+  estimateTokensText,
+  CHAT_MAX_TOKENS,
+  getTokenBudgetForModel,
+} from "../lib/tokenEstimator.js";
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 
@@ -82,6 +87,23 @@ function resolveModelForProvider(provider, requested, configuredDefault) {
   if (ALLOWED_MODELS[provider]?.has(r)) return r;
   if (r === def) return r;
   return def;
+}
+
+function truncateHistoryToBudget(messages, systemPrompt, budget) {
+  const systemEstimate = estimateTokensSystem(systemPrompt);
+  let tokenSum = systemEstimate;
+  const truncated = [];
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const estimate = estimateTokensText(messages[i].content);
+    if (tokenSum + estimate > budget && truncated.length >= 2) break;
+    tokenSum += estimate;
+    truncated.unshift(messages[i]);
+  }
+  return {
+    messages: truncated,
+    truncated: truncated.length < messages.length,
+    estimatedTokens: tokenSum,
+  };
 }
 
 function modelsForProviderUi(provider, defaultModel) {
@@ -528,21 +550,6 @@ router.post("/agent/chat", async (req, res) => {
     // Summarization is best-effort; fall back to raw history on failure
   }
 
-  // 1.7 — Truncate history to stay within token budget (improved estimate for Spanish)
-  const SYSTEM_ESTIMATE = estimateTokensSystem(effectiveSystemPrompt);
-  let tokenSum = SYSTEM_ESTIMATE;
-  const truncated = [];
-  for (let i = filteredMsgs.length - 1; i >= 0; i--) {
-    const t = estimateTokensText(filteredMsgs[i].content);
-    if (tokenSum + t > TOKEN_BUDGET && truncated.length >= 2) break;
-    tokenSum += t;
-    truncated.unshift(filteredMsgs[i]);
-  }
-  if (truncated.length < filteredMsgs.length) {
-    send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
-  }
-  const msgs = truncated;
-
   const defaultOrder = [];
   if (hasAnthropic) defaultOrder.push("claude");
   if (hasGrok) defaultOrder.push("grok");
@@ -571,6 +578,7 @@ router.post("/agent/chat", async (req, res) => {
     gemini: config.geminiChatModel,
   };
 
+  let truncationNoticeSent = false;
   for (const provider of providerChain) {
     try {
       // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
@@ -586,9 +594,19 @@ router.post("/agent/chat", async (req, res) => {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
         resolvedModel = model;
+        const maxOutputTokens = thinkingMode ? 4096 : CHAT_MAX_TOKENS;
+        const { messages: msgs, truncated } = truncateHistoryToBudget(
+          filteredMsgs,
+          effectiveSystemPrompt,
+          getTokenBudgetForModel({ modelId: model, requestedOutputTokens: maxOutputTokens })
+        );
+        if (truncated && !truncationNoticeSent) {
+          send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
+          truncationNoticeSent = true;
+        }
         const claudeOpts = {
           model,
-          max_tokens: thinkingMode ? 4096 : CHAT_MAX_TOKENS,
+          max_tokens: maxOutputTokens,
           system: effectiveSystemPrompt,
           messages: msgs,
         };
@@ -612,6 +630,15 @@ router.post("/agent/chat", async (req, res) => {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
         const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
         resolvedModel = model;
+        const { messages: msgs, truncated } = truncateHistoryToBudget(
+          filteredMsgs,
+          effectiveSystemPrompt,
+          getTokenBudgetForModel({ modelId: model })
+        );
+        if (truncated && !truncationNoticeSent) {
+          send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
+          truncationNoticeSent = true;
+        }
         const geminiModel = genAI.getGenerativeModel({ model });
         const geminiMessages = msgs.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
@@ -639,6 +666,15 @@ router.post("/agent/chat", async (req, res) => {
             ? resolveModelForProvider("grok", requestedId, modelDefaults.grok)
             : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
         resolvedModel = model;
+        const { messages: msgs, truncated } = truncateHistoryToBudget(
+          filteredMsgs,
+          effectiveSystemPrompt,
+          getTokenBudgetForModel({ modelId: model, requestedOutputTokens: CHAT_MAX_TOKENS })
+        );
+        if (truncated && !truncationNoticeSent) {
+          send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
+          truncationNoticeSent = true;
+        }
 
         const stream = await client.chat.completions.create({
           model,
