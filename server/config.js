@@ -56,6 +56,7 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
+  openaiRealtimeModel: process.env.OPENAI_REALTIME_MODEL || "gpt-4o-realtime-preview",
   /** Panelin calculator chat (/api/agent/chat) — model IDs must match server allowlist or these defaults */
   anthropicChatModel: process.env.ANTHROPIC_CHAT_MODEL || "claude-haiku-4-5-20251001",
   /** Set CHAT_LOG_CONVERSATIONS=true to persist conversation turns to disk in production. Default: off (devMode always logs). */

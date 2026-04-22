@@ -38,6 +38,7 @@ Lee este archivo antes de cualquier tarea.
 | `npm run panelsim:env` | Chequeo credenciales Google + IDs de planillas (MATRIZ); `scripts/ensure-panelsim-sheets-env.sh` |
 | `npm run panelsim:email-ready` | Sync IMAP + reporte en repo hermano; `scripts/panelsim-email-ready.sh` |
 | `npm run env:ensure` | Crea `.env` desde `.env.example` si falta (`scripts/ensure-env.sh`) |
+| **Google Drive (GIS)** | Skill [`.cursor/skills/bmc-google-drive-oauth/SKILL.md`](.cursor/skills/bmc-google-drive-oauth/SKILL.md); agente [`.cursor/agents/bmc-google-drive-oauth.md`](.cursor/agents/bmc-google-drive-oauth.md). **Todo en uno:** `npm run drive:one-shot -- '<client-id>.apps.googleusercontent.com'` (`scripts/drive-oauth-one-shot.sh`). Resto: `npm run drive:bootstrap`, `npm run drive:configure`, `npm run drive:vercel-env`, `npm run verify:google-drive-oauth`, `npm run verify:google-drive-dist`. Workflows: `drive-oauth-verify.yml`, `drive-oauth-dist-verify.yml`. Plan: [`docs/GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md`](docs/GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md). |
 | `npm run open:email-env` | Abre `.env` del repo de correo en el editor |
 | `npm run ml:verify` | Con API arriba: comprueba `/health` y OAuth ML (`/auth/ml/start?mode=json`); ver `docs/ML-OAUTH-SETUP.md` |
 | `npm run ml:sim-batch` | Exporta una tanda de preguntas ML para simulación en ciego o con respuestas humanas (`--mode blind\|gold`, `--offset`, `--size`); ver `docs/team/panelsim/reports/ML-SIM-ITERATIVE-BLIND-IMPROVEMENT.md` |

@@ -1,5 +1,7 @@
 # ChatGPT Agent Mode Prompt — Google Drive API Setup for Panelin BMC
 
+**Plan de automatización (scripts, gcloud, Vercel, CI):** [`GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md`](GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md)
+
 > Copy everything below this line and paste it into ChatGPT agent mode.
 
 ---
@@ -145,6 +147,9 @@ If sign-in succeeds but saving fails with 403:
 
 If sign-in succeeds but saving fails with 401:
 - Token expired — the app handles refresh automatically, but check browser console for errors.
+
+If **production** never picks up a new Client ID after changing Vercel env vars:
+- Vite bakes `VITE_*` at **build** time — you must **redeploy**. Locally: `npm run build && npm run verify:google-drive-dist` (confirms the literal appears under `dist/`; GitHub: workflow **Drive OAuth — verify Client ID in dist**).
 
 ## Summary of what this achieves
 

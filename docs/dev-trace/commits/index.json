@@ -966,6 +966,724 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "dec007b1189495e66f7e85707332a49214ddbfd8",
+      "short_hash": "dec007b",
+      "date": "2026-04-19",
+      "time": "07:45:36",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "",
+      "title": "adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "subject": "fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0a5667b.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-19.md",
+        "src/hooks/useRoofPreviewPlanLayout.js",
+        "src/utils/panelLayout.js",
+        "src/utils/roofPlanCotaObstacles.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "0f9ab57f30e7bb0671baf43d91da7ebe3fbe88d7",
+      "short_hash": "0f9ab57",
+      "date": "2026-04-20",
+      "time": "20:33:19",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "",
+      "title": "update positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "subject": "fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/dec007b.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-19.md",
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/impact-map.json",
+        "docs/team/knowledge/references-catalog.json",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-19.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-20.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-19.md",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-20.md",
+        "docs/team/knowledge/sources-registry.json"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "bcefb3e5ee6330bb8e16f994ace7c494951e2e30",
+      "short_hash": "bcefb3e",
+      "date": "2026-04-20",
+      "time": "20:53:27",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "editor",
+      "title": "ocultar dev-trace en UI y excluirlo del contexto Cursor",
+      "subject": "chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor",
+      "files": [
+        ".cursorignore",
+        ".vscode/settings.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".vscode"
+        ]
+      }
+    },
+    {
+      "hash": "6d1e0accf28bc4e33dd256818a22cbed2c73b70d",
+      "short_hash": "6d1e0ac",
+      "date": "2026-04-20",
+      "time": "20:53:41",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "record autotrace for editor ergonomics commit",
+      "subject": "chore(dev-trace): record autotrace for editor ergonomics commit",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/bcefb3e.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-20.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "c57f6f4d8be260920b2ad854bd2b8e1974590663",
+      "short_hash": "c57f6f4",
+      "date": "2026-04-20",
+      "time": "21:01:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "refine autotrace logging and documentation updates",
+      "subject": "chore(dev-trace): refine autotrace logging and documentation updates",
+      "files": [
+        "scripts/verify-google-drive-oauth-env.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "scripts"
+        ]
+      }
+    },
+    {
+      "hash": "1306642e881343e8e693b59ecb14b7110459b1b2",
+      "short_hash": "1306642",
+      "date": "2026-04-20",
+      "time": "22:23:18",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "add Google Drive OAuth setup scripts and documentation",
+      "subject": "chore: add Google Drive OAuth setup scripts and documentation",
+      "files": [
+        ".cursor/agents/bmc-google-drive-oauth.md",
+        ".cursor/skills/bmc-google-drive-oauth/SKILL.md",
+        ".cursorindexingignore",
+        ".env.example",
+        ".github/workflows/drive-oauth-dist-verify.yml",
+        ".github/workflows/drive-oauth-verify.yml",
+        ".vscode/settings.json",
+        "AGENTS.md",
+        "docs/GOOGLE-DRIVE-OAUTH-AUTOMATION-PLAN.md",
+        "docs/GOOGLE_DRIVE_SETUP_PROMPT.md",
+        "docs/VERCEL-CALCULADORA-SETUP.md",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/c57f6f4.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-20.md",
+        "package.json",
+        "panelsim-email.code-workspace",
+        "run_dashboard_setup.sh",
+        "run_drive_setup.sh",
+        "scripts/deploy-vercel.sh",
+        "scripts/drive-oauth-bootstrap.sh",
+        "scripts/drive-oauth-one-shot.sh",
+        "scripts/set-vite-google-client.mjs",
+        "scripts/shell-aliases-calculadora-bmc.zsh",
+        "scripts/vercel-drive-env-push.sh",
+        "scripts/verify-google-drive-oauth-env.mjs",
+        "scripts/verify-vite-google-client-in-dist.mjs"
+      ],
+      "risk": "Rojo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".cursor",
+          ".github",
+          ".vscode",
+          "docs",
+          "scripts"
+        ]
+      }
+    },
+    {
+      "hash": "0f3f0086fe3adfd1f919520069fedee1dfd169a9",
+      "short_hash": "0f3f008",
+      "date": "2026-04-20",
+      "time": "22:53:49",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update Google Drive OAuth setup scripts and documentation",
+      "subject": "chore: update Google Drive OAuth setup scripts and documentation",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/1306642.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-20.md",
+        "scripts/drive-oauth-one-shot.sh",
+        "scripts/vercel-drive-env-push.sh",
+        "src/components/RoofPreview.jsx",
+        "src/data/calculatorDataVersion.js",
+        "src/utils/roofPlanEdgeSegments.js",
+        "tests/validation.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "scripts",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "691b5504f6f9c0676981e7c1d0d070e848783eed",
+      "short_hash": "691b550",
+      "date": "2026-04-21",
+      "time": "01:52:11",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "add Playwright test script for local roof borders and update Google Drive OAuth documentation",
+      "subject": "chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0f3f008.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-20.md",
+        "docs/samples/pdf-planta-resumen-sample.html",
+        "package.json",
+        "scripts/generate-pdf-planta-sample.mjs",
+        "scripts/playwright-roof-bordes-local.mjs",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/components/RoofPreview.jsx",
+        "src/data/calculatorDataVersion.js",
+        "src/utils/calculations.js",
+        "src/utils/quotationViews.js",
+        "src/utils/scenarioOrchestrator.js",
+        "tests/validation.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "scripts",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "9a0dc8550150561e6b26e473846124e2939eb5cf",
+      "short_hash": "9a0dc85",
+      "date": "2026-04-21",
+      "time": "02:45:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)",
+      "subject": "feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/691b550.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md",
+        "package.json",
+        "public/quotation-preview/costeo-interno.html",
+        "public/quotation-preview/hoja-visual-cliente.html",
+        "public/quotation-preview/index.html",
+        "scripts/render-quotation-preview-html.mjs",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/components/RoofPreview.jsx",
+        "src/utils/calculations.js",
+        "src/utils/quotationPreviewSampleData.js",
+        "src/utils/quotationViews.js",
+        "src/utils/scenarioOrchestrator.js",
+        "tests/validation.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "public",
+          "scripts",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "04f7b41037060f914580cf356bdbfb36c5137e3c",
+      "short_hash": "04f7b41",
+      "date": "2026-04-21",
+      "time": "02:46:10",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)",
+      "subject": "feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/9a0dc85.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "6d95be95c6e703b286b44c1a50d23d70ac36d3c6",
+      "short_hash": "6d95be9",
+      "date": "2026-04-21",
+      "time": "02:57:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "render encounter lines as clickable SVG elements",
+      "subject": "feat(roof): render encounter lines as clickable SVG elements",
+      "files": [
+        "src/components/RoofPreview.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "fe5530989e381959078f8ace25225ef85b6a7a67",
+      "short_hash": "fe55309",
+      "date": "2026-04-21",
+      "time": "03:38:14",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "split border strips by exterior intervals on partial encounters",
+      "subject": "feat(roof): split border strips by exterior intervals on partial encounters",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "src/utils/roofPlanEdgeSegments.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "773e0df2393662417fecd5af00fe2584b5e567b1",
+      "short_hash": "773e0df",
+      "date": "2026-04-21",
+      "time": "03:49:34",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "catalog",
+      "title": "add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR",
+      "subject": "feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR",
+      "files": [
+        "src/data/constants.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "57157768e356d9db517f96f849c34305a42e07d7",
+      "short_hash": "5715776",
+      "date": "2026-04-21",
+      "time": "04:07:02",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "subject": "feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/04f7b41.md",
+        "docs/dev-trace/commits/2026/04/6d95be9.md",
+        "docs/dev-trace/commits/2026/04/773e0df.md",
+        "docs/dev-trace/commits/2026/04/fe55309.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md",
+        "src/components/RoofPreview.jsx",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "acaebad93fc36956abeefd9be0040ebae32d1676",
+      "short_hash": "acaebad",
+      "date": "2026-04-21",
+      "time": "04:12:55",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "subject": "feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/5715776.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "391c695ff5d97f0e7170d97262a9616e2d54af0e",
+      "short_hash": "391c695",
+      "date": "2026-04-21",
+      "time": "19:23:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "subject": "feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/acaebad.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md",
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/impact-map.json",
+        "docs/team/knowledge/references-catalog.json",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-21.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-21.md",
+        "docs/team/knowledge/sources-registry.json",
+        "src/components/RoofPreview.jsx"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "742293c19fa0807f75056609b58932ba45e540fe",
+      "short_hash": "742293c",
+      "date": "2026-04-22",
+      "time": "00:12:23",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "HEAD",
+      "type": "feat",
+      "scope": "roof",
+      "title": "enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "subject": "feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/391c695.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-21.md",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/components/RoofPreview.jsx",
+        "src/data/constants.js",
+        "src/utils/projectFile.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "3b8fb3dbb0eae25dfa7398c5d90d2657c8c1c04c",
+      "short_hash": "3b8fb3d",
+      "date": "2026-04-22",
+      "time": "00:29:20",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "HEAD",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "record AUTOTRACE for 742293c roof encounter enhancement",
+      "subject": "chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/742293c.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-22.md",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "826b9c481cfd963f3277c8e2654010348a494676",
+      "short_hash": "826b9c4",
+      "date": "2026-04-22",
+      "time": "00:31:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "HEAD",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "record AUTOTRACE for 3b8fb3d dev-trace commit",
+      "subject": "chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3b8fb3d.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-22.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "fb845a240ef1f557509cd9fc661478a81077c0a2",
+      "short_hash": "fb845a2",
+      "date": "2026-04-22",
+      "time": "00:31:31",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "HEAD",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync AUTOTRACE bundle — close self-ref loop",
+      "subject": "chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/826b9c4.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-22.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }

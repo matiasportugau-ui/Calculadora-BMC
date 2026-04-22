@@ -1,0 +1,3 @@
+# AUTOTRACE / dev-trace: sigue en Git y en el hook post-commit; acá solo se limita
+# qué entra por defecto en el contexto del asistente (menos ruido).
+docs/dev-trace/

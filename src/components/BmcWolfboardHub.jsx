@@ -10,16 +10,16 @@ const wrap = {
 
 const main = {
   flex: 1,
-  padding: "28px 20px 48px",
-  maxWidth: 960,
+  padding: "18px 20px 36px",
+  maxWidth: 1100,
   margin: "0 auto",
   width: "100%",
   boxSizing: "border-box",
 };
 
 const h1 = {
-  margin: "0 0 8px",
-  fontSize: 26,
+  margin: "0 0 4px",
+  fontSize: 22,
   fontWeight: 700,
   color: "#1a3a5c",
   fontFamily:
@@ -27,43 +27,43 @@ const h1 = {
 };
 
 const sub = {
-  margin: "0 0 28px",
-  fontSize: 15,
+  margin: "0 0 16px",
+  fontSize: 13,
   color: "#6e6e73",
   fontFamily: h1.fontFamily,
 };
 
 const grid = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-  gap: 16,
+  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+  gap: 12,
 };
 
 const card = {
   background: "#fff",
-  borderRadius: 12,
+  borderRadius: 10,
   border: "1px solid #e5e5ea",
-  boxShadow: "0 1px 3px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06)",
-  padding: 20,
+  boxShadow: "0 1px 3px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.05)",
+  padding: "14px 16px",
   display: "flex",
   flexDirection: "column",
-  gap: 10,
+  gap: 7,
   fontFamily: h1.fontFamily,
 };
 
-const cardTitle = { margin: 0, fontSize: 17, fontWeight: 700, color: "#1d1d1f" };
-const cardDesc = { margin: 0, fontSize: 13, color: "#6e6e73", lineHeight: 1.45 };
+const cardTitle = { margin: 0, fontSize: 14, fontWeight: 700, color: "#1d1d1f" };
+const cardDesc = { margin: 0, fontSize: 12, color: "#6e6e73", lineHeight: 1.45 };
 
 const cta = {
   marginTop: "auto",
   display: "inline-block",
   alignSelf: "flex-start",
-  padding: "10px 16px",
-  borderRadius: 10,
+  padding: "7px 13px",
+  borderRadius: 8,
   background: "#0071e3",
   color: "#fff",
   fontWeight: 600,
-  fontSize: 13,
+  fontSize: 12,
   textDecoration: "none",
 };
 
@@ -114,6 +114,33 @@ export default function BmcWolfboardHub() {
             </p>
             <Link to="/hub/wa" style={{ ...cta, background: "#25d366" }}>
               Abrir WA operativo
+            </Link>
+          </div>
+        </div>
+
+        {/* ── Herramientas internas ───────────────────────────────────────── */}
+        <div style={{ margin: "20px 0 10px", display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: "#aeb3bb",
+            textTransform: "uppercase", letterSpacing: 1.4,
+          }}>
+            Herramientas internas
+          </span>
+          <div style={{ flex: 1, height: 1, background: "#e5e5ea" }} />
+        </div>
+        <div style={grid}>
+          <div style={{ ...card, borderColor: "#d1d9e6", background: "#f8fafc" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 26, height: 26, borderRadius: 6, background: "#1a3a5c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
+                🔬
+              </div>
+              <h2 style={{ ...cardTitle, color: "#1a3a5c" }}>Inspector de Cálculos</h2>
+            </div>
+            <p style={cardDesc}>
+              Explorá y verificá todas las lógicas de cálculo BMC en tiempo real: paneles, fijaciones, perfilería y selladores. Editá parámetros de fórmula con persistencia. Comparativa con Kingspan incluida.
+            </p>
+            <Link to="/inspector" style={{ ...cta, background: "#1a3a5c" }}>
+              Abrir Inspector
             </Link>
           </div>
         </div>

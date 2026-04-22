@@ -26,7 +26,7 @@ import {
   PERFIL_TECHO, PERFIL_PARED,
   SCENARIOS_DEF, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
-  PENDIENTES_PRESET, TIPO_AGUAS,
+  PENDIENTES_PRESET,
   ROOF_2D_QUOTE_VISOR_STEP_IDS,
   ROOF_ESTRUCTURA_OVERLAY_STEP_IDS,
 } from "../data/constants.js";
@@ -36,6 +36,7 @@ import {
   calcTotalesSinIVA,
   calcFactorPendiente, calcLargoRealFromModo, normalizarMedida,
   computeRoofEstructuraHintsByGi,
+  getPerfileriaMermaSugerencias,
 } from "../utils/calculations.js";
 import {
   applyOverrides, bomToGroups,
@@ -48,6 +49,8 @@ import {
 } from "../utils/budgetLog.js";
 import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
+import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
+import QuotePreviewModal from "./QuotePreviewModal.jsx";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
 import { capturePdfSnapshotTargets } from "../utils/captureDomToPng.js";
@@ -104,6 +107,12 @@ import { useChat } from "../hooks/useChat.js";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 import PanelinChatPanel from "./PanelinChatPanel.jsx";
 import { SLIDES_SOLO_TECHO } from "../data/quoteVisorMedia.js";
+
+/**
+ * Portal `RoofBorderCanvas` + bloque «Visualización 3D» en `QuoteVisualVisor`, y render opcional con textura (`RoofPanelRealisticScene`).
+ * Desactivado mientras el flujo oficial de bordes es 100% planta 2D; pasar a `true` para rehabilitar WebGL.
+ */
+const ENABLE_ROOF_3D_VISOR = false;
 
 // CSS extracted to src/styles/bmc-mobile.css (imported in main.jsx)
 
@@ -459,6 +468,8 @@ function MobileBottomBar({
   onCosteo,
   onCopyTSV,
   onPdfEnriquecido,
+  pdfPlantaResumenPage,
+  onPdfPlantaResumenPageChange,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   useEffect(() => {
@@ -519,6 +530,31 @@ function MobileBottomBar({
       />
       <div className={`bmc-bottom-sheet${sheetOpen ? " open" : ""}`} role="dialog" aria-label="Más acciones">
         <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, color: C.tp, fontFamily: FONT }}>Más acciones</div>
+        {typeof onPdfPlantaResumenPageChange === "function" && (
+          <label style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            padding: "10px 4px 14px",
+            fontSize: 13,
+            color: C.ts,
+            cursor: "pointer",
+            fontFamily: FONT,
+            borderBottom: `1px solid ${C.border}`,
+            marginBottom: 8,
+          }}>
+            <input
+              type="checkbox"
+              checked={!!pdfPlantaResumenPage}
+              onChange={(e) => onPdfPlantaResumenPageChange(e.target.checked)}
+              style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0 }}
+            />
+            <span>
+              <span style={{ fontWeight: 700, color: C.tp }}>PDF+</span>
+              {" · "}Incluir página Planta + resumen (diseño marca)
+            </span>
+          </label>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <button type="button" onClick={() => run(onOpenDrive)} style={{ ...sheetBtn, background: "#4285F4", color: "#fff" }}><Cloud size={18} />Drive</button>
           <button type="button" onClick={() => run(onClienteVisual)} style={{ ...sheetBtn, background: "#0ea5e9", color: "#fff" }}><LayoutTemplate size={18} />Hoja Cliente</button>
@@ -626,71 +662,7 @@ function PDFPreviewModal({ html, title, onClose }) {
   );
 }
 
-function AguaSvg1({ color = "#0071E3" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 18 L72 10 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-    <line x1="72" y1="10" x2="72" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-    <circle cx="8" cy="18" r="2" fill={color} />
-    <circle cx="72" cy="10" r="2" fill={color} />
-  </svg>;
-}
 
-function AguaSvg2({ color = "#0071E3" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 22 L40 8 L72 22 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-    <line x1="40" y1="8" x2="40" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-    <circle cx="40" cy="8" r="2.5" fill={color} />
-    <circle cx="8" cy="22" r="2" fill={color} />
-    <circle cx="72" cy="22" r="2" fill={color} />
-  </svg>;
-}
-
-function AguaSvg4({ color = "#AEAEB2" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 22 L28 10 L52 10 L72 22 L72 36" fill={color} fillOpacity="0.08" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="4 2" />
-    <line x1="28" y1="10" x2="28" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
-    <line x1="52" y1="10" x2="52" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
-  </svg>;
-}
-
-const AGUA_SVGS = { una_agua: AguaSvg1, dos_aguas: AguaSvg2, cuatro_aguas: AguaSvg4 };
-
-function TipoAguasSelector({ value, onChange, onOptionDoubleClick }) {
-  return (
-    <div style={{ display: "flex", gap: 10, fontFamily: FONT, flexWrap: "wrap" }}>
-      {TIPO_AGUAS.map(tipo => {
-        const isS = value === tipo.id;
-        const isDisabled = !tipo.enabled;
-        const SvgComp = AGUA_SVGS[tipo.id];
-        return (
-          <button
-            key={tipo.id}
-            onClick={() => !isDisabled && onChange(tipo.id)}
-            onDoubleClick={() => !isDisabled && onOptionDoubleClick?.(tipo.id)}
-            disabled={isDisabled}
-            style={{
-              flex: 1, padding: "12px 8px", borderRadius: 14, textAlign: "center",
-              border: `2px solid ${isDisabled ? C.border : isS ? C.primary : C.border}`,
-              background: isDisabled ? C.surfaceAlt : isS ? C.primarySoft : C.surface,
-              cursor: isDisabled ? "not-allowed" : "pointer",
-              opacity: isDisabled ? 0.7 : 1,
-              transition: TR,
-              boxShadow: isS && !isDisabled ? `0 0 0 3px ${C.primarySoft}` : "none",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            }}
-          >
-            {SvgComp && <SvgComp color={isDisabled ? C.tt : isS ? C.primary : C.ts} />}
-            <div style={{ fontSize: 13, fontWeight: 600, color: isDisabled ? C.tt : isS ? C.primary : C.tp }}>{tipo.label}</div>
-            <div style={{ fontSize: 10, color: isDisabled ? C.tt : C.ts, lineHeight: 1.3 }}>{tipo.description}</div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 const SIDE_LABELS = { frente: "Frente Inferior", fondo: "Frente Superior", latIzq: "Lateral Izq", latDer: "Lateral Der" };
 
@@ -1691,6 +1663,8 @@ function RoofBorderSelector({
   onZonaPreviewChange,
   canvasPortalTargetRef = null,
   minimalChrome = false,
+  bordesExtendido = false,
+  bordesCualquierFamilia = false,
 }) {
   // openSide: null | { side: string, gi: number|null, screenPos? }  (gi=null → global edge)
   const [openSide, setOpenSide] = useState(null);
@@ -1765,11 +1739,22 @@ function RoofBorderSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [canvasPortalTargetRef]);
 
-  const getOpts = (side) => (BORDER_OPTIONS[side] || []).filter(o => !o.familias || o.familias.includes(panelFam));
+  const getOpts = (side, currentVal = null) => {
+    const all = BORDER_OPTIONS[side] || [];
+    if (bordesCualquierFamilia) return all;
+    const byFamily = all.filter(o => !o.familias || o.familias.includes(panelFam));
+    if (bordesExtendido) return byFamily;
+    const filtered = byFamily.filter(o => o.id === "none" || !!PERFIL_TECHO[o.id]?.[panelFam]);
+    if (currentVal && currentVal !== "none" && !filtered.find(o => o.id === currentVal)) {
+      const ghost = byFamily.find(o => o.id === currentVal) ?? all.find(o => o.id === currentVal);
+      if (ghost) filtered.push({ ...ghost, label: `${ghost.label} (no estándar)` });
+    }
+    return filtered;
+  };
 
   const getLabel = (side, gi = null) => {
     const val = gi !== null ? (zonasBorders[gi]?.[side] ?? borders[side]) : borders[side];
-    if (!val || val === "none") return "—";
+    if (!val || val === "none") return "Sin perfil";
     const opts = BORDER_OPTIONS[side] || [];
     const opt = opts.find(o => o.id === val && (!o.familias || o.familias.includes(panelFam))) || opts.find(o => o.id === val);
     return opt ? opt.label : val;
@@ -1888,7 +1873,7 @@ function RoofBorderSelector({
     typeof Element !== "undefined" &&
     portalEl instanceof Element &&
     portalEl.isConnected;
-  const canvasEl = hasZonas ? (
+  const canvasEl = hasZonas && ENABLE_ROOF_3D_VISOR ? (
     <RoofBorderCanvas
       validZonas={validZonas}
       is2A={is2A}
@@ -1917,30 +1902,57 @@ function RoofBorderSelector({
         <>
           <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vista previa del techo</div>
           <div style={{ fontSize: 12, color: C.ts, marginBottom: 10, lineHeight: 1.45 }}>
-            {multiZona
-              ? "Clic en cada lado de cada zona para elegir el accesorio. Disco violeta: afinar posición en planta (sincroniza con la vista 2D)."
-              : "Clic en cada tramo para elegir el accesorio."}
-            {onZonaPreviewChange && hasZonas && (
-              <span style={{ display: "block", marginTop: 4, fontSize: 11, color: C.ts }}>
-                3D alineado a planta (FRENTE = borde inferior del rectángulo en 2D). Doble clic en la cubierta azul (3D) o en la vista 2D de dimensiones: sentido de pendiente (afecta 3D y encuentros/cumbrera percibidos).
+            {hasZonas && !ENABLE_ROOF_3D_VISOR ? (
+              <span>
+                Los accesorios perimetrales se eligen en la <strong style={{ color: C.tp }}>planta 2D</strong> del panel derecho (bandas del perímetro). Convención:{" "}
+                <strong style={{ color: C.tp }}>FRENTE</strong> = borde inferior del rectángulo en planta.
               </span>
+            ) : (
+              <>
+                {multiZona
+                  ? "Clic en cada lado de cada zona para elegir el accesorio. Disco violeta: afinar posición en planta (misma geometría que el presupuesto)."
+                  : "Clic en cada tramo para elegir el accesorio."}
+                {onZonaPreviewChange && hasZonas && (
+                  <span style={{ display: "block", marginTop: 4, fontSize: 11, color: C.ts }}>
+                    Convención igual que la planta 2D (FRENTE = borde inferior del rectángulo). En dimensiones, doble clic en la superficie del techo para el sentido de pendiente (afecta encuentros y cumbrera).
+                  </span>
+                )}
+              </>
             )}
           </div>
         </>
       )}
       {minimalChrome && hasZonas && portalReady && (
         <div style={{ fontSize: 11, color: C.ts, marginBottom: 8, lineHeight: 1.45 }}>
-          Configurá bordes y encuentros en la <strong style={{ color: C.tp }}>vista 3D</strong> del panel derecho.
+          Configurá bordes y encuentros en la <strong style={{ color: C.tp }}>planta 2D</strong> del panel derecho (bandas perimetrales).
         </div>
       )}
       {/* ══ 3D WebGL MODE (zones defined) — inline o portal al visor derecho ══ */}
-      {hasZonas && portalReady && typeof document !== "undefined" && createPortal(
+      {ENABLE_ROOF_3D_VISOR && hasZonas && portalReady && typeof document !== "undefined" && createPortal(
         <div style={{ width: "100%", height: "100%", minHeight: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
           {canvasEl}
         </div>,
         portalEl,
       )}
-      {hasZonas && !portalReady && canvasEl}
+      {ENABLE_ROOF_3D_VISOR && hasZonas && !portalReady && canvasEl}
+      {hasZonas && !ENABLE_ROOF_3D_VISOR ? (
+        <div
+          style={{
+            padding: 14,
+            borderRadius: 10,
+            border: `1px solid ${C.border}`,
+            background: C.surfaceAlt,
+            fontSize: 12,
+            color: C.ts,
+            lineHeight: 1.5,
+            maxWidth: 440,
+            margin: "0 auto",
+          }}
+        >
+          <strong style={{ color: C.tp }}>Vista 3D en pausa.</strong> Con dimensiones cargadas, configurá bordes y perfiles desde la{" "}
+          <strong style={{ color: C.tp }}>planta 2D</strong> a la derecha (bandas resaltadas en el perímetro). En modo libre, abrí la vista previa en planta o usá el flujo con asistente.
+        </div>
+      ) : null}
 
       {/* ══ FLAT GLOBAL MODE (no zones defined) ══ */}
       {!hasZonas && (
@@ -1961,12 +1973,16 @@ function RoofBorderSelector({
               latIzq: { x: innerX - edge / 2, y: innerY + innerH / 2, anchor: "middle", rotate: -90 },
               latDer: { x: innerX + innerW + edge / 2, y: innerY + innerH / 2, anchor: "middle", rotate: 90 },
             }[side];
-            const abbr = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side);
+            const abbrFull = isDisabled && side === "fondo" ? "Cumbrera" : getLabel(side, null);
             const isVert = side === "latIzq" || side === "latDer";
+            const abbr =
+              abbrFull.length > (isVert ? 14 : 22)
+                ? `${abbrFull.slice(0, isVert ? 12 : 20)}…`
+                : abbrFull;
             const hitPad = 8;
             return (
               <g key={side} role="button" tabIndex={isDisabled ? -1 : 0}
-                aria-label={`${SIDE_LABELS[side]}: ${abbr}`}
+                aria-label={`${SIDE_LABELS[side]}: ${abbrFull}`}
                 onClick={() => handleEdgeClick(side, null)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleEdgeClick(side, null); } }}
                 style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}>
@@ -1980,11 +1996,12 @@ function RoofBorderSelector({
                   opacity={isDisabled ? 0.4 : 1}
                 />
                 {isOpen && <rect x={d.x - 2} y={d.y - 2} width={d.w + 4} height={d.h + 4} rx={isVert ? 6 : 8} fill="none" stroke={C.primary} strokeWidth={1} opacity={0.3} />}
+                <title>{`${SIDE_LABELS[side]} — ${abbrFull}`}</title>
                 <text x={lp.x} y={lp.y} textAnchor={lp.anchor} dominantBaseline="central"
-                  fill={isDisabled ? C.tt : active ? C.primary : C.ts}
-                  fontSize={8} fontWeight={600} fontFamily={FONT}
+                  fill={isDisabled ? C.tt : active ? "#1e40af" : C.ts}
+                  fontSize={active ? 10 : 9} fontWeight={active ? 700 : 600} fontFamily={FONT}
                   transform={lp.rotate ? `rotate(${lp.rotate},${lp.x},${lp.y})` : undefined}
-                >{abbr.length > 12 ? abbr.slice(0, 10) + "…" : abbr}</text>
+                >{abbr}</text>
               </g>
             );
           })}
@@ -2001,11 +2018,12 @@ function RoofBorderSelector({
       {/* Popover */}
       {openSide && typeof document !== "undefined" && createPortal((() => {
         const { side, gi } = openSide;
-        const opts = getOpts(side);
         const curVal = gi !== null ? (zonasBorders[gi]?.[side] ?? borders[side]) : borders[side];
+        const opts = getOpts(side, curVal);
         const title = gi !== null
           ? `Zona ${gi + 1} — ${SIDE_LABELS[side]}`
           : SIDE_LABELS[side];
+        const curLabel = !curVal || curVal === "none" ? "Sin perfil" : getLabel(side, gi);
         return (
           <div ref={popoverRef} style={{
             position: "fixed", zIndex: 9999,
@@ -2016,6 +2034,10 @@ function RoofBorderSelector({
             display: "flex", flexDirection: "column", animation: "bmc-fade 100ms ease-in-out",
           }}>
             <div style={{ padding: "6px 12px", fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: `1px solid ${C.border}`, background: C.surfaceAlt, borderRadius: "10px 10px 0 0", flexShrink: 0 }}>{title}</div>
+            <div style={{ padding: "10px 12px", background: C.primarySoft, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Selección actual</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1e40af", lineHeight: 1.35 }}>{curLabel}</div>
+            </div>
             <div style={{ overflowY: "auto", borderRadius: "0 0 10px 10px" }}>
               {opts.map(opt => {
                 const isSel = curVal === opt.id;
@@ -2133,6 +2155,22 @@ function RoofBorderSelector({
           { id: "desnivel", label: "Desnivel", sub: "Dos techos" },
         ];
 
+        const perfilLabelEnc = (id) => {
+          if (!id || id === "none") return "Sin perfil";
+          const o = opts.find((x) => x.id === id);
+          return o?.label || String(id);
+        };
+        const encSummary =
+          n.modo === "continuo"
+            ? "Continuo — sin accesorio en la unión"
+            : n.modo === "pretil"
+              ? `Pretil — ${perfilLabelEnc(n.perfil)} ↔ ${perfilLabelEnc(n.perfilVecino)}`
+              : n.modo === "cumbrera"
+                ? `Cumbrera — ${perfilLabelEnc(n.perfil)}`
+                : n.modo === "desnivel"
+                  ? `Desnivel — ${perfilLabelEnc(n.desnivel?.perfilBajo)} / ${perfilLabelEnc(n.desnivel?.perfilAlto)}`
+                  : "—";
+
         const renderOptRow = (opt, isSel, onPick) => (
           <div key={opt.id}
             onClick={(e) => { e.stopPropagation(); onPick(opt.id); }}
@@ -2162,6 +2200,10 @@ function RoofBorderSelector({
               <span style={{ fontSize: 10, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 {SIDE_LABELS[side]} · Z{gi + 1}
               </span>
+            </div>
+            <div style={{ padding: "10px 12px", background: "#fffbeb", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Selección actual</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", lineHeight: 1.4 }}>{encSummary}</div>
             </div>
 
             <div style={{ padding: "8px 10px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -2276,9 +2318,12 @@ const TECHO_INITIAL_VENDEDOR = {
   color: "Blanco",
   zonas: [{ largo: 0, ancho: 0 }],
   pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0,
+  // @deprecated — ignorado en runtime; usar derivedTipoAguas (calculado desde zonas[].dosAguas)
   tipoAguas: "", tipoEst: "", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
   borders: { frente: "", fondo: "", latIzq: "", latDer: "" },
   inclAccesorios: true,
+  bordesExtendido: false,
+  bordesCualquierFamilia: false,
   opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false },
 };
 
@@ -2320,6 +2365,8 @@ export default function PanelinCalculadoraV3() {
   const [flete, _setFlete] = useState(() => getFleteDefault());
   /** Costo interno del flete (USD s/IVA); opcional — afecta margen y hoja Costeo. */
   const [fleteCosto, setFleteCosto] = useState("");
+  /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
+  const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [chatOpen, setChatOpen] = useState(() => {
@@ -2335,12 +2382,15 @@ export default function PanelinCalculadoraV3() {
     if (typeof window === "undefined") return "";
     return sessionStorage.getItem("panelin-dev-token") || "";
   });
+  const [pendingQuote, setPendingQuote] = useState(null);
+  const undoStackRef = useRef([]);
+  const [undoStackLen, setUndoStackLen] = useState(0);
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
   const [hoverTechoFamilia, setHoverTechoFamilia] = useState("");
   const [hoverTechoColor, setHoverTechoColor] = useState("");
   const [hoverParedColor, setHoverParedColor] = useState("");
-  const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
+  // aguasVisorHighlight removed (tipoAguas step removed from wizard)
   /** Vista 3D referencial con textura de catálogo (paralela al RoofPreview 2D). */
   const [roofRealistic3dOn, setRoofRealistic3dOn] = useState(false);
   const [overrides, _setOverrides] = useState({});
@@ -2434,11 +2484,61 @@ export default function PanelinCalculadoraV3() {
           break;
         }
         case "advanceWizard": window.dispatchEvent(new CustomEvent("bmc-wizard-next")); break;
+        case "buildQuote": {
+          // Snapshot current state before showing modal
+          const snapshot = serializeProject({
+            scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+            overrides, excludedItems, categoriasActivas, techoAnchoModo,
+          });
+          setPendingQuote({ payload: action.payload, preview: action.preview, warnings: action.warnings || [], snapshot });
+          break;
+        }
         default: break;
       }
     },
-    [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto, setWizardStep]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto, setWizardStep,
+     scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo]
   );
+
+  const handleQuoteConfirm = useCallback(() => {
+    if (!pendingQuote) return;
+    const { payload, snapshot } = pendingQuote;
+    // Push current state snapshot to undo stack (cap at 5)
+    if (snapshot) {
+      undoStackRef.current = [snapshot, ...undoStackRef.current].slice(0, 5);
+      setUndoStackLen(undoStackRef.current.length);
+    }
+    applyQuoteSnapshot(payload, { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto });
+    setPendingQuote(null);
+  }, [pendingQuote, setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto]);
+
+  const handleQuoteDiscard = useCallback(() => {
+    setPendingQuote(null);
+  }, []);
+
+  const chatSendRef = useRef(null);
+  const handleQuoteAdjust = useCallback((msg) => {
+    setPendingQuote(null);
+    chatSendRef.current?.(msg);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    const [prev, ...rest] = undoStackRef.current;
+    undoStackRef.current = rest;
+    setUndoStackLen(rest.length);
+    try {
+      const state = deserializeProject(prev);
+      if (state.scenario) setScenario(state.scenario);
+      if (state.listaPrecios) setLP(state.listaPrecios);
+      if (state.proyecto) setProyecto(state.proyecto);
+      if (state.techo) setTecho(state.techo);
+      if (state.pared) setPared(state.pared);
+      if (state.camara) setCamara(state.camara);
+      if (state.flete != null) setFlete(state.flete);
+    } catch { /* ignore corrupt snapshot */ }
+  }, [setScenario, setLP, setProyecto, setTecho, setPared, setCamara, setFlete]);
 
   const chat = useChat({
     calcState,
@@ -2447,6 +2547,7 @@ export default function PanelinCalculadoraV3() {
     devAuthToken,
     persistHistory: false,
   });
+  chatSendRef.current = chat.send;
 
   const toggleDevMode = useCallback(() => {
     if (devMode) {
@@ -2594,8 +2695,7 @@ export default function PanelinCalculadoraV3() {
   const isWizardStepValid = useCallback((stepId) => {
     switch (stepId) {
       case "escenario": return !!scenario;
-      // "lista" step removed — price list selected via right-panel toggle
-      case "tipoAguas": return !!techo.tipoAguas;
+      // "lista" and "tipoAguas" steps removed
       case "familia": return !!techo.familia;
       case "espesor": return !!techo.espesor;
       case "color": return !!techo.color;
@@ -2612,7 +2712,7 @@ export default function PanelinCalculadoraV3() {
       case "bordes": {
         if (techo.inclAccesorios === false) return true;
         const sides = ["frente", "fondo", "latIzq", "latDer"];
-        const disabled = techo.tipoAguas === "dos_aguas" ? ["fondo"] : [];
+        const disabled = derivedTipoAguas === "dos_aguas" ? ["fondo"] : [];
         return sides.every(s => disabled.includes(s) || !!(techo.borders?.[s]));
       }
       case "selladores": return true;
@@ -2661,11 +2761,6 @@ export default function PanelinCalculadoraV3() {
       ? SOLO_TECHO_STEPS[wizardStep]?.id ?? null
       : null;
 
-  useEffect(() => {
-    if (activeWizardStepId !== "tipoAguas") {
-      setAguasVisorHighlight(false);
-    }
-  }, [activeWizardStepId]);
 
   /** Al entrar a Dimensiones (paso 7/13 Solo techo), foco en Largo de la zona principal para escribir sin clic. */
   useEffect(() => {
@@ -2814,9 +2909,20 @@ export default function PanelinCalculadoraV3() {
     () => (techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
     [techo.zonas],
   );
-  const showRoof3DHost = Boolean(scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isPhone);
+  // Derived from per-zone dosAguas flags; only root zones (not lateral annexes) count.
+  const derivedTipoAguas = useMemo(
+    () => (techo.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas)
+      ? "dos_aguas"
+      : "una_agua",
+    [techo.zonas],
+  );
+
+  const roofQuoteVisor2dEligible = Boolean(
+    scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isPhone,
+  );
+  const showRoof3DHost = Boolean(ENABLE_ROOF_3D_VISOR && roofQuoteVisor2dEligible);
   const showRoof2dInQuoteVisor = Boolean(
-    showRoof3DHost && activeWizardStepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(activeWizardStepId),
+    roofQuoteVisor2dEligible && activeWizardStepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(activeWizardStepId),
   );
 
   useEffect(() => {
@@ -2947,11 +3053,12 @@ export default function PanelinCalculadoraV3() {
   const buildDefaultZona = useCallback((t) => {
     const defaultLargo = 6.0;
     const defaultAnchoM = 5.0;
+    const tDerived = (t.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas) ? "dos_aguas" : "una_agua";
     const wantPaneles = techoAnchoModo === "paneles" && techoPanelData;
     const ancho = wantPaneles
-      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, t.tipoAguas)
+      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, tDerived)
       : defaultAnchoM;
-    return { largo: defaultLargo, ancho };
+    return { largo: defaultLargo, ancho, dosAguas: false };
   }, [techoAnchoModo, techoPanelData, normalizeTechoAnchoToPaneles]);
 
   const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, buildDefaultZona(t)] }));
@@ -3086,9 +3193,9 @@ export default function PanelinCalculadoraV3() {
     borders: techo.borders,
     onChange: (side, val) => setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } })),
     panelFamilia: techo.familia,
-    disabledSides: techo.tipoAguas === "dos_aguas" ? ["fondo"] : [],
+    disabledSides: derivedTipoAguas === "dos_aguas" ? ["fondo"] : [],
     zonas: techo.zonas,
-    tipoAguas: techo.tipoAguas,
+    tipoAguas: derivedTipoAguas,
     zonasBorders: techo.zonas?.map((z) => z.preview?.borders ?? {}),
     onZonaBorderChange: (gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } }),
     zonaEncounters: techo.zonas?.map((z) => z.preview?.encounters ?? {}),
@@ -3098,13 +3205,17 @@ export default function PanelinCalculadoraV3() {
     panelAu: techoPanelData?.au ?? 1.12,
     canvasPortalTargetRef: roof3dHostRef,
     minimalChrome: true,
+    bordesExtendido: techo.bordesExtendido ?? false,
+    bordesCualquierFamilia: techo.bordesCualquierFamilia ?? false,
   }), [
     techo.borders,
     techo.familia,
-    techo.tipoAguas,
+    derivedTipoAguas,
     techo.zonas,
     techo.pendiente,
     techoPanelData?.au,
+    techo.bordesExtendido,
+    techo.bordesCualquierFamilia,
     updateZonaPreview,
     setTecho,
   ]);
@@ -3152,14 +3263,15 @@ export default function PanelinCalculadoraV3() {
     if (techoAnchoModo !== "paneles") return;
     if (!techoPanelData) return;
     setTecho(prev => {
+      const prevTipoAguas = (prev.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas) ? "dos_aguas" : "una_agua";
       const nextZonas = prev.zonas.map(z => {
-        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas);
+        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prevTipoAguas);
         return nextAncho === z.ancho ? z : { ...z, ancho: nextAncho };
       });
       const changed = nextZonas.some((z, i) => z !== prev.zonas[i]);
       return changed ? { ...prev, zonas: nextZonas } : prev;
     });
-  }, [techoAnchoModo, techoPanelData, techo.tipoAguas, normalizeTechoAnchoToPaneles]);
+  }, [techoAnchoModo, techoPanelData, derivedTipoAguas, normalizeTechoAnchoToPaneles]);
 
   // ── Totals from all zones (for display and calculations) ──
   const zonasTotales = useMemo(() => {
@@ -3189,9 +3301,10 @@ export default function PanelinCalculadoraV3() {
           catalog: libreCatalog || undefined,
         });
       }
-      return executeScenario(sc, { techo, pared, camara });
+      const techoForCalc = { ...techo, tipoAguas: derivedTipoAguas };
+      return executeScenario(sc, { techo: techoForCalc, pared, camara });
     } catch (e) { return { error: e.message }; }
-  }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
+  }, [scenario, techo, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -3227,6 +3340,11 @@ export default function PanelinCalculadoraV3() {
     })).filter(group => group.items.length > 0);
   }, [results, overrides, flete, excludedItems, categoriasActivas, proyecto.direccion]);
 
+  const perfileriaMermaSugerencias = useMemo(
+    () => (categoriasActivas.PERFILERIA !== false ? getPerfileriaMermaSugerencias(results) : []),
+    [results, categoriasActivas.PERFILERIA],
+  );
+
   /** Líneas de selladores para el paso wizard (cantidades/precios); si el presupuesto aún no los incluye, vista previa con hipótesis inclSell=true. */
   const selladoresWizardRows = useMemo(() => {
     if (scenario === "presupuesto_libre") return { items: [], fromHypothesis: false, subtotal: 0 };
@@ -3245,6 +3363,7 @@ export default function PanelinCalculadoraV3() {
         const tHyp = scenarioDef?.hasTecho
           ? {
               ...techo,
+              tipoAguas: derivedTipoAguas,
               opciones: {
                 ...(techo.opciones || {}),
                 inclSell: techo.opciones?.inclSell === false ? true : techo.opciones?.inclSell !== false,
@@ -3390,16 +3509,20 @@ export default function PanelinCalculadoraV3() {
         totals: grandTotal,
         appendix,
         snapshotImages,
+        includePlantaResumenPage: pdfPlantaResumenPage,
       });
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const fname = pdfFileName({ proyecto, scenario, listaPrecios });
+      const fname = pdfFileName(
+        (proyecto.refInterna || "").trim() || "BMC",
+        proyecto.nombre
+      );
       downloadPdfBlob(pdfBlob, fname);
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -3700,7 +3823,7 @@ export default function PanelinCalculadoraV3() {
     return (
       <RoofPreview
         zonas={techo.zonas || []}
-        tipoAguas={techo.tipoAguas}
+        tipoAguas={derivedTipoAguas}
         pendiente={techo.pendiente}
         panelAu={techoPanelData?.au ?? 1.12}
         panelObj={techoPanelData ?? null}
@@ -3733,6 +3856,8 @@ export default function PanelinCalculadoraV3() {
         onApoyoMaterialDirect={handleApoyoMaterialDirect}
         bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
         bordesPanelFamiliaKey={techo.familia || ""}
+        bordesExtendido={techo.bordesExtendido ?? false}
+        bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
         techoBorders={techo.borders}
         onTechoBorderChange={(side, val) =>
           setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
@@ -3749,7 +3874,7 @@ export default function PanelinCalculadoraV3() {
     activeWizardStepId,
     estructuraMetricsSelectedGi,
     techo.zonas,
-    techo.tipoAguas,
+    derivedTipoAguas,
     techo.pendiente,
     techoPanelData?.au,
     updateZonaPreview,
@@ -4403,14 +4528,6 @@ export default function PanelinCalculadoraV3() {
                       ))}
                     </div>
                   )}
-                  {stepId === "tipoAguas" && (
-                    <div onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
-                      <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => advanceWizardStep()} onChange={v => {
-                        if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-                        else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-                      }} />
-                    </div>
-                  )}
                   {stepId === "familia" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setHoverTechoFamilia("")}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -4596,7 +4713,7 @@ export default function PanelinCalculadoraV3() {
                           el ancho en planta se calcula como{" "}
                           <strong style={{ color: C.primary }}>cantidad × {Number(techoPanelData.au ?? 1.12).toFixed(2)} m</strong>{" "}
                           (ancho útil del panel según familia/espesor).
-                          {techo.tipoAguas === "dos_aguas" ? (
+                          {derivedTipoAguas === "dos_aguas" ? (
                             <> En <strong>dos aguas</strong>, el ancho total de zona reparte el techo en dos faldones en la vista previa.</>
                           ) : null}
                         </div>
@@ -4634,7 +4751,7 @@ export default function PanelinCalculadoraV3() {
                           <div data-stepper-group style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
                             <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
                             {techoAnchoModo === "paneles" && techoPanelData ? (
-                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
+                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
                             ) : (
                               <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
@@ -4674,6 +4791,18 @@ export default function PanelinCalculadoraV3() {
                               </div>
                             );
                           })()}
+                          {!isLateralAnnexZona(zona) && (
+                            <Toggle
+                              label="2 Aguas (cumbrera central)"
+                              value={!!zona.dosAguas}
+                              onChange={v => {
+                                updateZona(idx, "dosAguas", v);
+                                const otrasZonas2A = (techo.zonas || []).filter((_, i) => i !== idx && !isLateralAnnexZona(techo.zonas[i])).some(z => z.dosAguas);
+                                if (v && techo.borders?.fondo === "gotero_lateral") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "cumbrera" } }));
+                                if (!v && !otrasZonas2A && techo.borders?.fondo === "cumbrera") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "gotero_lateral" } }));
+                              }}
+                            />
+                          )}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
                             <button
                               type="button"
@@ -4730,7 +4859,7 @@ export default function PanelinCalculadoraV3() {
                       {!showRoof2dInQuoteVisor ? (
                         <RoofPreview
                           zonas={techo.zonas || []}
-                          tipoAguas={techo.tipoAguas}
+                          tipoAguas={derivedTipoAguas}
                           pendiente={techo.pendiente}
                           panelAu={techoPanelData?.au ?? 1.12}
                           panelObj={techoPanelData ?? null}
@@ -4759,6 +4888,8 @@ export default function PanelinCalculadoraV3() {
                           onApoyoMaterialDirect={handleApoyoMaterialDirect}
                           bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
                           bordesPanelFamiliaKey={techo.familia || ""}
+                          bordesExtendido={techo.bordesExtendido ?? false}
+                          bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
                           techoBorders={techo.borders}
                           onTechoBorderChange={(side, val) =>
                             setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
@@ -4770,57 +4901,61 @@ export default function PanelinCalculadoraV3() {
                           }
                         />
                       ) : null}
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-                        <button
-                          type="button"
-                          onClick={() => setRoofRealistic3dOn((v) => !v)}
-                          style={{
-                            padding: "8px 14px",
-                            borderRadius: 10,
-                            border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
-                            background: roofRealistic3dOn ? C.primarySoft : C.surface,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            color: roofRealistic3dOn ? C.primary : C.tp,
-                          }}
-                        >
-                          {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
-                        </button>
-                        <CollapsibleHint title="Vista 3D" style={{ flex: 1, minWidth: 200 }}>
-                          Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
-                        </CollapsibleHint>
-                      </div>
-                      {roofRealistic3dOn && techoPanelData ? (
-                        <div data-bmc-capture="roof-3d" style={{ marginBottom: 14 }}>
-                          <Suspense
-                            fallback={
-                              <div
-                                style={{
-                                  padding: 40,
-                                  textAlign: "center",
-                                  color: C.ts,
-                                  fontSize: 13,
-                                  background: C.surfaceAlt,
-                                  borderRadius: 10,
-                                  border: `1px solid ${C.border}`,
-                                }}
+                      {ENABLE_ROOF_3D_VISOR ? (
+                        <>
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                            <button
+                              type="button"
+                              onClick={() => setRoofRealistic3dOn((v) => !v)}
+                              style={{
+                                padding: "8px 14px",
+                                borderRadius: 10,
+                                border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
+                                background: roofRealistic3dOn ? C.primarySoft : C.surface,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                color: roofRealistic3dOn ? C.primary : C.tp,
+                              }}
+                            >
+                              {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
+                            </button>
+                            <CollapsibleHint title="Vista 3D" style={{ flex: 1, minWidth: 200 }}>
+                              Opcional: misma planta que la vista 2D, con imagen del panel elegido. Solo referencia visual.
+                            </CollapsibleHint>
+                          </div>
+                          {roofRealistic3dOn && techoPanelData ? (
+                            <div data-bmc-capture="roof-3d" style={{ marginBottom: 14 }}>
+                              <Suspense
+                                fallback={
+                                  <div
+                                    style={{
+                                      padding: 40,
+                                      textAlign: "center",
+                                      color: C.ts,
+                                      fontSize: 13,
+                                      background: C.surfaceAlt,
+                                      borderRadius: 10,
+                                      border: `1px solid ${C.border}`,
+                                    }}
+                                  >
+                                    Cargando vista 3D…
+                                  </div>
+                                }
                               >
-                                Cargando vista 3D…
-                              </div>
-                            }
-                          >
-                            <RoofPanelRealisticScene
-                              validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
-                              tipoAguas={techo.tipoAguas}
-                              pendiente={techo.pendiente}
-                              familiaKey={techo.familia}
-                              espesorMm={techo.espesor}
-                              panelAu={techoPanelData?.au ?? 1.12}
-                              techoColor={techo.color || ""}
-                            />
-                          </Suspense>
-                        </div>
+                                <RoofPanelRealisticScene
+                                  validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
+                                  tipoAguas={derivedTipoAguas}
+                                  pendiente={techo.pendiente}
+                                  familiaKey={techo.familia}
+                                  espesorMm={techo.espesor}
+                                  panelAu={techoPanelData?.au ?? 1.12}
+                                  techoColor={techo.color || ""}
+                                />
+                              </Suspense>
+                            </div>
+                          ) : null}
+                        </>
                       ) : null}
                     </div>
                   )}
@@ -4911,7 +5046,7 @@ export default function PanelinCalculadoraV3() {
                           compact
                           emphasize
                           zonas={techo.zonas || []}
-                          tipoAguas={techo.tipoAguas}
+                          tipoAguas={derivedTipoAguas}
                           pendiente={techo.pendiente}
                           pendienteModo={techo.pendienteModo || "incluye_pendiente"}
                           globalAlturaDif={techo.alturaDif ?? 0}
@@ -4931,11 +5066,26 @@ export default function PanelinCalculadoraV3() {
                       {techo.inclAccesorios !== false ? (
                         <>
                           <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
-                            <strong style={{ color: C.tp }}>Vista 3D en el panel derecho:</strong> clic en cada borde de la cubierta para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
+                            <strong style={{ color: C.tp }}>Planta 2D en el panel derecho:</strong> tocá las bandas resaltadas en el perímetro de cada zona para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
                           </div>
-                          {techo.tipoAguas === "dos_aguas" && (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <Toggle
+                              label="Mostrar todos (esta familia)"
+                              value={!!techo.bordesExtendido}
+                              onChange={v => setTecho(t => ({ ...t, bordesExtendido: v }))}
+                            />
+                            <Toggle
+                              label="Cualquier familia"
+                              value={!!techo.bordesCualquierFamilia}
+                              onChange={v => setTecho(t => ({ ...t, bordesCualquierFamilia: v, bordesExtendido: v ? true : t.bordesExtendido }))}
+                            />
+                            {techo.bordesCualquierFamilia && (
+                              <span style={{ fontSize: 11, color: "#b45309" }}>⚠ Verificar disponibilidad cross-family en cotización</span>
+                            )}
+                          </div>
+                          {derivedTipoAguas === "dos_aguas" && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", background: C.primarySoft, borderRadius: 10, marginBottom: 4, fontSize: 12, color: C.primary, fontWeight: 500 }}>
-                              <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón en la vista 3D.</span>
+                              <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón en la planta 2D.</span>
                             </div>
                           )}
                         </>
@@ -4964,9 +5114,9 @@ export default function PanelinCalculadoraV3() {
                         label="BOM comercial ISODEC PIR (2 goteros + 6 babetas + kit selladores + 22 pts fijación)"
                         value={techo.opciones?.bomComercial === true}
                         onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, bomComercial: v } }))}
-                        disabled={techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas"}
+                        disabled={techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas"}
                       />
-                      {(techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas") && (
+                      {(techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas") && (
                         <div style={{ fontSize: 11, color: C.ts, opacity: 0.85 }}>Solo familia ISODEC PIR y techo una agua. En dos aguas el kit se duplicaría por faldón.</div>
                       )}
                       {!categoriasActivas.SELLADORES && (
@@ -5204,16 +5354,6 @@ export default function PanelinCalculadoraV3() {
                 })}
               </div>
             </div>
-            {scenarioDef?.hasTecho && <div style={{ marginTop: 16 }} onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
-              <div style={labelS}>CAÍDAS DEL TECHO</div>
-              <TipoAguasSelector value={techo.tipoAguas || "una_agua"} onChange={v => {
-                if (v === "dos_aguas") {
-                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-                } else {
-                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-                }
-              }} />
-            </div>}
           </div>
 
           {/* Datos proyecto (colapsable) */}
@@ -5433,7 +5573,7 @@ export default function PanelinCalculadoraV3() {
           {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && !(scenario === "techo_fachada" && usePlanoTechoFachada) && (() => {
             const globalPm = techo.pendienteModo || "incluye_pendiente";
-            const is2A = techo.tipoAguas === "dos_aguas";
+            const is2A = derivedTipoAguas === "dos_aguas";
             const baseArea = zonasTotales.area;
             const areaReal = techo.zonas?.reduce((s, z) => {
               const zPm = z.pendienteModo ?? globalPm;
@@ -5468,10 +5608,13 @@ export default function PanelinCalculadoraV3() {
                   if (modo === "paneles" && !techoPanelData) return;
                   setTechoAnchoModo(modo);
                   if (modo === "paneles" && techoPanelData) {
-                    setTecho(prev => ({
-                      ...prev,
-                      zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas) })),
-                    }));
+                    setTecho(prev => {
+                      const prevTipoAguas = (prev.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas) ? "dos_aguas" : "una_agua";
+                      return {
+                        ...prev,
+                        zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prevTipoAguas) })),
+                      };
+                    });
                   }
                 }}
                 options={[
@@ -5481,57 +5624,61 @@ export default function PanelinCalculadoraV3() {
                 disabledIds={!techoPanelData ? ["paneles"] : []}
               />
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <button
-                type="button"
-                onClick={() => setRoofRealistic3dOn((v) => !v)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 10,
-                  border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
-                  background: roofRealistic3dOn ? C.primarySoft : C.surface,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  color: roofRealistic3dOn ? C.primary : C.tp,
-                }}
-              >
-                {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
-              </button>
-              <span style={{ fontSize: 11, color: C.ts, lineHeight: 1.4, maxWidth: 420 }}>
-                Misma geometría que el presupuesto; textura según familia de panel techo.
-              </span>
-            </div>
-            {roofRealistic3dOn && techoPanelData ? (
-              <div style={{ marginBottom: 14 }}>
-                <Suspense
-                  fallback={
-                    <div
-                      style={{
-                        padding: 40,
-                        textAlign: "center",
-                        color: C.ts,
-                        fontSize: 13,
-                        background: C.surfaceAlt,
-                        borderRadius: 10,
-                        border: `1px solid ${C.border}`,
-                      }}
+            {ENABLE_ROOF_3D_VISOR ? (
+              <>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setRoofRealistic3dOn((v) => !v)}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 10,
+                      border: `1.5px solid ${roofRealistic3dOn ? C.primary : C.border}`,
+                      background: roofRealistic3dOn ? C.primarySoft : C.surface,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      color: roofRealistic3dOn ? C.primary : C.tp,
+                    }}
+                  >
+                    {roofRealistic3dOn ? "Ocultar render 3D (textura)" : "Ver render 3D (textura catálogo)"}
+                  </button>
+                  <span style={{ fontSize: 11, color: C.ts, lineHeight: 1.4, maxWidth: 420 }}>
+                    Misma geometría que el presupuesto; textura según familia de panel techo.
+                  </span>
+                </div>
+                {roofRealistic3dOn && techoPanelData ? (
+                  <div style={{ marginBottom: 14 }}>
+                    <Suspense
+                      fallback={
+                        <div
+                          style={{
+                            padding: 40,
+                            textAlign: "center",
+                            color: C.ts,
+                            fontSize: 13,
+                            background: C.surfaceAlt,
+                            borderRadius: 10,
+                            border: `1px solid ${C.border}`,
+                          }}
+                        >
+                          Cargando vista 3D…
+                        </div>
+                      }
                     >
-                      Cargando vista 3D…
-                    </div>
-                  }
-                >
-                  <RoofPanelRealisticScene
-                    validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
-                    tipoAguas={techo.tipoAguas}
-                    pendiente={techo.pendiente}
-                    familiaKey={techo.familia}
-                    espesorMm={techo.espesor}
-                    panelAu={techoPanelData?.au ?? 1.12}
-                    techoColor={techo.color || ""}
-                  />
-                </Suspense>
-              </div>
+                      <RoofPanelRealisticScene
+                        validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
+                        tipoAguas={derivedTipoAguas}
+                        pendiente={techo.pendiente}
+                        familiaKey={techo.familia}
+                        espesorMm={techo.espesor}
+                        panelAu={techoPanelData?.au ?? 1.12}
+                        techoColor={techo.color || ""}
+                      />
+                    </Suspense>
+                  </div>
+                ) : null}
+              </>
             ) : null}
             {techo.zonas.map((zona, idx) => (
               <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10, padding: 12, borderRadius: 10, background: C.surfaceAlt }}>
@@ -5554,8 +5701,8 @@ export default function PanelinCalculadoraV3() {
                   {techoAnchoModo === "paneles" && techoPanelData ? (
                     <StepperInput
                       label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (${is2A ? "paneles/faldón" : "paneles"})`}
-                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, techo.tipoAguas)}
-                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))}
+                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, derivedTipoAguas)}
+                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))}
                       min={1}
                       max={500}
                       step={1}
@@ -5588,6 +5735,18 @@ export default function PanelinCalculadoraV3() {
                 )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                  {!isLateralAnnexZona(zona) && (
+                    <Toggle
+                      label="2 Aguas (cumbrera central)"
+                      value={!!zona.dosAguas}
+                      onChange={v => {
+                        updateZona(idx, "dosAguas", v);
+                        const otrasZonas2A = (techo.zonas || []).filter((_, i) => i !== idx && !isLateralAnnexZona(techo.zonas[i])).some(z => z.dosAguas);
+                        if (v && techo.borders?.fondo === "gotero_lateral") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "cumbrera" } }));
+                        if (!v && !otrasZonas2A && techo.borders?.fondo === "cumbrera") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "gotero_lateral" } }));
+                      }}
+                    />
+                  )}
                   {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && (
                     <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 10, fontWeight: 500, cursor: "pointer", color: C.ts }}>Usar esta zona como techo principal</button>
                   )}
@@ -5727,9 +5886,26 @@ export default function PanelinCalculadoraV3() {
               <div style={labelS}>ACCESORIOS PERIMETRALES / TERMINACIONES</div>
               <Toggle label={techo.inclAccesorios !== false ? "Desactivar" : "Activar"} value={techo.inclAccesorios !== false} onChange={v => setTecho(t => ({ ...t, inclAccesorios: v }))} />
             </div>
-            {techo.inclAccesorios !== false && techo.tipoAguas === "dos_aguas" && (
+            {techo.inclAccesorios !== false && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+                <Toggle
+                  label="Mostrar todos (esta familia)"
+                  value={!!techo.bordesExtendido}
+                  onChange={v => setTecho(t => ({ ...t, bordesExtendido: v }))}
+                />
+                <Toggle
+                  label="Cualquier familia"
+                  value={!!techo.bordesCualquierFamilia}
+                  onChange={v => setTecho(t => ({ ...t, bordesCualquierFamilia: v, bordesExtendido: v ? true : t.bordesExtendido }))}
+                />
+                {techo.bordesCualquierFamilia && (
+                  <span style={{ fontSize: 11, color: "#b45309" }}>⚠ Verificar disponibilidad cross-family en cotización</span>
+                )}
+              </div>
+            )}
+            {techo.inclAccesorios !== false && derivedTipoAguas === "dos_aguas" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", background: C.primarySoft, borderRadius: 10, marginBottom: 12, fontSize: 12, color: C.primary, fontWeight: 500 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón.</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón en la planta 2D del panel derecho o aquí abajo.</span>
                 <span style={{ fontSize: 11, fontWeight: 400, color: C.ts }}>¿La otra agua ya existe o también tenemos que calcularla? En este flujo se calculan ambas aguas del techo.</span>
               </div>
             )}
@@ -5738,9 +5914,9 @@ export default function PanelinCalculadoraV3() {
                 borders={techo.borders}
                 onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))}
                 panelFamilia={techo.familia}
-                disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
+                disabledSides={derivedTipoAguas === "dos_aguas" ? ["fondo"] : []}
                 zonas={techo.zonas}
-                tipoAguas={techo.tipoAguas}
+                tipoAguas={derivedTipoAguas}
                 zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
                 onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
                 zonaEncounters={techo.zonas?.map(z => z.preview?.encounters ?? {})}
@@ -5750,6 +5926,8 @@ export default function PanelinCalculadoraV3() {
                 panelAu={techoPanelData?.au ?? 1.12}
                 canvasPortalTargetRef={showRoof3DHost ? roof3dHostRef : null}
                 minimalChrome={Boolean(showRoof3DHost)}
+                bordesExtendido={techo.bordesExtendido ?? false}
+                bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
               />
             ) : (
               <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
@@ -5918,12 +6096,12 @@ export default function PanelinCalculadoraV3() {
             scenarioId={scenario}
             hoverScenarioId={scenarioHoverId}
             stepId={activeWizardStepId}
-            tipoAguas={techo.tipoAguas || "una_agua"}
+            tipoAguas={derivedTipoAguas}
             techoFamilia={techo.familia || ""}
             hoverTechoFamilia={activeWizardStepId === "familia" ? hoverTechoFamilia : ""}
             techoColor={techo.color || ""}
             hoverTechoColor={activeWizardStepId === "color" || activeWizardStepId === "color_pared" ? hoverTechoColor || hoverParedColor : ""}
-            aguasHighlight={aguasVisorHighlight}
+            aguasHighlight={false}
             showRoof3DStage={showRoof3DHost}
             roofCanvasHostRef={roof3dHostRef}
             onRoofCanvasHostReady={bumpRoof3dHostReady}
@@ -5931,11 +6109,8 @@ export default function PanelinCalculadoraV3() {
             techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
             dimensionSummary={quoteVisorDimensionSummary}
             roof2DPreview={roof2DPreviewForVisor}
-            onSelectAgua={activeWizardStepId === "tipoAguas" ? (v) => {
-              if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-              else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-            } : null}
-            onNext={activeWizardStepId === "tipoAguas" ? advanceWizardStep : null}
+            onSelectAgua={null}
+            onNext={null}
           />
           {/* Lista de precios — toggle siempre visible en panel derecho */}
           {modoVendedor && !scenarioDef?.isLibre && (
@@ -5989,6 +6164,18 @@ export default function PanelinCalculadoraV3() {
           {groups.length > 0 && <div style={{ marginBottom: 16 }}>
             {groups.map((g, gi) => <TableGroup key={gi} title={g.title} items={g.items} subtotal={g.items.reduce((s, i) => s + (i.total || 0), 0)} collapsed={!!collapsedGroups[g.title]} onToggle={() => setCollapsedGroups(cg => ({ ...cg, [g.title]: !cg[g.title] }))} onOverride={handleOverride} onRevert={handleRevert} onExclude={handleExclude} />)}
           </div>}
+          {perfileriaMermaSugerencias.length > 0 && (
+            <div style={{ ...sectionS, marginBottom: 16, background: "#f0fdf4", border: `1px solid ${C.brand}33`, borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.tp, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <Info size={14} color={C.brand} /> Merma y recortes (perfilería)
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.ts, lineHeight: 1.55 }}>
+                {perfileriaMermaSugerencias.map((t, i) => (
+                  <li key={i} style={{ marginBottom: i === perfileriaMermaSugerencias.length - 1 ? 0 : 6 }}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {results && !results.error && groups.length === 0 && (
             <AlertBanner type="warning" message="Todas las categorías están desactivadas. Activá al menos una para ver el presupuesto." />
           )}
@@ -6039,6 +6226,24 @@ export default function PanelinCalculadoraV3() {
             <div>Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}
 
+          {/* PDF+ opción: página Planta + resumen — desktop */}
+          {groups.length > 0 && (
+            <div className="bmc-desktop-actions" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap", fontSize: 13, color: C.ts }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}>
+                <input
+                  type="checkbox"
+                  checked={pdfPlantaResumenPage}
+                  onChange={(e) => setPdfPlantaResumenPage(e.target.checked)}
+                  style={{ width: 18, height: 18 }}
+                />
+                <span>
+                  <span style={{ fontWeight: 700, color: C.tp }}>PDF+</span>
+                  {" · "}Incluir página <b style={{ color: C.brand }}>Planta + resumen</b> (marca · obra)
+                </span>
+              </label>
+            </div>
+          )}
+
           {/* Action buttons — desktop only */}
           {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
             <button onClick={handleCopyWA} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
@@ -6084,6 +6289,31 @@ export default function PanelinCalculadoraV3() {
         </Panel>
       </PanelGroup>
 
+      <QuotePreviewModal
+        pendingQuote={pendingQuote}
+        onConfirm={handleQuoteConfirm}
+        onDiscard={handleQuoteDiscard}
+        onAdjust={(msg) => handleQuoteAdjust(msg)}
+      />
+
+      {undoStackLen > 0 && (
+        <button
+          type="button"
+          title="Deshacer última cotización aplicada"
+          onClick={handleUndo}
+          style={{
+            position: "fixed", bottom: 80, right: 16, zIndex: 8000,
+            background: "#fff", border: "1px solid #e5e5ea",
+            borderRadius: 10, padding: "8px 12px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.12)",
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 13, fontWeight: 600, color: "#1d1d1f", cursor: "pointer",
+          }}
+        >
+          <RotateCcw size={14} /> Deshacer cotización
+        </button>
+      )}
+
       <PanelinChatPanel
         isOpen={chatOpen}
         onClose={() => {
@@ -6113,6 +6343,8 @@ export default function PanelinCalculadoraV3() {
         onBulkArchiveKB={chat.bulkArchiveKB}
         onLoadConversations={chat.loadConversationList}
         onLoadConversationAnalysis={chat.loadConversationAnalysis}
+        calcState={calcState}
+        onChatAction={handleChatAction}
       />
 
       <Toast message={toast} visible={!!toast} />
@@ -6146,6 +6378,8 @@ export default function PanelinCalculadoraV3() {
           onCosteo={handleCosteo}
           onCopyTSV={handleCopyTSV}
           onPdfEnriquecido={handlePdfEnriquecido}
+          pdfPlantaResumenPage={pdfPlantaResumenPage}
+          onPdfPlantaResumenPageChange={setPdfPlantaResumenPage}
         />
       )}
 

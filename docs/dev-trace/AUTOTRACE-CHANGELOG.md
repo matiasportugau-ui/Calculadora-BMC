@@ -30,3 +30,23 @@
 - 2026-04-19 07:15:41 — `f62400e` — feat: log Sketchfab integration commit in worklog
 - 2026-04-19 07:25:28 — `ef8734c` — chore: sync autotrace docs and data version for Sketchfab integration commits
 - 2026-04-19 07:36:10 — `0a5667b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
+- 2026-04-19 07:45:36 — `dec007b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
+- 2026-04-20 20:33:19 — `0f9ab57` — fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
+- 2026-04-20 20:53:27 — `bcefb3e` — chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor
+- 2026-04-20 20:53:41 — `6d1e0ac` — chore(dev-trace): record autotrace for editor ergonomics commit
+- 2026-04-20 21:01:25 — `c57f6f4` — chore(dev-trace): refine autotrace logging and documentation updates
+- 2026-04-20 22:23:18 — `1306642` — chore: add Google Drive OAuth setup scripts and documentation
+- 2026-04-20 22:53:49 — `0f3f008` — chore: update Google Drive OAuth setup scripts and documentation
+- 2026-04-21 01:52:11 — `691b550` — chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation
+- 2026-04-21 02:45:30 — `9a0dc85` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
+- 2026-04-21 02:46:10 — `04f7b41` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
+- 2026-04-21 02:57:44 — `6d95be9` — feat(roof): render encounter lines as clickable SVG elements
+- 2026-04-21 03:38:14 — `fe55309` — feat(roof): split border strips by exterior intervals on partial encounters
+- 2026-04-21 03:49:34 — `773e0df` — feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
+- 2026-04-21 04:07:02 — `5715776` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
+- 2026-04-21 04:12:55 — `acaebad` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
+- 2026-04-21 19:23:28 — `391c695` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
+- 2026-04-22 00:12:23 — `742293c` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
+- 2026-04-22 00:29:20 — `3b8fb3d` — chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement
+- 2026-04-22 00:31:09 — `826b9c4` — chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit
+- 2026-04-22 00:31:31 — `fb845a2` — chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop

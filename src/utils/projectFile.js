@@ -80,9 +80,11 @@ export function deserializeProject(data) {
     },
     techo: {
       familia: "", espesor: "", color: "Blanco",
-      zonas: [{ largo: 6.0, ancho: 5.0 }],
+      zonas: [{ largo: 6.0, ancho: 5.0, dosAguas: false }],
       pendiente: 0, tipoAguas: "una_agua", tipoEst: "metal", ptsHorm: 0,
       borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" },
+      bordesExtendido: false,
+      bordesCualquierFamilia: false,
       opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
     },
     pared: {
@@ -120,7 +122,14 @@ export function deserializeProject(data) {
     scenario: data.scenario || defaults.scenario,
     listaPrecios: data.listaPrecios || defaults.listaPrecios,
     proyecto: { ...defaults.proyecto, ...(data.proyecto || {}) },
-    techo: { ...defaults.techo, ...(data.techo || {}) },
+    techo: (() => {
+      let rawTecho = { ...defaults.techo, ...(data.techo || {}) };
+      // Migrate legacy projects with global tipoAguas="dos_aguas" → set dosAguas on each zone
+      if (rawTecho.tipoAguas === "dos_aguas") {
+        rawTecho = { ...rawTecho, zonas: (rawTecho.zonas || []).map(z => ({ ...z, dosAguas: true })) };
+      }
+      return rawTecho;
+    })(),
     pared: { ...defaults.pared, ...(data.pared || {}) },
     camara: { ...defaults.camara, ...(data.camara || {}) },
     flete: data.flete ?? defaults.flete,

@@ -100,7 +100,8 @@ import {
   computeLogisticaKpis,
   mirrorBedXForView,
 } from "../src/utils/bmcLogisticaBedView.js";
-import { buildRoofPlanEdges, layoutZonasEnPlanta } from "../src/utils/roofPlanGeometry.js";
+import { buildEdgeBOM, buildRoofPlanEdges, getSharedSidesPerZona, layoutZonasEnPlanta } from "../src/utils/roofPlanGeometry.js";
+import { buildZoneBorderExteriorLines } from "../src/utils/roofPlanEdgeSegments.js";
 import {
   normalizeEncounter,
   resolveNeighborSharedSide,
@@ -111,7 +112,7 @@ import {
   patchEncounterPairSegment,
 } from "../src/utils/roofEncounterModel.js";
 import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
-import { executeScenario } from "../src/utils/scenarioOrchestrator.js";
+import { effectiveBordersTechoFachada, executeScenario } from "../src/utils/scenarioOrchestrator.js";
 import {
   defaultPrincipalZonaIndex,
   previewPositionForTramoApiladoFrente,
@@ -125,6 +126,7 @@ import {
   isLateralAnnexZona,
   snapLateralAnnexPlanta,
   zonasToPlantRectsLogical,
+  zonasToPlantRectsWithAutoGap,
 } from "../src/utils/roofLateralAnnexLayout.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta, countPanels } from "../src/utils/roofPanelStripsPlanta.js";
 import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
@@ -1105,6 +1107,14 @@ assert(
     r?.items?.some((it) => it.sku === "arandela_plana"),
     false,
   );
+  // Lock hormigón rod count: puntos=54 (grid40+perim14), Lhorm=0.30m → perRod=3 → ceil(54/3)=18
+  const varItem = r?.items?.find((it) => it.sku === "varilla_38");
+  assert(
+    "calcFijacionesVarilla hormigón 100mm → varilla_38 cant = 18 (Lhorm=0.30m, perRod=3)",
+    varItem && varItem.cant === 18,
+    varItem?.cant,
+    18,
+  );
 }
 
 {
@@ -1884,6 +1894,94 @@ assert(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SUITE 32e2: roofPlanEdgeSegments (perímetro dibujable: junta interna vs 2 raíces)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 32e2: roofPlanEdgeSegments ═══");
+
+function mapEntriesFromRects(rects) {
+  return rects.map((r) => ({ gi: r.gi, x: r.x, y: r.y, w: r.w, h: r.h }));
+}
+
+function verticalLinesAtX(lines, xTarget, eps = 1e-3) {
+  return (lines || []).filter(
+    (ln) => Math.abs(ln.x1 - xTarget) < eps && Math.abs(ln.x2 - xTarget) < eps,
+  );
+}
+
+const edgeSegZsSameH = [
+  { largo: 5, ancho: 4 },
+  { largo: 5, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+];
+const edgeSegEntriesSameH = mapEntriesFromRects(zonasToPlantRectsLogical(edgeSegZsSameH, "una_agua"));
+const edgeSegExtSameH = buildZoneBorderExteriorLines(edgeSegEntriesSameH, edgeSegZsSameH);
+const r0Same = edgeSegEntriesSameH.find((e) => e.gi === 0);
+const r1Same = edgeSegEntriesSameH.find((e) => e.gi === 1);
+const xJointSame = r0Same.x + r0Same.w;
+const vertParentSame = verticalLinesAtX(edgeSegExtSameH[0], xJointSame);
+const vertAnnexSame = verticalLinesAtX(edgeSegExtSameH[1], r1Same.x);
+assert(
+  "buildZoneBorderExteriorLines mismo cuerpo misma altura: sin trazo en junta vertical (padre)",
+  vertParentSame.length === 0,
+  vertParentSame.length,
+  0,
+);
+assert(
+  "buildZoneBorderExteriorLines mismo cuerpo misma altura: sin trazo en junta vertical (anexo)",
+  vertAnnexSame.length === 0,
+  vertAnnexSame.length,
+  0,
+);
+
+const edgeSegZsShortAnnex = [
+  { largo: 6, ancho: 4 },
+  { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+];
+const edgeSegEntriesShort = mapEntriesFromRects(zonasToPlantRectsLogical(edgeSegZsShortAnnex, "una_agua"));
+const edgeSegExtShort = buildZoneBorderExteriorLines(edgeSegEntriesShort, edgeSegZsShortAnnex);
+const r0Short = edgeSegEntriesShort.find((e) => e.gi === 0);
+const xJointShort = r0Short.x + r0Short.w;
+const vertParentShort = verticalLinesAtX(edgeSegExtShort[0], xJointShort);
+assert(
+  "buildZoneBorderExteriorLines solape parcial: solo tramo libre del lateral del padre",
+  vertParentShort.length === 1 &&
+    Math.abs(vertParentShort[0].y1 - 4) < 0.02 &&
+    Math.abs(vertParentShort[0].y2 - 6) < 0.02,
+  vertParentShort,
+  "one segment y≈4..6",
+);
+
+const edgeSegZsTwoRoots = [
+  { largo: 10, ancho: 21.28, preview: { x: 0, y: 0 } },
+  { largo: 5.6, ancho: 6, preview: { x: 21.28, y: 0 } },
+];
+const edgeSegEntriesTwo = mapEntriesFromRects(zonasToPlantRectsWithAutoGap(edgeSegZsTwoRoots, "una_agua"));
+const edgeSegExtTwo = buildZoneBorderExteriorLines(edgeSegEntriesTwo, edgeSegZsTwoRoots);
+const r0Two = edgeSegEntriesTwo.find((e) => e.gi === 0);
+const xRight0 = r0Two.x + r0Two.w;
+const vertTwoRoots = verticalLinesAtX(edgeSegExtTwo[0], xRight0);
+const lenVertTwo = vertTwoRoots.reduce((s, ln) => s + Math.abs(ln.y2 - ln.y1), 0);
+assert(
+  "buildZoneBorderExteriorLines dos raíces: mantiene trazo en encuentro vertical",
+  lenVertTwo >= 5.5,
+  lenVertTwo,
+  ">= 5.5",
+);
+
+const edgeBomShortAnnex = buildEdgeBOM(edgeSegZsShortAnnex, "una_agua");
+assert(
+  "buildEdgeBOM anexo más corto: ml latDer padre ≈ tramo libre 2 m",
+  edgeBomShortAnnex.mlByZona[0] && Math.abs(edgeBomShortAnnex.mlByZona[0].latDer - 2) < 0.05,
+  edgeBomShortAnnex.mlByZona[0]?.latDer,
+  2,
+);
+assert(
+  "buildEdgeBOM anexo más corto: un encuentro vertical ≈ 4 m",
+  edgeBomShortAnnex.encounters.length === 1 && Math.abs(edgeBomShortAnnex.encounters[0].length - 4) < 0.05,
+  edgeBomShortAnnex.encounters.map((e) => e.length).join(","),
+  "4",
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUITE 32f: roofPanelMapUrl (Vista 3D textura catálogo)
 // ═══════════════════════════════════════════════════════════════════════════
 console.log("\n═══ SUITE 32f: roofPanelMapUrl ═══");
@@ -2123,6 +2221,138 @@ console.log("\n═══ SUITE 33: scenarioOrchestrator ═══");
   });
   assert("executeScenario camara_frig returns result", !!r, !!r, true);
   assert("executeScenario camara_frig provides techoResult on valid dims", !!r?.techoResult, !!r?.techoResult, true);
+}
+
+{
+  const r = executeScenario("solo_techo", {
+    techo: {
+      familia: "ISODEC_EPS",
+      espesor: 100,
+      tipoAguas: "una_agua",
+      tipoEst: "metal",
+      pendiente: 0,
+      pendienteModo: "incluye_pendiente",
+      alturaDif: 0,
+      borders: {
+        frente: "gotero_frontal",
+        fondo: "gotero_lateral",
+        latIzq: "gotero_lateral",
+        latDer: "gotero_lateral",
+      },
+      opciones: { inclSell: false, inclCanalon: false, inclGotSup: false, bomComercial: false },
+      zonas: [
+        {
+          largo: 6,
+          ancho: 4,
+          preview: {
+            encounterByPair: {
+              "0-1": { tipo: "perfil", modo: "pretil", perfil: "gotero_lateral" },
+            },
+          },
+        },
+        { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+      ],
+    },
+    pared: {},
+    camara: {},
+  });
+  assert("executeScenario solo_techo anexo corto + encuentro: resultado", !!r && Array.isArray(r.allItems), !!r, true);
+  const encLine = (r?.allItems || []).find(
+    (it) => String(it.label || "").includes("Encuentro (0-1)") && it.tipo === "gotero_lateral",
+  );
+  assert(
+    "executeScenario solo_techo: BOM encuentro en tramo compartido (longitud geométrica 4 m → perfilería)",
+    !!encLine && Number(encLine.ml) >= 4,
+    encLine ? `${encLine.label} ml=${encLine.ml}` : "missing",
+    "Encuentro gotero_lateral ml≥4",
+  );
+}
+
+{
+  const r = executeScenario("solo_techo", {
+    techo: {
+      familia: "ISODEC_EPS",
+      espesor: 100,
+      tipoAguas: "dos_aguas",
+      tipoEst: "metal",
+      pendiente: 0,
+      pendienteModo: "incluye_pendiente",
+      alturaDif: 0,
+      borders: {
+        frente: "gotero_frontal",
+        fondo: "gotero_lateral",
+        latIzq: "gotero_lateral",
+        latDer: "gotero_lateral",
+      },
+      opciones: { inclSell: false, inclCanalon: false, inclGotSup: false, bomComercial: false },
+      zonas: [
+        {
+          largo: 6,
+          ancho: 4,
+          preview: {
+            encounterByPair: {
+              "0-1": { tipo: "perfil", modo: "pretil", perfil: "gotero_lateral" },
+            },
+          },
+        },
+        { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+      ],
+    },
+    pared: {},
+    camara: {},
+  });
+  assert("executeScenario solo_techo dos_aguas anexo + encuentro: resultado", !!r && Array.isArray(r.allItems), !!r, true);
+  const encLine2a = (r?.allItems || []).find(
+    (it) => String(it.label || "").includes("Encuentro (0-1)") && it.tipo === "gotero_lateral",
+  );
+  assert(
+    "executeScenario solo_techo dos_aguas: BOM encuentro usa longitud geométrica del tramo compartido",
+    !!encLine2a && Number(encLine2a.ml) >= 4,
+    encLine2a ? `${encLine2a.label} ml=${encLine2a.ml}` : "missing",
+    "Encuentro gotero_lateral ml≥4",
+  );
+}
+
+{
+  const partialZsFach = [
+    { largo: 6, ancho: 4 },
+    { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+  ];
+  const sharedPart = getSharedSidesPerZona(partialZsFach, "una_agua");
+  const m0p = sharedPart.get(0);
+  assert(
+    "getSharedSidesPerZona anexo corto: latDer padre partial (no fullySide)",
+    m0p?.get("latDer") && m0p.get("latDer").fullySide === false,
+    m0p?.get("latDer")?.fullySide,
+    false,
+  );
+  const effPart = effectiveBordersTechoFachada({ latDer: "gotero_lateral", frente: "gotero_frontal" }, m0p);
+  assert(
+    "effectiveBordersTechoFachada solape parcial: conserva tipo latDer",
+    effPart.latDer === "gotero_lateral" && effPart.frente === "gotero_frontal",
+    `${effPart.latDer},${effPart.frente}`,
+    "gotero_lateral,gotero_frontal",
+  );
+
+  const fullZsFach = [
+    { largo: 5, ancho: 4 },
+    { largo: 5, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+  ];
+  const sharedFull = getSharedSidesPerZona(fullZsFach, "una_agua");
+  const m0f = sharedFull.get(0);
+  assert(
+    "getSharedSidesPerZona misma altura: latDer padre fullySide",
+    m0f?.get("latDer")?.fullySide === true,
+    m0f?.get("latDer")?.fullySide,
+    true,
+  );
+  const effFull = effectiveBordersTechoFachada({ latDer: "gotero_lateral" }, m0f);
+  assert(
+    "effectiveBordersTechoFachada lado entero compartido: latDer → none",
+    effFull.latDer === "none",
+    effFull.latDer,
+    "none",
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
