@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square } from "lucide-react";
+import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
+import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 
 const FONT =
@@ -204,6 +205,9 @@ function Avatar({ size = 28 }) {
  *   onVerifyCalculation?: (text: string) => Promise<void>,
  *   detachedMode?: boolean,
  *   onOpenDetachedWindow?: () => void,
+ *   calcState?: object,
+ *   onChatAction?: (action: object) => void,
+ *   authHeader?: string,
  * }} props
  */
 export default function PanelinChatPanel({
@@ -231,8 +235,12 @@ export default function PanelinChatPanel({
   onVerifyCalculation,
   detachedMode = false,
   onOpenDetachedWindow,
+  calcState,
+  onChatAction,
+  authHeader,
 }) {
   const [isSkinMenuOpen, setIsSkinMenuOpen] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [customSkins, setCustomSkins] = useState(() => loadCustomSkins());
   const [skinEditorOpen, setSkinEditorOpen] = useState(false);
   const [skinDraft, setSkinDraft] = useState(() => makeSkinDraftFromTokens(BUILTIN_SKINS[0].tokens));
@@ -757,6 +765,18 @@ export default function PanelinChatPanel({
             </button>
           )}
           <button
+            onClick={() => setVoiceMode((v) => !v)}
+            title={voiceMode ? "Volver a modo texto" : "Modo voz fluido (OpenAI Realtime)"}
+            style={{
+              ...ghostBtn,
+              background: voiceMode ? "rgba(255,255,255,0.24)" : "transparent",
+            }}
+            aria-label={voiceMode ? "Volver a modo texto" : "Activar modo voz"}
+          >
+            <Radio size={15} />
+          </button>
+          {!voiceMode && (
+          <button
             onClick={() => setTtsEnabled((v) => !v)}
             title={ttsEnabled ? "Desactivar lectura en voz alta" : "Activar lectura en voz alta"}
             style={{
@@ -767,6 +787,7 @@ export default function PanelinChatPanel({
           >
             {ttsEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
+          )}
           {isStreaming && stop && (
             <button
               type="button"
@@ -799,8 +820,20 @@ export default function PanelinChatPanel({
           </button>
         </div>
 
+        {/* ── Voice Mode ── */}
+        {voiceMode && (
+          <PanelinVoicePanel
+            calcState={calcState}
+            onAction={onChatAction}
+            onSwitchToText={() => setVoiceMode(false)}
+            skinTokens={activeTokens}
+            devMode={devMode}
+            authHeader={authHeader}
+          />
+        )}
+
         {/* ── Messages ── */}
-        <div
+        {!voiceMode && <div
           ref={scrollContainerRef}
           role="log"
           aria-label="Conversación"
@@ -1246,10 +1279,10 @@ export default function PanelinChatPanel({
           </div>
 
           <div ref={messagesEndRef} />
-        </div>
+        </div>}
 
         {/* ── Input ── */}
-        <div
+        {!voiceMode && <div
           style={{
             position: "relative",
             borderTop: `1px solid ${BORDER}`,
@@ -1351,7 +1384,7 @@ export default function PanelinChatPanel({
               <Send size={16} />
             </button>
           )}
-        </div>
+        </div>}
 
         {devMode && (
           <PanelinDevPanel
