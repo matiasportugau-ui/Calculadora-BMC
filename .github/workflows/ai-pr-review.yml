@@ -1,0 +1,166 @@
+name: AI PR Review — Claude + Codex
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+jobs:
+  ai-review:
+    name: AI Review (Claude + Codex)
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run AI Review
+        uses: actions/github-script@v7
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          script: |
+            const https = require('https');
+
+            // ── helpers ──────────────────────────────────────────────────────────
+            function httpsPost(hostname, path, headers, body) {
+              return new Promise((resolve, reject) => {
+                const data = JSON.stringify(body);
+                const req = https.request(
+                  { hostname, path, method: 'POST', headers: { ...headers, 'Content-Length': Buffer.byteLength(data) } },
+                  (res) => {
+                    let raw = '';
+                    res.on('data', (c) => (raw += c));
+                    res.on('end', () => {
+                      try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
+                      catch { resolve({ status: res.statusCode, body: raw }); }
+                    });
+                  }
+                );
+                req.on('error', reject);
+                req.write(data);
+                req.end();
+              });
+            }
+
+            // ── fetch PR diff ────────────────────────────────────────────────────
+            const { data: prData } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              pull_number: context.issue.number,
+              mediaType: { format: 'diff' },
+            });
+            const diff = typeof prData === 'string' ? prData : JSON.stringify(prData);
+            const truncatedDiff = diff.length > 12000 ? diff.slice(0, 12000) + '\n\n[diff truncated — showing first 12 000 chars]' : diff;
+
+            const prMeta = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const prTitle = prMeta.data.title;
+            const prBody  = prMeta.data.body || '(no description)';
+
+            const systemPrompt =
+              'You are a senior software engineer reviewing a pull request. ' +
+              'Analyze the diff for: functional bugs, edge cases, security issues, ' +
+              'performance regressions, missing tests, and risky changes. ' +
+              'Format your response as a concise Markdown list grouped by severity: ' +
+              '🔴 Critical, 🟠 High, 🟡 Medium, 🟢 Low/Nit. ' +
+              'For each item include file + line if applicable and a suggested fix. ' +
+              'If the PR looks good, say so briefly.';
+
+            const userPrompt =
+              `**PR title:** ${prTitle}\n\n` +
+              `**PR description:**\n${prBody}\n\n` +
+              `**Diff:**\n\`\`\`diff\n${truncatedDiff}\n\`\`\``;
+
+            // ── call Claude ──────────────────────────────────────────────────────
+            let claudeReview = '';
+            if (process.env.ANTHROPIC_API_KEY) {
+              try {
+                const res = await httpsPost(
+                  'api.anthropic.com',
+                  '/v1/messages',
+                  {
+                    'Content-Type':      'application/json',
+                    'x-api-key':         process.env.ANTHROPIC_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                  },
+                  {
+                    model: 'claude-opus-4-5',
+                    max_tokens: 1500,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: userPrompt }],
+                  }
+                );
+                if (res.status === 200 && res.body.content?.[0]?.text) {
+                  claudeReview = res.body.content[0].text;
+                } else {
+                  claudeReview = `⚠️ Claude API error (${res.status}): ${JSON.stringify(res.body).slice(0, 200)}`;
+                }
+              } catch (e) {
+                claudeReview = `⚠️ Claude request failed: ${e.message}`;
+              }
+            } else {
+              claudeReview = '_Skipped — `ANTHROPIC_API_KEY` secret not set._';
+            }
+
+            // ── call OpenAI (Codex/GPT-4o) ───────────────────────────────────────
+            let codexReview = '';
+            if (process.env.OPENAI_API_KEY) {
+              try {
+                const res = await httpsPost(
+                  'api.openai.com',
+                  '/v1/chat/completions',
+                  {
+                    'Content-Type':  'application/json',
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                  },
+                  {
+                    model: 'gpt-4o',
+                    max_tokens: 1500,
+                    messages: [
+                      { role: 'system', content: systemPrompt },
+                      { role: 'user',   content: userPrompt },
+                    ],
+                  }
+                );
+                if (res.status === 200 && res.body.choices?.[0]?.message?.content) {
+                  codexReview = res.body.choices[0].message.content;
+                } else {
+                  codexReview = `⚠️ OpenAI API error (${res.status}): ${JSON.stringify(res.body).slice(0, 200)}`;
+                }
+              } catch (e) {
+                codexReview = `⚠️ OpenAI request failed: ${e.message}`;
+              }
+            } else {
+              codexReview = '_Skipped — `OPENAI_API_KEY` secret not set._';
+            }
+
+            // ── post combined comment ────────────────────────────────────────────
+            const body =
+              `## 🤖 AI Pull Request Review\n\n` +
+              `> Auto-generated by the \`ai-pr-review\` workflow. Human review is still required.\n\n` +
+              `---\n\n` +
+              `### 🟣 Claude (Anthropic)\n\n${claudeReview}\n\n` +
+              `---\n\n` +
+              `### 🟦 Codex / GPT-4o (OpenAI)\n\n${codexReview}\n`;
+
+            await github.rest.issues.createComment({
+              owner:       context.repo.owner,
+              repo:        context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
