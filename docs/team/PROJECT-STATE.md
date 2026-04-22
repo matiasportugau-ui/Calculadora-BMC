@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-19
+**Última actualización:** 2026-04-22
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-22 (UX/QA — 4 fixes backlog planta 2D + QA):** (1) **Encuentros mismo cuerpo no seleccionables** [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): juntas panel-panel entre lateral annexes del mismo cuerpo se renderizan en gris tenue (`#9ca3af`, `pointerEvents=none`); drag de zona no abre prompt para estas juntas — solo encuentros entre distintos cuerpos son clickeables. (2) **Estructura — click dot abre paleta sin conflict** [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx): en modo `combinada+bulk`, click corto en dot ahora abre paleta de material (igual que click en línea de apoyo), elimina conflicto de capas hit; toggle enable/disable queda en clic derecho. (3) **data-testid estables para Recorder/E2E** [`PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx): `wizard-step-{stepId}`, `wizard-btn-siguiente/anterior`, `scenario-card-{id}`, `lista-precios-{venta|web}`, `dim-largo/ancho/paneles-{idx}`; `StepperInput` y `SegmentedControl` aceptan `testId` prop. (4) **effectiveBorders por tramo dominante** [`roofEncounterModel.js`](../../src/utils/roofEncounterModel.js) + [`scenarioOrchestrator.js`](../../src/utils/scenarioOrchestrator.js): nueva `dominantEncounterPerfil()` — cuando un lado compartido tiene tramos con distintos perfiles, usa el perfil del tramo de mayor span con `includeInBom=true`; fallback al perfil base. Tests: **349** OK (↑ de 335 por tests acumulados de sesiones anteriores).
+
+**2026-04-21 (Calculadora — encuentros multizona Fase 3+):** Auto-default cumbrera en encuentros horizontales `dos_aguas`; render de líneas de encuentro como SVG clicables; split de bandas de borde por intervalos exteriores en encuentros parciales; `gotero_frontal` añadido a opciones lado `fondo` para ISODEC/ISODEC_PIR. [`RoofPreview.jsx`](../../src/components/RoofPreview.jsx), [`roofPlanEdgeSegments.js`](../../src/utils/roofPlanEdgeSegments.js), [`constants.js`](../../src/data/constants.js).
 
 **2026-04-19 (Ops — Cloud Run request timeout + ingest email prod):** `gcloud run services update panelin-calc --region=us-central1 --timeout=300` (revisión desplegada **00170-5jb**). Evita **504** en `POST /api/crm/ingest-email` (IA + Sheets ~3 min). Verificación: `npm run email:ingest-snapshot -- --limit 1` con `BMC_API_BASE` prod → **200**, `crmRow=31`. Scripts: [`scripts/cloud-run-panelin-calc-request-timeout.sh`](../../scripts/cloud-run-panelin-calc-request-timeout.sh); [`scripts/deploy-cloud-run.sh`](../../scripts/deploy-cloud-run.sh) ahora usa `--timeout=300` en `gcloud run deploy`.
 
