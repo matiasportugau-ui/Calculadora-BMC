@@ -473,9 +473,11 @@ router.post("/agent/chat", async (req, res) => {
 
   const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
 
-  // Log conversation meta on first turn using only known values (never log "pending")
-  const turnIndex = messages.filter((m) => m.role === "user").length - 1;
-  if (conversationId && turnIndex === 0) {
+  // Use a monotonically increasing global index so user and assistant turns never collide.
+  // messages includes the current user message, so all-messages-count - 1 = new user global index.
+  const allTurns = messages.filter((m) => m.role === "user" || m.role === "assistant");
+  const turnIndex = allTurns.length - 1;
+  if (conversationId && allTurns.length === 1) {
     const meta = { devMode };
     if (typeof aiProvider === "string" && aiProvider !== "auto") meta.provider = aiProvider;
     if (typeof aiModel === "string" && aiModel.trim()) meta.model = aiModel.trim();
@@ -554,6 +556,9 @@ router.post("/agent/chat", async (req, res) => {
 
   for (const provider of providerChain) {
     try {
+      // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
+      visibleAssistantText = "";
+      emittedActions.length = 0;
       let buf = "";
       let resolvedModel = "";
 

@@ -10,7 +10,8 @@ export function estimateTokensSystem(str) {
   return Math.ceil((str?.length || 0) / CHARS_PER_TOKEN_SYSTEM);
 }
 
-export const CHAT_MAX_TOKENS = Number(process.env.CHAT_MAX_TOKENS) || 2048;
+const _parsedChatMaxTokens = parseInt(process.env.CHAT_MAX_TOKENS, 10);
+export const CHAT_MAX_TOKENS = Number.isNaN(_parsedChatMaxTokens) ? 2048 : Math.max(1, _parsedChatMaxTokens);
 
 export const MODEL_CONTEXT_LIMITS = {
   "claude-haiku-4-5-20251001": 200_000,

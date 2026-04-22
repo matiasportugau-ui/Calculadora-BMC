@@ -24,6 +24,17 @@ import { buildSystemPrompt } from "../lib/chatPrompts.js";
 
 const router = Router();
 
+const VALID_PROMPT_SECTIONS = new Set(["IDENTITY", "CATALOG", "WORKFLOW", "ACTIONS_DOC"]);
+
+function validateSectionParam(req, res) {
+  const section = String(req.params.section || "").toUpperCase();
+  if (!VALID_PROMPT_SECTIONS.has(section)) {
+    res.status(400).json({ ok: false, error: `Invalid section. Allowed: ${[...VALID_PROMPT_SECTIONS].join(", ")}` });
+    return null;
+  }
+  return section;
+}
+
 function requireDevModeAuth(req, res, next) {
   const token = config.apiAuthToken;
   if (!token) {
@@ -135,14 +146,16 @@ router.patch("/agent/train/bulk", requireDevModeAuth, (req, res) => {
 });
 
 router.get("/agent/dev-config/:section/history", requireDevModeAuth, (req, res) => {
-  const section = String(req.params.section || "").toUpperCase();
+  const section = validateSectionParam(req, res);
+  if (!section) return;
   const history = loadPromptSectionHistory(section);
   res.json({ ok: true, section, versions: history });
 });
 
 router.post("/agent/dev-config/:section/revert", requireDevModeAuth, (req, res) => {
   try {
-    const section = String(req.params.section || "").toUpperCase();
+    const section = validateSectionParam(req, res);
+    if (!section) return;
     const { versionIndex } = req.body || {};
     const result = revertPromptSection(section, Number(versionIndex));
     appendTrainingSessionEvent({ type: "prompt_section_reverted", section, versionIndex });

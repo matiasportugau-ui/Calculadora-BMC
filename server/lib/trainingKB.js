@@ -274,8 +274,11 @@ function savePromptSectionBackup(sectionName, content) {
   fs.writeFileSync(backupPath, JSON.stringify(versions, null, 2), "utf8");
 }
 
+const ALLOWED_PROMPT_SECTIONS = new Set(["IDENTITY", "CATALOG", "WORKFLOW", "ACTIONS_DOC"]);
+
 export function loadPromptSectionHistory(sectionName) {
   const target = String(sectionName || "").toUpperCase();
+  if (!ALLOWED_PROMPT_SECTIONS.has(target)) throw new Error("Unsupported section");
   const backupPath = path.join(backupsDir, `${target}.json`);
   try {
     if (!fs.existsSync(backupPath)) return [];
@@ -290,6 +293,7 @@ export function loadPromptSectionHistory(sectionName) {
 
 export function revertPromptSection(sectionName, versionIndex) {
   const target = String(sectionName || "").toUpperCase();
+  if (!ALLOWED_PROMPT_SECTIONS.has(target)) throw new Error("Unsupported section");
   const backupPath = path.join(backupsDir, `${target}.json`);
   if (!fs.existsSync(backupPath)) throw new Error("No backup found");
   const versions = JSON.parse(fs.readFileSync(backupPath, "utf8"));

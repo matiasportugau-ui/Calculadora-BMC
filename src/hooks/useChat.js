@@ -19,7 +19,15 @@ function saveConversationId(id) {
 }
 
 function freshConversationId() {
-  const id = crypto.randomUUID();
+  let id;
+  try {
+    id = globalThis.crypto?.randomUUID?.();
+  } catch {
+    id = null;
+  }
+  if (!id) {
+    id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
   saveConversationId(id);
   return id;
 }

@@ -32,7 +32,11 @@ function appendEvent(event) {
   ensureConvDir();
   const row = { ts: new Date().toISOString(), ...event };
   const filePath = convFilePath();
-  fs.promises.appendFile(filePath, `${JSON.stringify(row)}\n`, "utf8").catch(() => {});
+  try {
+    fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf8");
+  } catch (error) {
+    console.error(`Failed to append conversation event to ${filePath}`, error);
+  }
 }
 
 export function logConversationMeta(conversationId, { provider, model, devMode }) {
@@ -168,6 +172,7 @@ export function loadConversations({ days = 7, page = 1, limit = 20 } = {}) {
     allEvents.push(...parseConvFile(fp));
   }
 
+  allEvents.sort((a, b) => String(a.ts || "").localeCompare(String(b.ts || "")));
   const byId = groupByConversation(allEvents);
   const conversations = [];
   for (const [id, events] of byId) {
@@ -181,17 +186,53 @@ export function loadConversations({ days = 7, page = 1, limit = 20 } = {}) {
   return { total, page, limit, items };
 }
 
+// ─── Conversation file index (avoids full scan on every lookup) ──────────────
+
+let _convIndexSig = null;
+let _convFilesById = new Map();
+
+function _listConvFiles() {
+  return fs.readdirSync(CONV_DIR).filter((f) => f.startsWith("CONV-") && f.endsWith(".jsonl")).sort();
+}
+
+function _buildIndexSig(files) {
+  return files.map((f) => {
+    try {
+      const s = fs.statSync(path.join(CONV_DIR, f));
+      return `${f}:${s.mtimeMs}:${s.size}`;
+    } catch { return f; }
+  }).join("|");
+}
+
+function _refreshIndexIfNeeded() {
+  const files = _listConvFiles();
+  const sig = _buildIndexSig(files);
+  if (sig === _convIndexSig) return;
+  const next = new Map();
+  for (const file of files) {
+    const fp = path.join(CONV_DIR, file);
+    for (const ev of parseConvFile(fp)) {
+      if (!ev?.conversationId) continue;
+      if (!next.has(ev.conversationId)) next.set(ev.conversationId, []);
+      const arr = next.get(ev.conversationId);
+      if (!arr.includes(fp)) arr.push(fp);
+    }
+  }
+  _convFilesById = next;
+  _convIndexSig = sig;
+}
+
 export function loadConversationById(conversationId) {
   ensureConvDir();
-  // Scan ALL daily files and merge events — conversations can span midnight
-  const files = fs.readdirSync(CONV_DIR).filter((f) => f.startsWith("CONV-") && f.endsWith(".jsonl")).sort();
+  _refreshIndexIfNeeded();
+  const files = _convFilesById.get(conversationId);
+  if (!files || files.length === 0) return null;
   const allEvents = [];
-  for (const file of files) {
-    const events = parseConvFile(path.join(CONV_DIR, file)).filter((e) => e.conversationId === conversationId);
+  for (const fp of files) {
+    const events = parseConvFile(fp).filter((e) => e.conversationId === conversationId);
     if (events.length > 0) allEvents.push(...events);
   }
   if (allEvents.length === 0) return null;
-  // Events already include ISO timestamps; ensure chronological ordering for turn reconstruction
   allEvents.sort((a, b) => String(a.ts || "").localeCompare(String(b.ts || "")));
   return buildConversationFromEvents(conversationId, allEvents);
 }

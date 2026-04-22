@@ -136,14 +136,12 @@ export default function PanelinDevPanel({
     if (!selectedIds.size || !onBulkDeleteKB) return;
     await onBulkDeleteKB([...selectedIds]);
     clearSelection();
-    onReloadTrainingKB?.();
   };
 
   const handleBulkArchive = async () => {
     if (!selectedIds.size || !onBulkArchiveKB) return;
     await onBulkArchiveKB([...selectedIds]);
     clearSelection();
-    onReloadTrainingKB?.();
   };
 
   // ── Save correction ────────────────────────────────────────────────────────
