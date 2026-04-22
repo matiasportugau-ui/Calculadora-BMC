@@ -106,6 +106,19 @@ function truncateHistoryToBudget(messages, systemPrompt, budget) {
   };
 }
 
+function prepareHistoryForModel(messages, systemPrompt, { modelId, requestedOutputTokens }, noticeState, send) {
+  const result = truncateHistoryToBudget(
+    messages,
+    systemPrompt,
+    getTokenBudgetForModel({ modelId, requestedOutputTokens })
+  );
+  if (result.truncated && !noticeState.sent) {
+    send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
+    noticeState.sent = true;
+  }
+  return result.messages;
+}
+
 function modelsForProviderUi(provider, defaultModel) {
   const ids = ALLOWED_MODELS[provider] ? [...ALLOWED_MODELS[provider]] : [];
   if (defaultModel && isSafeModelId(defaultModel) && !ids.includes(defaultModel)) ids.unshift(defaultModel);
@@ -578,7 +591,7 @@ router.post("/agent/chat", async (req, res) => {
     gemini: config.geminiChatModel,
   };
 
-  let truncationNoticeSent = false;
+  const truncationNotice = { sent: false };
   for (const provider of providerChain) {
     try {
       // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
@@ -595,15 +608,13 @@ router.post("/agent/chat", async (req, res) => {
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
         resolvedModel = model;
         const maxOutputTokens = thinkingMode ? 4096 : CHAT_MAX_TOKENS;
-        const { messages: msgs, truncated } = truncateHistoryToBudget(
+        const msgs = prepareHistoryForModel(
           filteredMsgs,
           effectiveSystemPrompt,
-          getTokenBudgetForModel({ modelId: model, requestedOutputTokens: maxOutputTokens })
+          { modelId: model, requestedOutputTokens: maxOutputTokens },
+          truncationNotice,
+          send
         );
-        if (truncated && !truncationNoticeSent) {
-          send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
-          truncationNoticeSent = true;
-        }
         const claudeOpts = {
           model,
           max_tokens: maxOutputTokens,
@@ -630,15 +641,13 @@ router.post("/agent/chat", async (req, res) => {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
         const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
         resolvedModel = model;
-        const { messages: msgs, truncated } = truncateHistoryToBudget(
+        const msgs = prepareHistoryForModel(
           filteredMsgs,
           effectiveSystemPrompt,
-          getTokenBudgetForModel({ modelId: model })
+          { modelId: model },
+          truncationNotice,
+          send
         );
-        if (truncated && !truncationNoticeSent) {
-          send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
-          truncationNoticeSent = true;
-        }
         const geminiModel = genAI.getGenerativeModel({ model });
         const geminiMessages = msgs.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
@@ -666,15 +675,13 @@ router.post("/agent/chat", async (req, res) => {
             ? resolveModelForProvider("grok", requestedId, modelDefaults.grok)
             : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
         resolvedModel = model;
-        const { messages: msgs, truncated } = truncateHistoryToBudget(
+        const msgs = prepareHistoryForModel(
           filteredMsgs,
           effectiveSystemPrompt,
-          getTokenBudgetForModel({ modelId: model, requestedOutputTokens: CHAT_MAX_TOKENS })
+          { modelId: model, requestedOutputTokens: CHAT_MAX_TOKENS },
+          truncationNotice,
+          send
         );
-        if (truncated && !truncationNoticeSent) {
-          send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
-          truncationNoticeSent = true;
-        }
 
         const stream = await client.chat.completions.create({
           model,

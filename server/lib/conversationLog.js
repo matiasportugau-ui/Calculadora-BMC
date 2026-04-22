@@ -41,6 +41,7 @@ function appendEvent(event) {
     .catch((error) => {
       console.error(`Failed to append conversation event to ${filePath}`, error);
     });
+  return writeQueue;
 }
 
 export function logConversationMeta(conversationId, { provider, model, devMode }) {

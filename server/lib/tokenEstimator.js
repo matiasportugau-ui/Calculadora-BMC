@@ -12,6 +12,7 @@ export function estimateTokensSystem(str) {
 
 const _parsedChatMaxTokens = parseInt(process.env.CHAT_MAX_TOKENS, 10);
 export const CHAT_MAX_TOKENS = Number.isNaN(_parsedChatMaxTokens) ? 2048 : Math.max(1, _parsedChatMaxTokens);
+const MIN_VIABLE_INPUT_TOKENS = 256;
 
 export const MODEL_CONTEXT_LIMITS = {
   "claude-haiku-4-5-20251001": 200_000,
@@ -53,6 +54,6 @@ export function getTokenBudgetForModel({
   const contextLimit = getModelContextLimit(modelId);
   if (!Number.isFinite(contextLimit)) return baseBudget;
   const outputReserve = Math.max(1, Number(requestedOutputTokens) || CHAT_MAX_TOKENS);
-  const availableInput = contextLimit - outputReserve - Math.max(256, safetyMarginTokens);
-  return Math.max(256, Math.min(baseBudget, availableInput));
+  const availableInput = contextLimit - outputReserve - Math.max(MIN_VIABLE_INPUT_TOKENS, safetyMarginTokens);
+  return Math.max(MIN_VIABLE_INPUT_TOKENS, Math.min(baseBudget, availableInput));
 }

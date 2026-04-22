@@ -151,10 +151,11 @@ export function deleteTrainingEntry(entryId) {
 
 export function listTrainingEntries({ category, includeArchived = false } = {}) {
   const kb = loadTrainingKB();
-  const entries = includeArchived ? kb.entries : kb.entries.filter((entry) => !entry.archived);
-  if (!category) return entries;
   const target = normalizeCategory(category);
-  return entries.filter((entry) => entry.category === target);
+  return kb.entries.filter((entry) =>
+    (includeArchived || !entry.archived) &&
+    (!category || entry.category === target)
+  );
 }
 
 export const DEFAULT_SCORING_CONFIG = {
