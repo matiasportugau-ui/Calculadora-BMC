@@ -14,6 +14,9 @@ const _parsedChatMaxTokens = parseInt(process.env.CHAT_MAX_TOKENS, 10);
 export const CHAT_MAX_TOKENS = Number.isNaN(_parsedChatMaxTokens) ? 2048 : Math.max(1, _parsedChatMaxTokens);
 
 export const MODEL_CONTEXT_LIMITS = {
+  "claude-opus-4-7": 1_000_000,
+  "claude-opus-4-6": 1_000_000,
+  "claude-sonnet-4-6": 1_000_000,
   "claude-haiku-4-5-20251001": 200_000,
   "claude-sonnet-4-5-20250929": 200_000,
   "claude-sonnet-4-20250514": 200_000,

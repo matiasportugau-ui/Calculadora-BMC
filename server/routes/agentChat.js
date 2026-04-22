@@ -42,6 +42,9 @@ const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
 /** @type {Record<string, Set<string>>} */
 const ALLOWED_MODELS = {
   claude: new Set([
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-4-6",
     "claude-haiku-4-5-20251001",
     "claude-sonnet-4-5-20250929",
     "claude-sonnet-4-20250514",
@@ -586,18 +589,41 @@ router.post("/agent/chat", async (req, res) => {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
         resolvedModel = model;
+
+        const isOpus47 = model === "claude-opus-4-7";
+        // effort param supported on Opus 4.7, 4.6 and Sonnet 4.6; errors on Haiku 4.5 / Sonnet 4.5
+        const supportsEffort = isOpus47
+          || model === "claude-opus-4-6"
+          || model === "claude-sonnet-4-6";
+
         const claudeOpts = {
           model,
-          max_tokens: thinkingMode ? 4096 : CHAT_MAX_TOKENS,
-          system: effectiveSystemPrompt,
+          max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
+          // Wrap system prompt in a content block to enable prompt caching on the stable prefix
+          system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
           messages: msgs,
         };
+
         if (thinkingMode) {
-          claudeOpts.thinking = { type: "enabled", budget_tokens: 2048 };
+          if (isOpus47) {
+            // Opus 4.7: adaptive-only; display:"summarized" prevents blank pause before streaming
+            claudeOpts.thinking = { type: "adaptive", display: "summarized" };
+            claudeOpts.output_config = { effort: "xhigh" };
+          } else {
+            // Older models: legacy extended thinking
+            claudeOpts.thinking = { type: "enabled", budget_tokens: 2048 };
+          }
           send({ type: "thinking_start" });
+        } else if (supportsEffort) {
+          claudeOpts.output_config = { effort: "high" };
         }
+
         const stream = anthropic.messages.stream(claudeOpts);
+        let cacheReadTokens = 0;
         for await (const chunk of stream) {
+          if (chunk.type === "message_start" && chunk.message?.usage) {
+            cacheReadTokens = chunk.message.usage.cache_read_input_tokens ?? 0;
+          }
           if (
             chunk.type === "content_block_delta" &&
             chunk.delta?.type === "text_delta" &&
@@ -608,6 +634,9 @@ router.post("/agent/chat", async (req, res) => {
           }
         }
         if (thinkingMode) send({ type: "thinking_done" });
+        if (devMode && cacheReadTokens > 0) {
+          req.log?.info({ cacheReadTokens, model }, "Claude prompt cache hit");
+        }
       } else if (provider === "gemini") {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
         const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
