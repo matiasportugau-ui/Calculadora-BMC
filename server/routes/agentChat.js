@@ -33,6 +33,7 @@ import {
   countHedges,
 } from "../lib/conversationLog.js";
 import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
+import { summarizeHistory } from "../lib/chatSummarizer.js";
 
 const router = Router();
 
@@ -490,8 +491,26 @@ router.post("/agent/chat", async (req, res) => {
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
 
+  // Summarize older history at >12 messages to save tokens while preserving context.
+  // The summary is appended to the system prompt (all providers accept system-level context),
+  // and only recent user/assistant turns remain in the messages array.
+  let effectiveSystemPrompt = systemPrompt;
+  try {
+    const summarizeResult = await summarizeHistory(filteredMsgs);
+    if (summarizeResult.summarized) {
+      const summaryMsg = summarizeResult.messages.find((m) => m.role === "system");
+      if (summaryMsg?.content) {
+        effectiveSystemPrompt = `${systemPrompt}\n\n${summaryMsg.content}`;
+      }
+      filteredMsgs = summarizeResult.messages.filter((m) => m.role === "user" || m.role === "assistant");
+      send({ type: "info", message: "Se resumió el historial previo para ahorrar tokens." });
+    }
+  } catch {
+    // Summarization is best-effort; fall back to raw history on failure
+  }
+
   // 1.7 — Truncate history to stay within token budget (improved estimate for Spanish)
-  const SYSTEM_ESTIMATE = estimateTokensSystem(systemPrompt);
+  const SYSTEM_ESTIMATE = estimateTokensSystem(effectiveSystemPrompt);
   let tokenSum = SYSTEM_ESTIMATE;
   const truncated = [];
   for (let i = filteredMsgs.length - 1; i >= 0; i--) {
@@ -501,7 +520,7 @@ router.post("/agent/chat", async (req, res) => {
     truncated.unshift(filteredMsgs[i]);
   }
   if (truncated.length < filteredMsgs.length) {
-    send({ type: "info", message: "Se resumió el historial para mantener la calidad de la respuesta." });
+    send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
   }
   const msgs = truncated;
 
@@ -536,6 +555,7 @@ router.post("/agent/chat", async (req, res) => {
   for (const provider of providerChain) {
     try {
       let buf = "";
+      let resolvedModel = "";
 
       const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
       const requestedId = useRequestedModel ? aiModel : "";
@@ -543,10 +563,11 @@ router.post("/agent/chat", async (req, res) => {
       if (provider === "claude") {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
+        resolvedModel = model;
         const claudeOpts = {
           model,
           max_tokens: thinkingMode ? 4096 : CHAT_MAX_TOKENS,
-          system: systemPrompt,
+          system: effectiveSystemPrompt,
           messages: msgs,
         };
         if (thinkingMode) {
@@ -568,6 +589,7 @@ router.post("/agent/chat", async (req, res) => {
       } else if (provider === "gemini") {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
         const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
+        resolvedModel = model;
         const geminiModel = genAI.getGenerativeModel({ model });
         const geminiMessages = msgs.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
@@ -575,7 +597,7 @@ router.post("/agent/chat", async (req, res) => {
         }));
         const result = await geminiModel.generateContentStream({
           contents: geminiMessages,
-          systemInstruction: { parts: [{ text: systemPrompt }] },
+          systemInstruction: { parts: [{ text: effectiveSystemPrompt }] },
         });
         for await (const chunk of result.stream) {
           const text = chunk.text();
@@ -594,12 +616,13 @@ router.post("/agent/chat", async (req, res) => {
           provider === "grok"
             ? resolveModelForProvider("grok", requestedId, modelDefaults.grok)
             : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
+        resolvedModel = model;
 
         const stream = await client.chat.completions.create({
           model,
           max_tokens: CHAT_MAX_TOKENS,
           stream: true,
-          messages: [{ role: "system", content: systemPrompt }, ...msgs],
+          messages: [{ role: "system", content: effectiveSystemPrompt }, ...msgs],
         });
         for await (const chunk of stream) {
           const delta = chunk.choices?.[0]?.delta?.content;
@@ -614,6 +637,12 @@ router.post("/agent/chat", async (req, res) => {
       if (!aborted) {
         const hedgeCount = countHedges(visibleAssistantText);
         const assistantTurnIndex = turnIndex + 1;
+
+        // Record the actually-used provider/model so digests reflect reality
+        // (client often sends aiProvider="auto"; the resolved one is only known here)
+        if (conversationId) {
+          logConversationMeta(conversationId, { provider, model: resolvedModel, devMode });
+        }
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {

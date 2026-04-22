@@ -178,16 +178,20 @@ export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
 export function bulkDeleteEntries(ids) {
   const idSet = new Set(Array.isArray(ids) ? ids : []);
   const kb = loadTrainingKB();
+  const before = kb.entries.length;
   kb.entries = kb.entries.filter((e) => !idSet.has(e.id));
+  const deletedCount = before - kb.entries.length;
   saveTrainingKB(kb);
-  return { ok: true, deletedCount: idSet.size };
+  return { ok: true, deletedCount, requestedCount: idSet.size };
 }
 
 export function bulkPatchEntries(ids, patch) {
   const idSet = new Set(Array.isArray(ids) ? ids : []);
   const kb = loadTrainingKB();
+  let patchedCount = 0;
   kb.entries = kb.entries.map((e) => {
     if (!idSet.has(e.id)) return e;
+    patchedCount += 1;
     return {
       ...e,
       ...(patch.archived != null ? { archived: Boolean(patch.archived) } : {}),
@@ -196,7 +200,7 @@ export function bulkPatchEntries(ids, patch) {
     };
   });
   saveTrainingKB(kb);
-  return { ok: true, patchedCount: idSet.size };
+  return { ok: true, patchedCount, requestedCount: idSet.size };
 }
 
 export function getTrainingStats() {

@@ -197,7 +197,20 @@ export default function PanelinDevPanel({
     if (activeTab === "sessions" && sessions.length === 0) {
       loadSessions(1);
     }
-  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, loadSessions, sessions.length]);
+
+  const copyPromptToClipboard = async () => {
+    const text = promptPreview || "";
+    if (!navigator?.clipboard?.writeText) {
+      window.alert("El portapapeles no está disponible en este contexto.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      window.alert("No se pudo copiar al portapapeles.");
+    }
+  };
 
   const loadAnalysis = async (convId) => {
     if (!onLoadConversationAnalysis || loadingAnalysis === convId) return;
@@ -552,7 +565,7 @@ export default function PanelinDevPanel({
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard?.writeText(promptPreview || "")}
+                  onClick={copyPromptToClipboard}
                   style={btn()}
                 >
                   Copiar

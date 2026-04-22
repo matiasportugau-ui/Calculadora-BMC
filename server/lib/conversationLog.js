@@ -183,10 +183,15 @@ export function loadConversations({ days = 7, page = 1, limit = 20 } = {}) {
 
 export function loadConversationById(conversationId) {
   ensureConvDir();
-  const files = fs.readdirSync(CONV_DIR).filter((f) => f.startsWith("CONV-") && f.endsWith(".jsonl")).sort().reverse();
+  // Scan ALL daily files and merge events — conversations can span midnight
+  const files = fs.readdirSync(CONV_DIR).filter((f) => f.startsWith("CONV-") && f.endsWith(".jsonl")).sort();
+  const allEvents = [];
   for (const file of files) {
     const events = parseConvFile(path.join(CONV_DIR, file)).filter((e) => e.conversationId === conversationId);
-    if (events.length > 0) return buildConversationFromEvents(conversationId, events);
+    if (events.length > 0) allEvents.push(...events);
   }
-  return null;
+  if (allEvents.length === 0) return null;
+  // Events already include ISO timestamps; ensure chronological ordering for turn reconstruction
+  allEvents.sort((a, b) => String(a.ts || "").localeCompare(String(b.ts || "")));
+  return buildConversationFromEvents(conversationId, allEvents);
 }
