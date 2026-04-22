@@ -15,6 +15,8 @@ const BmcLogisticaApp = lazy(() => import("./components/BmcLogisticaApp.jsx"));
 const DriverTransportistaApp = lazy(() => import("./components/DriverTransportistaApp.jsx"));
 const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSandbox.jsx"));
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
+const CalcLogicInspector = lazy(() => import("./components/CalcLogicInspector.jsx"));
+const FichasPreview = lazy(() => import("./components/FichasPreview.jsx"));
 
 const suspenseFallback = (
   <div
@@ -122,6 +124,16 @@ export default function App() {
           }
         />
         <Route
+          path="/inspector"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <CalcLogicInspector />
+              </Suspense>
+            </Shell>
+          }
+        />
+        <Route
           path="/especificaciones"
           element={
             <Shell>
@@ -139,6 +151,14 @@ export default function App() {
                 <BidPresentation />
               </Suspense>
             </Shell>
+          }
+        />
+        <Route
+          path="/fichas"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <FichasPreview />
+            </Suspense>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

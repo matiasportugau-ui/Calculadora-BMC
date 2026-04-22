@@ -1107,6 +1107,14 @@ assert(
     r?.items?.some((it) => it.sku === "arandela_plana"),
     false,
   );
+  // Lock hormigón rod count: puntos=54 (grid40+perim14), Lhorm=0.30m → perRod=3 → ceil(54/3)=18
+  const varItem = r?.items?.find((it) => it.sku === "varilla_38");
+  assert(
+    "calcFijacionesVarilla hormigón 100mm → varilla_38 cant = 18 (Lhorm=0.30m, perRod=3)",
+    varItem && varItem.cant === 18,
+    varItem?.cant,
+    18,
+  );
 }
 
 {

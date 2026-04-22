@@ -191,19 +191,23 @@ export function calcFijacionesVarilla(cantP, apoyos, largo, tipoEst, ptsHorm, pt
   let varillas;
   if (espM != null) {
     const rodLen = getDimensioningParam("FIJACIONES_VARILLA.largo_comercial_m", 1);
-    const exMetalHorm = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_hormigon_m", 0.1);
-    const exMadera = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_madera_m", 0.05);
-    const Lmh = espM + exMetalHorm;
-    const Lmad = espM + exMadera;
+    const exMetal  = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_metal_m",   0.1);
+    const exHorm   = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_hormigon_m", 0.2);
+    const exMadera = getDimensioningParam("FIJACIONES_VARILLA.rosca_extra_madera_m",  0.05);
+    const Lmetal = espM + exMetal;
+    const Lhorm  = espM + exHorm;
+    const Lmad   = espM + exMadera;
     if (tipoEst === "combinada") {
-      const nMH = pMetal + pH;
       varillas =
-        countVarillasRoscadasDesdeBarras1m(nMH, Lmh, rodLen) +
-        countVarillasRoscadasDesdeBarras1m(pMadera, Lmad, rodLen);
+        countVarillasRoscadasDesdeBarras1m(pMetal,  Lmetal, rodLen) +
+        countVarillasRoscadasDesdeBarras1m(pH,       Lhorm,  rodLen) +
+        countVarillasRoscadasDesdeBarras1m(pMadera,  Lmad,   rodLen);
     } else if (tipoEst === "madera") {
-      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lmad, rodLen);
+      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lmad,   rodLen);
+    } else if (tipoEst === "hormigon") {
+      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lhorm,  rodLen);
     } else {
-      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lmh, rodLen);
+      varillas = countVarillasRoscadasDesdeBarras1m(puntosFijacion, Lmetal, rodLen);
     }
   } else {
     const varillasPorPunto = getDimensioningParam("FIJACIONES_VARILLA.varillas_por_punto", 4);
