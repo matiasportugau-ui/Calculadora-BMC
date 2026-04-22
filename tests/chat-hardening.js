@@ -6,6 +6,13 @@
 
 import { sanitizeForPrompt } from "../server/lib/chatPrompts.js";
 import { mapErrorMessage } from "../src/utils/chatErrors.js";
+import {
+  estimateTokensText,
+  estimateTokensSystem,
+  TOKEN_BUDGET,
+  CHAT_MAX_TOKENS,
+  MODEL_CONTEXT_LIMITS,
+} from "../server/lib/tokenEstimator.js";
 
 let passed = 0, failed = 0;
 
@@ -152,17 +159,17 @@ for (const t of shouldBeBlocked) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1.7 — History truncation token estimation
+// 1.7 — History truncation token estimation (uses real tokenEstimator.js)
 // ─────────────────────────────────────────────────────────────────────────────
-console.log("\n── 1.7  History truncation (token budget logic) ──");
+console.log("\n── 1.7  History truncation (tokenEstimator real functions) ──");
 
-function simulateTruncation(messages, systemPrompt, TOKEN_BUDGET = 8000) {
-  const SYSTEM_ESTIMATE = Math.ceil(systemPrompt.length / 4);
+function realTruncation(messages, systemPrompt, budget = TOKEN_BUDGET) {
+  const SYSTEM_ESTIMATE = estimateTokensSystem(systemPrompt);
   let tokenSum = SYSTEM_ESTIMATE;
   const truncated = [];
   for (let i = messages.length - 1; i >= 0; i--) {
-    const t = Math.ceil(messages[i].content.length / 4) + 5;
-    if (tokenSum + t > TOKEN_BUDGET && truncated.length >= 2) break;
+    const t = estimateTokensText(messages[i].content);
+    if (tokenSum + t > budget && truncated.length >= 2) break;
     tokenSum += t;
     truncated.unshift(messages[i]);
   }
@@ -172,20 +179,20 @@ function simulateTruncation(messages, systemPrompt, TOKEN_BUDGET = 8000) {
 {
   const msgs = Array.from({ length: 10 }, (_, i) => ({
     role: i % 2 === 0 ? "user" : "assistant",
-    content: "Hello world",
+    content: "Hola mundo",
   }));
-  const result = simulateTruncation(msgs, "short system prompt");
+  const result = realTruncation(msgs, "short system prompt");
   assert("short history kept in full", result.length === 10, result.length, 10);
 }
 {
-  // Each message ~4000 chars = ~1000 tokens + 5 overhead = 1005 tokens
-  // System = 100 chars = 25 tokens
-  // Budget = 8000 → fits ~7 messages before hitting budget
+  // Each message 4000 chars → estimateTokensText ≈ ceil(4000/3.8)+5 = 1058 tokens
+  // System 400 chars → estimateTokensSystem ≈ ceil(400/3.5) = 115 tokens
+  // Budget 10000 → fits ~9 messages before hitting budget
   const msgs = Array.from({ length: 20 }, (_, i) => ({
     role: i % 2 === 0 ? "user" : "assistant",
     content: "x".repeat(4000),
   }));
-  const result = simulateTruncation(msgs, "x".repeat(400)); // 100 tokens
+  const result = realTruncation(msgs, "x".repeat(400));
   assert("long history is truncated when over budget", result.length < 20, result.length, "<20");
   assert("truncated result keeps at least 2 messages", result.length >= 2, result.length, ">=2");
 }
@@ -194,8 +201,64 @@ function simulateTruncation(messages, systemPrompt, TOKEN_BUDGET = 8000) {
     { role: "user", content: "hi" },
     { role: "assistant", content: "hello" },
   ];
-  const result = simulateTruncation(msgs, "system");
+  const result = realTruncation(msgs, "system");
   assert("2-message history always kept", result.length === 2, result.length, 2);
+}
+{
+  // Even a single massive message > budget is kept (min 2 guard applies only when truncated.length<2)
+  const msgs = [
+    { role: "user", content: "x".repeat(200_000) },
+    { role: "assistant", content: "y".repeat(200_000) },
+  ];
+  const result = realTruncation(msgs, "sys", 1000);
+  assert("2 huge messages still kept (min-2 guard)", result.length === 2, result.length, 2);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1.8 — tokenEstimator unit tests
+// ─────────────────────────────────────────────────────────────────────────────
+console.log("\n── 1.8  tokenEstimator ──");
+
+// estimateTokensText: Math.ceil(len / 3.8) + 5
+assert("estimateTokensText('') = 5 (overhead only)", estimateTokensText("") === 5, estimateTokensText(""), 5);
+assert("estimateTokensText(null) = 5", estimateTokensText(null) === 5, estimateTokensText(null), 5);
+assert("estimateTokensText(undefined) = 5", estimateTokensText(undefined) === 5, estimateTokensText(undefined), 5);
+{
+  // 38 chars → ceil(38/3.8)=10 +5 = 15
+  const txt = "a".repeat(38);
+  assert("estimateTokensText(38 chars) = 15", estimateTokensText(txt) === 15, estimateTokensText(txt), 15);
+}
+{
+  // 3800 chars → ceil(3800/3.8)=1000 +5 = 1005
+  const txt = "a".repeat(3800);
+  assert("estimateTokensText(3800 chars) = 1005", estimateTokensText(txt) === 1005, estimateTokensText(txt), 1005);
+}
+// estimateTokensSystem: Math.ceil(len / 3.5) no overhead
+assert("estimateTokensSystem('') = 0", estimateTokensSystem("") === 0, estimateTokensSystem(""), 0);
+assert("estimateTokensSystem(null) = 0", estimateTokensSystem(null) === 0, estimateTokensSystem(null), 0);
+{
+  // 35 chars → ceil(35/3.5) = 10
+  const txt = "a".repeat(35);
+  assert("estimateTokensSystem(35 chars) = 10", estimateTokensSystem(txt) === 10, estimateTokensSystem(txt), 10);
+}
+{
+  // System estimator must be >= prose estimator for same string (stricter)
+  const txt = "La cámara frigorífica mide 5×4×3 metros con paneles ISODEC_EPS 60mm.";
+  const prose = estimateTokensText(txt) - 5; // remove overhead for fair compare
+  const system = estimateTokensSystem(txt);
+  assert("system estimator density >= prose density", system >= prose, { system, prose }, "system>=prose");
+}
+
+// TOKEN_BUDGET / CHAT_MAX_TOKENS sanity
+assert("TOKEN_BUDGET is a positive integer", Number.isInteger(TOKEN_BUDGET) && TOKEN_BUDGET > 0, TOKEN_BUDGET, ">0");
+assert("TOKEN_BUDGET >= 8000 (room for Spanish prompt + history)", TOKEN_BUDGET >= 8000, TOKEN_BUDGET, ">=8000");
+assert("CHAT_MAX_TOKENS is a positive integer", Number.isInteger(CHAT_MAX_TOKENS) && CHAT_MAX_TOKENS > 0, CHAT_MAX_TOKENS, ">0");
+assert("CHAT_MAX_TOKENS >= 1024 (enough for real quotes)", CHAT_MAX_TOKENS >= 1024, CHAT_MAX_TOKENS, ">=1024");
+assert("TOKEN_BUDGET > CHAT_MAX_TOKENS (input budget > output cap)", TOKEN_BUDGET > CHAT_MAX_TOKENS, { TOKEN_BUDGET, CHAT_MAX_TOKENS }, "budget>max");
+
+// MODEL_CONTEXT_LIMITS: every declared limit must exceed TOKEN_BUDGET
+for (const [model, limit] of Object.entries(MODEL_CONTEXT_LIMITS)) {
+  assert(`MODEL_CONTEXT_LIMITS['${model}'] > TOKEN_BUDGET`, limit > TOKEN_BUDGET, limit, `>${TOKEN_BUDGET}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

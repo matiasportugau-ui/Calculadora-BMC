@@ -25,6 +25,15 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
+import {
+  logConversationMeta,
+  logConversationTurn,
+  logConversationAction,
+  closeConversation,
+  countHedges,
+} from "../lib/conversationLog.js";
+import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
+import { summarizeHistory } from "../lib/chatSummarizer.js";
 
 const router = Router();
 
@@ -323,7 +332,12 @@ router.post("/agent/chat", async (req, res) => {
     devMode = false,
     aiProvider: rawAiProvider,
     aiModel: rawAiModel,
+    conversationId: rawConvId,
+    thinkingMode = false,
   } = req.body || {};
+  const conversationId = typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
+    ? rawConvId
+    : null;
   const aiProvider = String(rawAiProvider || "auto").toLowerCase();
   const aiModel = rawAiModel != null ? String(rawAiModel) : "";
 
@@ -382,6 +396,7 @@ router.post("/agent/chat", async (req, res) => {
   const send = (obj) => { if (!aborted) res.write(`data: ${JSON.stringify(obj)}\n\n`); };
   let visibleAssistantText = "";
   let aborted = false;
+  const emittedActions = [];
 
   // 1.5 — Abort LLM stream on client disconnect
   const disconnectController = new AbortController();
@@ -405,6 +420,7 @@ router.post("/agent/chat", async (req, res) => {
           // 0.4 — Only emit validated action types
           if (VALID_ACTION_TYPES.has(action.type)) {
             send({ type: "action", action });
+            emittedActions.push(action);
           } else {
             send({ type: "text", delta: line + "\n" });
           }
@@ -428,6 +444,7 @@ router.post("/agent/chat", async (req, res) => {
         // 0.4 — Only emit validated action types
         if (VALID_ACTION_TYPES.has(action.type)) {
           send({ type: "action", action });
+          emittedActions.push(action);
         } else {
           send({ type: "text", delta: trimmed });
         }
@@ -441,28 +458,71 @@ router.post("/agent/chat", async (req, res) => {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-  const trainingExamples = devMode ? findRelevantExamples(lastUserMessage, { limit: 5 }) : [];
+
+  // Always use KB — not just devMode
+  const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
   if (devMode) {
     send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode });
+
+  // Extract last 3 assistant openings for anti-repetition guidance
+  const recentAssistantMessages = messages
+    .filter((m) => m.role === "assistant")
+    .slice(-3)
+    .map((m) => String(m.content || "").slice(0, 120));
+
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
+
+  // Use a monotonically increasing global index so user and assistant turns never collide.
+  // messages includes the current user message, so all-messages-count - 1 = new user global index.
+  const allTurns = messages.filter((m) => m.role === "user" || m.role === "assistant");
+  const turnIndex = allTurns.length - 1;
+  if (conversationId && allTurns.length === 1) {
+    const meta = { devMode };
+    if (typeof aiProvider === "string" && aiProvider !== "auto") meta.provider = aiProvider;
+    if (typeof aiModel === "string" && aiModel.trim()) meta.model = aiModel.trim();
+    logConversationMeta(conversationId, meta);
+  }
+
+  // Log user turn
+  if (conversationId) {
+    logConversationTurn(conversationId, { turnIndex, role: "user", content: lastUserMessage });
+  }
+
   let filteredMsgs = messages
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role, content: String(m.content || "") }));
 
-  // 1.7 — Truncate history to stay within ~8000 token budget (rough: chars/4)
-  const SYSTEM_ESTIMATE = Math.ceil(systemPrompt.length / 4);
-  const TOKEN_BUDGET = 8000;
+  // Summarize older history at >12 messages to save tokens while preserving context.
+  // The summary is appended to the system prompt (all providers accept system-level context),
+  // and only recent user/assistant turns remain in the messages array.
+  let effectiveSystemPrompt = systemPrompt;
+  try {
+    const summarizeResult = await summarizeHistory(filteredMsgs);
+    if (summarizeResult.summarized) {
+      const summaryMsg = summarizeResult.messages.find((m) => m.role === "system");
+      if (summaryMsg?.content) {
+        effectiveSystemPrompt = `${systemPrompt}\n\n${summaryMsg.content}`;
+      }
+      filteredMsgs = summarizeResult.messages.filter((m) => m.role === "user" || m.role === "assistant");
+      send({ type: "info", message: "Se resumió el historial previo para ahorrar tokens." });
+    }
+  } catch {
+    // Summarization is best-effort; fall back to raw history on failure
+  }
+
+  // 1.7 — Truncate history to stay within token budget (improved estimate for Spanish)
+  const SYSTEM_ESTIMATE = estimateTokensSystem(effectiveSystemPrompt);
   let tokenSum = SYSTEM_ESTIMATE;
   const truncated = [];
   for (let i = filteredMsgs.length - 1; i >= 0; i--) {
-    const t = Math.ceil(filteredMsgs[i].content.length / 4) + 5;
+    const t = estimateTokensText(filteredMsgs[i].content);
     if (tokenSum + t > TOKEN_BUDGET && truncated.length >= 2) break;
     tokenSum += t;
     truncated.unshift(filteredMsgs[i]);
   }
   if (truncated.length < filteredMsgs.length) {
-    send({ type: "info", message: "Se resumió el historial para mantener la calidad de la respuesta." });
+    send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
   }
   const msgs = truncated;
 
@@ -496,7 +556,11 @@ router.post("/agent/chat", async (req, res) => {
 
   for (const provider of providerChain) {
     try {
+      // Reset per-attempt accumulators so a mid-stream failure doesn't contaminate the next provider's log entry
+      visibleAssistantText = "";
+      emittedActions.length = 0;
       let buf = "";
+      let resolvedModel = "";
 
       const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
       const requestedId = useRequestedModel ? aiModel : "";
@@ -504,12 +568,18 @@ router.post("/agent/chat", async (req, res) => {
       if (provider === "claude") {
         const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
         const model = resolveModelForProvider("claude", requestedId, modelDefaults.claude);
-        const stream = anthropic.messages.stream({
+        resolvedModel = model;
+        const claudeOpts = {
           model,
-          max_tokens: 1024,
-          system: systemPrompt,
+          max_tokens: thinkingMode ? 4096 : CHAT_MAX_TOKENS,
+          system: effectiveSystemPrompt,
           messages: msgs,
-        });
+        };
+        if (thinkingMode) {
+          claudeOpts.thinking = { type: "enabled", budget_tokens: 2048 };
+          send({ type: "thinking_start" });
+        }
+        const stream = anthropic.messages.stream(claudeOpts);
         for await (const chunk of stream) {
           if (
             chunk.type === "content_block_delta" &&
@@ -520,9 +590,11 @@ router.post("/agent/chat", async (req, res) => {
             buf = flushLines(buf);
           }
         }
+        if (thinkingMode) send({ type: "thinking_done" });
       } else if (provider === "gemini") {
         const genAI = new GoogleGenerativeAI(config.geminiApiKey);
         const model = resolveModelForProvider("gemini", requestedId, modelDefaults.gemini);
+        resolvedModel = model;
         const geminiModel = genAI.getGenerativeModel({ model });
         const geminiMessages = msgs.map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
@@ -530,7 +602,7 @@ router.post("/agent/chat", async (req, res) => {
         }));
         const result = await geminiModel.generateContentStream({
           contents: geminiMessages,
-          systemInstruction: { parts: [{ text: systemPrompt }] },
+          systemInstruction: { parts: [{ text: effectiveSystemPrompt }] },
         });
         for await (const chunk of result.stream) {
           const text = chunk.text();
@@ -549,12 +621,13 @@ router.post("/agent/chat", async (req, res) => {
           provider === "grok"
             ? resolveModelForProvider("grok", requestedId, modelDefaults.grok)
             : resolveModelForProvider("openai", requestedId, modelDefaults.openai);
+        resolvedModel = model;
 
         const stream = await client.chat.completions.create({
           model,
-          max_tokens: 1024,
+          max_tokens: CHAT_MAX_TOKENS,
           stream: true,
-          messages: [{ role: "system", content: systemPrompt }, ...msgs],
+          messages: [{ role: "system", content: effectiveSystemPrompt }, ...msgs],
         });
         for await (const chunk of stream) {
           const delta = chunk.choices?.[0]?.delta?.content;
@@ -567,6 +640,39 @@ router.post("/agent/chat", async (req, res) => {
 
       flushTail(buf);
       if (!aborted) {
+        const hedgeCount = countHedges(visibleAssistantText);
+        const assistantTurnIndex = turnIndex + 1;
+
+        // Record the actually-used provider/model so digests reflect reality
+        // (client often sends aiProvider="auto"; the resolved one is only known here)
+        if (conversationId) {
+          logConversationMeta(conversationId, { provider, model: resolvedModel, devMode });
+        }
+
+        // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
+        if (conversationId) {
+          logConversationTurn(conversationId, {
+            turnIndex: assistantTurnIndex,
+            role: "assistant",
+            content: visibleAssistantText,
+            kbMatchCount: trainingExamples.length,
+            hedgeCount,
+          });
+          // Log actions emitted this turn
+          for (const action of emittedActions) {
+            logConversationAction(conversationId, {
+              turnIndex: assistantTurnIndex,
+              actionType: action.type,
+              payload: action.payload,
+            });
+          }
+          // Close conversation event after each assistant turn (will be overwritten on next turn)
+          closeConversation(conversationId, {
+            turnCount: assistantTurnIndex + 1,
+            hedgeCount,
+          });
+        }
+
         if (devMode) {
           const validation = buildCalcValidation(calcState, visibleAssistantText);
           send({ type: "calc_validation", validation });
@@ -574,9 +680,22 @@ router.post("/agent/chat", async (req, res) => {
             type: "chat_turn",
             mode: "developer",
             provider,
+            conversationId,
             kbMatches: trainingExamples.length,
             question: String(lastUserMessage || "").slice(0, 500),
             calcValidation: validation,
+          });
+        } else {
+          // Always log production turns (minimal fields)
+          appendTrainingSessionEvent({
+            type: "chat_turn",
+            mode: "production",
+            provider,
+            conversationId,
+            turnIndex,
+            questionLen: lastUserMessage.length,
+            responseLen: visibleAssistantText.length,
+            hedgeCount,
           });
         }
         send({ type: "done" });

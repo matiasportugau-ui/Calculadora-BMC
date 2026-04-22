@@ -8,6 +8,7 @@ const repoRoot = path.resolve(__dirname, "../..");
 const dataDir = path.join(repoRoot, "data");
 const kbPath = path.join(dataDir, "training-kb.json");
 const sessionsDir = path.join(dataDir, "training-sessions");
+const backupsDir = path.join(dataDir, "prompt-backups");
 const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
 const KB_VERSION = "1.0.0";
@@ -134,15 +135,37 @@ export function listTrainingEntries({ category } = {}) {
   return kb.entries.filter((e) => e.category === target);
 }
 
-export function findRelevantExamples(query, { limit = 5 } = {}) {
+export const DEFAULT_SCORING_CONFIG = {
+  permanentBonus: 100,
+  questionMatchWeight: 3,
+  contextMatchWeight: 1,
+  answerMatchWeight: 1,
+};
+
+export function loadScoringConfig() {
+  try {
+    const p = path.join(dataDir, "kb-score-config.json");
+    if (fs.existsSync(p)) return { ...DEFAULT_SCORING_CONFIG, ...JSON.parse(fs.readFileSync(p, "utf8")) };
+  } catch { /* ignore */ }
+  return DEFAULT_SCORING_CONFIG;
+}
+
+export function saveScoringConfig(config) {
+  ensureDir(dataDir);
+  fs.writeFileSync(path.join(dataDir, "kb-score-config.json"), JSON.stringify(config, null, 2), "utf8");
+}
+
+export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
+  const cfg = scoringConfig || loadScoringConfig();
   const kb = loadTrainingKB();
   const entries = kb.entries
+    .filter((e) => !e.archived)
     .map((entry) => {
       const score =
-        (entry.permanent ? 100 : 0) +
-        scoreOverlap(query, entry.question) * 3 +
-        scoreOverlap(query, entry.context) +
-        scoreOverlap(query, entry.goodAnswer);
+        (entry.permanent ? cfg.permanentBonus : 0) +
+        scoreOverlap(query, entry.question) * cfg.questionMatchWeight +
+        scoreOverlap(query, entry.context) * cfg.contextMatchWeight +
+        scoreOverlap(query, entry.goodAnswer) * cfg.answerMatchWeight;
       return { entry, score };
     })
     .filter((it) => it.score > 0)
@@ -150,6 +173,34 @@ export function findRelevantExamples(query, { limit = 5 } = {}) {
     .slice(0, limit)
     .map((it) => ({ ...it.entry, matchScore: it.score }));
   return entries;
+}
+
+export function bulkDeleteEntries(ids) {
+  const idSet = new Set(Array.isArray(ids) ? ids : []);
+  const kb = loadTrainingKB();
+  const before = kb.entries.length;
+  kb.entries = kb.entries.filter((e) => !idSet.has(e.id));
+  const deletedCount = before - kb.entries.length;
+  saveTrainingKB(kb);
+  return { ok: true, deletedCount, requestedCount: idSet.size };
+}
+
+export function bulkPatchEntries(ids, patch) {
+  const idSet = new Set(Array.isArray(ids) ? ids : []);
+  const kb = loadTrainingKB();
+  let patchedCount = 0;
+  kb.entries = kb.entries.map((e) => {
+    if (!idSet.has(e.id)) return e;
+    patchedCount += 1;
+    return {
+      ...e,
+      ...(patch.archived != null ? { archived: Boolean(patch.archived) } : {}),
+      ...(patch.permanent != null ? { permanent: Boolean(patch.permanent) } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  saveTrainingKB(kb);
+  return { ok: true, patchedCount, requestedCount: idSet.size };
 }
 
 export function getTrainingStats() {
@@ -193,6 +244,11 @@ export function updatePromptSection(sectionName, nextContent) {
   const contentStart = start + marker.length;
   const end = source.indexOf("`;", contentStart);
   if (end < 0) throw new Error(`Could not locate end of ${target}`);
+
+  // Save backup before overwriting (keep last 3 versions)
+  const currentContent = source.slice(contentStart, end);
+  savePromptSectionBackup(target, currentContent);
+
   const safeContent = String(nextContent || "")
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
@@ -203,6 +259,46 @@ export function updatePromptSection(sectionName, nextContent) {
     source.slice(end);
   fs.writeFileSync(chatPromptsPath, updated, "utf8");
   return { ok: true, section: target };
+}
+
+function savePromptSectionBackup(sectionName, content) {
+  ensureDir(backupsDir);
+  const backupPath = path.join(backupsDir, `${sectionName}.json`);
+  let versions = [];
+  try {
+    if (fs.existsSync(backupPath)) versions = JSON.parse(fs.readFileSync(backupPath, "utf8"));
+    if (!Array.isArray(versions)) versions = [];
+  } catch { versions = []; }
+  versions.push({ savedAt: new Date().toISOString(), content });
+  versions = versions.slice(-3); // keep last 3
+  fs.writeFileSync(backupPath, JSON.stringify(versions, null, 2), "utf8");
+}
+
+const ALLOWED_PROMPT_SECTIONS = new Set(["IDENTITY", "CATALOG", "WORKFLOW", "ACTIONS_DOC"]);
+
+export function loadPromptSectionHistory(sectionName) {
+  const target = String(sectionName || "").toUpperCase();
+  if (!ALLOWED_PROMPT_SECTIONS.has(target)) throw new Error("Unsupported section");
+  const backupPath = path.join(backupsDir, `${target}.json`);
+  try {
+    if (!fs.existsSync(backupPath)) return [];
+    const versions = JSON.parse(fs.readFileSync(backupPath, "utf8"));
+    return Array.isArray(versions) ? versions.map((v, i) => ({
+      versionIndex: i,
+      savedAt: v.savedAt,
+      preview: String(v.content || "").slice(0, 200),
+    })).reverse() : [];
+  } catch { return []; }
+}
+
+export function revertPromptSection(sectionName, versionIndex) {
+  const target = String(sectionName || "").toUpperCase();
+  if (!ALLOWED_PROMPT_SECTIONS.has(target)) throw new Error("Unsupported section");
+  const backupPath = path.join(backupsDir, `${target}.json`);
+  if (!fs.existsSync(backupPath)) throw new Error("No backup found");
+  const versions = JSON.parse(fs.readFileSync(backupPath, "utf8"));
+  if (!Array.isArray(versions) || !versions[versionIndex]) throw new Error("Version not found");
+  return updatePromptSection(target, versions[versionIndex].content);
 }
 
 export function appendTrainingSessionEvent(event = {}) {
@@ -219,5 +315,5 @@ export function appendTrainingSessionEvent(event = {}) {
 }
 
 export function getTrainingPaths() {
-  return { kbPath, sessionsDir, chatPromptsPath };
+  return { kbPath, sessionsDir, chatPromptsPath, backupsDir };
 }
