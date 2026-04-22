@@ -2599,6 +2599,7 @@ export default function RoofPreview({
           const encs = findEncounters(layout.entries);
           const missing = encs.filter((enc) => {
             const [a, b] = enc.zoneIndices;
+            if (getLateralAnnexRootBodyGi(zonas, a) === getLateralAnnexRootBodyGi(zonas, b)) return false;
             const pk = encounterPairKey(a, b);
             const low = Math.min(a, b);
             return zonas[low]?.preview?.encounterByPair?.[pk] == null;
@@ -3158,6 +3159,7 @@ export default function RoofPreview({
             )}
             {encounters.flatMap((enc) => {
               const [ga, gb] = enc.zoneIndices;
+              const isSameBody = getLateralAnnexRootBodyGi(zonas, ga) === getLateralAnnexRootBodyGi(zonas, gb);
               const pk = encounterPairKey(ga, gb);
               const low = Math.min(ga, gb);
               const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
@@ -3165,7 +3167,7 @@ export default function RoofPreview({
               return runs.map((run) => {
                 const p0 = encInterp(enc, run.t0);
                 const p1 = encInterp(enc, run.t1);
-                const stroke = encounterStrokeForModo(run.normalized.modo);
+                const stroke = isSameBody ? "#9ca3af" : encounterStrokeForModo(run.normalized.modo);
                 return (
                   <line
                     key={`${enc.id}-${run.id}`}
@@ -3175,11 +3177,11 @@ export default function RoofPreview({
                     y2={p1.y}
                     stroke={stroke}
                     strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
-                    strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
-                    pointerEvents="stroke"
-                    opacity={run.includeInBom ? 0.95 : 0.35}
-                    style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
-                    onPointerDown={(ev) => {
+                    strokeDasharray={isSameBody ? undefined : `${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
+                    pointerEvents={isSameBody ? "none" : "stroke"}
+                    opacity={isSameBody ? 0.3 : (run.includeInBom ? 0.95 : 0.35)}
+                    style={{ cursor: (!isSameBody && onEncounterPairChange) ? "pointer" : undefined }}
+                    onPointerDown={isSameBody ? undefined : (ev) => {
                       if (!onEncounterPairChange) return;
                       ev.stopPropagation();
                       setEncounterPrompt({
