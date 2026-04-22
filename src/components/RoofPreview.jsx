@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Trash2 } from "lucide-react";
-import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, TR } from "../data/constants.js";
+import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, PERFIL_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
 import { useRoofPreviewPlanLayout } from "../hooks/useRoofPreviewPlanLayout.js";
@@ -1079,17 +1079,32 @@ function plantaBorderOptsForSide(side, panelFamiliaKey) {
   return (BORDER_OPTIONS[side] || []).filter((o) => !o.familias || o.familias.includes(fam));
 }
 
+function plantaBorderOptsForSideFiltered(side, panelFamiliaKey, extendido, cualquierFamilia, currentVal) {
+  const fam = resolvePlantaBorderPanelFam(panelFamiliaKey);
+  const all = BORDER_OPTIONS[side] || [];
+  if (cualquierFamilia) return all;
+  const byFamily = all.filter(o => !o.familias || o.familias.includes(fam));
+  if (extendido) return byFamily;
+  const filtered = byFamily.filter(o => o.id === "none" || !!PERFIL_TECHO[o.id]?.[fam]);
+  if (currentVal && currentVal !== "none" && !filtered.find(o => o.id === currentVal)) {
+    const ghost = byFamily.find(o => o.id === currentVal) ?? all.find(o => o.id === currentVal);
+    if (ghost) filtered.push({ ...ghost, label: `${ghost.label} (no estándar)` });
+  }
+  return filtered;
+}
+
 /** Opciones de catálogo para un encuentro entre zonas (eje vertical = laterales; horizontal = fusión frente+fondo). */
-function plantaBorderOptsForEncounter(orientation, panelFamiliaKey) {
+function plantaBorderOptsForEncounter(orientation, panelFamiliaKey, extendido = false, cualquierFamilia = false) {
   const fam = resolvePlantaBorderPanelFam(panelFamiliaKey);
   if (orientation === "vertical") {
-    return plantaBorderOptsForSide("latIzq", panelFamiliaKey);
+    return plantaBorderOptsForSideFiltered("latIzq", panelFamiliaKey, extendido, cualquierFamilia, null);
   }
   const seen = new Set();
   const out = [];
   for (const side of ["frente", "fondo"]) {
     for (const o of BORDER_OPTIONS[side] || []) {
-      if (o.familias && !o.familias.includes(fam)) continue;
+      if (!cualquierFamilia && o.familias && !o.familias.includes(fam)) continue;
+      if (!cualquierFamilia && !extendido && o.id !== "none" && !PERFIL_TECHO[o.id]?.[fam]) continue;
       if (seen.has(o.id)) continue;
       seen.add(o.id);
       out.push(o);
@@ -1784,6 +1799,8 @@ export default function RoofPreview({
   onFijDotOverridesSync = null,
   bordesPlantaAssign = false,
   bordesPanelFamiliaKey = "",
+  bordesExtendido = false,
+  bordesCualquierFamilia = false,
   techoBorders = null,
   onTechoBorderChange = null,
   onZonaBorderChange = null,
@@ -2879,7 +2896,7 @@ export default function RoofPreview({
             if (rawPair == null) return null;
             const encLenM = Number(encounterPrompt.encounterLength);
             const encOrientation = encounterPrompt.orientation === "horizontal" ? "horizontal" : "vertical";
-            const encCatalogOpts = plantaBorderOptsForEncounter(encOrientation, bordesPanelFamiliaKey);
+            const encCatalogOpts = plantaBorderOptsForEncounter(encOrientation, bordesPanelFamiliaKey, bordesExtendido, bordesCualquierFamilia);
             const runs = listEncounterPairSegmentRuns(rawPair);
             const lenLabel = Number.isFinite(encLenM) && encLenM > 0 ? `${encLenM.toFixed(2)} m` : "—";
             return (
@@ -3546,7 +3563,6 @@ export default function RoofPreview({
         ? createPortal(
             (() => {
               const { gi, side } = plantaBorderPick;
-              const opts = plantaBorderOptsForSide(side, bordesPanelFamiliaKey);
               const curVal = resolvePlantaBorderEffectiveValue(
                 gi,
                 side,
@@ -3556,6 +3572,7 @@ export default function RoofPreview({
                 bordesSharedSidesMap,
                 layout.entries,
               );
+              const opts = plantaBorderOptsForSideFiltered(side, bordesPanelFamiliaKey, bordesExtendido, bordesCualquierFamilia, curVal);
               const curLabel =
                 !curVal || curVal === "none"
                   ? "Sin perfil"

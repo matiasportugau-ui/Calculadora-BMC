@@ -26,7 +26,7 @@ import {
   PERFIL_TECHO, PERFIL_PARED,
   SCENARIOS_DEF, OBRA_PRESETS, BORDER_OPTIONS,
   CATEGORIAS_BOM, CATEGORIA_TO_GROUPS,
-  PENDIENTES_PRESET, TIPO_AGUAS,
+  PENDIENTES_PRESET,
   ROOF_2D_QUOTE_VISOR_STEP_IDS,
   ROOF_ESTRUCTURA_OVERLAY_STEP_IDS,
 } from "../data/constants.js";
@@ -660,71 +660,7 @@ function PDFPreviewModal({ html, title, onClose }) {
   );
 }
 
-function AguaSvg1({ color = "#0071E3" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 18 L72 10 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-    <line x1="72" y1="10" x2="72" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-    <circle cx="8" cy="18" r="2" fill={color} />
-    <circle cx="72" cy="10" r="2" fill={color} />
-  </svg>;
-}
 
-function AguaSvg2({ color = "#0071E3" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 22 L40 8 L72 22 L72 36" fill={color} fillOpacity="0.15" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-    <line x1="40" y1="8" x2="40" y2="36" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
-    <circle cx="40" cy="8" r="2.5" fill={color} />
-    <circle cx="8" cy="22" r="2" fill={color} />
-    <circle cx="72" cy="22" r="2" fill={color} />
-  </svg>;
-}
-
-function AguaSvg4({ color = "#AEAEB2" }) {
-  return <svg viewBox="0 0 80 48" width="80" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="36" width="72" height="8" rx="2" fill="#E5E5EA" />
-    <path d="M8 36 L8 22 L28 10 L52 10 L72 22 L72 36" fill={color} fillOpacity="0.08" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="4 2" />
-    <line x1="28" y1="10" x2="28" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
-    <line x1="52" y1="10" x2="52" y2="36" stroke={color} strokeWidth="1" strokeDasharray="3 2" />
-  </svg>;
-}
-
-const AGUA_SVGS = { una_agua: AguaSvg1, dos_aguas: AguaSvg2, cuatro_aguas: AguaSvg4 };
-
-function TipoAguasSelector({ value, onChange, onOptionDoubleClick }) {
-  return (
-    <div style={{ display: "flex", gap: 10, fontFamily: FONT, flexWrap: "wrap" }}>
-      {TIPO_AGUAS.map(tipo => {
-        const isS = value === tipo.id;
-        const isDisabled = !tipo.enabled;
-        const SvgComp = AGUA_SVGS[tipo.id];
-        return (
-          <button
-            key={tipo.id}
-            onClick={() => !isDisabled && onChange(tipo.id)}
-            onDoubleClick={() => !isDisabled && onOptionDoubleClick?.(tipo.id)}
-            disabled={isDisabled}
-            style={{
-              flex: 1, padding: "12px 8px", borderRadius: 14, textAlign: "center",
-              border: `2px solid ${isDisabled ? C.border : isS ? C.primary : C.border}`,
-              background: isDisabled ? C.surfaceAlt : isS ? C.primarySoft : C.surface,
-              cursor: isDisabled ? "not-allowed" : "pointer",
-              opacity: isDisabled ? 0.7 : 1,
-              transition: TR,
-              boxShadow: isS && !isDisabled ? `0 0 0 3px ${C.primarySoft}` : "none",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            }}
-          >
-            {SvgComp && <SvgComp color={isDisabled ? C.tt : isS ? C.primary : C.ts} />}
-            <div style={{ fontSize: 13, fontWeight: 600, color: isDisabled ? C.tt : isS ? C.primary : C.tp }}>{tipo.label}</div>
-            <div style={{ fontSize: 10, color: isDisabled ? C.tt : C.ts, lineHeight: 1.3 }}>{tipo.description}</div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 const SIDE_LABELS = { frente: "Frente Inferior", fondo: "Frente Superior", latIzq: "Lateral Izq", latDer: "Lateral Der" };
 
@@ -1725,6 +1661,8 @@ function RoofBorderSelector({
   onZonaPreviewChange,
   canvasPortalTargetRef = null,
   minimalChrome = false,
+  bordesExtendido = false,
+  bordesCualquierFamilia = false,
 }) {
   // openSide: null | { side: string, gi: number|null, screenPos? }  (gi=null → global edge)
   const [openSide, setOpenSide] = useState(null);
@@ -1799,7 +1737,18 @@ function RoofBorderSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [canvasPortalTargetRef]);
 
-  const getOpts = (side) => (BORDER_OPTIONS[side] || []).filter(o => !o.familias || o.familias.includes(panelFam));
+  const getOpts = (side, currentVal = null) => {
+    const all = BORDER_OPTIONS[side] || [];
+    if (bordesCualquierFamilia) return all;
+    const byFamily = all.filter(o => !o.familias || o.familias.includes(panelFam));
+    if (bordesExtendido) return byFamily;
+    const filtered = byFamily.filter(o => o.id === "none" || !!PERFIL_TECHO[o.id]?.[panelFam]);
+    if (currentVal && currentVal !== "none" && !filtered.find(o => o.id === currentVal)) {
+      const ghost = byFamily.find(o => o.id === currentVal) ?? all.find(o => o.id === currentVal);
+      if (ghost) filtered.push({ ...ghost, label: `${ghost.label} (no estándar)` });
+    }
+    return filtered;
+  };
 
   const getLabel = (side, gi = null) => {
     const val = gi !== null ? (zonasBorders[gi]?.[side] ?? borders[side]) : borders[side];
@@ -2067,8 +2016,8 @@ function RoofBorderSelector({
       {/* Popover */}
       {openSide && typeof document !== "undefined" && createPortal((() => {
         const { side, gi } = openSide;
-        const opts = getOpts(side);
         const curVal = gi !== null ? (zonasBorders[gi]?.[side] ?? borders[side]) : borders[side];
+        const opts = getOpts(side, curVal);
         const title = gi !== null
           ? `Zona ${gi + 1} — ${SIDE_LABELS[side]}`
           : SIDE_LABELS[side];
@@ -2367,9 +2316,12 @@ const TECHO_INITIAL_VENDEDOR = {
   color: "Blanco",
   zonas: [{ largo: 0, ancho: 0 }],
   pendiente: 0, pendienteModo: "incluye_pendiente", alturaDif: 0,
+  // @deprecated — ignorado en runtime; usar derivedTipoAguas (calculado desde zonas[].dosAguas)
   tipoAguas: "", tipoEst: "", ptsHorm: 0, ptsMetal: 0, ptsMadera: 0,
   borders: { frente: "", fondo: "", latIzq: "", latDer: "" },
   inclAccesorios: true,
+  bordesExtendido: false,
+  bordesCualquierFamilia: false,
   opciones: { inclCanalon: false, inclGotSup: false, inclSell: true, bomComercial: false },
 };
 
@@ -2433,7 +2385,7 @@ export default function PanelinCalculadoraV3() {
   const [hoverTechoFamilia, setHoverTechoFamilia] = useState("");
   const [hoverTechoColor, setHoverTechoColor] = useState("");
   const [hoverParedColor, setHoverParedColor] = useState("");
-  const [aguasVisorHighlight, setAguasVisorHighlight] = useState(false);
+  // aguasVisorHighlight removed (tipoAguas step removed from wizard)
   /** Vista 3D referencial con textura de catálogo (paralela al RoofPreview 2D). */
   const [roofRealistic3dOn, setRoofRealistic3dOn] = useState(false);
   const [overrides, _setOverrides] = useState({});
@@ -2687,8 +2639,7 @@ export default function PanelinCalculadoraV3() {
   const isWizardStepValid = useCallback((stepId) => {
     switch (stepId) {
       case "escenario": return !!scenario;
-      // "lista" step removed — price list selected via right-panel toggle
-      case "tipoAguas": return !!techo.tipoAguas;
+      // "lista" and "tipoAguas" steps removed
       case "familia": return !!techo.familia;
       case "espesor": return !!techo.espesor;
       case "color": return !!techo.color;
@@ -2705,7 +2656,7 @@ export default function PanelinCalculadoraV3() {
       case "bordes": {
         if (techo.inclAccesorios === false) return true;
         const sides = ["frente", "fondo", "latIzq", "latDer"];
-        const disabled = techo.tipoAguas === "dos_aguas" ? ["fondo"] : [];
+        const disabled = derivedTipoAguas === "dos_aguas" ? ["fondo"] : [];
         return sides.every(s => disabled.includes(s) || !!(techo.borders?.[s]));
       }
       case "selladores": return true;
@@ -2754,11 +2705,6 @@ export default function PanelinCalculadoraV3() {
       ? SOLO_TECHO_STEPS[wizardStep]?.id ?? null
       : null;
 
-  useEffect(() => {
-    if (activeWizardStepId !== "tipoAguas") {
-      setAguasVisorHighlight(false);
-    }
-  }, [activeWizardStepId]);
 
   /** Al entrar a Dimensiones (paso 7/13 Solo techo), foco en Largo de la zona principal para escribir sin clic. */
   useEffect(() => {
@@ -2907,6 +2853,14 @@ export default function PanelinCalculadoraV3() {
     () => (techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0),
     [techo.zonas],
   );
+  // Derived from per-zone dosAguas flags; only root zones (not lateral annexes) count.
+  const derivedTipoAguas = useMemo(
+    () => (techo.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas)
+      ? "dos_aguas"
+      : "una_agua",
+    [techo.zonas],
+  );
+
   const roofQuoteVisor2dEligible = Boolean(
     scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isPhone,
   );
@@ -3043,11 +2997,12 @@ export default function PanelinCalculadoraV3() {
   const buildDefaultZona = useCallback((t) => {
     const defaultLargo = 6.0;
     const defaultAnchoM = 5.0;
+    const tDerived = (t.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas) ? "dos_aguas" : "una_agua";
     const wantPaneles = techoAnchoModo === "paneles" && techoPanelData;
     const ancho = wantPaneles
-      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, t.tipoAguas)
+      ? normalizeTechoAnchoToPaneles(defaultAnchoM, techoPanelData, tDerived)
       : defaultAnchoM;
-    return { largo: defaultLargo, ancho };
+    return { largo: defaultLargo, ancho, dosAguas: false };
   }, [techoAnchoModo, techoPanelData, normalizeTechoAnchoToPaneles]);
 
   const addZona = () => setTecho(t => ({ ...t, zonas: [...t.zonas, buildDefaultZona(t)] }));
@@ -3182,9 +3137,9 @@ export default function PanelinCalculadoraV3() {
     borders: techo.borders,
     onChange: (side, val) => setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } })),
     panelFamilia: techo.familia,
-    disabledSides: techo.tipoAguas === "dos_aguas" ? ["fondo"] : [],
+    disabledSides: derivedTipoAguas === "dos_aguas" ? ["fondo"] : [],
     zonas: techo.zonas,
-    tipoAguas: techo.tipoAguas,
+    tipoAguas: derivedTipoAguas,
     zonasBorders: techo.zonas?.map((z) => z.preview?.borders ?? {}),
     onZonaBorderChange: (gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } }),
     zonaEncounters: techo.zonas?.map((z) => z.preview?.encounters ?? {}),
@@ -3194,13 +3149,17 @@ export default function PanelinCalculadoraV3() {
     panelAu: techoPanelData?.au ?? 1.12,
     canvasPortalTargetRef: roof3dHostRef,
     minimalChrome: true,
+    bordesExtendido: techo.bordesExtendido ?? false,
+    bordesCualquierFamilia: techo.bordesCualquierFamilia ?? false,
   }), [
     techo.borders,
     techo.familia,
-    techo.tipoAguas,
+    derivedTipoAguas,
     techo.zonas,
     techo.pendiente,
     techoPanelData?.au,
+    techo.bordesExtendido,
+    techo.bordesCualquierFamilia,
     updateZonaPreview,
     setTecho,
   ]);
@@ -3248,14 +3207,15 @@ export default function PanelinCalculadoraV3() {
     if (techoAnchoModo !== "paneles") return;
     if (!techoPanelData) return;
     setTecho(prev => {
+      const prevTipoAguas = (prev.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas) ? "dos_aguas" : "una_agua";
       const nextZonas = prev.zonas.map(z => {
-        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas);
+        const nextAncho = normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prevTipoAguas);
         return nextAncho === z.ancho ? z : { ...z, ancho: nextAncho };
       });
       const changed = nextZonas.some((z, i) => z !== prev.zonas[i]);
       return changed ? { ...prev, zonas: nextZonas } : prev;
     });
-  }, [techoAnchoModo, techoPanelData, techo.tipoAguas, normalizeTechoAnchoToPaneles]);
+  }, [techoAnchoModo, techoPanelData, derivedTipoAguas, normalizeTechoAnchoToPaneles]);
 
   // ── Totals from all zones (for display and calculations) ──
   const zonasTotales = useMemo(() => {
@@ -3285,9 +3245,10 @@ export default function PanelinCalculadoraV3() {
           catalog: libreCatalog || undefined,
         });
       }
-      return executeScenario(sc, { techo, pared, camara });
+      const techoForCalc = { ...techo, tipoAguas: derivedTipoAguas };
+      return executeScenario(sc, { techo: techoForCalc, pared, camara });
     } catch (e) { return { error: e.message }; }
-  }, [scenario, techo, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
+  }, [scenario, techo, derivedTipoAguas, pared, camara, configVersion, listaPrecios, librePanelLines, librePerfilQty, librePerfilById, libreFijQty, libreSellQty, flete, libreExtra, libreCatalog]);
 
   // ── Build BOM groups ──
   const groups = useMemo(() => {
@@ -3346,6 +3307,7 @@ export default function PanelinCalculadoraV3() {
         const tHyp = scenarioDef?.hasTecho
           ? {
               ...techo,
+              tipoAguas: derivedTipoAguas,
               opciones: {
                 ...(techo.opciones || {}),
                 inclSell: techo.opciones?.inclSell === false ? true : techo.opciones?.inclSell !== false,
@@ -3805,7 +3767,7 @@ export default function PanelinCalculadoraV3() {
     return (
       <RoofPreview
         zonas={techo.zonas || []}
-        tipoAguas={techo.tipoAguas}
+        tipoAguas={derivedTipoAguas}
         pendiente={techo.pendiente}
         panelAu={techoPanelData?.au ?? 1.12}
         panelObj={techoPanelData ?? null}
@@ -3838,6 +3800,8 @@ export default function PanelinCalculadoraV3() {
         onApoyoMaterialDirect={handleApoyoMaterialDirect}
         bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
         bordesPanelFamiliaKey={techo.familia || ""}
+        bordesExtendido={techo.bordesExtendido ?? false}
+        bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
         techoBorders={techo.borders}
         onTechoBorderChange={(side, val) =>
           setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
@@ -3854,7 +3818,7 @@ export default function PanelinCalculadoraV3() {
     activeWizardStepId,
     estructuraMetricsSelectedGi,
     techo.zonas,
-    techo.tipoAguas,
+    derivedTipoAguas,
     techo.pendiente,
     techoPanelData?.au,
     updateZonaPreview,
@@ -4508,14 +4472,6 @@ export default function PanelinCalculadoraV3() {
                       ))}
                     </div>
                   )}
-                  {stepId === "tipoAguas" && (
-                    <div onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
-                      <TipoAguasSelector value={techo.tipoAguas} onOptionDoubleClick={() => advanceWizardStep()} onChange={v => {
-                        if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-                        else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-                      }} />
-                    </div>
-                  )}
                   {stepId === "familia" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onMouseLeave={() => setHoverTechoFamilia("")}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -4701,7 +4657,7 @@ export default function PanelinCalculadoraV3() {
                           el ancho en planta se calcula como{" "}
                           <strong style={{ color: C.primary }}>cantidad × {Number(techoPanelData.au ?? 1.12).toFixed(2)} m</strong>{" "}
                           (ancho útil del panel según familia/espesor).
-                          {techo.tipoAguas === "dos_aguas" ? (
+                          {derivedTipoAguas === "dos_aguas" ? (
                             <> En <strong>dos aguas</strong>, el ancho total de zona reparte el techo en dos faldones en la vista previa.</>
                           ) : null}
                         </div>
@@ -4739,7 +4695,7 @@ export default function PanelinCalculadoraV3() {
                           <div data-stepper-group style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
                             <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
                             {techoAnchoModo === "paneles" && techoPanelData ? (
-                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, techo.tipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
+                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
                             ) : (
                               <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
                             )}
@@ -4779,6 +4735,18 @@ export default function PanelinCalculadoraV3() {
                               </div>
                             );
                           })()}
+                          {!isLateralAnnexZona(zona) && (
+                            <Toggle
+                              label="2 Aguas (cumbrera central)"
+                              value={!!zona.dosAguas}
+                              onChange={v => {
+                                updateZona(idx, "dosAguas", v);
+                                const otrasZonas2A = (techo.zonas || []).filter((_, i) => i !== idx && !isLateralAnnexZona(techo.zonas[i])).some(z => z.dosAguas);
+                                if (v && techo.borders?.fondo === "gotero_lateral") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "cumbrera" } }));
+                                if (!v && !otrasZonas2A && techo.borders?.fondo === "cumbrera") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "gotero_lateral" } }));
+                              }}
+                            />
+                          )}
                           {(techo.zonas?.length || 0) > 1 && idx !== effectivePrincipalZonaGi && (
                             <button
                               type="button"
@@ -4835,7 +4803,7 @@ export default function PanelinCalculadoraV3() {
                       {!showRoof2dInQuoteVisor ? (
                         <RoofPreview
                           zonas={techo.zonas || []}
-                          tipoAguas={techo.tipoAguas}
+                          tipoAguas={derivedTipoAguas}
                           pendiente={techo.pendiente}
                           panelAu={techoPanelData?.au ?? 1.12}
                           panelObj={techoPanelData ?? null}
@@ -4864,6 +4832,8 @@ export default function PanelinCalculadoraV3() {
                           onApoyoMaterialDirect={handleApoyoMaterialDirect}
                           bordesPlantaAssign={bordesPlantaRoof2dAssignActive}
                           bordesPanelFamiliaKey={techo.familia || ""}
+                          bordesExtendido={techo.bordesExtendido ?? false}
+                          bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
                           techoBorders={techo.borders}
                           onTechoBorderChange={(side, val) =>
                             setTecho((t) => ({ ...t, borders: { ...t.borders, [side]: val } }))
@@ -4919,7 +4889,7 @@ export default function PanelinCalculadoraV3() {
                               >
                                 <RoofPanelRealisticScene
                                   validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
-                                  tipoAguas={techo.tipoAguas}
+                                  tipoAguas={derivedTipoAguas}
                                   pendiente={techo.pendiente}
                                   familiaKey={techo.familia}
                                   espesorMm={techo.espesor}
@@ -5020,7 +4990,7 @@ export default function PanelinCalculadoraV3() {
                           compact
                           emphasize
                           zonas={techo.zonas || []}
-                          tipoAguas={techo.tipoAguas}
+                          tipoAguas={derivedTipoAguas}
                           pendiente={techo.pendiente}
                           pendienteModo={techo.pendienteModo || "incluye_pendiente"}
                           globalAlturaDif={techo.alturaDif ?? 0}
@@ -5042,7 +5012,22 @@ export default function PanelinCalculadoraV3() {
                           <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
                             <strong style={{ color: C.tp }}>Planta 2D en el panel derecho:</strong> tocá las bandas resaltadas en el perímetro de cada zona para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
                           </div>
-                          {techo.tipoAguas === "dos_aguas" && (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <Toggle
+                              label="Mostrar todos (esta familia)"
+                              value={!!techo.bordesExtendido}
+                              onChange={v => setTecho(t => ({ ...t, bordesExtendido: v }))}
+                            />
+                            <Toggle
+                              label="Cualquier familia"
+                              value={!!techo.bordesCualquierFamilia}
+                              onChange={v => setTecho(t => ({ ...t, bordesCualquierFamilia: v, bordesExtendido: v ? true : t.bordesExtendido }))}
+                            />
+                            {techo.bordesCualquierFamilia && (
+                              <span style={{ fontSize: 11, color: "#b45309" }}>⚠ Verificar disponibilidad cross-family en cotización</span>
+                            )}
+                          </div>
+                          {derivedTipoAguas === "dos_aguas" && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", background: C.primarySoft, borderRadius: 10, marginBottom: 4, fontSize: 12, color: C.primary, fontWeight: 500 }}>
                               <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón en la planta 2D.</span>
                             </div>
@@ -5073,9 +5058,9 @@ export default function PanelinCalculadoraV3() {
                         label="BOM comercial ISODEC PIR (2 goteros + 6 babetas + kit selladores + 22 pts fijación)"
                         value={techo.opciones?.bomComercial === true}
                         onChange={v => setTecho(t => ({ ...t, opciones: { ...t.opciones, bomComercial: v } }))}
-                        disabled={techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas"}
+                        disabled={techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas"}
                       />
-                      {(techo.familia !== "ISODEC_PIR" || techo.tipoAguas === "dos_aguas") && (
+                      {(techo.familia !== "ISODEC_PIR" || derivedTipoAguas === "dos_aguas") && (
                         <div style={{ fontSize: 11, color: C.ts, opacity: 0.85 }}>Solo familia ISODEC PIR y techo una agua. En dos aguas el kit se duplicaría por faldón.</div>
                       )}
                       {!categoriasActivas.SELLADORES && (
@@ -5313,16 +5298,6 @@ export default function PanelinCalculadoraV3() {
                 })}
               </div>
             </div>
-            {scenarioDef?.hasTecho && <div style={{ marginTop: 16 }} onMouseEnter={() => setAguasVisorHighlight(true)} onMouseLeave={() => setAguasVisorHighlight(false)}>
-              <div style={labelS}>CAÍDAS DEL TECHO</div>
-              <TipoAguasSelector value={techo.tipoAguas || "una_agua"} onChange={v => {
-                if (v === "dos_aguas") {
-                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-                } else {
-                  setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-                }
-              }} />
-            </div>}
           </div>
 
           {/* Datos proyecto (colapsable) */}
@@ -5542,7 +5517,7 @@ export default function PanelinCalculadoraV3() {
           {/* Dimensiones Techo — Zonas múltiples */}
           {vis.largoAncho && !(scenario === "techo_fachada" && usePlanoTechoFachada) && (() => {
             const globalPm = techo.pendienteModo || "incluye_pendiente";
-            const is2A = techo.tipoAguas === "dos_aguas";
+            const is2A = derivedTipoAguas === "dos_aguas";
             const baseArea = zonasTotales.area;
             const areaReal = techo.zonas?.reduce((s, z) => {
               const zPm = z.pendienteModo ?? globalPm;
@@ -5577,10 +5552,13 @@ export default function PanelinCalculadoraV3() {
                   if (modo === "paneles" && !techoPanelData) return;
                   setTechoAnchoModo(modo);
                   if (modo === "paneles" && techoPanelData) {
-                    setTecho(prev => ({
-                      ...prev,
-                      zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prev.tipoAguas) })),
-                    }));
+                    setTecho(prev => {
+                      const prevTipoAguas = (prev.zonas || []).filter(z => !isLateralAnnexZona(z)).some(z => z.dosAguas) ? "dos_aguas" : "una_agua";
+                      return {
+                        ...prev,
+                        zonas: prev.zonas.map(z => ({ ...z, ancho: normalizeTechoAnchoToPaneles(z.ancho, techoPanelData, prevTipoAguas) })),
+                      };
+                    });
                   }
                 }}
                 options={[
@@ -5634,7 +5612,7 @@ export default function PanelinCalculadoraV3() {
                     >
                       <RoofPanelRealisticScene
                         validZonas={(techo.zonas || []).filter((z) => z?.largo > 0 && z?.ancho > 0)}
-                        tipoAguas={techo.tipoAguas}
+                        tipoAguas={derivedTipoAguas}
                         pendiente={techo.pendiente}
                         familiaKey={techo.familia}
                         espesorMm={techo.espesor}
@@ -5667,8 +5645,8 @@ export default function PanelinCalculadoraV3() {
                   {techoAnchoModo === "paneles" && techoPanelData ? (
                     <StepperInput
                       label={`Ancho ${techo.zonas.length > 1 ? idx + 1 : ""} (${is2A ? "paneles/faldón" : "paneles"})`}
-                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, techo.tipoAguas)}
-                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, techo.tipoAguas))}
+                      value={techoPanelesDesdeAnchoM(zona.ancho, techoPanelData, derivedTipoAguas)}
+                      onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))}
                       min={1}
                       max={500}
                       step={1}
@@ -5701,6 +5679,18 @@ export default function PanelinCalculadoraV3() {
                 )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                  {!isLateralAnnexZona(zona) && (
+                    <Toggle
+                      label="2 Aguas (cumbrera central)"
+                      value={!!zona.dosAguas}
+                      onChange={v => {
+                        updateZona(idx, "dosAguas", v);
+                        const otrasZonas2A = (techo.zonas || []).filter((_, i) => i !== idx && !isLateralAnnexZona(techo.zonas[i])).some(z => z.dosAguas);
+                        if (v && techo.borders?.fondo === "gotero_lateral") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "cumbrera" } }));
+                        if (!v && !otrasZonas2A && techo.borders?.fondo === "cumbrera") setTecho(t => ({ ...t, borders: { ...t.borders, fondo: "gotero_lateral" } }));
+                      }}
+                    />
+                  )}
                   {techo.zonas.length > 1 && idx !== effectivePrincipalZonaGi && (
                     <button type="button" onClick={() => uT("zonaPrincipalGi", idx)} style={{ alignSelf: "flex-start", padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surfaceAlt, fontSize: 10, fontWeight: 500, cursor: "pointer", color: C.ts }}>Usar esta zona como techo principal</button>
                   )}
@@ -5840,7 +5830,24 @@ export default function PanelinCalculadoraV3() {
               <div style={labelS}>ACCESORIOS PERIMETRALES / TERMINACIONES</div>
               <Toggle label={techo.inclAccesorios !== false ? "Desactivar" : "Activar"} value={techo.inclAccesorios !== false} onChange={v => setTecho(t => ({ ...t, inclAccesorios: v }))} />
             </div>
-            {techo.inclAccesorios !== false && techo.tipoAguas === "dos_aguas" && (
+            {techo.inclAccesorios !== false && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+                <Toggle
+                  label="Mostrar todos (esta familia)"
+                  value={!!techo.bordesExtendido}
+                  onChange={v => setTecho(t => ({ ...t, bordesExtendido: v }))}
+                />
+                <Toggle
+                  label="Cualquier familia"
+                  value={!!techo.bordesCualquierFamilia}
+                  onChange={v => setTecho(t => ({ ...t, bordesCualquierFamilia: v, bordesExtendido: v ? true : t.bordesExtendido }))}
+                />
+                {techo.bordesCualquierFamilia && (
+                  <span style={{ fontSize: 11, color: "#b45309" }}>⚠ Verificar disponibilidad cross-family en cotización</span>
+                )}
+              </div>
+            )}
+            {techo.inclAccesorios !== false && derivedTipoAguas === "dos_aguas" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", background: C.primarySoft, borderRadius: 10, marginBottom: 12, fontSize: 12, color: C.primary, fontWeight: 500 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>⌃</span> 2 Aguas — Cumbrera incluida automáticamente. Configurá los bordes exteriores de cada faldón en la planta 2D del panel derecho o aquí abajo.</span>
                 <span style={{ fontSize: 11, fontWeight: 400, color: C.ts }}>¿La otra agua ya existe o también tenemos que calcularla? En este flujo se calculan ambas aguas del techo.</span>
@@ -5851,9 +5858,9 @@ export default function PanelinCalculadoraV3() {
                 borders={techo.borders}
                 onChange={(side, val) => setTecho(t => ({ ...t, borders: { ...t.borders, [side]: val } }))}
                 panelFamilia={techo.familia}
-                disabledSides={techo.tipoAguas === "dos_aguas" ? ["fondo"] : []}
+                disabledSides={derivedTipoAguas === "dos_aguas" ? ["fondo"] : []}
                 zonas={techo.zonas}
-                tipoAguas={techo.tipoAguas}
+                tipoAguas={derivedTipoAguas}
                 zonasBorders={techo.zonas?.map(z => z.preview?.borders ?? {})}
                 onZonaBorderChange={(gi, side, val) => updateZonaPreview(gi, { borders: { ...techo.zonas[gi]?.preview?.borders, [side]: val } })}
                 zonaEncounters={techo.zonas?.map(z => z.preview?.encounters ?? {})}
@@ -5863,6 +5870,8 @@ export default function PanelinCalculadoraV3() {
                 panelAu={techoPanelData?.au ?? 1.12}
                 canvasPortalTargetRef={showRoof3DHost ? roof3dHostRef : null}
                 minimalChrome={Boolean(showRoof3DHost)}
+                bordesExtendido={techo.bordesExtendido ?? false}
+                bordesCualquierFamilia={techo.bordesCualquierFamilia ?? false}
               />
             ) : (
               <div style={{ padding: 16, background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.ts }}>Sin accesorios perimetrales. Activar para configurar goteros, babetas, canalón, etc.</div>
@@ -6031,12 +6040,12 @@ export default function PanelinCalculadoraV3() {
             scenarioId={scenario}
             hoverScenarioId={scenarioHoverId}
             stepId={activeWizardStepId}
-            tipoAguas={techo.tipoAguas || "una_agua"}
+            tipoAguas={derivedTipoAguas}
             techoFamilia={techo.familia || ""}
             hoverTechoFamilia={activeWizardStepId === "familia" ? hoverTechoFamilia : ""}
             techoColor={techo.color || ""}
             hoverTechoColor={activeWizardStepId === "color" || activeWizardStepId === "color_pared" ? hoverTechoColor || hoverParedColor : ""}
-            aguasHighlight={aguasVisorHighlight}
+            aguasHighlight={false}
             showRoof3DStage={showRoof3DHost}
             roofCanvasHostRef={roof3dHostRef}
             onRoofCanvasHostReady={bumpRoof3dHostReady}
@@ -6044,11 +6053,8 @@ export default function PanelinCalculadoraV3() {
             techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
             dimensionSummary={quoteVisorDimensionSummary}
             roof2DPreview={roof2DPreviewForVisor}
-            onSelectAgua={activeWizardStepId === "tipoAguas" ? (v) => {
-              if (v === "dos_aguas") setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: "cumbrera" } }));
-              else setTecho(t => ({ ...t, tipoAguas: v, borders: { ...t.borders, fondo: t.borders.fondo === "cumbrera" ? "gotero_lateral" : t.borders.fondo } }));
-            } : null}
-            onNext={activeWizardStepId === "tipoAguas" ? advanceWizardStep : null}
+            onSelectAgua={null}
+            onNext={null}
           />
           {/* Lista de precios — toggle siempre visible en panel derecho */}
           {modoVendedor && !scenarioDef?.isLibre && (

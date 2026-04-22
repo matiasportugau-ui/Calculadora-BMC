@@ -413,7 +413,6 @@ export const SCENARIOS_DEF = [
     visibility: { borders: true, largoAncho: true, altoPerim: false, esquineros: false, aberturas: false, camara: false, autoportancia: true, canalGot: true, p5852: false },
     wizardSteps: [
       { id: "escenario", label: "Escenario de obra" },
-      { id: "tipoAguas", label: "Caída del techo" },
       { id: "familia", label: "Familia panel techo" },
       { id: "espesor", label: "Espesor techo" },
       { id: "color", label: "Color techo" },
@@ -451,7 +450,6 @@ export const SCENARIOS_DEF = [
     visibility: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
     wizardSteps: [
       { id: "escenario", label: "Escenario de obra" },
-      { id: "tipoAguas", label: "Caída del techo" },
       { id: "familia", label: "Familia panel techo" },
       { id: "espesor", label: "Espesor techo" },
       { id: "color", label: "Color techo" },
