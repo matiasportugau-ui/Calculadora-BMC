@@ -6339,6 +6339,8 @@ export default function PanelinCalculadoraV3() {
         onReloadPromptSections={chat.reloadPromptSections}
         onSavePromptSection={chat.savePromptSection}
         onVerifyCalculation={chat.verifyCalculation}
+        calcState={calcState}
+        onChatAction={handleChatAction}
       />
 
       <Toast message={toast} visible={!!toast} />
