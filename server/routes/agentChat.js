@@ -25,6 +25,7 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
+import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 
 const router = Router();
 
@@ -150,6 +151,7 @@ const VALID_ACTION_TYPES = new Set([
   "setScenario", "setLP", "setTecho", "setTechoZonas",
   "setPared", "setCamara", "setFlete", "setProyecto",
   "setWizardStep", "advanceWizard",
+  "buildQuote",
 ]);
 
 // 0.1 — Rate limiting: 10/min public, 30/min devMode
@@ -393,6 +395,22 @@ router.post("/agent/chat", async (req, res) => {
   // 1.4 — SSE keepalive heartbeat every 15s to prevent proxy timeouts
   const heartbeat = setInterval(() => { if (!aborted) res.write(":\n\n"); }, 15000);
 
+  function emitAction(action) {
+    if (action.type === "buildQuote") {
+      const validation = validateAndPreviewQuote(action.payload);
+      if (validation.valid) {
+        const enriched = { ...action, preview: validation.preview, warnings: validation.preview.warnings };
+        send({ type: "action", action: enriched });
+      } else {
+        // Validation failed — emit rejection event (visible in devMode) and skip applying
+        send({ type: "buildQuote_rejected", errors: validation.errors });
+        req.log?.warn({ errors: validation.errors }, "buildQuote rejected");
+      }
+    } else {
+      send({ type: "action", action });
+    }
+  }
+
   /** Process buffered text: emit text events, extract ACTION_JSON directives. Returns leftover tail. */
   function flushLines(buf) {
     const lines = buf.split("\n");
@@ -402,9 +420,8 @@ router.post("/agent/chat", async (req, res) => {
       if (trimmed.startsWith("ACTION_JSON:")) {
         try {
           const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-          // 0.4 — Only emit validated action types
           if (VALID_ACTION_TYPES.has(action.type)) {
-            send({ type: "action", action });
+            emitAction(action);
           } else {
             send({ type: "text", delta: line + "\n" });
           }
@@ -425,9 +442,8 @@ router.post("/agent/chat", async (req, res) => {
     if (trimmed.startsWith("ACTION_JSON:")) {
       try {
         const action = JSON.parse(trimmed.slice("ACTION_JSON:".length).trim());
-        // 0.4 — Only emit validated action types
         if (VALID_ACTION_TYPES.has(action.type)) {
-          send({ type: "action", action });
+          emitAction(action);
         } else {
           send({ type: "text", delta: trimmed });
         }

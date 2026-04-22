@@ -49,6 +49,8 @@ import {
 } from "../utils/budgetLog.js";
 import { serializeProject, deserializeProject, pdfFileName } from "../utils/projectFile.js";
 import { executeScenario } from "../utils/scenarioOrchestrator.js";
+import { applyQuoteSnapshot } from "../utils/applyQuoteSnapshot.js";
+import QuotePreviewModal from "./QuotePreviewModal.jsx";
 import { countPtsFromApoyoMateriales, buildDefaultApoyoMateriales, cycleCombinadaMaterial, COMBINADA_MATERIAL_ORDER } from "../utils/combinadaFijacionShared.js";
 import { buildCostingReport } from "../utils/bomCosting.js";
 import { capturePdfSnapshotTargets } from "../utils/captureDomToPng.js";
@@ -2380,6 +2382,9 @@ export default function PanelinCalculadoraV3() {
     if (typeof window === "undefined") return "";
     return sessionStorage.getItem("panelin-dev-token") || "";
   });
+  const [pendingQuote, setPendingQuote] = useState(null);
+  const undoStackRef = useRef([]);
+  const [undoStackLen, setUndoStackLen] = useState(0);
   const [hoveredDotIdx, setHoveredDotIdx] = useState(null);
   const [scenarioHoverId, setScenarioHoverId] = useState(null);
   const [hoverTechoFamilia, setHoverTechoFamilia] = useState("");
@@ -2479,11 +2484,61 @@ export default function PanelinCalculadoraV3() {
           break;
         }
         case "advanceWizard": window.dispatchEvent(new CustomEvent("bmc-wizard-next")); break;
+        case "buildQuote": {
+          // Snapshot current state before showing modal
+          const snapshot = serializeProject({
+            scenario, listaPrecios, proyecto, techo, pared, camara, flete,
+            overrides, excludedItems, categoriasActivas, techoAnchoModo,
+          });
+          setPendingQuote({ payload: action.payload, preview: action.preview, warnings: action.warnings || [], snapshot });
+          break;
+        }
         default: break;
       }
     },
-    [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto, setWizardStep]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto, setWizardStep,
+     scenario, listaPrecios, proyecto, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo]
   );
+
+  const handleQuoteConfirm = useCallback(() => {
+    if (!pendingQuote) return;
+    const { payload, snapshot } = pendingQuote;
+    // Push current state snapshot to undo stack (cap at 5)
+    if (snapshot) {
+      undoStackRef.current = [snapshot, ...undoStackRef.current].slice(0, 5);
+      setUndoStackLen(undoStackRef.current.length);
+    }
+    applyQuoteSnapshot(payload, { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto });
+    setPendingQuote(null);
+  }, [pendingQuote, setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto]);
+
+  const handleQuoteDiscard = useCallback(() => {
+    setPendingQuote(null);
+  }, []);
+
+  const chatSendRef = useRef(null);
+  const handleQuoteAdjust = useCallback((msg) => {
+    setPendingQuote(null);
+    chatSendRef.current?.(msg);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (undoStackRef.current.length === 0) return;
+    const [prev, ...rest] = undoStackRef.current;
+    undoStackRef.current = rest;
+    setUndoStackLen(rest.length);
+    try {
+      const state = deserializeProject(prev);
+      if (state.scenario) setScenario(state.scenario);
+      if (state.listaPrecios) setLP(state.listaPrecios);
+      if (state.proyecto) setProyecto(state.proyecto);
+      if (state.techo) setTecho(state.techo);
+      if (state.pared) setPared(state.pared);
+      if (state.camara) setCamara(state.camara);
+      if (state.flete != null) setFlete(state.flete);
+    } catch { /* ignore corrupt snapshot */ }
+  }, [setScenario, setLP, setProyecto, setTecho, setPared, setCamara, setFlete]);
 
   const chat = useChat({
     calcState,
@@ -2492,6 +2547,7 @@ export default function PanelinCalculadoraV3() {
     devAuthToken,
     persistHistory: false,
   });
+  chatSendRef.current = chat.send;
 
   const toggleDevMode = useCallback(() => {
     if (devMode) {
@@ -6232,6 +6288,31 @@ export default function PanelinCalculadoraV3() {
         </div>
         </Panel>
       </PanelGroup>
+
+      <QuotePreviewModal
+        pendingQuote={pendingQuote}
+        onConfirm={handleQuoteConfirm}
+        onDiscard={handleQuoteDiscard}
+        onAdjust={(msg) => handleQuoteAdjust(msg)}
+      />
+
+      {undoStackLen > 0 && (
+        <button
+          type="button"
+          title="Deshacer última cotización aplicada"
+          onClick={handleUndo}
+          style={{
+            position: "fixed", bottom: 80, right: 16, zIndex: 8000,
+            background: "#fff", border: "1px solid #e5e5ea",
+            borderRadius: 10, padding: "8px 12px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.12)",
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 13, fontWeight: 600, color: "#1d1d1f", cursor: "pointer",
+          }}
+        >
+          <RotateCcw size={14} /> Deshacer cotización
+        </button>
+      )}
 
       <PanelinChatPanel
         isOpen={chatOpen}
