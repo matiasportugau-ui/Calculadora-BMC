@@ -539,7 +539,7 @@ function EstructuraZonaOverlay({
   const apoyoMatPopRef = useRef(null);
   const fijPalettePopRef = useRef(null);
   const hidePopTimer = useRef(null);
-  /** Clic corto = toggle punto; pulsación larga / Mayús+clic = paleta (cuando hay bulk handler). */
+  /** Clic corto = paleta material; clic derecho = toggle punto (cuando hay bulk handler). */
   const dotPointerRef = useRef({ timer: null, key: null, longFired: false });
 
   const clearHideTimer = useCallback(() => {
@@ -862,7 +862,7 @@ function EstructuraZonaOverlay({
                   aria-label={
                     combinadaAssign
                       ? (typeof onFijacionPaletteBulk === "function"
-                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: ${enabled ? "quitar" : "incluir"} del cómputo. Mayús+clic o pulsación larga: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"}.`
+                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"} del cómputo.`
                         : `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para cambiar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`)
                       : canToggleDots
                         ? `Fijación (${mat})${enabled ? "" : " — no incluida"}. Clic para ${enabled ? "quitar" : "incluir"} del cómputo.`
@@ -880,36 +880,14 @@ function EstructuraZonaOverlay({
                     ev.preventDefault();
                     setApoyoMatPick(null);
                     if (typeof onFijacionPaletteBulk === "function" && typeof onDotToggleEnabled === "function") {
-                      if (ev.shiftKey) {
-                        clearDotPointerTimer();
-                        setFijPalette({
-                          left: ev.clientX + 10,
-                          top: ev.clientY + 6,
-                          keys: [d.key],
-                          title: "Punto de fijación",
-                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
-                        });
-                        return;
-                      }
                       clearDotPointerTimer();
-                      const dotKeyFull = `${r.gi}:${d.key}`;
-                      dotPointerRef.current.key = dotKeyFull;
-                      dotPointerRef.current.longFired = false;
-                      dotPointerRef.current.timer = window.setTimeout(() => {
-                        dotPointerRef.current.longFired = true;
-                        dotPointerRef.current.timer = null;
-                        dotPointerRef.current.key = null;
-                        setFijPalette({
-                          left: ev.clientX + 10,
-                          top: ev.clientY + 6,
-                          keys: [d.key],
-                          title: "Punto de fijación",
-                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
-                        });
-                      }, 450);
-                      try {
-                        ev.currentTarget.setPointerCapture(ev.pointerId);
-                      } catch { /* ignore */ }
+                      setFijPalette({
+                        left: ev.clientX + 10,
+                        top: ev.clientY + 6,
+                        keys: [d.key],
+                        title: "Punto de fijación",
+                        subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
+                      });
                       return;
                     }
                     if (typeof onFijacionPaletteBulk === "function") {
