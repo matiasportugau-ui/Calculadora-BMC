@@ -1,6 +1,6 @@
 # Judge Report — Histórico
 
-**Última actualización:** 2026-03-27 (run55 full team 0→9 + Judge run55)
+**Última actualización:** 2026-04-22 (Run 2026-04-22 — PR #88 + Opus 4.7 + Realtime voice deploy closeout)
 
 Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza tras cada run evaluado.
 
@@ -57,6 +57,8 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 **Promedio global Run 54 (2026-03-24):** ~4.50/5 (20 roles con nota; full team + Invocación PANELSIM; ver [`JUDGE-REPORT-RUN-2026-03-24-run54.md`](./JUDGE-REPORT-RUN-2026-03-24-run54.md)).
 
 **Promedio global Run 55 (2026-03-27):** ~4.45/5 (20 roles con nota; full team 0→9 documental + SIM-REV delta; ver [`JUDGE-REPORT-RUN-2026-03-27-run55.md`](./JUDGE-REPORT-RUN-2026-03-27-run55.md)).
+
+**Promedio global Run 2026-04-22 (PR #88 closeout):** ~4.80/5 (8 roles activos evaluados: Calc 5.0, Panelin Chat 5.0, API Contract 4.5, Security 4.5, Deployment 5.0, Docs Sync 5.0, Parallel/Serial 5.0, Orchestrator 4.0; Deployment N/A para Cloud Run deploy — pendiente humano; Fiscal/Billing/Mapping/Design/Networks/Dependencies/Integrations/GPT-Cloud/Audit/Reporter/Sheets/Repo Sync/SIM/SIM-REV = N/A; ver [`JUDGE-REPORT-RUN-2026-04-22.md`](./JUDGE-REPORT-RUN-2026-04-22.md)).
 
 ---
 
@@ -137,6 +139,7 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-24 | Full team run 53 — PANELSIM + ML OAuth + gate tooling + Calc KB | 20/21 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-24-run53.md](./JUDGE-REPORT-RUN-2026-03-24-run53.md) |
 | 2026-03-24 | Full team run 54 + Invocación PANELSIM | 20/21 (Judge N/A) | ~4.50 | [JUDGE-REPORT-RUN-2026-03-24-run54.md](./JUDGE-REPORT-RUN-2026-03-24-run54.md) |
 | 2026-03-27 | Full team run 55 (0→9, SIM-REV delta) | 20/21 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-27-run55.md](./JUDGE-REPORT-RUN-2026-03-27-run55.md) |
+| 2026-04-22 | PR #88 closeout — Opus 4.7 + Realtime voice + Conversation logging | 8 activos / resto N/A | ~4.80 | [JUDGE-REPORT-RUN-2026-04-22.md](./JUDGE-REPORT-RUN-2026-04-22.md) |
 
 ---
 
