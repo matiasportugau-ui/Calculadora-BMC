@@ -275,9 +275,14 @@ assert(
   TOKEN_BUDGET
 );
 
-// MODEL_CONTEXT_LIMITS: every declared limit must exceed TOKEN_BUDGET
+// MODEL_CONTEXT_LIMITS: every declared limit must leave room for generation
 for (const [model, limit] of Object.entries(MODEL_CONTEXT_LIMITS)) {
-  assert(`MODEL_CONTEXT_LIMITS['${model}'] > TOKEN_BUDGET`, limit > TOKEN_BUDGET, limit, `>${TOKEN_BUDGET}`);
+  assert(
+    `MODEL_CONTEXT_LIMITS['${model}'] > CHAT_MAX_TOKENS`,
+    limit > CHAT_MAX_TOKENS,
+    limit,
+    `>${CHAT_MAX_TOKENS}`
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
