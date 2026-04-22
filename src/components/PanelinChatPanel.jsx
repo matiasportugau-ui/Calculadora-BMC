@@ -203,6 +203,10 @@ function Avatar({ size = 28 }) {
  *   onReloadPromptSections?: () => Promise<void>,
  *   onSavePromptSection?: (payload: object) => Promise<void>,
  *   onVerifyCalculation?: (text: string) => Promise<void>,
+ *   onBulkDeleteKB?: (ids: string[]) => Promise<void>,
+ *   onBulkArchiveKB?: (ids: string[]) => Promise<void>,
+ *   onLoadConversations?: (opts?: object) => Promise<object>,
+ *   onLoadConversationAnalysis?: (convId: string) => Promise<object>,
  *   detachedMode?: boolean,
  *   onOpenDetachedWindow?: () => void,
  *   calcState?: object,
@@ -233,6 +237,10 @@ export default function PanelinChatPanel({
   onReloadPromptSections,
   onSavePromptSection,
   onVerifyCalculation,
+  onBulkDeleteKB,
+  onBulkArchiveKB,
+  onLoadConversations,
+  onLoadConversationAnalysis,
   detachedMode = false,
   onOpenDetachedWindow,
   calcState,
@@ -574,6 +582,52 @@ export default function PanelinChatPanel({
     if (selectedSkinId === skinId) {
       setSelectedSkinId("classic");
     }
+  };
+
+  const exportSkins = () => {
+    if (customSkins.length === 0) {
+      window.alert("No hay skins personalizadas para exportar.");
+      return;
+    }
+    const blob = new Blob([JSON.stringify(customSkins, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "panelin-skins.json";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
+  const importSkinsRef = useRef(null);
+  const handleImportSkins = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed)) throw new Error("Formato inválido");
+        const valid = parsed.filter((s) => s && s.id && s.name && s.tokens);
+        if (valid.length === 0) throw new Error("No se encontraron skins válidas");
+        let importedCount = 0;
+        let skippedCount = 0;
+        setCustomSkins((prev) => {
+          const existingIds = new Set(prev.map((s) => s.id));
+          const toAdd = valid.filter((s) => !existingIds.has(s.id));
+          importedCount = toAdd.length;
+          skippedCount = valid.length - importedCount;
+          const merged = [...prev, ...toAdd];
+          saveCustomSkins(merged);
+          return merged;
+        });
+        const skippedMsg = skippedCount > 0 ? ` (${skippedCount} omitidas por id duplicado).` : ".";
+        window.alert(`${importedCount} skin(s) importadas correctamente${skippedMsg}`);
+      } catch (err) {
+        window.alert(`Error al importar skins: ${err.message}`);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const createSkinFromEditor = () => {
@@ -1248,6 +1302,15 @@ export default function PanelinChatPanel({
                 <button type="button" onClick={saveCurrentSkin} style={{ marginTop: 2, padding: "7px 8px", borderRadius: 8, border: `1px dashed ${BORDER_COLOR}`, background: "transparent", color: SUBTEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
                   Guardar skin actual
                 </button>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button type="button" onClick={exportSkins} style={{ flex: 1, padding: "7px 8px", borderRadius: 8, border: `1px solid ${BORDER_COLOR}`, background: SURFACE_COLOR, color: TEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
+                    Exportar skins
+                  </button>
+                  <button type="button" onClick={() => importSkinsRef.current?.click()} style={{ flex: 1, padding: "7px 8px", borderRadius: 8, border: `1px solid ${BORDER_COLOR}`, background: SURFACE_COLOR, color: TEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
+                    Importar skins
+                  </button>
+                  <input ref={importSkinsRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleImportSkins} />
+                </div>
                 <button type="button" onClick={() => { setSkinEditorOpen((v) => !v); setSkinDraft((prev) => ({ ...makeSkinDraftFromTokens(activeSkin.tokens), name: prev.name })); }} style={{ padding: "7px 8px", borderRadius: 8, border: `1px solid ${BORDER_COLOR}`, background: SURFACE_COLOR, color: TEXT_COLOR, fontSize: 12, cursor: "pointer", fontFamily: FONT }}>
                   {skinEditorOpen ? "Cerrar editor" : "Editor visual de skin"}
                 </button>
@@ -1388,6 +1451,7 @@ export default function PanelinChatPanel({
 
         {devMode && (
           <PanelinDevPanel
+            skinTokens={activeTokens}
             messages={messages}
             trainingEntries={trainingEntries}
             trainingStats={trainingStats}
@@ -1400,6 +1464,10 @@ export default function PanelinChatPanel({
             onReloadPromptSections={onReloadPromptSections}
             onSavePromptSection={onSavePromptSection}
             onVerifyCalculation={onVerifyCalculation}
+            onBulkDeleteKB={onBulkDeleteKB}
+            onBulkArchiveKB={onBulkArchiveKB}
+            onLoadConversations={onLoadConversations}
+            onLoadConversationAnalysis={onLoadConversationAnalysis}
           />
         )}
       </div>

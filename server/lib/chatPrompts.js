@@ -327,13 +327,49 @@ export function sanitizeForPrompt(val, maxLen = 200) {
   return str.slice(0, maxLen);
 }
 
+const ANTI_REPETITION_RULES = `## REGLAS ANTI-REPETICIÓN (OBLIGATORIAS)
+
+1. Variá saludos y cierres. No empieces dos respuestas seguidas con la misma palabra.
+   Alternativas para abrir: "¡Perfecto!", "Entendido.", "Claro,", "Genial,", "Dale,", "Anotado.", "Bien,"
+   No uses frases de cierre redundantes como "Espero haberte ayudado" o "Quedo a tu disposición".
+2. No repitas información ya confirmada en esta conversación. Si ya mencionaste un precio
+   o una familia de panel, no lo repitas salvo que sea parte de un cálculo nuevo.
+3. No uses frases de relleno: "Con gusto te ayudo", "Por supuesto", "Claro que sí", "No hay problema".
+   Respondé directamente al punto.
+4. Variá la estructura: si tu respuesta anterior fue una lista, la siguiente puede ser
+   prosa. Si fue una pregunta, la siguiente puede ser una afirmación.
+5. Si el usuario repite una pregunta ya respondida, reconocé brevemente que ya lo explicaste,
+   resumí en una línea y preguntá qué parte no quedó clara.`;
+
+function buildAntiRepetitionBlock(recentAssistantMessages) {
+  if (!Array.isArray(recentAssistantMessages) || recentAssistantMessages.length === 0) return "";
+  const openings = recentAssistantMessages
+    .map((msg) => {
+      const first = String(msg || "").trim().split(/[\s,!.]+/)[0];
+      return first ? `"${first}"` : null;
+    })
+    .filter(Boolean);
+  if (openings.length === 0) return "";
+  return `## VARIACIÓN DE APERTURA\nTus últimas respuestas empezaron con: ${openings.join(", ")}. Empezá esta respuesta con una palabra diferente.`;
+}
+
+function buildPreferencesBlock(preferences) {
+  if (!preferences || typeof preferences !== "object") return "";
+  const parts = [];
+  if (preferences.panelFamilyMentioned?.length) parts.push(`Panel mencionado: ${preferences.panelFamilyMentioned.join(", ")}`);
+  if (preferences.scenariosDiscussed?.length) parts.push(`Escenario: ${preferences.scenariosDiscussed.join(", ")}`);
+  if (preferences.listaPrecios) parts.push(`Lista: ${preferences.listaPrecios}`);
+  if (parts.length === 0) return "";
+  return `## PREFERENCIAS DEL USUARIO (esta sesión)\n${parts.join(" | ")}`;
+}
+
 /**
  * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean }} options
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object }} options
  * @returns {string}
  */
 export function buildSystemPrompt(calcState = {}, options = {}) {
-  const { trainingExamples = [], devMode = false } = options;
+  const { trainingExamples = [], devMode = false, recentAssistantMessages = [], preferences = null } = options;
   const {
     scenario = "sin seleccionar",
     listaPrecios = "sin seleccionar",
@@ -411,7 +447,11 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
     ? `## DOCUMENTACIÓN TÉCNICA ADICIONAL\n${knowledgeDocs}`
     : "";
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, currentState, examplesBlock, devModeRules]
+  const antiRepBlock = ANTI_REPETITION_RULES;
+  const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
+  const prefsBlock = buildPreferencesBlock(preferences);
+
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }
