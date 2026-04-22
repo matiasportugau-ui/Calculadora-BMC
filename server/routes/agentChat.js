@@ -106,15 +106,15 @@ function truncateHistoryToBudget(messages, systemPrompt, budget) {
   };
 }
 
-function prepareHistoryForModel(messages, systemPrompt, { modelId, requestedOutputTokens }, noticeState, send) {
+function prepareHistoryForModel(messages, systemPrompt, { modelId, requestedOutputTokens }, truncationNoticeState, send) {
   const result = truncateHistoryToBudget(
     messages,
     systemPrompt,
     getTokenBudgetForModel({ modelId, requestedOutputTokens })
   );
-  if (result.truncated && !noticeState.sent) {
+  if (result.truncated && !truncationNoticeState.sent) {
     send({ type: "info", message: "Se truncó el historial para mantener la calidad de la respuesta." });
-    noticeState.sent = true;
+    truncationNoticeState.sent = true;
   }
   return result.messages;
 }

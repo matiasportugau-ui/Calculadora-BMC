@@ -36,7 +36,9 @@ function appendEvent(event) {
   const row = { ts: new Date().toISOString(), ...event };
   const filePath = convFilePath();
   writeQueue = writeQueue
-    .catch(() => undefined)
+    .catch((error) => {
+      console.error("Previous conversation log append failed", error);
+    })
     .then(() => fsPromises.appendFile(filePath, `${JSON.stringify(row)}\n`, "utf8"))
     .catch((error) => {
       console.error(`Failed to append conversation event to ${filePath}`, error);
