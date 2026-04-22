@@ -70,6 +70,31 @@ router.put("/agent/train/:id", requireDevModeAuth, (req, res) => {
   }
 });
 
+// Bulk routes MUST come before /:id to prevent Express matching "bulk" as an id param
+router.delete("/agent/train/bulk", requireDevModeAuth, (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
+    const result = bulkDeleteEntries(ids);
+    appendTrainingSessionEvent({ type: "train_bulk_deleted", count: ids.length });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.patch("/agent/train/bulk", requireDevModeAuth, (req, res) => {
+  try {
+    const { ids, patch } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
+    const result = bulkPatchEntries(ids, patch || {});
+    appendTrainingSessionEvent({ type: "train_bulk_patched", count: ids.length });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
 router.delete("/agent/train/:id", requireDevModeAuth, (req, res) => {
   try {
     deleteTrainingEntry(req.params.id);
@@ -119,30 +144,6 @@ router.post("/agent/prompt-preview", requireDevModeAuth, (req, res) => {
 router.post("/agent/training/log-event", requireDevModeAuth, (req, res) => {
   const filePath = appendTrainingSessionEvent(req.body || {});
   res.json({ ok: true, filePath });
-});
-
-router.delete("/agent/train/bulk", requireDevModeAuth, (req, res) => {
-  try {
-    const { ids } = req.body || {};
-    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
-    const result = bulkDeleteEntries(ids);
-    appendTrainingSessionEvent({ type: "train_bulk_deleted", count: ids.length });
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ ok: false, error: err.message || String(err) });
-  }
-});
-
-router.patch("/agent/train/bulk", requireDevModeAuth, (req, res) => {
-  try {
-    const { ids, patch } = req.body || {};
-    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
-    const result = bulkPatchEntries(ids, patch || {});
-    appendTrainingSessionEvent({ type: "train_bulk_patched", count: ids.length });
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ ok: false, error: err.message || String(err) });
-  }
 });
 
 router.get("/agent/dev-config/:section/history", requireDevModeAuth, (req, res) => {

@@ -58,6 +58,8 @@ export const config = {
   openaiChatModel: process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini",
   /** Panelin calculator chat (/api/agent/chat) — model IDs must match server allowlist or these defaults */
   anthropicChatModel: process.env.ANTHROPIC_CHAT_MODEL || "claude-haiku-4-5-20251001",
+  /** Set CHAT_LOG_CONVERSATIONS=true to persist conversation turns to disk in production. Default: off (devMode always logs). */
+  chatLogConversations: bool(process.env.CHAT_LOG_CONVERSATIONS, false),
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
   grokApiKey: process.env.GROK_API_KEY || "",

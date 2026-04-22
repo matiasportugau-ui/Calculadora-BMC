@@ -33,7 +33,7 @@ export async function summarizeHistory(messages) {
 
     return { summarized: true, messages: [summaryMessage, ...recentMsgs] };
   } catch {
-    // If summarization fails, fall back to keeping just recent messages
-    return { summarized: true, messages: recentMsgs };
+    // Summarization failed — return full history untouched so no context is silently lost
+    return { summarized: false, messages };
   }
 }

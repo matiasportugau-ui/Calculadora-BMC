@@ -18,16 +18,21 @@ function saveConversationId(id) {
   try { sessionStorage.setItem(STORAGE_CONV_ID, id); } catch { /* ignore */ }
 }
 
+function fallbackUuidV4() {
+  const bytes = new Uint8Array(16);
+  try { globalThis.crypto?.getRandomValues?.(bytes); } catch {
+    for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+
 function freshConversationId() {
   let id;
-  try {
-    id = globalThis.crypto?.randomUUID?.();
-  } catch {
-    id = null;
-  }
-  if (!id) {
-    id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  }
+  try { id = globalThis.crypto?.randomUUID?.(); } catch { id = null; }
+  if (!id) id = fallbackUuidV4();
   saveConversationId(id);
   return id;
 }

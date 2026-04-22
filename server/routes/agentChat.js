@@ -335,7 +335,8 @@ router.post("/agent/chat", async (req, res) => {
     conversationId: rawConvId,
     thinkingMode = false,
   } = req.body || {};
-  const conversationId = typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
+  const _convLoggingEnabled = devMode || config.chatLogConversations;
+  const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
     : null;
   const aiProvider = String(rawAiProvider || "auto").toLowerCase();

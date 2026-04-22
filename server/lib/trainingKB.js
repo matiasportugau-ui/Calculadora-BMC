@@ -297,8 +297,11 @@ export function revertPromptSection(sectionName, versionIndex) {
   const backupPath = path.join(backupsDir, `${target}.json`);
   if (!fs.existsSync(backupPath)) throw new Error("No backup found");
   const versions = JSON.parse(fs.readFileSync(backupPath, "utf8"));
-  if (!Array.isArray(versions) || !versions[versionIndex]) throw new Error("Version not found");
-  return updatePromptSection(target, versions[versionIndex].content);
+  if (!Array.isArray(versions) || versions.length === 0) throw new Error("Version not found");
+  // loadPromptSectionHistory returns versions reversed (newest first), so translate back to file order
+  const fileIndex = versions.length - 1 - Number(versionIndex);
+  if (fileIndex < 0 || fileIndex >= versions.length || !versions[fileIndex]) throw new Error("Version not found");
+  return updatePromptSection(target, versions[fileIndex].content);
 }
 
 export function appendTrainingSessionEvent(event = {}) {

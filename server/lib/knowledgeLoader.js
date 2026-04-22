@@ -7,7 +7,8 @@ const knowledgeDir = path.resolve(__dirname, "../../data/knowledge");
 
 let _cache = null;
 let _cacheTime = 0;
-const CACHE_TTL_MS = Number(process.env.KNOWLEDGE_CACHE_TTL_MS) || 60_000;
+const _parsedCacheTtlMs = Number(process.env.KNOWLEDGE_CACHE_TTL_MS);
+const CACHE_TTL_MS = Number.isFinite(_parsedCacheTtlMs) ? _parsedCacheTtlMs : 60_000;
 
 export function loadKnowledgeDocs() {
   const now = Date.now();
