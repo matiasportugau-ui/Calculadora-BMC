@@ -26,6 +26,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
+- `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 
 ## Fixes
 

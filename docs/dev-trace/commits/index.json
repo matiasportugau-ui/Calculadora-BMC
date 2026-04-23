@@ -1754,6 +1754,48 @@
         "src_touched": false,
         "areas": []
       }
+    },
+    {
+      "hash": "cc153d7f4ed90d95ae28046b24c69ac5bf356837",
+      "short_hash": "cc153d7",
+      "date": "2026-04-23",
+      "time": "00:18:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split",
+      "subject": "feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/2a3be46.md",
+        "docs/dev-trace/commits/2026/04/54a641f.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-22.md",
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/impact-map.json",
+        "docs/team/knowledge/references-catalog.json",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-22.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-22.md",
+        "docs/team/knowledge/sources-registry.json",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }
