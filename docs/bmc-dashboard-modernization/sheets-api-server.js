@@ -43,14 +43,9 @@ const WOLFB_ADMIN_ID  = process.env.WOLFB_ADMIN_SHEET_ID   || '';
 const WOLFB_ADMIN_TAB = process.env.WOLFB_ADMIN_TAB        || 'Admin.';
 const WOLFB_CRM_TAB   = process.env.WOLFB_CRM_MAIN_TAB     || 'CRM_Operativo';
 const WOLFB_ENV_TAB   = process.env.WOLFB_CRM_ENVIADOS_TAB || 'Enviados';
-const WOLFB_DRY_RUN         = process.env.WOLFB_DRY_RUN === '1';
-const WOLFB_ADMIN_ORIGEN_COL = process.env.WOLFB_ADMIN_ORIGEN_COL || 'L';
+const WOLFB_DRY_RUN        = process.env.WOLFB_DRY_RUN === '1';
 // Admin 2.0: headers at row 1, data from row 2 (confirmed by operator)
 const WOLFB_ADMIN_DATA_ROW = 2;
-
-function colLetterToIndex(letter) {
-  return letter.toUpperCase().charCodeAt(0) - 65;
-}
 
 function getStartOfWeek(d) {
   const date = new Date(d);
@@ -262,12 +257,13 @@ async function readCrmRows(useWrite = false) {
   return rows
     .map((row, idx) => ({
       _rowNum: idx + 4,
-      B:  row[1]  ?? '',
-      C:  row[2]  ?? '',
-      G:  row[6]  ?? '',
-      AF: row[31] ?? '',
-      AH: row[33] ?? '',
-      AI: row[34] ?? '',
+      B:      row[1]  ?? '',
+      C:      row[2]  ?? '',
+      F:      row[5]  ?? '',   // Origen: WA / EM / CL / LO / LL etc.
+      G:      row[6]  ?? '',
+      AF:     row[31] ?? '',
+      AH:     row[33] ?? '',
+      AI:     row[34] ?? '',
     }))
     .filter(r => r.G || r.B || r.C);
 }
@@ -276,9 +272,15 @@ async function readCrmRows(useWrite = false) {
 
 async function handleWolfboardPendientes(res) {
   try {
-    const rows = await readAdminRows();
-    const pending = rows.filter(r => !r.enviado);
-    sendJson(res, 200, { ok: true, data: pending, total: rows.length, pending: pending.length });
+    const [adminRows, crmRows] = await Promise.all([readAdminRows(), readCrmRows()]);
+    const enriched = adminRows.map(aRow => {
+      const crmMatch = aRow.consulta
+        ? crmRows.find(cr => cr.G && normalizeText(cr.G) === normalizeText(aRow.consulta))
+        : null;
+      return { ...aRow, origen: crmMatch ? crmMatch.F : '' };
+    });
+    const pending = enriched.filter(r => !r.enviado);
+    sendJson(res, 200, { ok: true, data: pending, total: enriched.length, pending: pending.length });
   } catch (e) {
     sheetsUnavailable(res, e.message);
   }
