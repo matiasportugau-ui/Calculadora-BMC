@@ -15,6 +15,12 @@ if [ "${SKIP_AUTOTRACE:-}" = "1" ]; then
   exit 0
 fi
 
+# ── Skip self-loop: do not autotrace dev-trace commits ───────────────────────
+COMMIT_MSG=$(git log -1 --pretty=%B HEAD 2>/dev/null || true)
+if [[ "$COMMIT_MSG" == "docs: dev-trace"* ]] || [[ "$COMMIT_MSG" == "autolog:"* ]]; then
+  exit 0
+fi
+
 if command -v python3 >/dev/null 2>&1; then
   python3 tools/release-traceability/scripts/generate_commit_doc.py || true
   python3 tools/release-traceability/scripts/rebuild_changelog.py || true
