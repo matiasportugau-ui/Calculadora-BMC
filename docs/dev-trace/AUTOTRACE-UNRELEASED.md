@@ -73,6 +73,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3779d80` docs: dev-trace autolog update (2026-04-23)
 - `c53c155` docs: dev-trace autolog update (2026-04-23)
 - `0f97d63` docs: dev-trace autolog update (2026-04-23)
+- `85bc343` docs: update AUTOTRACE documentation and worklog for 2026-04-23
 
 ## Chores
 
