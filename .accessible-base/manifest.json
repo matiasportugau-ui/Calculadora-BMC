@@ -2,39 +2,39 @@
   "version": 1,
   "sheets": {
     "matriz_precios": {
-      "synced_at": "2026-04-23T07:43:40.430Z",
+      "synced_at": "2026-04-23T08:12:16.779Z",
       "row_count": 170,
       "spreadsheet_id": "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
       "label": "MATRIZ Costos y Ventas 2026 — precios canónicos BMC"
     },
     "admin_cotizaciones": {
-      "synced_at": "2026-04-23T07:43:40.831Z",
+      "synced_at": "2026-04-23T08:12:17.403Z",
       "row_count": 290,
       "spreadsheet_id": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
       "label": "Admin 2.0 — Administrador de Cotizaciones (Wolfboard source)"
     },
     "crm_operativo": {
-      "synced_at": "2026-04-23T07:43:38.336Z",
+      "synced_at": "2026-04-23T08:12:15.161Z",
       "row_count": 297,
       "spreadsheet_id": "1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg",
       "label": "CRM Operativo — hub principal de leads y respuestas"
     },
     "master_cotizaciones": {
       "last_error": "Unable to parse range: 'Master_Cotizaciones'",
-      "last_error_at": "2026-04-23T07:43:38.696Z"
+      "last_error_at": "2026-04-23T08:12:15.508Z"
     },
     "pagos_pendientes": {
       "last_error": "BMC_PAGOS_SHEET_ID is required but not set",
-      "last_error_at": "2026-04-23T07:43:38.696Z"
+      "last_error_at": "2026-04-23T08:12:15.508Z"
     },
     "metas_ventas": {
       "last_error": "Unable to parse range: 'Metas_Ventas'",
-      "last_error_at": "2026-04-23T07:43:39.051Z"
+      "last_error_at": "2026-04-23T08:12:15.841Z"
     },
     "audit_log": {
       "last_error": "Unable to parse range: 'AUDIT_LOG'",
-      "last_error_at": "2026-04-23T07:43:41.174Z"
+      "last_error_at": "2026-04-23T08:12:17.747Z"
     }
   },
-  "last_sync": "2026-04-23T07:43:41.174Z"
+  "last_sync": "2026-04-23T08:12:17.747Z"
 }
