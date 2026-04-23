@@ -3209,6 +3209,43 @@
         "src_touched": false,
         "areas": []
       }
+    },
+    {
+      "hash": "28ef70041f90f2949690c175474ab521b69364b4",
+      "short_hash": "28ef700",
+      "date": "2026-04-23",
+      "time": "06:52:02",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict",
+      "subject": "fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/38b4d45.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md",
+        "server/routes/calc.js",
+        "server/routes/wolfboard.js",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }
