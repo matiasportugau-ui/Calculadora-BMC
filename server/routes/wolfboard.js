@@ -20,7 +20,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
-import { uploadQuoteToDrive } from "../lib/driveUpload.js";
+import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -679,8 +679,8 @@ export function createWolfboardRouter(config) {
         values: [[response]],
       });
 
-      // Upload PDF to Drive for persistent col-K link (best-effort, calc-only)
-      if (calcQuoted && calcRaw && config.driveQuoteFolderId) {
+      // Upload quote HTML to GCS for permanent col-K link (best-effort, calc-only)
+      if (calcQuoted && calcRaw && config.gcsQuotesBucket) {
         try {
           const groups = bomToGroups(calcRaw);
           const totales = calcRaw.totales || calcTotalesSinIVA(calcRaw.allItems || []);
@@ -705,12 +705,12 @@ export function createWolfboardRouter(config) {
             showUnitPrices: true,
           });
           const filename = `Cotizacion-WB${row.rowNum}-${new Date().toISOString().slice(0, 10)}.html`;
-          const driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
-          if (driveUrl) {
-            valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[driveUrl]] });
+          const gcsUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
+          if (gcsUrl) {
+            valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[gcsUrl]] });
           }
         } catch {
-          // Drive upload is non-critical; proceed without link
+          // GCS upload is non-critical; proceed without link
         }
       }
 

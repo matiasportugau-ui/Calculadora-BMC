@@ -24,6 +24,7 @@ import createShopifyRouter from "./routes/shopify.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import { createSuperAgentRouter } from "./routes/superAgent.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -672,6 +673,8 @@ app.use("/api", createTransportistaRouter(config, logger));
     });
   }
 }
+// SuperAgent tool — single-call quoting for AI agents
+app.use("/api/agent", createSuperAgentRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas

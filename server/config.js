@@ -92,8 +92,8 @@ export const config = {
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
-  /** Google Drive folder ID for persistent quote PDFs (wolfboard + /cotizar/pdf). Service account must have Editor access. */
-  driveQuoteFolderId: process.env.DRIVE_QUOTE_FOLDER_ID || "",
+  /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
+  gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
 };
 
 export const redirectUri = () => {
