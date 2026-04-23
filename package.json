@@ -120,6 +120,8 @@
     "dev-trace:install-hooks": "bash tools/release-traceability/bootstrap/install_hooks.sh",
     "dev-trace:rebuild": "python3 tools/release-traceability/scripts/rebuild_changelog.py",
     "dev-trace:release": "python3 tools/release-traceability/scripts/release_notes.py",
+    "kb:build": "node scripts/build-accessible-base.mjs",
+    "kb:build:quiet": "node scripts/build-accessible-base.mjs --quiet",
     "sheets:sync": "node scripts/accessible-base-sync.js",
     "sheets:sync:dry": "node scripts/accessible-base-sync.js --dry-run",
     "sheets:sync:watch": "node scripts/accessible-base-sync.js --watch 3",

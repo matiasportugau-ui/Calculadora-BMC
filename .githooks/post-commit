@@ -21,3 +21,8 @@ if command -v python3 >/dev/null 2>&1; then
 else
   echo "[WARN] python3 no disponible; se omite AUTOTRACE"
 fi
+
+# ── Accessible Base KB — compile project knowledge for AI context ─────────────
+if command -v node >/dev/null 2>&1; then
+  node scripts/build-accessible-base.mjs --quiet || true
+fi
