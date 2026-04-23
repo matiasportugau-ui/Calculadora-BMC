@@ -17,7 +17,9 @@
 import { Router } from "express";
 import { google } from "googleapis";
 import Anthropic from "@anthropic-ai/sdk";
-import { runCalculation, buildGptResponse } from "./calc.js";
+import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
+import { setListaPrecios } from "../../src/data/constants.js";
+import { fmtPrice } from "../../src/utils/helpers.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -65,27 +67,32 @@ Escenarios: solo_techo (galpón/nave/tinglado/depósito), solo_fachada (paredes/
 
 Usá null o 0 para valores desconocidos. Si no hay escenario claro, usá null.`;
 
-function buildCalcParams(extracted, usedDefaults) {
+const ESCENARIO_LABELS = {
+  solo_techo: "Solo Techo", solo_fachada: "Solo Fachada",
+  techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica",
+};
+
+function runBatchCalc(extracted, usedDefaults) {
   const { escenario, techo, pared, camara } = extracted || {};
   if (!escenario || escenario === "null") return null;
+
+  setListaPrecios("web");
 
   if (escenario === "solo_techo" || escenario === "techo_fachada") {
     if (!techo?.largo || !techo?.ancho) return null;
     const familia = techo.familia && techo.familia !== "null" ? techo.familia
       : (usedDefaults.push("panel ISODEC EPS"), "ISODEC_EPS");
     const espesor = techo.espesor || (usedDefaults.push("espesor 100mm"), 100);
-    return {
-      escenario: "solo_techo",
-      lista: "web",
-      techo: {
-        familia, espesor,
-        zonas: [{ largo: techo.largo, ancho: techo.ancho }],
-        tipoEst: techo.tipoEst && techo.tipoEst !== "null" ? techo.tipoEst : "metal",
+    const tipoEst = techo.tipoEst && techo.tipoEst !== "null" ? techo.tipoEst : "metal";
+    try {
+      const r = calcTechoCompleto({
+        familia, espesor, tipoEst, color: "Blanco",
+        largo: techo.largo, ancho: techo.ancho,
         borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
         opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
-        color: "Blanco",
-      },
-    };
+      });
+      return r?.error ? null : { ...r, _escenario: "solo_techo" };
+    } catch { return null; }
   }
 
   if (escenario === "solo_fachada") {
@@ -93,15 +100,13 @@ function buildCalcParams(extracted, usedDefaults) {
     const familia = pared.familia && pared.familia !== "null" ? pared.familia
       : (usedDefaults.push("panel ISOPANEL EPS"), "ISOPANEL_EPS");
     const espesor = pared.espesor || (usedDefaults.push("espesor 100mm"), 100);
-    return {
-      escenario: "solo_fachada",
-      lista: "web",
-      pared: {
-        familia, espesor,
-        alto: pared.alto, perimetro: pared.perimetro,
+    try {
+      const r = calcParedCompleto({
+        familia, espesor, alto: pared.alto, perimetro: pared.perimetro,
         tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
-      },
-    };
+      });
+      return r?.error ? null : { ...r, _escenario: "solo_fachada" };
+    } catch { return null; }
   }
 
   if (escenario === "camara_frig") {
@@ -109,21 +114,41 @@ function buildCalcParams(extracted, usedDefaults) {
     const familia = pared?.familia && pared.familia !== "null" ? pared.familia
       : (usedDefaults.push("panel ISOPANEL EPS"), "ISOPANEL_EPS");
     const espesor = pared?.espesor || (usedDefaults.push("espesor 150mm"), 150);
-    return {
-      escenario: "camara_frig",
-      lista: "web",
-      pared: { familia, espesor, tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true },
-      camara: { largo_int: camara.largo_int, ancho_int: camara.ancho_int, alto_int: camara.alto_int },
-    };
+    try {
+      const perim = 2 * (camara.largo_int + camara.ancho_int);
+      const rP = calcParedCompleto({
+        familia, espesor, perimetro: perim, alto: camara.alto_int,
+        tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
+      });
+      const rT = calcTechoCompleto({
+        familia, espesor, largo: camara.largo_int, ancho: camara.ancho_int, tipoEst: "metal",
+        borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+        opciones: { inclCanalon: false, inclGotSup: false, inclSell: true }, color: "Blanco",
+      });
+      const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
+      const totales = calcTotalesSinIVA(allItems);
+      return { ...rP, techoResult: rT, allItems, totales, _escenario: "camara_frig" };
+    } catch { return null; }
   }
 
   return null;
 }
 
-function formatCalcResponse(gptResp, extracted, usedDefaults) {
-  const { texto_resumen } = gptResp;
+function formatCalcResult(raw, extracted, usedDefaults) {
+  if (!raw) return null;
+  const escenario = raw._escenario || extracted?.escenario || "cotización";
+  const allItems = raw.allItems || [];
+  const totales = raw.totales || calcTotalesSinIVA(allItems);
+  const area = raw.paneles?.areaTotal ?? raw.paneles?.areaNeta ?? 0;
+  const cantPaneles = raw.paneles?.cantPaneles ?? 0;
+  const panelLabel = allItems.find(i => i.unidad === "m²")?.label || "";
+
+  let msg = `Cotización ${panelLabel} — ${ESCENARIO_LABELS[escenario] || escenario}.`;
+  if (area) msg += ` Área: ${area} m².`;
+  if (cantPaneles) msg += ` Paneles: ${cantPaneles}.`;
+  msg += ` Subtotal: USD ${fmtPrice(totales.subtotalSinIVA)} + IVA 22%: USD ${fmtPrice(totales.iva)} = TOTAL USD ${fmtPrice(totales.totalFinal)}.`;
+
   const faltan = Array.isArray(extracted?.faltan) ? extracted.faltan : [];
-  let msg = texto_resumen;
   if (usedDefaults.length > 0) {
     msg += `\n\n* Presupuesto de referencia con ${usedDefaults.join(", ")}. Confirmanos si preferís otro producto o espesor.`;
   }
@@ -610,20 +635,13 @@ export function createWolfboardRouter(config) {
         // Step 2: Try the real calculator if we have enough params
         let calcQuoted = false;
         if (extracted?.escenario && extracted.escenario !== "null") {
-          const params = buildCalcParams(extracted, usedDefaults);
-          if (params) {
-            try {
-              const raw = runCalculation(params);
-              if (raw && !raw.error) {
-                const gptResp = buildGptResponse(params.escenario, "web", raw, 0);
-                if (gptResp?.ok) {
-                  response = formatCalcResponse(gptResp, extracted, usedDefaults);
-                  calcQuoted = true;
-                  method = "calc";
-                }
-              }
-            } catch {
-              // fall through to text generation
+          const raw = runBatchCalc(extracted, usedDefaults);
+          if (raw) {
+            const formatted = formatCalcResult(raw, extracted, usedDefaults);
+            if (formatted) {
+              response = formatted;
+              calcQuoted = true;
+              method = "calc";
             }
           }
         }
