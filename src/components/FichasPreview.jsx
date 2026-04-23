@@ -2,7 +2,7 @@
 // Muestra los 4 tipos de ficha con datos reales para aprobación de concepto.
 // No tiene funcionalidad de edición aún — es un mockup navegable.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getPricing } from '../data/pricing.js';
 import { getDimensioningItemsFlat } from '../utils/dimensioningFormulas.js';
@@ -10,6 +10,7 @@ import {
   calcPanelesTecho, calcFijacionesVarilla, calcAutoportancia,
   calcSelladoresTecho, calcPerfileriaTecho,
 } from '../utils/calculations.js';
+import { compareKingspanVsBMC, statusColor, statusLabel } from '../utils/kingspanComparison.js';
 
 // ── Paleta ───────────────────────────────────────────────────────────────────
 const C = {
@@ -422,6 +423,81 @@ function FichaSolucion({ pricing }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TIPO 5 — FichaComparacion (BMC vs Kingspan)
+// ═══════════════════════════════════════════════════════════════════════════
+const MODULE_OPTIONS = [
+  { id: 'paneles-techo',    label: 'Paneles de Techo' },
+  { id: 'autoportancia',    label: 'Autoportancia' },
+  { id: 'fij-isodec',      label: 'Fijaciones ISODEC' },
+  { id: 'fij-isoroof',     label: 'Fijaciones Isoroof' },
+  { id: 'perfileria-techo', label: 'Perfilería de Techo' },
+  { id: 'selladores-techo', label: 'Selladores de Techo' },
+  { id: 'paneles-pared',    label: 'Paneles de Pared' },
+  { id: 'fij-pared',        label: 'Fijaciones Pared' },
+  { id: 'perfiles-pared',   label: 'Perfiles Pared' },
+  { id: 'esquineros',       label: 'Esquineros' },
+  { id: 'selladores-pared', label: 'Selladores Pared' },
+];
+
+function FichaComparacion() {
+  const [moduleId, setModuleId] = useState('paneles-techo');
+  const data = compareKingspanVsBMC(moduleId);
+
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#1D1D1F' }}>Módulo</span>
+        <select
+          value={moduleId}
+          onChange={e => setModuleId(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${C.border}`,
+            fontSize: 13, color: '#1D1D1F', background: C.white, cursor: 'pointer' }}
+        >
+          {MODULE_OPTIONS.map(o => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </select>
+        {data.subtitle && (
+          <span style={{ fontSize: 12, color: C.gray }}>{data.subtitle}</span>
+        )}
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: C.bg }}>
+              {['Concepto', 'BMC', 'Kingspan', 'Nota', ''].map(h => (
+                <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 700,
+                  color: '#1D1D1F', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.map((row, i) => (
+              <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                <td style={{ padding: '8px 10px', fontWeight: 600, color: '#1D1D1F', minWidth: 120 }}>{row.concepto}</td>
+                <td style={{ padding: '8px 10px', color: '#1D1D1F', minWidth: 160 }}>{row.bmc}</td>
+                <td style={{ padding: '8px 10px', color: '#1D1D1F', minWidth: 160 }}>{row.kingspan}</td>
+                <td style={{ padding: '8px 10px', color: C.gray, minWidth: 160 }}>{row.nota}</td>
+                <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                    background: statusColor(row.status) + '22',
+                    color: statusColor(row.status), fontWeight: 700, fontSize: 11 }}>
+                    {statusLabel(row.status)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN — FichasPreview
 // ═══════════════════════════════════════════════════════════════════════════
 export default function FichasPreview() {
@@ -481,6 +557,13 @@ export default function FichasPreview() {
           <TypeLabel num="4" title="Ficha de Solución" color={C.green}
             desc="Combinación producto + situación + geometría → BOM completo simulado en vivo con todos los parámetros actuales." />
           <FichaSolucion pricing={pricing} />
+        </div>
+
+        {/* TIPO 5 */}
+        <div style={{ marginBottom: 36 }}>
+          <TypeLabel num="5" title="Comparativa BMC vs Kingspan" color="#AF52DE"
+            desc="Equivalencias y diferencias entre el sistema Panelin/BMC y Kingspan por módulo — paneles, fijaciones, perfilería y selladores." />
+          <FichaComparacion />
         </div>
 
         {/* Footer CTA */}
