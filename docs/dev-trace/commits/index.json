@@ -1684,6 +1684,76 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "2a3be46c391288a63556e4467a548fcc14db0a9f",
+      "short_hash": "2a3be46",
+      "date": "2026-04-22",
+      "time": "04:26:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split",
+      "subject": "feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/fb845a2.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-22.md",
+        "src/App.jsx",
+        "src/components/BmcWolfboardHub.jsx",
+        "src/components/CalcLogicInspector.jsx",
+        "src/components/FichasPreview.jsx",
+        "src/data/calculatorDataVersion.js",
+        "src/data/constants.js",
+        "src/data/kingspanKB.js",
+        "src/utils/calculations.js",
+        "src/utils/dimensioningFormulas.js",
+        "src/utils/kingspanComparison.js",
+        "tests/validation.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "54a641f79c624d8755577d4dc0d313f685645d34",
+      "short_hash": "54a641f",
+      "date": "2026-04-22",
+      "time": "04:37:56",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deps",
+      "title": "npm audit fix — patch 7 vulns, remove 5 unused packages",
+      "subject": "fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages",
+      "files": [
+        "package-lock.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
     }
   ]
 }

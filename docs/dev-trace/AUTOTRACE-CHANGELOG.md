@@ -50,3 +50,5 @@
 - 2026-04-22 00:29:20 — `3b8fb3d` — chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement
 - 2026-04-22 00:31:09 — `826b9c4` — chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit
 - 2026-04-22 00:31:31 — `fb845a2` — chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop
+- 2026-04-22 04:26:25 — `2a3be46` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
+- 2026-04-22 04:37:56 — `54a641f` — fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages

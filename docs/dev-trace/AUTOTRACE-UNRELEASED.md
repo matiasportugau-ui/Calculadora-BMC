@@ -25,6 +25,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
+- `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
 
 ## Fixes
 
@@ -33,6 +34,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0a5667b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
+- `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 
 ## Documentation
 
