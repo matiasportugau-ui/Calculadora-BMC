@@ -1,0 +1,88 @@
+=== BÚSQUEDA DE CREDENCIALES (ubicación, no valor) ===
+
+--- password/passwd (archivos.md/.json/.js/.mjs/.sh) ---
+scripts/credentials-master-registry.mjs
+src/components/PricingEditor.jsx
+src/components/BmcWaOperativoModule.jsx
+src/components/BmcMlOperativoModule.jsx
+shop-chat-agent/app/mcp-client.js
+docs/reference/green-retreats-visualiser/mirror/js/webflow.js
+docs/team/CALCULATE-QUOTE-DIAGNOSTIC.md
+docs/team/knowledge/events-log.jsonl
+docs/team/knowledge/references-catalog.json
+docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-09.html
+
+--- api_key / api-key / apikey ---
+AGENTS.md
+REPO_CONTEXT.md
+docs/ML-OAUTH-SETUP.md
+reporte.md
+docs/GPT-ENTRY-POINT-SCHEMA.md
+docs/team/CALCULATE-QUOTE-DIAGNOSTIC.md
+docs/procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md
+docs/procedimientos/PROCEDIMIENTO-CALCULADORA-Y-API-CLOUD-RUN-COMPLETO.md
+docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md
+docs/security/CHECKLIST-SEGURIDAD-PRE-DEPLOY.md
+docs/team/PROJECT-STATE.md
+docs/AI-INTEGRATION-CALCULADORA.md
+docs/team/PANELIN-EVOLUTION-FLOW.md
+docs/openapi/CHECKLIST-DRIFT-OPENAPI.md
+docs/team/INVOQUE-PANELIN-ESTADO.md
+docs/team/REPO-SYNC-CHECKLIST-PRE-PUSH.md
+docs/team/WHATSAPP-META-E2E.md
+server/routes/agentConversations.js
+server/routes/agentVoice.js
+server/routes/transportista.js
+server/routes/teamAssist.js
+server/routes/agentTraining.js
+server/routes/shopify.js
+server/routes/agentChat.js
+server/routes/bmcDashboard.js
+server/routes/legacyQuote.js
+server/lib/aiCompletion.js
+server/config.js
+src/utils/teamAssistApi.js
+src/hooks/useChat.js
+
+--- secret (que no sea env.example / doc) ---
+PACKAGE_MONOFILE.md
+REPO_CONTEXT.md
+README.md
+reporte.md
+docs 2/ML-OAUTH-SETUP.md
+scripts/ensure-env.sh
+docs/ML-OAUTH-SETUP.md
+scripts/whatsapp-cloud-check.mjs
+docs/team/ML-ACCOUNT-REVIEW-2026-04-08.md
+scripts/credentials-master-registry.mjs
+docs/integraciones/OAUTH-ESTADO.md
+docs/integraciones/CHECKLIST-PRE-GO-LIVE.md
+scripts/cloudrun-full-diagnostic.sh
+docs/security/FLUJOS-OAUTH.md
+scripts/verify-ml-oauth.sh
+docs/team/CALCULATE-QUOTE-DIAGNOSTIC.md
+docs/security/CHECKLIST-SEGURIDAD-PRE-DEPLOY.md
+run_ml_cloud_run_setup.sh
+docs/team/HUMAN-GATES-ONE-BY-ONE.md
+docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md
+docs/team/PROJECT-STATE.md
+scripts/ml-pending-workup.mjs
+tests/validation.js
+scripts/panelsim-ml-crm-sync.js
+src/hooks/useVoiceSession.js
+docs/readme/README.template.md
+docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md
+docs/team/WHATSAPP-META-E2E.md
+docs/team/SESSION-WORKSPACE-CRM.md
+docs/bmc-dashboard-modernization/ENV-VARS-MATRIX.md
+
+--- bearer / authorization ---
+
+--- 'mywolfy' (password histórica) ---
+docs/team/CALCULATE-QUOTE-DIAGNOSTIC.md
+
+--- OpenAI / Anthropic keys (sk- prefix) ---
+
+--- Google API key (AIza...) ---
+
+--- Private keys (BEGIN ... PRIVATE KEY) ---

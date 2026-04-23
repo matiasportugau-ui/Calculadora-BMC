@@ -1,0 +1,53 @@
+### Dominio: pagos-fiscal (RO estricto por DGI Art.46 IVA Dic 2024)
+
+**Sheet master pagos:** 1AzHhalsZKGis_oJ6J06zQeOb6uMQCsliR82VrSKUUsI (Pagos Pendientes 2026) — env BMC_PAGOS_SHEET_ID
+**Sheet calendario vencimientos:** 1bvnbYq7MTJRpa6xEHE5m-5JcGNI9oCFke3lsJj99tdk — env BMC_CALENDARIO_SHEET_ID
+
+**Rutas /api/pagos, /api/kpi-financiero, /api/calendario-vencimientos, /api/audit en bmcDashboard.js:**
+1486:  router.get("/audit", async (_req, res) => {
+1497:  router.get("/pagos-pendientes", async (_req, res) => {
+1518:  router.get("/metas-ventas", async (_req, res) => {
+1528:  router.get("/calendario-vencimientos", async (req, res) => {
+1664:  router.get("/kpi-financiero", async (_req, res) => {
+1727:  router.get("/kpi-report", async (_req, res) => {
+1903:  router.post("/pagos", async (req, res) => {
+1914:  router.patch("/pagos/:id", async (req, res) => {
+
+**Docs billing/fiscal (docs/billing, docs/team/fiscal):**
+CHECKLIST-CIERRE-MENSUAL.md
+FORMATO-EXPORT-FACTURACION.md
+REGLAS-NEGOCIO-FACTURACION.md
+CONTEXTO-FISCAL-DASHBOARD.md
+DGI-CLAUDE-INGESTA.md
+DGI-DEFENSA-EQUIPO-Y-SISTEMA-METALOG.md
+FISCAL-PROTOCOL-STATE-RANKING.md
+LOG-INCUMPLIMIENTOS-RESUELTOS.md
+Untitled-1.jsonc
+
+**Referencias DGI / IVA / IRAE / BPS en docs:**
+docs/samples/pdf-planta-resumen-sample.html
+docs/PRICING-ENGINE.md
+docs/ARCHITECTURE.md
+docs/UI-COMPONENTS.md
+docs/TEAM-MEMBERS.md
+docs/API-REFERENCE.md
+docs/team/AGENT-MANUAL-FULL-SPEC.md
+docs/team/DEVELOPMENT-TEAM-TECHNICAL-EXPORT.md
+docs/CHANGELOG.md
+docs/calculadora/RELEASE-BRIEF-OFFICIAL.md
+docs/api/AGENT-CAPABILITIES.json
+docs/bmc-team-judge/JUDGE-CRITERIA-POR-AGENTE.md
+docs/CALC-TECHO.md
+docs/calculadora/README.md
+docs/calc/CONSTANTES-Y-FORMULAS.md
+
+**CFE (factura electrónica) referenciado?:**
+docs/team/AGENT-PRESENTATION-MATRIX.txt
+docs/team/PROJECT-TEAM-FULL-COVERAGE.md
+docs/team/PROPUESTAS-MEJORAS-POR-AGENTE-2026-03-19.md
+docs/team/reports/INFORME-FULL-TEAM-CAPACIDADES-CARENCIAS-RUN-2026-03-13.md
+docs/team/fiscal/DGI-CLAUDE-INGESTA.md
+docs/team/fiscal/DGI-DEFENSA-EQUIPO-Y-SISTEMA-METALOG.md
+docs/team/fiscal/CONTEXTO-FISCAL-DASHBOARD.md
+docs/team/matprompt/MATPROMT-RUN-2026-03-24-run53.md
+docs/team/knowledge/Fiscal.md

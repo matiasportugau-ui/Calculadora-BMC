@@ -1,0 +1,86 @@
+### Dominio: automatizaciones-infra
+
+**Cloud Run services (declarados en workflows):**
+  - panelin-calc (API, deploy-calc-api.yml, server/Dockerfile, 256Mi, scale 0-10, us-central1)
+  - panelin-calc-web (Frontend nginx, deploy-frontend.yml, root Dockerfile, 128Mi, scale 0-4, us-central1)
+  - panelin-calc (alt, single-image full-stack, cloudbuild.yaml con Dockerfile.bmc-dashboard) — CONFLICTO
+
+**Vercel:** calculadora-bmc.vercel.app (docs/VERCEL-CALCULADORA-SETUP.md)
+**Vercel previews:** calculadora-bmc-git-*.vercel.app
+
+**Workflows de CI/CD:**
+ci.yml
+deploy-calc-api.yml
+deploy-frontend.yml
+dev-trace.yml
+drive-oauth-dist-verify.yml
+drive-oauth-verify.yml
+knowledge-antenna-reusable.yml
+knowledge-antenna-scheduled.yml
+
+**Apps Script (.gs) — automatismos asociados a Google Workspace:**
+./docs/bmc-dashboard-modernization/CalendarioRecordatorio.gs
+./docs/bmc-dashboard-modernization/Code.gs
+./docs/bmc-dashboard-modernization/PagosPendientes.gs
+./docs/bmc-dashboard-modernization/StockAlertas.gs
+./docs/bmc-dashboard-modernization/VentasConsolidar.gs
+./docs 2/bmc-dashboard-modernization/Code.gs
+
+**Launchagents macOS (automatismos host):**
+scripts/drive-cleanup-launchd.plist
+scripts/launchagents-manifest.md
+scripts/launchpad-bmc-dev.js
+scripts/launchpad-launcher-server.js
+scripts/local-stack-launchd-entry.sh
+
+**Webhooks:**
+server/routes/shopify.js:244:  router.post("/webhooks/shopify", asyncHandler(async (req, res) => {
+
+**Scripts scheduler / cron:**
+scripts/install-knowledge-antenna-schedule.sh
+scripts/install-magazine-daily-schedule.sh
+scripts/install-session-artifact-schedule.sh
+scripts/knowledge-antenna-scheduler.sh
+scripts/magazine-daily-scheduler.sh
+scripts/session-artifact-scheduler.sh
+scripts/uninstall-knowledge-antenna-schedule.sh
+scripts/uninstall-magazine-daily-schedule.sh
+scripts/uninstall-session-artifact-schedule.sh
+
+**Postgres DATABASE_URL — Transportista:**
+  server/lib/transportistaDb.js lee process.env.DATABASE_URL
+-rw-r--r-- 1 root root 433 Apr 20 06:30 server/lib/transportistaDb.js
+
+**Secrets / Secret Manager — referencia en código:**
+AGENTS.md
+scripts/cloud-run-matriz-sheets-secret.sh
+run_ml_cloud_run_setup.sh
+docs/VERCEL-CALCULADORA-SETUP.md
+docs/team/GCLOUD-SHEETS-CREDENTIALS-SIMPLE.md
+scripts/smoke-prod-api.mjs
+docs/procedimientos/PROCEDIMIENTO-PRODUCCION-OPERATIVA-100.md
+docs/procedimientos/PROCEDIMIENTO-CALCULADORA-Y-API-CLOUD-RUN-COMPLETO.md
+docs/procedimientos/CHECKLIST-DEPLOY-PANELIN-CALC-BMC.md
+docs/procedimientos/CHROME-CLAUDE-WEB-MATRIZ-SETUP.md
+=== WEBHOOKS encontrados en index.js ===
+48:app.use("/webhooks/whatsapp", (req, res, next) => {
+52:app.use("/webhooks/shopify", express.raw({ type: "application/json" }));
+54:  if (req.path === "/webhooks/shopify" && req.method === "POST") return next();
+55:  if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+383:app.post("/webhooks/ml", asyncHandler(async (req, res) => {
+421:app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
+437:app.get("/webhooks/whatsapp", (req, res) => {
+582:app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
+594:    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
+
+=== WEBHOOK WhatsApp (config) ===
+28:import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+47:// WhatsApp + Shopify webhooks need raw body (HMAC / signature verification)
+48:app.use("/webhooks/whatsapp", (req, res, next) => {
+55:  if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
+425:// ── WhatsApp Business Cloud API webhook ──
+437:app.get("/webhooks/whatsapp", (req, res) => {
+441:  if (mode === "subscribe" && token === config.whatsappVerifyToken) {
+582:app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
+585:  const verified = verifyWhatsAppSignature({
+586:    appSecret: config.whatsappAppSecret,

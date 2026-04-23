@@ -1,0 +1,41 @@
+### Dominio: dashboards-kpis
+
+**Archivos dashboard — src/components:**
+
+**Backend dashboard route:**
+-rw-r--r-- 1 root root 110441 Apr 20 06:30 server/routes/bmcDashboard.js
+2781 server/routes/bmcDashboard.js
+
+**Apps Script (.gs) — referencias:**
+./docs/bmc-dashboard-modernization/CalendarioRecordatorio.gs
+./docs/bmc-dashboard-modernization/Code.gs
+./docs/bmc-dashboard-modernization/PagosPendientes.gs
+./docs/bmc-dashboard-modernization/StockAlertas.gs
+./docs/bmc-dashboard-modernization/VentasConsolidar.gs
+./docs 2/bmc-dashboard-modernization/Code.gs
+
+**Docs dashboard modernization:**
+02-investigation-and-discussion.md
+BMC-DASHBOARD-IA-REVIEW-REPORT.md
+CRM_OPERATIVO_MAPPING.md
+CalendarioRecordatorio.gs
+Code.gs
+DASHBOARD-EVALUATION-REPORT.md
+DASHBOARD-FRONT-VISION.md
+DASHBOARD-INTERFACE-MAP.md
+DASHBOARD-VISUAL-MAP.html
+DASHBOARD-VISUAL-MAP.md
+DESIGN-PROPOSAL-KPI-REPORT-INICIO.md
+DESIGN-PROPOSAL-TIME-SAVING.md
+DESIGN-SYSTEM.md
+DialogEntregas.html
+ENDPOINTS.md
+ENV-VARS-MATRIX.md
+ESTADO-VISUAL-SECCIONES.md
+FULL-IMPROVEMENT-PLAN-REVIEW-REPORT.md
+FULL-IMPROVEMENT-PLAN.md
+GO-LIVE-DASHBOARD-CHECKLIST.md
+
+**Rutas /api/kpi* en bmcDashboard.js:**
+1664:  router.get("/kpi-financiero", async (_req, res) => {
+1727:  router.get("/kpi-report", async (_req, res) => {
