@@ -56,3 +56,5 @@
 - 2026-04-23 01:36:03 — `8e90b56` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 02:07:43 — `0ad5d93` — feat(wolfboard): add Admin 2.0 ↔ CRM operational module
 - 2026-04-23 02:32:02 — `311891a` — feat: add contribut and nxt workflow skills for Claude Code + Cursor
+- 2026-04-23 02:32:23 — `8c717c5` — docs: update AUTOTRACE documentation and add recent commits
+- 2026-04-23 02:44:44 — `92a1508` — docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps

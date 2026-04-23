@@ -47,6 +47,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `fa3e400` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - `4a19616` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - `8e90b56` docs: dev-trace autolog update (2026-04-23)
+- `8c717c5` docs: update AUTOTRACE documentation and add recent commits
+- `92a1508` docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
 
 ## Chores
 
