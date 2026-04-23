@@ -420,7 +420,7 @@ router.post("/cotizar", (req, res) => {
 
 // ── POST /cotizar/pdf ───────────────────────────────────────────────────────
 
-router.post("/cotizar/pdf", (req, res) => {
+router.post("/cotizar/pdf", async (req, res) => {
   try {
     const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente } = req.body;
     const results = runCalculation({ escenario, lista, techo, pared, camara });
