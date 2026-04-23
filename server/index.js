@@ -23,6 +23,7 @@ import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
+import { createWolfboardRouter } from "./routes/wolfboard.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -673,6 +674,8 @@ app.use("/api", createTransportistaRouter(config, logger));
 }
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
+// Wolfboard batch AI quote — POST /api/wolfboard/quote-batch
+app.use("/api/wolfboard", createWolfboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
 app.use(createShopifyRouter(config, logger));
 

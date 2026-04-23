@@ -78,3 +78,4 @@
 - 2026-04-23 04:50:16 — `7a2d303` — docs(ops): cm-2 email ingest prod DONE — todos los gates completos
 - 2026-04-23 04:54:10 — `5d5363c` — fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - 2026-04-23 05:05:49 — `11d1f8c` — fix(ml-ui): persist ML token in localStorage instead of sessionStorage
+- 2026-04-23 05:07:35 — `7f1c805` — fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex

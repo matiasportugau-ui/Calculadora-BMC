@@ -51,6 +51,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `845bb68` fix(wolfboard): wire origenEl in detail panel + correct table header labels
 - `5d5363c` fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - `11d1f8c` fix(ml-ui): persist ML token in localStorage instead of sessionStorage
+- `7f1c805` fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
 
 ## Documentation
 
