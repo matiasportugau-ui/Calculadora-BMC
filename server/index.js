@@ -672,10 +672,10 @@ app.use("/api", createTransportistaRouter(config, logger));
     });
   }
 }
+// Wolfboard admin — must be before the broad /api router
+app.use("/api/wolfboard", createWolfboardRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
-// Wolfboard batch AI quote — POST /api/wolfboard/quote-batch
-app.use("/api/wolfboard", createWolfboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
 app.use(createShopifyRouter(config, logger));
 
