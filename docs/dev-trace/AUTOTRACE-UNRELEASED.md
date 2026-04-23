@@ -38,6 +38,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e918bef` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - `759d82e` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - `6949ce3` feat: add BmcAdminCotizacionesModule and integrate into App routing
+- `a22ce4e` feat(wolfboard): add pendientes, sync, row, enviados, export routes
+- `945e83b` feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
+- `fdcfbc1` feat(fichas): add Kingspan comparison section (TIPO 5)
 
 ## Fixes
 
@@ -55,6 +58,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5d5363c` fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - `11d1f8c` fix(ml-ui): persist ML token in localStorage instead of sessionStorage
 - `7f1c805` fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
+- `5e1c03f` fix: prevent autolog hook self-loop on dev-trace commits
 
 ## Documentation
 

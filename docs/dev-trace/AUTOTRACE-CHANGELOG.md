@@ -93,3 +93,7 @@
 - 2026-04-23 06:18:46 — `b24e8dd` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 06:26:55 — `8149dc2` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 06:27:05 — `027b1e1` — docs: dev-trace autolog update (2026-04-23)
+- 2026-04-23 06:37:52 — `a22ce4e` — feat(wolfboard): add pendientes, sync, row, enviados, export routes
+- 2026-04-23 06:40:29 — `5e1c03f` — fix: prevent autolog hook self-loop on dev-trace commits
+- 2026-04-23 06:40:51 — `945e83b` — feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
+- 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)

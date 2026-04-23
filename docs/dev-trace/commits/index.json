@@ -3076,6 +3076,114 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "a22ce4e8b58290cee8393f55589ab802915d904e",
+      "short_hash": "a22ce4e",
+      "date": "2026-04-23",
+      "time": "06:37:52",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wolfboard",
+      "title": "add pendientes, sync, row, enviados, export routes",
+      "subject": "feat(wolfboard): add pendientes, sync, row, enviados, export routes",
+      "files": [
+        "server/routes/wolfboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "5e1c03f639ca50cb0440d301fc9722ff03e7c683",
+      "short_hash": "5e1c03f",
+      "date": "2026-04-23",
+      "time": "06:40:29",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "",
+      "title": "prevent autolog hook self-loop on dev-trace commits",
+      "subject": "fix: prevent autolog hook self-loop on dev-trace commits",
+      "files": [
+        ".githooks/post-commit"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".githooks"
+        ]
+      }
+    },
+    {
+      "hash": "945e83b5f52e74c4667dd1b3530d661484f880be",
+      "short_hash": "945e83b",
+      "date": "2026-04-23",
+      "time": "06:40:51",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wolfboard",
+      "title": "add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export",
+      "subject": "feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export",
+      "files": [
+        "server/routes/wolfboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "fdcfbc17693836a24b0fe42fdb6226a7e7a30271",
+      "short_hash": "fdcfbc1",
+      "date": "2026-04-23",
+      "time": "06:40:58",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "fichas",
+      "title": "add Kingspan comparison section (TIPO 5)",
+      "subject": "feat(fichas): add Kingspan comparison section (TIPO 5)",
+      "files": [
+        "src/components/FichasPreview.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }
