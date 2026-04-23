@@ -1468,6 +1468,8 @@
     const feedbackEl = byId('wfDetailFeedback');
     if (titleEl) titleEl.textContent = 'Fila ' + row.rowNum + (row.consulta ? ' — ' + row.consulta.slice(0, 50) : '');
     if (hEl) hEl.textContent = row.consulta || '(sin consulta)';
+    const origenEl = byId('wfDetailOrigen');
+    if (origenEl) origenEl.textContent = row.origen || '—';
     if (iEl) iEl.value = row.respuesta || '';
     if (jEl) jEl.value = row.link || '';
     if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
