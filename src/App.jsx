@@ -8,6 +8,7 @@ import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
 import BmcMlOperativoModule from "./components/BmcMlOperativoModule.jsx";
 import BmcWaOperativoModule from "./components/BmcWaOperativoModule.jsx";
+import BmcAdminCotizacionesModule from "./components/BmcAdminCotizacionesModule.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
@@ -80,6 +81,14 @@ export default function App() {
           element={
             <Shell>
               <BmcWaOperativoModule />
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/admin"
+          element={
+            <Shell>
+              <BmcAdminCotizacionesModule />
             </Shell>
           }
         />

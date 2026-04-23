@@ -116,6 +116,15 @@ export default function BmcWolfboardHub() {
               Abrir WA operativo
             </Link>
           </div>
+          <div style={card}>
+            <h2 style={cardTitle}>Admin · Consultas y Cotizaciones</h2>
+            <p style={cardDesc}>
+              Filas pendientes de Admin 2.0 ↔ CRM. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.
+            </p>
+            <Link to="/hub/admin" style={{ ...cta, background: "#1a3a5c" }}>
+              Abrir Admin operativo
+            </Link>
+          </div>
         </div>
 
         {/* ── Herramientas internas ───────────────────────────────────────── */}
