@@ -1,7 +1,7 @@
 # Calculadora BMC — Roadmap & Estado del Proyecto
 
-**Generado:** 2026-04-23 | **Versión:** 3.1.5 | **Branch activo:** `feature/wolfboard-crm`
-**Fuente:** git log, PROJECT-STATE.md, AGENTS.md, CLAUDE.md, estructura del repo.
+**Generado:** 2026-04-23 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica; el working tree local puede tener WIP sin commit — ver `git status`)*
+**Fuente:** git log, PROJECT-STATE.md, CEO-RUN-LOG.md, AGENTS.md, CLAUDE.md, estructura del repo.
 
 ---
 
@@ -17,12 +17,12 @@
 
 Un deploy es **100% limpio** cuando:
 - [ ] `npm run gate:local:full` → 0 errores, 0 warnings nuevos
-- [ ] `npm run smoke:prod` → todos los checks verdes (MATRIZ CSV, `/health`, `/capabilities`, ML OAuth, CRM suggest)
+- [ ] `npm run smoke:prod` → **todos** los checks verdes (MATRIZ CSV, `/health`, `/capabilities`, `public_base_url` alineado a la URL de Cloud Run, CRM suggest). **Hoy (2026-04-23) esto está en rojo** hasta completar **Fase A** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md) (A1–A4).
 - [ ] `npm run test:contracts` → contrato API sin drift
 - [ ] Vercel producción sirve la versión correcta del chunk (semver en badge)
 - [ ] Cloud Run responde `hasSheets: true`, `hasTokens: true` en `/health`
-- [ ] Rama mergeada a `main` con git tag `vX.Y.Z`
-- [ ] Gates humanos cm-0 / cm-1 / cm-2 verificados y documentados en PROJECT-STATE
+- [ ] Rama mergeada a `main` con git tag `vX.Y.Z` *(tag `v3.1.6` pendiente de verificar en remoto; ver ítem crítico 2)*
+- [x] Gates humanos cm-0 / cm-1 / cm-2 verificados y documentados en PROJECT-STATE *(2026-04-23; ingest email prod OK — ver PROJECT-STATE)*
 
 ---
 
@@ -33,17 +33,17 @@ Un deploy es **100% limpio** cuando:
 | Calculator (BOM / pricing / wizard) | 🟢 8/10 | 🟡 7/10 | Estable, mejoras activas |
 | 2D Roof Plan (RoofPreview / SVG / cotas) | 🟢 9/10 | 🟢 8/10 | Producción — sólido |
 | AI Chat (Panelin Chat / agentChat SSE) | 🟡 6/10 | 🟡 5/10 | Funcional, sin KPI de uso |
-| CRM / Dashboard (WolfBoard / Sheets) | 🟡 7/10 | 🟡 6/10 | Admin 2.0 en branch, no en prod |
-| MercadoLibre Integration | 🟢 8/10 | 🟡 7/10 | OAuth OK, cm-1 pendiente humano |
-| WhatsApp / Meta (omnicanal) | 🟡 6/10 | 🟡 5/10 | Webhook wired, cm-0 sin E2E humano |
-| Email Ingest / Parse | 🟡 6/10 | 🟡 6/10 | Dry-run OK, cm-2 sin prod full |
+| CRM / Dashboard (WolfBoard / Sheets) | 🟡 7/10 | 🟡 7/10 | Wolfboard en `main`; `GET /api/wolfboard/pendientes` OK en prod; smoke MATRIZ/suggest aún 503 |
+| MercadoLibre Integration | 🟢 8/10 | 🟡 7/10 | OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua |
+| WhatsApp / Meta (omnicanal) | 🟢 7/10 | 🟡 6/10 | cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica |
+| Email Ingest / Parse | 🟢 7/10 | 🟢 7/10 | cm-2 prod verificado (crmRow=32); ver PROJECT-STATE |
 | Google Sheets / Data | 🟢 8/10 | 🟢 8/10 | Estable, credenciales via Secret Manager |
-| Deploy / CI/CD | 🟢 8/10 | 🟡 7/10 | Sin tags git, sin smoke post-deploy en CI |
-| Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | 335+ unit, 17 API route; sin E2E browser |
+| Deploy / CI/CD | 🟡 6/10 | 🟡 6/10 | `smoke:prod` falla en MATRIZ/suggest + drift `PUBLIC_BASE_URL`; sin smoke post-deploy en CI |
+| Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | 350+ unit (ver gate local), 17 API route; sin E2E browser |
 | Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
 | Fiscal / Compliance | 🟡 6/10 | 🟡 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟡 **71 / 100**
+**Score global estimado:** 🟡 **68 / 100** *(penaliza smoke prod roto pese a gates humanos OK; sube cuando CEO-RUN Fase A4 esté verde y contratos al día.)*
 
 ---
 
@@ -51,44 +51,33 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🔴 CRÍTICO | 1. Mergear `feature/wolfboard-crm` a `main` y deployar
+### 🔴 CRÍTICO | 1. Fase A ops — smoke `npm run smoke:prod` en verde (Cloud Run)
 
-- **Situación:** La rama tiene 3 commits sobre `main` incluyendo WolfBoard Admin 2.0 ↔ CRM. No está en producción. Cada día que pasa aumenta el riesgo de conflicto y la deuda de integración.
-- **Área:** `.` (raíz del repo), `src/`, `server/`
+- **Situación:** `npm run smoke:prod` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app` **falla**: `public_base_url` en `/capabilities` = `http://localhost:3001` (drift); **503** en `GET /api/actualizar-precios-calculadora` (MATRIZ/Sheets/secretos); **503** en `POST /api/crm/suggest-response` (keys IA). `/health` y `/capabilities` responden 200; `GET /api/wolfboard/pendientes` **200**. Ver evidencia en [`PROJECT-STATE.md`](./PROJECT-STATE.md) y checklist **A1–A4** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md).
+- **Área:** GCP Cloud Run env (`PUBLIC_BASE_URL`, `BMC_MATRIZ_SHEET_ID`, SA Sheets, vars IA), [`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs)
 - **Acción "get it live":**
-  1. `npm run gate:local:full` en la rama actual
-  2. Abrir PR `feature/wolfboard-crm` → `main`
-  3. Revisar diff, mergear
-  4. `git tag v3.1.6` (o la versión que corresponda)
-  5. `bash scripts/deploy-vercel.sh --prod`
-  6. `npm run smoke:prod` → verificar en Vercel
-- **Impacto:** Admin 2.0 CRM sigue invisible para el equipo. Sin merge, cualquier fix futuro genera conflictos.
+  1. A1–A3 según CEO-RUN-LOG (GCP)
+  2. `npm run smoke:prod` → OK completo
+  3. Anotar en PROJECT-STATE + CEO-RUN-LOG (Run 2)
+- **Impacto:** Sin esto no hay “deploy 100% limpio” ni confianza en MATRIZ / suggest para GPT ni cockpit.
 
 ---
 
-### 🔴 CRÍTICO | 2. Verificar human gate cm-0 (WhatsApp E2E → fila CRM)
+### 🔴 CRÍTICO | 2. Git tag `v3.1.6` (o siguiente semver) y push a `origin`
 
-- **Situación:** cm-0 está documentado como `doing` desde 2026-04-17. Es el gate que valida que un mensaje real de WhatsApp llegue al webhook, sea procesado, y aparezca en la planilla CRM_Operativo. Sin esto, la integración omnicanal no está validada en producción.
-- **Área:** `server/lib/omniRuntime.js`, `server/routes/bmcDashboard.js`, `docs/team/WHATSAPP-META-E2E.md`
-- **Acción "get it live":**
-  1. Seguir `docs/team/HUMAN-GATES-ONE-BY-ONE.md` → sección cm-0
-  2. Enviar mensaje de prueba al número WA Business
-  3. Verificar fila nueva en CRM_Operativo (Google Sheets)
-  4. Documentar evidencia en PROJECT-STATE.md
-- **Impacto:** Sin cm-0 validado, WhatsApp Business no puede considerarse canal operativo. Riesgo de pérdida de consultas.
+- **Situación:** El roadmap y la KB mencionan tag `v3.1.6` como ancla de release; debe existir en **remoto** para AUTOTRACE/CI en tags `v*`. Verificar con `git ls-remote --tags origin` si ya está; si no, crear tras smoke estable o documentar excepción.
+- **Área:** git, [`tools/release-traceability/`](../../tools/release-traceability/), [`.github/workflows/dev-trace.yml`](../../.github/workflows/dev-trace.yml)
+- **Acción "get it live":** `git tag vX.Y.Z -m "..."` → `git push origin vX.Y.Z` → confirmar workflow en GitHub Actions.
+- **Impacto:** Rollbacks y comunicación de versión a clientes/soporte.
 
 ---
 
-### 🔴 CRÍTICO | 3. Crear git tag de versión (`v3.1.5` o superior)
+### 🔴 CRÍTICO | 3. Reducir WIP grande en `main` (commits/PRs atómicos)
 
-- **Situación:** No hay ningún tag en el repo. El sistema de versiones semver existe en `package.json` y se embebe en el badge del frontend, pero el historial de git no tiene puntos de referencia. La trazabilidad AUTOTRACE y los checkpoints expert no pueden anclar versiones a deploys.
-- **Área:** git, `tools/release-traceability/`
-- **Acción "get it live":**
-  1. Después de mergear `feature/wolfboard-crm`:
-  2. `git tag v3.1.6 -m "WolfBoard Admin 2.0 + contribut/nxt skills"`
-  3. `git push origin v3.1.6`
-  4. CI `dev-trace.yml` corre automáticamente en tag `v*`
-- **Impacto:** Sin tags, el historial es plano. Imposible hacer rollback preciso o comunicar changelog a clientes.
+- **Situación:** Puede haber **muchas** modificaciones locales sin commit en `main` (server, wolfboard, dashboard, skills). Aumenta riesgo de conflicto y desalinea el snapshot del repo respecto a producción.
+- **Área:** `server/`, `src/`, `docs/bmc-dashboard-modernization/`, `.cursor/skills/`, etc.
+- **Acción "get it live":** Partir en 1–2 PRs → `npm run gate:local` → merge → deploy según checklist.
+- **Impacto:** Trazabilidad y revisión de código; evita sorpresas en el próximo deploy.
 
 ---
 
@@ -106,15 +95,11 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🟠 ALTO | 5. Verificar cm-2 (Email ingest en producción, no solo dry-run)
+### 🟡 MEDIO | 5. Regresión canales (cm-0 / cm-2) — verificación periódica
 
-- **Situación:** `npm run email:ingest-snapshot -- --limit 1` en dry-run devolvió `crmRow=31`. Falta confirmar que el flujo real (no dry-run) inserte en CRM sin duplicados y que `POST /api/crm/ingest-email` en Cloud Run prod funcione con el timeout de 300s configurado.
-- **Área:** `scripts/panelsim-email-ready.sh`, `server/routes/bmcDashboard.js` (`/api/crm/ingest-email`), repo IMAP hermano
-- **Acción "get it live":**
-  1. `npm run email:ingest-snapshot -- --limit 1` (sin `--dry-run`) con `BMC_API_BASE` apuntando a Cloud Run prod
-  2. Verificar nueva fila en Master_Cotizaciones / CRM
-  3. Marcar cm-2 `done` en PROJECT-STATE
-- **Impacto:** El bridge de correo es el tercer canal de ingreso de leads. Sin validación real, puede haber pérdida silenciosa de emails.
+- **Situación:** cm-0 y cm-2 figuran como **DONE** en [`PROJECT-STATE.md`](./PROJECT-STATE.md) (2026-04-23). Mantener chequeos puntuales (WhatsApp → fila CRM; email ingest prod) en cada release mayor o mensualmente.
+- **Área:** `docs/team/HUMAN-GATES-ONE-BY-ONE.md`, scripts ingest / omni
+- **Acción "get it live":** Checklist corto + evidencia en PROJECT-STATE si algo cambia en Meta o credenciales.
 
 ---
 
@@ -207,26 +192,25 @@ Un deploy es **100% limpio** cuando:
 ## Resumen ejecutivo del estado
 
 ```
-PRODUCCIÓN HOY (2026-04-23):
-  Frontend (Vercel):   ✅ v3.1.5 — calculadora-bmc.vercel.app
-  API (Cloud Run):     ✅ rev 00170-5jb — timeout 300s, PUBLIC_BASE_URL ok
-  Google Sheets:       ✅ credenciales via Secret Manager
-  ML OAuth:            ✅ hasTokens: true (verificado 2026-04-12)
-  WhatsApp webhook:    ⚠️  wired pero cm-0 sin E2E humano
-  Email ingest:        ⚠️  dry-run ok, prod no verificado
-  WolfBoard Admin 2.0: ⚠️  en branch, no mergeado
+PRODUCCIÓN HOY (2026-04-23) — alineado a PROJECT-STATE + smoke:
+  Frontend (Vercel):     ✅ v3.1.5 — calculadora-bmc.vercel.app
+  API (Cloud Run):     ⚠️  rev 00170-5jb — /health OK; smoke: MATRIZ + suggest 503;
+                         public_base_url en /capabilities = http://localhost:3001 (drift)
+  Google Sheets:       ✅ credenciales Secret Manager (rutas que fallan: revisar MATRIZ ID/share)
+  ML OAuth:            ✅ histórico hasTokens; /auth/ml/status 404 sin sesión = OK en smoke
+  WhatsApp / cm-0:     ✅ documentado DONE (verificar regresión según ítem MEDIO 5)
+  Email ingest / cm-2: ✅ prod verificado (crmRow=32)
+  WolfBoard:           ✅ en main; GET /api/wolfboard/pendientes 200 en prod
 
-EN DESARROLLO (branch feature/wolfboard-crm):
-  + WolfBoard Admin 2.0 ↔ CRM
-  + contribut / nxt skills
+EN DESARROLLO (local / próximos PRs):
+  + Posible WIP sin commit en main (server, dashboard, skills) — ver git status
 
 BLOQUEANTES PARA 100% EXIT DEPLOY:
-  🔴 Merge branch → main + git tag
-  🔴 cm-0 WhatsApp E2E humano
-  🟠 cm-1 ML publicación humana
-  🟠 cm-2 Email ingest producción real
+  🔴 Fase A CEO-RUN: PUBLIC_BASE_URL + MATRIZ CSV + suggest IA + smoke:prod OK
+  🔴 Tag git vX.Y.Z en remoto + trazabilidad
+  🟠 cm-1 ciclo ML humano (mejora continua)
   🟠 Smoke post-deploy en CI
-  🟠 ESLint warning SpecManagementSandbox
+  🟠 ESLint warning SpecManagementSandbox (si aún aplica en gate:local)
 ```
 
 ---
@@ -243,4 +227,5 @@ BLOQUEANTES PARA 100% EXIT DEPLOY:
 | 2026-04-23 | 🟡 71/100 | Baseline inicial (diagnóstico sesión) |
 | 2026-04-23 | 🟢 76/100 | Merge v3.1.6 + deps fix (14→4 vulns) + ESLint 0 warnings |
 | 2026-04-23 | 🟢 80/100 | cm-0 ✅ cm-1 ✅ confirmados + KB Accessible Base system live + WolfBoard en prod |
-| 2026-04-23 | 🟢 84/100 | cm-2 ✅ email ingest prod (crmRow=32) + smoke CI — todos los gates completos |
+| 2026-04-23 | 🟢 84/100 | cm-2 ✅ email ingest prod (crmRow=32) — gates humanos completos |
+| 2026-04-23 | 🟡 68/100 | Reconciliación ROADMAP: merge Wolfboard en `main`; smoke prod aún rojo (503 MATRIZ/suggest, drift PUBLIC_BASE_URL) — ver CEO-RUN Fase A |
