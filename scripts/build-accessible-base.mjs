@@ -46,7 +46,8 @@ const pkg = JSON.parse(read('package.json') || '{}');
 const roadmapRaw = read('docs/team/ROADMAP.md') || '';
 
 // Latest score from history table (last matching row wins)
-const scoreRows  = [...roadmapRaw.matchAll(/\|\s*[\d-T:]+\s*\|\s*[🟡🟢🔴]\s*(\d+)\/100/g)];
+// Pattern: | YYYY-MM-DD | ...anything... N/100 | — avoids emoji Unicode issues
+const scoreRows  = [...roadmapRaw.matchAll(/\|\s*\d{4}-\d{2}-\d{2}\s*\|[^|]*?(\d+)\/100/g)];
 const score      = scoreRows.length ? parseInt(scoreRows.at(-1)[1]) : 77;
 
 // Areas table — parse markdown rows
