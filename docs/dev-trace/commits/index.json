@@ -3248,6 +3248,38 @@
       }
     },
     {
+      "hash": "8ccf8d80f26707e91d12c901222398ad5045d779",
+      "short_hash": "8ccf8d8",
+      "date": "2026-04-23",
+      "time": "06:53:14",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios",
+      "subject": "feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios",
+      "files": [
+        ".accessible-base/admin_cotizaciones.json",
+        ".accessible-base/crm_operativo.json",
+        ".accessible-base/kb.json",
+        ".accessible-base/matriz_precios.json",
+        "docs/dev-trace/commits/2026/04/f2a5942.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
       "hash": "db0c9ce96e355d70ee8a5524449eb9aca3edcce7",
       "short_hash": "db0c9ce",
       "date": "2026-04-23",
@@ -3415,6 +3447,39 @@
         "src_touched": true,
         "areas": [
           "src"
+        ]
+      }
+    },
+    {
+      "hash": "9e3002864bbbe2af64b5027c9eb7f1e207891ced",
+      "short_hash": "9e30028",
+      "date": "2026-04-23",
+      "time": "08:01:17",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "skip bash disk-precheck in Alpine build stage",
+      "subject": "fix(docker): skip bash disk-precheck in Alpine build stage",
+      "files": [
+        "Dockerfile",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/38dffaf.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
         ]
       }
     }

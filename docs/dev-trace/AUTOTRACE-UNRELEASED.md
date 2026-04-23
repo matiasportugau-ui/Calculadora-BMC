@@ -41,6 +41,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a22ce4e` feat(wolfboard): add pendientes, sync, row, enviados, export routes
 - `945e83b` feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
 - `fdcfbc1` feat(fichas): add Kingspan comparison section (TIPO 5)
+- `8ccf8d8` feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios
 - `db0c9ce` feat: wire real calculator engine into quote-batch
 - `38dffaf` feat(roof-plan): segment-level encounter selection in 2D plan
 
@@ -66,6 +67,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `28507ff` fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
 - `03ce080` fix(server): move wolfboard router before /api catch-all to fix 404s
 - `52e394a` fix(calc): make /cotizar/pdf handler async + sync autotrace
+- `9e30028` fix(docker): skip bash disk-precheck in Alpine build stage
 
 ## Documentation
 

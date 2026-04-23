@@ -99,9 +99,11 @@
 - 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)
 - 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
 - 2026-04-23 06:52:02 — `28ef700` — fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
+- 2026-04-23 06:53:14 — `8ccf8d8` — feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios
 - 2026-04-23 07:12:28 — `db0c9ce` — feat: wire real calculator engine into quote-batch
 - 2026-04-23 07:20:09 — `28507ff` — fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
 - 2026-04-23 07:25:49 — `03ce080` — fix(server): move wolfboard router before /api catch-all to fix 404s
 - 2026-04-23 07:32:45 — `3646101` — test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles
 - 2026-04-23 07:38:58 — `52e394a` — fix(calc): make /cotizar/pdf handler async + sync autotrace
 - 2026-04-23 07:50:33 — `38dffaf` — feat(roof-plan): segment-level encounter selection in 2D plan
+- 2026-04-23 08:01:17 — `9e30028` — fix(docker): skip bash disk-precheck in Alpine build stage
