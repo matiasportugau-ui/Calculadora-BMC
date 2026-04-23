@@ -7,12 +7,13 @@ Core philosophy: **Fix → Deploy → Fix → Deploy.** Get each improvement liv
 Run these steps, then generate the report below:
 
 1. Run `git status --short` and `git log --oneline -10` to see current branch, uncommitted work, and recent history.
-2. Read `docs/team/PROJECT-STATE.md` if it exists — it holds live project state and pending items.
-3. Read `docs/dev-trace/AUTOTRACE-UNRELEASED.md` if it exists — unreleased changes pending deploy.
-4. Identify: what is uncommitted, what is committed but not deployed, what is live.
-5. Infer active development areas from file paths in git status + recent commits.
-6. Score each active area for quality and completeness based on what you can observe.
-7. Output the structured report using the format below.
+2. Read `docs/team/ROADMAP.md` — canonical mission, vision, area scores, exit criteria, and ordered next steps. Use this as the baseline: update scores based on what changed since it was written, carry forward unresolved items, and mark completed ones.
+3. Read `docs/team/PROJECT-STATE.md` if it exists — live project state, recent changes, pending human gates (cm-0/1/2).
+4. Read `docs/dev-trace/AUTOTRACE-UNRELEASED.md` if it exists — unreleased changes pending deploy.
+5. Identify: what is uncommitted, what is committed but not deployed, what is live.
+6. Compare current git state against ROADMAP.md items — what moved forward, what is new, what is still blocked.
+7. Score each active area: start from ROADMAP.md baseline scores and adjust up/down based on evidence (new commits, fixes, open issues).
+8. Output the structured report using the format below.
 
 ## Report format
 

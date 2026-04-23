@@ -232,4 +232,13 @@ BLOQUEANTES PARA 100% EXIT DEPLOY:
 ---
 
 *Este documento es la fuente de verdad del roadmap. Actualizar cada vez que un ítem cambie de estado.*
-*Siguiente revisión sugerida: después de mergear `feature/wolfboard-crm`.*
+*El skill `/nxt` lo lee en cada invocación como baseline — scores y próximos pasos se ajustan desde aquí.*
+
+---
+
+## Historial de scores
+
+| Fecha | Score | Evento |
+|-------|-------|--------|
+| 2026-04-23 | 🟡 71/100 | Baseline inicial (diagnóstico sesión) |
+| 2026-04-23 | 🟢 76/100 | Merge v3.1.6 + deps fix (14→4 vulns) + ESLint 0 warnings |
