@@ -37,6 +37,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
 - `e918bef` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - `759d82e` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
+- `6949ce3` feat: add BmcAdminCotizacionesModule and integrate into App routing
 
 ## Fixes
 

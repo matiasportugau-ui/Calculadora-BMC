@@ -85,3 +85,4 @@
 - 2026-04-23 05:16:32 — `13e4393` — chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
 - 2026-04-23 05:18:01 — `27139d5` — chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
 - 2026-04-23 05:20:14 — `543f747` — docs: dev-trace autolog update (2026-04-23)
+- 2026-04-23 05:33:25 — `6949ce3` — feat: add BmcAdminCotizacionesModule and integrate into App routing
