@@ -81,3 +81,4 @@
 - 2026-04-23 05:07:35 — `7f1c805` — fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
 - 2026-04-23 05:08:12 — `e918bef` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - 2026-04-23 05:08:49 — `759d82e` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
+- 2026-04-23 05:11:39 — `e77b34b` — docs: dev-trace autolog update (2026-04-23)

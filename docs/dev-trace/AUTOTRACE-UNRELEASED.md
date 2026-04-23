@@ -67,6 +67,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `92a1508` docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
 - `af7b601` docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)
 - `7a2d303` docs(ops): cm-2 email ingest prod DONE — todos los gates completos
+- `e77b34b` docs: dev-trace autolog update (2026-04-23)
 
 ## Chores
 
