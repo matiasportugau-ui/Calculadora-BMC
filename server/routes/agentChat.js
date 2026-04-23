@@ -581,6 +581,9 @@ router.post("/agent/chat", async (req, res) => {
       emittedActions.length = 0;
       let buf = "";
       let resolvedModel = "";
+      const tStart = Date.now();
+      let inputTokens = 0;
+      let outputTokens = 0;
 
       const useRequestedModel = pref !== "auto" && prefOk && provider === pref;
       const requestedId = useRequestedModel ? aiModel : "";
@@ -623,6 +626,10 @@ router.post("/agent/chat", async (req, res) => {
         for await (const chunk of stream) {
           if (chunk.type === "message_start" && chunk.message?.usage) {
             cacheReadTokens = chunk.message.usage.cache_read_input_tokens ?? 0;
+            inputTokens = chunk.message.usage.input_tokens ?? 0;
+          }
+          if (chunk.type === "message_delta" && chunk.usage) {
+            outputTokens = chunk.usage.output_tokens ?? 0;
           }
           if (
             chunk.type === "content_block_delta" &&
@@ -695,12 +702,25 @@ router.post("/agent/chat", async (req, res) => {
           logConversationMeta(conversationId, { provider, model: resolvedModel, devMode });
         }
 
+        const latencyMs = Date.now() - tStart;
+        console.log(JSON.stringify({
+          event: "chat_turn",
+          provider,
+          model: resolvedModel,
+          latencyMs,
+          inputTokens,
+          outputTokens,
+          kbMatchCount: trainingExamples.length,
+          devMode: devMode || undefined,
+        }));
+
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
           logConversationTurn(conversationId, {
             turnIndex: assistantTurnIndex,
             role: "assistant",
             content: visibleAssistantText,
+            latencyMs,
             kbMatchCount: trainingExamples.length,
             hedgeCount,
           });
