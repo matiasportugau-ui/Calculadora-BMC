@@ -53,3 +53,6 @@
 - 2026-04-22 04:26:25 — `2a3be46` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 - 2026-04-22 04:37:56 — `54a641f` — fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - 2026-04-23 00:18:25 — `cc153d7` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
+- 2026-04-23 01:36:03 — `8e90b56` — docs: dev-trace autolog update (2026-04-23)
+- 2026-04-23 02:07:43 — `0ad5d93` — feat(wolfboard): add Admin 2.0 ↔ CRM operational module
+- 2026-04-23 02:32:02 — `311891a` — feat: add contribut and nxt workflow skills for Claude Code + Cursor

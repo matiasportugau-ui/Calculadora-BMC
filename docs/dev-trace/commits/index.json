@@ -1796,6 +1796,104 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "8e90b5605a34c0a1013cc708c1660baff637cd2e",
+      "short_hash": "8e90b56",
+      "date": "2026-04-23",
+      "time": "01:36:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "dev-trace autolog update (2026-04-23)",
+      "subject": "docs: dev-trace autolog update (2026-04-23)",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/cc153d7.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "0ad5d935c27265a3717bf003b6b0d24c9efd65f1",
+      "short_hash": "0ad5d93",
+      "date": "2026-04-23",
+      "time": "02:07:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feature/wolfboard-crm",
+      "type": "feat",
+      "scope": "wolfboard",
+      "title": "add Admin 2.0 ↔ CRM operational module",
+      "subject": "feat(wolfboard): add Admin 2.0 ↔ CRM operational module",
+      "files": [
+        ".env.example",
+        "docs/bmc-dashboard-modernization/dashboard/app.js",
+        "docs/bmc-dashboard-modernization/dashboard/index.html",
+        "docs/bmc-dashboard-modernization/dashboard/styles.css",
+        "docs/bmc-dashboard-modernization/sheets-api-server.js",
+        "docs/team/WOLFBOARD-RUN-REPORT.md",
+        "server/config.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "311891aed6ca9d32c4b53fda0837fdb77b159fd9",
+      "short_hash": "311891a",
+      "date": "2026-04-23",
+      "time": "02:32:02",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feature/wolfboard-crm",
+      "type": "feat",
+      "scope": "",
+      "title": "add contribut and nxt workflow skills for Claude Code + Cursor",
+      "subject": "feat: add contribut and nxt workflow skills for Claude Code + Cursor",
+      "files": [
+        ".claude/commands/contribut.md",
+        ".claude/commands/nxt.md",
+        ".cursor/rules/contribut-input-mode.mdc",
+        ".cursor/skills/contribut-input-mode/SKILL.md",
+        "CLAUDE.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".claude",
+          ".cursor"
+        ]
+      }
     }
   ]
 }
