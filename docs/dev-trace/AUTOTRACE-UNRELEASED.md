@@ -126,6 +126,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `13e4393` chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
 - `27139d5` chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
 - `792cf98` chore(dev-trace): sync AUTOTRACE for wolfboard local dev commit c8b33e6
+- `07a5a8d` chore(dev-trace): record AUTOTRACE for commit 792cf98
 
 ## Other
 
