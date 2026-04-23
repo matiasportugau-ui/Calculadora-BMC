@@ -1,0 +1,235 @@
+{
+  "_meta": {
+    "v": "2.0.0",
+    "ts": "2026-04-23T09:52:40.421Z",
+    "build_ms": 111,
+    "score": 84,
+    "score_delta": 0,
+    "sources": [
+      "ROADMAP.md",
+      "PROJECT-STATE.md",
+      "package.json",
+      "git",
+      ".accessible-base/manifest.json"
+    ]
+  },
+  "project": {
+    "name": "Calculadora BMC",
+    "pkg_version": "3.1.5",
+    "score": 84,
+    "mission": "Automatizar el proceso comercial de BMC Uruguay para paneles Panelin — desde cotización técnica hasta cierre de venta, integrando WhatsApp, MercadoLibre y email con mínima intervención manual.",
+    "stack": "React18+Vite7:5173 | Express5+Node20:3001 | Cloud Run(panelin-calc) | Vercel | Google Sheets | PostgreSQL",
+    "urls": {
+      "frontend": "https://calculadora-bmc.vercel.app",
+      "api": "https://panelin-calc-q74zutv7dq-uc.a.run.app"
+    }
+  },
+  "state": {
+    "branch": "main",
+    "last_commit": {
+      "hash": "f2a5942",
+      "msg": "docs: sync autotrace + calculatorDataVersion bump"
+    },
+    "uncommitted": 6,
+    "last_change": "2026-04-23 (Ops — cm-2 Email ingest prod DONE):",
+    "deploy": {
+      "vercel": "live",
+      "cloud_run": "rev-00170-5jb",
+      "tag": "v3.1.6"
+    },
+    "health": {
+      "lint": "0_warnings",
+      "tests": "350_pass",
+      "vulns": 4,
+      "vulns_note": "serialize-javascript HIGH is build-time only (vite-plugin-pwa compat limit)"
+    }
+  },
+  "gates": {
+    "cm0_whatsapp_e2e": "DONE",
+    "cm1_ml_publish": "DONE",
+    "cm2_email_ingest": "DONE",
+    "all_done": true
+  },
+  "areas": [
+    {
+      "label": "Calculator (BOM / pricing / wizard)",
+      "q": 8,
+      "c": 7,
+      "status": "Estable, mejoras activas"
+    },
+    {
+      "label": "2D Roof Plan (RoofPreview / SVG / cotas)",
+      "q": 9,
+      "c": 8,
+      "status": "Producción — sólido"
+    },
+    {
+      "label": "AI Chat (Panelin Chat / agentChat SSE)",
+      "q": 6,
+      "c": 5,
+      "status": "Funcional, sin KPI de uso"
+    },
+    {
+      "label": "CRM / Dashboard (WolfBoard / Sheets)",
+      "q": 7,
+      "c": 6,
+      "status": "Admin 2.0 en branch, no en prod"
+    },
+    {
+      "label": "MercadoLibre Integration",
+      "q": 8,
+      "c": 7,
+      "status": "OAuth OK, cm-1 pendiente humano"
+    },
+    {
+      "label": "WhatsApp / Meta (omnicanal)",
+      "q": 6,
+      "c": 5,
+      "status": "Webhook wired, cm-0 sin E2E humano"
+    },
+    {
+      "label": "Email Ingest / Parse",
+      "q": 6,
+      "c": 6,
+      "status": "Dry-run OK, cm-2 sin prod full"
+    },
+    {
+      "label": "Google Sheets / Data",
+      "q": 8,
+      "c": 8,
+      "status": "Estable, credenciales via Secret Manager"
+    },
+    {
+      "label": "Deploy / CI/CD",
+      "q": 8,
+      "c": 7,
+      "status": "Sin tags git, sin smoke post-deploy en CI"
+    },
+    {
+      "label": "Tests (unit + API + contrato)",
+      "q": 8,
+      "c": 7,
+      "status": "335+ unit, 17 API route; sin E2E browser"
+    },
+    {
+      "label": "Docs / Agents / Tooling",
+      "q": 9,
+      "c": 8,
+      "status": "AUTOTRACE, dev-trace, 11 agentes, skills"
+    },
+    {
+      "label": "Fiscal / Compliance",
+      "q": 6,
+      "c": 5,
+      "status": "IVA en quotes OK; BPS/IRAE no trazado"
+    }
+  ],
+  "roadmap": [
+    {
+      "priority": "🔴 CRÍTICO",
+      "title": "cm-0 WhatsApp E2E",
+      "action": "Send real WA msg → verify CRM row → mark done"
+    },
+    {
+      "priority": "🟠 ALTO",
+      "title": "QA WolfBoard prod",
+      "action": "Open Vercel URL → verify Admin 2.0 loads CRM data"
+    },
+    {
+      "priority": "🟠 ALTO",
+      "title": "cm-1 ML publish",
+      "action": "ml:pending-workup → answer ML questions with MATRIZ price"
+    },
+    {
+      "priority": "🟠 ALTO",
+      "title": "cm-2 email ingest prod",
+      "action": "email:ingest-snapshot --limit 1 (no --dry-run)"
+    },
+    {
+      "priority": "🟡 MEDIO",
+      "title": "Smoke post-deploy CI",
+      "action": "Add smoke job to .github/workflows/ci.yml"
+    },
+    {
+      "priority": "🟡 MEDIO",
+      "title": "UI encuentros multizona",
+      "action": "Complete segment UI in RoofPreview.jsx"
+    }
+  ],
+  "rules": [
+    "ES modules only (import/export) — never require()",
+    "Never commit .env or credentials — use config/process.env",
+    "npm run gate:local before every commit | gate:local:full before deploy",
+    "No npm audit fix --force without explicit user approval (can break vite)",
+    "No hardcode sheet IDs — read from config.* or process.env.*",
+    "503=Sheets unavailable | 200+empty=no data | never 500 for Sheets errors",
+    "Commit prefix: feat/fix/refactor/docs/chore",
+    "Update docs/team/PROJECT-STATE.md after every significant change",
+    "Spanish for business/operator text | English for code, commands, file paths",
+    "Fix → Deploy → Fix → Deploy: get each improvement live before the next"
+  ],
+  "agents": [
+    {
+      "id": "bmc-orchestrator",
+      "role": "Coordinates full team runs"
+    },
+    {
+      "id": "bmc-calc-specialist",
+      "role": "Pricing BOM panel calculations"
+    },
+    {
+      "id": "bmc-panelin-chat",
+      "role": "Chat UI training KB dev mode"
+    },
+    {
+      "id": "bmc-api-contract",
+      "role": "API response drift detection"
+    },
+    {
+      "id": "bmc-security",
+      "role": "OAuth CORS credential audits"
+    },
+    {
+      "id": "bmc-deployment",
+      "role": "Vercel + Cloud Run deploy/rollback"
+    },
+    {
+      "id": "bmc-fiscal",
+      "role": "IVA IRAE BPS fiscal oversight"
+    },
+    {
+      "id": "bmc-docs-sync",
+      "role": "PROJECT-STATE docs sync"
+    },
+    {
+      "id": "bmc-judge",
+      "role": "Run reports agent rankings"
+    },
+    {
+      "id": "bmc-sheets-mapping",
+      "role": "Google Sheets CRM integration"
+    },
+    {
+      "id": "calculo-especialist",
+      "role": "2D roof plan SVG dimensioning"
+    }
+  ],
+  "commands": {
+    "dev": "npm run dev:full",
+    "gate": "npm run gate:local",
+    "gate_full": "npm run gate:local:full",
+    "smoke": "npm run smoke:prod",
+    "kb_build": "npm run kb:build",
+    "ml_pending": "npm run ml:pending-workup",
+    "deploy_vercel": "bash scripts/deploy-vercel.sh --prod",
+    "deploy_api": "bash scripts/deploy-cloud-run.sh",
+    "sheets_sync": "npm run sheets:sync"
+  },
+  "sheets": {
+    "matriz_synced_at": "2026-04-23T08:12:17.747Z",
+    "matriz_rows": 170,
+    "admin_rows": 290,
+    "last_sync": "2026-04-23T08:12:17.747Z"
+  },
+  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 290 filas). Score actual: 84/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
+}
