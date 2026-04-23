@@ -2171,6 +2171,103 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "63c141096582776b989968b495bbfa3aeb2da1df",
+      "short_hash": "63c1410",
+      "date": "2026-04-23",
+      "time": "04:00:24",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update AUTOTRACE documentation and sync calculatorDataVersion timestamp",
+      "subject": "chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp",
+      "files": [
+        ".accessible-base/manifest.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/1966b38.md",
+        "docs/dev-trace/commits/2026/04/7130acd.md",
+        "docs/dev-trace/commits/2026/04/d83ca03.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "0437665153fffab62d7309a148b66fe661a0790c",
+      "short_hash": "0437665",
+      "date": "2026-04-23",
+      "time": "04:14:49",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "wolfboard",
+      "title": "Admin 2.0 data starts row 2 (not 3) — confirmed by operator",
+      "subject": "fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator",
+      "files": [
+        "docs/bmc-dashboard-modernization/sheets-api-server.js",
+        "scripts/accessible-base-sync.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs",
+          "scripts"
+        ]
+      }
+    },
+    {
+      "hash": "8a30cd293a10ba09d701f756a5f80efe9978c4c0",
+      "short_hash": "8a30cd2",
+      "date": "2026-04-23",
+      "time": "04:18:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "Accessible Base compiler — AI-optimized KB auto-built on every commit",
+      "subject": "feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit",
+      "files": [
+        ".claude/commands/nxt.md",
+        ".githooks/post-commit",
+        "package.json",
+        "scripts/build-accessible-base.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".claude",
+          ".githooks",
+          "scripts"
+        ]
+      }
     }
   ]
 }

@@ -348,11 +348,12 @@
               <th>Respuesta IA (I)</th>
               <th>Link</th>
               <th>Estado</th>
+              <th>Canal</th>
               <th class="col-actions">Acciones</th>
             </tr>
           </thead>
           <tbody id="wfTbody">
-            <tr><td colspan="6" class="empty">Cargando...</td></tr>
+            <tr><td colspan="7" class="empty">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -367,6 +368,10 @@
             <div id="wfDetailH" class="wf-consulta-box"></div>
           </div>
           <div class="wf-form-group">
+            <span class="label">Canal / Origen</span>
+            <div id="wfDetailOrigen" class="wf-consulta-box"></div>
+          </div>
+          <div class="wf-form-group">
             <label class="label" for="wfDetailI">Respuesta IA (I) — editable</label>
             <textarea id="wfDetailI" class="wf-textarea" rows="5" placeholder="Respuesta al cliente..."></textarea>
           </div>
@@ -376,6 +381,7 @@
           </div>
           <div class="wf-detail-actions">
             <button type="button" class="btn btn-primary btn-sm" id="wfDetailSave">Guardar en CRM</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="wfDetailAprobar">Aprobar respuesta</button>
             <button type="button" class="btn btn-secondary btn-sm" id="wfDetailEnviado">Marcar enviado (K→Enviados)</button>
           </div>
           <p id="wfDetailFeedback" class="wf-feedback"></p>

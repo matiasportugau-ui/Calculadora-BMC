@@ -1381,13 +1381,13 @@
     if (!tbody) return;
 
     if (errorMsg) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">' + escapeHtml(errorMsg) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">' + escapeHtml(errorMsg) + '</td></tr>';
       if (summary) summary.textContent = 'Sin datos';
       return;
     }
 
     if (!rows || rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin consultas pendientes — todo enviado o sin datos configurados.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin consultas pendientes — todo enviado o sin datos configurados.</td></tr>';
       if (summary) summary.textContent = '0 pendientes';
       return;
     }
@@ -1403,6 +1403,9 @@
       const estadoPill = row.K
         ? '<span class="status-pill status-pill--ok">Enviado</span>'
         : '<span class="status-pill status-pill--warn">Pendiente</span>';
+      const canalPill = row.origen
+        ? '<span class="status-pill">' + escapeHtml(row.origen) + '</span>'
+        : '<span class="empty-cell">—</span>';
       const ancla = row.sheetUrl
         ? ' <a href="' + escapeHtml(row.sheetUrl) + '" target="_blank" rel="noopener" title="Abrir fila en Sheets">↗</a>'
         : '';
@@ -1413,6 +1416,7 @@
           '<td>' + (respuesta || '<span class="empty-cell">—</span>') + '</td>' +
           '<td>' + linkCell + '</td>' +
           '<td>' + estadoPill + '</td>' +
+          '<td>' + canalPill + '</td>' +
           '<td><button type="button" class="btn btn-ghost btn-sm wf-detail-btn" data-row="' + escapeHtml(String(row.rowNum)) + '">Ver / Editar</button></td>' +
         '</tr>'
       );
@@ -1421,7 +1425,7 @@
 
   async function loadWolfboard() {
     const tbody = byId('wfTbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Cargando…</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty">Cargando…</td></tr>';
     try {
       const json = await fetchWolfboardPendientes();
       wolfboardData = json.data || [];
@@ -1464,6 +1468,8 @@
     const feedbackEl = byId('wfDetailFeedback');
     if (titleEl) titleEl.textContent = 'Fila ' + row.rowNum + (row.H ? ' — ' + row.H.slice(0, 50) : '');
     if (hEl) hEl.textContent = row.H || '(sin consulta)';
+    const origenEl = byId('wfDetailOrigen');
+    if (origenEl) origenEl.textContent = row.origen || '—';
     if (iEl) iEl.value = row.I || '';
     if (jEl) jEl.value = row.J || '';
     if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
@@ -1531,6 +1537,32 @@
     }
   }
 
+  async function approveWolfboardRow() {
+    if (!wfActiveRow) return;
+    const feedbackEl = byId('wfDetailFeedback');
+    const btn = byId('wfDetailAprobar');
+    if (btn) { btn.disabled = true; btn.textContent = 'Aprobando…'; }
+    if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
+    try {
+      const res = await fetch(API_BASE + '/api/wolfboard/row', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminRow: wfActiveRow, aprobado: true }),
+      });
+      const json = await readJsonResponse(res, 'Error al aprobar');
+      const dry = json.dryRun ? '[dry-run] ' : '';
+      const msg = dry + 'Aprobado · CRM fila ' + (json.crmRow || '?');
+      if (feedbackEl) { feedbackEl.textContent = msg; feedbackEl.className = 'wf-feedback wf-feedback--ok'; }
+      showToast(msg);
+    } catch (err) {
+      const errMsg = 'Error: ' + (err.message || 'fallo al aprobar');
+      if (feedbackEl) { feedbackEl.textContent = errMsg; feedbackEl.className = 'wf-feedback wf-feedback--error'; }
+      showToast(errMsg, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Aprobar respuesta'; }
+    }
+  }
+
   // Event listeners
   byId('wfSyncBtn') && byId('wfSyncBtn').addEventListener('click', syncWolfboard);
   byId('wfDetailClose') && byId('wfDetailClose').addEventListener('click', function () {
@@ -1539,6 +1571,7 @@
     wfActiveRow = null;
   });
   byId('wfDetailSave') && byId('wfDetailSave').addEventListener('click', saveWolfboardRow);
+  byId('wfDetailAprobar') && byId('wfDetailAprobar').addEventListener('click', approveWolfboardRow);
   byId('wfDetailEnviado') && byId('wfDetailEnviado').addEventListener('click', markWolfboardEnviado);
 
   const wfTableEl = byId('wfTable');
@@ -1549,15 +1582,15 @@
     });
   }
 
-  // Auto-load when section scrolls into view
+  // Auto-sync + load when section scrolls into view
   const wfSection = document.getElementById('wolfboard');
   if (wfSection && typeof IntersectionObserver !== 'undefined') {
     const wfObserver = new IntersectionObserver(function (entries) {
-      if (entries[0].isIntersecting) { wfObserver.disconnect(); loadWolfboard(); }
+      if (entries[0].isIntersecting) { wfObserver.disconnect(); syncWolfboard(); }
     }, { threshold: 0.1 });
     wfObserver.observe(wfSection);
   } else if (wfSection) {
-    loadWolfboard();
+    syncWolfboard();
   }
 
   // ─── End Wolfboard ─────────────────────────────────────────────────────────

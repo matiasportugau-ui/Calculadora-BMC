@@ -43,9 +43,14 @@ const WOLFB_ADMIN_ID  = process.env.WOLFB_ADMIN_SHEET_ID   || '';
 const WOLFB_ADMIN_TAB = process.env.WOLFB_ADMIN_TAB        || 'Admin.';
 const WOLFB_CRM_TAB   = process.env.WOLFB_CRM_MAIN_TAB     || 'CRM_Operativo';
 const WOLFB_ENV_TAB   = process.env.WOLFB_CRM_ENVIADOS_TAB || 'Enviados';
-const WOLFB_DRY_RUN   = process.env.WOLFB_DRY_RUN === '1';
+const WOLFB_DRY_RUN         = process.env.WOLFB_DRY_RUN === '1';
+const WOLFB_ADMIN_ORIGEN_COL = process.env.WOLFB_ADMIN_ORIGEN_COL || 'L';
 // Admin 2.0: headers at row 1, data from row 2 (confirmed by operator)
 const WOLFB_ADMIN_DATA_ROW = 2;
+
+function colLetterToIndex(letter) {
+  return letter.toUpperCase().charCodeAt(0) - 65;
+}
 
 function getStartOfWeek(d) {
   const date = new Date(d);
@@ -217,17 +222,21 @@ async function getSheetsClient(useWrite = false) {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// Read Admin 2.0 rows — columns H-K, data starts at WOLFB_ADMIN_DATA_ROW
+// Read Admin 2.0 rows — columns H through WOLFB_ADMIN_ORIGEN_COL, data starts at WOLFB_ADMIN_DATA_ROW
 async function readAdminRows(useWrite = false) {
   const sheets = await getSheetsClient(useWrite);
+  const endCol = WOLFB_ADMIN_ORIGEN_COL || 'K';
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: WOLFB_ADMIN_ID,
-    range: `'${WOLFB_ADMIN_TAB}'!H${WOLFB_ADMIN_DATA_ROW}:K`,
+    range: `'${WOLFB_ADMIN_TAB}'!H${WOLFB_ADMIN_DATA_ROW}:${endCol}`,
     valueRenderOption: 'FORMATTED_VALUE',
   });
   const rows = res.data.values || [];
   const adminAnchor = (rowNum) =>
     `https://docs.google.com/spreadsheets/d/${WOLFB_ADMIN_ID}/edit#gid=0&range=H${rowNum}`;
+  const origenOffset = WOLFB_ADMIN_ORIGEN_COL
+    ? colLetterToIndex(WOLFB_ADMIN_ORIGEN_COL) - colLetterToIndex('H')
+    : -1;
   return rows
     .map((row, idx) => ({
       rowNum: idx + WOLFB_ADMIN_DATA_ROW,
@@ -235,6 +244,7 @@ async function readAdminRows(useWrite = false) {
       I: row[1] ?? '',
       J: row[2] ?? '',
       K: String(row[3] ?? '').toUpperCase() === 'TRUE',
+      origen: origenOffset >= 0 ? (row[origenOffset] ?? '') : '',
       sheetUrl: adminAnchor(idx + WOLFB_ADMIN_DATA_ROW),
     }))
     .filter(r => r.H || r.I || r.J);
@@ -403,8 +413,8 @@ async function handleWolfboardExport(res) {
     const date = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="wolfboard-export-${date}.csv"`);
-    const header = 'rowNum,H_consulta,I_respuesta,J_link,K_enviado,sheetUrl\n';
-    const csvRow = (r) => [r.rowNum, r.H, r.I, r.J, r.K ? 'TRUE' : 'FALSE', r.sheetUrl]
+    const header = 'rowNum,H_consulta,I_respuesta,J_link,K_enviado,origen,sheetUrl\n';
+    const csvRow = (r) => [r.rowNum, r.H, r.I, r.J, r.K ? 'TRUE' : 'FALSE', r.origen, r.sheetUrl]
       .map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',');
     res.statusCode = 200;
     res.end(header + rows.map(csvRow).join('\n'));

@@ -3,7 +3,7 @@
 **Fecha:** 2026-04-23  
 **Branch:** `feature/wolfboard-crm`  
 **Run orientado a:** Claude Code Terminal  
-**Estado:** Fases 0–2 + 4 completas · Fase 3 (Drive wiring) pendiente
+**Estado:** Fases 0–2 + 4 completas · Sprint 1 UI completado · Fase 3 (Drive wiring) pendiente
 
 ---
 
@@ -18,6 +18,8 @@
 | 1d | `GET /api/wolfboard/export` (CSV) | ✅ | `sheets-api-server.js` |
 | 1e | `POST /api/wolfboard/enviados` | ✅ | `sheets-api-server.js` |
 | 2 | UI Wolfboard en dashboard | ✅ | `index.html`, `app.js`, `styles.css` |
+| 2b | Botón "Aprobar respuesta" en panel detalle | ✅ | `index.html:378`, `app.js` (`approveWolfboardRow`) |
+| 2c | Auto-sync bidireccional al abrir sección | ✅ | `app.js` IntersectionObserver → `syncWolfboard()` |
 | 3 | Drive link wiring (calc → J) | ⏳ TBD | Pendiente (ver abajo) |
 | 4 | Este report | ✅ | `docs/team/WOLFBOARD-RUN-REPORT.md` |
 
@@ -227,14 +229,23 @@ open http://localhost:3849
 
 ---
 
+## Sprint 1 — cambios 2026-04-23
+
+| Cambio | Archivo | Descripción |
+|--------|---------|-------------|
+| Botón "Aprobar respuesta" | `dashboard/index.html` | Agrega botón entre Guardar y Enviado en panel de detalle |
+| `approveWolfboardRow()` | `dashboard/app.js` | POST `/api/wolfboard/row` con `aprobado: true` → escribe "Sí" en CRM columna AI |
+| Auto-sync al entrar | `dashboard/app.js` | IntersectionObserver llama `syncWolfboard()` en vez de `loadWolfboard()` — sincroniza ambas vías al abrir la sección |
+
 ## Próximos pasos
 
 1. **Resolver HG-1 a HG-4** (Matias confirma tab names, offset, permisos)
 2. **Primer sync dry-run real** con las vars configuradas en .env
 3. **Primer sync real** (quitar `WOLFB_DRY_RUN`) sobre una copia/staging de las hojas
-4. **Fase 3** Drive link wiring (bmc-calc-specialist, integración en calculadora)
-5. **PR de seguridad** para remover service-account.json del repo
-6. **Canales adicionales** (IG, FB, Email blocks en UI Wolfboard) — siguientes sprints
+4. **Sprint 2:** Campo Origen (columna en Admin + display en tabla + panel + CSV)
+5. **Fase 3** Drive link wiring (bmc-calc-specialist, integración en calculadora)
+6. **PR de seguridad** para remover service-account.json del repo
+7. **Canales adicionales** (IG, FB, Email blocks en UI Wolfboard) — siguientes sprints
 
 ---
 

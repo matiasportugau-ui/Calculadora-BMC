@@ -31,6 +31,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
 - `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
 - `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
+- `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 
 ## Fixes
 
@@ -42,6 +43,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
+- `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
 
 ## Documentation
 
@@ -74,6 +76,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `136482c` chore(dev-trace): sync AUTOTRACE bundle pre-merge
 - `890d2c7` chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
 - `d83ca03` chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
+- `63c1410` chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 
 ## Other
 
