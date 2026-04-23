@@ -1365,6 +1365,203 @@
 
   byId('btnExportStockCSV') && byId('btnExportStockCSV').addEventListener('click', exportStockCSV);
 
+  // ─── Wolfboard module ──────────────────────────────────────────────────────
+
+  let wolfboardData = [];
+  let wfActiveRow = null;
+
+  async function fetchWolfboardPendientes() {
+    const res = await fetch(API_BASE + '/api/wolfboard/pendientes');
+    return readJsonResponse(res, 'Error al cargar consultas pendientes');
+  }
+
+  function renderWolfboard(rows, errorMsg) {
+    const tbody = byId('wfTbody');
+    const summary = byId('wfSummary');
+    if (!tbody) return;
+
+    if (errorMsg) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">' + escapeHtml(errorMsg) + '</td></tr>';
+      if (summary) summary.textContent = 'Sin datos';
+      return;
+    }
+
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin consultas pendientes — todo enviado o sin datos configurados.</td></tr>';
+      if (summary) summary.textContent = '0 pendientes';
+      return;
+    }
+
+    if (summary) summary.textContent = rows.length + ' pendiente' + (rows.length === 1 ? '' : 's');
+
+    tbody.innerHTML = rows.map(function (row) {
+      const consulta = escapeHtml((row.H || '').slice(0, 80)) + (row.H && row.H.length > 80 ? '…' : '');
+      const respuesta = escapeHtml((row.I || '').slice(0, 55)) + (row.I && row.I.length > 55 ? '…' : '');
+      const linkCell = row.J
+        ? '<a href="' + escapeHtml(row.J) + '" target="_blank" rel="noopener">Ver</a>'
+        : '<span class="empty-cell">—</span>';
+      const estadoPill = row.K
+        ? '<span class="status-pill status-pill--ok">Enviado</span>'
+        : '<span class="status-pill status-pill--warn">Pendiente</span>';
+      const ancla = row.sheetUrl
+        ? ' <a href="' + escapeHtml(row.sheetUrl) + '" target="_blank" rel="noopener" title="Abrir fila en Sheets">↗</a>'
+        : '';
+      return (
+        '<tr>' +
+          '<td><code>' + escapeHtml(String(row.rowNum)) + '</code>' + ancla + '</td>' +
+          '<td>' + consulta + '</td>' +
+          '<td>' + (respuesta || '<span class="empty-cell">—</span>') + '</td>' +
+          '<td>' + linkCell + '</td>' +
+          '<td>' + estadoPill + '</td>' +
+          '<td><button type="button" class="btn btn-ghost btn-sm wf-detail-btn" data-row="' + escapeHtml(String(row.rowNum)) + '">Ver / Editar</button></td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+
+  async function loadWolfboard() {
+    const tbody = byId('wfTbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty">Cargando…</td></tr>';
+    try {
+      const json = await fetchWolfboardPendientes();
+      wolfboardData = json.data || [];
+      renderWolfboard(wolfboardData);
+    } catch (err) {
+      renderWolfboard(null, err.message || 'Error al cargar Wolfboard');
+    }
+  }
+
+  async function syncWolfboard() {
+    const btn = byId('wfSyncBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando…'; }
+    try {
+      const res = await fetch(API_BASE + '/api/wolfboard/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ direction: 'both' }),
+      });
+      const json = await readJsonResponse(res, 'Error al sincronizar');
+      const dry = json.dryRun ? '[dry-run] ' : '';
+      showToast(dry + 'Sync OK · Admin: ' + (json.updatedAdmin || 0) + ' · CRM: ' + (json.updatedCrm || 0) + ' · Omitidos: ' + (json.skipped || 0));
+      await loadWolfboard();
+    } catch (err) {
+      showToast('Sync fallido: ' + (err.message || 'error'), 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Sincronizar'; }
+    }
+  }
+
+  function openWolfboardDetail(adminRow) {
+    const row = wolfboardData.find(function (r) { return r.rowNum === Number(adminRow); });
+    if (!row) return;
+    wfActiveRow = row.rowNum;
+    const panel = byId('wfDetailPanel');
+    if (!panel) return;
+    const titleEl = byId('wfDetailTitle');
+    const hEl = byId('wfDetailH');
+    const iEl = byId('wfDetailI');
+    const jEl = byId('wfDetailJ');
+    const feedbackEl = byId('wfDetailFeedback');
+    if (titleEl) titleEl.textContent = 'Fila ' + row.rowNum + (row.H ? ' — ' + row.H.slice(0, 50) : '');
+    if (hEl) hEl.textContent = row.H || '(sin consulta)';
+    if (iEl) iEl.value = row.I || '';
+    if (jEl) jEl.value = row.J || '';
+    if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  async function saveWolfboardRow() {
+    if (!wfActiveRow) return;
+    const iEl = byId('wfDetailI');
+    const jEl = byId('wfDetailJ');
+    const feedbackEl = byId('wfDetailFeedback');
+    const saveBtn = byId('wfDetailSave');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Guardando…'; }
+    if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
+    try {
+      const res = await fetch(API_BASE + '/api/wolfboard/row', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminRow: wfActiveRow,
+          respuesta: iEl ? iEl.value : undefined,
+          link: jEl ? jEl.value : undefined,
+        }),
+      });
+      const json = await readJsonResponse(res, 'Error al guardar');
+      const dry = json.dryRun ? '[dry-run] ' : '';
+      const msg = dry + 'Guardado · Admin fila ' + json.adminRow + (json.crmRow ? ' · CRM fila ' + json.crmRow : '');
+      if (feedbackEl) { feedbackEl.textContent = msg; feedbackEl.className = 'wf-feedback wf-feedback--ok'; }
+      showToast(msg);
+      await loadWolfboard();
+    } catch (err) {
+      const errMsg = 'Error: ' + (err.message || 'fallo al guardar');
+      if (feedbackEl) { feedbackEl.textContent = errMsg; feedbackEl.className = 'wf-feedback wf-feedback--error'; }
+      showToast(errMsg, 'error');
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Guardar en CRM'; }
+    }
+  }
+
+  async function markWolfboardEnviado() {
+    if (!wfActiveRow) return;
+    if (!confirm('¿Mover fila ' + wfActiveRow + ' a Enviados? Esto marca K=TRUE y borra la fila del Administrador. No se puede deshacer fácilmente.')) return;
+    const feedbackEl = byId('wfDetailFeedback');
+    const envBtn = byId('wfDetailEnviado');
+    if (envBtn) { envBtn.disabled = true; envBtn.textContent = 'Procesando…'; }
+    try {
+      const res = await fetch(API_BASE + '/api/wolfboard/enviados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminRow: wfActiveRow, force: true }),
+      });
+      const json = await readJsonResponse(res, 'Error al marcar enviado');
+      showToast('Fila ' + json.adminRow + ' movida a Enviados' + (json.dryRun ? ' [dry-run]' : ''));
+      const panel = byId('wfDetailPanel');
+      if (panel) panel.hidden = true;
+      wfActiveRow = null;
+      await loadWolfboard();
+    } catch (err) {
+      const errMsg = 'Error: ' + (err.message || '');
+      if (feedbackEl) { feedbackEl.textContent = errMsg; feedbackEl.className = 'wf-feedback wf-feedback--error'; }
+      showToast(errMsg, 'error');
+    } finally {
+      if (envBtn) { envBtn.disabled = false; envBtn.textContent = 'Marcar enviado (K→Enviados)'; }
+    }
+  }
+
+  // Event listeners
+  byId('wfSyncBtn') && byId('wfSyncBtn').addEventListener('click', syncWolfboard);
+  byId('wfDetailClose') && byId('wfDetailClose').addEventListener('click', function () {
+    const p = byId('wfDetailPanel');
+    if (p) p.hidden = true;
+    wfActiveRow = null;
+  });
+  byId('wfDetailSave') && byId('wfDetailSave').addEventListener('click', saveWolfboardRow);
+  byId('wfDetailEnviado') && byId('wfDetailEnviado').addEventListener('click', markWolfboardEnviado);
+
+  const wfTableEl = byId('wfTable');
+  if (wfTableEl) {
+    wfTableEl.addEventListener('click', function (e) {
+      const btn = e.target.closest('.wf-detail-btn');
+      if (btn) openWolfboardDetail(btn.dataset.row);
+    });
+  }
+
+  // Auto-load when section scrolls into view
+  const wfSection = document.getElementById('wolfboard');
+  if (wfSection && typeof IntersectionObserver !== 'undefined') {
+    const wfObserver = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) { wfObserver.disconnect(); loadWolfboard(); }
+    }, { threshold: 0.1 });
+    wfObserver.observe(wfSection);
+  } else if (wfSection) {
+    loadWolfboard();
+  }
+
+  // ─── End Wolfboard ─────────────────────────────────────────────────────────
+
   renderInvoquePanel();
   load();
 })();
