@@ -64,6 +64,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `28ef700` fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
 - `28507ff` fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
 - `03ce080` fix(server): move wolfboard router before /api catch-all to fix 404s
+- `52e394a` fix(calc): make /cotizar/pdf handler async + sync autotrace
 
 ## Documentation
 

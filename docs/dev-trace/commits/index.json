@@ -3363,6 +3363,33 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "52e394a1d418ee652f36a4cf2c1046b508a0a898",
+      "short_hash": "52e394a",
+      "date": "2026-04-23",
+      "time": "07:38:58",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "calc",
+      "title": "make /cotizar/pdf handler async + sync autotrace",
+      "subject": "fix(calc): make /cotizar/pdf handler async + sync autotrace",
+      "files": [
+        "server/routes/calc.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }
