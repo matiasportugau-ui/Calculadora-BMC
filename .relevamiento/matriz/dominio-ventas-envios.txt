@@ -1,0 +1,48 @@
+### Dominio: ventas-envios
+
+**Sheet master:** 1KFNKWLQmBHj_v8BZJDzLklUtUPbNssbYEsWcmc0KPQA (2.0 - Ventas) — env BMC_VENTAS_SHEET_ID
+
+**Rutas /api/ventas en bmcDashboard.js:**
+1467:  router.get("/coordinacion-logistica", async (req, res) => {
+1559:  router.get("/ventas", async (req, res) => {
+1614:  router.get("/ventas/tabs", async (_req, res) => {
+1624:  router.get("/stock-ecommerce", async (_req, res) => {
+1640:  router.get("/stock-kpi", async (_req, res) => {
+1713:  router.get("/stock/history", async (_req, res) => {
+1925:  router.post("/ventas", async (req, res) => {
+1935:  router.patch("/stock/:codigo", async (req, res) => {
+1945:  router.post("/marcar-entregado", async (req, res) => {
+2395:  router.post("/ventas/logistica-fecha-entrega", requireCrmCockpitAuth, async (req, res) => {
+
+**Transportista routes (Postgres):**
+77:  router.get(
+86:  router.post(
+100:  router.post(
+172:  router.post(
+303:  router.post(
+396:  router.get(
+412:  router.get(
+428:  router.post(
+469:  router.get(
+480:  router.get(
+499:  router.post(
+561:  router.post(
+599:  router.post(
+632:  router.post(
+
+**Módulo transportista — archivos:**
+server/lib/transportistaDb.js
+server/lib/transportistaEvidence.js
+server/lib/transportistaFsm.js
+server/lib/transportistaOutboxWorker.js
+
+**Docs logistica:**
+README.md
+examples
+index.html
+lib
+prototype.app.js
+prototype.css
+prototype.html
+serve.json
+v7-preview.html

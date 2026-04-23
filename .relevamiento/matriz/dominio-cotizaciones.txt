@@ -1,0 +1,56 @@
+### Dominio: cotizaciones
+
+**Patrones:** cotizacion|quote|presupuesto|panelin|calc/cotizar|buildQuote
+
+**Archivos server/ que matchean:**
+server/Dockerfile
+server/agentCapabilitiesManifest.js
+server/config.js
+server/gptActions.js
+server/index.js
+server/lib/chatPrompts.js
+server/lib/matrizCsvNormalization.js
+server/lib/quotePayloadValidator.js
+server/ml-quotation-gaps.js
+server/routes/agentChat.js
+server/routes/agentVoice.js
+server/routes/bmcDashboard.js
+server/routes/calc.js
+server/routes/legacyQuote.js
+server/routes/teamAssist.js
+
+**Rutas API relevantes:**
+server/routes/calc.js:43:router.get("/openapi", (req, res) => {
+server/routes/calc.js:52:router.get("/gpt-entry-point", (req, res) => {
+server/routes/calc.js:80:router.post("/interaction-log", (req, res) => {
+server/routes/calc.js:392:router.post("/cotizar/presupuesto-libre", (req, res) => {
+server/routes/calc.js:406:router.post("/cotizar", (req, res) => {
+server/routes/calc.js:422:router.post("/cotizar/pdf", (req, res) => {
+server/routes/calc.js:539:router.get("/pdf/:id", (req, res) => {
+server/routes/calc.js:550:router.get("/cotizaciones", (req, res) => {
+server/routes/calc.js:580:router.get("/catalogo", (req, res) => {
+server/routes/calc.js:613:router.get("/escenarios", (req, res) => {
+server/routes/calc.js:677:router.get("/informe", (req, res) => {
+server/routes/legacyQuote.js:135:router.get("/ready", (_req, res) => {
+server/routes/legacyQuote.js:141:router.post("/find_products", requireApiKey, (req, res) => {
+server/routes/legacyQuote.js:150:router.post("/resolve_product", requireApiKey, (req, res) => {
+server/routes/legacyQuote.js:182:router.post("/product_price", requireApiKey, (req, res) => {
+server/routes/legacyQuote.js:201:router.post("/check_availability", requireApiKey, (req, res) => {
+server/routes/legacyQuote.js:223:router.post("/calculate_quote", requireApiKey, (req, res) => {
+server/routes/legacyQuote.js:264:router.post("/calculate_quote_v2", requireApiKey, (req, res) => {
+server/routes/agentChat.js:101:router.get("/agent/ai-options", (_req, res) => {
+server/routes/agentChat.js:332:router.post("/agent/chat", async (req, res) => {
+
+**Referencias a Sheets relacionadas (Admin_Cotizaciones / Master_Cotizaciones):**
+server/index.js
+server/config.js
+server/lib/crmRowParse.js
+docs/REPORT-STATUS-USER-REVIEW.md
+server/lib/crmOperativoLayout.js
+docs/ATLAS-BROWSER-PROMPT-GO-LIVE.md
+server/routes/bmcDashboard.js
+server/routes/teamAssist.js
+server/ml-crm-sync.js
+docs/team/FULL-TEAM-RUN-SUMMARY-2026-03-16.md
+
+**Cloud Run service asociado:** panelin-calc (API) — deploy-calc-api.yml → /calc/* endpoints + /api/agent/chat

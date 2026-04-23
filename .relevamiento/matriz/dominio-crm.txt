@@ -1,0 +1,45 @@
+### Dominio: crm
+
+**Archivos server/ relevantes:**
+server/agentCapabilitiesManifest.js
+server/index.js
+server/lib/aiCompletion.js
+server/lib/cockpitTokenOrigin.js
+server/lib/crmOperativoLayout.js
+server/lib/crmRowParse.js
+server/lib/emailSnapshotIngest.js
+server/lib/panelsimSummaryReader.js
+server/ml-crm-sync.js
+server/ml-quotation-gaps.js
+server/routes/bmcDashboard.js
+server/routes/teamAssist.js
+
+**Rutas CRM en bmcDashboard.js:**
+1985:  router.post("/crm/suggest-response", async (req, res) => {
+2078:  router.post("/crm/parse-email", async (req, res) => {
+2154:  router.post("/crm/ingest-email", async (req, res) => {
+2289:  router.post("/crm/parse-conversation", async (req, res) => {
+2384:  router.get("/crm/cockpit-token", (req, res) => {
+2541:  router.get("/crm/cockpit/row/:rowNum", requireCrmCockpitAuth, async (req, res) => {
+2560:  router.post("/crm/cockpit/quote-link", requireCrmCockpitAuth, async (req, res) => {
+2580:  router.post("/crm/cockpit/approval", requireCrmCockpitAuth, async (req, res) => {
+2601:  router.post("/crm/cockpit/mark-sent", requireCrmCockpitAuth, async (req, res) => {
+2620:  router.post("/crm/cockpit/send-approved", requireCrmCockpitAuth, async (req, res) => {
+2699:  router.get("/crm/cockpit/ml-queue", requireCrmCockpitAuth, async (req, res) => {
+2727:  router.get("/crm/cockpit/wa-queue", requireCrmCockpitAuth, async (req, res) => {
+2752:  router.post("/crm/cockpit/sync-ml", requireCrmCockpitAuth, async (req, res) => {
+
+**OmniCRM Sync (extensión chrome) — referenciado?:**
+docs/AGENTS.md
+docs/team/PROJECT-STATE.md
+docs/team/MATPROMT-FULL-RUN-PROMPTS.md
+docs/google-sheets-module/reference/README.md
+docs/google-sheets-module/VARIABLES-Y-MAPEO-UNO-A-UNO.md
+docs/google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md
+docs/google-sheets-module/README.md
+docs/google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md
+docs/team/README.md
+docs/team/PROMPT-FOR-EQUIPO-COMPLETO.md
+
+**Workbook principal CRM:** BMC_SHEET_ID = 1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg (BMC crm_automatizado)
+**Schema:** CRM_Operativo (default) / Master_Cotizaciones (alt) — controlado por BMC_SHEET_SCHEMA env

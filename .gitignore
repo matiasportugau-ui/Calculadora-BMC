@@ -79,6 +79,12 @@ PDF Productos/
 bmc-logistica-transport-bundle.zip
 .env*.local
 
+# Audit relevamiento — dumps y logs crudos (solo entregables matriz/*.md se commitean)
+.relevamiento/dumps/
+.relevamiento/logs/
+.relevamiento/inventarios/
+.relevamiento/scripts/
+
 # Modo Transportista — evidencias locales (dev upload-b64)
 data/transportista-evidence/
 data/training-kb.json

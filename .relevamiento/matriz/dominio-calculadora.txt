@@ -1,0 +1,32 @@
+### Dominio: calculadora-codigo
+
+**Repo principal (este):** matiasportugau-ui/calculadora-bmc
+**Branch actual (local):** claude/bmc-production-audit-3Pjos
+**Last commit on main (via MCP):** 1118dfd55 — 'Claude/review chatbot panel jenv r (#88)' (2026-04-22)
+**Open PRs:** 20 total (muchos en draft)
+**Open branches count (MCP page 1+2):** ~84 ramas (muchas claude/, copilot/, cursor/, feat/, integration/)
+
+**Entry point frontend:**
+  "main": "src/components/PanelinCalculadoraV3.jsx",
+
+**Core de cálculo:**
+-rw-r--r-- 1 root root 35161 Apr 23 00:55 /home/user/Calculadora-BMC/src/data/constants.js
+-rw-r--r-- 1 root root  5743 Apr 20 06:30 /home/user/Calculadora-BMC/src/utils/bomCosting.js
+-rw-r--r-- 1 root root 60159 Apr 23 00:55 /home/user/Calculadora-BMC/src/utils/calculations.js
+-rw-r--r-- 1 root root 41670 Apr 20 06:30 /home/user/Calculadora-BMC/src/utils/helpers.js
+
+**Repos hermanos referenciados (no accesibles desde este entorno):**
+=== github.com/matiasportugau-ui referencias (otros repos) ===
+github.com/matiasportugau-ui/2026_Mono_rep.git
+github.com/matiasportugau-ui/Calculadora-BMC
+github.com/matiasportugau-ui/Calculadora-BMC-GPT.git
+github.com/matiasportugau-ui/Calculadora-BMC.git
+github.com/matiasportugau-ui/ChatBOT.git
+github.com/matiasportugau-ui/Chatbot-Truth-base--Creation.git
+github.com/matiasportugau-ui/GPT-PANELIN-V3.2.git
+github.com/matiasportugau-ui/GPT-Panelin-Calc
+github.com/matiasportugau-ui/aistudioPAnelin.git
+github.com/matiasportugau-ui/bmc-cotizacion-inteligente.git
+github.com/matiasportugau-ui/bmc-dashboard-2.0.git
+github.com/matiasportugau-ui/bmc-development-team.git
+github.com/matiasportugau-ui/chatbot-2311.git
