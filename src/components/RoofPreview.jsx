@@ -1263,7 +1263,7 @@ function PlantaBordesEdgeStrips({
     { side: "latDer",                      x: r.x + r.w - wStrip, y: r.y,              w: wStrip, h: r.h     },
     { side: frenteAtTop ? "frente" : "fondo",  x: r.x,            y: r.y,              w: r.w,    h: hStrip  },
     { side: frenteAtTop ? "fondo"  : "frente", x: r.x,            y: r.y + r.h - hStrip, w: r.w,  h: hStrip },
-  ].flatMap(({ side, x, y, w, h }, _i) => {
+  ].flatMap(({ side, x, y, w, h }) => {
     const ivs = exteriorIntervals?.[SIDE_GEOM[side]];
     if (!ivs) return [{ side, x, y, w, h }]; // sin datos: comportamiento original
     if (ivs.length === 0) return []; // lado totalmente compartido: sin strip (el encuentro lo maneja)

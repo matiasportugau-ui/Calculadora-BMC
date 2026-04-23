@@ -1411,7 +1411,10 @@ export default function CalcLogicInspector() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pricing = useMemo(() => getPricing(), [calcRefreshKey]);
   const mod = MODULES.find(m => m.id === selModule);
-  const inp = inputs[selModule] ?? mod?.defaultInputs ?? {};
+  const inp = useMemo(
+    () => inputs[selModule] ?? mod?.defaultInputs ?? {},
+    [inputs, selModule, mod]
+  );
   const setInp = useCallback((key, val) =>
     setInputs(prev => ({ ...prev, [selModule]: { ...prev[selModule], [key]: val } })),
     [selModule]
@@ -1614,7 +1617,7 @@ export default function CalcLogicInspector() {
       }
       default: return [];
     }
-  }, [selModule, inp, result, apoyos, au, autoportancia, mod?.espesores]);
+  }, [selModule, inp, result, apoyos, au, autoportancia, mod]);
 
   // ── Sidebar metric ────────────────────────────────────────────────────────
   const sidebarMetric = useMemo(() => {

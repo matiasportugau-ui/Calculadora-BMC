@@ -30,15 +30,6 @@ const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Helve
 
 // ── Micro components ─────────────────────────────────────────────────────────
 
-function Badge({ label, color = C.blue }) {
-  return (
-    <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`,
-      padding: '2px 8px', borderRadius: 10, letterSpacing: 0.4 }}>
-      {label}
-    </span>
-  );
-}
-
 function SectionDivider({ label, color = C.gray }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 10px' }}>
@@ -50,7 +41,7 @@ function SectionDivider({ label, color = C.gray }) {
   );
 }
 
-function ParamRow({ label, desc, value, unit, color = C.blue, modified = false }) {
+function ParamRow({ label, desc, value, unit, modified = false }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
@@ -133,13 +124,12 @@ function TypeLabel({ num, title, desc, color }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPO 1 — FICHA DE PRODUCTO
 // ═══════════════════════════════════════════════════════════════════════════
-function FichaProducto({ panel, panelId, params }) {
+function FichaProducto({ panel, params }) {
   if (!panel) return null;
   const apParams = Object.entries(panel.esp ?? {})
     .filter(([, d]) => d?.ap != null)
     .sort(([a], [b]) => +a - +b);
 
-  const paramsForPanel = params.filter(p => p.path.startsWith(`PANELS_TECHO.${panelId}`));
   const fijParams = params.filter(p => p.path.startsWith('FIJACIONES_VARILLA.') &&
     !p.path.includes('puntos_comercial') && !p.path.includes('varillas_por'));
 
