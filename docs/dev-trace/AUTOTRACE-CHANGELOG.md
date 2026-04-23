@@ -74,3 +74,6 @@
 - 2026-04-23 04:40:35 — `5884c90` — feat(ci): add dedicated smoke job for prod API health on main push
 - 2026-04-23 04:40:56 — `be2c7ed` — feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
 - 2026-04-23 04:44:00 — `845bb68` — fix(wolfboard): wire origenEl in detail panel + correct table header labels
+- 2026-04-23 04:48:59 — `ee74167` — chore: post-live-test state — Wolfboard + Accessible Base first sync
+- 2026-04-23 04:50:16 — `7a2d303` — docs(ops): cm-2 email ingest prod DONE — todos los gates completos
+- 2026-04-23 04:54:10 — `5d5363c` — fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7

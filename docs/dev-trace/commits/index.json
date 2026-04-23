@@ -2454,6 +2454,96 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "ee741674d1faaeac9fc781c65473270297f1effc",
+      "short_hash": "ee74167",
+      "date": "2026-04-23",
+      "time": "04:48:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "post-live-test state — Wolfboard + Accessible Base first sync",
+      "subject": "chore: post-live-test state — Wolfboard + Accessible Base first sync",
+      "files": [
+        ".accessible-base/manifest.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/27804a0.md",
+        "docs/dev-trace/commits/2026/04/5884c90.md",
+        "docs/dev-trace/commits/2026/04/845bb68.md",
+        "docs/dev-trace/commits/2026/04/be2c7ed.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "7a2d303c9acb6ac56ccb26842c082439ab44a46e",
+      "short_hash": "7a2d303",
+      "date": "2026-04-23",
+      "time": "04:50:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "ops",
+      "title": "cm-2 email ingest prod DONE — todos los gates completos",
+      "subject": "docs(ops): cm-2 email ingest prod DONE — todos los gates completos",
+      "files": [
+        "docs/team/PROJECT-STATE.md",
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "5d5363cbdc222658fd41f1ebc63d848e47a448e5",
+      "short_hash": "5d5363c",
+      "date": "2026-04-23",
+      "time": "04:54:10",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "ci",
+      "title": "add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7",
+      "subject": "fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7",
+      "files": [
+        ".npmrc"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
     }
   ]
 }

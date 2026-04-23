@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -110,7 +111,7 @@ const td = {
 
 function getStoredToken() {
   try {
-    return sessionStorage.getItem(STORAGE_KEY) || "";
+    return localStorage.getItem(STORAGE_KEY) || "";
   } catch {
     return "";
   }
@@ -118,8 +119,8 @@ function getStoredToken() {
 
 function setStoredToken(t) {
   try {
-    if (t) sessionStorage.setItem(STORAGE_KEY, t);
-    else sessionStorage.removeItem(STORAGE_KEY);
+    if (t) localStorage.setItem(STORAGE_KEY, t);
+    else localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }
@@ -143,10 +144,40 @@ export default function BmcMlOperativoModule() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [tokenLoadError, setTokenLoadError] = useState("");
+  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
 
   useEffect(() => {
-    setTokenInput(getStoredToken());
-    setToken(getStoredToken());
+    const stored = getStoredToken();
+    if (stored) {
+      setTokenInput(stored);
+      setToken(stored);
+      setTokenAutoLoaded(true);
+      return;
+    }
+    const base = getCalcApiBase();
+    const url = `${base.replace(/\/+$/, "")}/api/crm/cockpit-token`;
+    fetch(url, { credentials: "omit" })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data?.ok) {
+          setTokenLoadError(`No se pudo cargar el token del servidor (${data?.error || `HTTP ${r.status}`}). Pegá API_AUTH_TOKEN manualmente.`);
+          return;
+        }
+        const t = String(data?.token || "").trim();
+        if (t) {
+          setStoredToken(t);
+          setTokenInput(t);
+          setToken(t);
+          setTokenAutoLoaded(true);
+          setTokenLoadError("");
+        } else {
+          setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
+        }
+      })
+      .catch(() => {
+        setTokenLoadError("Error de red al pedir el token. Pegá API_AUTH_TOKEN manualmente.");
+      });
   }, []);
 
   const showToast = (msg) => {
@@ -183,7 +214,8 @@ export default function BmcMlOperativoModule() {
     const t = tokenInput.trim();
     setStoredToken(t);
     setToken(t);
-    showToast(t ? "Token guardado en esta sesión." : "Token borrado.");
+    if (t) setTokenAutoLoaded(true);
+    showToast(t ? "Token guardado." : "Token borrado.");
   };
 
   const runSync = async () => {
@@ -270,31 +302,56 @@ export default function BmcMlOperativoModule() {
         </p>
         <h1 style={h1}>Mercado Libre · Operativo</h1>
         <p style={sub}>
-          Cola desde CRM_Operativo (preguntas con <code>Q:id</code> en Observaciones). Usá el mismo{" "}
-          <strong>API_AUTH_TOKEN</strong> que el servidor. Aprobá (AI) y enviá a ML con el texto de AF.
+          Cola desde CRM_Operativo (preguntas con <code>Q:id</code> en Observaciones). El token se carga automáticamente desde el servidor. Aprobá (AI) y enviá a ML con el texto de AF.
         </p>
 
         <div style={card}>
-          <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Autenticación cockpit</div>
-          <input
-            type="password"
-            autoComplete="off"
-            placeholder="Pegá API_AUTH_TOKEN"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            style={{ ...input, marginBottom: 10 }}
-          />
-          <div style={rowActions}>
-            <button type="button" style={btnPrimary} onClick={saveToken}>
-              Guardar token (sesión)
-            </button>
-            <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
-              {loading ? "Cargando…" : "Actualizar cola"}
-            </button>
-            <button type="button" style={btnGhost} onClick={runSync} disabled={syncing || !token}>
-              {syncing ? "Sincronizando…" : "Sincronizar ML → CRM"}
-            </button>
-          </div>
+          {tokenAutoLoaded ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, color: "#2a7a2a", fontWeight: 600 }}>
+                Token cargado desde servidor
+              </span>
+              <button
+                type="button"
+                style={{ ...btnGhost, fontSize: 12, padding: "4px 10px" }}
+                onClick={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+              >
+                Cambiar token
+              </button>
+              <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
+                {loading ? "Cargando…" : "Actualizar cola"}
+              </button>
+              <button type="button" style={btnGhost} onClick={runSync} disabled={syncing || !token}>
+                {syncing ? "Sincronizando…" : "Sincronizar ML → CRM"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Autenticación cockpit</div>
+              {tokenLoadError && (
+                <div style={{ fontSize: 12, color: "#8b4000", marginBottom: 8 }}>{tokenLoadError}</div>
+              )}
+              <input
+                type="password"
+                autoComplete="off"
+                placeholder="Pegá API_AUTH_TOKEN"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                style={{ ...input, marginBottom: 10 }}
+              />
+              <div style={rowActions}>
+                <button type="button" style={btnPrimary} onClick={saveToken}>
+                  Guardar token
+                </button>
+                <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
+                  {loading ? "Cargando…" : "Actualizar cola"}
+                </button>
+                <button type="button" style={btnGhost} onClick={runSync} disabled={syncing || !token}>
+                  {syncing ? "Sincronizando…" : "Sincronizar ML → CRM"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {error ? (

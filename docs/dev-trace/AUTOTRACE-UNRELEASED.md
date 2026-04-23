@@ -49,6 +49,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
 - `27804a0` fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
 - `845bb68` fix(wolfboard): wire origenEl in detail panel + correct table header labels
+- `5d5363c` fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 
 ## Documentation
 
@@ -61,6 +62,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8c717c5` docs: update AUTOTRACE documentation and add recent commits
 - `92a1508` docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
 - `af7b601` docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)
+- `7a2d303` docs(ops): cm-2 email ingest prod DONE — todos los gates completos
 
 ## Chores
 
@@ -83,6 +85,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `890d2c7` chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
 - `d83ca03` chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 - `63c1410` chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
+- `ee74167` chore: post-live-test state — Wolfboard + Accessible Base first sync
 
 ## Other
 
