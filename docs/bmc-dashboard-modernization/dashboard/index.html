@@ -17,6 +17,7 @@
       <a href="#finanzas" class="shell-nav-link">Finanzas</a>
       <a href="#ventas" class="shell-nav-link">Ventas</a>
       <a href="#stock" class="shell-nav-link">Stock</a>
+      <a href="#wolfboard" class="shell-nav-link">Wolfboard</a>
       <a href="#invoque" class="shell-nav-link">Invoque Panelin</a>
     </nav>
     <div class="header-inner">
@@ -322,6 +323,66 @@
       </div>
     </section>
 
+    <section id="wolfboard" class="section card">
+      <a class="anchor-fix" aria-hidden="true"></a>
+      <div class="section-head section-head-split">
+        <div>
+          <p class="section-kicker">CRM</p>
+          <h2>Wolfboard — Consultas pendientes</h2>
+          <p class="section-desc">Admin 2.0 ↔ CRM_Operativo. Sync bidireccional, edición de respuesta y link, cierre a Enviados.</p>
+        </div>
+        <div class="filter-group">
+          <span id="wfSummary" class="section-desc">-</span>
+        </div>
+      </div>
+      <div class="audit-toolbar">
+        <button type="button" class="btn btn-primary btn-sm" id="wfSyncBtn">Sincronizar</button>
+        <a class="btn btn-secondary btn-sm" id="wfExportBtn" href="/api/wolfboard/export" download="wolfboard-export.csv">Exportar CSV</a>
+      </div>
+      <div class="table-wrap table-wrap-sticky">
+        <table class="data-table" id="wfTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Consulta (H)</th>
+              <th>Respuesta IA (I)</th>
+              <th>Link</th>
+              <th>Estado</th>
+              <th class="col-actions">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="wfTbody">
+            <tr><td colspan="6" class="empty">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="wfDetailPanel" class="wf-detail-panel" hidden>
+        <div class="wf-detail-header">
+          <h3 id="wfDetailTitle">Detalle consulta</h3>
+          <button type="button" class="btn btn-ghost btn-sm" id="wfDetailClose">✕ Cerrar</button>
+        </div>
+        <div class="wf-detail-body">
+          <div class="wf-form-group">
+            <span class="label">Consulta del cliente (H)</span>
+            <div id="wfDetailH" class="wf-consulta-box"></div>
+          </div>
+          <div class="wf-form-group">
+            <label class="label" for="wfDetailI">Respuesta IA (I) — editable</label>
+            <textarea id="wfDetailI" class="wf-textarea" rows="5" placeholder="Respuesta al cliente..."></textarea>
+          </div>
+          <div class="wf-form-group">
+            <label class="label" for="wfDetailJ">Link presupuesto Drive (J)</label>
+            <input type="url" id="wfDetailJ" class="wf-input" placeholder="https://drive.google.com/...">
+          </div>
+          <div class="wf-detail-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="wfDetailSave">Guardar en CRM</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="wfDetailEnviado">Marcar enviado (K→Enviados)</button>
+          </div>
+          <p id="wfDetailFeedback" class="wf-feedback"></p>
+        </div>
+      </div>
+    </section>
+
     <section id="invoque" class="section card">
       <div class="section-head">
         <p class="section-kicker">Invoque Panelin</p>
@@ -336,7 +397,7 @@
   </main>
 
   <footer class="footer">
-    <p>Datos desde Google Sheets · Pagos_Pendientes · Metas_Ventas · Master_Cotizaciones · AUDIT_LOG · 2.0 Ventas · Stock E-Commerce</p>
+    <p>Datos desde Google Sheets · Pagos_Pendientes · Metas_Ventas · Master_Cotizaciones · AUDIT_LOG · 2.0 Ventas · Stock E-Commerce · Admin 2.0 · CRM_Operativo</p>
   </footer>
 
   <script src="app.js"></script>

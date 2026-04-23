@@ -1,0 +1,14 @@
+---
+description: "Modo Contribut: refinar el input del usuario en dos fases (borrador → ACEPTO BORRADOR) antes de trabajo pesado. Activar esta regla cuando quieras que el agente siga la skill homónima."
+alwaysApply: false
+---
+
+# Contribut input mode
+
+Cuando esta regla esté **habilitada** en Cursor Rules para el contexto actual:
+
+1. Seguir el playbook completo en [`.cursor/skills/contribut-input-mode/SKILL.md`](.cursor/skills/contribut-input-mode/SKILL.md).
+2. Tras `CONTRIBUT ON` en el chat, aplicar **fase 1 solo borrador** hasta `ACEPTO BORRADOR` (salvo `CONTRIBUT SKIP` o mensaje combinado refinado + `ACEPTO BORRADOR` como indica la skill).
+3. Responder al usuario en **español** cuando escriba en español; términos técnicos y comandos pueden quedar en inglés si mejora la claridad (alinear con otras reglas del repo).
+
+Si la regla no está habilitada, el modo Contribut solo aplica si el usuario invoca la skill o escribe las frases disparadoras descritas en esa skill.

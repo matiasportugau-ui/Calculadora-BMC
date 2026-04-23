@@ -35,8 +35,17 @@ const PORT = parseInt(process.env.BMC_SHEETS_API_PORT || '3849', 10);
 const SHEET_ID = process.env.BMC_SHEET_ID || '';
 const DASHBOARD_DIR = path.join(__dirname, 'dashboard');
 
-const SCOPE_READ = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+const SCOPE_READ  = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 const SCOPE_WRITE = 'https://www.googleapis.com/auth/spreadsheets';
+
+// ─── Wolfboard config ─────────────────────────────────────────────────────────
+const WOLFB_ADMIN_ID  = process.env.WOLFB_ADMIN_SHEET_ID   || '';
+const WOLFB_ADMIN_TAB = process.env.WOLFB_ADMIN_TAB        || 'Admin.';
+const WOLFB_CRM_TAB   = process.env.WOLFB_CRM_MAIN_TAB     || 'CRM_Operativo';
+const WOLFB_ENV_TAB   = process.env.WOLFB_CRM_ENVIADOS_TAB || 'Enviados';
+const WOLFB_DRY_RUN   = process.env.WOLFB_DRY_RUN === '1';
+// Admin 2.0: merged title at row 1, column headers at row 2, data from row 3
+const WOLFB_ADMIN_DATA_ROW = 3;
 
 function getStartOfWeek(d) {
   const date = new Date(d);
@@ -181,6 +190,299 @@ async function getOptionalSheetRows(sheetName) {
   } catch (error) {
     if (isMissingSheetError(error)) return [];
     throw error;
+  }
+}
+
+// ─── Wolfboard helpers ────────────────────────────────────────────────────────
+
+function checkWolfboardAvailable() {
+  const credsPath = resolveCredentialsPath();
+  return Boolean(WOLFB_ADMIN_ID && SHEET_ID && credsPath && fs.existsSync(credsPath));
+}
+
+function noWolfboardConfig(res) {
+  sendJson(res, 503, {
+    ok: false,
+    error: 'Wolfboard Sheets not configured (set WOLFB_ADMIN_SHEET_ID + BMC_SHEET_ID + GOOGLE_APPLICATION_CREDENTIALS)',
+  });
+}
+
+function normalizeText(s) {
+  return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 150);
+}
+
+async function getSheetsClient(useWrite = false) {
+  const auth = new google.auth.GoogleAuth({ scopes: [useWrite ? SCOPE_WRITE : SCOPE_READ] });
+  const authClient = await auth.getClient();
+  return google.sheets({ version: 'v4', auth: authClient });
+}
+
+// Read Admin 2.0 rows — columns H-K, data starts at WOLFB_ADMIN_DATA_ROW
+async function readAdminRows(useWrite = false) {
+  const sheets = await getSheetsClient(useWrite);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: WOLFB_ADMIN_ID,
+    range: `'${WOLFB_ADMIN_TAB}'!H${WOLFB_ADMIN_DATA_ROW}:K`,
+    valueRenderOption: 'FORMATTED_VALUE',
+  });
+  const rows = res.data.values || [];
+  const adminAnchor = (rowNum) =>
+    `https://docs.google.com/spreadsheets/d/${WOLFB_ADMIN_ID}/edit#gid=0&range=H${rowNum}`;
+  return rows
+    .map((row, idx) => ({
+      rowNum: idx + WOLFB_ADMIN_DATA_ROW,
+      H: row[0] ?? '',
+      I: row[1] ?? '',
+      J: row[2] ?? '',
+      K: String(row[3] ?? '').toUpperCase() === 'TRUE',
+      sheetUrl: adminAnchor(idx + WOLFB_ADMIN_DATA_ROW),
+    }))
+    .filter(r => r.H || r.I || r.J);
+}
+
+// Read CRM_Operativo rows — header row 3 (HEADER_ROW), data from row 4
+// Accesses columns by index (A=0): G=6, AF=31, AH=33, AI=34
+async function readCrmRows(useWrite = false) {
+  const sheets = await getSheetsClient(useWrite);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: `'${WOLFB_CRM_TAB}'!A4:AK`,
+    valueRenderOption: 'FORMATTED_VALUE',
+  });
+  const rows = res.data.values || [];
+  return rows
+    .map((row, idx) => ({
+      _rowNum: idx + 4,
+      B:  row[1]  ?? '',
+      C:  row[2]  ?? '',
+      G:  row[6]  ?? '',
+      AF: row[31] ?? '',
+      AH: row[33] ?? '',
+      AI: row[34] ?? '',
+    }))
+    .filter(r => r.G || r.B || r.C);
+}
+
+// ─── Wolfboard route handlers ─────────────────────────────────────────────────
+
+async function handleWolfboardPendientes(res) {
+  try {
+    const rows = await readAdminRows();
+    const pending = rows.filter(r => !r.K);
+    sendJson(res, 200, { ok: true, data: pending, total: rows.length, pending: pending.length });
+  } catch (e) {
+    sheetsUnavailable(res, e.message);
+  }
+}
+
+async function handleWolfboardSync(body, res) {
+  const direction = body?.direction || 'both';
+  try {
+    const [adminRows, crmRows] = await Promise.all([readAdminRows(), readCrmRows()]);
+    const crmBatch = [];
+    const adminBatch = [];
+    let updatedCrm = 0;
+    let updatedAdmin = 0;
+    let skipped = 0;
+
+    if (direction === 'admin_to_crm' || direction === 'both') {
+      for (const aRow of adminRows) {
+        if (!aRow.I && !aRow.J) { skipped++; continue; }
+        const match = crmRows.find(cr => cr.G && aRow.H && normalizeText(cr.G) === normalizeText(aRow.H));
+        if (!match) { skipped++; continue; }
+        // AF=respuesta, AG=provider(blank), AH=link
+        crmBatch.push({
+          range: `'${WOLFB_CRM_TAB}'!AF${match._rowNum}:AH${match._rowNum}`,
+          values: [[aRow.I, '', aRow.J]],
+        });
+        updatedCrm++;
+      }
+    }
+
+    if (direction === 'crm_to_admin' || direction === 'both') {
+      for (const cRow of crmRows) {
+        if (!cRow.AF && !cRow.AH) { skipped++; continue; }
+        if (cRow.AI === 'Sí') { skipped++; continue; }
+        const match = adminRows.find(ar => ar.H && cRow.G && normalizeText(ar.H) === normalizeText(cRow.G));
+        if (!match) { skipped++; continue; }
+        adminBatch.push({
+          range: `'${WOLFB_ADMIN_TAB}'!I${match.rowNum}:J${match.rowNum}`,
+          values: [[cRow.AF, cRow.AH]],
+        });
+        updatedAdmin++;
+      }
+    }
+
+    if (WOLFB_DRY_RUN) {
+      return sendJson(res, 200, { ok: true, dryRun: true, updatedAdmin, updatedCrm, skipped, preview: { crmBatch, adminBatch } });
+    }
+
+    const sheets = await getSheetsClient(true);
+    if (crmBatch.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: crmBatch },
+      });
+    }
+    if (adminBatch.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: WOLFB_ADMIN_ID,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: adminBatch },
+      });
+    }
+    sendJson(res, 200, { ok: true, dryRun: false, updatedAdmin, updatedCrm, skipped });
+  } catch (e) {
+    sheetsUnavailable(res, e.message);
+  }
+}
+
+async function handleWolfboardRow(body, res) {
+  const { adminRow, respuesta, link, aprobado } = body || {};
+  const rowNum = Number(adminRow);
+  if (!rowNum || isNaN(rowNum)) {
+    sendJson(res, 400, { ok: false, error: 'adminRow (number) required' });
+    return;
+  }
+  try {
+    const sheets = await getSheetsClient(true);
+    const adminBatch = [];
+    const crmBatch = [];
+
+    if (respuesta !== undefined) {
+      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!I${rowNum}`, values: [[respuesta]] });
+    }
+    if (link !== undefined) {
+      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!J${rowNum}`, values: [[link]] });
+    }
+
+    // Find matching CRM row by H value
+    let crmRowNum = null;
+    if (respuesta !== undefined || link !== undefined || aprobado !== undefined) {
+      const hRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: WOLFB_ADMIN_ID,
+        range: `'${WOLFB_ADMIN_TAB}'!H${rowNum}`,
+      });
+      const hVal = ((hRes.data.values || [['']])[0] || [''])[0] || '';
+      if (hVal) {
+        const crmRows = await readCrmRows();
+        const match = crmRows.find(cr => normalizeText(cr.G) === normalizeText(hVal));
+        if (match) {
+          crmRowNum = match._rowNum;
+          if (respuesta !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AF${crmRowNum}`, values: [[respuesta]] });
+          if (link !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AH${crmRowNum}`, values: [[link]] });
+          if (aprobado !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AI${crmRowNum}`, values: [[aprobado ? 'Sí' : 'No']] });
+        }
+      }
+    }
+
+    if (WOLFB_DRY_RUN) {
+      return sendJson(res, 200, { ok: true, dryRun: true, adminRow: rowNum, crmRow: crmRowNum, adminBatch, crmBatch });
+    }
+
+    if (adminBatch.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: WOLFB_ADMIN_ID,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: adminBatch },
+      });
+    }
+    if (crmBatch.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SHEET_ID,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: crmBatch },
+      });
+    }
+    sendJson(res, 200, { ok: true, dryRun: false, adminRow: rowNum, crmRow: crmRowNum });
+  } catch (e) {
+    sheetsUnavailable(res, e.message);
+  }
+}
+
+async function handleWolfboardExport(res) {
+  try {
+    const rows = await readAdminRows();
+    const date = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="wolfboard-export-${date}.csv"`);
+    const header = 'rowNum,H_consulta,I_respuesta,J_link,K_enviado,sheetUrl\n';
+    const csvRow = (r) => [r.rowNum, r.H, r.I, r.J, r.K ? 'TRUE' : 'FALSE', r.sheetUrl]
+      .map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',');
+    res.statusCode = 200;
+    res.end(header + rows.map(csvRow).join('\n'));
+  } catch (e) {
+    res.statusCode = 503;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.end(JSON.stringify({ ok: false, error: e.message }));
+  }
+}
+
+async function handleWolfboardEnviados(body, res) {
+  const { adminRow, force = false } = body || {};
+  const rowNum = Number(adminRow);
+  if (!rowNum || isNaN(rowNum)) {
+    sendJson(res, 400, { ok: false, error: 'adminRow (number) required' });
+    return;
+  }
+  // Safety gate: require explicit force=true
+  const preview = { adminRow: rowNum, action: 'move to Enviados + set K=TRUE + delete from Admin' };
+  if (!force) {
+    sendJson(res, 409, { ok: false, error: 'requires force=true to move row', preview });
+    return;
+  }
+  try {
+    const sheets = await getSheetsClient(true);
+
+    // Read full Admin row (A:Z) for archiving
+    const rowRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: WOLFB_ADMIN_ID,
+      range: `'${WOLFB_ADMIN_TAB}'!A${rowNum}:Z${rowNum}`,
+    });
+    const rowData = (rowRes.data.values || [[]])[0] || [];
+
+    // Mark K=TRUE in Admin
+    if (!WOLFB_DRY_RUN) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: WOLFB_ADMIN_ID,
+        range: `'${WOLFB_ADMIN_TAB}'!K${rowNum}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [['TRUE']] },
+      });
+    }
+
+    // Append to CRM Enviados tab: [timestamp, ...rowData]
+    const timestamp = new Date().toISOString();
+    const envRow = [timestamp, ...rowData];
+    if (!WOLFB_DRY_RUN) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID,
+        range: `'${WOLFB_ENV_TAB}'!A:Z`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [envRow] },
+      });
+    }
+
+    // Delete Admin row (reuse deleteDimension pattern from handleMarcarEntregado)
+    if (!WOLFB_DRY_RUN) {
+      const sheetMeta = await sheets.spreadsheets.get({ spreadsheetId: WOLFB_ADMIN_ID });
+      const adminSheetId = sheetMeta.data.sheets?.find(
+        s => s.properties?.title === WOLFB_ADMIN_TAB
+      )?.properties?.sheetId;
+      if (adminSheetId !== undefined) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: WOLFB_ADMIN_ID,
+          requestBody: {
+            requests: [{
+              deleteDimension: {
+                range: { sheetId: adminSheetId, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum },
+              },
+            }],
+          },
+        });
+      }
+    }
+
+    sendJson(res, 200, { ok: true, dryRun: WOLFB_DRY_RUN, adminRow: rowNum, movedToCrm: true });
+  } catch (e) {
+    sheetsUnavailable(res, e.message);
   }
 }
 
@@ -420,6 +722,11 @@ const server = http.createServer(async (req, res) => {
           { method: 'GET', path: '/api/kpi-financiero', description: 'Resumen pagos + metas + calendario' },
           { method: 'POST', path: '/api/marcar-entregado', description: 'body: { cotizacionId, comentarios }' },
           { method: 'GET', path: '/api/server-export', description: 'This export (conditions and features)' },
+          { method: 'GET', path: '/api/wolfboard/pendientes', description: 'Admin 2.0 pending rows (K≠TRUE)' },
+          { method: 'POST', path: '/api/wolfboard/sync', description: 'body: { direction: "both"|"admin_to_crm"|"crm_to_admin" }' },
+          { method: 'POST', path: '/api/wolfboard/row', description: 'body: { adminRow, respuesta?, link?, aprobado? }' },
+          { method: 'GET', path: '/api/wolfboard/export', description: 'CSV export of all Admin 2.0 rows' },
+          { method: 'POST', path: '/api/wolfboard/enviados', description: 'body: { adminRow, force: true } — move to Enviados' },
         ],
         static: ['GET / → dashboard UI', 'GET /dashboard, /dashboard/* → dashboard assets'],
       },
@@ -526,6 +833,55 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Wolfboard routes ──────────────────────────────────────────────────────
+
+  if (pathname === '/api/wolfboard/pendientes' && req.method === 'GET') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    await handleWolfboardPendientes(res);
+    return;
+  }
+
+  if (pathname === '/api/wolfboard/sync' && req.method === 'POST') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', async () => {
+      const parsed = body ? JSON.parse(body) : {};
+      await handleWolfboardSync(parsed, res);
+    });
+    return;
+  }
+
+  if (pathname === '/api/wolfboard/row' && req.method === 'POST') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', async () => {
+      const parsed = body ? JSON.parse(body) : {};
+      await handleWolfboardRow(parsed, res);
+    });
+    return;
+  }
+
+  if (pathname === '/api/wolfboard/export' && req.method === 'GET') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    await handleWolfboardExport(res);
+    return;
+  }
+
+  if (pathname === '/api/wolfboard/enviados' && req.method === 'POST') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', async () => {
+      const parsed = body ? JSON.parse(body) : {};
+      await handleWolfboardEnviados(parsed, res);
+    });
+    return;
+  }
+
+  // ── Static serving ────────────────────────────────────────────────────────
+
   if (pathname === '/' || pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const file = pathname === '/' || pathname === '/dashboard'
       ? 'index.html'
@@ -556,5 +912,7 @@ server.listen(PORT, () => {
   console.log(`BMC Dashboard: http://localhost:${PORT}/`);
   console.log(`  API: /api/cotizaciones, /api/proximas-entregas, /api/coordinacion-logistica, /api/audit`);
   console.log(`  API: /api/pagos-pendientes, /api/metas-ventas, /api/kpi-financiero`);
+  console.log(`  Wolfboard: /api/wolfboard/pendientes|sync|row|export|enviados`);
   if (!SHEET_ID) console.warn('Set BMC_SHEET_ID and GOOGLE_APPLICATION_CREDENTIALS');
+  if (!WOLFB_ADMIN_ID) console.warn('Wolfboard: set WOLFB_ADMIN_SHEET_ID to enable /api/wolfboard/* endpoints');
 });

@@ -27,6 +27,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
 - `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
+- `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
+- `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
 
 ## Fixes
 
@@ -44,6 +46,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `fbc024b` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - `fa3e400` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - `4a19616` docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
+- `8e90b56` docs: dev-trace autolog update (2026-04-23)
+- `8c717c5` docs: update AUTOTRACE documentation and add recent commits
+- `92a1508` docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
 
 ## Chores
 
@@ -62,6 +67,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3b8fb3d` chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement
 - `826b9c4` chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit
 - `fb845a2` chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop
+- `136482c` chore(dev-trace): sync AUTOTRACE bundle pre-merge
 
 ## Other
 

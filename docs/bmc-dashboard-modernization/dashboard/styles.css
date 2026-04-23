@@ -1178,3 +1178,104 @@ a.btn {
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* ─── Wolfboard ─────────────────────────────────────────────────────────────── */
+
+.wf-detail-panel {
+  margin-top: 1.25rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-card-soft);
+  overflow: hidden;
+}
+
+.wf-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-row);
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-detail-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wf-detail-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wf-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.wf-consulta-box {
+  padding: 0.625rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--text);
+  min-height: 2.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.wf-textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--bg-card);
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+.wf-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wf-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--bg-card);
+  transition: border-color 0.15s;
+}
+.wf-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wf-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.wf-feedback {
+  margin: 0;
+  font-size: 0.8125rem;
+  min-height: 1.25rem;
+  color: var(--text-muted);
+}
+.wf-feedback--ok    { color: var(--success); }
+.wf-feedback--error { color: var(--danger); }
+
+.empty-cell { color: var(--text-muted); }
