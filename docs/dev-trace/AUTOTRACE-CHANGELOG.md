@@ -70,3 +70,7 @@
 - 2026-04-23 04:18:16 — `8a30cd2` — feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - 2026-04-23 04:28:45 — `e782464` — feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 - 2026-04-23 04:30:00 — `af7b601` — docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)
+- 2026-04-23 04:33:55 — `27804a0` — fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
+- 2026-04-23 04:40:35 — `5884c90` — feat(ci): add dedicated smoke job for prod API health on main push
+- 2026-04-23 04:40:56 — `be2c7ed` — feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
+- 2026-04-23 04:44:00 — `845bb68` — fix(wolfboard): wire origenEl in detail panel + correct table header labels

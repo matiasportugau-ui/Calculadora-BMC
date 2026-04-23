@@ -33,6 +33,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
 - `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
+- `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
+- `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
 
 ## Fixes
 
@@ -45,6 +47,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
 - `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
+- `27804a0` fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
+- `845bb68` fix(wolfboard): wire origenEl in detail panel + correct table header labels
 
 ## Documentation
 
