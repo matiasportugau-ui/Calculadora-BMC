@@ -212,8 +212,8 @@ const REGISTRY = [
     envId: 'WOLFB_ADMIN_SHEET_ID',
     defaultId: '1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0',
     tab: process.env.WOLFB_ADMIN_TAB || 'Admin.',
-    headerRow: 1,   // 0-indexed (sheet row 2)
-    dataStart: 2,   // 0-indexed (sheet row 3)
+    headerRow: 0,   // 0-indexed (sheet row 1 = headers)
+    dataStart: 1,   // 0-indexed (sheet row 2 = first data, confirmed by operator)
     colMap: {
       H: 'consulta',
       I: 'respuesta',

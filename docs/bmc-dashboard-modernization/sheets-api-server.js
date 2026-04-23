@@ -44,8 +44,8 @@ const WOLFB_ADMIN_TAB = process.env.WOLFB_ADMIN_TAB        || 'Admin.';
 const WOLFB_CRM_TAB   = process.env.WOLFB_CRM_MAIN_TAB     || 'CRM_Operativo';
 const WOLFB_ENV_TAB   = process.env.WOLFB_CRM_ENVIADOS_TAB || 'Enviados';
 const WOLFB_DRY_RUN   = process.env.WOLFB_DRY_RUN === '1';
-// Admin 2.0: merged title at row 1, column headers at row 2, data from row 3
-const WOLFB_ADMIN_DATA_ROW = 3;
+// Admin 2.0: headers at row 1, data from row 2 (confirmed by operator)
+const WOLFB_ADMIN_DATA_ROW = 2;
 
 function getStartOfWeek(d) {
   const date = new Date(d);
