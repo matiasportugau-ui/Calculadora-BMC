@@ -142,7 +142,7 @@
     "credentials:registry:decrypt": "node scripts/credentials-master-registry.mjs --decrypt"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@anthropic-ai/sdk": "^0.90.0",
     "@google-cloud/storage": "^5.18.3",
     "@google/generative-ai": "^0.24.1",
     "@react-three/drei": "^9.114.3",
@@ -151,7 +151,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
-    "googleapis": "^144.0.0",
+    "googleapis": "^171.4.0",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.263.1",
     "openai": "^6.32.0",
@@ -175,11 +175,11 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^8.0.5",
     "picomatch": "^4.0.4",
     "playwright": "^1.58.2",
     "vite": "^7.0.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^0.21.2"
   },
   "keywords": [
     "calculadora",
