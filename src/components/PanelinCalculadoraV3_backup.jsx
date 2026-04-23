@@ -6202,6 +6202,20 @@ export default function PanelinCalculadoraV3() {
             </div>
           )}
 
+          {/* Lista de precios toggle — visible en wizard cuando hay cotización */}
+          {modoVendedor && scenario === "solo_techo" && groups.length > 0 && (
+            <div style={{ marginBottom: 12, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12, border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                Lista de precios
+              </div>
+              <SegmentedControl
+                value={listaPrecios || "web"}
+                onChange={v => setLP(v)}
+                options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
+              />
+            </div>
+          )}
+
           {/* Totals */}
           {groups.length > 0 && <div ref={pdfCaptureTotalsRef} style={{ background: C.dark, borderRadius: 16, padding: 24, color: "#fff", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
