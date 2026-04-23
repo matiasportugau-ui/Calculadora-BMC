@@ -2355,6 +2355,87 @@ console.log("\n═══ SUITE 33: scenarioOrchestrator ═══");
   );
 }
 
+// Per-segment BOM tests (segment-level includeInBom + split with different profiles)
+{
+  // Shared geometry: zone 0 = 6×4, zone 1 = 4×2 annex-der → encounter length ≈ 4 m
+  const baseZonas = (encounterByPair0) => [
+    {
+      largo: 6,
+      ancho: 4,
+      preview: {
+        encounterByPair: { "0-1": encounterByPair0 },
+      },
+    },
+    { largo: 4, ancho: 2, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+  ];
+  const baseTecho = (encounterByPair0) => ({
+    familia: "ISODEC_EPS",
+    espesor: 100,
+    tipoAguas: "una_agua",
+    tipoEst: "metal",
+    pendiente: 0,
+    pendienteModo: "incluye_pendiente",
+    alturaDif: 0,
+    borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+    opciones: { inclSell: false, inclCanalon: false, inclGotSup: false, bomComercial: false },
+    zonas: baseZonas(encounterByPair0),
+  });
+
+  // Test 1: includeInBom: false on the full segment → no BOM line for that pair
+  const pairDisabled = patchEncounterPairSegment(
+    { tipo: "perfil", modo: "pretil", perfil: "gotero_lateral" },
+    "full",
+    { includeInBom: false },
+  );
+  const r1 = executeScenario("solo_techo", { techo: baseTecho(pairDisabled), pared: {}, camara: {} });
+  assert("per-segment: resultado válido con tramo desactivado", !!r1 && Array.isArray(r1.allItems), !!r1, true);
+  const encDisabled = (r1?.allItems || []).find((it) => String(it.label || "").includes("Encuentro (0-1)"));
+  assert(
+    "per-segment: includeInBom=false → sin línea BOM para ese par",
+    encDisabled == null,
+    encDisabled ? `${encDisabled.label}` : "absent",
+    "absent",
+  );
+
+  // Test 2: split into two halves with different profiles → two BOM lines, ml sum = encounter length
+  const fullPretil = { tipo: "perfil", modo: "pretil", perfil: "gotero_lateral" };
+  const split = splitEncounterPairSegmentMid(fullPretil, "full");
+  assert("split produce 2 segments", split && split.segments.length === 2, split?.segments?.length, 2);
+  const [idA, idB] = split.segments.map((s) => s.id);
+  const pairSplit = patchEncounterPairSegment(
+    patchEncounterPairSegment(split, idA, { encounter: { tipo: "perfil", modo: "pretil", perfil: "gotero_lateral" } }),
+    idB,
+    { encounter: { tipo: "perfil", modo: "cumbrera", perfil: "cumbrera", cumbreraUnida: true } },
+  );
+  const r2 = executeScenario("solo_techo", { techo: baseTecho(pairSplit), pared: {}, camara: {} });
+  assert("per-segment split: resultado válido", !!r2 && Array.isArray(r2.allItems), !!r2, true);
+  const encLines = (r2?.allItems || []).filter((it) => String(it.label || "").includes("Encuentro (0-1)"));
+  assert(
+    "per-segment split: dos líneas BOM con perfiles distintos",
+    encLines.length === 2,
+    encLines.length,
+    2,
+  );
+  // mlNecesario = geometric length needed (before barra rounding); compare against reference
+  const mlNecSum = encLines.reduce((s, it) => s + Number(it.mlNecesario || 0), 0);
+  const r2ref = executeScenario("solo_techo", { techo: baseTecho(fullPretil), pared: {}, camara: {} });
+  const refLine = (r2ref?.allItems || []).find((it) => String(it.label || "").includes("Encuentro (0-1)"));
+  const refNec = refLine ? Number(refLine.mlNecesario) : 0;
+  assert(
+    "per-segment split: suma mlNecesario ≈ longitud geométrica total del encuentro",
+    refNec > 0 && Math.abs(mlNecSum - refNec) < 0.01,
+    `sum=${mlNecSum.toFixed(4)} ref=${refNec.toFixed(4)}`,
+    `sum≈ref`,
+  );
+  const tipos = new Set(encLines.map((it) => it.tipo));
+  assert(
+    "per-segment split: perfiles distintos en las dos mitades",
+    tipos.size === 2,
+    [...tipos].join(","),
+    "2 tipos distintos",
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // SUITE 34: Knowledge antenna helpers (RSS + scoring)
 // ═══════════════════════════════════════════════════════════════════════════
