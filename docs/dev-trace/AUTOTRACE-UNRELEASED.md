@@ -47,6 +47,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `97123b1` feat(chat): structured request logging — latency, tokens, provider per turn
 - `d221654` feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
 - `3c93ff7` feat: GCS quote storage + SuperAgent tool endpoint
+- `aa6d84b` feat(wolfboard): add local dev scripts + rebuild kb.json
 
 ## Fixes
 

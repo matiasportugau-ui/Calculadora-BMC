@@ -111,3 +111,4 @@
 - 2026-04-23 08:14:05 — `d221654` — feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
 - 2026-04-23 08:18:00 — `3c93ff7` — feat: GCS quote storage + SuperAgent tool endpoint
 - 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production
+- 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json

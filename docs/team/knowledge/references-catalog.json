@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-22T13:13:56.989Z",
+  "updatedAt": "2026-04-23T13:00:12.333Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -6879,6 +6879,313 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_262c97d6349b9e71"
+      ]
+    },
+    {
+      "id": "ref_56bc3dd8eca2398c",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Making ChatGPT better for clinicians]]>",
+      "url": "https://openai.com/index/making-chatgpt-better-for-clinicians",
+      "summary": "",
+      "publishedAt": "2026-04-22T15:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.002Z",
+      "lastSeenAt": "2026-04-23T13:00:10.002Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_36c3613a6590f840"
+      ]
+    },
+    {
+      "id": "ref_b466a36fe0ecfe89",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Workspace agents]]>",
+      "url": "https://openai.com/academy/workspace-agents",
+      "summary": "",
+      "publishedAt": "2026-04-22T10:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.002Z",
+      "lastSeenAt": "2026-04-23T13:00:10.002Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_331828ef10343796"
+      ]
+    },
+    {
+      "id": "ref_3e1a48653a653cdc",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Introducing workspace agents in ChatGPT]]>",
+      "url": "https://openai.com/index/introducing-workspace-agents-in-chatgpt",
+      "summary": "",
+      "publishedAt": "2026-04-22T10:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.002Z",
+      "lastSeenAt": "2026-04-23T13:00:10.002Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_95726be4967a5868"
+      ]
+    },
+    {
+      "id": "ref_0f6b39ed8f4051f8",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Speeding up agentic workflows with WebSockets in the Responses API]]>",
+      "url": "https://openai.com/index/speeding-up-agentic-workflows-with-websockets",
+      "summary": "",
+      "publishedAt": "2026-04-22T10:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.002Z",
+      "lastSeenAt": "2026-04-23T13:00:10.002Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_4e9f5f924dfaaba6"
+      ]
+    },
+    {
+      "id": "ref_0a199fc8362b079f",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Introducing OpenAI Privacy Filter]]>",
+      "url": "https://openai.com/index/introducing-openai-privacy-filter",
+      "summary": "",
+      "publishedAt": "2026-04-22T00:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.002Z",
+      "lastSeenAt": "2026-04-23T13:00:10.002Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e40e9f379949936e"
+      ]
+    },
+    {
+      "id": "ref_7919219b3ee6d67c",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Introducing ChatGPT Images 2.0]]>",
+      "url": "https://openai.com/index/introducing-chatgpt-images-2-0",
+      "summary": "",
+      "publishedAt": "2026-04-21T12:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.002Z",
+      "lastSeenAt": "2026-04-23T13:00:10.002Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_245847a03a0f00e9"
+      ]
+    },
+    {
+      "id": "ref_96b292ab4b19082a",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "The Tool-Overuse Illusion: Why Does LLM Prefer External Tools over Internal Knowledge?",
+      "url": "https://arxiv.org/abs/2604.19749",
+      "summary": "arXiv:2604.19749v1 Announce Type: new Abstract: Equipping LLMs with external tools effectively addresses internal reasoning limitations. However, it introduces a critical yet under-explored phenomenon: tool overuse, the unnecessary tool-use during reasoning. In this paper, we first reveal this phenomenon is pervasive across diverse LLMs. We then experimentally elucidate its underlying mechanisms through two key lenses: (1) First, by analyzing tool-use behavior across different internal knowledge availability regions, we identify a \\textit{knowledge epistemic illusion}: models misjudge internal knowledge boundaries and fail to accurately perceive their actual knowledge availability. To mitigate this, we propose a knowledge-aware epistemic boundary alignment strategy based on direct preference optimization, which reduces tool usage in by 82.8\\% while yielding an accuracy improvement. (2) Second, we establish a causal link between reward structures and tool-use behavior by visualizing the tool-augmented training process. It reveals that \\textit{outcome-only rewards} inadvertently encourage tool overuse by rewarding only final correctness, regardless of tool efficiency. To verify this, we balance reward signals during training rather than relying on outcome-only rewards, cutting unnecessary tool calls by 66.7\\% (7B) and 60.7\\% (32B) without sacrificing accuracy. Finally, we provide theoretical justification in this two lenses to understand tool overuse.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.998Z",
+      "lastSeenAt": "2026-04-23T13:00:10.998Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_77f8fd92e5563a29"
+      ]
+    },
+    {
+      "id": "ref_3833b077662e7f7c",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "AI to Learn 2.0: A Deliverable-Oriented Governance Framework and Maturity Rubric for Opaque AI in Learning-Intensive Domains",
+      "url": "https://arxiv.org/abs/2604.19751",
+      "summary": "arXiv:2604.19751v1 Announce Type: new Abstract: Generative AI is entering research, education, and professional work faster than current governance frameworks can specify how AI-assisted outputs should be judged in learning-intensive settings. The central problem is proxy failure: a polished artifact can be useful while no longer serving as credible evidence of the human understanding, judgment, or transfer ability that the work is supposed to cultivate or certify. This paper proposes AI to Learn 2.0, a deliverable-oriented governance framework for AI-assisted work. Rather than claiming element-wise novelty, it reorganizes adjacent ideas around the final deliverable package, distinguishes artifact residual from capability residual, and operationalizes the result through a five-part package, a seven-dimension maturity rubric, gate thresholds on critical dimensions, and a companion capability-evidence ladder. AI to Learn 2.0 allows opaque AI during exploration, drafting, hypothesis generation, and workflow design, but requires that the released deliverable be usable, auditable, transferable, and justifiable without the original large language model or cloud API. In learning-intensive contexts, it additionally requires context-appropriate human-attributable evidence of explanation or transfer. Worked scoring across contrastive cases, including coursework substitution, a symbolic-regression governance contrast, teacher-audited national-exam practice forms, and a self-hosted lecture-to-quiz pipeline with deterministic quality control, shows how the framework separates polished substitution workflows from bounded, auditable, and handoff-ready AI-assisted workflows. AI to Learn 2.0 is proposed as a governance instrument for structured third-party review where capability preservation, accountability, and validity boundaries matter.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.998Z",
+      "lastSeenAt": "2026-04-23T13:00:10.998Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_30cbe0fe36e88e63"
+      ]
+    },
+    {
+      "id": "ref_b6bfb551c1445439",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Algorithm Selection with Zero Domain Knowledge via Text Embeddings",
+      "url": "https://arxiv.org/abs/2604.19753",
+      "summary": "arXiv:2604.19753v1 Announce Type: new Abstract: We propose a feature-free approach to algorithm selection that replaces hand-crafted instance features with pretrained text embeddings. Our method, ZeroFolio, proceeds in three steps: it reads the raw instance file as plain text, embeds it with a pretrained embedding model, and selects an algorithm via weighted k-nearest neighbors. The key to our approach is the observation that pretrained embeddings produce representations that distinguish problem instances without any domain knowledge or task-specific training. This allows us to apply the same three-step pipeline (serialize, embed, select) across diverse problem domains with text-based instance formats. We evaluate our approach on 11 ASlib scenarios spanning 7 domains (SAT, MaxSAT, QBF, ASP, CSP, MIP, and graph problems). Our experiments show that this approach outperforms a random forest trained on hand-crafted features in 10 of 11 scenarios with a single fixed configuration, and in all 11 with two-seed voting; the margin is often substantial. Our ablation study shows that inverse-distance weighting, line shuffling, and Manhattan distance are the key design choices. On scenarios where both selectors are competitive, combining embeddings with hand-crafted features via soft voting yields further improvements.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.999Z",
+      "lastSeenAt": "2026-04-23T13:00:10.999Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_7dac0e3e8e3a9004"
+      ]
+    },
+    {
+      "id": "ref_2f3f555278e3fbdb",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Exploring Data Augmentation and Resampling Strategies for Transformer-Based Models to Address Class Imbalance in AI Scoring of Scientific Explanations in NGSS Classroom",
+      "url": "https://arxiv.org/abs/2604.19754",
+      "summary": "arXiv:2604.19754v1 Announce Type: new Abstract: Automated scoring of students' scientific explanations offers the potential for immediate, accurate feedback, yet class imbalance in rubric categories particularly those capturing advanced reasoning remains a challenge. This study investigates augmentation strategies to improve transformer-based text classification of student responses to a physical science assessment based on an NGSS-aligned learning progression. The dataset consists of 1,466 high school responses scored on 11 binary-coded analytic categories. This rubric identifies six important components including scientific ideas needed for a complete explanation along with five common incomplete or inaccurate ideas. Using SciBERT as a baseline, we applied fine-tuning and test these augmentation strategies: (1) GPT-4--generated synthetic responses, (2) EASE, a word-level extraction and filtering approach, and (3) ALP (Augmentation using Lexicalized Probabilistic context-free grammar) phrase-level extraction. While fine-tuning SciBERT improved recall over baseline, augmentation substantially enhanced performance, with GPT data boosting both precision and recall, and ALP achieving perfect precision, recall, and F1 scores across most severe imbalanced categories (5,6,7 and 9). Across all rubric categories EASE augmentation substantially increased alignment with human scoring for both scientific ideas (Categories 1--6) and inaccurate ideas (Categories 7--11). We compared different augmentation strategies to a traditional oversampling method (SMOTE) in an effort to avoid overfitting and retain novice-level data critical for learning progression alignment. Findings demonstrate that targeted augmentation can address severe imbalance while preserving conceptual coverage, offering a scalable solution for automated learning progression-aligned scoring in science education.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.999Z",
+      "lastSeenAt": "2026-04-23T13:00:10.999Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_96ce64b430695a52"
+      ]
+    },
+    {
+      "id": "ref_82bcc558fc6b74af",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Explainable AML Triage with LLMs: Evidence Retrieval and Counterfactual Checks",
+      "url": "https://arxiv.org/abs/2604.19755",
+      "summary": "arXiv:2604.19755v1 Announce Type: new Abstract: Anti-money laundering (AML) transaction monitoring generates large volumes of alerts that must be rapidly triaged by investigators under strict audit and governance constraints. While large language models (LLMs) can summarize heterogeneous evidence and draft rationales, unconstrained generation is risky in regulated workflows due to hallucinations, weak provenance, and explanations that are not faithful to the underlying decision. We propose an explainable AML triage framework that treats triage as an evidence-constrained decision process. Our method combines (i) retrieval-augmented evidence bundling from policy/typology guidance, customer context, alert triggers, and transaction subgraphs, (ii) a structured LLM output contract that requires explicit citations and separates supporting from contradicting or missing evidence, and (iii) counterfactual checks that validate whether minimal, plausible perturbations lead to coherent changes in both the triage recommendation and its rationale. We evaluate on public synthetic AML benchmarks and simulators and compare against rules, tabular and graph machine-learning baselines, and LLM-only/RAG-only variants. Results show that evidence grounding substantially improves auditability and reduces numerical and policy hallucination errors, while counterfactual validation further increases decision-linked explainability and robustness, yielding the best overall triage performance (PR-AUC 0.75; Escalate F1 0.62) and strong provenance and faithfulness metrics (citation validity 0.98; evidence support 0.88; counterfactual faithfulness 0.76). These findings indicate that governed, verifiable LLM systems can provide practical decision support for AML triage without sacrificing compliance requirements for traceability and defensibility.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.999Z",
+      "lastSeenAt": "2026-04-23T13:00:10.999Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e59170d1f6f8561b"
+      ]
+    },
+    {
+      "id": "ref_921a7e805c6bf0e8",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "ThermoQA: A Three-Tier Benchmark for Evaluating Thermodynamic Reasoning in Large Language Models",
+      "url": "https://arxiv.org/abs/2604.19758",
+      "summary": "arXiv:2604.19758v1 Announce Type: new Abstract: We present ThermoQA, a benchmark of 293 open-ended engineering thermodynamics problems in three tiers: property lookups (110 Q), component analysis (101 Q), and full cycle analysis (82 Q). Ground truth is computed programmatically from CoolProp 7.2.0, covering water, R-134a, and variable-cp air. Six frontier LLMs are evaluated across three independent runs each. The composite leaderboard is led by Claude Opus 4.6 (94.1%), GPT-5.4 (93.1%), and Gemini 3.1 Pro (92.5%). Cross-tier degradation ranges from 2.8 pp (Opus) to 32.5 pp (MiniMax), confirming that property memorization does not imply thermodynamic reasoning. Supercritical water, R-134a refrigerant, and combined-cycle gas turbine analysis serve as natural discriminators with 40-60 pp performance spreads. Multi-run sigma ranges from +/-0.1% to +/-2.5%, quantifying reasoning consistency as a distinct evaluation axis. Dataset and code are open-source at https://huggingface.co/datasets/olivenet/thermoqa",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.999Z",
+      "lastSeenAt": "2026-04-23T13:00:10.999Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_966e6b27ef6d0c80"
+      ]
+    },
+    {
+      "id": "ref_4d5350ff055864c5",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Automated Detection of Dosing Errors in Clinical Trial Narratives: A Multi-Modal Feature Engineering Approach with LightGBM",
+      "url": "https://arxiv.org/abs/2604.19759",
+      "summary": "arXiv:2604.19759v1 Announce Type: new Abstract: Clinical trials require strict adherence to medication protocols, yet dosing errors remain a persistent challenge affecting patient safety and trial integrity. We present an automated system for detecting dosing errors in unstructured clinical trial narratives using gradient boosting with comprehensive multi-modal feature engineering. Our approach combines 3,451 features spanning traditional NLP (TF-IDF, character n-grams), dense semantic embeddings (all-MiniLM-L6v2), domain-specific medical patterns, and transformer-based scores (BiomedBERT, DeBERTa-v3), used to train a LightGBM model. Features are extracted from nine complementary text fields (median 5,400 characters per sample) ensuring complete coverage across all 42,112 clinical trial narratives. On the CT-DEB benchmark dataset with severe class imbalance (4.9% positive rate), we achieve 0.8725 test ROC-AUC through 5-fold ensemble averaging (cross-validation: 0.8833 + 0.0091 AUC). Systematic ablation studies reveal that removing sentence embeddings causes the largest performance degradation (2.39%), demonstrating their critical role despite contributing only 37.07% of total feature importance. Feature efficiency analysis demonstrates that selecting the top 500-1000 features yields optimal performance (0.886-0.887 AUC), outperforming the full 3,451-feature set (0.879 AUC) through effective noise reduction. Our findings highlight the importance of feature selection as a regularization technique and demonstrate that sparse lexical features remain complementary to dense representations for specialized clinical text classification under severe class imbalance.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.999Z",
+      "lastSeenAt": "2026-04-23T13:00:10.999Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_0cc56c6560b506a5"
+      ]
+    },
+    {
+      "id": "ref_7b6bdfb9bbfcf566",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Inference Headroom Ratio: A Diagnostic and Control Framework for Inference Stability Under Constraint",
+      "url": "https://arxiv.org/abs/2604.19760",
+      "summary": "arXiv:2604.19760v1 Announce Type: new Abstract: We present a simulation-based evaluation of the Inference Headroom Ratio (IHR), a dimensionless diagnostic quantity for characterizing inference stability in constrained decision systems. IHR formalizes the relationship between a system's effective inferential capacity C and the combined uncertainty and constraint load U + K imposed by its operating environment, and is intended to capture proximity to an inference stability boundary rather than output-level performance. Across three controlled experiments, we show that IHR functions as: (1) a quantifiable risk indicator whose relationship to collapse probability follows a well-fitted logistic curve with estimated critical threshold IHR* approx. 1.19, (2) a sensitive indicator of proximity to the inference stability boundary under environmental noise, and (3) a viable control variable whose active regulation reduces system collapse rate from 79.4% to 58.7% and IHR variance by 70.4% across 300 Monte Carlo runs. These results position IHR as a prospective, system-level complement to standard performance, drift, and uncertainty metrics, enabling estimation of remaining inferential margin before overt failure in AI systems operating under distributional shift and constraint.",
+      "publishedAt": "2026-04-23T04:00:00.000Z",
+      "firstSeenAt": "2026-04-23T13:00:10.999Z",
+      "lastSeenAt": "2026-04-23T13:00:10.999Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5c080c79e61e9a5a"
+      ]
+    },
+    {
+      "id": "ref_1bae8bc577a1b288",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Gemma 4 VLA Demo on Jetson Orin Nano Super",
+      "url": "https://huggingface.co/blog/nvidia/gemma4",
+      "summary": "",
+      "publishedAt": "2026-04-22T15:40:50.000Z",
+      "firstSeenAt": "2026-04-23T13:00:12.332Z",
+      "lastSeenAt": "2026-04-23T13:00:12.332Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_f74d55ae80229d0c"
       ]
     }
   ]
