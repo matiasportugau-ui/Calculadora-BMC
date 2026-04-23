@@ -85,3 +85,7 @@ Canonical human/agent instructions also live in **`AGENTS.md`**.
 ## Session bootstrap
 
 Remote sessions should run **`npm run env:ensure`** once per fresh clone (creates `.env` from `.env.example` when missing). The **SessionStart** hook in `.claude/settings.json` runs this and prints common dev commands.
+
+## Workflow modes
+
+- **Contribut mode** — two-phase input refinement: agent returns a structured draft first, executes only after `ACEPTO BORRADOR`. Invoke with `/contribut` or type `CONTRIBUT ON`. Protocol defined in `.claude/commands/contribut.md`.
