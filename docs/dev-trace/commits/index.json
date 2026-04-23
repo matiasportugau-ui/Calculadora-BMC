@@ -3638,6 +3638,49 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "c8b33e626e88f2a84c594ef9872880fe11d84b28",
+      "short_hash": "c8b33e6",
+      "date": "2026-04-23",
+      "time": "18:45:47",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wolfboard",
+      "title": "add local dev scripts and update kb.json",
+      "subject": "feat(wolfboard): add local dev scripts and update kb.json",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/aa6d84b.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md",
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/impact-map.json",
+        "docs/team/knowledge/references-catalog.json",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-23.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-23.md",
+        "docs/team/knowledge/sources-registry.json",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }

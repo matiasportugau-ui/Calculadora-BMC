@@ -48,6 +48,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d221654` feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
 - `3c93ff7` feat: GCS quote storage + SuperAgent tool endpoint
 - `aa6d84b` feat(wolfboard): add local dev scripts + rebuild kb.json
+- `c8b33e6` feat(wolfboard): add local dev scripts and update kb.json
 
 ## Fixes
 

@@ -112,3 +112,4 @@
 - 2026-04-23 08:18:00 — `3c93ff7` — feat: GCS quote storage + SuperAgent tool endpoint
 - 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production
 - 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json
+- 2026-04-23 18:45:47 — `c8b33e6` — feat(wolfboard): add local dev scripts and update kb.json
