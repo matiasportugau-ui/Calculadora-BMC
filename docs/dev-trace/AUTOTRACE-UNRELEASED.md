@@ -35,6 +35,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 - `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
+- `e918bef` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 
 ## Fixes
 
