@@ -1,0 +1,32 @@
+=== UBICACIONES EXACTAS (archivo:linea, SIN valores) ===
+
+--- 'mywolfy' (password histórica) — lineas exactas, valor redactado ---
+249:`grep -rn "<REDACTED> → **sin resultados**. No hay password `<REDACTED> en el código.
+
+--- API_AUTH_TOKEN en código server (archivo:linea) ---
+server/agentCapabilitiesManifest.js:30:  { method: "GET", path: "/api/email/panelsim-summary", summary: "PANELSIM: STATUS.json + reporte MD del repo IMAP (Bearer API_AUTH_TOKEN)" },
+server/config.js:41:  apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
+server/config.js:56:  anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
+server/config.js:57:  openaiApiKey: process.env.OPENAI_API_KEY || "",
+server/config.js:64:  geminiApiKey: process.env.GEMINI_API_KEY || "",
+server/config.js:66:  grokApiKey: process.env.GROK_API_KEY || "",
+server/routes/agentConversations.js:19:  if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+server/routes/legacyQuote.js:137:  if (!config.apiAuthToken) missing.push("API_AUTH_TOKEN");
+server/routes/teamAssist.js:49:      error: "OPENAI_API_KEY no configurada en el servidor",
+server/routes/teamAssist.js:50:      hint: "Agregá OPENAI_API_KEY al .env y reiniciá npm run start:api",
+server/routes/bmcDashboard.js:2364:  // ── CRM cockpit (columnas AG–AK) — requiere API_AUTH_TOKEN ─────────────────
+server/routes/bmcDashboard.js:2370:        error: "API_AUTH_TOKEN not configured — cockpit mutations disabled",
+server/routes/bmcDashboard.js:2381:  // be baked into the Vite bundle via VITE_BMC_API_AUTH_TOKEN.
+server/routes/bmcDashboard.js:2386:    if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+server/routes/agentVoice.js:52:  if (!config.apiAuthToken) return { ok: false, status: 503, error: "API_AUTH_TOKEN not configured" };
+server/routes/agentVoice.js:66: * Requires OPENAI_API_KEY. devMode requires dev auth header.
+server/routes/shopify.js:102:      return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+server/routes/transportista.js:22:        error: "API_AUTH_TOKEN not configured — transportista backoffice disabled",
+server/routes/agentChat.js:190:  if (!config.apiAuthToken) return { ok: false, status: 503, error: "API_AUTH_TOKEN not configured" };
+server/routes/agentTraining.js:43:      error: "API_AUTH_TOKEN not configured — developer mode disabled",
+
+--- Cualquier archivo con 'password = '  o 'password:' con valor hardcoded (patrón riesgo) ---
+
+--- Cualquier archivo con 'token = ' con valor hardcoded ---
+
+--- Service account JSON / cert files en el árbol ---

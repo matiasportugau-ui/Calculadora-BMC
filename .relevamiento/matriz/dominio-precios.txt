@@ -1,0 +1,61 @@
+### Dominio: precios
+
+**Archivos relevantes en src/ (pricing / costs / MATRIZ):**
+src/components/BidPresentation.jsx
+src/components/BmcLogisticaApp.jsx
+src/components/CalcLogicInspector.jsx
+src/components/ConfigPanel.jsx
+src/components/DimensioningFormulasEditor.jsx
+src/components/DriverTransportistaApp.jsx
+src/components/FichasPreview.jsx
+src/components/PanelinCalculadoraV3_backup.jsx
+src/components/PanelinCalculadoraV3_legacy_inline.jsx
+src/components/PricingEditor.jsx
+src/components/QuoteVisualVisor.jsx
+src/components/RoofPreview.jsx
+src/data/constants.js
+src/data/kingspanKB.js
+src/data/matrizPreciosMapping.js
+src/data/pricing.js
+src/data/quoteVisorMedia.js
+src/utils/applyQuoteSnapshot.js
+src/utils/bomCosting.js
+src/utils/budgetLog.js
+
+**Rutas API de MATRIZ / precios:**
+server/routes/calc.js:735:    const matrizPrecios = {
+server/routes/calc.js:788:      matriz_precios: matrizPrecios,
+server/routes/bmcDashboard.js:22:import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
+server/routes/bmcDashboard.js:1189:async function buildPlanillaDesdeMatriz(matrizSheetId) {
+server/routes/bmcDashboard.js:1190:  const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
+server/routes/bmcDashboard.js:1239:        spreadsheetId: matrizSheetId,
+server/routes/bmcDashboard.js:1296: * cuyo SKU (col D) mapea a `path` en `matrizPreciosMapping.js`.
+server/routes/bmcDashboard.js:1300:async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, dryRun) {
+server/routes/bmcDashboard.js:1301:  const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
+server/routes/bmcDashboard.js:1343:        spreadsheetId: matrizSheetId,
+server/routes/bmcDashboard.js:1420:    spreadsheetId: matrizSheetId,
+server/routes/bmcDashboard.js:1961:  router.get("/actualizar-precios-calculadora", async (req, res) => {
+server/routes/bmcDashboard.js:1962:    const matrizId = config.bmcMatrizSheetId;
+server/routes/bmcDashboard.js:1964:    if (!matrizId || !credsPath) {
+server/routes/bmcDashboard.js:1972:      const { csv, count } = await buildPlanillaDesdeMatriz(matrizId);
+server/routes/bmcDashboard.js:1973:      const filename = `bmc-precios-matriz-${new Date().toISOString().slice(0, 10)}.csv`;
+server/routes/bmcDashboard.js:2406:  router.post("/matriz/push-pricing-overrides", requireCrmCockpitAuth, async (req, res) => {
+server/routes/bmcDashboard.js:2407:    const matrizId = config.bmcMatrizSheetId;
+server/routes/bmcDashboard.js:2409:    if (!matrizId || !credsPath) {
+server/routes/bmcDashboard.js:2424:      const result = await pushMatrizPricingOverrides(matrizId, overrides, credsPath, dryRun);
+
+**Default en server/config.js:**
+  bmcMatrizSheetId:
+
+**ENV var:** BMC_MATRIZ_SHEET_ID (default: 1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo — MATRIZ de COSTOS y VENTAS 2026)
+**Scripts relacionados:** scripts/matriz-*.mjs, scripts/sync-fijaciones-*.mjs, scripts/sync-silicona-*.mjs, scripts/pull-matriz-csv.mjs, scripts/reconcile-matriz-csv.mjs
+
+**Docs canónicos de precios:**
+docs/PRICING-ENGINE.md
+docs/google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md
+docs/google-sheets-module/MATRIZ-PRECIOS-CALCULADORA.md
+
+**Catálogo local de precios (src/data/):**
+-rw-r--r-- 1 root root 35161 Apr 23 00:55 src/data/constants.js
+-rw-r--r-- 1 root root 10413 Apr 20 06:30 src/data/matrizPreciosMapping.js
+-rw-r--r-- 1 root root  6688 Apr 20 06:30 src/data/pricing.js
