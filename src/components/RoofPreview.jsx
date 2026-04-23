@@ -2934,8 +2934,8 @@ export default function RoofPreview({
                         gap: 8,
                         padding: "10px 10px",
                         borderRadius: 8,
-                        border: `1px solid ${C.border}`,
-                        background: C.surfaceAlt,
+                        border: `1px solid ${run.id === encounterPrompt?.segmentId ? "#0071E3" : C.border}`,
+                        background: run.id === encounterPrompt?.segmentId ? "#EBF5FF" : C.surfaceAlt,
                       }}
                     >
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
@@ -3162,10 +3162,11 @@ export default function RoofPreview({
               const low = Math.min(ga, gb);
               const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
               const runs = listEncounterPairSegmentRuns(rawPair ?? {});
-              return runs.map((run) => {
+              const lines = runs.map((run) => {
                 const p0 = encInterp(enc, run.t0);
                 const p1 = encInterp(enc, run.t1);
                 const stroke = encounterStrokeForModo(run.normalized.modo);
+                const isActive = encounterPrompt?.pairKey === pk && encounterPrompt?.segmentId === run.id;
                 return (
                   <line
                     key={`${enc.id}-${run.id}`}
@@ -3174,7 +3175,7 @@ export default function RoofPreview({
                     x2={p1.x}
                     y2={p1.y}
                     stroke={stroke}
-                    strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
+                    strokeWidth={(isActive ? 2.2 : 1) * LINE_WEIGHTS.encounter * svgTy.m}
                     strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
                     pointerEvents="stroke"
                     opacity={run.includeInBom ? 0.95 : 0.35}
@@ -3188,11 +3189,31 @@ export default function RoofPreview({
                         gb,
                         encounterLength: enc.length,
                         orientation: enc.orientation,
+                        segmentId: run.id,
                       });
                     }}
                   />
                 );
               });
+              // Boundary markers between segments (skip t=0 and t=1 endpoints)
+              const markers = runs.length > 1
+                ? runs.slice(1).map((run) => {
+                    const pt = encInterp(enc, run.t0);
+                    return (
+                      <circle
+                        key={`${enc.id}-boundary-${run.id}`}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={0.07 * svgTy.m}
+                        fill="#fff"
+                        stroke="#64748b"
+                        strokeWidth={0.025 * svgTy.m}
+                        pointerEvents="none"
+                      />
+                    );
+                  })
+                : [];
+              return [...lines, ...markers];
             })}
             {layout.entries.map((r) => {
               const sm = r.z.preview?.slopeMark;
