@@ -539,7 +539,7 @@ function EstructuraZonaOverlay({
   const apoyoMatPopRef = useRef(null);
   const fijPalettePopRef = useRef(null);
   const hidePopTimer = useRef(null);
-  /** Clic corto = toggle punto; pulsación larga / Mayús+clic = paleta (cuando hay bulk handler). */
+  /** Clic corto = paleta material; clic derecho = toggle punto (cuando hay bulk handler). */
   const dotPointerRef = useRef({ timer: null, key: null, longFired: false });
 
   const clearHideTimer = useCallback(() => {
@@ -862,7 +862,7 @@ function EstructuraZonaOverlay({
                   aria-label={
                     combinadaAssign
                       ? (typeof onFijacionPaletteBulk === "function"
-                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: ${enabled ? "quitar" : "incluir"} del cómputo. Mayús+clic o pulsación larga: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"}.`
+                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"} del cómputo.`
                         : `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para cambiar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`)
                       : canToggleDots
                         ? `Fijación (${mat})${enabled ? "" : " — no incluida"}. Clic para ${enabled ? "quitar" : "incluir"} del cómputo.`
@@ -880,36 +880,14 @@ function EstructuraZonaOverlay({
                     ev.preventDefault();
                     setApoyoMatPick(null);
                     if (typeof onFijacionPaletteBulk === "function" && typeof onDotToggleEnabled === "function") {
-                      if (ev.shiftKey) {
-                        clearDotPointerTimer();
-                        setFijPalette({
-                          left: ev.clientX + 10,
-                          top: ev.clientY + 6,
-                          keys: [d.key],
-                          title: "Punto de fijación",
-                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
-                        });
-                        return;
-                      }
                       clearDotPointerTimer();
-                      const dotKeyFull = `${r.gi}:${d.key}`;
-                      dotPointerRef.current.key = dotKeyFull;
-                      dotPointerRef.current.longFired = false;
-                      dotPointerRef.current.timer = window.setTimeout(() => {
-                        dotPointerRef.current.longFired = true;
-                        dotPointerRef.current.timer = null;
-                        dotPointerRef.current.key = null;
-                        setFijPalette({
-                          left: ev.clientX + 10,
-                          top: ev.clientY + 6,
-                          keys: [d.key],
-                          title: "Punto de fijación",
-                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
-                        });
-                      }, 450);
-                      try {
-                        ev.currentTarget.setPointerCapture(ev.pointerId);
-                      } catch { /* ignore */ }
+                      setFijPalette({
+                        left: ev.clientX + 10,
+                        top: ev.clientY + 6,
+                        keys: [d.key],
+                        title: "Punto de fijación",
+                        subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
+                      });
                       return;
                     }
                     if (typeof onFijacionPaletteBulk === "function") {
@@ -2599,6 +2577,7 @@ export default function RoofPreview({
           const encs = findEncounters(layout.entries);
           const missing = encs.filter((enc) => {
             const [a, b] = enc.zoneIndices;
+            if (getLateralAnnexRootBodyGi(zonas, a) === getLateralAnnexRootBodyGi(zonas, b)) return false;
             const pk = encounterPairKey(a, b);
             const low = Math.min(a, b);
             return zonas[low]?.preview?.encounterByPair?.[pk] == null;
@@ -3158,6 +3137,7 @@ export default function RoofPreview({
             )}
             {encounters.flatMap((enc) => {
               const [ga, gb] = enc.zoneIndices;
+              const isSameBody = getLateralAnnexRootBodyGi(zonas, ga) === getLateralAnnexRootBodyGi(zonas, gb);
               const pk = encounterPairKey(ga, gb);
               const low = Math.min(ga, gb);
               const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
@@ -3165,7 +3145,7 @@ export default function RoofPreview({
               return runs.map((run) => {
                 const p0 = encInterp(enc, run.t0);
                 const p1 = encInterp(enc, run.t1);
-                const stroke = encounterStrokeForModo(run.normalized.modo);
+                const stroke = isSameBody ? "#9ca3af" : encounterStrokeForModo(run.normalized.modo);
                 return (
                   <line
                     key={`${enc.id}-${run.id}`}
@@ -3175,11 +3155,11 @@ export default function RoofPreview({
                     y2={p1.y}
                     stroke={stroke}
                     strokeWidth={LINE_WEIGHTS.encounter * svgTy.m}
-                    strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
-                    pointerEvents="stroke"
-                    opacity={run.includeInBom ? 0.95 : 0.35}
-                    style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
-                    onPointerDown={(ev) => {
+                    strokeDasharray={isSameBody ? undefined : `${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
+                    pointerEvents={isSameBody ? "none" : "stroke"}
+                    opacity={isSameBody ? 0.3 : (run.includeInBom ? 0.95 : 0.35)}
+                    style={{ cursor: (!isSameBody && onEncounterPairChange) ? "pointer" : undefined }}
+                    onPointerDown={isSameBody ? undefined : (ev) => {
                       if (!onEncounterPairChange) return;
                       ev.stopPropagation();
                       setEncounterPrompt({

@@ -57,6 +57,35 @@ export function encounterBorderPerfil(raw) {
   return p && p !== "none" ? p : "none";
 }
 
+/**
+ * Perfil dominante de un par de encuentro para `effectiveBorders`: considera los tramos.
+ * Devuelve el perfil del tramo con mayor span que tenga `includeInBom=true` y tipo perfil.
+ * Si todos los tramos son continuos → "none". Fallback al perfil base si no hay tramos.
+ * @param {object|null|undefined} rawPair
+ * @returns {string}
+ */
+export function dominantEncounterPerfil(rawPair) {
+  if (!rawPair || typeof rawPair !== "object") return "none";
+  const base = pairEncounterBaseRaw(rawPair);
+  const segs = normalizeEncounterPairSegments(rawPair);
+  const hasSegments = Array.isArray(rawPair.segments) && rawPair.segments.length > 0;
+  if (!hasSegments) {
+    return encounterEsContinuo(base) ? "none" : encounterBorderPerfil(base);
+  }
+  let best = null;
+  let bestSpan = -1;
+  for (const s of segs) {
+    if (!s.includeInBom) continue;
+    const effectiveRaw = mergePairEncounterOverlay(base, s.encounter);
+    if (encounterEsContinuo(effectiveRaw)) continue;
+    const p = encounterBorderPerfil(effectiveRaw);
+    if (!p || p === "none") continue;
+    const span = s.t1 - s.t0;
+    if (span > bestSpan) { bestSpan = span; best = p; }
+  }
+  return best ?? "none";
+}
+
 /** Claves de encuentro que puede pisar un tramo (`segments[]`). */
 const ENCOUNTER_SEGMENT_OVERLAY_KEYS = ["tipo", "modo", "perfil", "perfilVecino", "cumbreraUnida", "desnivel"];
 
