@@ -141,7 +141,7 @@ export function createSuperAgentRouter(config) {
       const raw = (msg.content?.[0]?.text || "").trim()
         .replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
       extracted = JSON.parse(raw);
-    } catch { extracted = null; }
+    } catch (e) { console.error("[superAgent] extraction error:", e?.message); extracted = null; }
 
     // Step 2: run calculator
     const calcRaw = runCalc(extracted, usedDefaults);
@@ -217,7 +217,8 @@ export function createSuperAgentRouter(config) {
           messages: [{ role: "user", content: consulta }],
         });
         responseText = msg.content?.[0]?.text?.trim() || "Necesito más información para cotizar.";
-      } catch {
+      } catch (e) {
+        console.error("[superAgent] text fallback error:", e?.message);
         responseText = "No pude procesar la consulta. Por favor contactanos directamente.";
       }
     }

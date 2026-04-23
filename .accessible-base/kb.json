@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-23T09:52:40.421Z",
-    "build_ms": 111,
+    "ts": "2026-04-23T11:42:59.259Z",
+    "build_ms": 3001,
     "score": 84,
     "score_delta": 0,
     "sources": [
@@ -27,10 +27,10 @@
   "state": {
     "branch": "main",
     "last_commit": {
-      "hash": "f2a5942",
-      "msg": "docs: sync autotrace + calculatorDataVersion bump"
+      "hash": "3c93ff7",
+      "msg": "feat: GCS quote storage + SuperAgent tool endpoint"
     },
-    "uncommitted": 6,
+    "uncommitted": 12,
     "last_change": "2026-04-23 (Ops — cm-2 Email ingest prod DONE):",
     "deploy": {
       "vercel": "live",
