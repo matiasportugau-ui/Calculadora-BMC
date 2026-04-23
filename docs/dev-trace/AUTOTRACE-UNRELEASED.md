@@ -70,6 +70,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7a2d303` docs(ops): cm-2 email ingest prod DONE — todos los gates completos
 - `e77b34b` docs: dev-trace autolog update (2026-04-23)
 - `543f747` docs: dev-trace autolog update (2026-04-23)
+- `3779d80` docs: dev-trace autolog update (2026-04-23)
 
 ## Chores
 
