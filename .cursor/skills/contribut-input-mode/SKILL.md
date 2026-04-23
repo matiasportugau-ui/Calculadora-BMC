@@ -25,6 +25,8 @@ Actuar como **contributor**: primero **mejorar y explicitar** lo que el usuario 
 | `CONTRIBUT SKIP` | **Solo este mensaje**: saltar refinamiento; responder en modo normal. El siguiente mensaje vuelve al protocolo Contribut si el modo sigue ON. |
 | `ACEPTO BORRADOR` | Cierre de fase 1; opcionalmente pegar debajo el texto refinado acordado. Luego ejecutar fase 2 (respuesta completa / código / búsquedas). |
 
+**Con comandos que exigen ejecución (p. ej. `/nxt`):** si el modo Contribut está **ON** y el usuario pide un informe que requiere `git`/lectura de docs en el mismo turno, usar **`CONTRIBUT SKIP`** en ese mensaje (respuesta directa con herramientas), **o** enviar primero el borrador y luego **`ACEPTO BORRADOR`** antes del comando — así no choca la fase 1 “solo plantilla” con el flujo `/nxt`.
+
 **Nota de producto:** Cursor no intercepta Enter; el usuario envía mensajes igual. El agente debe **autodisciplinarse** a este protocolo cuando el modo está ON.
 
 ## Cuándo aplicar esta skill
