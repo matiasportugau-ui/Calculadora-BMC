@@ -29,6 +29,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 - `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
 - `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
+- `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
 
 ## Fixes
 
@@ -38,6 +39,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
+- `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 
 ## Documentation
 
