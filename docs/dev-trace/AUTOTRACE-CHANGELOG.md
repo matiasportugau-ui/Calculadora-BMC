@@ -104,3 +104,4 @@
 - 2026-04-23 07:25:49 — `03ce080` — fix(server): move wolfboard router before /api catch-all to fix 404s
 - 2026-04-23 07:32:45 — `3646101` — test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles
 - 2026-04-23 07:38:58 — `52e394a` — fix(calc): make /cotizar/pdf handler async + sync autotrace
+- 2026-04-23 07:50:33 — `38dffaf` — feat(roof-plan): segment-level encounter selection in 2D plan

@@ -3390,6 +3390,33 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "38dffaf5e9888a5cd71e82c913cf74c1bdd1e7fb",
+      "short_hash": "38dffaf",
+      "date": "2026-04-23",
+      "time": "07:50:33",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof-plan",
+      "title": "segment-level encounter selection in 2D plan",
+      "subject": "feat(roof-plan): segment-level encounter selection in 2D plan",
+      "files": [
+        "src/components/RoofPreview.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }
