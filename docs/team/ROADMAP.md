@@ -242,3 +242,4 @@ BLOQUEANTES PARA 100% EXIT DEPLOY:
 |-------|-------|--------|
 | 2026-04-23 | 🟡 71/100 | Baseline inicial (diagnóstico sesión) |
 | 2026-04-23 | 🟢 76/100 | Merge v3.1.6 + deps fix (14→4 vulns) + ESLint 0 warnings |
+| 2026-04-23 | 🟢 80/100 | cm-0 ✅ cm-1 ✅ confirmados + KB Accessible Base system live + WolfBoard en prod |
