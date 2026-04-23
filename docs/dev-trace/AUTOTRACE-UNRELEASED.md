@@ -44,6 +44,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8ccf8d8` feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios
 - `db0c9ce` feat: wire real calculator engine into quote-batch
 - `38dffaf` feat(roof-plan): segment-level encounter selection in 2D plan
+- `97123b1` feat(chat): structured request logging — latency, tokens, provider per turn
+- `d221654` feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
+- `3c93ff7` feat: GCS quote storage + SuperAgent tool endpoint
 
 ## Fixes
 
@@ -68,6 +71,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `03ce080` fix(server): move wolfboard router before /api catch-all to fix 404s
 - `52e394a` fix(calc): make /cotizar/pdf handler async + sync autotrace
 - `9e30028` fix(docker): skip bash disk-precheck in Alpine build stage
+- `db9b798` fix(superAgent): log Anthropic errors to diagnose failure in production
 
 ## Documentation
 

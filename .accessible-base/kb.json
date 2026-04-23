@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-23T11:42:59.259Z",
-    "build_ms": 3001,
+    "ts": "2026-04-23T11:45:43.252Z",
+    "build_ms": 521,
     "score": 84,
     "score_delta": 0,
     "sources": [
@@ -27,8 +27,8 @@
   "state": {
     "branch": "main",
     "last_commit": {
-      "hash": "3c93ff7",
-      "msg": "feat: GCS quote storage + SuperAgent tool endpoint"
+      "hash": "db9b798",
+      "msg": "fix(superAgent): log Anthropic errors to diagnose failure in production"
     },
     "uncommitted": 12,
     "last_change": "2026-04-23 (Ops — cm-2 Email ingest prod DONE):",

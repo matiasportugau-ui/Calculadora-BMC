@@ -107,3 +107,7 @@
 - 2026-04-23 07:38:58 — `52e394a` — fix(calc): make /cotizar/pdf handler async + sync autotrace
 - 2026-04-23 07:50:33 — `38dffaf` — feat(roof-plan): segment-level encounter selection in 2D plan
 - 2026-04-23 08:01:17 — `9e30028` — fix(docker): skip bash disk-precheck in Alpine build stage
+- 2026-04-23 08:04:51 — `97123b1` — feat(chat): structured request logging — latency, tokens, provider per turn
+- 2026-04-23 08:14:05 — `d221654` — feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
+- 2026-04-23 08:18:00 — `3c93ff7` — feat: GCS quote storage + SuperAgent tool endpoint
+- 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production

@@ -3482,6 +3482,121 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "97123b14dd4a61958d54e91a678a6bc522c37c5d",
+      "short_hash": "97123b1",
+      "date": "2026-04-23",
+      "time": "08:04:51",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "chat",
+      "title": "structured request logging — latency, tokens, provider per turn",
+      "subject": "feat(chat): structured request logging — latency, tokens, provider per turn",
+      "files": [
+        "server/routes/agentChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "d221654df3d418a173d476165b567c1e07158046",
+      "short_hash": "d221654",
+      "date": "2026-04-23",
+      "time": "08:14:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wizard",
+      "title": "add Precio BMC / Web toggle above totals in solo_techo mode",
+      "subject": "feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode",
+      "files": [
+        "src/components/PanelinCalculadoraV3_backup.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "3c93ff7c1580c2868601f99d5a8c47bf1742f522",
+      "short_hash": "3c93ff7",
+      "date": "2026-04-23",
+      "time": "08:18:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "GCS quote storage + SuperAgent tool endpoint",
+      "subject": "feat: GCS quote storage + SuperAgent tool endpoint",
+      "files": [
+        "server/config.js",
+        "server/index.js",
+        "server/lib/gcsUpload.js",
+        "server/routes/calc.js",
+        "server/routes/superAgent.js",
+        "server/routes/wolfboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "db9b7984ddf4be18e590083693f007df22c3cde0",
+      "short_hash": "db9b798",
+      "date": "2026-04-23",
+      "time": "08:45:33",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "superAgent",
+      "title": "log Anthropic errors to diagnose failure in production",
+      "subject": "fix(superAgent): log Anthropic errors to diagnose failure in production",
+      "files": [
+        ".accessible-base/kb.json",
+        "server/routes/superAgent.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "server"
+        ]
+      }
     }
   ]
 }
