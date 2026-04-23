@@ -30,6 +30,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
 - `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
 - `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
+- `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
 
 ## Fixes
 
@@ -40,6 +41,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
+- `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
 
 ## Documentation
 
@@ -71,6 +73,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `fb845a2` chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop
 - `136482c` chore(dev-trace): sync AUTOTRACE bundle pre-merge
 - `890d2c7` chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
+- `d83ca03` chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 
 ## Other
 

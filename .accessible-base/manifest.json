@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "sheets": {
+    "matriz_precios": {
+      "synced_at": "2026-04-23T06:39:38.423Z",
+      "row_count": 170,
+      "spreadsheet_id": "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+      "label": "MATRIZ Costos y Ventas 2026 — precios canónicos BMC"
+    },
+    "admin_cotizaciones": {
+      "synced_at": "2026-04-23T06:39:39.962Z",
+      "row_count": 38,
+      "spreadsheet_id": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
+      "label": "Admin 2.0 — Administrador de Cotizaciones (Wolfboard source)"
+    }
+  },
+  "last_sync": "2026-04-23T06:39:40.067Z"
+}

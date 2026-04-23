@@ -2080,6 +2080,97 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "d83ca03c811dd72417e9da1687c40d3a0d1c380e",
+      "short_hash": "d83ca03",
+      "date": "2026-04-23",
+      "time": "03:25:01",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update AUTOTRACE documentation and sync calculatorDataVersion timestamp",
+      "subject": "chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/890d2c7.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "1966b38605ded4fda5e582a33ae843025cd04e9d",
+      "short_hash": "1966b38",
+      "date": "2026-04-23",
+      "time": "03:28:27",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "lint",
+      "title": "resolve all ESLint warnings in new and existing components",
+      "subject": "fix(lint): resolve all ESLint warnings in new and existing components",
+      "files": [
+        "src/components/CalcLogicInspector.jsx",
+        "src/components/FichasPreview.jsx",
+        "src/components/RoofPreview.jsx",
+        "src/components/SpecManagementSandbox.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "7130acd57f914153bad88858beb76be3647e6455",
+      "short_hash": "7130acd",
+      "date": "2026-04-23",
+      "time": "03:45:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "nxt",
+      "title": "wire ROADMAP.md as baseline source + add score history",
+      "subject": "feat(nxt): wire ROADMAP.md as baseline source + add score history",
+      "files": [
+        ".claude/commands/nxt.md",
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".claude",
+          "docs"
+        ]
+      }
     }
   ]
 }

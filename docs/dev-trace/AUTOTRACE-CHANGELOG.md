@@ -62,3 +62,6 @@
 - 2026-04-23 03:14:53 — `6b35de9` — fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - 2026-04-23 03:22:37 — `b33cf43` — feat(sheets): Accessible Base sync + expert workspace map
 - 2026-04-23 03:23:47 — `890d2c7` — chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
+- 2026-04-23 03:25:01 — `d83ca03` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
+- 2026-04-23 03:28:27 — `1966b38` — fix(lint): resolve all ESLint warnings in new and existing components
+- 2026-04-23 03:45:05 — `7130acd` — feat(nxt): wire ROADMAP.md as baseline source + add score history
