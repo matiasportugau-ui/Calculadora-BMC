@@ -3184,6 +3184,31 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "38b4d45a6048cc6398a1405c7e6ed7f479f58ba1",
+      "short_hash": "38b4d45",
+      "date": "2026-04-23",
+      "time": "06:43:32",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict",
+      "subject": "fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict",
+      "files": [
+        "Dockerfile"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
     }
   ]
 }

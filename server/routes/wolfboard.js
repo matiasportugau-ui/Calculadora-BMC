@@ -17,6 +17,7 @@
 import { Router } from "express";
 import { google } from "googleapis";
 import Anthropic from "@anthropic-ai/sdk";
+import { runCalculation, buildGptResponse } from "./calc.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -50,6 +51,88 @@ IVA Uruguay = 22% sobre el subtotal (no incluido en los precios anteriores).
 Si la consulta tiene menos de 10 palabras o no identifica ningún producto, respondé exactamente: "Consulta incompleta — necesito más detalles para cotizar."
 
 Respondé solo con el texto de respuesta al cliente, sin encabezados ni comentarios adicionales.`;
+
+const PARAM_EXTRACT_PROMPT = `Sos un extractor de datos para BMC Uruguay (paneles de aislamiento térmico).
+Dado el texto de consulta de un cliente, extraé los parámetros para calcular un presupuesto.
+Respondé SOLO con un objeto JSON válido, sin texto adicional, sin markdown.
+
+Familias de paneles de techo: ISODEC_EPS (más común), ISOROOF_3G, ISODEC_PIR, ISOROOF_FOIL_3G, ISOROOF_PLUS_3G, ISOROOF_COLONIAL
+Familias de paneles de pared: ISOPANEL_EPS (más común), ISOWALL_PIR
+Espesores típicos techo (mm): 80, 100, 150, 200. Espesores típicos pared (mm): 50, 100, 150.
+Escenarios: solo_techo (galpón/nave/tinglado/depósito), solo_fachada (paredes/fachada), techo_fachada (ambos), camara_frig (cámara de frío).
+
+{"escenario":"solo_techo|solo_fachada|techo_fachada|camara_frig|null","techo":{"familia":"string|null","espesor":0,"largo":0,"ancho":0,"tipoEst":"metal|hormigon|madera|null"},"pared":{"familia":"string|null","espesor":0,"alto":0,"perimetro":0},"camara":{"largo_int":0,"ancho_int":0,"alto_int":0},"confianza":"alta|media|baja","faltan":["lista de datos faltantes"]}
+
+Usá null o 0 para valores desconocidos. Si no hay escenario claro, usá null.`;
+
+function buildCalcParams(extracted, usedDefaults) {
+  const { escenario, techo, pared, camara } = extracted || {};
+  if (!escenario || escenario === "null") return null;
+
+  if (escenario === "solo_techo" || escenario === "techo_fachada") {
+    if (!techo?.largo || !techo?.ancho) return null;
+    const familia = techo.familia && techo.familia !== "null" ? techo.familia
+      : (usedDefaults.push("panel ISODEC EPS"), "ISODEC_EPS");
+    const espesor = techo.espesor || (usedDefaults.push("espesor 100mm"), 100);
+    return {
+      escenario: "solo_techo",
+      lista: "web",
+      techo: {
+        familia, espesor,
+        zonas: [{ largo: techo.largo, ancho: techo.ancho }],
+        tipoEst: techo.tipoEst && techo.tipoEst !== "null" ? techo.tipoEst : "metal",
+        borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
+        opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+        color: "Blanco",
+      },
+    };
+  }
+
+  if (escenario === "solo_fachada") {
+    if (!pared?.alto || !pared?.perimetro) return null;
+    const familia = pared.familia && pared.familia !== "null" ? pared.familia
+      : (usedDefaults.push("panel ISOPANEL EPS"), "ISOPANEL_EPS");
+    const espesor = pared.espesor || (usedDefaults.push("espesor 100mm"), 100);
+    return {
+      escenario: "solo_fachada",
+      lista: "web",
+      pared: {
+        familia, espesor,
+        alto: pared.alto, perimetro: pared.perimetro,
+        tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true,
+      },
+    };
+  }
+
+  if (escenario === "camara_frig") {
+    if (!camara?.largo_int || !camara?.ancho_int || !camara?.alto_int) return null;
+    const familia = pared?.familia && pared.familia !== "null" ? pared.familia
+      : (usedDefaults.push("panel ISOPANEL EPS"), "ISOPANEL_EPS");
+    const espesor = pared?.espesor || (usedDefaults.push("espesor 150mm"), 150);
+    return {
+      escenario: "camara_frig",
+      lista: "web",
+      pared: { familia, espesor, tipoEst: "metal", numEsqExt: 4, numEsqInt: 0, inclSell: true },
+      camara: { largo_int: camara.largo_int, ancho_int: camara.ancho_int, alto_int: camara.alto_int },
+    };
+  }
+
+  return null;
+}
+
+function formatCalcResponse(gptResp, extracted, usedDefaults) {
+  const { texto_resumen } = gptResp;
+  const faltan = Array.isArray(extracted?.faltan) ? extracted.faltan : [];
+  let msg = texto_resumen;
+  if (usedDefaults.length > 0) {
+    msg += `\n\n* Presupuesto de referencia con ${usedDefaults.join(", ")}. Confirmanos si preferís otro producto o espesor.`;
+  }
+  if (faltan.length > 0) {
+    msg += `\nPara ajustar mejor necesitamos: ${faltan.join(", ")}.`;
+  }
+  msg += "\n\nSaludos, BMC URUGUAY!";
+  return msg.trim();
+}
 
 async function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
@@ -105,6 +188,7 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
+    const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
     const data = rawRows
       .map((row, idx) => ({
         rowNum: idx + 2,
@@ -113,11 +197,13 @@ export function createWolfboardRouter(config) {
         telefono: String(row[3] ?? "").trim(),
         cliente: String(row[4] ?? "").trim(),
         canal: String(row[5] ?? "").trim(),
+        origen: String(row[5] ?? "").trim(),
         zona: String(row[7] ?? "").trim(),
         consulta: String(row[8] ?? "").trim(),
         respuesta: String(row[9] ?? "").trim(),
         link: String(row[10] ?? "").trim(),
         estado: String(row[11] ?? "").trim(),
+        sheetUrl: sheetBase,
       }))
       .filter(r => r.consulta);
 
@@ -498,26 +584,69 @@ export function createWolfboardRouter(config) {
     for (const row of pendingRows) {
       let response = "";
       let status = "quoted";
+      let method = "text";
 
       if (row.consulta.length < MIN_CONSULTA_LEN) {
         response = ERROR_MARKER;
         status = "too_short";
       } else {
+        // Step 1: Extract structured params from the consultation text
+        let extracted = null;
+        const usedDefaults = [];
         try {
-          const msg = await anthropic.messages.create({
+          const extractMsg = await anthropic.messages.create({
             model: HAIKU_MODEL,
-            max_tokens: 512,
-            system: QUOTE_SYSTEM_PROMPT,
+            max_tokens: 400,
+            system: PARAM_EXTRACT_PROMPT,
             messages: [{ role: "user", content: row.consulta }],
           });
-          response = msg.content?.[0]?.text?.trim() || "";
-          if (!response) {
-            response = ERROR_MARKER;
-            status = "empty_response";
-          }
+          const rawJson = (extractMsg.content?.[0]?.text || "").trim()
+            .replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+          extracted = JSON.parse(rawJson);
         } catch {
-          response = ERROR_MARKER;
-          status = "api_error";
+          extracted = null;
+        }
+
+        // Step 2: Try the real calculator if we have enough params
+        let calcQuoted = false;
+        if (extracted?.escenario && extracted.escenario !== "null") {
+          const params = buildCalcParams(extracted, usedDefaults);
+          if (params) {
+            try {
+              const raw = runCalculation(params);
+              if (raw && !raw.error) {
+                const gptResp = buildGptResponse(params.escenario, "web", raw, 0);
+                if (gptResp?.ok) {
+                  response = formatCalcResponse(gptResp, extracted, usedDefaults);
+                  calcQuoted = true;
+                  method = "calc";
+                }
+              }
+            } catch {
+              // fall through to text generation
+            }
+          }
+        }
+
+        // Step 3: Fallback to text-only generation (original behavior)
+        if (!calcQuoted) {
+          try {
+            const msg = await anthropic.messages.create({
+              model: HAIKU_MODEL,
+              max_tokens: 512,
+              system: QUOTE_SYSTEM_PROMPT,
+              messages: [{ role: "user", content: row.consulta }],
+            });
+            response = msg.content?.[0]?.text?.trim() || "";
+            method = "text";
+            if (!response) {
+              response = ERROR_MARKER;
+              status = "empty_response";
+            }
+          } catch {
+            response = ERROR_MARKER;
+            status = "api_error";
+          }
         }
       }
 
@@ -560,7 +689,7 @@ export function createWolfboardRouter(config) {
         }
       }
 
-      results.push({ rowNum: row.rowNum, status, preview: response.slice(0, 100) });
+      results.push({ rowNum: row.rowNum, status, method, preview: response.slice(0, 100) });
     }
 
     // Write responses to Admin.J
@@ -604,6 +733,10 @@ export function createWolfboardRouter(config) {
       successful,
       failed: results.length - successful,
       skipped: rawRows.length - results.length,
+      methods: {
+        calc: results.filter((r) => r.method === "calc").length,
+        text: results.filter((r) => r.method === "text").length,
+      },
       rows: results,
     });
   });

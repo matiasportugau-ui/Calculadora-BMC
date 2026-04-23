@@ -97,3 +97,4 @@
 - 2026-04-23 06:40:29 — `5e1c03f` — fix: prevent autolog hook self-loop on dev-trace commits
 - 2026-04-23 06:40:51 — `945e83b` — feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
 - 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)
+- 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict

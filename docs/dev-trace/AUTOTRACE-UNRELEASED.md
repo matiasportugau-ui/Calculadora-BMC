@@ -59,6 +59,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `11d1f8c` fix(ml-ui): persist ML token in localStorage instead of sessionStorage
 - `7f1c805` fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
 - `5e1c03f` fix: prevent autolog hook self-loop on dev-trace commits
+- `38b4d45` fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
 
 ## Documentation
 

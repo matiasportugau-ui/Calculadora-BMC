@@ -806,5 +806,6 @@ router.get("/informe", (req, res) => {
   }
 });
 
+export { runCalculation, buildGptResponse };
 export { GPT_ACTIONS } from "../gptActions.js";
 export default router;
