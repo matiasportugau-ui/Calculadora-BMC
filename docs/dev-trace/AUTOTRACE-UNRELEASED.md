@@ -92,6 +92,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `63c1410` chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 - `ee74167` chore: post-live-test state — Wolfboard + Accessible Base first sync
 - `13e4393` chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
+- `27139d5` chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
 
 ## Other
 

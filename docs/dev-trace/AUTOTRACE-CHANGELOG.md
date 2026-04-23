@@ -83,3 +83,4 @@
 - 2026-04-23 05:08:49 — `759d82e` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - 2026-04-23 05:11:39 — `e77b34b` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 05:16:32 — `13e4393` — chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
+- 2026-04-23 05:18:01 — `27139d5` — chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
