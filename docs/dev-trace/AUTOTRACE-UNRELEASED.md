@@ -67,6 +67,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3b8fb3d` chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement
 - `826b9c4` chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit
 - `fb845a2` chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop
+- `136482c` chore(dev-trace): sync AUTOTRACE bundle pre-merge
 
 ## Other
 
