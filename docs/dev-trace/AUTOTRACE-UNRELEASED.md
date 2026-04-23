@@ -41,6 +41,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a22ce4e` feat(wolfboard): add pendientes, sync, row, enviados, export routes
 - `945e83b` feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
 - `fdcfbc1` feat(fichas): add Kingspan comparison section (TIPO 5)
+- `db0c9ce` feat: wire real calculator engine into quote-batch
 
 ## Fixes
 

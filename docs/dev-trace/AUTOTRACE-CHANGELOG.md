@@ -99,3 +99,4 @@
 - 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)
 - 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
 - 2026-04-23 06:52:02 — `28ef700` — fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
+- 2026-04-23 07:12:28 — `db0c9ce` — feat: wire real calculator engine into quote-batch

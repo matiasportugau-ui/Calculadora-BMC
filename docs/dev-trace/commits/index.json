@@ -3246,6 +3246,33 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "db0c9ce96e355d70ee8a5524449eb9aca3edcce7",
+      "short_hash": "db0c9ce",
+      "date": "2026-04-23",
+      "time": "07:12:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "",
+      "title": "wire real calculator engine into quote-batch",
+      "subject": "feat: wire real calculator engine into quote-batch",
+      "files": [
+        "server/routes/wolfboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }
