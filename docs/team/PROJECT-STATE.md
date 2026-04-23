@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-19
+**Última actualización:** 2026-04-23
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -9,6 +9,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-23 (Ops — cm-2 Email ingest prod DONE):** `npm run email:ingest-snapshot -- --limit 1` con `BMC_API_BASE=https://panelin-calc-q74zutv7dq-uc.a.run.app` → **200**, `crmRow=32` (email "Coordinación entrega/retiro pedido"). **Todos los gates cm-0/cm-1/cm-2 confirmados.** Canal email operativo en producción. Score proyecto: **84/100**. Cierra el último gate humano pendiente.
 
 **2026-04-19 (Ops — Cloud Run request timeout + ingest email prod):** `gcloud run services update panelin-calc --region=us-central1 --timeout=300` (revisión desplegada **00170-5jb**). Evita **504** en `POST /api/crm/ingest-email` (IA + Sheets ~3 min). Verificación: `npm run email:ingest-snapshot -- --limit 1` con `BMC_API_BASE` prod → **200**, `crmRow=31`. Scripts: [`scripts/cloud-run-panelin-calc-request-timeout.sh`](../../scripts/cloud-run-panelin-calc-request-timeout.sh); [`scripts/deploy-cloud-run.sh`](../../scripts/deploy-cloud-run.sh) ahora usa `--timeout=300` en `gcloud run deploy`.
 
