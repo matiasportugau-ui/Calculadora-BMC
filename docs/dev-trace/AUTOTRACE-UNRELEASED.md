@@ -36,6 +36,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
 - `e918bef` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
+- `759d82e` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 
 ## Fixes
 
