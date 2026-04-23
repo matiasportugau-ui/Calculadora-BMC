@@ -3273,6 +3273,96 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "28507ff77faf7e1d6316c6ef42d5dc3382e6d16d",
+      "short_hash": "28507ff",
+      "date": "2026-04-23",
+      "time": "07:20:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deps",
+      "title": "patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override",
+      "subject": "fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/8965303.md",
+        "docs/dev-trace/commits/2026/04/d4f2dee.md",
+        "docs/dev-trace/commits/2026/04/db0c9ce.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md",
+        "package-lock.json",
+        "package.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "03ce080117a5678faa6bba4dee60ecef6a118646",
+      "short_hash": "03ce080",
+      "date": "2026-04-23",
+      "time": "07:25:49",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "server",
+      "title": "move wolfboard router before /api catch-all to fix 404s",
+      "subject": "fix(server): move wolfboard router before /api catch-all to fix 404s",
+      "files": [
+        "server/index.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "36461012cc3f8aad342669fcaa33c77a83942348",
+      "short_hash": "3646101",
+      "date": "2026-04-23",
+      "time": "07:32:45",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "test",
+      "scope": "encounters",
+      "title": "integration tests for per-segment BOM — includeInBom=false and split with different profiles",
+      "subject": "test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles",
+      "files": [
+        "tests/validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "tests"
+        ]
+      }
     }
   ]
 }

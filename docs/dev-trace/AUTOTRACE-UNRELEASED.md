@@ -62,6 +62,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5e1c03f` fix: prevent autolog hook self-loop on dev-trace commits
 - `38b4d45` fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
 - `28ef700` fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
+- `28507ff` fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
+- `03ce080` fix(server): move wolfboard router before /api catch-all to fix 404s
 
 ## Documentation
 
@@ -84,6 +86,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `b24e8dd` docs: dev-trace autolog update (2026-04-23)
 - `8149dc2` docs: dev-trace autolog update (2026-04-23)
 - `027b1e1` docs: dev-trace autolog update (2026-04-23)
+
+## Tests
+
+- `3646101` test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles `[tests]`
 
 ## Chores
 

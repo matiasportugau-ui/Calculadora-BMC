@@ -34,6 +34,7 @@ import {
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src/utils/presupuestoLibreCatalogo.js";
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
+import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -510,9 +511,21 @@ router.post("/cotizar/pdf", (req, res) => {
     const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
     const pdfUrl = `${baseUrl}/calc/pdf/${pdfId}`;
 
+    // Upload to Drive for a permanent URL (best-effort; falls back to in-memory link)
+    let driveUrl = null;
+    if (config.driveQuoteFolderId) {
+      try {
+        const code = clientInfo.quote_code || pdfId.slice(0, 8);
+        const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
+        driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
+      } catch {
+        // non-critical
+      }
+    }
+
     registerQuotation({
       pdfId,
-      pdfUrl,
+      pdfUrl: driveUrl || pdfUrl,
       code: clientInfo.quote_code || null,
       client: clientInfo.nombre || "—",
       scenario: escenario,
@@ -523,9 +536,12 @@ router.post("/cotizar/pdf", (req, res) => {
     return res.json({
       ok: true,
       pdf_id: pdfId,
-      pdf_url: pdfUrl,
-      expires_in_hours: 24,
-      instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF.",
+      pdf_url: driveUrl || pdfUrl,
+      drive_url: driveUrl || null,
+      expires_in_hours: driveUrl ? null : 24,
+      instrucciones: driveUrl
+        ? "Link permanente en Drive. Compartilo con el cliente — se abre en el navegador y se puede imprimir como PDF."
+        : "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF.",
       resumen: gptResp.resumen,
     });
   } catch (err) {

@@ -19,7 +19,8 @@ import { google } from "googleapis";
 import Anthropic from "@anthropic-ai/sdk";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
-import { fmtPrice } from "../../src/utils/helpers.js";
+import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
+import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -561,7 +562,8 @@ export function createWolfboardRouter(config) {
     const pendingRows = rawRows
       .map((row, idx) => ({
         rowNum: idx + 2,
-        consulta: String(row[8] ?? "").trim(), // I
+        cliente: String(row[4] ?? "").trim(),  // E
+        consulta: String(row[8] ?? "").trim(),  // I
         respuesta: String(row[9] ?? "").trim(), // J
       }))
       .filter((r) => {
@@ -634,10 +636,11 @@ export function createWolfboardRouter(config) {
 
         // Step 2: Try the real calculator if we have enough params
         let calcQuoted = false;
+        let calcRaw = null;
         if (extracted?.escenario && extracted.escenario !== "null") {
-          const raw = runBatchCalc(extracted, usedDefaults);
-          if (raw) {
-            const formatted = formatCalcResult(raw, extracted, usedDefaults);
+          calcRaw = runBatchCalc(extracted, usedDefaults);
+          if (calcRaw) {
+            const formatted = formatCalcResult(calcRaw, extracted, usedDefaults);
             if (formatted) {
               response = formatted;
               calcQuoted = true;
@@ -675,6 +678,41 @@ export function createWolfboardRouter(config) {
         range: `'${adminTab}'!J${row.rowNum}`,
         values: [[response]],
       });
+
+      // Upload PDF to Drive for persistent col-K link (best-effort, calc-only)
+      if (calcQuoted && calcRaw && config.driveQuoteFolderId) {
+        try {
+          const groups = bomToGroups(calcRaw);
+          const totales = calcRaw.totales || calcTotalesSinIVA(calcRaw.allItems || []);
+          const panelLabel = (calcRaw.allItems || []).find(i => i.unidad === "m²")?.label || "";
+          const htmlDate = new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" });
+          const html = generatePrintHTML({
+            client: { nombre: row.cliente || "Cliente", rut: "", telefono: "" },
+            project: { fecha: htmlDate, refInterna: `WB-${row.rowNum}`, descripcion: "" },
+            scenario: calcRaw._escenario,
+            panel: {
+              label: panelLabel,
+              espesor: extracted?.techo?.espesor || extracted?.pared?.espesor || "",
+              color: "Blanco",
+            },
+            autoportancia: null,
+            groups,
+            totals: { subtotalSinIVA: totales.subtotalSinIVA, iva: totales.iva, totalFinal: totales.totalFinal },
+            warnings: calcRaw.warnings || [],
+            dimensions: {},
+            listaPrecios: "web",
+            showSKU: false,
+            showUnitPrices: true,
+          });
+          const filename = `Cotizacion-WB${row.rowNum}-${new Date().toISOString().slice(0, 10)}.html`;
+          const driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
+          if (driveUrl) {
+            valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[driveUrl]] });
+          }
+        } catch {
+          // Drive upload is non-critical; proceed without link
+        }
+      }
 
       if (numericSheetId !== undefined) {
         formatRequests.push({
