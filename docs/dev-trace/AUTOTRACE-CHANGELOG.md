@@ -68,3 +68,5 @@
 - 2026-04-23 04:00:24 — `63c1410` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 - 2026-04-23 04:14:49 — `0437665` — fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
 - 2026-04-23 04:18:16 — `8a30cd2` — feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
+- 2026-04-23 04:28:45 — `e782464` — feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
+- 2026-04-23 04:30:00 — `af7b601` — docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)

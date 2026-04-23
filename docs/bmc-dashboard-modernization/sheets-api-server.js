@@ -222,32 +222,31 @@ async function getSheetsClient(useWrite = false) {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// Read Admin 2.0 rows — columns H through WOLFB_ADMIN_ORIGEN_COL, data starts at WOLFB_ADMIN_DATA_ROW
+// Read Admin 2.0 rows — real layout confirmed by operator:
+//   I = Consulta (match key ↔ CRM.G)
+//   J = Respuesta AI
+//   K = Link presupuesto
+//   L = Enviado (checkbox)
 async function readAdminRows(useWrite = false) {
   const sheets = await getSheetsClient(useWrite);
-  const endCol = WOLFB_ADMIN_ORIGEN_COL || 'K';
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: WOLFB_ADMIN_ID,
-    range: `'${WOLFB_ADMIN_TAB}'!H${WOLFB_ADMIN_DATA_ROW}:${endCol}`,
+    range: `'${WOLFB_ADMIN_TAB}'!I${WOLFB_ADMIN_DATA_ROW}:L`,
     valueRenderOption: 'FORMATTED_VALUE',
   });
   const rows = res.data.values || [];
   const adminAnchor = (rowNum) =>
-    `https://docs.google.com/spreadsheets/d/${WOLFB_ADMIN_ID}/edit#gid=0&range=H${rowNum}`;
-  const origenOffset = WOLFB_ADMIN_ORIGEN_COL
-    ? colLetterToIndex(WOLFB_ADMIN_ORIGEN_COL) - colLetterToIndex('H')
-    : -1;
+    `https://docs.google.com/spreadsheets/d/${WOLFB_ADMIN_ID}/edit#gid=0&range=I${rowNum}`;
   return rows
     .map((row, idx) => ({
-      rowNum: idx + WOLFB_ADMIN_DATA_ROW,
-      H: row[0] ?? '',
-      I: row[1] ?? '',
-      J: row[2] ?? '',
-      K: String(row[3] ?? '').toUpperCase() === 'TRUE',
-      origen: origenOffset >= 0 ? (row[origenOffset] ?? '') : '',
-      sheetUrl: adminAnchor(idx + WOLFB_ADMIN_DATA_ROW),
+      rowNum:    idx + WOLFB_ADMIN_DATA_ROW,
+      consulta:  row[0] ?? '',   // I
+      respuesta: row[1] ?? '',   // J
+      link:      row[2] ?? '',   // K
+      enviado:   String(row[3] ?? '').toUpperCase() === 'TRUE', // L
+      sheetUrl:  adminAnchor(idx + WOLFB_ADMIN_DATA_ROW),
     }))
-    .filter(r => r.H || r.I || r.J);
+    .filter(r => r.consulta || r.respuesta || r.link);
 }
 
 // Read CRM_Operativo rows — header row 3 (HEADER_ROW), data from row 4
@@ -278,7 +277,7 @@ async function readCrmRows(useWrite = false) {
 async function handleWolfboardPendientes(res) {
   try {
     const rows = await readAdminRows();
-    const pending = rows.filter(r => !r.K);
+    const pending = rows.filter(r => !r.enviado);
     sendJson(res, 200, { ok: true, data: pending, total: rows.length, pending: pending.length });
   } catch (e) {
     sheetsUnavailable(res, e.message);
@@ -297,13 +296,14 @@ async function handleWolfboardSync(body, res) {
 
     if (direction === 'admin_to_crm' || direction === 'both') {
       for (const aRow of adminRows) {
-        if (!aRow.I && !aRow.J) { skipped++; continue; }
-        const match = crmRows.find(cr => cr.G && aRow.H && normalizeText(cr.G) === normalizeText(aRow.H));
+        if (!aRow.respuesta && !aRow.link) { skipped++; continue; }
+        // Match Admin.I (consulta) ↔ CRM.G (consulta del cliente)
+        const match = crmRows.find(cr => cr.G && aRow.consulta && normalizeText(cr.G) === normalizeText(aRow.consulta));
         if (!match) { skipped++; continue; }
-        // AF=respuesta, AG=provider(blank), AH=link
+        // CRM: AF=respuesta, AG=provider(blank), AH=link
         crmBatch.push({
           range: `'${WOLFB_CRM_TAB}'!AF${match._rowNum}:AH${match._rowNum}`,
-          values: [[aRow.I, '', aRow.J]],
+          values: [[aRow.respuesta, '', aRow.link]],
         });
         updatedCrm++;
       }
@@ -313,10 +313,12 @@ async function handleWolfboardSync(body, res) {
       for (const cRow of crmRows) {
         if (!cRow.AF && !cRow.AH) { skipped++; continue; }
         if (cRow.AI === 'Sí') { skipped++; continue; }
-        const match = adminRows.find(ar => ar.H && cRow.G && normalizeText(ar.H) === normalizeText(cRow.G));
+        // Match CRM.G ↔ Admin.I (consulta)
+        const match = adminRows.find(ar => ar.consulta && cRow.G && normalizeText(ar.consulta) === normalizeText(cRow.G));
         if (!match) { skipped++; continue; }
+        // Admin: J=respuesta, K=link
         adminBatch.push({
-          range: `'${WOLFB_ADMIN_TAB}'!I${match.rowNum}:J${match.rowNum}`,
+          range: `'${WOLFB_ADMIN_TAB}'!J${match.rowNum}:K${match.rowNum}`,
           values: [[cRow.AF, cRow.AH]],
         });
         updatedAdmin++;
@@ -358,19 +360,20 @@ async function handleWolfboardRow(body, res) {
     const adminBatch = [];
     const crmBatch = [];
 
+    // Admin: J=respuesta, K=link
     if (respuesta !== undefined) {
-      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!I${rowNum}`, values: [[respuesta]] });
+      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!J${rowNum}`, values: [[respuesta]] });
     }
     if (link !== undefined) {
-      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!J${rowNum}`, values: [[link]] });
+      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!K${rowNum}`, values: [[link]] });
     }
 
-    // Find matching CRM row by H value
+    // Find matching CRM row by Admin.I (consulta) value
     let crmRowNum = null;
     if (respuesta !== undefined || link !== undefined || aprobado !== undefined) {
       const hRes = await sheets.spreadsheets.values.get({
         spreadsheetId: WOLFB_ADMIN_ID,
-        range: `'${WOLFB_ADMIN_TAB}'!H${rowNum}`,
+        range: `'${WOLFB_ADMIN_TAB}'!I${rowNum}`,
       });
       const hVal = ((hRes.data.values || [['']])[0] || [''])[0] || '';
       if (hVal) {
@@ -413,8 +416,8 @@ async function handleWolfboardExport(res) {
     const date = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="wolfboard-export-${date}.csv"`);
-    const header = 'rowNum,H_consulta,I_respuesta,J_link,K_enviado,origen,sheetUrl\n';
-    const csvRow = (r) => [r.rowNum, r.H, r.I, r.J, r.K ? 'TRUE' : 'FALSE', r.origen, r.sheetUrl]
+    const header = 'rowNum,I_consulta,J_respuesta,K_link,L_enviado,sheetUrl\n';
+    const csvRow = (r) => [r.rowNum, r.consulta, r.respuesta, r.link, r.enviado ? 'TRUE' : 'FALSE', r.sheetUrl]
       .map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',');
     res.statusCode = 200;
     res.end(header + rows.map(csvRow).join('\n'));
@@ -433,7 +436,7 @@ async function handleWolfboardEnviados(body, res) {
     return;
   }
   // Safety gate: require explicit force=true
-  const preview = { adminRow: rowNum, action: 'move to Enviados + set K=TRUE + delete from Admin' };
+  const preview = { adminRow: rowNum, action: 'move to Enviados + set L=TRUE (enviado checkbox) + delete from Admin' };
   if (!force) {
     sendJson(res, 409, { ok: false, error: 'requires force=true to move row', preview });
     return;
@@ -448,11 +451,11 @@ async function handleWolfboardEnviados(body, res) {
     });
     const rowData = (rowRes.data.values || [[]])[0] || [];
 
-    // Mark K=TRUE in Admin
+    // Mark L=TRUE in Admin (Enviado checkbox — column L)
     if (!WOLFB_DRY_RUN) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: WOLFB_ADMIN_ID,
-        range: `'${WOLFB_ADMIN_TAB}'!K${rowNum}`,
+        range: `'${WOLFB_ADMIN_TAB}'!L${rowNum}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [['TRUE']] },
       });
@@ -887,6 +890,43 @@ const server = http.createServer(async (req, res) => {
       const parsed = body ? JSON.parse(body) : {};
       await handleWolfboardEnviados(parsed, res);
     });
+    return;
+  }
+
+  // POST /api/wolfboard/setup-admin — create checkbox validation in column L of Admin 2.0
+  if (pathname === '/api/wolfboard/setup-admin' && req.method === 'POST') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    try {
+      const sheets = await getSheetsClient(true);
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: WOLFB_ADMIN_ID });
+      const adminSheetId = meta.data.sheets?.find(s => s.properties?.title === WOLFB_ADMIN_TAB)?.properties?.sheetId;
+      if (adminSheetId === undefined) {
+        sendJson(res, 404, { ok: false, error: `Tab "${WOLFB_ADMIN_TAB}" not found in Admin 2.0` });
+        return;
+      }
+      // Add checkbox (BOOLEAN) validation to L2:L1000
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: WOLFB_ADMIN_ID,
+        requestBody: {
+          requests: [{
+            setDataValidation: {
+              range: { sheetId: adminSheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 11, endColumnIndex: 12 },
+              rule: { condition: { type: 'BOOLEAN' }, strict: true, showCustomUi: true },
+            },
+          }, {
+            // Add header label "Enviado" in L1
+            repeatCell: {
+              range: { sheetId: adminSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 11, endColumnIndex: 12 },
+              cell: { userEnteredValue: { stringValue: 'Enviado' } },
+              fields: 'userEnteredValue',
+            },
+          }],
+        },
+      });
+      sendJson(res, 200, { ok: true, message: 'Column L set as checkbox (Enviado) with header in L1' });
+    } catch (e) {
+      sheetsUnavailable(res, e.message);
+    }
     return;
   }
 

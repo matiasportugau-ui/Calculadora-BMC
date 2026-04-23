@@ -1395,12 +1395,12 @@
     if (summary) summary.textContent = rows.length + ' pendiente' + (rows.length === 1 ? '' : 's');
 
     tbody.innerHTML = rows.map(function (row) {
-      const consulta = escapeHtml((row.H || '').slice(0, 80)) + (row.H && row.H.length > 80 ? '…' : '');
-      const respuesta = escapeHtml((row.I || '').slice(0, 55)) + (row.I && row.I.length > 55 ? '…' : '');
-      const linkCell = row.J
-        ? '<a href="' + escapeHtml(row.J) + '" target="_blank" rel="noopener">Ver</a>'
+      const consulta = escapeHtml((row.consulta || '').slice(0, 80)) + (row.consulta && row.consulta.length > 80 ? '…' : '');
+      const respuesta = escapeHtml((row.respuesta || '').slice(0, 55)) + (row.respuesta && row.respuesta.length > 55 ? '…' : '');
+      const linkCell = row.link
+        ? '<a href="' + escapeHtml(row.link) + '" target="_blank" rel="noopener">Ver</a>'
         : '<span class="empty-cell">—</span>';
-      const estadoPill = row.K
+      const estadoPill = row.enviado
         ? '<span class="status-pill status-pill--ok">Enviado</span>'
         : '<span class="status-pill status-pill--warn">Pendiente</span>';
       const canalPill = row.origen
@@ -1466,12 +1466,10 @@
     const iEl = byId('wfDetailI');
     const jEl = byId('wfDetailJ');
     const feedbackEl = byId('wfDetailFeedback');
-    if (titleEl) titleEl.textContent = 'Fila ' + row.rowNum + (row.H ? ' — ' + row.H.slice(0, 50) : '');
-    if (hEl) hEl.textContent = row.H || '(sin consulta)';
-    const origenEl = byId('wfDetailOrigen');
-    if (origenEl) origenEl.textContent = row.origen || '—';
-    if (iEl) iEl.value = row.I || '';
-    if (jEl) jEl.value = row.J || '';
+    if (titleEl) titleEl.textContent = 'Fila ' + row.rowNum + (row.consulta ? ' — ' + row.consulta.slice(0, 50) : '');
+    if (hEl) hEl.textContent = row.consulta || '(sin consulta)';
+    if (iEl) iEl.value = row.respuesta || '';
+    if (jEl) jEl.value = row.link || '';
     if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
     panel.hidden = false;
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

@@ -32,6 +32,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
 - `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
 - `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
+- `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 
 ## Fixes
 
@@ -55,6 +56,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8e90b56` docs: dev-trace autolog update (2026-04-23)
 - `8c717c5` docs: update AUTOTRACE documentation and add recent commits
 - `92a1508` docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
+- `af7b601` docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)
 
 ## Chores
 

@@ -2268,6 +2268,72 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "e78246482d9ba3de0c56072e10ea7330a174a982",
+      "short_hash": "e782464",
+      "date": "2026-04-23",
+      "time": "04:28:45",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wolfboard",
+      "title": "show origen field in detail panel + AUTOTRACE sync",
+      "subject": "feat(wolfboard): show origen field in detail panel + AUTOTRACE sync",
+      "files": [
+        ".env.example",
+        "docs/bmc-dashboard-modernization/dashboard/app.js",
+        "docs/bmc-dashboard-modernization/dashboard/index.html",
+        "docs/bmc-dashboard-modernization/sheets-api-server.js",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0437665.md",
+        "docs/dev-trace/commits/2026/04/63c1410.md",
+        "docs/dev-trace/commits/2026/04/8a30cd2.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-23.md",
+        "docs/team/WOLFBOARD-RUN-REPORT.md"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "af7b601a3fc04253bdecb3b1922dcebe0d8eefd7",
+      "short_hash": "af7b601",
+      "date": "2026-04-23",
+      "time": "04:30:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "roadmap",
+      "title": "update score history 76→80 (cm-0+cm-1 done, KB live)",
+      "subject": "docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)",
+      "files": [
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }

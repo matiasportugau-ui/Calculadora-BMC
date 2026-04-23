@@ -214,13 +214,14 @@ const REGISTRY = [
     tab: process.env.WOLFB_ADMIN_TAB || 'Admin.',
     headerRow: 0,   // 0-indexed (sheet row 1 = headers)
     dataStart: 1,   // 0-indexed (sheet row 2 = first data, confirmed by operator)
+    // Real layout confirmed by operator: I=Consulta, J=Respuesta AI, K=Link, L=Enviado
     colMap: {
-      H: 'consulta',
-      I: 'respuesta',
-      J: 'link_presupuesto',
-      K: 'enviado',
+      I: 'consulta',
+      J: 'respuesta',
+      K: 'link_presupuesto',
+      L: 'enviado',
     },
-    boolCols: { K: 'enviado' },
+    boolCols: { L: 'enviado' },
   },
   {
     key: 'audit_log',
