@@ -113,3 +113,4 @@
 - 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production
 - 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json
 - 2026-04-23 18:45:47 — `c8b33e6` — feat(wolfboard): add local dev scripts and update kb.json
+- 2026-04-23 18:47:08 — `792cf98` — chore(dev-trace): sync AUTOTRACE for wolfboard local dev commit c8b33e6
