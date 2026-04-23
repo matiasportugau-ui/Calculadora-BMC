@@ -1,0 +1,1712 @@
+{
+  "_meta": {
+    "key": "matriz_precios",
+    "label": "MATRIZ Costos y Ventas 2026 — precios canónicos BMC",
+    "synced_at": "2026-04-23T08:12:16.779Z",
+    "row_count": 170,
+    "spreadsheet_id": "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
+    "source_env": "BMC_MATRIZ_SHEET_ID"
+  },
+  "rows": [
+    {
+      "sku": "",
+      "descripcion": "",
+      "costo_m2_usd_ex_iva": "Actualizar oficialmente",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 2
+    },
+    {
+      "sku": "",
+      "descripcion": "ISOROOF  / ISOROOF FOIL / ISOROOF PLUS- 3,5 min",
+      "costo_m2_usd_ex_iva": "Actualizando",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 3
+    },
+    {
+      "sku": "",
+      "descripcion": "Isoroof ECO 30 mm MALLADO - Aluzinc",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 4
+    },
+    {
+      "sku": "",
+      "descripcion": "Isoroof ECO 50 mm MALLADO - Aluzinc",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 5
+    },
+    {
+      "sku": "IAGRO30",
+      "descripcion": "Isoroof FOIL 30 mm - Color Gris-Rojo",
+      "costo_m2_usd_ex_iva": "28.1400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 6
+    },
+    {
+      "sku": "IAGRO50",
+      "descripcion": "Isoroof FOIL 50 mm - Color Rojo-Gris",
+      "costo_m2_usd_ex_iva": "31.9000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 7
+    },
+    {
+      "sku": "IROOF30",
+      "descripcion": "Isoroof 30 mm Terracota o Gris",
+      "costo_m2_usd_ex_iva": "34.7400",
+      "venta_local": "",
+      "venta_local_iva_inc": "-5.5096",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 8
+    },
+    {
+      "sku": "IROOF40",
+      "descripcion": "Isoroof 40 mm Terracota o Gris ",
+      "costo_m2_usd_ex_iva": "36.5000",
+      "venta_local": "",
+      "venta_local_iva_inc": "2.5394",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 9
+    },
+    {
+      "sku": "IROOF50",
+      "descripcion": "Isoroof 50 mm Terracota o Gris",
+      "costo_m2_usd_ex_iva": "38.2500",
+      "venta_local": "",
+      "venta_local_iva_inc": "5.0789",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 10
+    },
+    {
+      "sku": "IROOF80",
+      "descripcion": "Isoroof 80 mm - Gris - Rojo",
+      "costo_m2_usd_ex_iva": "44.9800",
+      "venta_local": "",
+      "venta_local_iva_inc": "14.7736",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 11
+    },
+    {
+      "sku": "IROOF100",
+      "descripcion": "Isoroof 100 mm - Gris - Rojo",
+      "costo_m2_usd_ex_iva": "49.3900",
+      "venta_local": "",
+      "venta_local_iva_inc": "18.5898",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 12
+    },
+    {
+      "sku": "IROOF30-PLS",
+      "descripcion": "Isoroof Plus 30 mm - Gris - Rojo (MINIMO 800 M2)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "3.6340",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 13
+    },
+    {
+      "sku": "IROOF50-PLS",
+      "descripcion": "Isoroof Plus 50 mm - Gris - Rojo (MINIMO 800 M2)",
+      "costo_m2_usd_ex_iva": "43.5300",
+      "venta_local": "",
+      "venta_local_iva_inc": "6.2330",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 14
+    },
+    {
+      "sku": "IROOF80-PLS",
+      "descripcion": "Isoroof Plus 80 mm - Gris - Rojo",
+      "costo_m2_usd_ex_iva": "51.1481",
+      "venta_local": "",
+      "venta_local_iva_inc": "7.2910",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 15
+    },
+    {
+      "sku": "",
+      "descripcion": "ISOROOF COLONIAL (medidas: 7 m y 4,9 m)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 16
+    },
+    {
+      "sku": "ICR040",
+      "descripcion": "Isoroof COLONIAL 40 mm - Color simil teja",
+      "costo_m2_usd_ex_iva": "53.9700",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 17
+    },
+    {
+      "sku": "FLETEBRO",
+      "descripcion": "Flete de Bromyros en Zonas Aledañas",
+      "costo_m2_usd_ex_iva": "180.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 19
+    },
+    {
+      "sku": "C.But.",
+      "descripcion": "Cinta Butilo 2mm x 15mm x 22.5m lineales",
+      "costo_m2_usd_ex_iva": "12.9500",
+      "venta_local": "",
+      "venta_local_iva_inc": "25.005669",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 20
+    },
+    {
+      "sku": "Cab. Roj",
+      "descripcion": "Caballete Rojo Teja, Gris y blanco- (Arandela Trapezoidal)",
+      "costo_m2_usd_ex_iva": "0.3300",
+      "venta_local": "",
+      "venta_local_iva_inc": "0.65",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 21
+    },
+    {
+      "sku": "Bromplast",
+      "descripcion": "Bromplast 8 - Silicona Neutra  X 600",
+      "costo_m2_usd_ex_iva": "7.9100",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 22
+    },
+    {
+      "sku": "",
+      "descripcion": "Pistola de Silicona ",
+      "costo_m2_usd_ex_iva": "30.0951",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 23
+    },
+    {
+      "sku": "",
+      "descripcion": "GOTERO FRONTAL 3M PREPINTADO",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 25
+    },
+    {
+      "sku": "GFS30",
+      "descripcion": "Gotero Frontal Simple 30mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "23.91",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 26
+    },
+    {
+      "sku": "GFS50",
+      "descripcion": "Gotero Frontal Simple 50mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "#REF!",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 27
+    },
+    {
+      "sku": "GFS80",
+      "descripcion": "Gotero Frontal Simple 80mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "25.31",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 28
+    },
+    {
+      "sku": "GFS80",
+      "descripcion": "Gotero Frontal Simple 80mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "26.63",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 29
+    },
+    {
+      "sku": "GFSUP30",
+      "descripcion": "Gotero Superior 30mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "26.63",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 30
+    },
+    {
+      "sku": "GFSUP40",
+      "descripcion": "Gotero Superior 40mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "38.60",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 31
+    },
+    {
+      "sku": "GFSUP50",
+      "descripcion": "Gotero Superior 50mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "43.91",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 32
+    },
+    {
+      "sku": "GFSUP80",
+      "descripcion": "Gotero Superior 80mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "46.58",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 33
+    },
+    {
+      "sku": "GFSUP80",
+      "descripcion": "Gotero Superior 100mm Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "55.48",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 34
+    },
+    {
+      "sku": "GFCGR30",
+      "descripcion": "Gotero frontal con greca  1 x panel  30-40-50-80  mm",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "25.07",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 35
+    },
+    {
+      "sku": "GSDECAM30",
+      "descripcion": "Gotero Superior  -  DE CAMARA  30mm",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "45.06",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 36
+    },
+    {
+      "sku": "GSDECAM40",
+      "descripcion": "Gotero Superior  -  DE CAMARA  40mm",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "41.27",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 37
+    },
+    {
+      "sku": "GSDECAM50",
+      "descripcion": "Gotero Superior  -  DE CAMARA  50mm",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "56.18",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 38
+    },
+    {
+      "sku": "GSDECAM80",
+      "descripcion": "Gotero Superior  -  DE CAMARA  80mm",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "45.23",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 39
+    },
+    {
+      "sku": "GSDECAM80",
+      "descripcion": "Gotero Superior  -  DE CAMARA  100mm",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "#REF!",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 40
+    },
+    {
+      "sku": "",
+      "descripcion": "GOTERO LATERAL 3M PREPINTADO",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 42
+    },
+    {
+      "sku": "GL30",
+      "descripcion": "Gotero Lateral 30mm  Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 43
+    },
+    {
+      "sku": "GL40",
+      "descripcion": "Gotero Lateral 40mm  Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 44
+    },
+    {
+      "sku": "GL50",
+      "descripcion": "Gotero Lateral 50mm  Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 45
+    },
+    {
+      "sku": "GL80",
+      "descripcion": "Gotero Lateral 80mm  Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 46
+    },
+    {
+      "sku": "GL80",
+      "descripcion": "Gotero Lateral 100mm  Prep.",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 47
+    },
+    {
+      "sku": "GLDCAM50",
+      "descripcion": "Gotero Lateral   CAMARA  50mm  Prep.",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 48
+    },
+    {
+      "sku": "GLDCAM80",
+      "descripcion": "Gotero Lateral  CAMARA  80mm  Prep.",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 49
+    },
+    {
+      "sku": "GLDCAM80",
+      "descripcion": "Gotero Lateral  CAMARA  100mm  Prep.",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 50
+    },
+    {
+      "sku": "",
+      "descripcion": "BABETAS 3M PREPINTADO",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 52
+    },
+    {
+      "sku": "BBAS3G",
+      "descripcion": "Babeta de Atornillar Superior 3G",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 53
+    },
+    {
+      "sku": "BBESUP",
+      "descripcion": "Babeta de Empotrar Superior 3G",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 54
+    },
+    {
+      "sku": "BBAL",
+      "descripcion": "Babeta de Atornillar Lateral",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 55
+    },
+    {
+      "sku": "BBAL",
+      "descripcion": "Babeta de Empotrar Lateral",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 56
+    },
+    {
+      "sku": "",
+      "descripcion": "CANALÓN 3M PREPINTADO",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 58
+    },
+    {
+      "sku": "CD30",
+      "descripcion": "Canalón Doble roof 30mm / base 150mm + tapas + agujero + bajada / 3,03 m",
+      "costo_m2_usd_ex_iva": "59.8600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 59
+    },
+    {
+      "sku": "CD50",
+      "descripcion": "Canalón Doble roof 50mm / base 150mm + tapas + agujero + bajada / 3,03 m",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 60
+    },
+    {
+      "sku": "CD80",
+      "descripcion": "Canalón Doble roof 80mm / base 150mm + tapas + agujero + bajada / 3,03 m",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 61
+    },
+    {
+      "sku": "CD80",
+      "descripcion": "Canalón Doble roof 0mm / base 150mm + tapas + agujero + bajada / 3,03 m",
+      "costo_m2_usd_ex_iva": "#VALUE!",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 62
+    },
+    {
+      "sku": "SOPCAN3M",
+      "descripcion": "Soporte para Canalón Isoroof (3m)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 63
+    },
+    {
+      "sku": "",
+      "descripcion": "CUMBRERAS 3M PREPINTADO",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 65
+    },
+    {
+      "sku": "CUMROOF3M",
+      "descripcion": "Cumbrera Roof 3G de 3 m",
+      "costo_m2_usd_ex_iva": "29.3500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 66
+    },
+    {
+      "sku": "CUMROOF3C",
+      "descripcion": "Cumbrera Roof COLONIAL - 2,2 m (2 piezas de 1,1m)",
+      "costo_m2_usd_ex_iva": "81.5507",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 67
+    },
+    {
+      "sku": "",
+      "descripcion": "ISOWALL",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 69
+    },
+    {
+      "sku": "IW50",
+      "descripcion": "Isowall 50 mm PIR - GRIS / Blanco",
+      "costo_m2_usd_ex_iva": "38.9541",
+      "venta_local": "",
+      "venta_local_iva_inc": "43.012247",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 70
+    },
+    {
+      "sku": "IW80",
+      "descripcion": "Isowall 80 mm PIR - GRIS / Blanco",
+      "costo_m2_usd_ex_iva": "46.4509",
+      "venta_local": "",
+      "venta_local_iva_inc": "51.29",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 71
+    },
+    {
+      "sku": "",
+      "descripcion": "Isowall 50 mm",
+      "costo_m2_usd_ex_iva": "38.9541",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 72
+    },
+    {
+      "sku": "",
+      "descripcion": "Isowall 80 mm",
+      "costo_m2_usd_ex_iva": "46.4509",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 73
+    },
+    {
+      "sku": "IW100",
+      "descripcion": "Isowall 100 mm",
+      "costo_m2_usd_ex_iva": "51.2200",
+      "venta_local": "",
+      "venta_local_iva_inc": "descontinuado",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 74
+    },
+    {
+      "sku": "",
+      "descripcion": "ISOFRIG -2,3m(largo minimo de produ) ",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 77
+    },
+    {
+      "sku": "IF40 ",
+      "descripcion": "IsoFrig 40 mm",
+      "costo_m2_usd_ex_iva": "36.2748",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 78
+    },
+    {
+      "sku": "IF60 - IFSL60",
+      "descripcion": "IsoFrig - Sala Limpia 60 mm",
+      "costo_m2_usd_ex_iva": "41.2181",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 79
+    },
+    {
+      "sku": "IF80 - IFSL80",
+      "descripcion": "IsoFrig - Sala Limpia 80 mm",
+      "costo_m2_usd_ex_iva": "45.4719",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 80
+    },
+    {
+      "sku": "IF100 - IFSL100",
+      "descripcion": "IsoFrig - Sala Limpia 100 mm",
+      "costo_m2_usd_ex_iva": "50.4398",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 81
+    },
+    {
+      "sku": "IF120 - IFSL120",
+      "descripcion": "IsoFrig - Sala Limpia 120 mm",
+      "costo_m2_usd_ex_iva": "60.2924",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 82
+    },
+    {
+      "sku": "IF150 - IFSL150",
+      "descripcion": "IsoFrig - Sala Limpia 150 mm",
+      "costo_m2_usd_ex_iva": "61.1881",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 83
+    },
+    {
+      "sku": "IF180 - IFSL180",
+      "descripcion": "IsoFrig - Sala limpia 180 mm ",
+      "costo_m2_usd_ex_iva": "75.0713",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 84
+    },
+    {
+      "sku": "IF150 - IFSL150",
+      "descripcion": "IsoFrig - Sala Limpia 200 mm",
+      "costo_m2_usd_ex_iva": "61.1881",
+      "venta_local": "",
+      "venta_local_iva_inc": "IVA inc.",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 85
+    },
+    {
+      "sku": "",
+      "descripcion": "ISOPANEL EPS (Fachada)  2,3 min",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 87
+    },
+    {
+      "sku": "ISP50EPSF",
+      "descripcion": "ISOPANEL EPS 50 mm ",
+      "costo_m2_usd_ex_iva": "29.8500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 88
+    },
+    {
+      "sku": "ISP100EPSF",
+      "descripcion": "ISOPANEL EPS 100 mm",
+      "costo_m2_usd_ex_iva": "32.8400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 89
+    },
+    {
+      "sku": "ISP150EPSF",
+      "descripcion": "ISOPANEL EPS 150 mm",
+      "costo_m2_usd_ex_iva": "36.9400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 90
+    },
+    {
+      "sku": "ISP200EPSF",
+      "descripcion": "ISOPANEL EPS 200 mm",
+      "costo_m2_usd_ex_iva": "41.4200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 91
+    },
+    {
+      "sku": "ISP250EPSF",
+      "descripcion": "ISOPANEL EPS 250mm",
+      "costo_m2_usd_ex_iva": "45.5200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 92
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil U ",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 94
+    },
+    {
+      "sku": "PU50MM",
+      "descripcion": "Perfil Ch. Blanco U 40 mm x 35 mm ISOFRIG / 3 m ",
+      "costo_m2_usd_ex_iva": "9.4500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 95
+    },
+    {
+      "sku": "PU50MM",
+      "descripcion": "Perfil Ch. Blanco U 50 mm x 35 mm / 3 m (ISOWALL - ISOPANEL)",
+      "costo_m2_usd_ex_iva": "8.3300",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 96
+    },
+    {
+      "sku": "PU50MM",
+      "descripcion": "Perfil Ch. Blanco U 60 mm x 35 mm ISOFRIG / 3 m",
+      "costo_m2_usd_ex_iva": "10.1600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 97
+    },
+    {
+      "sku": "PU50MM",
+      "descripcion": "Perfil Ch. Blanco U 80 mm x 35 mm ISOWALL / 3 m",
+      "costo_m2_usd_ex_iva": "10.9300",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 98
+    },
+    {
+      "sku": "PU100MM",
+      "descripcion": "Perfil Ch. Blanco U 100 mm x 35 mm / 3 m",
+      "costo_m2_usd_ex_iva": "10.3500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 99
+    },
+    {
+      "sku": "PU150MM",
+      "descripcion": "Perfil Ch. Blanco U 120 mm x 35 mm ISOFRIG / 3 m",
+      "costo_m2_usd_ex_iva": "20.7601",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 100
+    },
+    {
+      "sku": "PU150MM",
+      "descripcion": "Perfil Ch. Blanco U 150 mm x 35 mm / 3 m",
+      "costo_m2_usd_ex_iva": "11.6400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 101
+    },
+    {
+      "sku": "PU150MM",
+      "descripcion": "Perfil Ch. Blanco U 180 mm x 35 mm ISOFRIG / 3 m",
+      "costo_m2_usd_ex_iva": "20.7601",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 102
+    },
+    {
+      "sku": "PU200MM",
+      "descripcion": "Perfil Ch. Blanco U 200 mm x 35 mm / 3 m",
+      "costo_m2_usd_ex_iva": "14.5200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 103
+    },
+    {
+      "sku": "PU250MM",
+      "descripcion": "Perfil Ch. Blanco U 250 mm x 35 mm / 3 m",
+      "costo_m2_usd_ex_iva": "17.4500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 104
+    },
+    {
+      "sku": "",
+      "descripcion": "Accesorios Varios",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 106
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Chapa Blanco G2 75 / 3 m",
+      "costo_m2_usd_ex_iva": "13.3563",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 107
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Chapa Blanco G2 100 / 3 m",
+      "costo_m2_usd_ex_iva": "12.7900",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 108
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Chapa Blanco G2 150 / 3 m",
+      "costo_m2_usd_ex_iva": "14.6800",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 109
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Chapa Blanco G2 200 / 3 m",
+      "costo_m2_usd_ex_iva": "17.6100",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 110
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Chapa Blanco G2 250 / 3 m",
+      "costo_m2_usd_ex_iva": "17.7500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 111
+    },
+    {
+      "sku": "",
+      "descripcion": "Plegado G4 40 mm x 40 mm (Exterior)",
+      "costo_m2_usd_ex_iva": "11.0400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 112
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil K2 sin repliegue para Siliconar (Ángulo interior)",
+      "costo_m2_usd_ex_iva": "8.7400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 113
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Chapa Blanca K2",
+      "costo_m2_usd_ex_iva": "8.7400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 114
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Alu 5852 Anodizado de 6,8 m de largo",
+      "costo_m2_usd_ex_iva": "52.7000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 115
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Alu Tipo K de 6,8 m de largo",
+      "costo_m2_usd_ex_iva": "40.7823",
+      "venta_local": "",
+      "venta_local_iva_inc": "x",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 116
+    },
+    {
+      "sku": "PLEGU148",
+      "descripcion": "Plegado Galv. Tipo U 148 mm / 2 m de largo",
+      "costo_m2_usd_ex_iva": "23.7200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 117
+    },
+    {
+      "sku": "PLECHU98",
+      "descripcion": "Plegado Galv. Tipo U 98 mm / 2 m de largo",
+      "costo_m2_usd_ex_iva": "18.1700",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 118
+    },
+    {
+      "sku": "",
+      "descripcion": "PERFIL ALU 2195 U 100 / 6,8m",
+      "costo_m2_usd_ex_iva": "64.9600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 119
+    },
+    {
+      "sku": "",
+      "descripcion": "ISODEC (EPS) - 2,3m min.",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 121
+    },
+    {
+      "sku": "ISD100EPS",
+      "descripcion": "ISODEC EPS 100 mm",
+      "costo_m2_usd_ex_iva": "32.8400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 122
+    },
+    {
+      "sku": "ISD150EPS",
+      "descripcion": "ISODEC EPS 150 mm",
+      "costo_m2_usd_ex_iva": "36.9400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 123
+    },
+    {
+      "sku": "ISD200EPS",
+      "descripcion": "ISODEC EPS 200 mm",
+      "costo_m2_usd_ex_iva": "41.4200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 124
+    },
+    {
+      "sku": "ISD250EPS",
+      "descripcion": "ISODEC EPS 250mm",
+      "costo_m2_usd_ex_iva": "45.5200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 125
+    },
+    {
+      "sku": "",
+      "descripcion": "ISODEC (PIR) - 3,5m min.",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 127
+    },
+    {
+      "sku": "ISD50PIR",
+      "descripcion": "ISODEC 50mm PIR (EVITAR ESTE ESPESOR)",
+      "costo_m2_usd_ex_iva": "36.3657",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 128
+    },
+    {
+      "sku": "ISD80PIR",
+      "descripcion": "ISODEC 80mm PIR",
+      "costo_m2_usd_ex_iva": "37.1700",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 129
+    },
+    {
+      "sku": "ISD80PIR",
+      "descripcion": "ISODEC 120mm PIR",
+      "costo_m2_usd_ex_iva": "44.6804",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 130
+    },
+    {
+      "sku": "",
+      "descripcion": "GOTERO FRONTAL ISODEC (EPS & PIR)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 133
+    },
+    {
+      "sku": "GF80DC",
+      "descripcion": "Perf. Ch. Gotero Frontal 50mm - ISODEC PIR  - (3,03m)",
+      "costo_m2_usd_ex_iva": "16.6401",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 134
+    },
+    {
+      "sku": "GF120DC",
+      "descripcion": "Perf. Ch. Gotero Frontal 80mm - ISODEC PIR  - (3,03m)",
+      "costo_m2_usd_ex_iva": "17.3889",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 135
+    },
+    {
+      "sku": "6838",
+      "descripcion": "Perf. Ch. Gotero Frontal 100mm - (3,03m)",
+      "costo_m2_usd_ex_iva": "13.0600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 136
+    },
+    {
+      "sku": "GF120DC",
+      "descripcion": "Perf. Ch. Gotero Frontal 120mm - ISODEC PIR  - (3,03m)",
+      "costo_m2_usd_ex_iva": "20.5756",
+      "venta_local": "",
+      "venta_local_iva_inc": "0",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 137
+    },
+    {
+      "sku": "6839",
+      "descripcion": "Perf. Ch. Gotero Frontal 150mm - (3,03m)",
+      "costo_m2_usd_ex_iva": "18.8700",
+      "venta_local": "",
+      "venta_local_iva_inc": "25 retiro en Local",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 138
+    },
+    {
+      "sku": "6840",
+      "descripcion": "Perf. Ch. Gotero Frontal 200mm - (3,03m)",
+      "costo_m2_usd_ex_iva": "19.6400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 139
+    },
+    {
+      "sku": "6841",
+      "descripcion": "Perf. Ch. Gotero Frontal 250mm - (3,03m)",
+      "costo_m2_usd_ex_iva": "19.8300",
+      "venta_local": "",
+      "venta_local_iva_inc": "32.42",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 140
+    },
+    {
+      "sku": "",
+      "descripcion": "GOTERO LATERAL ISODEC (EPS & PIR)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 142
+    },
+    {
+      "sku": "GL80DC",
+      "descripcion": "Perf. Ch. Gotero Lateral 50mm - ISODEC PIR  - (3m)",
+      "costo_m2_usd_ex_iva": "22.0884",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 143
+    },
+    {
+      "sku": "GL80DC",
+      "descripcion": "Perf. Ch. Gotero Lateral 80mm - ISODEC PIR  - (3m)",
+      "costo_m2_usd_ex_iva": "22.0884",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 144
+    },
+    {
+      "sku": "6842",
+      "descripcion": "Perf. Ch. Gotero Lateral 100mm - (3m)",
+      "costo_m2_usd_ex_iva": "17.3100",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 145
+    },
+    {
+      "sku": "GL120DC",
+      "descripcion": "Perf. Ch. Gotero Lateral 120mm - ISODEC PIR  - (3m)",
+      "costo_m2_usd_ex_iva": "25.9010",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 146
+    },
+    {
+      "sku": "6843",
+      "descripcion": "Perf. Ch. Gotero Lateral 150mm - (3m)",
+      "costo_m2_usd_ex_iva": "24.2200",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 147
+    },
+    {
+      "sku": "6844",
+      "descripcion": "Perf. Ch. Gotero Lateral 200mm - (3m)",
+      "costo_m2_usd_ex_iva": "26.4600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 148
+    },
+    {
+      "sku": "6845",
+      "descripcion": "Perf. Ch. Gotero Lateral 250mm - (3m)",
+      "costo_m2_usd_ex_iva": "26.6200",
+      "venta_local": "",
+      "venta_local_iva_inc": "43.51",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 149
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Ch. Gotero Lateral Cámara 100 mm - (3m)",
+      "costo_m2_usd_ex_iva": "19.4700",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 150
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Ch. Gotero Lateral Cámara 150 mm - (3m)",
+      "costo_m2_usd_ex_iva": "20.3500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 151
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Ch. Gotero Lateral Cámara 200 mm - (3m)",
+      "costo_m2_usd_ex_iva": "30.4500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 152
+    },
+    {
+      "sku": "",
+      "descripcion": "Perfil Ch. Gotero Lateral Cámara 250 mm - (3m)",
+      "costo_m2_usd_ex_iva": "26.4600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 153
+    },
+    {
+      "sku": "",
+      "descripcion": "OTROS ACCESORIOS Y PERFILES ISODEC (EPS & PIR)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 155
+    },
+    {
+      "sku": "6847",
+      "descripcion": "Perfil Cumbrera",
+      "costo_m2_usd_ex_iva": "19.6400",
+      "venta_local": "",
+      "venta_local_iva_inc": "32.095272",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 156
+    },
+    {
+      "sku": "6828",
+      "descripcion": "Babeta ISODEC de Adosar ",
+      "costo_m2_usd_ex_iva": "10.1600",
+      "venta_local": "",
+      "venta_local_iva_inc": "20.500392",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 157
+    },
+    {
+      "sku": "6865",
+      "descripcion": "Babeta ISODEC de empotrar",
+      "costo_m2_usd_ex_iva": "10.1600",
+      "venta_local": "",
+      "venta_local_iva_inc": "18.020376",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 158
+    },
+    {
+      "sku": "6825",
+      "descripcion": "Vaina ISODEC Sist 2000",
+      "costo_m2_usd_ex_iva": "7.5600",
+      "venta_local": "",
+      "venta_local_iva_inc": "12.351768",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 159
+    },
+    {
+      "sku": "CAN.ISDC120",
+      "descripcion": "Canalón Isodec 50mm ISODEC PIR",
+      "costo_m2_usd_ex_iva": "77.7152",
+      "venta_local": "",
+      "venta_local_iva_inc": "125.1525087",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 160
+    },
+    {
+      "sku": "CAN.ISDC120",
+      "descripcion": "Canalón Isodec 80mm ISODEC PIR",
+      "costo_m2_usd_ex_iva": "77.7152",
+      "venta_local": "",
+      "venta_local_iva_inc": "94.063464",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 161
+    },
+    {
+      "sku": "6801",
+      "descripcion": "Canalón Estandar 100 mm",
+      "costo_m2_usd_ex_iva": "57.9500",
+      "venta_local": "",
+      "venta_local_iva_inc": "94.723728",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 162
+    },
+    {
+      "sku": "CAN.ISDC120",
+      "descripcion": "Canalón Isodec 120mm ISODEC PIR",
+      "costo_m2_usd_ex_iva": "77.7152",
+      "venta_local": "",
+      "venta_local_iva_inc": "96.076464",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 163
+    },
+    {
+      "sku": "6802",
+      "descripcion": "Canalón Estandar 150 mm",
+      "costo_m2_usd_ex_iva": "66.7100",
+      "venta_local": "",
+      "venta_local_iva_inc": "109.040184",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 164
+    },
+    {
+      "sku": "6803",
+      "descripcion": "Canalón Estandar 200 mm",
+      "costo_m2_usd_ex_iva": "66.4400",
+      "venta_local": "",
+      "venta_local_iva_inc": "108.605376",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 165
+    },
+    {
+      "sku": "6804",
+      "descripcion": "Canalón Estandar 250 mm",
+      "costo_m2_usd_ex_iva": "86.9200",
+      "venta_local": "",
+      "venta_local_iva_inc": "142.085592",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 166
+    },
+    {
+      "sku": "6805",
+      "descripcion": "Soporte de Canalón de 3 m",
+      "costo_m2_usd_ex_iva": "13.2800",
+      "venta_local": "",
+      "venta_local_iva_inc": "21.708192",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 167
+    },
+    {
+      "sku": "",
+      "descripcion": "Embudo ",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 168
+    },
+    {
+      "sku": "",
+      "descripcion": "ANCLAJES varios",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 170
+    },
+    {
+      "sku": "",
+      "descripcion": "Varilla Roscada BSW 3/8 de 1 m",
+      "costo_m2_usd_ex_iva": "2.6000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 171
+    },
+    {
+      "sku": "",
+      "descripcion": "Tuerca BSW 3/8 Galv.",
+      "costo_m2_usd_ex_iva": "0.0500",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 172
+    },
+    {
+      "sku": "",
+      "descripcion": "Arandela Carrocero 3/8 Galv.",
+      "costo_m2_usd_ex_iva": "0.4600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 173
+    },
+    {
+      "sku": "",
+      "descripcion": "Arandela Bca. de Polipropileno (Totuga Blanca)",
+      "costo_m2_usd_ex_iva": "1.0600",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 174
+    },
+    {
+      "sku": "",
+      "descripcion": "Arandela Bca. de Polipropileno GRIS (Totuga GRIS)",
+      "costo_m2_usd_ex_iva": "1.1400",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 175
+    },
+    {
+      "sku": "",
+      "descripcion": "Taco Expansivo Sorex 3/8",
+      "costo_m2_usd_ex_iva": "0.8000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 176
+    },
+    {
+      "sku": "",
+      "descripcion": "Arandela Plana Hierro Galv. 3/8",
+      "costo_m2_usd_ex_iva": "0.0680",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 177
+    },
+    {
+      "sku": "",
+      "descripcion": "Silicona Neutra - 300 gr. BLANCA",
+      "costo_m2_usd_ex_iva": "3.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 178
+    },
+    {
+      "sku": "",
+      "descripcion": "Faltan Tornillos autoperfoantes para cotizar cuando retiren de BROMYROS ",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 180
+    },
+    {
+      "sku": "",
+      "descripcion": "Soportes para canalones ISOROOF cual utilizan?",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "tc",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 181
+    },
+    {
+      "sku": "",
+      "descripcion": " EPS, Cat. II",
+      "costo_m2_usd_ex_iva": "0.3000",
+      "venta_local": "",
+      "venta_local_iva_inc": "vta unit ",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 183
+    },
+    {
+      "sku": "",
+      "descripcion": "1mx1mx1cm (Paquetes de 60 uds)",
+      "costo_m2_usd_ex_iva": "46.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "59.80",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 184
+    },
+    {
+      "sku": "",
+      "descripcion": "1mx1mx2cm  (Paquetes de 30 uds)",
+      "costo_m2_usd_ex_iva": "83.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "107.90",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 185
+    },
+    {
+      "sku": "",
+      "descripcion": "1mx1mx3cm (Paquetes de 20 uds)",
+      "costo_m2_usd_ex_iva": "123.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "159.90",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 186
+    },
+    {
+      "sku": "",
+      "descripcion": "1mx1mx5cm (Paquetes de 12 uds)",
+      "costo_m2_usd_ex_iva": "207.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "269.10",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 187
+    },
+    {
+      "sku": "",
+      "descripcion": "3x1x5cm (Paquetes de 12 uds)",
+      "costo_m2_usd_ex_iva": "855.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "1111.50",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 188
+    },
+    {
+      "sku": "",
+      "descripcion": "autotrabante  (Paquetes de 12 uds)",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "718.90",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 189
+    },
+    {
+      "sku": "",
+      "descripcion": "",
+      "costo_m2_usd_ex_iva": "0.0000",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 192
+    },
+    {
+      "sku": "",
+      "descripcion": "Pistola de Silicona ",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 193
+    },
+    {
+      "sku": "",
+      "descripcion": "Tornillos ",
+      "costo_m2_usd_ex_iva": "",
+      "venta_local": "",
+      "venta_local_iva_inc": "",
+      "venta_web_usd": "",
+      "venta_web_iva_inc": "",
+      "_row": 194
+    }
+  ]
+}
