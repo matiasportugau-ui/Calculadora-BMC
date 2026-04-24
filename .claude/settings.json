@@ -48,7 +48,13 @@
       "Bash(cd * && git push *)",
       "Bash(cd * && git log*)",
       "Bash(cd * && git status*)",
-      "Bash(cd * && grep *)"
+      "Bash(cd * && grep *)",
+      "Bash(cd * && npm run *)",
+      "Bash(cd * && node *)",
+      "Bash(cd * && git *)",
+      "Bash(cd * && ls*)",
+      "Bash(cd * && wc *)",
+      "Bash(cd * && sed *)"
     ]
   },
   "hooks": {
