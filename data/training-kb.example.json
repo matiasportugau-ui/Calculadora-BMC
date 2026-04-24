@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "createdAt": "2026-04-03T00:00:00.000Z",
-  "updatedAt": "2026-04-03T00:00:00.000Z",
+  "updatedAt": "2026-04-24T12:00:00.000Z",
   "entries": [
     {
       "id": "example-1",
@@ -14,6 +14,66 @@
       "permanent": true,
       "createdAt": "2026-04-03T00:00:00.000Z",
       "updatedAt": "2026-04-03T00:00:00.000Z"
+    },
+    {
+      "id": "kb-001-mantenimiento-chapa",
+      "category": "product",
+      "question": "¿Qué mantenimiento necesitan los paneles? ¿Hay que hacerles algo después de instalarlos?",
+      "badAnswer": "Los paneles no requieren ningún mantenimiento.",
+      "goodAnswer": "Los paneles Panelin tienen bajo mantenimiento pero no es cero. Recomendamos: (1) Limpieza anual de la chapa con agua y detergente neutro, eliminando hojas, polvo y depósitos orgánicos que retienen humedad. (2) Inspección de selladores (silicona y butilo) cada 2 años: si hay fisuras, aplicar silicona neutra nueva sobre la zona limpia. (3) En zonas costeras (menos de 5 km del mar): inspección de tornillería expuesta cada año; reemplazar con inoxidable si hay señales de corrosión. (4) Si aparece óxido superficial en chapa cortada, lijar hasta metal sano y aplicar convertidor de óxido + pintura anticorrosión. La garantía anticorrosión es 10 años en ambiente urbano/rural y 5 años en zonas costeras o industriales.",
+      "context": "Mantenimiento post-instalación, vida útil, garantía práctica",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T12:00:00.000Z",
+      "updatedAt": "2026-04-24T12:00:00.000Z"
+    },
+    {
+      "id": "kb-002-comparacion-materiales",
+      "category": "product",
+      "question": "¿Por qué panel Panelin y no chapa zinc, teja, o losa de hormigón?",
+      "badAnswer": "El panel es mejor que todos los otros materiales.",
+      "goodAnswer": "Comparación honesta por alternativa: (1) vs Chapa zinc simple: el panel es más caro por m² pero incluye aislación térmica y acústica integrada. La chapa sola necesita cielorraso + aislante por separado, lo que en obra equivale o supera el costo del panel. (2) vs Teja cerámica: la teja tiene mejor inercia térmica pero mucho más peso estructural (40–60 kg/m² vs 10–12 kg/m²). La estructura portante necesaria para teja es más cara. Panel ISOROOF COLONIAL da estética similar con peso de panel. (3) vs Losa de hormigón: la losa es permanente y robusta pero tiene baja aislación térmica (necesita recubrimiento extra) y el costo de construcción y tiempo de obra son mayores. El panel es industrializado y más rápido. (4) vs Policarbonato: el policarbonato deja pasar luz (ventaja si se quiere iluminación natural) pero tiene menor aislación térmica y mayor dilatación. Para cerramiento total, el panel es mejor opción.",
+      "context": "Comparación con materiales alternativos, decisión de compra, pregunta de vendedor o comprador en Mercado Libre",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T12:00:00.000Z",
+      "updatedAt": "2026-04-24T12:00:00.000Z"
+    },
+    {
+      "id": "kb-003-ahorro-energetico-roi",
+      "category": "sales",
+      "question": "¿Cuánto ahorro en calefacción o refrigeración con los paneles? ¿Vale la pena la inversión?",
+      "badAnswer": "Ahorrás mucho en energía.",
+      "goodAnswer": "El ahorro depende del uso y las condiciones del local, pero hay datos orientativos: (1) Un techo ISODEC EPS 100mm (R=2,63 m²K/W) reduce la pérdida de calor en invierno vs chapa sola (R≈0,05) en más del 90%. (2) Para una nave industrial de 500 m² en Montevideo, eso equivale a unos 8.000–12.000 kWh/año menos de calefacción (electricidad: aprox. USD 1.000–1.500/año). (3) En cámaras frigoríficas, la aislación es directamente proporcional al costo de energía del equipo de frío: mayor espesor = menor consumo del compresor. (4) Payback estimado (techo panel vs chapa sin aislación + agregado posterior): entre 3 y 7 años según precio de energía y uso. Para proyectos industriales con uso continuo, el retorno suele ser menor a 5 años. Siempre aclarar que estos son valores orientativos y que el cálculo exacto depende del proyecto específico.",
+      "context": "ROI, ahorro energético, argumento de venta, cámara frigorífica, industria",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T12:00:00.000Z",
+      "updatedAt": "2026-04-24T12:00:00.000Z"
+    },
+    {
+      "id": "kb-004-garantia-cobertura",
+      "category": "sales",
+      "question": "¿Qué cubre exactamente la garantía? ¿Qué pasa si el panel se oxida o se deforma?",
+      "badAnswer": "La garantía cubre cualquier problema con el panel.",
+      "goodAnswer": "La garantía BMC/Kingspan cubre: (1) Núcleo EPS/PIR: 10 años de garantía térmica — que el núcleo no pierda propiedades de aislación por defecto de fabricación. (2) Chapa prepintada: 10 años anticorrosión en ambiente urbano/rural, 5 años en zonas costeras (<5 km del mar) o industriales agresivos. La garantía NO cubre: (a) Óxido en cortes hechos en obra sin proteger los cantos (responsabilidad del instalador: aplicar pintura anticorrosión en cortes). (b) Daños por granizo mayor al calibre estándar, impactos mecánicos, herramientas o equipos pesados sobre la chapa. (c) Uso de disolventes agresivos o pinturas incompatibles que dañen el recubrimiento. (d) Instalación incorrecta (por ejemplo, solapamiento insuficiente, sellado omitido, torque excedido). Para activar la garantía: guardar el remito de compra, la ficha técnica y las fotos del proceso de instalación. Contactar a BMC Uruguay directamente.",
+      "context": "Garantía, post-venta, óxido en paneles, consulta de cliente preocupado por la durabilidad",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T12:00:00.000Z",
+      "updatedAt": "2026-04-24T12:00:00.000Z"
+    },
+    {
+      "id": "kb-005-ampliacion-instalacion",
+      "category": "conversational",
+      "question": "Ya tengo paneles instalados de antes. ¿Puedo agregar más paneles para ampliar?",
+      "badAnswer": "Sí, podés comprar más paneles y ampliar sin problema.",
+      "goodAnswer": "Es posible ampliar, pero hay que verificar compatibilidad antes de pedir: (1) Familia y espesor: el nuevo panel debe ser exactamente la misma familia (ej. ISODEC EPS) y espesor para que el macho-hembra encaje correctamente. (2) Color: puede haber diferencia de tono entre lotes de producción, especialmente si pasaron más de 2 años. Si la estética es importante, avisar al equipo BMC para verificar si hay stock del mismo lote o si el color fue discontinuado. (3) Perfiles: los goteros, babetas y cumbrera del mismo espesor y familia son compatibles, pero verificar el SKU con el remito original. (4) Si el panel original fue de un proveedor distinto (no BMC/Kingspan/Bromyros), puede haber incompatibilidad de perfil macho-hembra — en ese caso pedir muestra antes de comprar la partida completa. Recomendamos traer el remito o ficha del material instalado al momento de consultar.",
+      "context": "Ampliación, reforma, compatibilidad de paneles, cliente existente, segunda compra",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T12:00:00.000Z",
+      "updatedAt": "2026-04-24T12:00:00.000Z"
     }
   ]
 }
