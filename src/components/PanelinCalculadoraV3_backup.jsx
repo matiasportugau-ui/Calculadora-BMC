@@ -2369,6 +2369,8 @@ export default function PanelinCalculadoraV3() {
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
+  const toolsMenuRef = useRef(null);
   const [chatOpen, setChatOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
@@ -4032,6 +4034,17 @@ export default function PanelinCalculadoraV3() {
     ensureDriveGsi();
   }, [showDrivePanel, ensureDriveGsi]);
 
+  useEffect(() => {
+    if (!showToolsMenu) return;
+    const handler = (e) => {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(e.target)) {
+        setShowToolsMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showToolsMenu]);
+
   const handleDriveRefresh = useCallback(async () => {
     setDriveLoading(true);
     setDriveError(null);
@@ -4303,22 +4316,36 @@ export default function PanelinCalculadoraV3() {
             <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
             <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
           </div>
-          <button
-            type="button"
-            onClick={() => { navigate("/especificaciones"); }}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-            title="Simulacro de gestión de especificaciones y PDF de práctica"
-          >
-            <ClipboardList size={14} />Especificaciones
-          </button>
-          <button
-            type="button"
-            onClick={() => { navigate("/presentacion-licitacion"); }}
-            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-            title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
-          >
-            <FileText size={14} />Presentación
-          </button>
+          <div ref={toolsMenuRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setShowToolsMenu(o => !o)}
+              style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${showToolsMenu ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)"}`, background: showToolsMenu ? "rgba(255,255,255,0.15)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              title="Herramientas adicionales"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {showToolsMenu && (
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60, background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.18)", overflow: "hidden", minWidth: 190 }}>
+                <button
+                  type="button"
+                  onClick={() => { navigate("/especificaciones"); setShowToolsMenu(false); }}
+                  style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  title="Simulacro de gestión de especificaciones y PDF de práctica"
+                >
+                  <ClipboardList size={14} color="#555" />Especificaciones
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { navigate("/presentacion-licitacion"); setShowToolsMenu(false); }}
+                  style={{ width: "100%", padding: "10px 14px", border: "none", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
+                >
+                  <FileText size={14} color="#555" />Presentación
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Settings size={14} />Config
           </button>
@@ -4363,23 +4390,25 @@ export default function PanelinCalculadoraV3() {
               💬 Panelin
             </button>
           </div>
-          <button
-            onClick={toggleDevMode}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.35)",
-              background: devMode ? "rgba(255,255,255,0.22)" : "transparent",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-            title={devMode ? "Developer mode activo · Ctrl/Cmd + Shift + D" : "Activar Developer mode · Ctrl/Cmd + Shift + D"}
-            aria-label={devMode ? "Developer mode activo" : "Activar Developer mode"}
-          >
-            DEV
-          </button>
+          {devMode && (
+            <button
+              onClick={toggleDevMode}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.35)",
+                background: "rgba(255,255,255,0.22)",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              title="Developer mode activo · Ctrl/Cmd + Shift + D para desactivar"
+              aria-label="Developer mode activo"
+            >
+              DEV
+            </button>
+          )}
         </div>
       </div>
 
@@ -4523,7 +4552,6 @@ export default function PanelinCalculadoraV3() {
                           <ScenarioStepIcon scenarioId={sc.id} size={28} selected={scenario === sc.id} color={scenario === sc.id ? C.primary : C.tp} />
                           <div style={{ fontSize: 14, fontWeight: 600, color: scenario === sc.id ? C.primary : C.tp }}>{sc.label}</div>
                           <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
-                          {sc.id !== "solo_techo" && <div style={{ fontSize: 10, color: C.tt, marginTop: 6 }}>→ Modo Cliente</div>}
                         </div>
                       ))}
                     </div>

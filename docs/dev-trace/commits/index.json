@@ -5576,6 +5576,45 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "5a402bd2d5093d22fc879073629da44810c7aeb2",
+      "short_hash": "5a402bd",
+      "date": "2026-04-24",
+      "time": "05:39:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync + dashboard minor fix [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): sync + dashboard minor fix [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3a2ceb2.md",
+        "docs/dev-trace/commits/2026/04/5e9427e.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "server/routes/bmcDashboard.js",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }
