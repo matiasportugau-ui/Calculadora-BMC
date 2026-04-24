@@ -28,3 +28,25 @@ export async function uploadQuoteToGcs(html, filename, bucket) {
 
   return `https://storage.googleapis.com/${bucket}/quotes/${encodeURIComponent(filename)}`;
 }
+
+/**
+ * Upload a JSON-serializable object to GCS and return the public URL.
+ * @param {object|string} payload  Plain object (stringified) or raw JSON string
+ * @param {string} filename  e.g. "Cotizacion-WB5-2026-04-23.json"
+ * @param {string} bucket
+ * @returns {Promise<string|null>}
+ */
+export async function uploadQuoteJsonToGcs(payload, filename, bucket) {
+  if (!bucket || payload == null) return null;
+
+  const body =
+    typeof payload === "string" ? payload : JSON.stringify(payload, null, 0);
+
+  const file = storage.bucket(bucket).file(`quotes/${filename}`);
+  await file.save(body, {
+    contentType: "application/json; charset=utf-8",
+    resumable: false,
+  });
+
+  return `https://storage.googleapis.com/${bucket}/quotes/${encodeURIComponent(filename)}`;
+}

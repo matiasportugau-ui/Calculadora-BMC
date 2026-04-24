@@ -2,56 +2,56 @@
   "_meta": {
     "key": "admin_cotizaciones",
     "label": "Admin 2.0 — Administrador de Cotizaciones (Wolfboard source)",
-    "synced_at": "2026-04-23T08:12:17.403Z",
-    "row_count": 290,
+    "synced_at": "2026-04-24T02:06:56.443Z",
+    "row_count": 268,
     "spreadsheet_id": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
     "source_env": "WOLFB_ADMIN_SHEET_ID"
   },
   "rows": [
     {
-      "consulta": "9 paneles para techos ISOROOF de 3 GRECAS de 8,90 metros de largo; Color blanco; Nucleo de PIR de 50 mm de espesor.",
-      "respuesta": "",
+      "consulta": "HM para canalónes 100 mts / mandó video",
+      "respuesta": "⚠ Requiere atención manual",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 2
     },
     {
-      "consulta": "10 x paneles para techos ISOROOF de 3 GRECAS de 8,90 metros de largo; Color blanco; Nucleo de PIR de 50 mm de espesor. // LLAMO PARA CAMBIAR DE 9 a 10 ud s",
-      "respuesta": "",
+      "consulta": "Impermeabilizacion Loza OCN HM",
+      "respuesta": "⚠ Requiere atención manual",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 3
     },
     {
-      "consulta": "Isoroof terr 80 mm / 11p de 3.35m (se pregunto x anclajes)",
-      "respuesta": "",
+      "consulta": "Tornillos ver si se puede presupuestar",
+      "respuesta": "⚠ Requiere atención manual",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 4
     },
     {
-      "consulta": "- Producto: Isopanel de 50 mm - Dimensiones: Para el armado de una pared de 4,5 mts de largo x 1,15 mts de ancho. - Cantidad: 2 unidades.",
+      "consulta": "Perfil U Largo: 3 metros Medidas: 10 x 10 cm Espesor: 2 mm Material: Acero inoxidable Perfil U Largo: 2 metros Medidas: 19,5 cm x 14 cm Espesor: 4 mm Material: Acero común y/o galvanizado",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 5
     },
     {
-      "consulta": "HM para canalónes 100 mts / mandó video",
-      "respuesta": "",
+      "consulta": "Isodec PIR 200mm (ofrecemos 120mm y espero respuesta de Luis sobre fabricación especial) /Ver planos / Completo - Aleros perimetrales + anclajes a steel framing + Flete /// Entregar cotización antesdel 27/04.",
+      "respuesta": "⚠ Requiere atención manual",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 6
     },
     {
-      "consulta": "medidas de la babeta lat de cámara",
+      "consulta": "5.5m * 6 panel",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 7
     },
     {
-      "consulta": "",
+      "consulta": "URGENTE: Cotización Cubierta ISODEC 200mm - Ampliación Médica Uruguaya // Isofrig - Sala Limpia 200 mm - 89.25+iva ",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
@@ -65,63 +65,63 @@
       "_row": 9
     },
     {
-      "consulta": "Chapas Trapes / Cal 26 y 24 / 10m ancho x 4,5 largo / anclajes a madera",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 10
     },
     {
-      "consulta": "MEMBRANAS",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 11
     },
     {
-      "consulta": "Hiansa 30 mm / 13p de 3.95 mts / ",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 12
     },
     {
-      "consulta": "Kit Canalón *Isoroof 100mm* (no tenemos precio pero calculamos algo más que el de 80mm) / 14m lineales / Completo con bandejas, tapas, embudo y soportes / Solo + Flete",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 13
     },
     {
-      "consulta": "Impermeabilizacion Loza OCN HM",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 14
     },
     {
-      "consulta": "Chapas ondulada Cal 26 y 24 / 15m ancho x 13 largo / sobretecho / babetas sup + un lat / tornillería exag 3\" + 1\" con goma / omegas 135 de 3 mts / ",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 15
     },
     {
-      "consulta": "Tornillos ver si se puede presupuestar",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 16
     },
     {
-      "consulta": "Chapa Trapezoidal 9 mts",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 17
     },
     {
-      "consulta": "Isodec 100 mm / Serian 10 metros de ancho x 9 metros de largo  / Sin accesorios perimetrales - Iría apoyado en caño cuadrado así que llevaría tornillos autoroscantes. El envio sería a Montevideo Nuevo París, La mejor opción que podamos llegar pagando contado. No necesito factura con iva.",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
@@ -135,28 +135,28 @@
       "_row": 19
     },
     {
-      "consulta": "Isodec isopanel 100 / 6,35 x 4,30 - altura 2,5 / sin tornillos ",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 20
     },
     {
-      "consulta": "quiere una fachada estetica",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 21
     },
     {
-      "consulta": "Buenas tardes, les solicito cotización por isodecs blancos de 100 mm para dos techos según el siguiente detalle:",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 22
     },
     {
-      "consulta": "cotización por la cubierta de Isodec para las oficinas de Medica Uruguaya. Adjunto verán los recaudos necesarios para la cotización donde veran indicaada en amarillo la zona a cubrir. La misma deberá ser entregada antes del lunes 27/4.",
+      "consulta": "",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
@@ -1883,160 +1883,6 @@
       "link_presupuesto": "",
       "enviado": false,
       "_row": 269
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 270
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 271
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 272
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 273
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 274
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 275
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 276
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 277
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 278
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 279
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 280
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 281
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 282
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 283
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 284
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 285
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 286
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 287
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 288
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 289
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 290
-    },
-    {
-      "consulta": "",
-      "respuesta": "",
-      "link_presupuesto": "",
-      "enviado": false,
-      "_row": 291
     }
   ]
 }

@@ -76,6 +76,8 @@ const REGISTRY = [
     tab: 'Master_Cotizaciones',
     headerRow: 0,
     dataStart: 1,
+    // Libro reducido (solo CRM): omitir sin fallar el batch completo
+    skipIfTabMissing: true,
     colMap: {
       A: 'cotizacion_id',
       B: 'fecha_creacion',
@@ -108,6 +110,7 @@ const REGISTRY = [
     key: 'pagos_pendientes',
     label: 'Pagos Pendientes 2026 — vencimientos por moneda',
     envId: 'BMC_PAGOS_SHEET_ID',
+    defaultId: '1AzHhalsZKGis_oJ6J06zQeOb6uMQCsliR82VrSKUUsI',
     tab: null,       // null = use first tab
     headerRow: 0,
     dataStart: 1,
@@ -295,11 +298,21 @@ function extractMlId(observaciones) {
 
 // ── Read one sheet tab ────────────────────────────────────────────────────────
 
+/** Escape sheet title for A1 notation (single quotes → doubled). */
+function a1QuoteSheetTitle(title) {
+  return String(title || '').replace(/'/g, "''");
+}
+
 async function readTab(sheets, spreadsheetId, tabName) {
-  const range = tabName ? `'${tabName}'` : undefined;
+  // values.get requires a cell range; sheet-only strings often return "Unable to parse range"
+  // End column must be valid A1 (ZZZZ is invalid); ZZ covers >700 cols (CRM uses through ~AK)
+  const wide = 'A:ZZ';
+  const range = tabName
+    ? `'${a1QuoteSheetTitle(tabName)}'!${wide}`
+    : undefined;
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: range || 'Sheet1',
+    range: range || `Sheet1!${wide}`,
     valueRenderOption: 'FORMATTED_VALUE',
   });
   return res.data.values || [];
@@ -347,7 +360,25 @@ async function syncEntry(sheets, entry) {
       }
     }
   } else {
-    const tabName = entry.tab || await getFirstTabName(sheets, spreadsheetId);
+    let tabName;
+    if (entry.tab == null) {
+      tabName = await getFirstTabName(sheets, spreadsheetId);
+    } else {
+      const tabs = await getAllTabNames(sheets, spreadsheetId);
+      if (!tabs.includes(entry.tab)) {
+        const canSkip = entry.optional === true || entry.skipIfTabMissing === true;
+        if (canSkip) {
+          return {
+            skipped: true,
+            reason: `tab "${entry.tab}" not in workbook (${tabs.length} tabs)`,
+          };
+        }
+        throw new Error(
+          `Tab "${entry.tab}" not found in ${entry.envId}. Available: ${tabs.join(', ')}`,
+        );
+      }
+      tabName = entry.tab;
+    }
     const raw = await readTab(sheets, spreadsheetId, tabName);
     if (raw.length <= entry.dataStart) return { rows: [], rowCount: 0, tab: tabName };
     const headerRow = raw[entry.headerRow] || [];

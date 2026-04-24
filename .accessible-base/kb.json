@@ -1,9 +1,9 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-23T21:47:31.047Z",
-    "build_ms": 68,
-    "score": 84,
+    "ts": "2026-04-24T03:07:23.923Z",
+    "build_ms": 65,
+    "score": 68,
     "score_delta": 0,
     "sources": [
       "ROADMAP.md",
@@ -16,7 +16,7 @@
   "project": {
     "name": "Calculadora BMC",
     "pkg_version": "3.1.5",
-    "score": 84,
+    "score": 68,
     "mission": "Automatizar el proceso comercial de BMC Uruguay para paneles Panelin — desde cotización técnica hasta cierre de venta, integrando WhatsApp, MercadoLibre y email con mínima intervención manual.",
     "stack": "React18+Vite7:5173 | Express5+Node20:3001 | Cloud Run(panelin-calc) | Vercel | Google Sheets | PostgreSQL",
     "urls": {
@@ -27,11 +27,11 @@
   "state": {
     "branch": "main",
     "last_commit": {
-      "hash": "53b3a60",
-      "msg": "chore(dev-trace): record AUTOTRACE for commit 07a5a8d"
+      "hash": "e7ee3ee",
+      "msg": "feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot"
     },
-    "uncommitted": 6,
-    "last_change": "2026-04-23 (Ops — cm-2 Email ingest prod DONE):",
+    "uncommitted": 41,
+    "last_change": "2026-04-23 (Ops — verificación smoke prod + tag remoto):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",
@@ -72,26 +72,26 @@
     {
       "label": "CRM / Dashboard (WolfBoard / Sheets)",
       "q": 7,
-      "c": 6,
-      "status": "Admin 2.0 en branch, no en prod"
+      "c": 7,
+      "status": "Wolfboard en `main`; `GET /api/wolfboard/pendientes` OK en prod; smoke: MATRIZ OK; **`POST /api/crm/suggest-response` 503** (proveedores IA)"
     },
     {
       "label": "MercadoLibre Integration",
       "q": 8,
       "c": 7,
-      "status": "OAuth OK, cm-1 pendiente humano"
+      "status": "OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua"
     },
     {
       "label": "WhatsApp / Meta (omnicanal)",
-      "q": 6,
-      "c": 5,
-      "status": "Webhook wired, cm-0 sin E2E humano"
+      "q": 7,
+      "c": 6,
+      "status": "cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica"
     },
     {
       "label": "Email Ingest / Parse",
-      "q": 6,
-      "c": 6,
-      "status": "Dry-run OK, cm-2 sin prod full"
+      "q": 7,
+      "c": 7,
+      "status": "cm-2 prod verificado (crmRow=32); ver PROJECT-STATE"
     },
     {
       "label": "Google Sheets / Data",
@@ -101,15 +101,15 @@
     },
     {
       "label": "Deploy / CI/CD",
-      "q": 8,
-      "c": 7,
-      "status": "Sin tags git, sin smoke post-deploy en CI"
+      "q": 6,
+      "c": 6,
+      "status": "`smoke:prod` **no** 100% verde: solo **suggest** (503 IA); MATRIZ + `public_base_url` OK en última verificación; sin smoke post-deploy en CI"
     },
     {
       "label": "Tests (unit + API + contrato)",
       "q": 8,
       "c": 7,
-      "status": "335+ unit, 17 API route; sin E2E browser"
+      "status": "350+ unit (ver gate local), 17 API route; sin E2E browser"
     },
     {
       "label": "Docs / Agents / Tooling",
@@ -226,10 +226,10 @@
     "sheets_sync": "npm run sheets:sync"
   },
   "sheets": {
-    "matriz_synced_at": "2026-04-23T08:12:17.747Z",
+    "matriz_synced_at": "2026-04-24T02:06:56.742Z",
     "matriz_rows": 170,
-    "admin_rows": 290,
-    "last_sync": "2026-04-23T08:12:17.747Z"
+    "admin_rows": 268,
+    "last_sync": "2026-04-24T02:06:56.742Z"
   },
-  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 290 filas). Score actual: 84/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
+  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 268 filas). Score actual: 68/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
 }

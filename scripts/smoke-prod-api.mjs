@@ -10,12 +10,13 @@
  *
  * Falla (exit 1) si GET /health o GET /capabilities no responden 200,
  * si GET /api/actualizar-precios-calculadora no devuelve CSV MATRIZ (200 + text/csv + cabecera),
- * o si POST /api/crm/suggest-response no devuelve 200 + ok: true (IA configurada en prod).
+ * o si POST /api/crm/suggest-response no devuelve 200 + ok: true (salvo --skip-suggest / SMOKE_SKIP_SUGGEST).
  * GET /auth/ml/status: 200 o 404 OK; otro código avisa pero no falla el smoke.
  *
  * Comprueba que public_base_url en /capabilities coincide con la base probada (advertencia si no).
  *
  * Omitir solo MATRIZ (p. ej. entorno sin Sheets): SMOKE_SKIP_MATRIZ=1 o --skip-matriz.
+ * Omitir solo suggest-response (p. ej. IA no montada en prod o keys GSM en rotación): SMOKE_SKIP_SUGGEST=1 o --skip-suggest.
  */
 /** Default prod base — misma que `gcloud run services describe panelin-calc … status.url` y `PUBLIC_BASE_URL` en Cloud Run. */
 const DEFAULT_BASE = "https://panelin-calc-q74zutv7dq-uc.a.run.app";
@@ -26,6 +27,8 @@ function parseArgs(argv) {
   let json = false;
   let skipMatriz =
     process.env.SMOKE_SKIP_MATRIZ === "1" || process.env.SMOKE_SKIP_MATRIZ === "true";
+  let skipSuggest =
+    process.env.SMOKE_SKIP_SUGGEST === "1" || process.env.SMOKE_SKIP_SUGGEST === "true";
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--base" && argv[i + 1]) {
       base = argv[++i];
@@ -33,9 +36,34 @@ function parseArgs(argv) {
       json = true;
     } else if (argv[i] === "--skip-matriz") {
       skipMatriz = true;
+    } else if (argv[i] === "--skip-suggest") {
+      skipSuggest = true;
     }
   }
-  return { base, json, skipMatriz };
+  return { base, json, skipMatriz, skipSuggest };
+}
+
+/** Redact tokens / long key-like strings in smoke notes (stderr-safe). */
+function redactForLog(s) {
+  return String(s || "")
+    .replace(/\bsk-[a-zA-Z0-9_-]{10,}\b/gi, "sk-…")
+    .replace(/sk-proj-[^\s|]*/gi, "sk-proj-…")
+    .replace(/\bxai-[a-zA-Z0-9_-]{10,}\b/gi, "xai-…")
+    .replace(/\bAIza[a-zA-Z0-9_-]{10,}\b/g, "AIza…")
+    .slice(0, 96);
+}
+
+/** Short hint from suggest-response error JSON for smoke output */
+function suggestFailureNote(body) {
+  const err = body && typeof body.error === "string" ? redactForLog(body.error) : "";
+  const code = body && typeof body.code === "string" ? body.code : "";
+  const details = Array.isArray(body?.details) ? body.details.filter(Boolean).slice(0, 3) : [];
+  const parts = [];
+  if (code) parts.push(`code=${code}`);
+  if (err) parts.push(err);
+  if (details.length) parts.push(`details: ${details.map((d) => redactForLog(d)).join(" | ")}`);
+  const tail = parts.length ? ` — ${parts.join(" — ")}` : "";
+  return `esperado 200 + { ok: true } — revisar keys IA en Cloud Run / GSM${tail}`;
 }
 
 function normalizeBase(url) {
@@ -108,7 +136,7 @@ function matrizCsvOk({ status, contentType, text }) {
 }
 
 async function main() {
-  const { base: rawBase, json, skipMatriz } = parseArgs(process.argv.slice(2));
+  const { base: rawBase, json, skipMatriz, skipSuggest } = parseArgs(process.argv.slice(2));
   let base;
   try {
     base = normalizeBase(rawBase);
@@ -190,20 +218,27 @@ async function main() {
           : "revisar (informativo)",
   });
 
-  const sr = await fetchJson("POST", "/api/crm/suggest-response", base, {
-    consulta: "smoke test automatizado — responder breve",
-    origen: "smoke-prod",
-  });
-  const suggestOk = sr.status === 200 && sr.body && sr.body.ok === true;
-  rows.push({
-    path: "POST /api/crm/suggest-response",
-    status: sr.status,
-    ok: suggestOk,
-    note: suggestOk
-      ? `IA ok (${sr.body.provider || "?"})`
-      : "esperado 200 + { ok: true } — revisar keys IA en Cloud Run",
-  });
-  if (!suggestOk) criticalFail = true;
+  if (skipSuggest) {
+    rows.push({
+      path: "POST /api/crm/suggest-response",
+      status: 0,
+      ok: true,
+      note: "omitido (SMOKE_SKIP_SUGGEST / --skip-suggest)",
+    });
+  } else {
+    const sr = await fetchJson("POST", "/api/crm/suggest-response", base, {
+      consulta: "smoke test automatizado — responder breve",
+      origen: "smoke-prod",
+    });
+    const suggestOk = sr.status === 200 && sr.body && sr.body.ok === true;
+    rows.push({
+      path: "POST /api/crm/suggest-response",
+      status: sr.status,
+      ok: suggestOk,
+      note: suggestOk ? `IA ok (${sr.body.provider || "?"})` : suggestFailureNote(sr.body),
+    });
+    if (!suggestOk) criticalFail = true;
+  }
 
   if (json) {
     console.log(
@@ -239,7 +274,10 @@ async function main() {
     console.log(`RESULTADO: FALLA — ${hint}.`);
     process.exit(1);
   }
-  console.log("RESULTADO: OK — health, capabilities, MATRIZ CSV, suggest-response.");
+  console.log(
+    "RESULTADO: OK — health, capabilities, MATRIZ CSV" +
+      (skipSuggest ? " (suggest omitido)." : ", suggest-response."),
+  );
   console.log("");
 }
 
