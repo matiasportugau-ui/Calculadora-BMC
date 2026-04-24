@@ -185,3 +185,4 @@
 - 2026-04-24 06:32:59 — `3a5615c` — docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
 - 2026-04-24 06:33:21 — `25fc842` — chore(dev-trace): sync post-score-85 [SKIP_AUTOTRACE]
 - 2026-04-24 06:38:13 — `4b7da4b` — fix(sheets): treat non-URL link_presupuesto values as null instead of returning display text
+- 2026-04-24 06:38:39 — `49d4064` — chore(dev-trace): sync post-link-presupuesto-fix [SKIP_AUTOTRACE]
