@@ -1736,6 +1736,7 @@ export default function createBmcDashboardRouter(config) {
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
     const monthKey = `${yyyy}-${mm}`;
     const mesName = MESES_ES[mm] || "";
     const monthLabel = `${mesName} ${yyyy}`.trim();
@@ -1852,6 +1853,21 @@ export default function createBmcDashboardRouter(config) {
         }
       }
 
+      let base_ganancia_anual = 0;
+      for (const row of ventasRows || []) {
+        const fecha = parseDate(findKey(row, "FECHA_ENTREGA", "FECHA ENTREGA", "Fecha entrega"));
+        if (fecha && fecha.getFullYear() === yyyy) {
+          base_ganancia_anual += parseNum(findKey(row, "GANANCIA", "GANANCIAS SIN IVA", "Ganancia")) || 0;
+        }
+      }
+      const irae_prevision = {
+        base_ganancia_anual: Math.round(base_ganancia_anual * 100) / 100,
+        tasa: 0.25,
+        monto_estimado: Math.round(base_ganancia_anual * 0.25 * 100) / 100,
+        fiscal_disclaimer: "Estimación sobre margen bruto. Consultar contador para ajustes por gastos deducibles y depreciación.",
+        periodo: `${yyyy}-01-01/${yyyy}-${mm}-${dd}`,
+      };
+
       let equilibrio = "Sin meta";
       if (objetivoMensual != null && objetivoMensual > 0) {
         if (realAcumulado >= objetivoMensual) equilibrio = "En meta";
@@ -1871,6 +1887,7 @@ export default function createBmcDashboardRouter(config) {
         pagosEsteMes,
         equilibrio,
         moneda,
+        irae_prevision,
       });
     } catch (e) {
       sheetsUnavailable(res, e.message);
