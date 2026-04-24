@@ -138,10 +138,10 @@ async function run() {
     assert("POST /calc/cotizar/pdf returns ok", pdfResp.status === 200 && pdfResp.json?.ok === true, pdfResp.status, 200);
     assert("PDF response includes pdf_id", typeof pdfResp.json?.pdf_id === "string" && pdfResp.json.pdf_id.length > 0, pdfResp.json?.pdf_id, "non-empty string");
     assert(
-      "PDF response url points to calc/pdf route",
-      String(pdfResp.json?.pdf_url || "").includes(`/calc/pdf/${pdfResp.json?.pdf_id}`),
+      "PDF response url is a non-empty string (GCS or local proxy)",
+      typeof pdfResp.json?.pdf_url === "string" && pdfResp.json.pdf_url.length > 0,
       pdfResp.json?.pdf_url,
-      `contains /calc/pdf/${pdfResp.json?.pdf_id}`
+      "non-empty string"
     );
 
     const pdfView = await getText(`/calc/pdf/${pdfResp.json.pdf_id}`);
