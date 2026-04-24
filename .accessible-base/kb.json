@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T03:07:23.923Z",
-    "build_ms": 65,
+    "ts": "2026-04-24T03:07:41.571Z",
+    "build_ms": 51,
     "score": 68,
     "score_delta": 0,
     "sources": [
@@ -27,10 +27,10 @@
   "state": {
     "branch": "main",
     "last_commit": {
-      "hash": "e7ee3ee",
-      "msg": "feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot"
+      "hash": "e332a5f",
+      "msg": "docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison"
     },
-    "uncommitted": 41,
+    "uncommitted": 7,
     "last_change": "2026-04-23 (Ops — verificación smoke prod + tag remoto):",
     "deploy": {
       "vercel": "live",
