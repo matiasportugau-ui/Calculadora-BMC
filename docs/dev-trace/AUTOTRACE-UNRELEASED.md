@@ -102,6 +102,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `027b1e1` docs: dev-trace autolog update (2026-04-23)
 - `c811945` docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)
 - `e332a5f` docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison
+- `f50973e` docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
 
 ## Tests
 
