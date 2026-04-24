@@ -41,11 +41,11 @@ Un deploy es **100% limpio** cuando:
 | Deploy / CI/CD | 🟢 8/10 | 🟢 8/10 | CI todos los jobs ✅ (2026-04-24); smoke job ya existía y cubre suggest-response; Cloud Run rev-00210 |
 | Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | **370 pass** (2026-04-24); 17 API route; sin E2E browser |
 | Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
-| Panelin Internal RBAC | 🟢 8/10 | 🟡 6/10 | En prod (2026-04-24); RBAC + invoke + tool catalog; sin E2E API test aún |
+| Panelin Internal RBAC | 🟢 8/10 | 🟢 8/10 | En prod; 29 E2E API tests ✅ (2026-04-24 commit 9c89f74) |
 | Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
 | Fiscal / Compliance | 🟡 6/10 | 🔴 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟢 **73 / 100** *(2026-04-24 — smoke 100% verde, CI passing, RBAC en prod, 370 tests. Sube a 80+ con E2E RBAC + encuentros multizona + métricas AI chat.)*
+**Score global estimado:** 🟢 **75 / 100** *(2026-04-24 — RBAC E2E 29 tests ✅, ESLint 0 warnings, AI Chat metrics existentes. Sube a 80+ con encuentros multizona + PDF QA + CORS.)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
@@ -53,6 +53,7 @@ Un deploy es **100% limpio** cuando:
 | 2026-04-18 | 60/100 | cm-0/cm-1 done; cm-2 dry-run OK |
 | 2026-04-23 | 68/100 | smoke ámbar (suggest 503); gates cm-0/1/2 DONE |
 | 2026-04-24 | 73/100 | suggest-response verde, CI smoke ✅, RBAC + hub canales en prod |
+| 2026-04-24 | 75/100 | RBAC 29 E2E tests, ESLint 0w, items 7/7b/7c DONE |
 
 ---
 
@@ -109,34 +110,21 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🟠 ALTO | 7. Resolver ESLint warning en `SpecManagementSandbox.jsx`
+### ✅ RESUELTO | 7. ESLint warning en `SpecManagementSandbox.jsx`
 
-- **Situación:** Hay 1 warning ESLint preexistente en `src/components/SpecManagementSandbox.jsx` que aparece en todos los runs de `gate:local`. No rompe el build, pero ensucia el output y puede enmascarar warnings nuevos.
-- **Área:** `src/components/SpecManagementSandbox.jsx`
-- **Acción "get it live":**
-  1. `npm run lint` → identificar el warning exacto
-  2. Corregir (probablemente un `useEffect` dependency array o variable no usada)
-  3. `npm run gate:local` → 0 warnings
-  4. Commit `fix(lint): resolve preexisting ESLint warning in SpecManagementSandbox`
-- **Impacto:** `gate:local:full` limpio es un exit criterion del deploy 100%.
+- **Resuelto commit `1966b38`:** `fix(lint): resolve all ESLint warnings in new and existing components`. `npm run lint` → 0 warnings.
 
 ---
 
-### 🟠 ALTO | 7b. E2E API tests — Panelin Internal RBAC
+### ✅ RESUELTO | 7b. E2E API tests — Panelin Internal RBAC
 
-- **Situación:** Las rutas `/api/internal/panelin/whoami`, `/tools`, `/policies`, `/invoke` están en prod (desde 2026-04-24) sin test de integración. Solo hay unit tests de lógica RBAC en `tests/validation.js` (Suite panelinInternalRbac).
-- **Área:** `tests/panelinInternalApi.test.js` (nuevo), `server/routes/panelinInternal.js`
-- **Acción "get it live":** Agregar tests de integración que hagan `fetch` a las rutas → `npm run gate:local` → commit `test(panelin-internal): E2E API route coverage` → push
-- **Impacto:** Regresión en RBAC no detectable automáticamente en CI.
+- **Resuelto 2026-04-24 commit `9c89f74`:** `tests/panelinInternalApi.test.js` — 29 tests cubriendo `/whoami`, `/tools`, `/policies`, `/invoke` con RBAC enforcement. Wired en `test:api`. PDF url assertion también corregida (GCS vs local proxy).
 
 ---
 
-### 🟡 MEDIO | 7c. AI Chat — métricas de uso (aiEnvironmentTrends)
+### ✅ RESUELTO | 7c. AI Chat — métricas de uso
 
-- **Situación:** `server/lib/aiEnvironmentTrends.js` existe (2026-04-24) pero no está conectado a `server/routes/agentChat.js`. No hay visibilidad de conversaciones, modelos usados ni tasa de éxito.
-- **Área:** `server/routes/agentChat.js`, `server/lib/aiEnvironmentTrends.js`
-- **Acción "get it live":** Conectar `trackConversation()` en el handler SSE → `gate:local` → commit `feat(chat): wire aiEnvironmentTrends to agentChat` → deploy Cloud Run
-- **Impacto:** Sin métricas de uso real del chat en producción.
+- **Resuelto (ya existía):** `server/lib/conversationLog.js` + `server/routes/agentConversations.js` implementan logging completo (meta, turns, actions, hedge count, latency) y endpoints `GET /api/agent/conversations`, `/weekly-digest`, `/analyze-batch`, `/:id/analysis`. Montado en `server/index.js`. UI en `PanelinDevPanel.jsx`.
 
 ---
 
@@ -242,3 +230,4 @@ BLOQUEANTES PARA 100% EXIT DEPLOY:
 | 2026-04-23 | 🟢 84/100 | cm-2 ✅ email ingest prod (crmRow=32) — gates humanos completos |
 | 2026-04-23 | 🟡 68/100 | Reconciliación ROADMAP: merge Wolfboard en `main`; smoke prod aún rojo (503 MATRIZ/suggest, drift PUBLIC_BASE_URL) — ver CEO-RUN Fase A |
 | 2026-04-24 | 🟢 73/100 | suggest-response ✅ (claude), CI smoke passing, RBAC + hub canales en prod, 370 tests |
+| 2026-04-24 | 🟢 75/100 | RBAC 29 E2E API tests + PDF url assertion fix; items 7/7b/7c DONE; ESLint 0w confirmado |

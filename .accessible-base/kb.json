@@ -1,10 +1,10 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T06:22:20.257Z",
-    "build_ms": 552,
-    "score": 73,
-    "score_delta": 0,
+    "ts": "2026-04-24T06:40:00.388Z",
+    "build_ms": 112,
+    "score": 75,
+    "score_delta": 2,
     "sources": [
       "ROADMAP.md",
       "PROJECT-STATE.md",
@@ -16,7 +16,7 @@
   "project": {
     "name": "Calculadora BMC",
     "pkg_version": "3.1.5",
-    "score": 73,
+    "score": 75,
     "mission": "Automatizar el proceso comercial de BMC Uruguay para paneles Panelin — desde cotización técnica hasta cierre de venta, integrando WhatsApp, MercadoLibre y email con mínima intervención manual.",
     "stack": "React18+Vite7:5173 | Express5+Node20:3001 | Cloud Run(panelin-calc) | Vercel | Google Sheets | PostgreSQL",
     "urls": {
@@ -115,8 +115,8 @@
     {
       "label": "Panelin Internal RBAC",
       "q": 8,
-      "c": 6,
-      "status": "En prod (2026-04-24); RBAC + invoke + tool catalog; sin E2E API test aún"
+      "c": 8,
+      "status": "En prod; 29 E2E API tests ✅ (2026-04-24 commit 9c89f74)"
     },
     {
       "label": "Hub Canales (WA+ML+Email)",
@@ -238,5 +238,5 @@
     "admin_rows": 8,
     "last_sync": "2026-04-24T05:55:31.530Z"
   },
-  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 8 filas). Score actual: 73/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
+  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 8 filas). Score actual: 75/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
 }
