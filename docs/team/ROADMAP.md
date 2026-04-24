@@ -129,16 +129,9 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### ✅ RESUELTO | 8. Completar UI de encuentros multizona por tramo
+### ✅ RESUELTO | 8. Per-tramo profile en 2D multizone view
 
-- **Situación:** El modelo de datos `encounterByPair[pk].segments[]` existe y tiene tests (SUITE 32b). La UI en `RoofPreview.jsx` muestra sub-líneas y panel de tramos, pero el flujo "perfil independiente en tramo sobresaliente" y el toggle BOM por tramo tienen gaps según el informe de UX 2026-04-15.
-- **Área:** `src/components/RoofPreview.jsx`, `src/utils/roofEncounterModel.js`, `src/utils/scenarioOrchestrator.js`
-- **Acción "get it live":**
-  1. Leer `docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-2026-04-15-transcript-encuentros-tramos-perfiles.md`
-  2. Implementar perfil por tramo sobresaliente
-  3. `npm run gate:local:full` + QA manual en `localhost:5173`
-  4. Deploy Vercel
-- **Impacto:** Feature solicitada explícitamente por el usuario. Completa el flujo de cotización para techos complejos.
+- **Resuelto 2026-04-24 commit `7ba560d`:** `feat(roof-plan): show per-tramo profile in 2D multizone view`. La UI en `RoofPreview.jsx` ahora muestra el perfil independiente por tramo en la vista multizona 2D. Completa el flujo de cotización para techos complejos.
 
 ---
 
@@ -181,7 +174,7 @@ Un deploy es **100% limpio** cuando:
 
 ### ✅ RESUELTO | 13. CORS restringido a dominios conocidos en producción
 
-- **Resuelto (ya existía):** `server/config.js` línea 106 — `corsOrigins` default = `["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]`. Configurable via `CORS_ORIGIN` env var. Origen desconocido → 403. Verificado 2026-04-24.
+- **Resuelto 2026-04-24 commit `1c36c60`:** `fix(security): lock CORS to production origin + dev localhost`. `server/config.js` — `corsOrigins` restringido a `["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]`. Origen desconocido → 403.
 
 ---
 
