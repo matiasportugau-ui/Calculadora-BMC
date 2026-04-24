@@ -186,3 +186,5 @@
 - 2026-04-24 06:33:21 — `25fc842` — chore(dev-trace): sync post-score-85 [SKIP_AUTOTRACE]
 - 2026-04-24 06:38:13 — `4b7da4b` — fix(sheets): treat non-URL link_presupuesto values as null instead of returning display text
 - 2026-04-24 06:38:39 — `49d4064` — chore(dev-trace): sync post-link-presupuesto-fix [SKIP_AUTOTRACE]
+- 2026-04-24 06:40:11 — `8cc9f80` — docs(state): end-of-session sync 2026-04-24
+- 2026-04-24 06:40:28 — `f1c2f5a` — test(contracts): handle null linkPresupuesto in cockpit row contract

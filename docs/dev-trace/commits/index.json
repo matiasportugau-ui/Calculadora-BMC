@@ -6057,6 +6057,68 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "8cc9f8051d024b3b430d4dbfc607495abf2484a5",
+      "short_hash": "8cc9f80",
+      "date": "2026-04-24",
+      "time": "06:40:11",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "state",
+      "title": "end-of-session sync 2026-04-24",
+      "subject": "docs(state): end-of-session sync 2026-04-24",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/49d4064.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "docs/team/PROJECT-STATE.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "f1c2f5a1b3362077e428c75b88010336aa49e42c",
+      "short_hash": "f1c2f5a",
+      "date": "2026-04-24",
+      "time": "06:40:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "test",
+      "scope": "contracts",
+      "title": "handle null linkPresupuesto in cockpit row contract",
+      "subject": "test(contracts): handle null linkPresupuesto in cockpit row contract",
+      "files": [
+        "scripts/validate-api-contracts.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "scripts"
+        ]
+      }
     }
   ]
 }

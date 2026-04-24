@@ -133,12 +133,14 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `835bdba` docs(sheets): CRM column mapping validation 2026-04-24
 - `0e80f38` docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
 - `3a5615c` docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
+- `8cc9f80` docs(state): end-of-session sync 2026-04-24
 
 ## Tests
 
 - `3646101` test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles `[tests]`
 - `2a32c1b` test(e2e): add Playwright wizard happy path smoke test
 - `51a7795` test(contracts): add shape assertions for /api/agent/stats
+- `f1c2f5a` test(contracts): handle null linkPresupuesto in cockpit row contract
 
 ## Chores
 
