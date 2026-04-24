@@ -174,6 +174,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `224e4bf` chore(dev-trace): sync post-fiscal-sprint [SKIP_AUTOTRACE]
 - `83490ff` chore(dev-trace): sync post-e2e-wizard [SKIP_AUTOTRACE]
 - `7f4f644` chore(dev-trace): sync post-playwright-wizard [SKIP_AUTOTRACE]
+- `dc79bce` chore(dev-trace): sync post-arcade-ml [SKIP_AUTOTRACE]
 
 ## Other
 

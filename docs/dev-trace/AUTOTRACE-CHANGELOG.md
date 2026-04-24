@@ -162,3 +162,4 @@
 - 2026-04-24 04:40:12 — `7f4f644` — chore(dev-trace): sync post-playwright-wizard [SKIP_AUTOTRACE]
 - 2026-04-24 04:41:44 — `5c41030` — fix(data): remove ISODEC_EPS_PARED — producto inexistente
 - 2026-04-24 04:55:20 — `93d4631` — feat(ml-ui): arcade cabinet skin for ML Operativo operator panel
+- 2026-04-24 05:03:23 — `dc79bce` — chore(dev-trace): sync post-arcade-ml [SKIP_AUTOTRACE]

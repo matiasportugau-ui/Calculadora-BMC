@@ -100,6 +100,33 @@ export default function PanelinDevPanel({
   const [convAnalysis, setConvAnalysis] = useState({});
   const [loadingAnalysis, setLoadingAnalysis] = useState(null);
 
+  // ── Daily stats widget ─────────────────────────────────────────────────────
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const token = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_AUTH_TOKEN || "" : "";
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/agent/stats`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setStats(res.ok ? await res.json().catch(() => null) : null);
+    } catch {
+      setStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "stats") return;
+    loadStats();
+    const id = setInterval(loadStats, 60_000);
+    return () => clearInterval(id);
+  }, [activeTab, loadStats]);
+
   // ── Analytic mode (Panelin Knowledge / events-log trends) ─────────────────
   const [analyticsDays, setAnalyticsDays] = useState(60);
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -273,14 +300,14 @@ export default function PanelinDevPanel({
     <div style={{ borderTop: `1px solid ${BD}`, background: BG, flexShrink: 0 }}>
       {/* ── Tab bar ── */}
       <div style={{ display: "flex", gap: 2, padding: "0 8px", borderBottom: `1px solid ${BD}`, overflowX: "auto" }}>
-        {["train", "kb", "prompt", "sessions", "analytics"].map((tab) => (
+        {["train", "kb", "prompt", "sessions", "analytics", "stats"].map((tab) => (
           <button
             key={tab}
             type="button"
             style={tabButton(activeTab === tab, P, ST)}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === "train" ? "Train" : tab === "kb" ? "KB" : tab === "prompt" ? "Prompt" : tab === "sessions" ? "Sessions" : "Analytic"}
+            {tab === "train" ? "Train" : tab === "kb" ? "KB" : tab === "prompt" ? "Prompt" : tab === "sessions" ? "Sessions" : tab === "stats" ? "Stats" : "Analytic"}
             {tab === "kb" && trainingStats?.total ? ` (${trainingStats.total})` : ""}
           </button>
         ))}
@@ -667,6 +694,31 @@ export default function PanelinDevPanel({
             )}
           </div>
         )}
+        {/* ── STATS TAB ── */}
+        {activeTab === "stats" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: ST, fontFamily: "monospace" }}>GET /api/agent/stats (today)</span>
+              <button type="button" onClick={loadStats} disabled={statsLoading} style={btn({ disabled: statsLoading })}>
+                {statsLoading ? "…" : "↺"}
+              </button>
+            </div>
+            {[
+              ["conversations", "Conversations"],
+              ["turns", "Turns"],
+              ["active_last_hour", "Active last hour"],
+              ["avg_turns_per_conv", "Avg turns/conv"],
+              ["hedge_rate_pct", "Hedge rate %"],
+              ["avg_latency_ms", "Avg latency ms"],
+            ].map(([key, label]) => (
+              <div key={key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: "monospace", color: TX }}>
+                <span style={{ color: ST }}>{label}</span>
+                <span>{stats ? (stats[key] ?? "—") : "—"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
 
       {/* ── Full prompt preview modal ── */}
