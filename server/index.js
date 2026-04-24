@@ -39,7 +39,17 @@ const logger = pino({
 });
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // Allow non-browser requests (curl, Cloud Run health checks, server-to-server)
+      if (!origin) return cb(null, true);
+      if (config.corsOrigins.includes(origin)) return cb(null, true);
+      cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
+    },
+    credentials: true,
+  })
+);
 
 // Security headers (OAuth 2.1–aligned)
 app.use((_req, res, next) => {

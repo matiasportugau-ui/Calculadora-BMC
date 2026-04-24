@@ -102,6 +102,12 @@ export const config = {
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /** Allowed CORS origins — comma-separated. Defaults to Vercel prod + local dev. */
+  corsOrigins: (
+    process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
+      : ["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]
+  ),
 };
 
 export const redirectUri = () => {
