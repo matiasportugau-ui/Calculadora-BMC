@@ -111,6 +111,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `59773ec` docs(roadmap): mark items 7/7b/7c DONE + score 73→75
 - `0cef79e` docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado
 - `029b783` docs(roadmap): mark items 7/7b/7c/8/13 done — session 2026-04-24
+- `cdd016a` docs(roadmap): PDF QA verificado — 22/22 checks ✅; score 78→80
 
 ## Tests
 
@@ -160,6 +161,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e217c33` chore(dev-trace): autotrace post-roadmap-sync [SKIP_AUTOTRACE]
 - `4ed32a0` chore(config): expand agent permissions for autonomous sub-agent completion
 - `72da20e` chore(dev-trace): autotrace post-audit [SKIP_AUTOTRACE]
+- `b2ab1fe` chore(dev-trace): sync post-session 2026-04-24 [SKIP_AUTOTRACE]
 
 ## Other
 
