@@ -44,6 +44,9 @@ const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
   90_000,
 );
 
+/** CRM IA fallback order (suggest-response, parse-email, etc.): quality first, then cost/speed. */
+const CRM_AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
+
 const sheetsReadCache = new Map();
 
 function sheetsCacheGet(key) {
@@ -1990,7 +1993,7 @@ export default function createBmcDashboardRouter(config) {
     //          2-OpenAI gpt-4o-mini (reliable, good Spanish)
     //          3-Grok grok-3-mini  (proven working, fast)
     //          4-Gemini 2.0-flash  (fallback)
-    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const RANKING = CRM_AI_PROVIDER_RANKING;
     const chain = provider ? [provider] : RANKING;
 
     const apiKeys = {
@@ -2089,7 +2092,7 @@ export default function createBmcDashboardRouter(config) {
     const { asunto, cuerpo, remitente } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
 
-    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const RANKING = CRM_AI_PROVIDER_RANKING;
     const apiKeys = { claude: config.anthropicApiKey, openai: config.openaiApiKey, grok: config.grokApiKey, gemini: config.geminiApiKey };
 
     const systemPrompt = `Sos un extractor de datos de emails de consulta/cotización para BMC Uruguay (paneles de aislamiento térmico). Analizás el email y extraés datos estructurados en JSON.
@@ -2165,7 +2168,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     const { asunto, cuerpo, remitente, messageId } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
 
-    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const RANKING = CRM_AI_PROVIDER_RANKING;
     const apiKeys = { claude: config.anthropicApiKey, openai: config.openaiApiKey, grok: config.grokApiKey, gemini: config.geminiApiKey };
 
     const systemPrompt = `Sos un extractor de datos de emails de consulta/cotización para BMC Uruguay (paneles de aislamiento térmico). Analizás el email y extraés datos estructurados en JSON.
@@ -2300,7 +2303,7 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     const { dialogo } = req.body || {};
     if (!dialogo) return res.status(400).json({ ok: false, error: "Missing dialogo" });
 
-    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const RANKING = CRM_AI_PROVIDER_RANKING;
     const apiKeys = { claude: config.anthropicApiKey, openai: config.openaiApiKey, grok: config.grokApiKey, gemini: config.geminiApiKey };
 
     const systemPrompt = `Sos un extractor de datos de conversaciones de WhatsApp para BMC Uruguay (paneles de aislamiento térmico). Analizás el diálogo y extraés datos estructurados en JSON.
@@ -2478,7 +2481,7 @@ ${hechos}
 Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
 {"asunto":"","cuerpo":""}`;
 
-    const RANKING = ["grok", "claude", "openai", "gemini"];
+    const RANKING = CRM_AI_PROVIDER_RANKING;
     const apiKeys = {
       claude: config.anthropicApiKey,
       openai: config.openaiApiKey,
@@ -2627,7 +2630,8 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
-  router.post("/crm/cockpit/send-approved", requireCrmCockpitAuth, async (req, res) => {
+  /** Same rules as legacy POST /crm/cockpit/send-approved — body.row = CRM_Operativo row. */
+  async function handleCrmCockpitSendApproved(req, res) {
     const row = Number(req.body?.row);
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: `Invalid row` });
     if (!checkSheetsAvailable(config)) return noConfig(res);
@@ -2704,7 +2708,9 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
-  });
+  }
+
+  router.post("/crm/cockpit/send-approved", requireCrmCockpitAuth, handleCrmCockpitSendApproved);
 
   router.get("/crm/cockpit/ml-queue", requireCrmCockpitAuth, async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
@@ -2787,6 +2793,22 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
+  /**
+   * Stable id for command-center APIs: `crm:42` (preferred), `crm-42`, or `42`.
+   * @returns {number|null}
+   */
+  function parseConsultationIdToCrmRow(consultationId) {
+    const raw = String(consultationId || "").trim();
+    if (!raw) return null;
+    let s = raw;
+    const lower = raw.toLowerCase();
+    if (lower.startsWith("crm:")) s = raw.slice(4);
+    else if (lower.startsWith("crm-")) s = raw.slice(4);
+    const row = Number(s);
+    if (!Number.isFinite(row) || row < FIRST_DATA_ROW) return null;
+    return Math.floor(row);
+  }
+
   /** Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada. */
   function classifyCrmChannel(parsed) {
     const origen = String(parsed?.origen || "");
@@ -2833,6 +2855,99 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
+  });
+
+  /**
+   * Command center (phase 1): normalized CRM queue for omnichannel consults.
+   * Same filters as /crm/cockpit/unified-queue; adds stable `id` + UI-oriented flags.
+   * Auth: CRM cockpit token (Bearer / x-api-key).
+   */
+  router.get("/consultations", requireCrmCockpitAuth, async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    const raw = String(req.query.channel || "all").trim().toLowerCase();
+    const channelFilter =
+      raw === "mercadolibre" || raw === "whatsapp" || raw === "instagram" || raw === "facebook"
+        ? raw
+        : "all";
+    const estadoFilter = String(req.query.estado || "").trim().toLowerCase();
+    const limitRaw = Number(req.query.limit);
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(500, Math.floor(limitRaw)) : 200;
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const r = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+      });
+      const rawRows = r.data.values || [];
+      const consultations = [];
+      const facets = { byChannel: {}, canSendApproved: 0, pendingReply: 0 };
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = FIRST_DATA_ROW + i;
+        const parsed = parseCrmRowAtoAK([rawRows[i]]);
+        const channel = classifyCrmChannel(parsed);
+        if (!channel) continue;
+        if (channelFilter !== "all" && channel !== channelFilter) continue;
+        if (estadoFilter && !String(parsed.estado || "").toLowerCase().includes(estadoFilter)) continue;
+        const questionId = extractMlQuestionId(parsed.observaciones);
+        const enviado = !!String(parsed.enviadoEl || "").trim();
+        const canSend =
+          isSi(parsed.aprobadoEnviar) && !enviado && !isSi(parsed.bloquearAuto);
+        const consulta = String(parsed.consulta || "").trim();
+        const snippet =
+          consulta.length > 160 ? `${consulta.slice(0, 157)}…` : consulta;
+        if (canSend) facets.canSendApproved += 1;
+        if (!enviado && consulta) facets.pendingReply += 1;
+        facets.byChannel[channel] = (facets.byChannel[channel] || 0) + 1;
+        consultations.push({
+          id: `crm:${rowNum}`,
+          kind: "crm",
+          channel,
+          crmRow: rowNum,
+          cliente: parsed.cliente || "",
+          telefono: parsed.telefono || "",
+          estado: parsed.estado || "",
+          fecha: parsed.fecha || "",
+          origen: parsed.origen || "",
+          consultaSnippet: snippet,
+          questionId: questionId || null,
+          flags: {
+            canSendApproved: canSend,
+            hasSuggestedReply: !!String(parsed.respuestaSugerida || "").trim(),
+            enviado,
+            bloquearAuto: isSi(parsed.bloquearAuto),
+          },
+        });
+      }
+      const limited = consultations.slice(0, limit);
+      return res.json({
+        ok: true,
+        channelFilter,
+        estadoFilter: estadoFilter || null,
+        limit,
+        total: consultations.length,
+        facets,
+        consultations: limited,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  /**
+   * Alias of POST /crm/cockpit/send-approved with stable resource id `crm:ROW`.
+   * Body optional (merged); `row` is set from the path. Same auth + validation.
+   */
+  router.post("/consultations/:consultationId/reply", requireCrmCockpitAuth, async (req, res) => {
+    const row = parseConsultationIdToCrmRow(req.params.consultationId);
+    if (!row) {
+      return res.status(400).json({
+        ok: false,
+        error: `Invalid consultation id (use crm:${FIRST_DATA_ROW} or numeric row >= ${FIRST_DATA_ROW})`,
+      });
+    }
+    const prev = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+    req.body = { ...prev, row };
+    return handleCrmCockpitSendApproved(req, res);
   });
 
   /**
