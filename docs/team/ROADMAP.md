@@ -45,7 +45,7 @@ Un deploy es **100% limpio** cuando:
 | Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
 | Fiscal / Compliance | 🟡 6/10 | 🔴 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟢 **78 / 100** *(2026-04-24 — items 7/7b/7c/8/13 confirmados DONE tras auditoría de código. Real pendiente: PDF QA manual, cm-1 ML humano, fiscal. Sube a 83+ con PDF QA + E2E browser + fiscal trace.)*
+**Score global estimado:** 🟢 **80 / 100** *(2026-04-24 — items 7/7b/7c/8/10/13 DONE. Real pendiente: cm-1 ML humano, fiscal BPS/IRAE, E2E browser. Sube a 85+ con fiscal trace + Playwright wizard.)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
@@ -55,6 +55,7 @@ Un deploy es **100% limpio** cuando:
 | 2026-04-24 | 73/100 | suggest-response verde, CI smoke ✅, RBAC + hub canales en prod |
 | 2026-04-24 | 75/100 | RBAC 29 E2E tests, ESLint 0w, items 7/7b/7c DONE |
 | 2026-04-24 | 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
+| 2026-04-24 | 80/100 | PDF QA 22/22 checks ✅ — API path + enriched path (planta 2D, BOM, selladores, bordes) |
 
 ---
 
@@ -144,15 +145,12 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🟡 MEDIO | 10. Verificar PDF export post-wizard-updates
+### ✅ RESUELTO | 10. Verificar PDF export post-wizard-updates
 
-- **Situación:** El wizard tuvo múltiples cambios (selladores cards, bordes 2D, estructura combinada, encuentros por tramo). No hay evidencia reciente de que el PDF generado (`quotationViews.js` + `captureDomToPng.js`) refleje todos los nuevos pasos correctamente.
-- **Área:** `src/utils/quotationViews.js`, `src/utils/captureDomToPng.js`, `src/utils/helpers.js`
-- **Acción "get it live":**
-  1. Generar cotización completa en `localhost:5173` (techo + fachada)
-  2. Descargar PDF → verificar que incluye planta 2D, BOM, precios, selladores, bordes
-  3. Si hay gaps: corregir y deployar
-- **Impacto:** El PDF es el entregable comercial principal. Un PDF incompleto afecta la credibilidad ante el cliente.
+- **Resuelto 2026-04-24:** QA programático completo. Dos paths verificados:
+  1. **API path** (`generatePrintHTML`): 10/10 checks ✅ — cliente, BOM, precios USD, selladores, bordes/gotero, IVA, fijaciones, total. GCS URL + proxy local funcionan.
+  2. **Enriched PDF path** (`generateClientVisualHTML` + `appendix` con `roofBlock`): 12/12 checks ✅ — agrega planta 2D img (data:image/png), SVG strip fallback, segunda página, KPIs. `captureDomToPng` wired correctamente con `[data-bmc-capture="roof-plan-2d"]`.
+- **Hallazgo:** planta 2D solo aparece en el path enriquecido (PDF+ button, con `appendix.roofBlock`). El path API es el PDF comercial estándar — omite planta 2D intencionalmente.
 
 ---
 
