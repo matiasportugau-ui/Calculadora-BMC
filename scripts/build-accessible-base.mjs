@@ -119,8 +119,6 @@ const kb = {
 
   state: {
     branch,
-    last_commit:  { hash: lastHash, msg: lastMsg },
-    uncommitted:  uncommit,
     last_change:  lastChange,
     deploy: {
       vercel:     'live',

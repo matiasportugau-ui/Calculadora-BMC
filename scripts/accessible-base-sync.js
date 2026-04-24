@@ -207,6 +207,8 @@ const REGISTRY = [
       T: 'venta_web_usd',
       U: 'venta_web_iva_inc',
     },
+    // Normalize sentinel strings ("Actualizando", etc.) to null for all price fields
+    priceCols: ['costo_m2_usd_ex_iva', 'venta_local', 'venta_local_iva_inc', 'venta_web_usd', 'venta_web_iva_inc'],
     optional: true,
   },
   {
@@ -225,6 +227,8 @@ const REGISTRY = [
       L: 'enviado',
     },
     boolCols: { L: 'enviado' },
+    // Skip rows with no actual query text — rows where only 'enviado' has a value are junk
+    requiredField: 'consulta',
   },
   {
     key: 'audit_log',
@@ -289,6 +293,17 @@ function normalizeBoolean(val) {
   if (s === 'TRUE' || s === 'SÍ' || s === 'SI') return true;
   if (s === 'FALSE' || s === 'NO' || s === '') return false;
   return val;
+}
+
+// Sentinel text values that appear in Sheets when a price hasn't been set yet.
+const PRICE_SENTINELS = new Set(['actualizando', 'actualizar', 'actualizar oficialmente', 'pendiente', '-', 'tbd']);
+
+function normalizePriceField(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const s = String(val).trim().toLowerCase();
+  if (PRICE_SENTINELS.has(s)) return null;
+  const n = parseFloat(String(val).replace(',', '.'));
+  return isNaN(n) ? null : val; // keep original string (e.g. "28.1400") for consumers that need precision
 }
 
 function extractMlId(observaciones) {
@@ -396,6 +411,14 @@ async function syncEntry(sheets, entry) {
       if (entry.boolCols) {
         for (const [, field] of Object.entries(entry.boolCols)) {
           if (field in row) row[field] = normalizeBoolean(row[field]);
+        }
+      }
+      // Require a specific field to be non-empty (e.g. consulta for admin_cotizaciones)
+      if (entry.requiredField && !String(row[entry.requiredField] ?? '').trim()) continue;
+      // Normalize sentinel strings in price/numeric columns to null
+      if (entry.priceCols) {
+        for (const field of entry.priceCols) {
+          if (field in row) row[field] = normalizePriceField(row[field]);
         }
       }
       // Extract ML question ID
