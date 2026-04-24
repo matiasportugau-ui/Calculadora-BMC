@@ -93,6 +93,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `fe9b447` fix(agents): change judge+orchestrator model opus→sonnet to fix advisor() incompatibility
 - `3a2ceb2` fix(smoke): add WhatsApp webhook liveness check to smoke-prod
 - `5e9427e` fix(pdf): improve HOJA VISUAL CLIENTE design — 5 corrections
+- `a954b6f` fix(docs): correct admin_cotizaciones col offset H→I (Gap 1 from sheets audit)
 
 ## Documentation
 
@@ -125,6 +126,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `cdd016a` docs(roadmap): PDF QA verificado — 22/22 checks ✅; score 78→80
 - `5adc909` docs(state): session summary 2026-04-24 — score 82/100
 - `ed1c034` docs(judge): session evaluation 2026-04-24 — score +9, 14 commits, agent ranking
+- `835bdba` docs(sheets): CRM column mapping validation 2026-04-24
+- `0e80f38` docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
 
 ## Tests
 
@@ -184,6 +187,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7f4f644` chore(dev-trace): sync post-playwright-wizard [SKIP_AUTOTRACE]
 - `dc79bce` chore(dev-trace): sync post-arcade-ml [SKIP_AUTOTRACE]
 - `5a402bd` chore(dev-trace): sync + dashboard minor fix [SKIP_AUTOTRACE]
+- `2586c2c` chore(dev-trace): sync post-arcade-fire-test [SKIP_AUTOTRACE]
 
 ## Other
 

@@ -172,3 +172,7 @@
 - 2026-04-24 05:28:42 — `3a2ceb2` — fix(smoke): add WhatsApp webhook liveness check to smoke-prod
 - 2026-04-24 05:29:07 — `5e9427e` — fix(pdf): improve HOJA VISUAL CLIENTE design — 5 corrections
 - 2026-04-24 05:39:44 — `5a402bd` — chore(dev-trace): sync + dashboard minor fix [SKIP_AUTOTRACE]
+- 2026-04-24 05:48:05 — `2586c2c` — chore(dev-trace): sync post-arcade-fire-test [SKIP_AUTOTRACE]
+- 2026-04-24 05:50:20 — `835bdba` — docs(sheets): CRM column mapping validation 2026-04-24
+- 2026-04-24 06:04:13 — `0e80f38` — docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
+- 2026-04-24 06:04:55 — `a954b6f` — fix(docs): correct admin_cotizaciones col offset H→I (Gap 1 from sheets audit)
