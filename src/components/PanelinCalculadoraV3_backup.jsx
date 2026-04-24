@@ -3,7 +3,7 @@
 // BMC Uruguay · Calculadora de Cotización (semver UI: ../appSemver.js)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -4448,73 +4448,76 @@ export default function PanelinCalculadoraV3() {
               return (
                 <>
                 <div style={sectionS}>
-                  {/* Step indicators — navegación con bloqueo secuencial */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
+                  {/* Step indicators — connected track */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 10, flexWrap: "nowrap" }}>
                     {SOLO_TECHO_STEPS.map((s, i) => {
                       const isDone = i < wizardStep;
                       const isCurrent = i === wizardStep;
                       const isProyecto = s.id === "proyecto";
-                      // Accesible si: ya completado, es el actual, o es "proyecto"
                       const isAccessible = i <= maxReachedStep || isProyecto;
                       const isLocked = !isAccessible;
                       const isHovered = hoveredDotIdx === i;
+                      const isLast = i === SOLO_TECHO_STEPS.length - 1;
+                      const dotSize = isCurrent ? 16 : isDone ? 14 : isProyecto ? 12 : 9;
                       return (
-                        <div key={s.id} style={{ position: "relative", flexShrink: 0 }}
-                          onMouseEnter={() => setHoveredDotIdx(i)}
-                          onMouseLeave={() => setHoveredDotIdx(null)}
-                          onClick={() => {
-                            if (isAccessible) {
-                              setWizardStep(i);
-                              setMaxReachedStep(mr => Math.max(mr, i));
-                            }
-                          }}
-                        >
-                          {/* Tooltip con nombre del paso */}
-                          {isHovered && (
-                            <div style={{
-                              position: "absolute", bottom: "calc(100% + 7px)", left: "50%",
-                              transform: "translateX(-50%)",
-                              background: isLocked ? "#64748b" : "#1e293b", color: "#fff",
-                              borderRadius: 6, padding: "4px 9px",
-                              fontSize: 11, fontWeight: 500, whiteSpace: "nowrap",
-                              zIndex: 200, pointerEvents: "none",
-                              boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
-                            }}>
-                              {isLocked ? `🔒 ${s.label}` : s.label}
+                        <Fragment key={s.id}>
+                          <div
+                            style={{ position: "relative", flexShrink: 0 }}
+                            onMouseEnter={() => setHoveredDotIdx(i)}
+                            onMouseLeave={() => setHoveredDotIdx(null)}
+                            onClick={() => { if (isAccessible) { setWizardStep(i); setMaxReachedStep(mr => Math.max(mr, i)); } }}
+                          >
+                            {/* Tooltip */}
+                            {isHovered && (
                               <div style={{
-                                position: "absolute", top: "100%", left: "50%",
+                                position: "absolute", bottom: "calc(100% + 8px)", left: "50%",
                                 transform: "translateX(-50%)",
-                                borderLeft: "4px solid transparent",
-                                borderRight: "4px solid transparent",
-                                borderTop: `4px solid ${isLocked ? "#64748b" : "#1e293b"}`,
-                              }} />
+                                background: isLocked ? "#64748b" : "#1e293b", color: "#fff",
+                                borderRadius: 6, padding: "4px 9px",
+                                fontSize: 11, fontWeight: 500, whiteSpace: "nowrap",
+                                zIndex: 200, pointerEvents: "none",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.22)",
+                              }}>
+                                {isLocked ? `🔒 ${s.label}` : s.label}
+                                <div style={{
+                                  position: "absolute", top: "100%", left: "50%",
+                                  transform: "translateX(-50%)",
+                                  borderLeft: "4px solid transparent",
+                                  borderRight: "4px solid transparent",
+                                  borderTop: `4px solid ${isLocked ? "#64748b" : "#1e293b"}`,
+                                }} />
+                              </div>
+                            )}
+                            {/* Dot */}
+                            <div style={{
+                              width: dotSize,
+                              height: dotSize,
+                              borderRadius: "50%",
+                              background: isDone ? C.success : isCurrent ? C.primary : isProyecto ? C.warning : "#d1d5db",
+                              boxShadow: isCurrent ? `0 0 0 3px ${C.primarySoft}` : isProyecto && !isDone && !isCurrent ? `0 0 0 2px ${C.warning}40` : undefined,
+                              opacity: isLocked ? 0.25 : 1,
+                              cursor: isAccessible ? "pointer" : "not-allowed",
+                              transition: "all 200ms ease",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
+                              {isDone && (
+                                <svg width={8} height={8} viewBox="0 0 8 8" fill="none">
+                                  <path d="M1.5 4L3.2 5.8L6.5 2" stroke="#fff" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
                             </div>
+                          </div>
+                          {!isLast && (
+                            <div style={{
+                              flex: 1, height: 2, minWidth: 3,
+                              background: isDone ? C.success : C.border,
+                              opacity: isLocked ? 0.15 : 1,
+                              transition: "background 200ms ease",
+                            }} />
                           )}
-                          {/* Dot — verde si completado, azul si actual, gris bloqueado, gris claro si pendiente accesible */}
-                          <div style={{
-                            width: isCurrent ? 24 : isProyecto ? 10 : 8,
-                            height: isProyecto ? 10 : 8,
-                            borderRadius: isProyecto ? 5 : 4,
-                            background: isDone ? C.success : isCurrent ? C.primary : isLocked ? C.border : isProyecto ? C.warning : C.border,
-                            opacity: isDone ? 1 : isCurrent ? 1 : isLocked ? 0.25 : isProyecto ? 0.9 : 0.55,
-                            cursor: isAccessible ? "pointer" : "not-allowed",
-                            transition: "all 150ms ease",
-                            transform: isHovered && isAccessible ? "scaleY(1.4)" : "scaleY(1)",
-                            boxShadow: isProyecto && !isDone && !isCurrent ? `0 0 0 2px ${C.warning}40` : undefined,
-                          }} />
-                        </div>
+                        </Fragment>
                       );
                     })}
-                  </div>
-                  {/* Barra de progreso visual */}
-                  <div style={{ height: 3, background: C.border, borderRadius: 2, marginBottom: 10, overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%",
-                      width: `${((wizardStep) / Math.max(1, SOLO_TECHO_STEPS.length - 1)) * 100}%`,
-                      background: `linear-gradient(90deg, ${C.primary}, ${C.success})`,
-                      borderRadius: 2,
-                      transition: "width 300ms ease",
-                    }} />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
