@@ -1017,13 +1017,6 @@ assert(
   ">0",
 );
 
-// 24.3 ISODEC_EPS_PARED panel exists
-assert(
-  "PANELS_PARED ISODEC_EPS_PARED exists",
-  PANELS_PARED.ISODEC_EPS_PARED != null,
-  !!PANELS_PARED.ISODEC_EPS_PARED,
-  true,
-);
 
 // 24.4 calcTechoCompleto with ISOROOF_COLONIAL
 {
@@ -1046,16 +1039,6 @@ assert(
   );
 }
 
-// 24.5 calcParedCompleto with ISODEC_EPS_PARED
-{
-  const r = calcParedCompleto({ familia: "ISODEC_EPS_PARED", espesor: 100, alto: 3, perimetro: 30, tipoEst: "metal" });
-  assert(
-    "calcParedCompleto ISODEC_EPS_PARED → cantPaneles > 0",
-    r?.paneles?.cantPaneles > 0,
-    r?.paneles?.cantPaneles,
-    ">0",
-  );
-}
 
 // 24.6 calcPerfileriaTechoComercial ISODEC_PIR 80mm (60mm not in catalog)
 {

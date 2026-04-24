@@ -147,19 +147,6 @@ export const PANELS_PARED = {
     },
     col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
   },
-  /** Pared: filas MATRIZ “ISODEC EPS” con precio distinto a ISOPANEL — SKU dedicados (ISDEC1xxP). No confundir con PANELS_TECHO.ISODEC_EPS */
-  ISODEC_EPS_PARED: {
-    label: "ISODEC EPS (pared)", sub: "Fachadas — lista ISODEC", tipo: "pared",
-    au: 1.14, lmin: 2.3, lmax: 14, sist: "anclaje_tornillo", fam: "ISODEC",
-    esp: {
-      100: { venta: 39.03, web: 47.62, costo: 32.84, ap: null },
-      150: { venta: 43.90, web: 53.56, costo: 36.94, ap: null },
-      200: { venta: 49.23, web: 60.06, costo: 41.42, ap: null },
-      250: { venta: 54.10, web: 66.00, costo: 45.52, ap: null },
-    },
-    col: ["Blanco", "Gris", "Rojo"], colNotes: {}, colMax: {},
-    nota50: "Sin 50 mm en esta familia — usar ISOPANEL EPS 50 mm.",
-  },
 };
 
 /**
