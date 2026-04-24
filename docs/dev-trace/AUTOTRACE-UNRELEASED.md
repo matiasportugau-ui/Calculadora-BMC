@@ -56,6 +56,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7ba560d` feat(roof-plan): show per-tramo profile in 2D multizone view
 - `7040b02` feat(chat): add GET /api/agent/stats — daily usage KPI endpoint
 - `76ff454` feat(fiscal): add irae_prevision estimate to /kpi-report endpoint
+- `360efad` feat(tests): Playwright wizard happy path E2E — 12/12 checks ✅
 
 ## Fixes
 
@@ -169,6 +170,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ed51694` chore(dev-trace): autotrace post-pdf-qa [SKIP_AUTOTRACE]
 - `88267c8` chore(config): broaden cd+compound Bash patterns for sub-agent autonomy
 - `224e4bf` chore(dev-trace): sync post-fiscal-sprint [SKIP_AUTOTRACE]
+- `83490ff` chore(dev-trace): sync post-e2e-wizard [SKIP_AUTOTRACE]
 
 ## Other
 

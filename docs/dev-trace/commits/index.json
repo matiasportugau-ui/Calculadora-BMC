@@ -5121,6 +5121,73 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "83490ffad8e13a68399f75a75771c33cc8e36559",
+      "short_hash": "83490ff",
+      "date": "2026-04-24",
+      "time": "04:29:11",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync post-e2e-wizard [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): sync post-e2e-wizard [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/224e4bf.md",
+        "docs/dev-trace/commits/2026/04/2a32c1b.md",
+        "docs/dev-trace/commits/2026/04/ad94912.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "scripts/playwright-wizard-happy-path.mjs",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "scripts",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "360efadcf38c44da7d9730f0f6687aa2b75b9190",
+      "short_hash": "360efad",
+      "date": "2026-04-24",
+      "time": "04:39:36",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "tests",
+      "title": "Playwright wizard happy path E2E — 12/12 checks ✅",
+      "subject": "feat(tests): Playwright wizard happy path E2E — 12/12 checks ✅",
+      "files": [
+        "scripts/playwright-wizard-happy-path.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "scripts"
+        ]
+      }
     }
   ]
 }
