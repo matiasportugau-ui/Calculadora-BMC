@@ -39,13 +39,13 @@ Un deploy es **100% limpio** cuando:
 | Email Ingest / Parse | 🟢 7/10 | 🟢 7/10 | cm-2 prod verificado (crmRow=32); ver PROJECT-STATE |
 | Google Sheets / Data | 🟢 8/10 | 🟢 8/10 | Estable, credenciales via Secret Manager |
 | Deploy / CI/CD | 🟢 8/10 | 🟢 8/10 | CI todos los jobs ✅ (2026-04-24); smoke job ya existía y cubre suggest-response; Cloud Run rev-00210 |
-| Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | **370 pass** (2026-04-24); 17 API route; sin E2E browser |
+| Tests (unit + API + contrato) | 🟢 8/10 | 🟢 8/10 | **368 pass** (2026-04-24); 17 API route; Playwright wizard E2E 12/12 ✅ |
 | Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
 | Panelin Internal RBAC | 🟢 8/10 | 🟢 8/10 | En prod; 29 E2E API tests ✅ (2026-04-24 commit 9c89f74) |
 | Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
 | Fiscal / Compliance | 🟡 6/10 | 🔴 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟢 **80 / 100** *(2026-04-24 — items 7/7b/7c/8/10/13 DONE. Real pendiente: cm-1 ML humano, fiscal BPS/IRAE, E2E browser. Sube a 85+ con fiscal trace + Playwright wizard.)*
+**Score global estimado:** 🟢 **82 / 100** *(2026-04-24 — items 7/7b/7c/8/10/13 DONE + Playwright wizard E2E 12/12. Real pendiente: cm-1 ML humano, fiscal BPS/IRAE completo.)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
@@ -56,6 +56,7 @@ Un deploy es **100% limpio** cuando:
 | 2026-04-24 | 75/100 | RBAC 29 E2E tests, ESLint 0w, items 7/7b/7c DONE |
 | 2026-04-24 | 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
 | 2026-04-24 | 80/100 | PDF QA 22/22 checks ✅ — API path + enriched path (planta 2D, BOM, selladores, bordes) |
+| 2026-04-24 | 82/100 | Playwright wizard 12/12, daily stats widget, ML arcade skin, irae_prevision /kpi-report, agent/stats endpoint |
 
 ---
 
@@ -197,7 +198,7 @@ PENDIENTE REAL (2026-04-24):
   🟡 PDF export QA: generar cotización completa en localhost:5173 → verificar planta 2D + BOM en PDF
   ⚠️  Item 9 (toggle largo): sin spec — requiere clarificación de usuario
   🔵 Fiscal/Compliance: BPS/IRAE no trazados (análisis con bmc-fiscal pendiente)
-  🔵 E2E browser: sin Playwright sobre wizard happy path
+  ✅ E2E browser: Playwright wizard 12/12 ✅ (2026-04-24 commit 2a32c1b)
 ```
 
 ---
@@ -219,3 +220,5 @@ PENDIENTE REAL (2026-04-24):
 | 2026-04-24 | 🟢 73/100 | suggest-response ✅ (claude), CI smoke passing, RBAC + hub canales en prod, 370 tests |
 | 2026-04-24 | 🟢 75/100 | RBAC 29 E2E API tests + PDF url assertion fix; items 7/7b/7c DONE; ESLint 0w confirmado |
 | 2026-04-24 | 🟢 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
+| 2026-04-24 | 🟢 80/100 | PDF QA 22/22 checks ✅ — API path + enriched path (planta 2D, BOM, selladores, bordes) |
+| 2026-04-24 | 🟢 82/100 | Playwright wizard 12/12 ✅, daily stats widget, ML arcade skin, irae_prevision /kpi-report, agent/stats endpoint |
