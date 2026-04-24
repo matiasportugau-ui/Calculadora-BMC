@@ -388,31 +388,61 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, au: auProp, obs
 // ─── PanelLabels ──────────────────────────────────────────────────────────────
 /**
  * Etiquetas de panel (T-01, T-02, …) centradas dentro del cuerpo de cada panel.
+ * @param {number} [zoneGi] — índice de zona (con `focusPickKey` `${gi}:${idx}` resalta el panel elegido).
+ * @param {string|null} [focusPickKey] — p. ej. `"0:2"` para alinear con el selector de planta.
  */
-export function PanelLabels({ strips, x0, y0, h, svgTy }) {
+export function PanelLabels({ strips, x0, y0, h, svgTy, zoneGi = null, focusPickKey = null }) {
   if (!strips?.length) return null;
-  const fontSize = svgTy.dimFont * 0.75;
+  const baseFs = svgTy.dimFont * 0.75;
   const cy = y0 + h / 2;
   return (
-    <g data-bmc-layer={DIM_THEME.layers.labels} opacity={0.65} pointerEvents="none">
+    <g data-bmc-layer={DIM_THEME.layers.labels} pointerEvents="none">
       {strips.map((strip) => {
         const cx = x0 + strip.x0 + strip.width / 2;
         const id = strip.id ?? `T-${String((strip.idx ?? 0) + 1).padStart(2, '0')}`;
         const isCut = strip.isCut ?? false;
+        const focused =
+          focusPickKey != null &&
+          focusPickKey !== "" &&
+          zoneGi != null &&
+          Number.isFinite(zoneGi) &&
+          focusPickKey === `${zoneGi}:${strip.idx}`;
+        const fontSize = focused ? baseFs * 1.12 : baseFs;
         const showLabel = strip.width >= id.length * fontSize * 0.62 * 0.6;
         if (!showLabel) return null;
+        const opacity = focused ? 1 : 0.65;
+        const fillMain = isCut ? DIM_THEME.warningColor : DIM_THEME.textColor;
         return (
-          <g key={strip.idx ?? id}>
-            <text x={cx} y={cy} fontSize={fontSize}
-              fill={isCut ? DIM_THEME.warningColor : DIM_THEME.textColor}
-              textAnchor="middle" dominantBaseline="middle"
-              fontFamily={FONT} stroke="none">
+          <g key={strip.idx ?? id} opacity={opacity}>
+            <text
+              x={cx}
+              y={cy}
+              fontSize={fontSize}
+              fill={fillMain}
+              fontWeight={focused ? 800 : 500}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily={FONT}
+              stroke={focused ? "rgba(255,255,255,0.92)" : "none"}
+              strokeWidth={focused ? Math.max(0.018, fontSize * 0.14) : 0}
+              paintOrder={focused ? "stroke fill" : "normal"}
+            >
               {id}
             </text>
             {isCut && (
-              <text x={cx} y={cy + fontSize * 1.1} fontSize={fontSize * 0.8}
-                fill={DIM_THEME.warningColor} textAnchor="middle" dominantBaseline="middle"
-                fontFamily={FONT} stroke="none">
+              <text
+                x={cx}
+                y={cy + fontSize * 1.1}
+                fontSize={fontSize * 0.8}
+                fill={DIM_THEME.warningColor}
+                fontWeight={focused ? 800 : 500}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontFamily={FONT}
+                stroke={focused ? "rgba(255,255,255,0.9)" : "none"}
+                strokeWidth={focused ? Math.max(0.016, fontSize * 0.11) : 0}
+                paintOrder={focused ? "stroke fill" : "normal"}
+              >
                 ✂
               </text>
             )}

@@ -28,7 +28,7 @@ import { formatZonaDisplayTitle, isLateralAnnexZona, getLateralAnnexRootBodyGi }
 import { buildZoneBorderExteriorLines, buildZoneBorderExteriorIntervals } from "../utils/roofPlanEdgeSegments.js";
 import { nextRoofSlopeMark } from "../utils/roofSlopeMark.js";
 import { buildAnchoStripsPlanta, panelCountAcrossAnchoPlanta } from "../utils/roofPanelStripsPlanta.js";
-import { buildRoofPlanSvgTypography } from "../utils/roofPlanSvgTypography.js";
+import { buildRoofPlanSvgTypography, fmtDimMm } from "../utils/roofPlanSvgTypography.js";
 import { buildEstructuraCotaObstacleRects as computeCotaObstacles } from "../utils/roofPlanCotaObstacles.js";
 import { LINE_WEIGHTS } from "../utils/roofPlanDrawingTheme.js";
 import ScaleBar from "./roofPlan/ScaleBar.jsx";
@@ -69,6 +69,21 @@ const DRAG_SENSITIVITY = 0.52;
 const SNAP_ZONE_M = 0.35;
 /** Máx. pasos en deshacer / rehacer (planta 2D). */
 const MAX_PLAN_UNDO = 5;
+
+const PLANTA_PANEL_PICK_STORAGE_KEY = "bmc-roof-planta-panel-pick-v1";
+
+/** Huella de geometría (sin preview.x/y) para no reusar un pick entre cotizaciones distintas. */
+function plantaLayoutFingerprint(zonas, tipoAguas, panelAuM) {
+  const is2A = tipoAguas === "dos_aguas";
+  const au = Number(panelAuM) || 0;
+  const parts = (zonas || []).map((z, gi) => {
+    const L = Number(z?.largo) || 0;
+    const W0 = Number(z?.ancho) || 0;
+    const W = is2A ? W0 / 2 : W0;
+    return `${gi}:${L.toFixed(4)}:${W.toFixed(4)}`;
+  });
+  return `${tipoAguas}|${au}|${parts.join(";")}`;
+}
 
 /** Etiqueta largo×ancho coherente con el rectángulo dibujado (ancho efectivo en planta). */
 function zonaLabelPlanta(r) {
@@ -188,7 +203,6 @@ function alignmentGuidesForRect(x, y, w, h, gi, entries, snapM) {
 }
 
 function encounterStrokeForModo(modo) {
-  if (modo === "continuo") return "#22c55e";
   if (modo === "pretil") return "#f97316";
   if (modo === "cumbrera") return "#3b82f6";
   if (modo === "desnivel") return "#ef4444";
@@ -1231,8 +1245,8 @@ function PlantaBordesEdgeStrips({
   exteriorIntervals = null,
 }) {
   const zm = svgTy?.m ?? 1;
-  const wStrip = Math.min(0.35, Math.max(0.08, r.w * 0.14));
-  const hStrip = Math.min(0.35, Math.max(0.08, r.h * 0.12));
+  const wStrip = Math.min(0.55, Math.max(0.12, r.w * 0.18));
+  const hStrip = Math.min(0.55, Math.max(0.12, r.h * 0.16));
   const gi = r.gi;
 
   // ── Hover state local — sin afectar al padre ──
@@ -1259,10 +1273,10 @@ function PlantaBordesEdgeStrips({
     frente: frenteAtTop ? "top"    : "bottom",
   };
   const sideDefs = [
-    { side: "latIzq",                      x: r.x,                y: r.y,              w: wStrip, h: r.h     },
-    { side: "latDer",                      x: r.x + r.w - wStrip, y: r.y,              w: wStrip, h: r.h     },
-    { side: frenteAtTop ? "frente" : "fondo",  x: r.x,            y: r.y,              w: r.w,    h: hStrip  },
-    { side: frenteAtTop ? "fondo"  : "frente", x: r.x,            y: r.y + r.h - hStrip, w: r.w,  h: hStrip },
+    { side: "latIzq",                          x: r.x - wStrip,   y: r.y,          w: wStrip, h: r.h    },
+    { side: "latDer",                          x: r.x + r.w,      y: r.y,          w: wStrip, h: r.h    },
+    { side: frenteAtTop ? "frente" : "fondo",  x: r.x,            y: r.y - hStrip, w: r.w,    h: hStrip },
+    { side: frenteAtTop ? "fondo"  : "frente", x: r.x,            y: r.y + r.h,    w: r.w,    h: hStrip },
   ].flatMap(({ side, x, y, w, h }) => {
     const ivs = exteriorIntervals?.[SIDE_GEOM[side]];
     if (!ivs) return [{ side, x, y, w, h }]; // sin datos: comportamiento original
@@ -1809,10 +1823,13 @@ export default function RoofPreview({
   onApoyoMaterialDirect = null,
   tipoEst = "metal",
 }) {
+  const panelAuForPickFp = Number(panelObj?.au ?? panelAu) || 0;
   const svgRef = useRef(null);
   const dragRef = useRef(null);
   const tapRef = useRef(null);
   const plantaBorderPopRef = useRef(null);
+  /** Conserva el pick al entrar en modo lite perimetral (sin persistir en sessionStorage). */
+  const plantaPanelPickBeforeLiteRef = useRef(null);
   const [plantaBorderPick, setPlantaBorderPick] = useState(null);
   const [plantaBorderPopoverStyle, setPlantaBorderPopoverStyle] = useState(null);
   const [dragOverlay, setDragOverlay] = useState(null);
@@ -1820,6 +1837,21 @@ export default function RoofPreview({
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+  /** `${gi}:${strip.idx}` — inspección en planta (sin editar BOM). Hidrata desde sessionStorage si la huella coincide. */
+  const [plantaPanelPick, setPlantaPanelPick] = useState(() => {
+    if (typeof sessionStorage === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(PLANTA_PANEL_PICK_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed.key !== "string") return null;
+      const fp = plantaLayoutFingerprint(zonas, tipoAguas, panelAuForPickFp);
+      if (parsed.fp !== fp) return null;
+      return parsed.key.includes(":") ? parsed.key : null;
+    } catch {
+      return null;
+    }
+  });
   const zonasRef = useRef(zonas);
   useEffect(() => {
     zonasRef.current = zonas;
@@ -2314,11 +2346,120 @@ export default function RoofPreview({
   const panelLayouts = useMemo(() => {
     if (!layoutPanelSource) return null;
     const is2A = tipoAguas === 'dos_aguas';
+    // IDs T-xx únicos en toda la planta (misma secuencia que `layout.entries`), no reiniciar por zona.
+    let globalPanelN = 1;
     return layout.entries.map((r) => {
       const ancho = is2A ? r.z.ancho / 2 : r.z.ancho;
-      return { gi: r.gi, layout: buildPanelLayout({ panel: layoutPanelSource, largo: r.z.largo, ancho }) };
+      const built = buildPanelLayout({ panel: layoutPanelSource, largo: r.z.largo, ancho });
+      const panels = built.panels.map((p) => ({
+        ...p,
+        id: `T-${String(globalPanelN++).padStart(2, '0')}`,
+      }));
+      return { gi: r.gi, layout: { ...built, panels } };
     });
   }, [layoutPanelSource, layout.entries, tipoAguas]);
+
+  /** Lista global T-xx → metadatos para selector de inspección (solo lectura; no BOM). */
+  const flatPlantaPanels = useMemo(() => {
+    if (!panelLayouts?.length) return [];
+    const rows = [];
+    for (const { gi, layout: pl } of panelLayouts) {
+      const r = layout.entries.find((e) => e.gi === gi);
+      if (!r || !pl?.panels?.length) continue;
+      const zPm = r.z.pendienteModo ?? globalPendienteModoProp;
+      const zPend = r.z.pendiente ?? pendiente;
+      const zAlt = r.z.alturaDif ?? globalAlturaDifProp;
+      const largoReal = calcLargoRealFromModo(r.z.largo, zPm, zPend, zAlt);
+      const zonaTitle = formatZonaDisplayTitle(zonas, gi);
+      for (const p of pl.panels) {
+        rows.push({
+          key: `${gi}:${p.idx}`,
+          id: p.id,
+          gi,
+          idx: p.idx,
+          widthM: p.width,
+          isCut: Boolean(p.isCut),
+          largoPlanta: r.z.largo,
+          largoReal,
+          hasSlope: Math.abs(largoReal - r.z.largo) > 0.001,
+          zonaTitle,
+        });
+      }
+    }
+    return rows;
+  }, [panelLayouts, layout.entries, zonas, pendiente, globalPendienteModoProp, globalAlturaDifProp]);
+
+  const plantaPanelHighlightRect = useMemo(() => {
+    if (!plantaPanelPick || !panelLayouts) return null;
+    const dash = plantaPanelPick.indexOf(":");
+    if (dash < 0) return null;
+    const gi = Number(plantaPanelPick.slice(0, dash));
+    const idx = Number(plantaPanelPick.slice(dash + 1));
+    if (!Number.isFinite(gi) || !Number.isFinite(idx)) return null;
+    const pl = panelLayouts.find((x) => x.gi === gi);
+    const r = layout.entries.find((e) => e.gi === gi);
+    const strip = pl?.layout?.panels?.find((p) => p.idx === idx);
+    if (!r || !strip) return null;
+    return { x: r.x + strip.x0, y: r.y, w: strip.width, h: r.h };
+  }, [plantaPanelPick, panelLayouts, layout.entries]);
+
+  const selectedPlantaPanelMeta = useMemo(() => {
+    if (!plantaPanelPick) return null;
+    return flatPlantaPanels.find((p) => p.key === plantaPanelPick) ?? null;
+  }, [plantaPanelPick, flatPlantaPanels]);
+
+  useEffect(() => {
+    if (plantaPerimeterLiteMode) {
+      setPlantaPanelPick((prev) => {
+        if (prev != null && prev !== "") plantaPanelPickBeforeLiteRef.current = prev;
+        return null;
+      });
+      return;
+    }
+    const saved = plantaPanelPickBeforeLiteRef.current;
+    plantaPanelPickBeforeLiteRef.current = null;
+    if (saved != null && saved !== "") {
+      setPlantaPanelPick(saved);
+    }
+  }, [plantaPerimeterLiteMode]);
+
+  useEffect(() => {
+    if (layout.entries.length === 0) {
+      setPlantaPanelPick(null);
+      try {
+        if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(PLANTA_PANEL_PICK_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [layout.entries.length]);
+
+  useEffect(() => {
+    if (!plantaPanelPick) return;
+    if (!flatPlantaPanels.some((p) => p.key === plantaPanelPick)) setPlantaPanelPick(null);
+  }, [plantaPanelPick, flatPlantaPanels]);
+
+  useEffect(() => {
+    if (typeof sessionStorage === "undefined") return;
+    if (plantaPerimeterLiteMode) return;
+    const fp = plantaLayoutFingerprint(zonas, tipoAguas, panelAuForPickFp);
+    if (!plantaPanelPick) {
+      try {
+        sessionStorage.removeItem(PLANTA_PANEL_PICK_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        PLANTA_PANEL_PICK_STORAGE_KEY,
+        JSON.stringify({ v: 1, fp, key: plantaPanelPick }),
+      );
+    } catch {
+      /* ignore quota */
+    }
+  }, [plantaPanelPick, plantaPerimeterLiteMode, zonas, tipoAguas, panelAuForPickFp]);
 
   const cotaObstacles = useMemo(() => {
     if (!showPlantaDimensionChrome) return [];
@@ -3087,6 +3228,9 @@ export default function RoofPreview({
         ) : (
           <div
             style={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
               flex: embedMetricsSidebar
                 ? plantaCotaChromeActive
                   ? "2 1 300px"
@@ -3112,6 +3256,84 @@ export default function RoofPreview({
               order: embedMetricsSidebar ? 1 : undefined,
             }}
           >
+            {!plantaPerimeterLiteMode && flatPlantaPanels.length > 0 && (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: denseChrome ? 8 : 10,
+                  marginBottom: denseChrome ? 6 : 10,
+                  padding: denseChrome ? "6px 8px" : "8px 10px",
+                  borderRadius: 10,
+                  border: `1px solid ${C.border}`,
+                  background: C.surfaceAlt,
+                  fontSize: denseChrome ? 11 : 12,
+                  color: C.ts,
+                }}
+              >
+                <label htmlFor="roof-planta-panel-select" style={{ fontWeight: 600, color: C.tp, marginRight: 2 }}>
+                  Panel en planta
+                </label>
+                <select
+                  id="roof-planta-panel-select"
+                  aria-label="Seleccionar panel en planta"
+                  value={plantaPanelPick ?? ""}
+                  onChange={(ev) => {
+                    const v = ev.target.value;
+                    setPlantaPanelPick(v || null);
+                  }}
+                  style={{
+                    minWidth: 120,
+                    maxWidth: "100%",
+                    flex: "0 1 240px",
+                    padding: "6px 8px",
+                    borderRadius: 8,
+                    border: `1px solid ${C.border}`,
+                    fontSize: "inherit",
+                    background: C.surface,
+                    color: C.tp,
+                  }}
+                >
+                  <option value="">— Ninguno —</option>
+                  {flatPlantaPanels.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.id}
+                      {p.isCut ? " ✂" : ""} · {p.zonaTitle}
+                    </option>
+                  ))}
+                </select>
+                {selectedPlantaPanelMeta && (
+                  <span style={{ flex: "1 1 220px", minWidth: 0, lineHeight: 1.4 }}>
+                    <span style={{ color: C.tp, fontWeight: 600 }}>
+                      Largo eje{" "}
+                      {selectedPlantaPanelMeta.hasSlope
+                        ? `${selectedPlantaPanelMeta.largoReal.toFixed(2)} m`
+                        : `${selectedPlantaPanelMeta.largoPlanta.toFixed(2)} m`}
+                    </span>
+                    {selectedPlantaPanelMeta.hasSlope && (
+                      <span style={{ color: C.ts, fontWeight: 500 }}>
+                        {" "}
+                        (planta {selectedPlantaPanelMeta.largoPlanta.toFixed(2)} m)
+                      </span>
+                    )}
+                    {" · "}
+                    <span style={{ color: C.tp, fontWeight: 600 }}>
+                      Franja {fmtDimMm(selectedPlantaPanelMeta.widthM)} mm
+                    </span>
+                    <span style={{ color: C.ts }}> ({selectedPlantaPanelMeta.widthM.toFixed(2)} m)</span>
+                    {selectedPlantaPanelMeta.isCut ? (
+                      <span style={{ color: C.warning, fontWeight: 700 }}> · Corte</span>
+                    ) : null}
+                    <span style={{ display: "block", fontSize: denseChrome ? 10 : 11, marginTop: 4, color: C.ts }}>
+                      Solo inspección; cotización sigue en Dimensiones y BOM.
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
             <svg
               ref={svgRef}
               data-bmc-capture="roof-plan-2d"
@@ -3120,6 +3342,8 @@ export default function RoofPreview({
               height="100%"
               preserveAspectRatio="xMidYMid meet"
               style={{
+                flex: 1,
+                minHeight: 0,
                 display: "block",
                 cursor: onZonaPreviewChange ? "default" : undefined,
               }}
@@ -3165,8 +3389,15 @@ export default function RoofPreview({
               const lines = runs.map((run) => {
                 const p0 = encInterp(enc, run.t0);
                 const p1 = encInterp(enc, run.t1);
-                const stroke = encounterStrokeForModo(run.normalized.modo);
+                const isContinuo = run.normalized.modo === "continuo";
                 const isActive = encounterPrompt?.pairKey === pk && encounterPrompt?.segmentId === run.id;
+                const showContinuoEditGuide = isContinuo && isActive;
+                const stroke = showContinuoEditGuide
+                  ? C.primary
+                  : isContinuo
+                    ? "rgba(0,0,0,0)"
+                    : encounterStrokeForModo(run.normalized.modo);
+                const baseW = (isActive ? 2.2 : 1) * LINE_WEIGHTS.encounter * svgTy.m;
                 return (
                   <line
                     key={`${enc.id}-${run.id}`}
@@ -3175,10 +3406,12 @@ export default function RoofPreview({
                     x2={p1.x}
                     y2={p1.y}
                     stroke={stroke}
-                    strokeWidth={(isActive ? 2.2 : 1) * LINE_WEIGHTS.encounter * svgTy.m}
-                    strokeDasharray={`${0.16 * svgTy.m} ${0.1 * svgTy.m}`}
+                    strokeWidth={isContinuo && !showContinuoEditGuide ? Math.max(baseW * 2.4, 0.22 * svgTy.m) : baseW}
+                    strokeDasharray={
+                      isContinuo && !showContinuoEditGuide ? "none" : `${0.16 * svgTy.m} ${0.1 * svgTy.m}`
+                    }
                     pointerEvents="stroke"
-                    opacity={run.includeInBom ? 0.95 : 0.35}
+                    opacity={isContinuo && !showContinuoEditGuide ? 1 : run.includeInBom ? 0.95 : 0.35}
                     style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
                     onPointerDown={(ev) => {
                       if (!onEncounterPairChange) return;
@@ -3422,6 +3655,21 @@ export default function RoofPreview({
                 </g>
               );
             })}
+            {plantaPanelHighlightRect && !plantaPerimeterLiteMode && (
+              <g pointerEvents="none" data-bmc-layer="planta-panel-focus">
+                <rect
+                  x={plantaPanelHighlightRect.x}
+                  y={plantaPanelHighlightRect.y}
+                  width={plantaPanelHighlightRect.w}
+                  height={plantaPanelHighlightRect.h}
+                  fill={C.warningSoft}
+                  stroke={C.warning}
+                  strokeWidth={0.09 * svgTy.m}
+                  rx={0.1}
+                  opacity={0.88}
+                />
+              </g>
+            )}
             {panelLayouts && !plantaPerimeterLiteMode && layout.entries.map((r) => {
               const pl = panelLayouts.find((x) => x.gi === r.gi);
               if (!pl) return null;
@@ -3431,6 +3679,8 @@ export default function RoofPreview({
                     strips={pl.layout.panels}
                     x0={r.x} y0={r.y} h={r.h}
                     svgTy={svgTy}
+                    zoneGi={r.gi}
+                    focusPickKey={plantaPanelPick}
                   />
                   {verifications?.[r.gi] && (
                     <VerificationBadge

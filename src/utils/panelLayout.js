@@ -29,6 +29,7 @@ export function buildPanelLayout({ panel, largo, ancho }) {
   }
 
   const strips = buildAnchoStripsPlanta(ancho, au);
+  // `id` T-01… por zona; en multizona `RoofPreview` reasigna numeración global en planta.
   const panels = strips.map((s) => {
     const isCut = s.width < au - 1e-9;
     return {
