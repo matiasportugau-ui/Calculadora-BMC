@@ -167,14 +167,14 @@ export const PANELS_PARED = {
  * Pack/promo web = otra capa. Valores anclajes/remaches/tornillos exagonales: planillas usuario c/IVA ÷ 1,22.
  */
 export const FIJACIONES = {
-  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.6, unidad: "unid" },
+  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.945, web: 3.682, costo: 2.63, unidad: "unid" },
   tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.084, costo: 0.06, unidad: "unid" },
   arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.705, web: 0.658, costo: 0.47, unidad: "unid" },
   /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
   arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.102, web: 0.0952, costo: 0.068, unidad: "unid" },
-  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.272, web: 1.484, costo: 1.06, unidad: "unid" },
-  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.368, web: 1.596, costo: 1.14, unidad: "unid" },
-  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.8, unidad: "unid" },
+  arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.62, web: 1.512, costo: 1.08, unidad: "unid" },
+  arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.725, web: 1.61, costo: 1.15, unidad: "unid" },
+  taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 1.23, web: 1.148, costo: 0.82, unidad: "unid" },
   caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.476, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
   anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
@@ -240,10 +240,10 @@ export const PRESUPUESTO_LIBRE_IDS = [
 ];
 
 export const SELLADORES = {
-  silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.49, web: 11.07, costo: 8.17, unidad: "unid", ml_por_unid: 10.27 },
+  silicona:       { label: "Silicona Bromplast 8 x600",     venta: 9.636, web: 11.242, costo: 8.03, unidad: "unid", ml_por_unid: 10.27 },
   /** 300 ml neutra (MATRIZ BROMYROS ~fila 168; col D SIL300N para CSV): junto a 600 ml; cantidad = ratio × unid. 600 (`SELLADORES_TECHO.silicona_300_por_unid_600`, default 2). */
   silicona_300_neutra: { label: "Silicona neutra 300 ml (Silva / lista MATRIZ)", venta: 7.0, web: 8.4, costo: 3.0, unidad: "unid", metros_cobertura_por_unid: 8 },
-  cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 14.89, web: 18.13, costo: 13.38, unidad: "unid" },
+  cinta_butilo:   { label: "Cinta Butilo 2mm×15mm×22.5m",   venta: 15.7665, web: 19.194, costo: 13.71, unidad: "unid" },
   membrana:       { label: "Rollo membrana autoadhesiva 30cm×10m", venta: 20.71, web: 25.27, costo: 15.43, unidad: "rollo" },
   espuma_pu:      { label: "PU gris (espuma poliuretano)",   venta: 4.00, web: 4.88, costo: 1.64, unidad: "unid" },
 };
