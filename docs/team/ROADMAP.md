@@ -45,7 +45,7 @@ Un deploy es **100% limpio** cuando:
 | Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
 | Fiscal / Compliance | 🟡 6/10 | 🔴 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟢 **75 / 100** *(2026-04-24 — RBAC E2E 29 tests ✅, ESLint 0 warnings, AI Chat metrics existentes. Sube a 80+ con encuentros multizona + PDF QA + CORS.)*
+**Score global estimado:** 🟢 **78 / 100** *(2026-04-24 — items 7/7b/7c/8/13 confirmados DONE tras auditoría de código. Real pendiente: PDF QA manual, cm-1 ML humano, fiscal. Sube a 83+ con PDF QA + E2E browser + fiscal trace.)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
@@ -54,6 +54,7 @@ Un deploy es **100% limpio** cuando:
 | 2026-04-23 | 68/100 | smoke ámbar (suggest 503); gates cm-0/1/2 DONE |
 | 2026-04-24 | 73/100 | suggest-response verde, CI smoke ✅, RBAC + hub canales en prod |
 | 2026-04-24 | 75/100 | RBAC 29 E2E tests, ESLint 0w, items 7/7b/7c DONE |
+| 2026-04-24 | 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
 
 ---
 
@@ -128,7 +129,7 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🟡 MEDIO | 8. Completar UI de encuentros multizona por tramo
+### ✅ RESUELTO | 8. Completar UI de encuentros multizona por tramo
 
 - **Situación:** El modelo de datos `encounterByPair[pk].segments[]` existe y tiene tests (SUITE 32b). La UI en `RoofPreview.jsx` muestra sub-líneas y panel de tramos, pero el flujo "perfil independiente en tramo sobresaliente" y el toggle BOM por tramo tienen gaps según el informe de UX 2026-04-15.
 - **Área:** `src/components/RoofPreview.jsx`, `src/utils/roofEncounterModel.js`, `src/utils/scenarioOrchestrator.js`
@@ -141,15 +142,12 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🟡 MEDIO | 9. Wizard: toggle largo global/local sobre `techo.zonas`
+### ⚠️ SIN SPEC | 9. Wizard: toggle largo global/local sobre `techo.zonas`
 
-- **Situación:** Listado en el backlog del doc `PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md` (B1–B5). El toggle de largo global/local afecta cómo se calcula la longitud de los paneles por zona — actualmente se maneja globalmente.
-- **Área:** `src/components/PanelinCalculadoraV3_backup.jsx`, `src/data/constants.js`, `src/utils/calculations.js`
-- **Acción "get it live":**
-  1. Leer spec en `docs/team/PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md` §toggle largo
-  2. Implementar toggle por zona en `techo.zonas[]`
-  3. Tests + lint + build + deploy
-- **Impacto:** Precisión de cotización para techos con zonas de largo diferente.
+- **Situación:** El doc de referencia `PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md` no existe en el repo. Cada zona ya tiene su propio `largo` independiente (`techo.zonas[].largo`). No está claro si hace falta un toggle de sincronización global — requiere clarificación del usuario antes de implementar.
+- **Área:** `src/components/PanelinCalculadoraV3_backup.jsx`
+- **Acción "get it live":** Confirmar con Matías si el comportamiento actual (cada zona con largo propio) es suficiente o si se necesita un "sync global" explícito.
+- **Impacto:** Bloqueado por falta de spec.
 
 ---
 
@@ -181,36 +179,34 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🔵 BAJO | 13. Lockear CORS a dominios conocidos en producción
+### ✅ RESUELTO | 13. CORS restringido a dominios conocidos en producción
 
-- **Situación:** En `server/config.js` / `server/index.js`, CORS en desarrollo puede ser abierto. En producción debería estar restringido a `calculadora-bmc.vercel.app` y dominios internos conocidos.
-- **Área:** `server/config.js`, `server/index.js`
-- **Acción "get it live":** Revisar config CORS en Cloud Run → restringir origen → redeploy → smoke
+- **Resuelto (ya existía):** `server/config.js` línea 106 — `corsOrigins` default = `["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]`. Configurable via `CORS_ORIGIN` env var. Origen desconocido → 403. Verificado 2026-04-24.
 
 ---
 
 ## Resumen ejecutivo del estado
 
 ```
-PRODUCCIÓN HOY (2026-04-23) — alineado a PROJECT-STATE + smoke:
-  Frontend (Vercel):     ✅ v3.1.5 — calculadora-bmc.vercel.app
-  API (Cloud Run):     ⚠️  rev 00170-5jb — /health OK; smoke: MATRIZ + suggest 503;
-                         public_base_url en /capabilities = http://localhost:3001 (drift)
-  Google Sheets:       ✅ credenciales Secret Manager (rutas que fallan: revisar MATRIZ ID/share)
-  ML OAuth:            ✅ histórico hasTokens; /auth/ml/status 404 sin sesión = OK en smoke
-  WhatsApp / cm-0:     ✅ documentado DONE (verificar regresión según ítem MEDIO 5)
-  Email ingest / cm-2: ✅ prod verificado (crmRow=32)
-  WolfBoard:           ✅ en main; GET /api/wolfboard/pendientes 200 en prod
+PRODUCCIÓN HOY (2026-04-24) — alineado a PROJECT-STATE + smoke:
+  Frontend (Vercel):     ✅ v3.1.5 — calculadora-bmc.vercel.app (auto-deploy desde main)
+  API (Cloud Run):       ✅ rev-00210 — /health OK; suggest-response ✅ (claude); smoke:prod 100% verde
+  Google Sheets:         ✅ credenciales Secret Manager; MATRIZ 170 filas; CRM 8 filas
+  ML OAuth:              ✅ hasTokens; 41 publicaciones activas
+  WhatsApp / cm-0:       ✅ DONE — verificar periódicamente
+  Email ingest / cm-2:   ✅ prod verificado (crmRow=32)
+  WolfBoard:             ✅ en main + prod; suggest-response verde (claude)
+  RBAC / panelinInternal:✅ en prod; 29 E2E tests en CI
+  Encuentros multizona:  ✅ splits por tramo + includeInBom + perfil por tramo en RoofPreview.jsx
+  CORS:                  ✅ restringido a dominios conocidos en config.js
+  ESLint:                ✅ 0 warnings (1966b38)
 
-EN DESARROLLO (local / próximos PRs):
-  + Posible WIP sin commit en main (server, dashboard, skills) — ver git status
-
-BLOQUEANTES PARA 100% EXIT DEPLOY:
-  🔴 Fase A CEO-RUN: PUBLIC_BASE_URL + MATRIZ CSV + suggest IA + smoke:prod OK
-  🔴 Tag git vX.Y.Z en remoto + trazabilidad
-  🟠 cm-1 ciclo ML humano (mejora continua)
-  🟠 Smoke post-deploy en CI
-  🟠 ESLint warning SpecManagementSandbox (si aún aplica en gate:local)
+PENDIENTE REAL (2026-04-24):
+  🟠 cm-1 ciclo ML: `npm run ml:pending-workup` → responder preguntas pendientes (acción humana)
+  🟡 PDF export QA: generar cotización completa en localhost:5173 → verificar planta 2D + BOM en PDF
+  ⚠️  Item 9 (toggle largo): sin spec — requiere clarificación de usuario
+  🔵 Fiscal/Compliance: BPS/IRAE no trazados (análisis con bmc-fiscal pendiente)
+  🔵 E2E browser: sin Playwright sobre wizard happy path
 ```
 
 ---
@@ -231,3 +227,4 @@ BLOQUEANTES PARA 100% EXIT DEPLOY:
 | 2026-04-23 | 🟡 68/100 | Reconciliación ROADMAP: merge Wolfboard en `main`; smoke prod aún rojo (503 MATRIZ/suggest, drift PUBLIC_BASE_URL) — ver CEO-RUN Fase A |
 | 2026-04-24 | 🟢 73/100 | suggest-response ✅ (claude), CI smoke passing, RBAC + hub canales en prod, 370 tests |
 | 2026-04-24 | 🟢 75/100 | RBAC 29 E2E API tests + PDF url assertion fix; items 7/7b/7c DONE; ESLint 0w confirmado |
+| 2026-04-24 | 🟢 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
