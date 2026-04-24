@@ -195,6 +195,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d7a324b` chore(dev-trace): sync post-deployment-sheets-audit [SKIP_AUTOTRACE]
 - `2e9aa33` chore: pricing consistency verified 2026-04-24
 - `777f9cd` chore(dev-trace): sync post-kb-pricing-sprint [SKIP_AUTOTRACE]
+- `25fc842` chore(dev-trace): sync post-score-85 [SKIP_AUTOTRACE]
 
 ## Other
 

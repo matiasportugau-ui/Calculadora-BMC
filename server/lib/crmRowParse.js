@@ -3,6 +3,19 @@
  * Índices 0-based desde columna A.
  */
 
+/**
+ * Extracts a PDF/quote URL from the raw cell value returned by sheets.values.get.
+ * When a cell contains a HYPERLINK formula, values.get returns the display label
+ * (e.g. "44", "45") instead of the actual href. Only values that already start with
+ * "http://" or "https://" are real URLs; everything else is treated as null.
+ * @param {unknown} cellValue
+ * @returns {string|null}
+ */
+function extractPdfUrl(cellValue) {
+  const s = String(cellValue ?? "").trim();
+  return s.startsWith("http://") || s.startsWith("https://") ? s : null;
+}
+
 /** @param {string[][]} values - requestBody.values de Sheets (una fila) */
 export function parseCrmRowAtoAK(values) {
   const v = values?.[0] || [];
@@ -18,7 +31,7 @@ export function parseCrmRowAtoAK(values) {
     observaciones: get(22), // W
     respuestaSugerida: get(31), // AF
     providerIa: get(32), // AG
-    linkPresupuesto: get(33), // AH
+    linkPresupuesto: extractPdfUrl(get(33)), // AH — null when cell holds display label, not real URL
     aprobadoEnviar: get(34), // AI
     enviadoEl: get(35), // AJ
     bloquearAuto: get(36), // AK

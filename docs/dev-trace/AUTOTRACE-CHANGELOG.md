@@ -183,3 +183,4 @@
 - 2026-04-24 06:30:39 — `777f9cd` — chore(dev-trace): sync post-kb-pricing-sprint [SKIP_AUTOTRACE]
 - 2026-04-24 06:32:16 — `72d8e68` — fix(data): remove residual ISODEC_EPS_PARED refs from SCENARIOS_DEF
 - 2026-04-24 06:32:59 — `3a5615c` — docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
+- 2026-04-24 06:33:21 — `25fc842` — chore(dev-trace): sync post-score-85 [SKIP_AUTOTRACE]
