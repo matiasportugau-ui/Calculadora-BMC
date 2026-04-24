@@ -97,6 +97,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5e9427e` fix(pdf): improve HOJA VISUAL CLIENTE design — 5 corrections
 - `a954b6f` fix(docs): correct admin_cotizaciones col offset H→I (Gap 1 from sheets audit)
 - `72d8e68` fix(data): remove residual ISODEC_EPS_PARED refs from SCENARIOS_DEF
+- `4b7da4b` fix(sheets): treat non-URL link_presupuesto values as null instead of returning display text
 
 ## Documentation
 
