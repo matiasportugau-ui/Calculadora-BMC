@@ -122,3 +122,5 @@
 - 2026-04-24 00:07:13 — `47957df` — feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook
 - 2026-04-24 00:07:23 — `e7ee3ee` — feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot
 - 2026-04-24 00:07:32 — `f7e8016` — chore(tooling): bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload
+- 2026-04-24 00:07:41 — `e332a5f` — docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison
+- 2026-04-24 00:07:46 — `4eccf4b` — chore(kb): rebuild accessible-base kb.json post-commit batch

@@ -99,6 +99,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8149dc2` docs: dev-trace autolog update (2026-04-23)
 - `027b1e1` docs: dev-trace autolog update (2026-04-23)
 - `c811945` docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)
+- `e332a5f` docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison
 
 ## Tests
 
@@ -134,6 +135,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d33a49c` chore(dev-trace): record AUTOTRACE for docs ROADMAP smoke alignment (c811945)
 - `c7cd9a3` chore(dev-trace): record AUTOTRACE for dev-trace commit d33a49c
 - `f7e8016` chore(tooling): bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload
+- `4eccf4b` chore(kb): rebuild accessible-base kb.json post-commit batch
 
 ## Other
 
