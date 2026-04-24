@@ -46,10 +46,10 @@
 ║  (1Ie0KCpg...)   ║    ║  BMC_PAGOS_SHEET_ID   BMC_VENTAS_SHEET_ID          ║
 ║                  ║    ║  (1AzHhals...)        (1KFNKWLQm...)               ║
 ║  Admin. tab      ║    ║  Pagos_Pendientes     23 tabs (por proveedor)       ║
-║  H:consulta      ║    ║  Header: row 1        Header: row 2, data: row 3+  ║
-║  I:respuesta     ║    ║  Cols: A-I            Cols: fuzzy-matched           ║
-║  J:link          ║    ║                                                     ║
-║  K:enviado       ║    ║  BMC_STOCK_SHEET_ID   BMC_MATRIZ_SHEET_ID          ║
+║  I:consulta      ║    ║  Header: row 1        Header: row 2, data: row 3+  ║
+║  J:respuesta     ║    ║  Cols: A-I            Cols: fuzzy-matched           ║
+║  K:link          ║    ║                                                     ║
+║  L:enviado       ║    ║  BMC_STOCK_SHEET_ID   BMC_MATRIZ_SHEET_ID          ║
 ║                  ║    ║  (1egtKJAG...)        (1oDMkBgW... default)        ║
 ║  ↕ Wolfboard     ║    ║  Header: row 3        Tab: BROMYROS                ║
 ║    /api/wolfboard║    ║  Cols: fuzzy          Cols: D,E,F,L,M,T,U          ║
