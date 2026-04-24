@@ -1,10 +1,10 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T05:43:29.822Z",
-    "build_ms": 87,
-    "score": 68,
-    "score_delta": 0,
+    "ts": "2026-04-24T05:49:30.038Z",
+    "build_ms": 250,
+    "score": 73,
+    "score_delta": 5,
     "sources": [
       "ROADMAP.md",
       "PROJECT-STATE.md",
@@ -16,7 +16,7 @@
   "project": {
     "name": "Calculadora BMC",
     "pkg_version": "3.1.5",
-    "score": 68,
+    "score": 73,
     "mission": "Automatizar el proceso comercial de BMC Uruguay para paneles Panelin — desde cotización técnica hasta cierre de venta, integrando WhatsApp, MercadoLibre y email con mínima intervención manual.",
     "stack": "React18+Vite7:5173 | Express5+Node20:3001 | Cloud Run(panelin-calc) | Vercel | Google Sheets | PostgreSQL",
     "urls": {
@@ -66,9 +66,9 @@
     },
     {
       "label": "CRM / Dashboard (WolfBoard / Sheets)",
-      "q": 7,
+      "q": 8,
       "c": 7,
-      "status": "Wolfboard en `main`; `GET /api/wolfboard/pendientes` OK en prod; smoke: MATRIZ OK; **`POST /api/crm/suggest-response` 503** (proveedores IA)"
+      "status": "Wolfboard prod OK; `suggest-response` ✅ verde (claude, 2026-04-24); QA visual `/hub/canales` `/hub/admin` `/hub/ml` OK"
     },
     {
       "label": "MercadoLibre Integration",
@@ -96,21 +96,33 @@
     },
     {
       "label": "Deploy / CI/CD",
-      "q": 6,
-      "c": 6,
-      "status": "`smoke:prod` **no** 100% verde: solo **suggest** (503 IA); MATRIZ + `public_base_url` OK en última verificación; sin smoke post-deploy en CI"
+      "q": 8,
+      "c": 8,
+      "status": "CI todos los jobs ✅ (2026-04-24); smoke job ya existía y cubre suggest-response; Cloud Run rev-00210"
     },
     {
       "label": "Tests (unit + API + contrato)",
       "q": 8,
       "c": 7,
-      "status": "350+ unit (ver gate local), 17 API route; sin E2E browser"
+      "status": "**370 pass** (2026-04-24); 17 API route; sin E2E browser"
     },
     {
       "label": "Docs / Agents / Tooling",
       "q": 9,
       "c": 8,
       "status": "AUTOTRACE, dev-trace, 11 agentes, skills"
+    },
+    {
+      "label": "Panelin Internal RBAC",
+      "q": 8,
+      "c": 6,
+      "status": "En prod (2026-04-24); RBAC + invoke + tool catalog; sin E2E API test aún"
+    },
+    {
+      "label": "Hub Canales (WA+ML+Email)",
+      "q": 8,
+      "c": 7,
+      "status": "`BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB"
     },
     {
       "label": "Fiscal / Compliance",
@@ -226,5 +238,5 @@
     "admin_rows": 8,
     "last_sync": "2026-04-24T05:17:39.332Z"
   },
-  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 8 filas). Score actual: 68/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
+  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 8 filas). Score actual: 73/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
 }

@@ -1,6 +1,6 @@
 # Calculadora BMC — Roadmap & Estado del Proyecto
 
-**Generado:** 2026-04-23 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica; el working tree local puede tener WIP sin commit — ver `git status`)*
+**Generado:** 2026-04-24 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica)*
 **Fuente:** git log, PROJECT-STATE.md, CEO-RUN-LOG.md, AGENTS.md, CLAUDE.md, estructura del repo.
 
 ---
@@ -17,7 +17,7 @@
 
 Un deploy es **100% limpio** cuando:
 - [ ] `npm run gate:local:full` → 0 errores, 0 warnings nuevos
-- [ ] `npm run smoke:prod` → **todos** los checks verdes (MATRIZ CSV, `/health`, `/capabilities`, `public_base_url` alineado a la URL de Cloud Run, CRM suggest). **Hoy (2026-04-23) queda en ámbar:** según [`PROJECT-STATE.md`](./PROJECT-STATE.md) (Run 2.1), `/health`, `/capabilities`, `public_base_url`, MATRIZ CSV y Wolfboard OK; **solo falla** `POST /api/crm/suggest-response` (503, claves IA en Secret Manager). Cerrar **A3/A4** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md).
+- [x] `npm run smoke:prod` → **todos** los checks verdes. **2026-04-24 ✅:** `/health`, `/capabilities`, `public_base_url`, MATRIZ CSV, `POST /api/crm/suggest-response` (provider: claude). CI jobs: validate ✅ lint ✅ smoke ✅ channels_pipeline ✅ knowledge_antenna ✅.
 - [ ] `npm run test:contracts` → contrato API sin drift
 - [ ] Vercel producción sirve la versión correcta del chunk (semver en badge)
 - [ ] Cloud Run responde `hasSheets: true`, `hasTokens: true` en `/health`
@@ -33,17 +33,26 @@ Un deploy es **100% limpio** cuando:
 | Calculator (BOM / pricing / wizard) | 🟢 8/10 | 🟡 7/10 | Estable, mejoras activas |
 | 2D Roof Plan (RoofPreview / SVG / cotas) | 🟢 9/10 | 🟢 8/10 | Producción — sólido |
 | AI Chat (Panelin Chat / agentChat SSE) | 🟡 6/10 | 🟡 5/10 | Funcional, sin KPI de uso |
-| CRM / Dashboard (WolfBoard / Sheets) | 🟡 7/10 | 🟡 7/10 | Wolfboard en `main`; `GET /api/wolfboard/pendientes` OK en prod; smoke: MATRIZ OK; **`POST /api/crm/suggest-response` 503** (proveedores IA) |
+| CRM / Dashboard (WolfBoard / Sheets) | 🟢 8/10 | 🟡 7/10 | Wolfboard prod OK; `suggest-response` ✅ verde (claude, 2026-04-24); QA visual `/hub/canales` `/hub/admin` `/hub/ml` OK |
 | MercadoLibre Integration | 🟢 8/10 | 🟡 7/10 | OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua |
 | WhatsApp / Meta (omnicanal) | 🟢 7/10 | 🟡 6/10 | cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica |
 | Email Ingest / Parse | 🟢 7/10 | 🟢 7/10 | cm-2 prod verificado (crmRow=32); ver PROJECT-STATE |
 | Google Sheets / Data | 🟢 8/10 | 🟢 8/10 | Estable, credenciales via Secret Manager |
-| Deploy / CI/CD | 🟡 6/10 | 🟡 6/10 | `smoke:prod` **no** 100% verde: solo **suggest** (503 IA); MATRIZ + `public_base_url` OK en última verificación; sin smoke post-deploy en CI |
-| Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | 350+ unit (ver gate local), 17 API route; sin E2E browser |
+| Deploy / CI/CD | 🟢 8/10 | 🟢 8/10 | CI todos los jobs ✅ (2026-04-24); smoke job ya existía y cubre suggest-response; Cloud Run rev-00210 |
+| Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | **370 pass** (2026-04-24); 17 API route; sin E2E browser |
 | Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
-| Fiscal / Compliance | 🟡 6/10 | 🟡 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
+| Panelin Internal RBAC | 🟢 8/10 | 🟡 6/10 | En prod (2026-04-24); RBAC + invoke + tool catalog; sin E2E API test aún |
+| Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
+| Fiscal / Compliance | 🟡 6/10 | 🔴 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟡 **68 / 100** *(penaliza `smoke:prod` sin verde completo — hoy bloqueado por suggest/IA en prod; sube cuando A3/A4 (keys) estén verdes y contratos al día.)*
+**Score global estimado:** 🟢 **73 / 100** *(2026-04-24 — smoke 100% verde, CI passing, RBAC en prod, 370 tests. Sube a 80+ con E2E RBAC + encuentros multizona + métricas AI chat.)*
+
+**Historial de scores:**
+| Fecha | Score | Evento |
+|-------|-------|--------|
+| 2026-04-18 | 60/100 | cm-0/cm-1 done; cm-2 dry-run OK |
+| 2026-04-23 | 68/100 | smoke ámbar (suggest 503); gates cm-0/1/2 DONE |
+| 2026-04-24 | 73/100 | suggest-response verde, CI smoke ✅, RBAC + hub canales en prod |
 
 ---
 
@@ -51,15 +60,9 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🔴 CRÍTICO | 1. Fase A ops — cerrar `smoke:prod` (restante: CRM suggest / IA)
+### ✅ RESUELTO | 1. Smoke:prod 100% verde — suggest-response IA
 
-- **Situación (2026-04-23, Run 2.1):** `npm run smoke:prod` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app`: **`/health`**, **`/capabilities`**, **`public_base_url`**, **`GET /api/actualizar-precios-calculadora`** (MATRIZ) y **`GET /api/wolfboard/pendientes`** OK. **Pendiente:** **`POST /api/crm/suggest-response` → 503** (`All providers failed`: rotar/alinear al menos una API key válida en **Secret Manager** → Cloud Run; ver `ANTHROPIC_API_KEY` y resto en [`server/config.js`](../../server/config.js)). Evidencia: [`PROJECT-STATE.md`](./PROJECT-STATE.md), **A3/A4** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md). *(Runs anteriores con drift `PUBLIC_BASE_URL` y 503 MATRIZ quedan superseded por Run 2 / 2.1.)*
-- **Área:** GCP Secret Manager + `gcloud run services update panelin-calc --update-secrets`, vars IA en [`server/config.js`](../../server/config.js), [`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs)
-- **Acción "get it live":**
-  1. A3/A4 según CEO-RUN-LOG (rotación keys; **no** pegar secretos en Markdown)
-  2. `npm run smoke:prod` → OK completo
-  3. Anotar en PROJECT-STATE + CEO-RUN-LOG
-- **Impacto:** Sin suggest estable no hay “deploy 100% limpio” ni confianza plena en cockpit / flujos IA asistidos.
+- **Resuelto 2026-04-24:** `ANTHROPIC_API_KEY` creada en Secret Manager y mapeada a Cloud Run (rev-00210). Créditos Anthropic cargados. Clave rotada. `npm run smoke:prod` → `ok: true, provider: claude`. CI todos los jobs verdes. Ver [PROJECT-STATE.md](./PROJECT-STATE.md) entrada 2026-04-24.
 
 ---
 
@@ -72,12 +75,9 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🔴 CRÍTICO | 3. Reducir WIP grande en `main` (commits/PRs atómicos)
+### ✅ RESUELTO | 3. WIP commiteado en batch (2026-04-24)
 
-- **Situación:** Puede haber **muchas** modificaciones locales sin commit en `main` (server, wolfboard, dashboard, skills). Aumenta riesgo de conflicto y desalinea el snapshot del repo respecto a producción.
-- **Área:** `server/`, `src/`, `docs/bmc-dashboard-modernization/`, `.cursor/skills/`, etc.
-- **Acción "get it live":** Partir en 1–2 PRs → `npm run gate:local` → merge → deploy según checklist.
-- **Impacto:** Trazabilidad y revisión de código; evita sorpresas en el próximo deploy.
+- **Resuelto 2026-04-24:** 48 archivos commiteados en 4 bloques lógicos: `feat(panelin-internal)`, `feat(wolfboard)`, `chore(tooling)`, `docs(team+agents)`. Todos pusheados a `main`. CI verde.
 
 ---
 
@@ -103,15 +103,9 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🟠 ALTO | 6. Agregar smoke post-deploy automático en CI
+### ✅ RESUELTO | 6. Smoke post-deploy en CI
 
-- **Situación:** `.github/workflows/ci.yml` corre lint + tests en push/PR a `main`, pero no ejecuta `smoke:prod` después de un deploy exitoso. Un deploy puede pasar CI y aun así tener problemas en Cloud Run (timeout, env vars, etc.).
-- **Área:** `.github/workflows/ci.yml`, `scripts/smoke-prod-api.mjs`
-- **Acción "get it live":**
-  1. Agregar job `smoke` en `ci.yml` que corra `npm run smoke:prod` después de deploy a Cloud Run
-  2. Notificar fallo por email si smoke falla
-  3. Commit → merge → verificar en GitHub Actions
-- **Impacto:** Actualmente el equipo descubre errores post-deploy manualmente. Un smoke automático cierra ese loop.
+- **Resuelto (ya existía):** El job `smoke` en `.github/workflows/ci.yml` ya corría `npm run smoke:prod` en push a `main`. Verificado 2026-04-24: detectó correctamente el 503 de suggest-response en los 4 runs previos y pasó verde tras el fix.
 
 ---
 
@@ -125,6 +119,24 @@ Un deploy es **100% limpio** cuando:
   3. `npm run gate:local` → 0 warnings
   4. Commit `fix(lint): resolve preexisting ESLint warning in SpecManagementSandbox`
 - **Impacto:** `gate:local:full` limpio es un exit criterion del deploy 100%.
+
+---
+
+### 🟠 ALTO | 7b. E2E API tests — Panelin Internal RBAC
+
+- **Situación:** Las rutas `/api/internal/panelin/whoami`, `/tools`, `/policies`, `/invoke` están en prod (desde 2026-04-24) sin test de integración. Solo hay unit tests de lógica RBAC en `tests/validation.js` (Suite panelinInternalRbac).
+- **Área:** `tests/panelinInternalApi.test.js` (nuevo), `server/routes/panelinInternal.js`
+- **Acción "get it live":** Agregar tests de integración que hagan `fetch` a las rutas → `npm run gate:local` → commit `test(panelin-internal): E2E API route coverage` → push
+- **Impacto:** Regresión en RBAC no detectable automáticamente en CI.
+
+---
+
+### 🟡 MEDIO | 7c. AI Chat — métricas de uso (aiEnvironmentTrends)
+
+- **Situación:** `server/lib/aiEnvironmentTrends.js` existe (2026-04-24) pero no está conectado a `server/routes/agentChat.js`. No hay visibilidad de conversaciones, modelos usados ni tasa de éxito.
+- **Área:** `server/routes/agentChat.js`, `server/lib/aiEnvironmentTrends.js`
+- **Acción "get it live":** Conectar `trackConversation()` en el handler SSE → `gate:local` → commit `feat(chat): wire aiEnvironmentTrends to agentChat` → deploy Cloud Run
+- **Impacto:** Sin métricas de uso real del chat en producción.
 
 ---
 
@@ -229,3 +241,4 @@ BLOQUEANTES PARA 100% EXIT DEPLOY:
 | 2026-04-23 | 🟢 80/100 | cm-0 ✅ cm-1 ✅ confirmados + KB Accessible Base system live + WolfBoard en prod |
 | 2026-04-23 | 🟢 84/100 | cm-2 ✅ email ingest prod (crmRow=32) — gates humanos completos |
 | 2026-04-23 | 🟡 68/100 | Reconciliación ROADMAP: merge Wolfboard en `main`; smoke prod aún rojo (503 MATRIZ/suggest, drift PUBLIC_BASE_URL) — ver CEO-RUN Fase A |
+| 2026-04-24 | 🟢 73/100 | suggest-response ✅ (claude), CI smoke passing, RBAC + hub canales en prod, 370 tests |
