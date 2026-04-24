@@ -4538,6 +4538,130 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "26694767529f838010bbc8c2293e4a0dca37795b",
+      "short_hash": "2669476",
+      "date": "2026-04-24",
+      "time": "03:22:26",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync accessible-base + autotrace 2026-04-24 [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): sync accessible-base + autotrace 2026-04-24 [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/admin_cotizaciones.json",
+        ".accessible-base/crm_operativo.json",
+        ".accessible-base/kb.json",
+        ".accessible-base/manifest.json",
+        ".accessible-base/matriz_precios.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/9c89f74.md",
+        "docs/dev-trace/commits/2026/04/a338169.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "1c36c6039be6f5af6a8a0387f84624cfb9eeab43",
+      "short_hash": "1c36c60",
+      "date": "2026-04-24",
+      "time": "03:37:27",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "security",
+      "title": "lock CORS to production origin + dev localhost",
+      "subject": "fix(security): lock CORS to production origin + dev localhost",
+      "files": [
+        ".env.example",
+        "server/config.js",
+        "server/index.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "7ba560da67988c874d558d779df7362d1fd5dc29",
+      "short_hash": "7ba560d",
+      "date": "2026-04-24",
+      "time": "03:38:13",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof-plan",
+      "title": "show per-tramo profile in 2D multizone view",
+      "subject": "feat(roof-plan): show per-tramo profile in 2D multizone view",
+      "files": [
+        "src/components/RoofPreview.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "59773ec3a58424697c934f25a85d5b19a886653f",
+      "short_hash": "59773ec",
+      "date": "2026-04-24",
+      "time": "03:40:06",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "roadmap",
+      "title": "mark items 7/7b/7c DONE + score 73→75",
+      "subject": "docs(roadmap): mark items 7/7b/7c DONE + score 73→75",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
     }
   ]
 }

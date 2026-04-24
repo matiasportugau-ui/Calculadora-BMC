@@ -1,10 +1,10 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T06:40:00.388Z",
-    "build_ms": 112,
+    "ts": "2026-04-24T06:40:08.092Z",
+    "build_ms": 334,
     "score": 75,
-    "score_delta": 2,
+    "score_delta": 0,
     "sources": [
       "ROADMAP.md",
       "PROJECT-STATE.md",

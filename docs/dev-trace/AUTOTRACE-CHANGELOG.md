@@ -138,3 +138,7 @@
 - 2026-04-24 02:43:35 — `6ca6d7e` — chore(dev-trace): AUTOTRACE post-docs-sync [SKIP_AUTOTRACE]
 - 2026-04-24 02:49:39 — `a338169` — docs(roadmap): sync scores 73/100 — suggest verde, CI, RBAC, hub canales
 - 2026-04-24 03:22:18 — `9c89f74` — feat(tests): add panelinInternal RBAC E2E suite + fix stale PDF url assertion
+- 2026-04-24 03:22:26 — `2669476` — chore(dev-trace): sync accessible-base + autotrace 2026-04-24 [SKIP_AUTOTRACE]
+- 2026-04-24 03:37:27 — `1c36c60` — fix(security): lock CORS to production origin + dev localhost
+- 2026-04-24 03:38:13 — `7ba560d` — feat(roof-plan): show per-tramo profile in 2D multizone view
+- 2026-04-24 03:40:06 — `59773ec` — docs(roadmap): mark items 7/7b/7c DONE + score 73→75

@@ -53,6 +53,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e7ee3ee` feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot
 - `732d9a1` feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
 - `9c89f74` feat(tests): add panelinInternal RBAC E2E suite + fix stale PDF url assertion `[tests]`
+- `7ba560d` feat(roof-plan): show per-tramo profile in 2D multizone view
 
 ## Fixes
 
@@ -79,6 +80,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `9e30028` fix(docker): skip bash disk-precheck in Alpine build stage
 - `db9b798` fix(superAgent): log Anthropic errors to diagnose failure in production
 - `4589d3b` fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
+- `1c36c60` fix(security): lock CORS to production origin + dev localhost
 
 ## Documentation
 
@@ -105,6 +107,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e332a5f` docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison
 - `f50973e` docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
 - `a338169` docs(roadmap): sync scores 73/100 — suggest verde, CI, RBAC, hub canales
+- `59773ec` docs(roadmap): mark items 7/7b/7c DONE + score 73→75
 
 ## Tests
 
@@ -150,6 +153,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5551486` chore(dev-trace): autotrace + kb rebuild post-session
 - `59f0f13` chore(dev-trace): cleanup post-session + kb state [SKIP_AUTOTRACE]
 - `6ca6d7e` chore(dev-trace): AUTOTRACE post-docs-sync [SKIP_AUTOTRACE]
+- `2669476` chore(dev-trace): sync accessible-base + autotrace 2026-04-24 [SKIP_AUTOTRACE]
 
 ## Other
 
