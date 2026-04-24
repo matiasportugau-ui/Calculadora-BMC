@@ -137,6 +137,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f7e8016` chore(tooling): bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload
 - `4eccf4b` chore(kb): rebuild accessible-base kb.json post-commit batch
 - `5a52c84` chore(dev-trace): AUTOTRACE post-batch 2026-04-24
+- `5df16b5` chore(dev-trace): final AUTOTRACE cleanup 2026-04-24
 
 ## Other
 

@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T03:07:53.553Z",
-    "build_ms": 171,
+    "ts": "2026-04-24T03:07:58.301Z",
+    "build_ms": 57,
     "score": 68,
     "score_delta": 0,
     "sources": [
@@ -27,10 +27,10 @@
   "state": {
     "branch": "main",
     "last_commit": {
-      "hash": "5a52c84",
-      "msg": "chore(dev-trace): AUTOTRACE post-batch 2026-04-24"
+      "hash": "5df16b5",
+      "msg": "chore(dev-trace): final AUTOTRACE cleanup 2026-04-24"
     },
-    "uncommitted": 7,
+    "uncommitted": 6,
     "last_change": "2026-04-23 (Ops — verificación smoke prod + tag remoto):",
     "deploy": {
       "vercel": "live",
