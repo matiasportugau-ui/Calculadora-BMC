@@ -1,9 +1,9 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T09:30:39.376Z",
-    "build_ms": 93,
-    "score": 82,
+    "ts": "2026-04-24T09:33:21.021Z",
+    "build_ms": 102,
+    "score": 85,
     "score_delta": 0,
     "sources": [
       "ROADMAP.md",
@@ -16,7 +16,7 @@
   "project": {
     "name": "Calculadora BMC",
     "pkg_version": "3.1.5",
-    "score": 82,
+    "score": 85,
     "mission": "Automatizar el proceso comercial de BMC Uruguay para paneles Panelin — desde cotización técnica hasta cierre de venta, integrando WhatsApp, MercadoLibre y email con mínima intervención manual.",
     "stack": "React18+Vite7:5173 | Express5+Node20:3001 | Cloud Run(panelin-calc) | Vercel | Google Sheets | PostgreSQL",
     "urls": {
@@ -26,7 +26,7 @@
   },
   "state": {
     "branch": "main",
-    "last_change": "2026-04-24 (Sesión — Playwright E2E, stats widget, ML arcade, fiscal irae, agent stats):",
+    "last_change": "2026-04-24 (Docs — score 82→85, AI Chat c:5→8, Fiscal c:5→7):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",
@@ -60,9 +60,9 @@
     },
     {
       "label": "AI Chat (Panelin Chat / agentChat SSE)",
-      "q": 6,
-      "c": 5,
-      "status": "Funcional, sin KPI de uso"
+      "q": 7,
+      "c": 8,
+      "status": "stats endpoint + dev panel + 8 KB entries; training-kb poblada"
     },
     {
       "label": "CRM / Dashboard (WolfBoard / Sheets)",
@@ -127,8 +127,8 @@
     {
       "label": "Fiscal / Compliance",
       "q": 6,
-      "c": 5,
-      "status": "IVA en quotes OK; BPS/IRAE no trazado"
+      "c": 7,
+      "status": "irae_prevision en /kpi-report; BPS doc; IVA en quotes OK"
     }
   ],
   "roadmap": [
@@ -238,5 +238,5 @@
     "admin_rows": 8,
     "last_sync": "2026-04-24T05:55:31.530Z"
   },
-  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 8 filas). Score actual: 82/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
+  "context_fast": "BMC Uruguay (METALOG SAS) vende paneles de aislación Panelin en Uruguay. Stack: React18+Vite7 (Vercel frontend) + Express5/Node20 (Cloud Run API panelin-calc us-central1). Datos: Google Sheets como CRM operativo (MATRIZ precios 170 filas, Admin cotizaciones 8 filas). Score actual: 85/100. Versión: v3.1.5 tag v3.1.6 en main. Estado gates: cm-0 WhatsApp E2E=DONE | cm-1 ML publicación=DONE | cm-2 Email ingest=DONE. Health: 0 lint warnings | 350 tests pass | 4 vulns residuales (build-time only). Canales de venta: WhatsApp Business (webhook+HMAC+omni tables), MercadoLibre (OAuth+41 publicaciones), Email (IMAP bridge+parse→CRM). Calculator: wizard multi-paso (techo/pared/combinado), BOM completo, planta 2D SVG ISO128, PDF export, precio desde MATRIZ CSV. WolfBoard Admin 2.0 mergeado a main — dashboard CRM operativo unificado. Acciones críticas pendientes: responder preguntas ML UNANSWERED (impacto revenue directo), validar WhatsApp E2E, verificar email ingest en prod. Deploy: Vercel auto desde main | Cloud Run: bash scripts/deploy-cloud-run.sh | gate antes de todo: npm run gate:local. Filosofía: Fix → Deploy → Fix → Deploy. Una mejora live antes de la siguiente."
 }

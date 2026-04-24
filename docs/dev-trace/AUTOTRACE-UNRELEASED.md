@@ -96,6 +96,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3a2ceb2` fix(smoke): add WhatsApp webhook liveness check to smoke-prod
 - `5e9427e` fix(pdf): improve HOJA VISUAL CLIENTE design — 5 corrections
 - `a954b6f` fix(docs): correct admin_cotizaciones col offset H→I (Gap 1 from sheets audit)
+- `72d8e68` fix(data): remove residual ISODEC_EPS_PARED refs from SCENARIOS_DEF
 
 ## Documentation
 
@@ -130,6 +131,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ed1c034` docs(judge): session evaluation 2026-04-24 — score +9, 14 commits, agent ranking
 - `835bdba` docs(sheets): CRM column mapping validation 2026-04-24
 - `0e80f38` docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
+- `3a5615c` docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
 
 ## Tests
 
@@ -192,6 +194,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `2586c2c` chore(dev-trace): sync post-arcade-fire-test [SKIP_AUTOTRACE]
 - `d7a324b` chore(dev-trace): sync post-deployment-sheets-audit [SKIP_AUTOTRACE]
 - `2e9aa33` chore: pricing consistency verified 2026-04-24
+- `777f9cd` chore(dev-trace): sync post-kb-pricing-sprint [SKIP_AUTOTRACE]
 
 ## Other
 

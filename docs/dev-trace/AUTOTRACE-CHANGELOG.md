@@ -180,3 +180,6 @@
 - 2026-04-24 06:24:28 — `2e9aa33` — chore: pricing consistency verified 2026-04-24
 - 2026-04-24 06:24:28 — `9acb23a` — feat(kb): add kb-006/007/008 — instalación, plazos, cobertura geográfica
 - 2026-04-24 06:28:15 — `8919f3d` — feat(wizard): redesign step indicator to connected track
+- 2026-04-24 06:30:39 — `777f9cd` — chore(dev-trace): sync post-kb-pricing-sprint [SKIP_AUTOTRACE]
+- 2026-04-24 06:32:16 — `72d8e68` — fix(data): remove residual ISODEC_EPS_PARED refs from SCENARIOS_DEF
+- 2026-04-24 06:32:59 — `3a5615c` — docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
