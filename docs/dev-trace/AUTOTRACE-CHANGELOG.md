@@ -154,3 +154,6 @@
 - 2026-04-24 04:20:21 — `0cc56d0` — fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026
 - 2026-04-24 04:22:09 — `88267c8` — chore(config): broaden cd+compound Bash patterns for sub-agent autonomy
 - 2026-04-24 04:22:59 — `76ff454` — feat(fiscal): add irae_prevision estimate to /kpi-report endpoint
+- 2026-04-24 04:23:30 — `224e4bf` — chore(dev-trace): sync post-fiscal-sprint [SKIP_AUTOTRACE]
+- 2026-04-24 04:26:51 — `ad94912` — fix(pricing): sync all panel prices against Matriz 2026 (BROMYROS CSV)
+- 2026-04-24 04:28:24 — `2a32c1b` — test(e2e): add Playwright wizard happy path smoke test

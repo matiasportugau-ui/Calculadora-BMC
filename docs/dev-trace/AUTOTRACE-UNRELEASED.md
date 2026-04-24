@@ -84,6 +84,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `4589d3b` fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
 - `1c36c60` fix(security): lock CORS to production origin + dev localhost
 - `0cc56d0` fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026
+- `ad94912` fix(pricing): sync all panel prices against Matriz 2026 (BROMYROS CSV)
 
 ## Documentation
 
@@ -118,6 +119,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 ## Tests
 
 - `3646101` test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles `[tests]`
+- `2a32c1b` test(e2e): add Playwright wizard happy path smoke test
 
 ## Chores
 
@@ -166,6 +168,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `b2ab1fe` chore(dev-trace): sync post-session 2026-04-24 [SKIP_AUTOTRACE]
 - `ed51694` chore(dev-trace): autotrace post-pdf-qa [SKIP_AUTOTRACE]
 - `88267c8` chore(config): broaden cd+compound Bash patterns for sub-agent autonomy
+- `224e4bf` chore(dev-trace): sync post-fiscal-sprint [SKIP_AUTOTRACE]
 
 ## Other
 
