@@ -3781,6 +3781,33 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "c81194533481cfe8338b8e2a57889d3ac239dfd6",
+      "short_hash": "c811945",
+      "date": "2026-04-24",
+      "time": "00:03:07",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "team",
+      "title": "align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)",
+      "subject": "docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)",
+      "files": [
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
     }
   ]
 }
