@@ -1,6 +1,8 @@
 {
   "permissions": {
     "allow": [
+      "Edit",
+      "Write",
       "Bash(npm run *)",
       "Bash(npx vite *)",
       "Bash(npx eslint *)",
@@ -26,8 +28,27 @@
       "Bash(git rebase *)",
       "Bash(git remote *)",
       "Bash(git --no-pager *)",
+      "Bash(git push *)",
       "Bash(ls *)",
-      "Bash(gcloud logging:*)"
+      "Bash(gcloud logging:*)",
+      "Bash(gcloud run services describe *)",
+      "Bash(gcloud run services list *)",
+      "Bash(gcloud run revisions list *)",
+      "Bash(gcloud secrets list *)",
+      "Bash(npm view *)",
+      "Bash(lsof -i *)",
+      "Bash(cd * && npm run gate:local*)",
+      "Bash(cd * && npm run test:api*)",
+      "Bash(cd * && npm run lint*)",
+      "Bash(cd * && npm run kb:build*)",
+      "Bash(cd * && node tests/*)",
+      "Bash(cd * && node scripts/*)",
+      "Bash(cd * && git add *)",
+      "Bash(cd * && git commit *)",
+      "Bash(cd * && git push *)",
+      "Bash(cd * && git log*)",
+      "Bash(cd * && git status*)",
+      "Bash(cd * && grep *)"
     ]
   },
   "hooks": {
