@@ -55,6 +55,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `9c89f74` feat(tests): add panelinInternal RBAC E2E suite + fix stale PDF url assertion `[tests]`
 - `7ba560d` feat(roof-plan): show per-tramo profile in 2D multizone view
 - `7040b02` feat(chat): add GET /api/agent/stats — daily usage KPI endpoint
+- `76ff454` feat(fiscal): add irae_prevision estimate to /kpi-report endpoint
 
 ## Fixes
 
@@ -82,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `db9b798` fix(superAgent): log Anthropic errors to diagnose failure in production
 - `4589d3b` fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
 - `1c36c60` fix(security): lock CORS to production origin + dev localhost
+- `0cc56d0` fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026
 
 ## Documentation
 
@@ -162,6 +164,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `4ed32a0` chore(config): expand agent permissions for autonomous sub-agent completion
 - `72da20e` chore(dev-trace): autotrace post-audit [SKIP_AUTOTRACE]
 - `b2ab1fe` chore(dev-trace): sync post-session 2026-04-24 [SKIP_AUTOTRACE]
+- `ed51694` chore(dev-trace): autotrace post-pdf-qa [SKIP_AUTOTRACE]
+- `88267c8` chore(config): broaden cd+compound Bash patterns for sub-agent autonomy
 
 ## Other
 

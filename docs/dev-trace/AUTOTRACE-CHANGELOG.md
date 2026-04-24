@@ -150,3 +150,7 @@
 - 2026-04-24 03:50:08 — `7040b02` — feat(chat): add GET /api/agent/stats — daily usage KPI endpoint
 - 2026-04-24 03:50:23 — `b2ab1fe` — chore(dev-trace): sync post-session 2026-04-24 [SKIP_AUTOTRACE]
 - 2026-04-24 04:17:13 — `cdd016a` — docs(roadmap): PDF QA verificado — 22/22 checks ✅; score 78→80
+- 2026-04-24 04:17:21 — `ed51694` — chore(dev-trace): autotrace post-pdf-qa [SKIP_AUTOTRACE]
+- 2026-04-24 04:20:21 — `0cc56d0` — fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026
+- 2026-04-24 04:22:09 — `88267c8` — chore(config): broaden cd+compound Bash patterns for sub-agent autonomy
+- 2026-04-24 04:22:59 — `76ff454` — feat(fiscal): add irae_prevision estimate to /kpi-report endpoint

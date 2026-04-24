@@ -4913,6 +4913,120 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "ed516940dc9e7f0b08029da6b5550c1cd4a522f0",
+      "short_hash": "ed51694",
+      "date": "2026-04-24",
+      "time": "04:17:21",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "autotrace post-pdf-qa [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): autotrace post-pdf-qa [SKIP_AUTOTRACE]",
+      "files": [
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/b2ab1fe.md",
+        "docs/dev-trace/commits/2026/04/cdd016a.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "0cc56d00012753e8e995a12e0199fb05841002c4",
+      "short_hash": "0cc56d0",
+      "date": "2026-04-24",
+      "time": "04:20:21",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pricing",
+      "title": "sync FIJACIONES + SELLADORES against Matriz 2026",
+      "subject": "fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026",
+      "files": [
+        "src/data/constants.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "88267c87b4a58b7426aca147009e9579afabc7dc",
+      "short_hash": "88267c8",
+      "date": "2026-04-24",
+      "time": "04:22:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "config",
+      "title": "broaden cd+compound Bash patterns for sub-agent autonomy",
+      "subject": "chore(config): broaden cd+compound Bash patterns for sub-agent autonomy",
+      "files": [
+        ".claude/settings.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".claude"
+        ]
+      }
+    },
+    {
+      "hash": "76ff4547a33b808dd4fd5d993ffbb4b1883a7aa8",
+      "short_hash": "76ff454",
+      "date": "2026-04-24",
+      "time": "04:22:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "fiscal",
+      "title": "add irae_prevision estimate to /kpi-report endpoint",
+      "subject": "feat(fiscal): add irae_prevision estimate to /kpi-report endpoint",
+      "files": [
+        "server/routes/bmcDashboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }
