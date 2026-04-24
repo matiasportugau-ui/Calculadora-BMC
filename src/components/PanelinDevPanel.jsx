@@ -1,4 +1,12 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
+
+function analyticsHeaders() {
+  const key = typeof import.meta !== "undefined" ? import.meta.env?.VITE_API_AUTH_TOKEN || "" : "";
+  const h = { Accept: "application/json" };
+  if (key) h["x-api-key"] = key;
+  return h;
+}
 
 const BORDER = "#e5e5ea";
 const TEXT = "#1d1d1f";
@@ -91,6 +99,40 @@ export default function PanelinDevPanel({
   const [expandedConvId, setExpandedConvId] = useState(null);
   const [convAnalysis, setConvAnalysis] = useState({});
   const [loadingAnalysis, setLoadingAnalysis] = useState(null);
+
+  // ── Analytic mode (Panelin Knowledge / events-log trends) ─────────────────
+  const [analyticsDays, setAnalyticsDays] = useState(60);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(null);
+
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError(null);
+    try {
+      const base = getCalcApiBase();
+      const url = `${base}/api/ai-analytics/trends?days=${encodeURIComponent(String(analyticsDays))}`;
+      const res = await fetch(url, { headers: analyticsHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAnalyticsData(null);
+        setAnalyticsError(data?.error || `HTTP ${res.status}`);
+        return;
+      }
+      setAnalyticsData(data);
+    } catch (e) {
+      setAnalyticsData(null);
+      setAnalyticsError(e?.message || String(e));
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsDays]);
+
+  useEffect(() => {
+    if (activeTab === "analytics" && !analyticsLoading && analyticsData == null && !analyticsError) {
+      loadAnalytics();
+    }
+  }, [activeTab, analyticsLoading, analyticsData, analyticsError, loadAnalytics]);
 
   const lastUser = useMemo(
     () => [...messages].reverse().find((m) => m.role === "user")?.content || "",
@@ -231,21 +273,21 @@ export default function PanelinDevPanel({
     <div style={{ borderTop: `1px solid ${BD}`, background: BG, flexShrink: 0 }}>
       {/* ── Tab bar ── */}
       <div style={{ display: "flex", gap: 2, padding: "0 8px", borderBottom: `1px solid ${BD}`, overflowX: "auto" }}>
-        {["train", "kb", "prompt", "sessions"].map((tab) => (
+        {["train", "kb", "prompt", "sessions", "analytics"].map((tab) => (
           <button
             key={tab}
             type="button"
             style={tabButton(activeTab === tab, P, ST)}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === "train" ? "Train" : tab === "kb" ? "KB" : tab === "prompt" ? "Prompt" : "Sessions"}
+            {tab === "train" ? "Train" : tab === "kb" ? "KB" : tab === "prompt" ? "Prompt" : tab === "sessions" ? "Sessions" : "Analytic"}
             {tab === "kb" && trainingStats?.total ? ` (${trainingStats.total})` : ""}
           </button>
         ))}
       </div>
 
       <div style={{
-        maxHeight: trainExpanded && activeTab === "train" ? 440 : 320,
+        maxHeight: trainExpanded && activeTab === "train" ? 440 : activeTab === "analytics" ? 480 : 320,
         overflowY: "auto",
         padding: 10,
         transition: "max-height 160ms ease",
@@ -537,6 +579,91 @@ export default function PanelinDevPanel({
               <button type="button" onClick={() => loadSessions(sessionsPage + 1)} style={btn()}>
                 Cargar más
               </button>
+            )}
+          </div>
+        )}
+
+        {/* ── ANALYTIC MODE (entorno IA / knowledge log) ── */}
+        {activeTab === "analytics" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 11, color: ST, lineHeight: 1.45 }}>
+              Tendencias desde <code style={{ fontSize: 10, color: TX }}>events-log.jsonl</code> (Panelin Knowledge).
+              En prod: configurá <code style={{ fontSize: 10 }}>API_AUTH_TOKEN</code> en el server y{' '}
+              <code style={{ fontSize: 10 }}>VITE_API_AUTH_TOKEN</code> en el build.
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ fontSize: 11, color: ST, display: "flex", alignItems: "center", gap: 6 }}>
+                Ventana (días)
+                <select
+                  value={analyticsDays}
+                  onChange={(e) => { setAnalyticsDays(Number(e.target.value)); setAnalyticsData(null); setAnalyticsError(null); }}
+                  style={{ ...inputStyle, width: "auto" }}
+                >
+                  {[7, 30, 60, 90, 120, 180, 365].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={loadAnalytics} disabled={analyticsLoading} style={btn({ disabled: analyticsLoading })}>
+                {analyticsLoading ? "Cargando…" : "↺ Actualizar"}
+              </button>
+            </div>
+            {analyticsError && (
+              <div style={{ fontSize: 12, color: DANGER, background: "#fff0f0", border: `1px solid ${DANGER}`, borderRadius: 8, padding: 8 }}>
+                {analyticsError}
+              </div>
+            )}
+            {analyticsData && (
+              <>
+                <div style={{ fontSize: 11, color: ST }}>
+                  {analyticsData.parsedInWindow != null && (
+                    <span><b style={{ color: TX }}>{analyticsData.parsedInWindow}</b> eventos en ventana</span>
+                  )}
+                  {analyticsData.filePath && (
+                    <span style={{ display: "block", marginTop: 4, wordBreak: "break-all" }}>
+                      Archivo: <code style={{ fontSize: 10 }}>{String(analyticsData.filePath)}</code>
+                    </span>
+                  )}
+                </div>
+                {Array.isArray(analyticsData.trends) && analyticsData.trends.length > 0 && (
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: TX, lineHeight: 1.5 }}>
+                    {analyticsData.trends.map((t, i) => (
+                      <li key={i} style={{ marginBottom: 4 }}>{t}</li>
+                    ))}
+                  </ul>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div style={{ border: `1px solid ${BD}`, borderRadius: 8, padding: 8, background: SF }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: TX, marginBottom: 6 }}>Tags</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
+                      {(analyticsData.byTag || []).slice(0, 12).map((row) => (
+                        <div key={row.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TX }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 6 }}>{row.key}</span>
+                          <span style={{ color: ST, flexShrink: 0 }}>{row.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ border: `1px solid ${BD}`, borderRadius: 8, padding: 8, background: SF }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: TX, marginBottom: 6 }}>Fuentes</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 140, overflowY: "auto" }}>
+                      {(analyticsData.bySource || []).slice(0, 12).map((row) => (
+                        <div key={row.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TX }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 6 }}>{row.key}</span>
+                          <span style={{ color: ST, flexShrink: 0 }}>{row.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {analyticsData.scoreStats && (
+                  <div style={{ fontSize: 11, color: ST }}>
+                    eventScore: avg <b style={{ color: TX }}>{analyticsData.scoreStats.avg}</b>
+                    {" · "}min {analyticsData.scoreStats.min} · max {analyticsData.scoreStats.max}
+                    {" · "}n={analyticsData.scoreStats.n}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

@@ -28,7 +28,12 @@ const btn = (active) => ({
 
 export default function BmcModuleNav() {
   const { pathname } = useLocation();
-  const hubActive = pathname === "/hub" || pathname.endsWith("/hub/ml");
+  const hubActive =
+    pathname === "/hub" ||
+    pathname.startsWith("/hub/ml") ||
+    pathname.startsWith("/hub/wa") ||
+    pathname.startsWith("/hub/canales") ||
+    pathname.startsWith("/hub/admin");
   const logiActive = pathname.endsWith("/logistica");
   const calcActive = pathname === "/" || pathname.endsWith("/calculadora");
 

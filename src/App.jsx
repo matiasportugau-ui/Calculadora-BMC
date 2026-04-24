@@ -8,6 +8,7 @@ import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
 import BmcMlOperativoModule from "./components/BmcMlOperativoModule.jsx";
 import BmcWaOperativoModule from "./components/BmcWaOperativoModule.jsx";
+import BmcCanalesUnificadosModule from "./components/BmcCanalesUnificadosModule.jsx";
 import BmcAdminCotizacionesModule from "./components/BmcAdminCotizacionesModule.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 
@@ -81,6 +82,14 @@ export default function App() {
           element={
             <Shell>
               <BmcWaOperativoModule />
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/canales"
+          element={
+            <Shell>
+              <BmcCanalesUnificadosModule />
             </Shell>
           }
         />

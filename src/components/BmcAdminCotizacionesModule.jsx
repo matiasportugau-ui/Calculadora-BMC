@@ -156,7 +156,9 @@ export default function BmcAdminCotizacionesModule() {
   const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
   const [tokenLoadError, setTokenLoadError]   = useState("");
 
+  const [listScope, setListScope] = useState("consulta"); // "consulta" | "admin"
   const [rows, setRows]         = useState([]);
+  const [sheetRowCount, setSheetRowCount] = useState(null);
   const [loading, setLoading]   = useState(false);
   const [syncing, setSyncing]   = useState(false);
   const [batching, setBatching] = useState(false);
@@ -166,6 +168,7 @@ export default function BmcAdminCotizacionesModule() {
   const [detail, setDetail]     = useState(null); // { row }
   const [dRespuesta, setDRespuesta] = useState("");
   const [dLink, setDLink]       = useState("");
+  const [dReplay, setDReplay]   = useState("");
   const [saving, setSaving]     = useState(false);
 
   // Auto-load token
@@ -195,11 +198,13 @@ export default function BmcAdminCotizacionesModule() {
     if (!token) { setError("Guardá el token para cargar consultas."); return; }
     setLoading(true);
     setError("");
-    const { ok, status, data } = await apiFetch(token, "/api/wolfboard/pendientes");
+    const q = listScope === "admin" ? "?scope=admin" : "?scope=consulta";
+    const { ok, status, data } = await apiFetch(token, `/api/wolfboard/pendientes${q}`);
     setLoading(false);
-    if (!ok) { setError(data?.error || `HTTP ${status}`); setRows([]); return; }
+    if (!ok) { setError(data?.error || `HTTP ${status}`); setRows([]); setSheetRowCount(null); return; }
     setRows(Array.isArray(data.data) ? data.data : []);
-  }, [token]);
+    setSheetRowCount(typeof data.sheetRowCount === "number" ? data.sheetRowCount : null);
+  }, [token, listScope]);
 
   useEffect(() => {
     if (!token) { setRows([]); return; }
@@ -249,6 +254,7 @@ export default function BmcAdminCotizacionesModule() {
     setDetail(row);
     setDRespuesta(row.respuesta || "");
     setDLink(row.link || "");
+    setDReplay(row.replaySnapshotUrl || "");
   };
 
   const closeDetail = () => setDetail(null);
@@ -259,7 +265,12 @@ export default function BmcAdminCotizacionesModule() {
     const { ok, data } = await apiFetch(token, "/api/wolfboard/row", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminRow: detail.rowNum, respuesta: dRespuesta, link: dLink }),
+      body: JSON.stringify({
+        adminRow: detail.rowNum,
+        respuesta: dRespuesta,
+        link: dLink,
+        replaySnapshotUrl: dReplay,
+      }),
     });
     setSaving(false);
     if (!ok) { showToast(data?.error || "Error al guardar"); return; }
@@ -310,7 +321,8 @@ export default function BmcAdminCotizacionesModule() {
 
         <h1 style={h1}>Admin · Consultas y Cotizaciones</h1>
         <p style={sub}>
-          Filas pendientes de Admin 2.0 ↔ CRM_Operativo. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.
+          Cotizaciones / consultas del tab <strong>Admin 2.0</strong> (planilla configurada en el servidor). Podés listar solo la cola con consulta (I) o
+          <strong> todas las filas con datos</strong> en A–M. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.
         </p>
 
         {/* Token */}
@@ -345,6 +357,23 @@ export default function BmcAdminCotizacionesModule() {
         {/* Actions toolbar */}
         {token && (
           <div style={{ ...card, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginRight: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#6e6e73" }}>Vista</span>
+              <button
+                type="button"
+                style={listScope === "consulta" ? btnPrimary : btnGhost}
+                onClick={() => setListScope("consulta")}
+              >
+                Con consulta (I)
+              </button>
+              <button
+                type="button"
+                style={listScope === "admin" ? btnPrimary : btnGhost}
+                onClick={() => setListScope("admin")}
+              >
+                Todas las filas (Admin)
+              </button>
+            </div>
             <button type="button" style={btnGhost} onClick={runSync} disabled={syncing}>
               {syncing ? "Sincronizando…" : "↕ Sincronizar"}
             </button>
@@ -358,15 +387,27 @@ export default function BmcAdminCotizacionesModule() {
               {loading ? "Cargando…" : "↺ Recargar"}
             </button>
             <a
-              href={`${getCalcApiBase().replace(/\/+$/, "")}/api/wolfboard/export`}
+              href={`${getCalcApiBase().replace(/\/+$/, "")}/api/wolfboard/export?token=${encodeURIComponent(token)}&scope=${encodeURIComponent(listScope)}`}
               style={{ ...btnGhost, fontSize: 12, textDecoration: "none", display: "inline-block" }}
               target="_blank" rel="noopener noreferrer"
             >
               ↓ Export CSV
             </a>
-            {rows.length > 0 && (
+            {(rows.length > 0 || sheetRowCount != null) && (
               <span style={{ fontSize: 12, color: "#6e6e73", marginLeft: "auto" }}>
-                {rows.length} pendiente{rows.length !== 1 ? "s" : ""}
+                {listScope === "consulta" ? (
+                  <>
+                    {rows.length} con consulta (I)
+                    {sheetRowCount != null ? ` · ${sheetRowCount} filas leídas en Admin` : ""}
+                  </>
+                ) : (
+                  <>
+                    {rows.length} fila{rows.length !== 1 ? "s" : ""} con datos (A–M)
+                    {sheetRowCount != null && sheetRowCount !== rows.length
+                      ? ` · ${sheetRowCount} filas devueltas por Sheets`
+                      : ""}
+                  </>
+                )}
               </span>
             )}
           </div>
@@ -381,17 +422,19 @@ export default function BmcAdminCotizacionesModule() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["#", "Canal", "Consulta (I)", "Respuesta IA (J)", "Link", "Acciones"].map((h) => (
+                    {["#", "Fecha", "Cliente", "Canal", "Estado", "Consulta (I)", "Respuesta IA (J)", "Link", "Replay", "Acciones"].map((h) => (
                       <th key={h} style={th}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
-                    <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>Cargando…</td></tr>
+                    <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>Cargando…</td></tr>
                   )}
                   {!loading && rows.length === 0 && (
-                    <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>Sin consultas pendientes.</td></tr>
+                    <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>
+                      {listScope === "admin" ? "Sin filas con datos en el rango leído." : "Sin filas con consulta (columna I). Probá «Todas las filas (Admin)»."}
+                    </td></tr>
                   )}
                   {rows.map((row) => (
                     <tr key={row.rowNum} style={{ background: detail?.rowNum === row.rowNum ? "#f0f7ff" : undefined }}>
@@ -405,7 +448,16 @@ export default function BmcAdminCotizacionesModule() {
                           {row.rowNum} ↗
                         </a>
                       </td>
+                      <td style={{ ...td, width: 88, fontSize: 11, color: "#6e6e73" }}>
+                        {(row.fecha || "").slice(0, 10)}
+                      </td>
+                      <td style={{ ...td, maxWidth: 100, fontSize: 11 }}>
+                        {(row.cliente || "").slice(0, 36)}{row.cliente?.length > 36 ? "…" : ""}
+                      </td>
                       <td style={{ ...td, width: 60 }}>{canalPill(row.origen)}</td>
+                      <td style={{ ...td, maxWidth: 72, fontSize: 11, color: "#6e6e73" }}>
+                        {(row.estado || "—").slice(0, 14)}
+                      </td>
                       <td style={{ ...td, maxWidth: 220 }}>
                         {(row.consulta || "").slice(0, 90)}{row.consulta?.length > 90 ? "…" : ""}
                       </td>
@@ -420,6 +472,12 @@ export default function BmcAdminCotizacionesModule() {
                       <td style={{ ...td, width: 60 }}>
                         {row.link
                           ? <a href={row.link} target="_blank" rel="noopener noreferrer" style={{ color: "#0071e3", fontSize: 11 }}>Ver</a>
+                          : <span style={{ color: "#aaa" }}>—</span>
+                        }
+                      </td>
+                      <td style={{ ...td, width: 52 }}>
+                        {row.replaySnapshotUrl
+                          ? <a href={row.replaySnapshotUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0071e3", fontSize: 11 }} title="JSON replay">JSON</a>
                           : <span style={{ color: "#aaa" }}>—</span>
                         }
                       </td>
@@ -490,6 +548,20 @@ export default function BmcAdminCotizacionesModule() {
                   style={{ ...input, maxWidth: "100%" }}
                   placeholder="https://drive.google.com/…"
                 />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Replay JSON (M) — GCS o URL pública</p>
+                <input
+                  type="url"
+                  value={dReplay}
+                  onChange={(e) => setDReplay(e.target.value)}
+                  style={{ ...input, maxWidth: "100%" }}
+                  placeholder="https://storage.googleapis.com/…/quotes/…json"
+                />
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#86868b", lineHeight: 1.4 }}>
+                  Lo llena el batch IA (cotización por cálculo) si hay bucket GCS; podés pegar un export de la calculadora para comparar humano vs sistema.
+                </p>
               </div>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

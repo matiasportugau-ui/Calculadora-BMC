@@ -117,6 +117,16 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
+            <h2 style={cardTitle}>Canales · Inbox unificado</h2>
+            <p style={cardDesc}>
+              Un botón para sincronizar ML a la planilla, tabla única ML + WA + IG/FB (por origen), copiar AF y
+              guardar link de cotización (AH) en el mismo panel.
+            </p>
+            <Link to="/hub/canales" style={{ ...cta, background: "#5e5ce6" }}>
+              Abrir inbox unificado
+            </Link>
+          </div>
+          <div style={card}>
             <h2 style={cardTitle}>Admin · Consultas y Cotizaciones</h2>
             <p style={cardDesc}>
               Filas pendientes de Admin 2.0 ↔ CRM. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.

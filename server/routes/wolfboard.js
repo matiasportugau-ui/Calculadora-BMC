@@ -1,17 +1,18 @@
 /**
  * Wolfboard routes — Admin 2.0 ↔ CRM_Operativo cotizaciones management.
  *
- * Admin 2.0 column layout (A=0, range A2:L):
+ * Admin 2.0 column layout (A=0, range A2:M):
  *   A(0)=ID  B(1)=Fecha  C(2)=?  D(3)=Telefono  E(4)=Cliente
  *   F(5)=Origen(WA/EM/CL/LO/LL)  G(6)=?  H(7)=Zona
  *   I(8)=Consulta  J(9)=RespuestaAI  K(10)=LinkDrive  L(11)=Estado
+ *   M(12)=ReplaySnapshotUrl (GCS JSON — IA batch calc o pegado manualmente)
  *
  * Routes:
- *   GET  /pendientes    — all Admin rows with a consulta
+ *   GET  /pendientes?scope=consulta|admin — filas Admin 2.0 (default: scope=consulta = col I no vacía; admin = cualquier dato en A–M)
  *   POST /sync          — propagate Admin.J → CRM_Operativo.AF (one-way, consulta match)
- *   POST /row           — save respuesta/link or approve a specific row
+ *   POST /row           — save respuesta/link/replaySnapshotUrl or approve a specific row
  *   POST /enviados      — move row to Enviados tab, delete from Admin
- *   GET  /export        — CSV download of pending rows
+ *   GET  /export?scope=… — CSV (mismo criterio que /pendientes)
  *   POST /quote-batch   — batch AI quote generation (existing)
  */
 import { Router } from "express";
@@ -20,7 +21,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
-import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
+import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
+import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -188,6 +190,56 @@ function requireAuth(config, req, res) {
   return true;
 }
 
+/** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
+function mapAdminSheetRow(row, idx, adminSheetId) {
+  const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
+  return {
+    rowNum: idx + 2,
+    id: String(row[0] ?? "").trim(),
+    fecha: String(row[1] ?? "").trim(),
+    telefono: String(row[3] ?? "").trim(),
+    cliente: String(row[4] ?? "").trim(),
+    canal: String(row[5] ?? "").trim(),
+    origen: String(row[5] ?? "").trim(),
+    zona: String(row[7] ?? "").trim(),
+    consulta: String(row[8] ?? "").trim(),
+    respuesta: String(row[9] ?? "").trim(),
+    link: String(row[10] ?? "").trim(),
+    estado: String(row[11] ?? "").trim(),
+    replaySnapshotUrl: String(row[12] ?? "").trim(),
+    sheetUrl: sheetBase,
+  };
+}
+
+function adminRowHasAnyData(r) {
+  return [
+    r.id,
+    r.fecha,
+    r.telefono,
+    r.cliente,
+    r.canal,
+    r.zona,
+    r.consulta,
+    r.respuesta,
+    r.link,
+    r.estado,
+    r.replaySnapshotUrl,
+  ].some((x) => String(x ?? "").trim() !== "");
+}
+
+/**
+ * @param {"consulta"|"admin"} scope
+ *   - consulta: solo filas con texto en I (comportamiento histórico / “cola de respuesta”).
+ *   - admin: todas las filas con algún dato en A–M (visión completa del tablero).
+ */
+function filterAdminRowsByScope(rows, scope) {
+  const s = String(scope || "consulta").toLowerCase();
+  if (s === "admin" || s === "all" || s === "sheet") {
+    return rows.filter(adminRowHasAnyData);
+  }
+  return rows.filter((r) => String(r.consulta || "").trim());
+}
+
 export function createWolfboardRouter(config) {
   const router = Router();
 
@@ -198,6 +250,9 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
 
+    const scopeRaw = String(req.query.scope || "consulta").trim().toLowerCase();
+    const scope = scopeRaw === "admin" || scopeRaw === "all" || scopeRaw === "sheet" ? "admin" : "consulta";
+
     let sheets;
     try { sheets = await getSheetsClient(); }
     catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
@@ -206,7 +261,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
+        range: `'${adminTab}'!A2:M`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
@@ -214,26 +269,16 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
-    const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
-    const data = rawRows
-      .map((row, idx) => ({
-        rowNum: idx + 2,
-        id: String(row[0] ?? "").trim(),
-        fecha: String(row[1] ?? "").trim(),
-        telefono: String(row[3] ?? "").trim(),
-        cliente: String(row[4] ?? "").trim(),
-        canal: String(row[5] ?? "").trim(),
-        origen: String(row[5] ?? "").trim(),
-        zona: String(row[7] ?? "").trim(),
-        consulta: String(row[8] ?? "").trim(),
-        respuesta: String(row[9] ?? "").trim(),
-        link: String(row[10] ?? "").trim(),
-        estado: String(row[11] ?? "").trim(),
-        sheetUrl: sheetBase,
-      }))
-      .filter(r => r.consulta);
+    const mapped = rawRows.map((row, idx) => mapAdminSheetRow(row, idx, adminSheetId));
+    const data = filterAdminRowsByScope(mapped, scope);
 
-    return res.json({ ok: true, count: data.length, data });
+    return res.json({
+      ok: true,
+      scope,
+      sheetRowCount: rawRows.length,
+      count: data.length,
+      data,
+    });
   });
 
   // ── POST /sync ────────────────────────────────────────────────────────────
@@ -254,7 +299,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
+        range: `'${adminTab}'!A2:M`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       adminRows = (resp.data.values || []).map((row, idx) => ({
@@ -312,7 +357,7 @@ export function createWolfboardRouter(config) {
   router.post("/row", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
     const dryRun = config.wolfbDryRun;
-    const { adminRow, respuesta, link, aprobado } = req.body || {};
+    const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
 
     const adminSheetId = config.wolfbAdminSheetId;
@@ -328,6 +373,9 @@ export function createWolfboardRouter(config) {
     const adminUpdates = [];
     if (respuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[respuesta]] });
     if (link !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[link]] });
+    if (replaySnapshotUrl !== undefined) {
+      adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[replaySnapshotUrl]] });
+    }
     if (aprobado) adminUpdates.push({ range: `'${adminTab}'!L${adminRow}`, values: [["Aprobado"]] });
 
     if (!dryRun && adminUpdates.length > 0) {
@@ -399,7 +447,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A${adminRow}:L${adminRow}`,
+        range: `'${adminTab}'!A${adminRow}:M${adminRow}`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rowData = resp.data.values?.[0] || [];
@@ -413,7 +461,7 @@ export function createWolfboardRouter(config) {
         try {
           await sheets.spreadsheets.values.append({
             spreadsheetId: crmSheetId,
-            range: `'${enviadosTab}'!A:L`,
+            range: `'${enviadosTab}'!A:M`,
             valueInputOption: "USER_ENTERED",
             insertDataOption: "INSERT_ROWS",
             requestBody: { values: [rowData] },
@@ -461,10 +509,17 @@ export function createWolfboardRouter(config) {
 
   // ── GET /export ───────────────────────────────────────────────────────────
   router.get("/export", async (req, res) => {
+    const tokenFromQuery = String(req.query.token || "").trim();
+    if (tokenFromQuery) {
+      req.headers.authorization = `Bearer ${tokenFromQuery}`;
+    }
     if (!requireAuth(config, req, res)) return;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+
+    const scopeRaw = String(req.query.scope || "consulta").trim().toLowerCase();
+    const scope = scopeRaw === "admin" || scopeRaw === "all" || scopeRaw === "sheet" ? "admin" : "consulta";
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -474,7 +529,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
+        range: `'${adminTab}'!A2:M`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
@@ -482,27 +537,14 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
-    const rows = rawRows
-      .map((row, idx) => ({
-        rowNum: idx + 2,
-        id: String(row[0] ?? "").trim(),
-        fecha: String(row[1] ?? "").trim(),
-        telefono: String(row[3] ?? "").trim(),
-        cliente: String(row[4] ?? "").trim(),
-        canal: String(row[5] ?? "").trim(),
-        zona: String(row[7] ?? "").trim(),
-        consulta: String(row[8] ?? "").trim(),
-        respuesta: String(row[9] ?? "").trim(),
-        link: String(row[10] ?? "").trim(),
-        estado: String(row[11] ?? "").trim(),
-      }))
-      .filter(r => r.consulta);
+    const mapped = rawRows.map((row, idx) => mapAdminSheetRow(row, idx, adminSheetId));
+    const rows = filterAdminRowsByScope(mapped, scope);
 
     const escape = v => `"${String(v).replace(/"/g, '""')}"`;
-    const header = ["#", "ID", "Fecha", "Telefono", "Cliente", "Canal", "Zona", "Consulta", "Respuesta IA", "Link", "Estado"];
+    const header = ["#", "ID", "Fecha", "Telefono", "Cliente", "Canal", "Zona", "Consulta", "Respuesta IA", "Link", "Estado", "Replay JSON"];
     const lines = [
       header.map(escape).join(","),
-      ...rows.map(r => [r.rowNum, r.id, r.fecha, r.telefono, r.cliente, r.canal, r.zona, r.consulta, r.respuesta, r.link, r.estado].map(escape).join(",")),
+      ...rows.map(r => [r.rowNum, r.id, r.fecha, r.telefono, r.cliente, r.canal, r.zona, r.consulta, r.respuesta, r.link, r.estado, r.replaySnapshotUrl].map(escape).join(",")),
     ];
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -551,7 +593,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
+        range: `'${adminTab}'!A2:M`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
@@ -712,6 +754,25 @@ export function createWolfboardRouter(config) {
         } catch {
           // GCS upload is non-critical; proceed without link
         }
+
+        try {
+          const snap = buildWolfboardQuoteReplaySnapshot({
+            adminRow: row.rowNum,
+            cliente: row.cliente,
+            consulta: row.consulta,
+            extracted,
+            usedDefaults,
+            calcRaw,
+            listaPrecios: "web",
+          });
+          const jsonName = `Cotizacion-WB${row.rowNum}-replay-${new Date().toISOString().slice(0, 10)}-${Date.now()}.json`;
+          const jsonUrl = await uploadQuoteJsonToGcs(snap, jsonName, config.gcsQuotesBucket);
+          if (jsonUrl) {
+            valueUpdates.push({ range: `'${adminTab}'!M${row.rowNum}`, values: [[jsonUrl]] });
+          }
+        } catch {
+          // JSON snapshot is non-critical
+        }
       }
 
       if (numericSheetId !== undefined) {
@@ -797,343 +858,6 @@ export function createWolfboardRouter(config) {
     });
   });
 
-  // ─── GET /pendientes ────────────────────────────────────────────────────────
-  router.get("/pendientes", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
-    const adminSheetId = config.wolfbAdminSheetId;
-    const adminTab = config.wolfbAdminTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
-
-    let sheets;
-    try { sheets = await getSheetsClient(); } catch (e) {
-      return res.status(503).json({ ok: false, error: "Google Sheets auth error: " + e.message });
-    }
-
-    let rawRows;
-    try {
-      const resp = await sheets.spreadsheets.values.get({
-        spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
-        valueRenderOption: "FORMATTED_VALUE",
-      });
-      rawRows = resp.data.values || [];
-    } catch (e) {
-      return res.status(503).json({ ok: false, error: "Error al leer Admin 2.0: " + e.message });
-    }
-
-    const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
-    const data = rawRows
-      .map((row, idx) => ({
-        rowNum: idx + 2,
-        origen:    String(row[5]  ?? "").trim(), // F
-        cliente:   String(row[4]  ?? "").trim(), // E
-        consulta:  String(row[8]  ?? "").trim(), // I
-        respuesta: String(row[9]  ?? "").trim(), // J
-        link:      String(row[10] ?? "").trim(), // K
-        sheetUrl:  sheetBase,
-      }))
-      .filter((r) => r.consulta);
-
-    return res.json({ ok: true, data });
-  });
-
-  // ─── POST /sync ─────────────────────────────────────────────────────────────
-  // One-way: Admin.J (respuesta) → CRM_Operativo.AF where consulta matches Admin.I = CRM.G.
-  router.post("/sync", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
-    const adminSheetId = config.wolfbAdminSheetId;
-    const adminTab     = config.wolfbAdminTab;
-    const crmSheetId   = config.bmcSheetId;
-    const crmTab       = config.wolfbCrmMainTab;
-    const dryRun       = config.wolfbDryRun;
-
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
-
-    let sheets;
-    try { sheets = await getSheetsClient(); } catch (e) {
-      return res.status(503).json({ ok: false, error: "Google Sheets auth error: " + e.message });
-    }
-
-    let adminRows = [];
-    try {
-      const r = await sheets.spreadsheets.values.get({
-        spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
-        valueRenderOption: "FORMATTED_VALUE",
-      });
-      adminRows = (r.data.values || []).map((row, idx) => ({
-        rowNum:    idx + 2,
-        consulta:  String(row[8] ?? "").trim(),
-        respuesta: String(row[9] ?? "").trim(),
-      })).filter((r) => r.consulta && r.respuesta && !r.respuesta.startsWith("⚠"));
-    } catch (e) {
-      return res.status(503).json({ ok: false, error: "Error al leer Admin 2.0: " + e.message });
-    }
-
-    let crmRows = [];
-    if (crmSheetId) {
-      try {
-        const r = await sheets.spreadsheets.values.get({
-          spreadsheetId: crmSheetId,
-          range: `'${crmTab}'!A4:AK`,
-          valueRenderOption: "FORMATTED_VALUE",
-        });
-        crmRows = (r.data.values || []).map((row, idx) => ({
-          _rowNum: idx + 4,
-          G:  String(row[6]  ?? "").trim(), // consulta
-          AF: String(row[31] ?? "").trim(), // respuestaSugerida
-        }));
-      } catch { /* best-effort */ }
-    }
-
-    const updates = [];
-    let skipped = 0;
-    for (const a of adminRows) {
-      const match = crmRows.find((c) => c.G && normalizeText(c.G) === normalizeText(a.consulta));
-      if (!match) { skipped++; continue; }
-      if (match.AF) { skipped++; continue; } // already has a response
-      updates.push({ range: `'${crmTab}'!AF${match._rowNum}`, values: [[a.respuesta]] });
-    }
-
-    if (!dryRun && updates.length > 0 && crmSheetId) {
-      try {
-        await sheets.spreadsheets.values.batchUpdate({
-          spreadsheetId: crmSheetId,
-          requestBody: { valueInputOption: "USER_ENTERED", data: updates },
-        });
-      } catch (e) {
-        return res.status(503).json({ ok: false, error: "Error al escribir CRM: " + e.message });
-      }
-    }
-
-    return res.json({ ok: true, dryRun: dryRun || false, updatedAdmin: 0, updatedCrm: updates.length, skipped });
-  });
-
-  // ─── POST /row ──────────────────────────────────────────────────────────────
-  // Save: { adminRow, respuesta?, link? } — writes Admin.J + Admin.K + CRM.AF + CRM.AH
-  // Approve: { adminRow, aprobado: true } — writes CRM.AI = "Sí"
-  router.post("/row", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
-    const { adminRow, respuesta, link, aprobado } = req.body || {};
-    if (!adminRow || typeof adminRow !== "number") {
-      return res.status(400).json({ ok: false, error: "adminRow (number) requerido" });
-    }
-    const adminSheetId = config.wolfbAdminSheetId;
-    const adminTab     = config.wolfbAdminTab;
-    const crmSheetId   = config.bmcSheetId;
-    const crmTab       = config.wolfbCrmMainTab;
-    const dryRun       = config.wolfbDryRun;
-
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
-
-    let sheets;
-    try { sheets = await getSheetsClient(); } catch (e) {
-      return res.status(503).json({ ok: false, error: "Google Sheets auth error: " + e.message });
-    }
-
-    // Read the Admin row to get consulta for CRM matching
-    let consulta = "";
-    let existingRespuesta = "";
-    try {
-      const r = await sheets.spreadsheets.values.get({
-        spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A${adminRow}:L${adminRow}`,
-        valueRenderOption: "FORMATTED_VALUE",
-      });
-      const row = (r.data.values || [[]])[0] || [];
-      consulta          = String(row[8] ?? "").trim();
-      existingRespuesta = String(row[9] ?? "").trim();
-    } catch (e) {
-      return res.status(503).json({ ok: false, error: "Error al leer fila Admin: " + e.message });
-    }
-
-    const adminUpdates = [];
-    if (respuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[respuesta]] });
-    if (link      !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[link]] });
-
-    if (!dryRun && adminUpdates.length > 0) {
-      try {
-        await sheets.spreadsheets.values.batchUpdate({
-          spreadsheetId: adminSheetId,
-          requestBody: { valueInputOption: "USER_ENTERED", data: adminUpdates },
-        });
-      } catch (e) {
-        return res.status(503).json({ ok: false, error: "Error al escribir Admin: " + e.message });
-      }
-    }
-
-    // Find matching CRM row
-    let crmRowNum = null;
-    if (crmSheetId && consulta) {
-      try {
-        const r = await sheets.spreadsheets.values.get({
-          spreadsheetId: crmSheetId,
-          range: `'${crmTab}'!A4:AK`,
-          valueRenderOption: "FORMATTED_VALUE",
-        });
-        const rows = r.data.values || [];
-        const match = rows.find((row) => {
-          const g = String(row[6] ?? "").trim();
-          return g && normalizeText(g) === normalizeText(consulta);
-        });
-        if (match) {
-          const matchIdx = rows.indexOf(match);
-          crmRowNum = matchIdx + 4;
-        }
-      } catch { /* best-effort */ }
-    }
-
-    if (!dryRun && crmRowNum && crmSheetId) {
-      const crmUpdates = [];
-      const efectiveRespuesta = respuesta ?? existingRespuesta;
-      if (efectiveRespuesta) crmUpdates.push({ range: `'${crmTab}'!AF${crmRowNum}`, values: [[efectiveRespuesta]] });
-      if (link !== undefined) crmUpdates.push({ range: `'${crmTab}'!AH${crmRowNum}`, values: [[link]] });
-      if (aprobado)           crmUpdates.push({ range: `'${crmTab}'!AI${crmRowNum}`, values: [["Sí"]] });
-      if (crmUpdates.length > 0) {
-        try {
-          await sheets.spreadsheets.values.batchUpdate({
-            spreadsheetId: crmSheetId,
-            requestBody: { valueInputOption: "USER_ENTERED", data: crmUpdates },
-          });
-        } catch { /* best-effort */ }
-      }
-    }
-
-    return res.json({ ok: true, dryRun: dryRun || false, adminRow, crmRow: crmRowNum });
-  });
-
-  // ─── POST /enviados ──────────────────────────────────────────────────────────
-  // Appends the row to the Enviados tab, then deletes it from Admin 2.0.
-  router.post("/enviados", async (req, res) => {
-    if (!requireAuth(config, req, res)) return;
-    const { adminRow } = req.body || {};
-    if (!adminRow || typeof adminRow !== "number") {
-      return res.status(400).json({ ok: false, error: "adminRow (number) requerido" });
-    }
-    const adminSheetId  = config.wolfbAdminSheetId;
-    const adminTab      = config.wolfbAdminTab;
-    const enviadosTab   = config.wolfbCrmEnviadosTab;
-    const dryRun        = config.wolfbDryRun;
-
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
-
-    let sheets;
-    try { sheets = await getSheetsClient(); } catch (e) {
-      return res.status(503).json({ ok: false, error: "Google Sheets auth error: " + e.message });
-    }
-
-    // Read the row to copy
-    let rowValues = [];
-    try {
-      const r = await sheets.spreadsheets.values.get({
-        spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A${adminRow}:L${adminRow}`,
-        valueRenderOption: "FORMATTED_VALUE",
-      });
-      rowValues = (r.data.values || [[]])[0] || [];
-    } catch (e) {
-      return res.status(503).json({ ok: false, error: "Error al leer fila Admin: " + e.message });
-    }
-
-    if (!dryRun) {
-      // Append to Enviados tab (same spreadsheet)
-      try {
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: adminSheetId,
-          range: `'${enviadosTab}'!A:L`,
-          valueInputOption: "USER_ENTERED",
-          insertDataOption: "INSERT_ROWS",
-          requestBody: { values: [rowValues] },
-        });
-      } catch (e) {
-        return res.status(503).json({ ok: false, error: "Error al escribir Enviados: " + e.message });
-      }
-
-      // Get numeric sheetId to delete the row
-      let numericSheetId;
-      try {
-        const meta = await sheets.spreadsheets.get({ spreadsheetId: adminSheetId });
-        const tab = meta.data.sheets?.find((s) => s.properties?.title === adminTab);
-        numericSheetId = tab?.properties?.sheetId;
-      } catch (e) {
-        return res.status(503).json({ ok: false, error: "Error al leer metadata: " + e.message });
-      }
-
-      if (numericSheetId !== undefined) {
-        try {
-          await sheets.spreadsheets.batchUpdate({
-            spreadsheetId: adminSheetId,
-            requestBody: {
-              requests: [{
-                deleteDimension: {
-                  range: {
-                    sheetId: numericSheetId,
-                    dimension: "ROWS",
-                    startIndex: adminRow - 1, // 0-based
-                    endIndex: adminRow,
-                  },
-                },
-              }],
-            },
-          });
-        } catch (e) {
-          return res.status(503).json({ ok: false, error: "Error al borrar fila Admin: " + e.message });
-        }
-      }
-    }
-
-    return res.json({ ok: true, dryRun: dryRun || false, adminRow });
-  });
-
-  // ─── GET /export ─────────────────────────────────────────────────────────────
-  // CSV download of all pending rows (requires Bearer token or ?token= query param).
-  router.get("/export", async (req, res) => {
-    const tokenFromQuery = String(req.query.token || "").trim();
-    if (tokenFromQuery) {
-      req.headers.authorization = `Bearer ${tokenFromQuery}`;
-    }
-    if (!requireAuth(config, req, res)) return;
-
-    const adminSheetId = config.wolfbAdminSheetId;
-    const adminTab     = config.wolfbAdminTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
-
-    let sheets;
-    try { sheets = await getSheetsClient(); } catch (e) {
-      return res.status(503).json({ ok: false, error: "Google Sheets auth error: " + e.message });
-    }
-
-    let rawRows;
-    try {
-      const r = await sheets.spreadsheets.values.get({
-        spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:L`,
-        valueRenderOption: "FORMATTED_VALUE",
-      });
-      rawRows = r.data.values || [];
-    } catch (e) {
-      return res.status(503).json({ ok: false, error: "Error al leer Admin 2.0: " + e.message });
-    }
-
-    const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const header = ["rowNum", "origen", "cliente", "consulta", "respuesta", "link"].map(escape).join(",");
-    const lines  = rawRows
-      .map((row, idx) => ({
-        rowNum:    idx + 2,
-        origen:    String(row[5]  ?? "").trim(),
-        cliente:   String(row[4]  ?? "").trim(),
-        consulta:  String(row[8]  ?? "").trim(),
-        respuesta: String(row[9]  ?? "").trim(),
-        link:      String(row[10] ?? "").trim(),
-      }))
-      .filter((r) => r.consulta)
-      .map((r) => [r.rowNum, r.origen, r.cliente, r.consulta, r.respuesta, r.link].map(escape).join(","));
-
-    const csv = [header, ...lines].join("\r\n");
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="wolfboard-pendientes-${new Date().toISOString().slice(0, 10)}.csv"`);
-    return res.send(csv);
-  });
 
   return router;
 }

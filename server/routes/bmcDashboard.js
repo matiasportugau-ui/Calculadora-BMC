@@ -2000,6 +2000,16 @@ export default function createBmcDashboardRouter(config) {
       gemini: config.geminiApiKey,
     };
 
+    const hasAnyKey = Object.values(apiKeys).some((k) => String(k || "").trim().length > 0);
+    if (!hasAnyKey) {
+      return res.status(503).json({
+        ok: false,
+        code: "IA_NOT_CONFIGURED",
+        error:
+          "Ninguna clave IA configurada. Definí al menos una: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROK_API_KEY, GEMINI_API_KEY (p. ej. Secret Manager en Cloud Run).",
+      });
+    }
+
     const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
 
     const userMsg = [
@@ -2775,6 +2785,122 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
+  });
+
+  /** Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada. */
+  function classifyCrmChannel(parsed) {
+    const origen = String(parsed?.origen || "");
+    const obs = String(parsed?.observaciones || "");
+    const qid = extractMlQuestionId(obs);
+    if (qid || /ML/i.test(origen) || /\bQ:\d+/i.test(obs)) return "mercadolibre";
+    if (/WA|WhatsApp/i.test(origen)) return "whatsapp";
+    if (/instagram|(^|\s)ig(\s|$)|IG-/i.test(origen)) return "instagram";
+    if (/facebook|messenger|\bfb\b/i.test(origen)) return "facebook";
+    return null;
+  }
+
+  /**
+   * Cola unificada: una lectura de CRM_Operativo con canal por fila (ML, WA, IG, FB).
+   * Query: `channel` = all | mercadolibre | whatsapp | instagram | facebook
+   */
+  router.get("/crm/cockpit/unified-queue", requireCrmCockpitAuth, async (req, res) => {
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    const raw = String(req.query.channel || "all").trim().toLowerCase();
+    const channelFilter =
+      raw === "mercadolibre" || raw === "whatsapp" || raw === "instagram" || raw === "facebook"
+        ? raw
+        : "all";
+    const estadoFilter = String(req.query.estado || "").trim().toLowerCase();
+    try {
+      const sheets = await getCrmSheetsWrite();
+      const r = await sheets.spreadsheets.values.get({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+      });
+      const rawRows = r.data.values || [];
+      const items = [];
+      for (let i = 0; i < rawRows.length; i++) {
+        const rowNum = FIRST_DATA_ROW + i;
+        const parsed = parseCrmRowAtoAK([rawRows[i]]);
+        const channel = classifyCrmChannel(parsed);
+        if (!channel) continue;
+        if (channelFilter !== "all" && channel !== channelFilter) continue;
+        if (estadoFilter && !String(parsed.estado || "").toLowerCase().includes(estadoFilter)) continue;
+        const questionId = extractMlQuestionId(parsed.observaciones);
+        items.push({ row: rowNum, channel, parsed, questionId: questionId || null });
+      }
+      return res.json({ ok: true, items, channelFilter });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  /**
+   * Sincroniza canales con API pull hacia CRM. ML = mismas reglas que sync-ml.
+   * WhatsApp ya ingresa vía webhook; Facebook/Instagram requieren Graph API (no implementado).
+   */
+  router.post("/crm/cockpit/sync-all", requireCrmCockpitAuth, async (req, res) => {
+    if (!sheetId) return noConfig(res);
+    const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const want = Array.isArray(body.channels) ? body.channels.map((c) => String(c).toLowerCase()) : null;
+    const runMl = !want || want.includes("mercadolibre") || want.includes("ml") || want.includes("all");
+
+    const result = {
+      ok: true,
+      mercadolibre: { ran: false, synced: 0, error: null },
+      whatsapp: {
+        ran: false,
+        mode: "webhook",
+        detail:
+          "Las conversaciones WA entran en vivo por POST /webhooks/whatsapp y se escriben en CRM. No hay pull batch en este servidor.",
+      },
+      facebook: {
+        ran: false,
+        skipped: true,
+        detail:
+          "Messenger / Facebook Page inbox no está conectado en este repo. Cuando exista fila con origen Facebook/Messenger, aparecerá en la cola unificada.",
+      },
+      instagram: {
+        ran: false,
+        skipped: true,
+        detail:
+          "Instagram Direct no está conectado en este repo. Podés etiquetar origen en la planilla (p. ej. Instagram) para ver la fila acá.",
+      },
+    };
+
+    if (runMl) {
+      result.mercadolibre.ran = true;
+      try {
+        const ts = createTokenStore({
+          storageType: config.tokenStorage,
+          filePath: config.tokenFile,
+          gcsBucket: config.tokenGcsBucket,
+          gcsObject: config.tokenGcsObject,
+          encryptionKey: config.tokenEncryptionKey,
+        });
+        const tokens = await ts.read();
+        if (!tokens?.access_token) {
+          result.mercadolibre.error = "No ML tokens — run /auth/ml/start first";
+        } else {
+          const mlClient = createMercadoLibreClient({ config, tokenStore: ts, logger: req.log });
+          const syncResult = await syncUnansweredQuestions({
+            ml: mlClient,
+            sheetId,
+            credsPath,
+            logger: req.log,
+          });
+          result.mercadolibre.synced = syncResult.synced ?? 0;
+        }
+      } catch (e) {
+        result.mercadolibre.error = e.message || String(e);
+      }
+    }
+
+    if (result.mercadolibre.ran && result.mercadolibre.error) {
+      result.ok = false;
+    }
+    return res.json(result);
   });
 
   return router;
