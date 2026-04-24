@@ -5330,6 +5330,181 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "f2709c3bea9a6a525195229dd7c6b2c1855384cc",
+      "short_hash": "f2709c3",
+      "date": "2026-04-24",
+      "time": "05:07:10",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "chat",
+      "title": "add daily stats widget to dev panel",
+      "subject": "feat(chat): add daily stats widget to dev panel",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/dc79bce.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "src/components/PanelinDevPanel.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "5adc9096aabfa248455bfdffd7c4034342abefb0",
+      "short_hash": "5adc909",
+      "date": "2026-04-24",
+      "time": "05:14:01",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "state",
+      "title": "session summary 2026-04-24 — score 82/100",
+      "subject": "docs(state): session summary 2026-04-24 — score 82/100",
+      "files": [
+        "docs/team/PROJECT-STATE.md",
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "51a7795f9643c97ebfd4a97fe9d2798e2968b0ea",
+      "short_hash": "51a7795",
+      "date": "2026-04-24",
+      "time": "05:19:58",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "test",
+      "scope": "contracts",
+      "title": "add shape assertions for /api/agent/stats",
+      "subject": "test(contracts): add shape assertions for /api/agent/stats",
+      "files": [
+        "scripts/validate-api-contracts.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "scripts"
+        ]
+      }
+    },
+    {
+      "hash": "fe9b447d1341714dba32c75131b948645de44b7a",
+      "short_hash": "fe9b447",
+      "date": "2026-04-24",
+      "time": "05:21:17",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "agents",
+      "title": "change judge+orchestrator model opus→sonnet to fix advisor() incompatibility",
+      "subject": "fix(agents): change judge+orchestrator model opus→sonnet to fix advisor() incompatibility",
+      "files": [
+        ".claude/agents/bmc-judge.md",
+        ".claude/agents/bmc-orchestrator.md",
+        "data/knowledge/mantenimiento-y-comparativas.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".claude",
+          "data"
+        ]
+      }
+    },
+    {
+      "hash": "ed1c0349c7dadc49b64a51be75083840dbea71b5",
+      "short_hash": "ed1c034",
+      "date": "2026-04-24",
+      "time": "05:23:18",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "judge",
+      "title": "session evaluation 2026-04-24 — score +9, 14 commits, agent ranking",
+      "subject": "docs(judge): session evaluation 2026-04-24 — score +9, 14 commits, agent ranking",
+      "files": [
+        "docs/dev-trace/judge-reports/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "3cdcbdefd764f0ed711d360035d061786df1a7fc",
+      "short_hash": "3cdcbde",
+      "date": "2026-04-24",
+      "time": "05:23:29",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion",
+      "subject": "feat(kb): add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion",
+      "files": [
+        "data/training-kb.example.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "data"
+        ]
+      }
     }
   ]
 }

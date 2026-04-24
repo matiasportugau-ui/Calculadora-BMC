@@ -58,6 +58,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `76ff454` feat(fiscal): add irae_prevision estimate to /kpi-report endpoint
 - `360efad` feat(tests): Playwright wizard happy path E2E — 12/12 checks ✅
 - `93d4631` feat(ml-ui): arcade cabinet skin for ML Operativo operator panel
+- `f2709c3` feat(chat): add daily stats widget to dev panel
+- `3cdcbde` feat(kb): add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion
 
 ## Fixes
 
@@ -88,6 +90,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0cc56d0` fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026
 - `ad94912` fix(pricing): sync all panel prices against Matriz 2026 (BROMYROS CSV)
 - `5c41030` fix(data): remove ISODEC_EPS_PARED — producto inexistente `[regresión? · tests]`
+- `fe9b447` fix(agents): change judge+orchestrator model opus→sonnet to fix advisor() incompatibility
 
 ## Documentation
 
@@ -118,11 +121,14 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0cef79e` docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado
 - `029b783` docs(roadmap): mark items 7/7b/7c/8/13 done — session 2026-04-24
 - `cdd016a` docs(roadmap): PDF QA verificado — 22/22 checks ✅; score 78→80
+- `5adc909` docs(state): session summary 2026-04-24 — score 82/100
+- `ed1c034` docs(judge): session evaluation 2026-04-24 — score +9, 14 commits, agent ranking
 
 ## Tests
 
 - `3646101` test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles `[tests]`
 - `2a32c1b` test(e2e): add Playwright wizard happy path smoke test
+- `51a7795` test(contracts): add shape assertions for /api/agent/stats
 
 ## Chores
 

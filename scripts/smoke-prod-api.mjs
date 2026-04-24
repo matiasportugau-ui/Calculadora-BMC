@@ -218,6 +218,25 @@ async function main() {
           : "revisar (informativo)",
   });
 
+  // WhatsApp webhook liveness — GET with wrong token → 403 expected; 200 if token matches; 404/5xx = route down
+  const wa = await fetchJson(
+    "GET",
+    "/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=smoke-test-probe&hub.challenge=ping",
+    base
+  );
+  const waRouteAlive = wa.status === 200 || wa.status === 403;
+  rows.push({
+    path: "GET /webhooks/whatsapp",
+    status: wa.status,
+    ok: waRouteAlive,
+    note: waRouteAlive
+      ? wa.status === 200
+        ? "webhook verificación OK (token coincidió)"
+        : "webhook vivo (403 token incorrecto — esperado en smoke)"
+      : `ruta caída o error — esperado 200 o 403, recibido ${wa.status}`,
+  });
+  if (!waRouteAlive) criticalFail = true;
+
   if (skipSuggest) {
     rows.push({
       path: "POST /api/crm/suggest-response",
@@ -269,13 +288,13 @@ async function main() {
   }
   console.log("");
   if (criticalFail) {
-    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response"].includes(r.path));
+    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response", "GET /webhooks/whatsapp"].includes(r.path));
     const hint = bad.length ? bad.map((r) => `${r.path} (${r.status})`).join("; ") : "ver checks ✗ arriba";
     console.log(`RESULTADO: FALLA — ${hint}.`);
     process.exit(1);
   }
   console.log(
-    "RESULTADO: OK — health, capabilities, MATRIZ CSV" +
+    "RESULTADO: OK — health, capabilities, MATRIZ CSV, WhatsApp webhook" +
       (skipSuggest ? " (suggest omitido)." : ", suggest-response."),
   );
   console.log("");

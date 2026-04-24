@@ -163,3 +163,9 @@
 - 2026-04-24 04:41:44 — `5c41030` — fix(data): remove ISODEC_EPS_PARED — producto inexistente
 - 2026-04-24 04:55:20 — `93d4631` — feat(ml-ui): arcade cabinet skin for ML Operativo operator panel
 - 2026-04-24 05:03:23 — `dc79bce` — chore(dev-trace): sync post-arcade-ml [SKIP_AUTOTRACE]
+- 2026-04-24 05:07:10 — `f2709c3` — feat(chat): add daily stats widget to dev panel
+- 2026-04-24 05:14:01 — `5adc909` — docs(state): session summary 2026-04-24 — score 82/100
+- 2026-04-24 05:19:58 — `51a7795` — test(contracts): add shape assertions for /api/agent/stats
+- 2026-04-24 05:21:17 — `fe9b447` — fix(agents): change judge+orchestrator model opus→sonnet to fix advisor() incompatibility
+- 2026-04-24 05:23:18 — `ed1c034` — docs(judge): session evaluation 2026-04-24 — score +9, 14 commits, agent ranking
+- 2026-04-24 05:23:29 — `3cdcbde` — feat(kb): add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion
