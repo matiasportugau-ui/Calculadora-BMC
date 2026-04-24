@@ -55,6 +55,26 @@ function checkKpiReport(data) {
   if (typeof data.totalPendiente !== "number") return { ok: false, msg: "totalPendiente must be number" };
   if (typeof data.entregasEstaSemana !== "number") return { ok: false, msg: "entregasEstaSemana must be number" };
   if (typeof data.bajoStock !== "number") return { ok: false, msg: "bajoStock must be number" };
+  // irae_prevision added 2026-04-24
+  if (!data.irae_prevision || typeof data.irae_prevision !== "object") return { ok: false, msg: "irae_prevision must be an object" };
+  const iraeFields = ["base_ganancia_anual", "tasa", "monto_estimado", "fiscal_disclaimer", "periodo"];
+  const missingIrae = iraeFields.filter((k) => !(k in data.irae_prevision));
+  if (missingIrae.length > 0) return { ok: false, msg: `irae_prevision missing: ${missingIrae.join(", ")}` };
+  return { ok: true };
+}
+
+function checkAgentStats(data) {
+  if (!data || data.ok !== true) return { ok: false, msg: "ok must be true" };
+  const numFields = ["conversations", "turns", "active_last_hour", "avg_turns_per_conv", "hedge_rate_pct"];
+  for (const f of numFields) {
+    if (typeof data[f] !== "number") return { ok: false, msg: `${f} must be a number` };
+  }
+  if (data.avg_latency_ms !== null && typeof data.avg_latency_ms !== "number") {
+    return { ok: false, msg: "avg_latency_ms must be number or null" };
+  }
+  if (!data.providers || typeof data.providers !== "object" || Array.isArray(data.providers)) {
+    return { ok: false, msg: "providers must be a plain object" };
+  }
   return { ok: true };
 }
 
@@ -262,6 +282,41 @@ async function main() {
     }
   } else {
     console.log("  ⚠️  GET /api/crm/cockpit/ml-queue — skip (set API_AUTH_TOKEN for contract check)");
+    passed++;
+  }
+
+  // ── /api/agent/stats (requires auth token) ───────────────────────────────
+  if (apiToken) {
+    const nameStats = "GET /api/agent/stats (auth)";
+    try {
+      const { status, data } = await fetchJson("/api/agent/stats", {
+        headers: { Authorization: `Bearer ${apiToken}` },
+      });
+      if (status === 503 && data?.error?.includes?.("API_AUTH_TOKEN")) {
+        console.log(`  ⚠️  ${nameStats} — 503 API_AUTH_TOKEN not configured on server`);
+        passed++;
+      } else if (status === 401) {
+        console.log(`  ❌ ${nameStats} — 401 Unauthorized (token mismatch)`);
+        failed++;
+      } else if (status !== 200) {
+        console.log(`  ❌ ${nameStats} — HTTP ${status}`);
+        failed++;
+      } else {
+        const result = checkAgentStats(data);
+        if (result.ok) {
+          console.log(`  ✅ ${nameStats}`);
+          passed++;
+        } else {
+          console.log(`  ❌ ${nameStats} — ${result.msg}`);
+          failed++;
+        }
+      }
+    } catch (err) {
+      console.log(`  ❌ ${nameStats} — ${err.message}`);
+      failed++;
+    }
+  } else {
+    console.log("  ⚠️  GET /api/agent/stats — skip (set API_AUTH_TOKEN for contract check)");
     passed++;
   }
 
