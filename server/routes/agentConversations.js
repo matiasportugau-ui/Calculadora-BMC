@@ -24,6 +24,46 @@ function requireDevModeAuth(req, res, next) {
   return res.status(401).json({ ok: false, error: "Unauthorized" });
 }
 
+/** GET /api/agent/stats — lightweight daily usage KPIs (no AI call) */
+router.get("/agent/stats", requireDevModeAuth, (req, res) => {
+  const days = Math.max(1, Math.min(Number(req.query.days) || 1, 7));
+  const result = loadConversations({ days, page: 1, limit: 1000 });
+  const convs = result.items;
+
+  const now = Date.now();
+  const oneHourAgo = now - 60 * 60 * 1000;
+
+  let totalTurns = 0;
+  let totalHedges = 0;
+  let totalLatencyMs = 0;
+  let latencySamples = 0;
+  const providerCounts = {};
+  let activeLastHour = 0;
+
+  for (const c of convs) {
+    totalTurns += c.turnCount || 0;
+    totalHedges += c.hedgeCount || 0;
+    const provider = c.provider || "unknown";
+    providerCounts[provider] = (providerCounts[provider] || 0) + 1;
+    if (c.startedAt && new Date(c.startedAt).getTime() >= oneHourAgo) activeLastHour++;
+    for (const t of c.turns || []) {
+      if (t.latencyMs != null) { totalLatencyMs += t.latencyMs; latencySamples++; }
+    }
+  }
+
+  res.json({
+    ok: true,
+    period_days: days,
+    conversations: convs.length,
+    turns: totalTurns,
+    active_last_hour: activeLastHour,
+    avg_turns_per_conv: convs.length ? +(totalTurns / convs.length).toFixed(1) : 0,
+    hedge_rate_pct: totalTurns ? +((totalHedges / totalTurns) * 100).toFixed(1) : 0,
+    avg_latency_ms: latencySamples ? Math.round(totalLatencyMs / latencySamples) : null,
+    providers: providerCounts,
+  });
+});
+
 /** GET /api/agent/conversations — paginated list of conversation resumes */
 router.get("/agent/conversations", requireDevModeAuth, (req, res) => {
   const days = Math.max(1, Math.min(Number(req.query.days) || 30, 90));
