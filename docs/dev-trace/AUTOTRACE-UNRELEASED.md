@@ -86,6 +86,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `1c36c60` fix(security): lock CORS to production origin + dev localhost
 - `0cc56d0` fix(pricing): sync FIJACIONES + SELLADORES against Matriz 2026
 - `ad94912` fix(pricing): sync all panel prices against Matriz 2026 (BROMYROS CSV)
+- `5c41030` fix(data): remove ISODEC_EPS_PARED — producto inexistente `[regresión? · tests]`
 
 ## Documentation
 
@@ -171,6 +172,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `88267c8` chore(config): broaden cd+compound Bash patterns for sub-agent autonomy
 - `224e4bf` chore(dev-trace): sync post-fiscal-sprint [SKIP_AUTOTRACE]
 - `83490ff` chore(dev-trace): sync post-e2e-wizard [SKIP_AUTOTRACE]
+- `7f4f644` chore(dev-trace): sync post-playwright-wizard [SKIP_AUTOTRACE]
 
 ## Other
 

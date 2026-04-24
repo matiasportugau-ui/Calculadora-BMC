@@ -1,24 +1,24 @@
 # AUTOTRACE — Development status
 
-- Total commits documentados: **157**
+- Total commits documentados: **159**
 - Distribución por tipo:
-  - chore: 47
+  - chore: 48
   - docs: 27
   - feat: 53
-  - fix: 26
+  - fix: 27
   - other: 2
   - test: 2
 - Distribución por riesgo (tamaño/extensiones):
   - Amarillo: 18
   - Rojo: 2
-  - Verde: 137
+  - Verde: 139
 - Impacto release sugerido (heurística):
-  - low: 117
-  - med: 40
+  - low: 118
+  - med: 41
 
 ## Atención QA — posible regresión (heurística)
 
-_Ningún commit reciente marcado._
+- `5c41030` 2026-04-24 — fix(data): remove ISODEC_EPS_PARED — producto inexistente — impacto: med
 
 ---
 

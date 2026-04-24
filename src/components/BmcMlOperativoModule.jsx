@@ -136,6 +136,150 @@ async function cockpitFetch(token, path, options = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
+// ── Arcade cabinet styles ────────────────────────────────────────────────────
+
+const arcadeCabinet = {
+  background: "linear-gradient(180deg, #12021f 0%, #0d0118 60%, #12021f 100%)",
+  border: "3px solid #ffd700",
+  borderRadius: 18,
+  padding: "24px 20px 28px",
+  marginBottom: 20,
+  position: "relative",
+  overflow: "hidden",
+  boxShadow: "0 0 0 1px #8b6914, 0 8px 32px #0008, inset 0 1px 0 #ffd70033",
+};
+
+const arcadeTitle = {
+  textAlign: "center",
+  fontFamily: "'Courier New', Courier, monospace",
+  fontSize: 11,
+  letterSpacing: 4,
+  color: "#ffd700",
+  marginBottom: 14,
+  textTransform: "uppercase",
+  textShadow: "0 0 8px #ffd70099",
+};
+
+const crtScreen = {
+  background: "#050f07",
+  border: "2px solid #1a3a1a",
+  borderRadius: 6,
+  padding: "10px 14px",
+  marginBottom: 20,
+  fontFamily: "'Courier New', Courier, monospace",
+  fontSize: 13,
+  lineHeight: 1.7,
+  minHeight: 72,
+  backgroundImage:
+    "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,0,0.03) 3px, rgba(0,255,0,0.03) 6px)",
+  boxShadow: "inset 0 0 20px #00000088, 0 0 0 1px #0f2e0f",
+};
+
+const crtIdle = { color: "#00cc44", textShadow: "0 0 6px #00ff4488" };
+const crtFiring = { color: "#ffcc00", textShadow: "0 0 8px #ffcc0099" };
+const crtDone = { color: "#00ff88", textShadow: "0 0 10px #00ff8866" };
+const crtError = { color: "#ff4444", textShadow: "0 0 8px #ff444488" };
+
+const arcadeControls = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 32,
+};
+
+const bigBtnBase = {
+  width: 112,
+  height: 112,
+  borderRadius: "50%",
+  border: "none",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexDirection: "column",
+  gap: 4,
+  fontFamily: "'Courier New', Courier, monospace",
+  fontWeight: 900,
+  fontSize: 13,
+  letterSpacing: 1,
+  textTransform: "uppercase",
+  transition: "transform 0.07s, box-shadow 0.07s",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  position: "relative",
+};
+
+const bigBtnRed = {
+  ...bigBtnBase,
+  background: "radial-gradient(circle at 38% 32%, #ff9966, #e02200 55%, #7a0800)",
+  color: "#fff",
+  boxShadow:
+    "0 0 0 5px #3a0800, 0 0 0 10px #880000, 0 9px 0 10px #220000, 0 0 40px #ff220055, inset 0 2px 4px #ff6644aa",
+  textShadow: "0 1px 2px #00000088",
+};
+
+const bigBtnRedActive = {
+  ...bigBtnRed,
+  transform: "translateY(7px)",
+  boxShadow:
+    "0 0 0 5px #3a0800, 0 0 0 10px #880000, 0 2px 0 10px #220000, 0 0 60px #ff440099, inset 0 2px 4px #ff6644aa",
+};
+
+const bigBtnRedDisabled = {
+  ...bigBtnRed,
+  opacity: 0.45,
+  cursor: "not-allowed",
+};
+
+const smallBtnArcade = {
+  width: 52,
+  height: 52,
+  borderRadius: "50%",
+  border: "none",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexDirection: "column",
+  gap: 2,
+  fontFamily: "'Courier New', Courier, monospace",
+  fontWeight: 700,
+  fontSize: 9,
+  letterSpacing: 0.5,
+  textTransform: "uppercase",
+  transition: "transform 0.07s, box-shadow 0.07s",
+  userSelect: "none",
+};
+
+const smallBtnYellow = {
+  ...smallBtnArcade,
+  background: "radial-gradient(circle at 38% 32%, #ffe066, #ccaa00 55%, #7a6200)",
+  color: "#1a0a00",
+  boxShadow:
+    "0 0 0 3px #3a2c00, 0 0 0 6px #665500, 0 5px 0 6px #221a00, 0 0 20px #ffcc0044",
+  textShadow: "0 1px 0 #ffffff44",
+};
+
+const smallBtnBlue = {
+  ...smallBtnArcade,
+  background: "radial-gradient(circle at 38% 32%, #66aaff, #0055cc 55%, #003388)",
+  color: "#fff",
+  boxShadow:
+    "0 0 0 3px #001a44, 0 0 0 6px #003388, 0 5px 0 6px #001122, 0 0 20px #0066ff44",
+};
+
+const scoreDisplay = {
+  textAlign: "center",
+  fontFamily: "'Courier New', Courier, monospace",
+  color: "#ff6600",
+  fontSize: 11,
+  letterSpacing: 2,
+  marginTop: 16,
+  textShadow: "0 0 6px #ff660066",
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 export default function BmcMlOperativoModule() {
   const [tokenInput, setTokenInput] = useState("");
   const [token, setToken] = useState("");
@@ -146,6 +290,10 @@ export default function BmcMlOperativoModule() {
   const [toast, setToast] = useState("");
   const [tokenLoadError, setTokenLoadError] = useState("");
   const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
+  const [firing, setFiring] = useState(false);
+  const [cycleLog, setCycleLog] = useState([]);
+  const [cycleScore, setCycleScore] = useState(0);
+  const [btnPressed, setBtnPressed] = useState(false);
 
   useEffect(() => {
     const stored = getStoredToken();
@@ -269,6 +417,80 @@ export default function BmcMlOperativoModule() {
     await loadQueue();
   };
 
+  const runFullCycle = async () => {
+    if (!token || firing) return;
+    setFiring(true);
+    setBtnPressed(true);
+    setCycleLog(["INICIANDO CICLO ML..."]);
+    setError("");
+    let sent = 0;
+
+    // Phase 1: sync
+    setCycleLog(["▶ SYNC ML → CRM..."]);
+    const syncRes = await cockpitFetch(token, "/api/crm/cockpit/sync-ml", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!syncRes.ok) {
+      setCycleLog(["✗ SYNC FAILED: " + (syncRes.data?.error || `HTTP ${syncRes.status}`)]);
+      setFiring(false);
+      setBtnPressed(false);
+      return;
+    }
+    const newQ = syncRes.data?.synced ?? 0;
+    setCycleLog([`✓ SYNC OK — ${newQ} nueva(s)`, "▶ CARGANDO COLA..."]);
+
+    // Phase 2: load queue
+    const qRes = await cockpitFetch(token, "/api/crm/cockpit/ml-queue");
+    if (!qRes.ok) {
+      setCycleLog((l) => [...l, "✗ QUEUE LOAD FAILED"]);
+      setFiring(false);
+      setBtnPressed(false);
+      return;
+    }
+    const queue = Array.isArray(qRes.data?.items) ? qRes.data.items : [];
+    setItems(queue);
+    const pending = queue.filter((i) => i.parsed?.aprobadoEnviar !== "SI");
+    setCycleLog((l) => [...l, `✓ COLA: ${queue.length} ítem(s), ${pending.length} pendiente(s)`, "▶ APROBANDO Y ENVIANDO..."]);
+
+    setTimeout(() => setBtnPressed(false), 200);
+
+    // Phase 3: approve + send each pending item
+    for (const item of pending) {
+      const row = item.row;
+      if (!item.parsed?.respuestaSugerida) continue;
+
+      const approveRes = await cockpitFetch(token, "/api/crm/cockpit/approval", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ row, approved: true }),
+      });
+      if (!approveRes.ok) {
+        setCycleLog((l) => [...l, `⚠ FILA ${row}: no se pudo aprobar`]);
+        continue;
+      }
+
+      const sendRes = await cockpitFetch(token, "/api/crm/cockpit/send-approved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ row }),
+      });
+      if (sendRes.ok) {
+        sent++;
+        setCycleLog((l) => [...l, `★ FILA ${row}: ENVIADO (${sendRes.data?.channel || "ok"})`]);
+      } else {
+        setCycleLog((l) => [...l, `⚠ FILA ${row}: envío falló — ${sendRes.data?.error || "err"}`]);
+      }
+    }
+
+    setCycleScore((s) => s + sent);
+    setCycleLog((l) => [...l, ``, `GAME OVER — ${sent} ENVIADO(S). QUEUE ACTUALIZADA.`]);
+    setFiring(false);
+    showToast(`Ciclo ML completo: ${sent} respuesta(s) enviada(s).`);
+    await loadQueue();
+  };
+
   const copyText = async (text, label) => {
     const t = String(text || "").trim();
     if (!t) {
@@ -304,6 +526,87 @@ export default function BmcMlOperativoModule() {
         <p style={sub}>
           Cola desde CRM_Operativo (preguntas con <code>Q:id</code> en Observaciones). El token se carga automáticamente desde el servidor. Aprobá (AI) y enviá a ML con el texto de AF.
         </p>
+
+        {/* ══ ARCADE PANEL ══════════════════════════════════════════════════ */}
+        <div style={arcadeCabinet}>
+          {/* scanline overlay */}
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px)", pointerEvents: "none", borderRadius: 16 }} />
+
+          <div style={arcadeTitle}>◆ BMC ML RESPONDER v1.0 ◆</div>
+
+          {/* CRT screen */}
+          <div style={crtScreen}>
+            {cycleLog.length === 0 ? (
+              <span style={{ ...crtIdle, animation: "none" }}>
+                {token ? `> QUEUE: ${items.length} ÍTEM(S) — PRESIONÁ FIRE PARA RESPONDER` : "> INSERT COIN — CARGÁ EL TOKEN PARA ACTIVAR"}
+              </span>
+            ) : (
+              cycleLog.map((line, i) => (
+                <div key={i} style={i === cycleLog.length - 1 && firing ? crtFiring : line.startsWith("★") ? crtDone : line.startsWith("✗") || line.startsWith("⚠") ? crtError : crtIdle}>
+                  {line || " "}
+                </div>
+              ))
+            )}
+            {firing && <span style={{ ...crtFiring, animation: "none" }}> █</span>}
+          </div>
+
+          {/* Controls row */}
+          <div style={arcadeControls}>
+            {/* Left: SYNC joystick button */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                style={syncing || !token ? { ...smallBtnYellow, opacity: 0.5, cursor: "not-allowed" } : smallBtnYellow}
+                onClick={runSync}
+                disabled={syncing || !token}
+                title="Sincronizar ML → CRM"
+              >
+                <span style={{ fontSize: 16 }}>⟳</span>
+                <span style={{ fontSize: 8, letterSpacing: 1 }}>SYNC</span>
+              </button>
+              <span style={{ fontFamily: "'Courier New', monospace", fontSize: 9, color: "#886600", letterSpacing: 1 }}>SYNC</span>
+            </div>
+
+            {/* Center: BIG FIRE button */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <button
+                type="button"
+                style={!token ? bigBtnRedDisabled : btnPressed || firing ? bigBtnRedActive : bigBtnRed}
+                onMouseDown={() => token && !firing && setBtnPressed(true)}
+                onMouseUp={() => setBtnPressed(false)}
+                onMouseLeave={() => setBtnPressed(false)}
+                onClick={runFullCycle}
+                disabled={!token || firing}
+                title="Sincronizar + Aprobar + Enviar todo"
+              >
+                <span style={{ fontSize: 26, lineHeight: 1 }}>{firing ? "⚡" : "🔴"}</span>
+                <span style={{ fontSize: 11, letterSpacing: 2 }}>{firing ? "FIRING" : "FIRE!"}</span>
+              </button>
+              <span style={{ fontFamily: "'Courier New', monospace", fontSize: 9, color: "#880000", letterSpacing: 2, textShadow: "0 0 6px #ff000044" }}>RESPONDER</span>
+            </div>
+
+            {/* Right: REFRESH button */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                style={loading || !token ? { ...smallBtnBlue, opacity: 0.5, cursor: "not-allowed" } : smallBtnBlue}
+                onClick={loadQueue}
+                disabled={loading || !token}
+                title="Actualizar cola"
+              >
+                <span style={{ fontSize: 16 }}>↺</span>
+                <span style={{ fontSize: 8, letterSpacing: 1 }}>COLA</span>
+              </button>
+              <span style={{ fontFamily: "'Courier New', monospace", fontSize: 9, color: "#003388", letterSpacing: 1 }}>RELOAD</span>
+            </div>
+          </div>
+
+          {/* Score */}
+          <div style={scoreDisplay}>
+            1UP &nbsp;&nbsp; SCORE: {String(cycleScore).padStart(4, "0")} &nbsp;&nbsp; HI: {String(Math.max(cycleScore, 0)).padStart(4, "0")}
+          </div>
+        </div>
+        {/* ══ END ARCADE PANEL ══════════════════════════════════════════════ */}
 
         <div style={card}>
           {tokenAutoLoaded ? (

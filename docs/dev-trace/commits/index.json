@@ -5188,6 +5188,73 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "7f4f64422536851acd03e79cc18148dd20fe6b94",
+      "short_hash": "7f4f644",
+      "date": "2026-04-24",
+      "time": "04:40:12",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync post-playwright-wizard [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): sync post-playwright-wizard [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/360efad.md",
+        "docs/dev-trace/commits/2026/04/83490ff.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "5c4103088468885f7ccd05200e7fa1be402adeb9",
+      "short_hash": "5c41030",
+      "date": "2026-04-24",
+      "time": "04:41:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "data",
+      "title": "remove ISODEC_EPS_PARED — producto inexistente",
+      "subject": "fix(data): remove ISODEC_EPS_PARED — producto inexistente",
+      "files": [
+        "src/data/constants.js",
+        "src/data/matrizPreciosMapping.js",
+        "tests/validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src",
+          "tests"
+        ]
+      }
     }
   ]
 }
