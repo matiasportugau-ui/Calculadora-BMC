@@ -57,6 +57,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7040b02` feat(chat): add GET /api/agent/stats — daily usage KPI endpoint
 - `76ff454` feat(fiscal): add irae_prevision estimate to /kpi-report endpoint
 - `360efad` feat(tests): Playwright wizard happy path E2E — 12/12 checks ✅
+- `93d4631` feat(ml-ui): arcade cabinet skin for ML Operativo operator panel
 
 ## Fixes
 

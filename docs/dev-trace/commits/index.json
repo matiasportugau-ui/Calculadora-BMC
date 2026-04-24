@@ -5255,6 +5255,43 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "93d463152817ab0302e7da397d894e2277183505",
+      "short_hash": "93d4631",
+      "date": "2026-04-24",
+      "time": "04:55:20",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-ui",
+      "title": "arcade cabinet skin for ML Operativo operator panel",
+      "subject": "feat(ml-ui): arcade cabinet skin for ML Operativo operator panel",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/5c41030.md",
+        "docs/dev-trace/commits/2026/04/7f4f644.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "src/components/BmcMlOperativoModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }

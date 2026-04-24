@@ -161,3 +161,4 @@
 - 2026-04-24 04:39:36 — `360efad` — feat(tests): Playwright wizard happy path E2E — 12/12 checks ✅
 - 2026-04-24 04:40:12 — `7f4f644` — chore(dev-trace): sync post-playwright-wizard [SKIP_AUTOTRACE]
 - 2026-04-24 04:41:44 — `5c41030` — fix(data): remove ISODEC_EPS_PARED — producto inexistente
+- 2026-04-24 04:55:20 — `93d4631` — feat(ml-ui): arcade cabinet skin for ML Operativo operator panel
