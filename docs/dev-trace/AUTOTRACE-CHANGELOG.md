@@ -131,3 +131,4 @@
 - 2026-04-24 02:14:19 — `4589d3b` — fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
 - 2026-04-24 02:14:31 — `732d9a1` — feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
 - 2026-04-24 02:14:37 — `425f2c9` — chore(scripts): accessible-base sync + build tooling updates
+- 2026-04-24 02:14:54 — `95f4d8d` — chore(dev-trace): rebuild kb + autotrace post-commit batch

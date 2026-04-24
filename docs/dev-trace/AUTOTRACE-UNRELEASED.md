@@ -143,6 +143,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `088bbb3` chore(dev-trace): AUTOTRACE 5df16b5
 - `904af8c` chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]
 - `425f2c9` chore(scripts): accessible-base sync + build tooling updates
+- `95f4d8d` chore(dev-trace): rebuild kb + autotrace post-commit batch
 
 ## Other
 
