@@ -51,6 +51,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c8b33e6` feat(wolfboard): add local dev scripts and update kb.json
 - `47957df` feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook `[tests]`
 - `e7ee3ee` feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot
+- `732d9a1` feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
 
 ## Fixes
 
@@ -76,6 +77,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `52e394a` fix(calc): make /cotizar/pdf handler async + sync autotrace
 - `9e30028` fix(docker): skip bash disk-precheck in Alpine build stage
 - `db9b798` fix(superAgent): log Anthropic errors to diagnose failure in production
+- `4589d3b` fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
 
 ## Documentation
 
@@ -139,6 +141,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5a52c84` chore(dev-trace): AUTOTRACE post-batch 2026-04-24
 - `5df16b5` chore(dev-trace): final AUTOTRACE cleanup 2026-04-24
 - `088bbb3` chore(dev-trace): AUTOTRACE 5df16b5
+- `904af8c` chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]
+- `425f2c9` chore(scripts): accessible-base sync + build tooling updates
 
 ## Other
 

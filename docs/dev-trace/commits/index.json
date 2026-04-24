@@ -4172,6 +4172,124 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "904af8c03ea1d53526a34a61cde6e90825203829",
+      "short_hash": "904af8c",
+      "date": "2026-04-24",
+      "time": "00:08:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "AUTOTRACE final batch [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/088bbb3.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "4589d3b3605b81afe0a1b521431bfd28b12c1551",
+      "short_hash": "4589d3b",
+      "date": "2026-04-24",
+      "time": "02:14:19",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "dashboard",
+      "title": "promote Claude to #1 AI provider; add /consultations command-center endpoints",
+      "subject": "fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints",
+      "files": [
+        "server/routes/bmcDashboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "732d9a10580616bc3c532aa14fcd3500432c826b",
+      "short_hash": "732d9a1",
+      "date": "2026-04-24",
+      "time": "02:14:31",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof-plan",
+      "title": "panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore",
+      "subject": "feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "src/components/roofPlan/RoofPlanDimensions.jsx",
+        "src/utils/panelLayout.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "425f2c99b5e6836a24384bed0179142e1260a38b",
+      "short_hash": "425f2c9",
+      "date": "2026-04-24",
+      "time": "02:14:37",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "scripts",
+      "title": "accessible-base sync + build tooling updates",
+      "subject": "chore(scripts): accessible-base sync + build tooling updates",
+      "files": [
+        "scripts/accessible-base-sync.js",
+        "scripts/build-accessible-base.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "scripts"
+        ]
+      }
     }
   ]
 }

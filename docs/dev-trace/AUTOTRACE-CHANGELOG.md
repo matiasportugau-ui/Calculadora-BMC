@@ -127,3 +127,7 @@
 - 2026-04-24 00:07:52 — `5a52c84` — chore(dev-trace): AUTOTRACE post-batch 2026-04-24
 - 2026-04-24 00:07:57 — `5df16b5` — chore(dev-trace): final AUTOTRACE cleanup 2026-04-24
 - 2026-04-24 00:08:01 — `088bbb3` — chore(dev-trace): AUTOTRACE 5df16b5
+- 2026-04-24 00:08:09 — `904af8c` — chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]
+- 2026-04-24 02:14:19 — `4589d3b` — fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
+- 2026-04-24 02:14:31 — `732d9a1` — feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
+- 2026-04-24 02:14:37 — `425f2c9` — chore(scripts): accessible-base sync + build tooling updates

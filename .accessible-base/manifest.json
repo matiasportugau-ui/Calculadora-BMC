@@ -2,19 +2,19 @@
   "version": 1,
   "sheets": {
     "matriz_precios": {
-      "synced_at": "2026-04-24T02:06:54.397Z",
+      "synced_at": "2026-04-24T05:11:49.316Z",
       "row_count": 170,
       "spreadsheet_id": "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
       "label": "MATRIZ Costos y Ventas 2026 — precios canónicos BMC"
     },
     "admin_cotizaciones": {
-      "synced_at": "2026-04-24T02:06:56.443Z",
-      "row_count": 268,
+      "synced_at": "2026-04-24T05:11:51.558Z",
+      "row_count": 8,
       "spreadsheet_id": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
       "label": "Admin 2.0 — Administrador de Cotizaciones (Wolfboard source)"
     },
     "crm_operativo": {
-      "synced_at": "2026-04-24T02:06:51.177Z",
+      "synced_at": "2026-04-24T05:11:46.163Z",
       "row_count": 297,
       "spreadsheet_id": "1N-4kyT_uSPSVnu5tMIc6VzFIaga8FHDDEDGcclafRWg",
       "label": "CRM Operativo — hub principal de leads y respuestas"
@@ -24,7 +24,7 @@
       "last_error_at": "2026-04-23T22:06:54.070Z"
     },
     "pagos_pendientes": {
-      "synced_at": "2026-04-24T02:06:52.765Z",
+      "synced_at": "2026-04-24T05:11:47.604Z",
       "row_count": 72,
       "spreadsheet_id": "1AzHhalsZKGis_oJ6J06zQeOb6uMQCsliR82VrSKUUsI",
       "label": "Pagos Pendientes 2026 — vencimientos por moneda"
@@ -38,5 +38,5 @@
       "last_error_at": "2026-04-23T22:06:57.307Z"
     }
   },
-  "last_sync": "2026-04-24T02:06:56.742Z"
+  "last_sync": "2026-04-24T05:11:52.011Z"
 }
