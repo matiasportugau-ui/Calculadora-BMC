@@ -108,6 +108,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f50973e` docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
 - `a338169` docs(roadmap): sync scores 73/100 — suggest verde, CI, RBAC, hub canales
 - `59773ec` docs(roadmap): mark items 7/7b/7c DONE + score 73→75
+- `0cef79e` docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado
 
 ## Tests
 
@@ -154,6 +155,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `59f0f13` chore(dev-trace): cleanup post-session + kb state [SKIP_AUTOTRACE]
 - `6ca6d7e` chore(dev-trace): AUTOTRACE post-docs-sync [SKIP_AUTOTRACE]
 - `2669476` chore(dev-trace): sync accessible-base + autotrace 2026-04-24 [SKIP_AUTOTRACE]
+- `e217c33` chore(dev-trace): autotrace post-roadmap-sync [SKIP_AUTOTRACE]
+- `4ed32a0` chore(config): expand agent permissions for autonomous sub-agent completion
 
 ## Other
 

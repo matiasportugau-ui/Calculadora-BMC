@@ -4662,6 +4662,99 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "e217c33b3d54029442f8792e4e8580aa762f5227",
+      "short_hash": "e217c33",
+      "date": "2026-04-24",
+      "time": "03:40:13",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "autotrace post-roadmap-sync [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): autotrace post-roadmap-sync [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/1c36c60.md",
+        "docs/dev-trace/commits/2026/04/2669476.md",
+        "docs/dev-trace/commits/2026/04/59773ec.md",
+        "docs/dev-trace/commits/2026/04/7ba560d.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "4ed32a0bdca73e74434051facf4031137fc5df7f",
+      "short_hash": "4ed32a0",
+      "date": "2026-04-24",
+      "time": "03:42:26",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "config",
+      "title": "expand agent permissions for autonomous sub-agent completion",
+      "subject": "chore(config): expand agent permissions for autonomous sub-agent completion",
+      "files": [
+        ".claude/settings.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".claude"
+        ]
+      }
+    },
+    {
+      "hash": "0cef79e8bd06e9d10af5f88d518941ec4882b039",
+      "short_hash": "0cef79e",
+      "date": "2026-04-24",
+      "time": "03:46:55",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "roadmap",
+      "title": "auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado",
+      "subject": "docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/team/ROADMAP.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
     }
   ]
 }

@@ -142,3 +142,6 @@
 - 2026-04-24 03:37:27 — `1c36c60` — fix(security): lock CORS to production origin + dev localhost
 - 2026-04-24 03:38:13 — `7ba560d` — feat(roof-plan): show per-tramo profile in 2D multizone view
 - 2026-04-24 03:40:06 — `59773ec` — docs(roadmap): mark items 7/7b/7c DONE + score 73→75
+- 2026-04-24 03:40:13 — `e217c33` — chore(dev-trace): autotrace post-roadmap-sync [SKIP_AUTOTRACE]
+- 2026-04-24 03:42:26 — `4ed32a0` — chore(config): expand agent permissions for autonomous sub-agent completion
+- 2026-04-24 03:46:55 — `0cef79e` — docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado
