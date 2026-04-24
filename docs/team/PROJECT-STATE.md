@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-23
+**Última actualización:** 2026-04-24
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-24 (Ops — suggest-response verde, QA visual hub, 370 tests):** `POST /api/crm/suggest-response` resuelto: creado secreto `ANTHROPIC_API_KEY` en Secret Manager, mapeado con `--update-secrets` a Cloud Run → revision **rev-00209** y **rev-00210**; créditos Anthropic cargados; clave rotada tras exposición accidental. Smoke prod: **`ok: true`, provider `claude`**. CI: todos los jobs verdes (`validate`, `lint`, `smoke`, `channels_pipeline`, `knowledge_antenna`). QA visual prod: `/hub`, `/hub/canales`, `/hub/admin`, `/hub/ml` — carga sin errores JS. Score efectivo: **~73/100**. Tests: **370 pass** (subió de 350). Stack commiteado en batch: `feat(panelin-internal)` RBAC + invoke, `feat(wolfboard)` canales hub + admin + analytics, `chore(tooling)` scripts smoke/dev-verify, `docs(team+agents)` PROJECT-STATE/ROADMAP/agentes.
 
 **2026-04-23 (Ops — verificación smoke prod + tag remoto):** Re-ejecución `npm run smoke:prod` (base default `https://panelin-calc-q74zutv7dq-uc.a.run.app`): **✓** `/health`, `/capabilities`, **`public_base_url`** alineado a la base del smoke, **✓** `GET /api/actualizar-precios-calculadora` (CSV MATRIZ). **✗** único fallo: **`POST /api/crm/suggest-response` → 503** con cuerpo `All providers failed` (cadena Grok → Claude → OpenAI → Gemini: Grok/OpenAI/Gemini rechazan clave; **Anthropic sin key** en servicio). Verificación remota: `git ls-remote --tags origin 'v3.1.*'` → **`refs/tags/v3.1.6` existe en `origin`**. Bloqueador Fase **A3/A4**: rotar **al menos una** API key válida en **Secret Manager** y mapearla con `--update-secrets` en Cloud Run (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GROK_API_KEY`, `GEMINI_API_KEY` según [`server/config.js`](../../server/config.js)); **no** pegar secretos en Markdown. Append: [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md) Run 2.1.
 

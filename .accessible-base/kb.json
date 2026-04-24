@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T05:22:00.498Z",
-    "build_ms": 61,
+    "ts": "2026-04-24T05:43:15.398Z",
+    "build_ms": 3634,
     "score": 68,
     "score_delta": 0,
     "sources": [
@@ -26,7 +26,7 @@
   },
   "state": {
     "branch": "main",
-    "last_change": "2026-04-23 (Ops — verificación smoke prod + tag remoto):",
+    "last_change": "2026-04-24 (Ops — suggest-response verde, QA visual hub, 370 tests):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",
