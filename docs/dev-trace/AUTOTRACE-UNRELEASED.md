@@ -54,6 +54,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `732d9a1` feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
 - `9c89f74` feat(tests): add panelinInternal RBAC E2E suite + fix stale PDF url assertion `[tests]`
 - `7ba560d` feat(roof-plan): show per-tramo profile in 2D multizone view
+- `7040b02` feat(chat): add GET /api/agent/stats — daily usage KPI endpoint
 
 ## Fixes
 
@@ -109,6 +110,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a338169` docs(roadmap): sync scores 73/100 — suggest verde, CI, RBAC, hub canales
 - `59773ec` docs(roadmap): mark items 7/7b/7c DONE + score 73→75
 - `0cef79e` docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado
+- `029b783` docs(roadmap): mark items 7/7b/7c/8/13 done — session 2026-04-24
 
 ## Tests
 
@@ -157,6 +159,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `2669476` chore(dev-trace): sync accessible-base + autotrace 2026-04-24 [SKIP_AUTOTRACE]
 - `e217c33` chore(dev-trace): autotrace post-roadmap-sync [SKIP_AUTOTRACE]
 - `4ed32a0` chore(config): expand agent permissions for autonomous sub-agent completion
+- `72da20e` chore(dev-trace): autotrace post-audit [SKIP_AUTOTRACE]
 
 ## Other
 

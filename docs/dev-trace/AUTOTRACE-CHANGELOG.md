@@ -145,3 +145,6 @@
 - 2026-04-24 03:40:13 — `e217c33` — chore(dev-trace): autotrace post-roadmap-sync [SKIP_AUTOTRACE]
 - 2026-04-24 03:42:26 — `4ed32a0` — chore(config): expand agent permissions for autonomous sub-agent completion
 - 2026-04-24 03:46:55 — `0cef79e` — docs(roadmap): auditoría completa — items 8+13 DONE; score 75→78; resumen ejecutivo actualizado
+- 2026-04-24 03:47:00 — `72da20e` — chore(dev-trace): autotrace post-audit [SKIP_AUTOTRACE]
+- 2026-04-24 03:48:39 — `029b783` — docs(roadmap): mark items 7/7b/7c/8/13 done — session 2026-04-24
+- 2026-04-24 03:50:08 — `7040b02` — feat(chat): add GET /api/agent/stats — daily usage KPI endpoint

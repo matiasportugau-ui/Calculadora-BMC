@@ -168,14 +168,14 @@ export const PANELS_PARED = {
  */
 export const FIJACIONES = {
   varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.12, web: 3.64, costo: 2.6, unidad: "unid" },
-  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.12,web: 0.07, costo: 0.05, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 1.68, web: 0.644, costo: 0.46, unidad: "unid" },
+  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.084, costo: 0.06, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.705, web: 0.658, costo: 0.47, unidad: "unid" },
   /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
-  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.2, web: 0.24, costo: 0.068, unidad: "unid" },
+  arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.102, web: 0.0952, costo: 0.068, unidad: "unid" },
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.272, web: 1.484, costo: 1.06, unidad: "unid" },
   arandela_pp_gris:   { label: 'Tortuga PVC gris',         venta: 1.368, web: 1.596, costo: 1.14, unidad: "unid" },
   taco_expansivo:     { label: 'Taco expansivo 3/8"',       venta: 0.96, web: 1.12, costo: 0.8, unidad: "unid" },
-  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.50, web: 0.46, costo: 0.34, unidad: "unid" },
+  caballete:          { label: 'Caballete (arand. trapezoidal)', venta: 0.51, web: 0.476, costo: 0.34, unidad: "unid" },
   /** Pared: kit anclaje a H° — alineado a fila “1 Anclaje de 100 mm” (planilla anclajes). */
   anclaje_h:          { label: 'Anclaje 100 mm (varilla 1/4, tuercas, arandelas)', venta: 4.89, web: 5.96, costo: 0.90, unidad: "unid" },
   /** Perfilería techo y fijaciones Metálicas: T1 por tornillo (ex “×100” eliminado). */

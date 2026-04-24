@@ -1,10 +1,10 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T06:46:54.982Z",
-    "build_ms": 146,
+    "ts": "2026-04-24T06:50:15.848Z",
+    "build_ms": 262,
     "score": 78,
-    "score_delta": 3,
+    "score_delta": 0,
     "sources": [
       "ROADMAP.md",
       "PROJECT-STATE.md",
@@ -26,7 +26,7 @@
   },
   "state": {
     "branch": "main",
-    "last_change": "2026-04-24 (Ops — suggest-response verde, QA visual hub, 370 tests):",
+    "last_change": "2026-04-24 (Sesión — RBAC E2E, CORS lock, per-tramo profile 2D, agent perms):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",
