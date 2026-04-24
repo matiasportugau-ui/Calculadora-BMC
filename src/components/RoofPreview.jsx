@@ -209,6 +209,36 @@ function encounterStrokeForModo(modo) {
   return "#f59e0b";
 }
 
+/** Etiqueta corta de perfil de encuentro para mostrar inline en el SVG por tramo. */
+const ENCOUNTER_PERFIL_LABELS = {
+  gotero_frontal:        "Gotero",
+  gotero_frontal_greca:  "Greca",
+  gotero_lateral:        "Lateral",
+  gotero_lateral_camara: "Cámara",
+  babeta_adosar:         "Babeta ↗",
+  babeta_empotrar:       "Babeta ↙",
+  canalon:               "Canalón",
+  cumbrera:              "Cumbrera",
+  pretil:                "Pretil",
+};
+
+function encounterPerfilLabel(normalized) {
+  if (!normalized || normalized.modo === "continuo") return null;
+  if (normalized.modo === "cumbrera") return "Cumbrera";
+  if (normalized.modo === "desnivel") {
+    const d = normalized.desnivel;
+    if (d) {
+      const bajo = ENCOUNTER_PERFIL_LABELS[d.perfilBajo] ?? d.perfilBajo;
+      const alto = ENCOUNTER_PERFIL_LABELS[d.perfilAlto] ?? d.perfilAlto;
+      if (bajo && alto && bajo !== alto) return `${bajo} / ${alto}`;
+      return bajo || alto || "Desnivel";
+    }
+    return "Desnivel";
+  }
+  const p = normalized.perfil;
+  return (p && p !== "none") ? (ENCOUNTER_PERFIL_LABELS[p] ?? p) : null;
+}
+
 /** Punto a lo largo del segmento geométrico del encuentro; `t` en [0,1] de (x1,y1) a (x2,y2). */
 function encInterp(enc, t) {
   const u = Math.max(0, Math.min(1, Number(t) || 0));
@@ -3386,7 +3416,7 @@ export default function RoofPreview({
               const low = Math.min(ga, gb);
               const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
               const runs = listEncounterPairSegmentRuns(rawPair ?? {});
-              const lines = runs.map((run) => {
+              const lines = runs.flatMap((run) => {
                 const p0 = encInterp(enc, run.t0);
                 const p1 = encInterp(enc, run.t1);
                 const isContinuo = run.normalized.modo === "continuo";
@@ -3398,7 +3428,7 @@ export default function RoofPreview({
                     ? "rgba(0,0,0,0)"
                     : encounterStrokeForModo(run.normalized.modo);
                 const baseW = (isActive ? 2.2 : 1) * LINE_WEIGHTS.encounter * svgTy.m;
-                return (
+                const lineEl = (
                   <line
                     key={`${enc.id}-${run.id}`}
                     x1={p0.x}
@@ -3427,6 +3457,40 @@ export default function RoofPreview({
                     }}
                   />
                 );
+                // Per-tramo profile label: shown inline on each non-continuo segment.
+                const perfilLabel = !isContinuo ? encounterPerfilLabel(run.normalized) : null;
+                const segLenM = enc.length * (run.t1 - run.t0);
+                const labelFs = svgTy.encFont * 0.82;
+                const minSegForLabel = perfilLabel ? labelFs * perfilLabel.length * 0.52 : 0;
+                const labelEl = perfilLabel && segLenM >= minSegForLabel ? (() => {
+                  const mx = (p0.x + p1.x) / 2;
+                  const my = (p0.y + p1.y) / 2;
+                  const isVert = enc.orientation === "vertical";
+                  const offX = isVert ? svgTy.encOffX * 0.7 : 0;
+                  const offY = isVert ? 0 : -svgTy.encOffY * 0.7;
+                  const labelColor = encounterStrokeForModo(run.normalized.modo);
+                  return (
+                    <text
+                      key={`${enc.id}-${run.id}-label`}
+                      x={mx + offX}
+                      y={my + offY}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={labelFs}
+                      fontWeight={600}
+                      fontFamily={FONT}
+                      fill={labelColor}
+                      stroke="#ffffff"
+                      strokeWidth={svgTy.encStroke * 1.1}
+                      paintOrder="stroke"
+                      pointerEvents="none"
+                      opacity={run.includeInBom ? 0.92 : 0.45}
+                    >
+                      {perfilLabel}
+                    </text>
+                  );
+                })() : null;
+                return labelEl ? [lineEl, labelEl] : [lineEl];
               });
               // Boundary markers between segments (skip t=0 and t=1 endpoints)
               const markers = runs.length > 1
