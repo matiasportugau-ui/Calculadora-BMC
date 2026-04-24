@@ -52,6 +52,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `47957df` feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook `[tests]`
 - `e7ee3ee` feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot
 - `732d9a1` feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
+- `9c89f74` feat(tests): add panelinInternal RBAC E2E suite + fix stale PDF url assertion `[tests]`
 
 ## Fixes
 
@@ -103,6 +104,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c811945` docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)
 - `e332a5f` docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison
 - `f50973e` docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
+- `a338169` docs(roadmap): sync scores 73/100 — suggest verde, CI, RBAC, hub canales
 
 ## Tests
 

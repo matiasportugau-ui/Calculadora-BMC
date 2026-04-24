@@ -136,3 +136,5 @@
 - 2026-04-24 02:29:54 — `59f0f13` — chore(dev-trace): cleanup post-session + kb state [SKIP_AUTOTRACE]
 - 2026-04-24 02:43:28 — `f50973e` — docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
 - 2026-04-24 02:43:35 — `6ca6d7e` — chore(dev-trace): AUTOTRACE post-docs-sync [SKIP_AUTOTRACE]
+- 2026-04-24 02:49:39 — `a338169` — docs(roadmap): sync scores 73/100 — suggest verde, CI, RBAC, hub canales
+- 2026-04-24 03:22:18 — `9c89f74` — feat(tests): add panelinInternal RBAC E2E suite + fix stale PDF url assertion
