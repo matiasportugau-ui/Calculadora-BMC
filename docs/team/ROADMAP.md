@@ -17,11 +17,11 @@
 
 Un deploy es **100% limpio** cuando:
 - [ ] `npm run gate:local:full` → 0 errores, 0 warnings nuevos
-- [ ] `npm run smoke:prod` → **todos** los checks verdes (MATRIZ CSV, `/health`, `/capabilities`, `public_base_url` alineado a la URL de Cloud Run, CRM suggest). **Hoy (2026-04-23) esto está en rojo** hasta completar **Fase A** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md) (A1–A4).
+- [ ] `npm run smoke:prod` → **todos** los checks verdes (MATRIZ CSV, `/health`, `/capabilities`, `public_base_url` alineado a la URL de Cloud Run, CRM suggest). **Hoy (2026-04-23) queda en ámbar:** según [`PROJECT-STATE.md`](./PROJECT-STATE.md) (Run 2.1), `/health`, `/capabilities`, `public_base_url`, MATRIZ CSV y Wolfboard OK; **solo falla** `POST /api/crm/suggest-response` (503, claves IA en Secret Manager). Cerrar **A3/A4** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md).
 - [ ] `npm run test:contracts` → contrato API sin drift
 - [ ] Vercel producción sirve la versión correcta del chunk (semver en badge)
 - [ ] Cloud Run responde `hasSheets: true`, `hasTokens: true` en `/health`
-- [ ] Rama mergeada a `main` con git tag `vX.Y.Z` *(tag `v3.1.6` pendiente de verificar en remoto; ver ítem crítico 2)*
+- [ ] Rama mergeada a `main` con git tag `vX.Y.Z` *(tag `v3.1.6` verificado en `origin` al 2026-04-23 — ver [`PROJECT-STATE.md`](./PROJECT-STATE.md); repetir en el próximo bump semver)*
 - [x] Gates humanos cm-0 / cm-1 / cm-2 verificados y documentados en PROJECT-STATE *(2026-04-23; ingest email prod OK — ver PROJECT-STATE)*
 
 ---
@@ -33,17 +33,17 @@ Un deploy es **100% limpio** cuando:
 | Calculator (BOM / pricing / wizard) | 🟢 8/10 | 🟡 7/10 | Estable, mejoras activas |
 | 2D Roof Plan (RoofPreview / SVG / cotas) | 🟢 9/10 | 🟢 8/10 | Producción — sólido |
 | AI Chat (Panelin Chat / agentChat SSE) | 🟡 6/10 | 🟡 5/10 | Funcional, sin KPI de uso |
-| CRM / Dashboard (WolfBoard / Sheets) | 🟡 7/10 | 🟡 7/10 | Wolfboard en `main`; `GET /api/wolfboard/pendientes` OK en prod; smoke MATRIZ/suggest aún 503 |
+| CRM / Dashboard (WolfBoard / Sheets) | 🟡 7/10 | 🟡 7/10 | Wolfboard en `main`; `GET /api/wolfboard/pendientes` OK en prod; smoke: MATRIZ OK; **`POST /api/crm/suggest-response` 503** (proveedores IA) |
 | MercadoLibre Integration | 🟢 8/10 | 🟡 7/10 | OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua |
 | WhatsApp / Meta (omnicanal) | 🟢 7/10 | 🟡 6/10 | cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica |
 | Email Ingest / Parse | 🟢 7/10 | 🟢 7/10 | cm-2 prod verificado (crmRow=32); ver PROJECT-STATE |
 | Google Sheets / Data | 🟢 8/10 | 🟢 8/10 | Estable, credenciales via Secret Manager |
-| Deploy / CI/CD | 🟡 6/10 | 🟡 6/10 | `smoke:prod` falla en MATRIZ/suggest + drift `PUBLIC_BASE_URL`; sin smoke post-deploy en CI |
+| Deploy / CI/CD | 🟡 6/10 | 🟡 6/10 | `smoke:prod` **no** 100% verde: solo **suggest** (503 IA); MATRIZ + `public_base_url` OK en última verificación; sin smoke post-deploy en CI |
 | Tests (unit + API + contrato) | 🟢 8/10 | 🟡 7/10 | 350+ unit (ver gate local), 17 API route; sin E2E browser |
 | Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
 | Fiscal / Compliance | 🟡 6/10 | 🟡 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
 
-**Score global estimado:** 🟡 **68 / 100** *(penaliza smoke prod roto pese a gates humanos OK; sube cuando CEO-RUN Fase A4 esté verde y contratos al día.)*
+**Score global estimado:** 🟡 **68 / 100** *(penaliza `smoke:prod` sin verde completo — hoy bloqueado por suggest/IA en prod; sube cuando A3/A4 (keys) estén verdes y contratos al día.)*
 
 ---
 
@@ -51,23 +51,23 @@ Un deploy es **100% limpio** cuando:
 
 ---
 
-### 🔴 CRÍTICO | 1. Fase A ops — smoke `npm run smoke:prod` en verde (Cloud Run)
+### 🔴 CRÍTICO | 1. Fase A ops — cerrar `smoke:prod` (restante: CRM suggest / IA)
 
-- **Situación:** `npm run smoke:prod` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app` **falla**: `public_base_url` en `/capabilities` = `http://localhost:3001` (drift); **503** en `GET /api/actualizar-precios-calculadora` (MATRIZ/Sheets/secretos); **503** en `POST /api/crm/suggest-response` (keys IA). `/health` y `/capabilities` responden 200; `GET /api/wolfboard/pendientes` **200**. Ver evidencia en [`PROJECT-STATE.md`](./PROJECT-STATE.md) y checklist **A1–A4** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md).
-- **Área:** GCP Cloud Run env (`PUBLIC_BASE_URL`, `BMC_MATRIZ_SHEET_ID`, SA Sheets, vars IA), [`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs)
+- **Situación (2026-04-23, Run 2.1):** `npm run smoke:prod` contra `https://panelin-calc-q74zutv7dq-uc.a.run.app`: **`/health`**, **`/capabilities`**, **`public_base_url`**, **`GET /api/actualizar-precios-calculadora`** (MATRIZ) y **`GET /api/wolfboard/pendientes`** OK. **Pendiente:** **`POST /api/crm/suggest-response` → 503** (`All providers failed`: rotar/alinear al menos una API key válida en **Secret Manager** → Cloud Run; ver `ANTHROPIC_API_KEY` y resto en [`server/config.js`](../../server/config.js)). Evidencia: [`PROJECT-STATE.md`](./PROJECT-STATE.md), **A3/A4** en [`CEO-RUN-LOG.md`](./CEO-RUN-LOG.md). *(Runs anteriores con drift `PUBLIC_BASE_URL` y 503 MATRIZ quedan superseded por Run 2 / 2.1.)*
+- **Área:** GCP Secret Manager + `gcloud run services update panelin-calc --update-secrets`, vars IA en [`server/config.js`](../../server/config.js), [`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs)
 - **Acción "get it live":**
-  1. A1–A3 según CEO-RUN-LOG (GCP)
+  1. A3/A4 según CEO-RUN-LOG (rotación keys; **no** pegar secretos en Markdown)
   2. `npm run smoke:prod` → OK completo
-  3. Anotar en PROJECT-STATE + CEO-RUN-LOG (Run 2)
-- **Impacto:** Sin esto no hay “deploy 100% limpio” ni confianza en MATRIZ / suggest para GPT ni cockpit.
+  3. Anotar en PROJECT-STATE + CEO-RUN-LOG
+- **Impacto:** Sin suggest estable no hay “deploy 100% limpio” ni confianza plena en cockpit / flujos IA asistidos.
 
 ---
 
-### 🔴 CRÍTICO | 2. Git tag `v3.1.6` (o siguiente semver) y push a `origin`
+### 🟡 MEDIO | 2. Git tag `v3.1.6` (verificado en `origin`; siguiente semver al bump)
 
-- **Situación:** El roadmap y la KB mencionan tag `v3.1.6` como ancla de release; debe existir en **remoto** para AUTOTRACE/CI en tags `v*`. Verificar con `git ls-remote --tags origin` si ya está; si no, crear tras smoke estable o documentar excepción.
+- **Situación (2026-04-23):** `git ls-remote --tags origin 'v3.1.*'` confirma **`refs/tags/v3.1.6`** en remoto — ancla AUTOTRACE/CI **OK** para esta versión. Tras el próximo bump de `package.json`, repetir tag semver + push.
 - **Área:** git, [`tools/release-traceability/`](../../tools/release-traceability/), [`.github/workflows/dev-trace.yml`](../../.github/workflows/dev-trace.yml)
-- **Acción "get it live":** `git tag vX.Y.Z -m "..."` → `git push origin vX.Y.Z` → confirmar workflow en GitHub Actions.
+- **Acción "get it live":** En releases futuras: `git tag vX.Y.Z -m "..."` → `git push origin vX.Y.Z` → confirmar workflow en GitHub Actions.
 - **Impacto:** Rollbacks y comunicación de versión a clientes/soporte.
 
 ---
