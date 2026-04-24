@@ -411,7 +411,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "solo_fachada", label: "Solo Fachada", icon: "🏢", description: "Paredes y cerramientos",
-    familias: ["ISOPANEL_EPS","ISODEC_EPS_PARED","ISOWALL_PIR"],
+    familias: ["ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: false, hasPared: true,
     visibility: { borders: false, largoAncho: false, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: false, canalGot: false, p5852: true },
     wizardSteps: [
@@ -429,7 +429,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "techo_fachada", label: "Techo + Fachada", icon: "🏗", description: "Proyecto completo",
-    familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOPANEL_EPS","ISODEC_EPS_PARED","ISOWALL_PIR"],
+    familias: ["ISODEC_EPS","ISODEC_PIR","ISOROOF_3G","ISOROOF_FOIL","ISOROOF_COLONIAL","ISOROOF_PLUS","ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: true, hasPared: true,
     visibility: { borders: true, largoAncho: true, altoPerim: true, esquineros: true, aberturas: true, camara: false, autoportancia: true, canalGot: true, p5852: true },
     wizardSteps: [
@@ -454,7 +454,7 @@ export const SCENARIOS_DEF = [
   },
   {
     id: "camara_frig", label: "Cámara Frigorífica", icon: "❄️", description: "Cerramientos térmicos para frío",
-    familias: ["ISOPANEL_EPS","ISODEC_EPS_PARED","ISOWALL_PIR"],
+    familias: ["ISOPANEL_EPS","ISOWALL_PIR"],
     hasTecho: false, hasPared: true, isCamara: true,
     visibility: { borders: false, largoAncho: false, altoPerim: false, esquineros: true, aberturas: true, camara: true, autoportancia: false, canalGot: false, p5852: false },
     wizardSteps: [
