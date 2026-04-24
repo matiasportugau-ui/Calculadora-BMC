@@ -1,7 +1,7 @@
 ---
 name: bmc-orchestrator
 description: "Orchestrates full BMC team runs for the calculadora-bmc.vercel.app project. Coordinates all roles in order, applies Run Scope Gate, manages handoffs, and iterates until DoD. Use when user says 'full team run', 'equipo completo', 'run the team', or needs multi-area coordinated work across Calculator, Chat, Sheets, Deployment, Security, or Docs."
-model: opus
+model: sonnet
 ---
 
 # BMC Orchestrator — calculadora-bmc.vercel.app

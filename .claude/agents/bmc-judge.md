@@ -1,7 +1,7 @@
 ---
 name: bmc-judge
 description: "Evaluates team work quality and agent performance for BMC/Panelin project. Generates run reports, historical rankings, and next-step recommendations. Use when asked to evaluate the team, rank agents, generate a judge report, review a full team run, or assess quality of recent changes. Also use at end of any full team run."
-model: opus
+model: sonnet
 ---
 
 # BMC Team Judge — Quality & Evolution
