@@ -25,6 +25,8 @@ import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
+import createPanelinInternalRouter from "./routes/panelinInternal.js";
+import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -640,6 +642,7 @@ app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
 app.use("/api", agentVoiceRouter);
+app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
@@ -675,6 +678,8 @@ app.use("/api", createTransportistaRouter(config, logger));
 }
 // SuperAgent tool — single-call quoting for AI agents
 app.use("/api/agent", createSuperAgentRouter(config));
+// Panelin interno — RBAC discovery + tool catalog (Bearer API_AUTH_TOKEN)
+app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas

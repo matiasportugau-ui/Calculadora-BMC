@@ -1,0 +1,88 @@
+/**
+ * Catálogo mínimo de "tools" HTTP para orquestador Panelin interno (Fase 1 — discovery).
+ * Mantener alineado con GET /capabilities y docs/openapi-calc.yaml.
+ */
+
+export const PANELIN_INTERNAL_TOOLS = [
+  {
+    id: "calc_gpt_entry",
+    risk: "low",
+    approval_default: "not_required",
+    method: "GET",
+    path: "/calc/gpt-entry-point",
+    summary: "Punto de entrada GPT — acciones calculadora y flujo recomendado",
+    min_role: "ventas",
+  },
+  {
+    id: "calc_openapi",
+    risk: "low",
+    approval_default: "not_required",
+    method: "GET",
+    path: "/calc/openapi",
+    summary: "Esquema OpenAPI calculadora",
+    min_role: "ventas",
+  },
+  {
+    id: "calc_catalogo",
+    risk: "low",
+    approval_default: "not_required",
+    method: "GET",
+    path: "/calc/catalogo",
+    summary: "Catálogo paneles y precios",
+    min_role: "ventas",
+  },
+  {
+    id: "calc_cotizar",
+    risk: "medium",
+    approval_default: "approval_required",
+    method: "POST",
+    path: "/calc/cotizar",
+    summary: "Cotización completa BOM (motor)",
+    min_role: "ventas",
+  },
+  {
+    id: "calc_cotizar_pdf",
+    risk: "medium",
+    approval_default: "approval_required",
+    method: "POST",
+    path: "/calc/cotizar/pdf",
+    summary: "PDF cotización + URL temporal",
+    min_role: "ventas",
+  },
+  {
+    id: "api_cotizaciones_get",
+    risk: "low",
+    approval_default: "not_required",
+    method: "GET",
+    path: "/api/cotizaciones",
+    summary: "Listado cotizaciones Sheets",
+    min_role: "ventas",
+  },
+  {
+    id: "api_cotizaciones_post",
+    risk: "high",
+    approval_default: "approval_required",
+    method: "POST",
+    path: "/api/cotizaciones",
+    summary: "Crear/actualizar cotización Sheets",
+    min_role: "admin",
+  },
+  {
+    id: "api_proximas_entregas",
+    risk: "low",
+    approval_default: "not_required",
+    method: "GET",
+    path: "/api/proximas-entregas",
+    summary: "Próximas entregas",
+    min_role: "logistica",
+  },
+  {
+    id: "api_marcar_entregado",
+    risk: "medium",
+    approval_default: "approval_required",
+    method: "POST",
+    path: "/api/marcar-entregado",
+    summary: "Marcar entregado",
+    min_role: "logistica",
+  },
+];

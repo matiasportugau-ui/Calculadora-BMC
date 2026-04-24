@@ -75,6 +75,13 @@ import {
   parseTsvRows,
 } from "../docs/bmc-dashboard-modernization/logistica-carga-prototype/lib/sheetPaste.js";
 import {
+  canAccessDashboardRoute,
+  getMinRoleForDashboardRoute,
+  normalizePanelinRole,
+  roleMeetsMin,
+} from "../server/lib/panelinInternalRbac.js";
+import { getInternalToolById, mayInvokeTool } from "../server/lib/panelinInternalInvoke.js";
+import {
   collectClienteNamesFromStop,
   findFirstStopByClienteLabel,
   uniqueClientesFromStops,
@@ -2639,6 +2646,38 @@ assert(
   String(skuCant("arandela_plana")),
   "8",
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUITE: Panelin interno — RBAC dashboard (políticas puras)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: panelinInternalRbac ═══");
+assert("normalizePanelinRole acepta director", normalizePanelinRole("Director") === "director", normalizePanelinRole("Director"), "director");
+assert("normalizePanelinRole rechaza foo", normalizePanelinRole("foo") === null, normalizePanelinRole("foo"), "null");
+assert("roleMeetsMin ventas < admin", !roleMeetsMin("ventas", "admin"), "ventas>=admin", "false");
+assert("roleMeetsMin director >= admin", roleMeetsMin("director", "admin"), "director>=admin", "true");
+assert(
+  "getMinRoleForDashboardRoute POST /api/cotizaciones = admin",
+  getMinRoleForDashboardRoute("POST", "/api/cotizaciones") === "admin",
+  getMinRoleForDashboardRoute("POST", "/api/cotizaciones"),
+  "admin",
+);
+const ventasCot = canAccessDashboardRoute("GET", "/api/cotizaciones", "ventas");
+assert("ventas puede GET /api/cotizaciones", ventasCot.allowed === true, ventasCot.allowed, true);
+const ventasPost = canAccessDashboardRoute("POST", "/api/cotizaciones", "ventas");
+assert("ventas no puede POST /api/cotizaciones", ventasPost.allowed === false, ventasPost.allowed, false);
+const logPost = canAccessDashboardRoute("POST", "/api/cotizaciones", "logistica");
+assert("logistica no puede POST /api/cotizaciones", logPost.allowed === false, logPost.allowed, false);
+const dirMatriz = canAccessDashboardRoute("POST", "/api/matriz/push-pricing-overrides", "director");
+assert("director puede push matriz", dirMatriz.allowed === true, dirMatriz.allowed, true);
+const adminMatriz = canAccessDashboardRoute("POST", "/api/matriz/push-pricing-overrides", "admin");
+assert("admin no puede push matriz", adminMatriz.allowed === false, adminMatriz.allowed, false);
+
+const toolCotGet = getInternalToolById("api_cotizaciones_get");
+assert("getInternalToolById api_cotizaciones_get", toolCotGet?.path === "/api/cotizaciones", toolCotGet?.path, "/api/cotizaciones");
+const mayV = mayInvokeTool("ventas", toolCotGet);
+assert("mayInvokeTool ventas api_cotizaciones_get", mayV.ok === true, mayV.ok, true);
+const mayVpost = mayInvokeTool("ventas", getInternalToolById("api_cotizaciones_post"));
+assert("mayInvokeTool ventas api_cotizaciones_post denegado", mayVpost.ok === false, mayVpost.ok, false);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
