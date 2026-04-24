@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { BORDER_OPTIONS } from "../data/constants.js";
-import { COMPANY } from "./helpers.js";
+import { COMPANY, buildLogo } from "./helpers.js";
 
 export const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -252,7 +252,7 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
     snaps.roofPlan2d && typeof snaps.roofPlan2d === "string" && snaps.roofPlan2d.startsWith("data:")
       ? `<div style="margin-bottom:12px;padding:12px;background:#F8FAFC;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.07)">
           <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:8px;letter-spacing:0.02em">Planta 2D · cubierta</div>
-          <img src="${snaps.roofPlan2d}" style="max-width:100%;height:auto;display:block;border-radius:6px" alt="" />
+          <img src="${snaps.roofPlan2d}" style="width:100%;height:auto;display:block;border-radius:6px;min-height:60px;background:#F8FAFC" alt="" />
         </div>`
       : "";
 
@@ -278,14 +278,17 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
       ["Lateral izq. ◀", borderOptionLabel("latIzq", borders.latIzq)],
       ["Lateral der. ▶", borderOptionLabel("latDer", borders.latDer)],
     ];
-    const cells = sides.map(([a, b]) => `<div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:${PDF_PLANTA_BRAND}">${esc(a)}</div><div style="font-size:8.5pt;margin-top:2px">${esc(b)}</div></div>`).join("");
-    const extras = (borderExtras || []).length
-      ? `<div style="margin-top:8px;font-size:8.5pt;color:#475467"><b>Perimetral:</b> ${esc(borderExtras.join(", "))}</div>`
-      : "";
-    diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+    const allEmpty = sides.every(([, v]) => v === "—");
+    if (!allEmpty) {
+      const cells = sides.map(([a, b]) => `<div style="border:0.4pt solid #E2E8F0;border-radius:6px;padding:6px 8px;background:#FAFAFA"><div style="font-size:7.5pt;font-weight:700;color:${PDF_PLANTA_BRAND}">${esc(a)}</div><div style="font-size:8.5pt;margin-top:2px">${esc(b)}</div></div>`).join("");
+      const extras = (borderExtras || []).length
+        ? `<div style="margin-top:8px;font-size:8.5pt;color:#475467"><b>Perimetral:</b> ${esc(borderExtras.join(", "))}</div>`
+        : "";
+      diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
       <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:8px">Bordes y accesorios (cubierta)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${cells}</div>${extras}
     </div>`;
+    }
   }
 
   const kpiChips = [
@@ -294,7 +297,7 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
     [kpi.useApoyosLabel ? "Apoyos" : "Esquinas", kpi.apoyosOrEsq ?? "—"],
     ["Pts. fijación", kpi.ptsFij ?? "—"],
   ];
-  const kpiHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${kpiChips.map(([a, b]) => `<div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">${esc(a)}</div><div style="font-size:11pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-top:2px">${esc(String(b))}</div></div>`).join("")}</div>`;
+  const kpiHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid">${kpiChips.map(([a, b]) => `<div style="flex:1;min-width:100px;padding:8px 10px;background:#F1F5F9;border-radius:8px;border:0.5pt solid #E2E8F0"><div style="font-size:7.5pt;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">${esc(a)}</div><div style="font-size:11pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-top:2px">${esc(String(b))}</div></div>`).join("")}</div>`;
 
   const MAX_LINES = 22;
   let lineCount = 0;
@@ -307,7 +310,7 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
       truncated = true;
       break outer;
     }
-    compactRows += `<tr style="background:#EEF3F8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:${PDF_PLANTA_BRAND}">${esc(g.title)}</td></tr>`;
+    compactRows += `<tr style="background:#E4EDF8"><td colspan="2" style="padding:5px 8px;font-size:8.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};border-left:3pt solid ${PDF_PLANTA_BRAND}">${esc(g.title)}</td></tr>`;
     lineCount += 1;
     const items = g.items || [];
     for (let ii = 0; ii < items.length; ii += 1) {
@@ -353,7 +356,7 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
     : "";
 
   const totalsBar = t
-    ? `<div style="margin-top:14px;padding:12px 14px;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-radius:10px;border:0.5pt solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    ? `<div style="margin-top:14px;padding:12px 14px;background:linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);border-radius:10px;border:0.5pt solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;page-break-inside:avoid;break-inside:avoid">
         <div style="font-size:9pt;color:#64748B">
           <div><b style="color:${PDF_PLANTA_BRAND}">Subtotal s/IVA</b> USD ${fmtPrice(t.subtotalSinIVA)} · <b>IVA 22%</b> USD ${fmtPrice(t.iva)}</div>
         </div>
@@ -394,7 +397,7 @@ export function generateClientVisualHTML(data) {
   let tableBody = "";
   groups.forEach((g) => {
     const sub = g.items.reduce((s, i) => s + (i.total || 0), 0);
-    tableBody += `<tr style="background:#F0F4F8"><td colspan="4" style="font-weight:600;padding:4px 6px">▸ ${esc(g.title)}</td><td style="text-align:right;font-weight:600;padding:4px 6px">$${fmtPrice(sub)}</td></tr>`;
+    tableBody += `<tr style="background:#EAF0F8"><td colspan="4" style="font-weight:700;padding:5px 8px;color:#003366;border-left:3pt solid #003366">&#9656; ${esc(g.title)}</td><td style="text-align:right;font-weight:700;padding:5px 8px;color:#003366">$${fmtPrice(sub)}</td></tr>`;
     g.items.forEach((item, idx) => {
       tableBody += `<tr style="background:${idx % 2 ? "#FAFAFA" : "#fff"}"><td style="padding:3px 6px">${esc(item.label)}</td><td style="text-align:right;padding:3px 6px">${typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant}</td><td style="text-align:center;padding:3px 6px">${esc(item.unidad)}</td><td style="text-align:right;padding:3px 6px">${fmtPrice(item.pu)}</td><td style="text-align:right;padding:3px 6px">$${fmtPrice(item.total)}</td></tr>`;
     });
@@ -419,9 +422,9 @@ export function generateClientVisualHTML(data) {
     ? `Líneas cotizadas · ${esc(scenarioLabel)}`
     : `${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} · ${esc(scenarioLabel)}`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Hoja visual cliente — BMC Uruguay</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:10pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}th,td{border:0.4pt solid #D0D0D0}.pdf-page2{page-break-before:always;break-before:page}</style></head><body>
-<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><div style="font-size:18pt;font-weight:800;color:#003366">BMC Uruguay</div><div style="font-size:14pt;font-weight:800">HOJA VISUAL CLIENTE</div></div>
-<div style="border-bottom:2pt solid #000;margin-bottom:4px"></div>
-<div style="font-size:9pt;color:#444;margin-bottom:8px">Propuesta comercial · bmcuruguay.com.uy · 092 663 245</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">${buildLogo()}<div style="background:#003366;color:#fff;font-size:11pt;font-weight:800;padding:4px 12px;border-radius:4px;letter-spacing:0.04em">HOJA VISUAL CLIENTE</div></div>
+<div style="border-bottom:2.5pt solid #003366;margin-bottom:4px"></div>
+<div style="font-size:8.5pt;color:#6E6E73;margin-bottom:8px">Propuesta comercial · bmcuruguay.com.uy · 092 663 245</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:10pt;margin-bottom:8px">
 <div><b>Cliente:</b> ${esc(client.nombre)}</div><div><b>Fecha:</b> ${esc(project.fecha)}</div>
 <div><b>Obra:</b> ${esc(project.descripcion)}</div><div><b>Ref:</b> ${esc(project.refInterna)}</div>

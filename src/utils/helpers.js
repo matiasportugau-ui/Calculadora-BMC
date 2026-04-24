@@ -163,7 +163,7 @@ function buildPdfHead(title) {
 </head><body>`;
 }
 
-function buildLogo() {
+export function buildLogo() {
   return `<svg width="140" height="32" viewBox="0 0 140 32" xmlns="http://www.w3.org/2000/svg" style="display:block">
   <rect width="32" height="32" rx="5" fill="${COMPANY.brandColor}"/>
   <text x="16" y="23" text-anchor="middle" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="900">B</text>
