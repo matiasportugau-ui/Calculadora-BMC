@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-24T03:07:41.571Z",
-    "build_ms": 51,
+    "ts": "2026-04-24T03:07:53.553Z",
+    "build_ms": 171,
     "score": 68,
     "score_delta": 0,
     "sources": [
@@ -27,8 +27,8 @@
   "state": {
     "branch": "main",
     "last_commit": {
-      "hash": "e332a5f",
-      "msg": "docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison"
+      "hash": "5a52c84",
+      "msg": "chore(dev-trace): AUTOTRACE post-batch 2026-04-24"
     },
     "uncommitted": 7,
     "last_change": "2026-04-23 (Ops — verificación smoke prod + tag remoto):",
