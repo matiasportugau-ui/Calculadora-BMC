@@ -2,7 +2,7 @@
 
 **Propósito:** Lista de verificación para dejar el dashboard operativo para vendedores y administradivos de BMC.
 
-**Última actualización:** 2026-03-16
+**Última actualización:** 2026-04-23
 
 ---
 
@@ -64,6 +64,7 @@
 
 | # | Prueba | Estado |
 |---|--------|--------|
+| 6.0 | **API prod** (`panelin-calc`): `npm run smoke:prod` — `/health`, `/capabilities`, `public_base_url`, `GET /api/actualizar-precios-calculadora` (CSV MATRIZ) | ☑ parcial **2026-04-23** — OK salvo `POST /api/crm/suggest-response` (503 hasta rotar claves en Secret Manager: `openai-api-key` / `OPENAI_API_KEY`, `xai-api-key`, `gemini-api-key`; ver [`docs/team/CEO-RUN-LOG.md`](../team/CEO-RUN-LOG.md) Run 2) |
 | 6.1 | KPIs cargan con datos reales | ☐ |
 | 6.2 | Trend muestra vencimientos | ☐ |
 | 6.3 | Breakdown con filtros Esta semana/Vencidos | ☐ |

@@ -1,9 +1,7 @@
 # WOLFBOARD-RUN-REPORT
 
-**Fecha:** 2026-04-23  
-**Branch:** `feature/wolfboard-crm`  
-**Run orientado a:** Claude Code Terminal  
-**Estado:** Fases 0–2 + 4 completas · Sprint 1 UI completado · Fase 3 (Drive wiring) pendiente
+**Fecha:** 2026-04-23 (actualización implementación H–K + CRM libro opcional + P0 presupuesto)  
+**Estado:** Fases 0–4 + pipeline + endpoint presupuesto · columnas Admin alineadas a plan (H–K)
 
 ---
 
@@ -13,240 +11,181 @@
 |---|------|--------|-----------|
 | 0 | Pre-work: branch + env vars | ✅ | `.env.example`, `server/config.js` |
 | 1a | `GET /api/wolfboard/pendientes` | ✅ | `sheets-api-server.js` |
-| 1b | `POST /api/wolfboard/sync` | ✅ | `sheets-api-server.js` |
-| 1c | `POST /api/wolfboard/row` | ✅ | `sheets-api-server.js` |
-| 1d | `GET /api/wolfboard/export` (CSV) | ✅ | `sheets-api-server.js` |
-| 1e | `POST /api/wolfboard/enviados` | ✅ | `sheets-api-server.js` |
-| 2 | UI Wolfboard en dashboard | ✅ | `index.html`, `app.js`, `styles.css` |
-| 2b | Botón "Aprobar respuesta" en panel detalle | ✅ | `index.html:378`, `app.js` (`approveWolfboardRow`) |
-| 2c | Auto-sync bidireccional al abrir sección | ✅ | `app.js` IntersectionObserver → `syncWolfboard()` |
-| 3 | Drive link wiring (calc → J) | ⏳ TBD | Pendiente (ver abajo) |
+| 1b | `POST /api/wolfboard/sync` | ✅ | Incluye CRM **G** compuesto (consulta + respuesta + link) salvo `WOLFB_SKIP_COMPOSED_G=1` |
+| 1c | `POST /api/wolfboard/row` | ✅ | Admin **I/J** + CRM **AF/AH/AI** + **G** compuesto |
+| 1d | `GET /api/wolfboard/export` (CSV) | ✅ | Cabecera `H_consulta,I_respuesta,J_link,K_enviado` |
+| 1e | `POST /api/wolfboard/enviados` | ✅ | Marca **K=TRUE**, append pestaña **Enviados** en libro CRM, borra fila Admin |
+| 1f | `GET /api/wolfboard/pipeline` | ✅ | Estado de env, tabs, IDs enmascarados, auditoría ML↔CRM resumida |
+| 1g | `POST /api/wolfboard/presupuesto` | ✅ | P0: `{ adminRow, driveUrl \| link, respuestaText? }` → reutiliza `row` (J + CRM) |
+| 2 | UI Wolfboard | ✅ | Tabla H–K, filtro **Canal** (Origen CRM F), sync al abrir sección |
+| 2b | Aprobar respuesta | ✅ | `AI` en CRM |
+| 3 | Drive → J (P0 mínimo) | ✅ v1 API | Calculadora puede `POST` presupuesto; pegado manual sigue válido |
 | 4 | Este report | ✅ | `docs/team/WOLFBOARD-RUN-REPORT.md` |
 
 ---
 
-## Mapa de código (Phase 1 inventory)
+## Mapa de código
 
-### Archivos existentes reutilizados
-
-| Archivo | Uso en Wolfboard |
-|---------|-----------------|
-| `docs/bmc-dashboard-modernization/sheets-api-server.js` | Extendido con 5 endpoints + 6 helpers nuevos |
-| `docs/bmc-dashboard-modernization/dashboard/index.html` | Sección `#wolfboard` + nav link + footer |
-| `docs/bmc-dashboard-modernization/dashboard/app.js` | Módulo JS Wolfboard (~200 líneas) |
-| `docs/bmc-dashboard-modernization/dashboard/styles.css` | Estilos Wolfboard (~80 líneas) |
-| `server/lib/crmOperativoLayout.js` | Referencia para columnas AF/AH/AI/AK |
-| `server/lib/crmRowParse.js` | Referencia para mapping de índices de columna |
-| `server/ml-crm-sync.js` | Referencia para patrón de escritura CRM |
-| `scripts/integrate-admin-cotizaciones.js` | Referencia para ID Admin 2.0 y tab name |
-
-### Archivos nuevos/modificados en esta rama
-
-| Archivo | Cambio |
-|---------|--------|
-| `.env.example` | +5 vars `WOLFB_*` |
-| `server/config.js` | +6 keys wolfboard |
-| `sheets-api-server.js` | +~260 líneas (helpers + 5 endpoints) |
-| `dashboard/index.html` | +sección wolfboard + nav link |
-| `dashboard/app.js` | +~200 líneas módulo JS |
-| `dashboard/styles.css` | +~80 líneas estilos |
-| `docs/team/WOLFBOARD-RUN-REPORT.md` | Nuevo (este archivo) |
+| Archivo | Uso |
+|---------|-----|
+| `docs/bmc-dashboard-modernization/sheets-api-server.js` | Wolfboard: lectura `H:K`, CRM con `WOLFB_CRM_SHEET_ID` opcional, `pipeline`, `presupuesto` |
+| `docs/bmc-dashboard-modernization/dashboard/index.html` | Sección Wolfboard + filtro canal |
+| `docs/bmc-dashboard-modernization/dashboard/app.js` | Render filtrado, Invoque API list |
+| `docs/bmc-dashboard-modernization/dashboard/styles.css` | Toolbar wrap + filtro |
+| `server/config.js` | `wolfbCrmSheetId`, `wolfbAdminFirstDataRow` |
 
 ---
 
-## API Wolfboard — endpoints nuevos
+## API Wolfboard
 
 Servidor: `npm run bmc-dashboard` → `http://localhost:3849`
 
-| Método | Ruta | Body / Params | Respuesta |
-|--------|------|--------------|-----------|
-| `GET` | `/api/wolfboard/pendientes` | — | `{ ok, data: [{rowNum, H, I, J, K, sheetUrl}], total, pending }` |
-| `POST` | `/api/wolfboard/sync` | `{ direction: "both"\|"admin_to_crm"\|"crm_to_admin" }` | `{ ok, dryRun, updatedAdmin, updatedCrm, skipped }` |
-| `POST` | `/api/wolfboard/row` | `{ adminRow, respuesta?, link?, aprobado? }` | `{ ok, dryRun, adminRow, crmRow }` |
-| `GET` | `/api/wolfboard/export` | — | CSV: `rowNum,H,I,J,K,sheetUrl` |
-| `POST` | `/api/wolfboard/enviados` | `{ adminRow, force: true }` | `{ ok, dryRun, adminRow, movedToCrm }` |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/wolfboard/pendientes` | Pendientes (`K` ≠ TRUE), enriquecido con **Origen** (CRM F) |
+| `GET` | `/api/wolfboard/pipeline` | JSON: configuración, columnas, endpoints, nota ML↔CRM |
+| `POST` | `/api/wolfboard/sync` | `direction`: `both` \| `admin_to_crm` \| `crm_to_admin` |
+| `POST` | `/api/wolfboard/row` | `adminRow`, `respuesta`, `link`, `aprobado` |
+| `POST` | `/api/wolfboard/presupuesto` | `adminRow`, `driveUrl` o `link`, opcional `respuestaText` |
+| `POST` | `/api/wolfboard/batch` | `{ items: [...] }` máx. 30 (misma forma que presupuesto por ítem) |
+| `GET` | `/api/wolfboard/export` | CSV |
+| `POST` | `/api/wolfboard/enviados` | `adminRow`, `force: true` |
+| `POST` | `/api/wolfboard/setup-admin` | Data validation booleana en columna **K** (Enviado) |
 
-**Sin config:** todos devuelven `503 { ok:false, error:"Wolfboard Sheets not configured..." }`.  
-**Dry-run:** con `WOLFB_DRY_RUN=1`, sync y row devuelven diff sin escribir en Sheets.
-
----
-
-## Variables de entorno requeridas
-
-| Variable | Default en código | Descripción |
-|----------|------------------|-------------|
-| `WOLFB_ADMIN_SHEET_ID` | `1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0` | 2.0 Administrador de Cotizaciones |
-| `WOLFB_ADMIN_TAB` | `Admin.` | Nombre de pestaña dentro del libro Admin 2.0 |
-| `WOLFB_CRM_MAIN_TAB` | `CRM_Operativo` | Tab operativa en CRM (mismo libro que `BMC_SHEET_ID`) |
-| `WOLFB_CRM_ENVIADOS_TAB` | `Enviados` | Tab de archivo en CRM |
-| `WOLFB_DRY_RUN` | `` (off) | `"1"` = modo lectura, no escribe |
-| `BMC_SHEET_ID` | (existente) | crm_automatizado (`1N-4ky...`) |
-| `GOOGLE_APPLICATION_CREDENTIALS` | (existente) | Path a service-account.json |
-
-La cuenta de servicio debe tener acceso **Editor** en ambos libros:
-- `1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0` (Admin 2.0)
-- `BMC_SHEET_ID` (crm_automatizado)
+**503** si falta `WOLFB_ADMIN_SHEET_ID` y (`BMC_SHEET_ID` o `WOLFB_CRM_SHEET_ID`) o credenciales.
 
 ---
 
-## Auditoría ML ↔ CRM — veredicto
+## Variables de entorno
 
-**Estado: `parcial`**
+| Variable | Descripción |
+|----------|-------------|
+| `WOLFB_ADMIN_SHEET_ID` | Libro Admin 2.0 |
+| `WOLFB_ADMIN_TAB` | Pestaña (default `Admin.`) |
+| `WOLFB_ADMIN_FIRST_DATA_ROW` / `WOLFB_ADMIN_DATA_ROW` | Primera fila de datos **H:K** (default `2`) |
+| `WOLFB_CRM_SHEET_ID` | Libro **crm_automatizado** si difiere de `BMC_SHEET_ID` |
+| `WOLFB_CRM_MAIN_TAB` | Default `CRM_Operativo` |
+| `WOLFB_CRM_ENVIADOS_TAB` | Default `Enviados` |
+| `WOLFB_SKIP_COMPOSED_G` | `1` = no reescribir **G** con bloques (solo AF/AH) |
+| `WOLFB_DRY_RUN` | `1` = sin escritura |
+| `BMC_SHEET_ID` | Fallback CRM si no hay `WOLFB_CRM_SHEET_ID` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Service account |
 
-El flujo ML→CRM **ya existe** y está activo:
-- `server/index.js:410-416` — webhook handler dispara `syncMLCRM` al recibir pregunta ML
-- `server/ml-crm-sync.js` — escribe en tab `CRM_Operativo` (dentro de `BMC_SHEET_ID = 1N-4ky...`) columnas B-AK
-- Deduplicación por `Q:{id}` en columna W (Observaciones)
-
-Lo que **no está** conectado automáticamente:
-- Admin 2.0 (`1Ie0K...`) ↔ CRM — solo existe el script CLI `scripts/integrate-admin-cotizaciones.js` (manual)
-- Wolfboard añade el sync live bidireccional que faltaba
-
-**Archivos a tocar para mejora futura:**
-- `server/index.js:449` — webhook WA que ya escribe a `CRM_Operativo`; podría also sync Admin
-- `scripts/integrate-admin-cotizaciones.js` — reemplazable por `/api/wolfboard/sync`
-
----
-
-## Mapping de columnas Admin 2.0 ↔ CRM
-
-```
-Admin 2.0 (1Ie0K...)               CRM_Operativo (BMC_SHEET_ID, tab CRM_Operativo)
-──────────────────────────────────  ──────────────────────────────────────────────
-H  = consulta cliente        ←──→  G  = consulta text (pregunta, row[6])
-I  = respuesta AI            ←──→  AF = respuestaSugerida (row[31])
-J  = link presupuesto Drive  ←──→  AH = LINK_PRESUPUESTO (row[33])
-K  = enviado (checkbox)             AI = APROBADO_ENVIAR (row[34])
-```
-
-**Clave de match en sync v1:** `normalizeText(H) === normalizeText(G)` (primeros 150 chars, lowercase).  
-**Limitación:** si el texto fue editado entre libros, el match puede fallar → skipped++ en la respuesta del sync.
-
-**Nota datos Admin 2.0:**
-- Título merged en fila 1, headers en fila 2, datos desde fila 3 (`WOLFB_ADMIN_DATA_ROW=3` hardcodeado)
-- Confirmar con Matias si el offset es correcto al hacer primer sync real
+La cuenta de servicio necesita **Editor** en el libro Admin y en el libro CRM (y Drive si aplica a enlaces privados).
 
 ---
 
-## Diseño arquitectura (diagrama)
+## Auditoría ML ↔ CRM
 
-```
-Admin 2.0 (1Ie0K)           CRM crm_automatizado (BMC_SHEET_ID)
-──────────────────          ──────────────────────────────────
-H (consulta)    ←── sync ──→  G  (consulta text — read only)
-I (respuesta)   ←── sync ──→  AF (respuestaSugerida)
-J (link)        ←── sync ──→  AH (LINK_PRESUPUESTO)
-K (enviado)     ──────────→   tab Enviados (on force=true)
+**Veredicto: `parcial`**
 
-Wolfboard UI (:3849/dashboard #wolfboard)
- ↕ fetch/POST
-sheets-api-server.js (:3849)
- ├── GET  /api/wolfboard/pendientes
- ├── POST /api/wolfboard/sync
- ├── POST /api/wolfboard/row
- ├── GET  /api/wolfboard/export
- └── POST /api/wolfboard/enviados
+- **Conectado:** webhook / rutas ML → `server/ml-crm-sync.js` → `CRM_Operativo` en el libro configurado como `BMC_SHEET_ID`.
+- **Wolfboard:** sincroniza **Admin 2.0 ↔ CRM** en el dashboard Sheets; no sustituye el webhook ML.
+- **Coherencia:** si CRM vive en otro spreadsheet, definir **`WOLFB_CRM_SHEET_ID`** igual que el libro donde escribe `ml-crm-sync`, o mantener un solo `BMC_SHEET_ID` para ambos.
+- **Motivos típicos de falla ML→CRM:** credenciales o `BMC_SHEET_ID` incorrectos; permisos sin Editor; cuota 429 Sheets; texto de pregunta vacío o no mapeable en `ml-crm-sync`.
+- **Empuje Admin→CRM desde Wolfboard:** `POST /api/wolfboard/row`, `/presupuesto` o `/batch`; si no hay match H↔G, la API devuelve `warning` (no es un 200 “silencioso”).
 
-ML (MercadoLibre)
- → server/index.js webhook
- → ml-crm-sync.js
- → CRM_Operativo (G+B-AK) — ya funciona, independiente del Wolfboard
-```
+Detalle ampliado también en `GET /api/wolfboard/pipeline` → `mlCrmAudit`.
 
 ---
 
-## Fase 3: Drive link wiring (pendiente)
+## Run plan (fases 0–7) + dry-run Sheets
 
-El guardado en Drive es **client-side** en la calculadora React (`src/utils/googleDrive.js` → `saveQuotation()` → retorna `folderUrl`).
+| Fase | Acción | Verificación |
+|------|--------|--------------|
+| 0 | `.env` con `WOLFB_*`, credenciales, opcional `WOLFB_DRY_RUN=1` | `GET /api/wolfboard/pipeline` → `configured: true` |
+| 1 | `GET /api/wolfboard/pendientes` | `pending` ≥ 0, `originCounts` presente |
+| 2 | `POST /api/wolfboard/sync` con `direction: "both"` | Respuesta con `updatedAdmin` / `updatedCrm` o `warning` si 0 cambios |
+| 3 | `POST /api/wolfboard/row` (I/J) en fila de prueba | `crmRow` o `warning` explícito |
+| 4 | `POST /api/wolfboard/presupuesto` con URL de prueba | J + CRM AH + G (si no `WOLFB_SKIP_COMPOSED_G`) |
+| 5 | `POST /api/wolfboard/batch` con 2 ítems | `applied` acorde |
+| 6 | UI `#wolfboard`: sync al scroll, filtro canal, click en fila | Panel detalle + guardar |
+| 7 | Quitar dry-run en copia de hojas | Sync real y revisar celdas en Sheets |
 
-**Integración propuesta (v2):**
-1. Wolfboard UI establece `window._wolfboardActiveRow = rowNum` al abrir detalle
-2. Al completar `handleDriveSave()` en `PanelinCalculadoraV3_backup.jsx:~4120`, si `window._wolfboardActiveRow` está seteado, auto-POST a `/api/wolfboard/row` con el `folderUrl`
-3. Link queda en J (Admin) y AH (CRM) automáticamente
+**Dry-run:** con `WOLFB_DRY_RUN=1`, `sync` y `row`/`batch` no escriben; revisar `preview` o campos `dryRun: true`.
 
-**Alternativa v1 (ya disponible):** el panel de detalle tiene campo "Link presupuesto Drive (J)" — el operador puede pegar manualmente la URL y guardar.
-
-**Owner:** bmc-calc-specialist (integración en calculadora React)
-
----
-
-## Seguridad — nota pre-existente
-
-`docs/bmc-dashboard-modernization/service-account.json` está committed en el repo.  
-**Acción requerida (PR separado):**
-1. Agregar `docs/bmc-dashboard-modernization/service-account.json` a `.gitignore`
-2. Revocar y regenerar la clave en Google Cloud Console
-3. Mover el archivo a path local fuera del repo o usar GCS secrets en Cloud Run
-4. Actualizar `GOOGLE_APPLICATION_CREDENTIALS` a la nueva ruta
+**Logs ritual:** `WOLFB_RITUAL_LOG=1` emite JSON-lines (`WOLFBOARD_SYNC`, `WOLFBOARD_ROW`, `WOLFBOARD_BATCH`, `WOLFBOARD_ENVIADOS`).
 
 ---
 
-## Puertas humanas abiertas (Human Gates)
+## Sync bidireccional CRM ↔ 2.0
 
-| # | Pregunta | Impacto |
-|---|----------|---------|
-| HG-1 | ¿El nombre exacto de la pestaña "Enviados" en el CRM (`1N-4ky...`)? Default: `"Enviados"` | Endpoint `/enviados` fallará si el nombre es distinto |
-| HG-2 | ¿Los datos en Admin 2.0 empiezan en fila 3 (default)? | Si empieza en fila 4, cambiar `WOLFB_ADMIN_DATA_ROW=4` en `.env` |
-| HG-3 | ¿La cuenta de servicio ya tiene acceso Editor en Admin 2.0 (`1Ie0K...`)? | Requerido para sync y row writes |
-| HG-4 | ¿El campo H en Admin 2.0 contiene el mismo texto que G en CRM? | Si hay divergencia, sync match fallará (skipped++) |
+- Al **entrar en vista** Wolfboard (`IntersectionObserver`), se ejecuta `POST /api/wolfboard/sync` con `direction: "both"` y luego recarga pendientes.
+- El botón **Sincronizar** repite el mismo ritual.
+- La respuesta incluye `bidirectional: true`, totales de filas y `warning` si no hubo coincidencias útiles.
 
 ---
 
-## Cómo probar en terminal (ritual día de trabajo)
+## P0 pipeline + lote + trigger
+
+- **Pipeline:** ver `p0BudgetPipeline` y `massTrigger` en `GET /api/wolfboard/pipeline`.
+- **Lote:** `POST /api/wolfboard/batch` body `{ "items": [ { "adminRow": 3, "driveUrl": "...", "respuestaText": "..." } ] }` (máx. 30).
+- **Trigger “nueva fila Admin”:** no incluido en este servidor; documentado como Apps Script / automatismo externo que llame a `/presupuesto` o `/batch`. Opcional: `WOLFB_CALC_API_BASE` para encadenar con `POST /calc/cotizar` en la API Panelin.
+
+---
+
+## UX omnicanal + aprobación
+
+- **Origen:** API devuelve `originCounts`; la UI muestra franja de pastillas y filtro por canal.
+- **Click en fila** de la tabla abre el mismo panel que “Ver / Editar”.
+- **Aprobar:** deshabilitado si I está vacío; toast y panel si el backend devuelve `warning` (p. ej. sin match CRM).
+
+---
+
+## Mapping columnas (plan maestro)
+
+**Admin 2.0** (`WOLFB_ADMIN_SHEET_ID`, pestaña `WOLFB_ADMIN_TAB`):
+
+| Col | Contenido |
+|-----|-----------|
+| H | Consulta cliente (clave de match con CRM **G** primer bloque) |
+| I | Respuesta IA / operador |
+| J | Link presupuesto Drive |
+| K | Enviado (checkbox) |
+
+**CRM** (`WOLFB_CRM_SHEET_ID` o `BMC_SHEET_ID`, tab `CRM_Operativo`):
+
+| Col | Contenido |
+|-----|-----------|
+| G | Cuerpo compuesto: `consulta` + `respuesta` + `link` separados por `\n\n---\n\n` (match sigue funcionando contra el primer bloque) |
+| F | Origen (WA, EM, …) — usado en UI filtro |
+| AF | Respuesta sugerida |
+| AH | Link presupuesto |
+| AI | Aprobado enviar |
+
+**Match v1:** `normalizeText` sobre H y el **primer segmento** de G (antes de `---`) o G entero si aún no hay compuesto.
+
+---
+
+## Ritual prueba terminal
 
 ```bash
-# 1. Levantar servidor
 npm run bmc-dashboard
-
-# 2. Smoke test sin config
-curl http://localhost:3849/api/wolfboard/pendientes
-# → 503 {"ok":false,"error":"Wolfboard Sheets not configured..."}
-
-# 3. Con vars configuradas en .env:
-# WOLFB_ADMIN_SHEET_ID=1Ie0K...
-# BMC_SHEET_ID=1N-4ky...
-# GOOGLE_APPLICATION_CREDENTIALS=docs/bmc-dashboard-modernization/service-account.json
-# WOLFB_DRY_RUN=1
-
-# 4. Test pendientes
-curl http://localhost:3849/api/wolfboard/pendientes
-# → {"ok":true,"data":[...],"total":N,"pending":M}
-
-# 5. Test sync (dry-run)
-curl -X POST http://localhost:3849/api/wolfboard/sync \
+curl -s http://localhost:3849/api/wolfboard/pipeline | jq .
+curl -s http://localhost:3849/api/wolfboard/pendientes | jq '.pending'
+# Presupuesto (requiere filas reales y match CRM)
+curl -s -X POST http://localhost:3849/api/wolfboard/presupuesto \
   -H "Content-Type: application/json" \
-  -d '{"direction":"both"}'
-# → {"ok":true,"dryRun":true,"updatedAdmin":N,"updatedCrm":M,"skipped":K}
+  -d '{"adminRow":3,"driveUrl":"https://drive.google.com/file/d/xxx/view","respuestaText":"Propuesta lista."}'
 
-# 6. Export CSV
-curl http://localhost:3849/api/wolfboard/export -o wolfboard-test.csv
-# → CSV con rowNum,H,I,J,K,sheetUrl
-
-# 7. UI en browser
-open http://localhost:3849
-# → Sección Wolfboard visible, tabla de pendientes, botón Sincronizar
+curl -s -X POST http://localhost:3849/api/wolfboard/batch \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"adminRow":3,"driveUrl":"https://drive.google.com/file/d/xxx/view"}]}'
 ```
 
 ---
 
-## Sprint 1 — cambios 2026-04-23
+## Integración calculadora (siguiente capa)
 
-| Cambio | Archivo | Descripción |
-|--------|---------|-------------|
-| Botón "Aprobar respuesta" | `dashboard/index.html` | Agrega botón entre Guardar y Enviado en panel de detalle |
-| `approveWolfboardRow()` | `dashboard/app.js` | POST `/api/wolfboard/row` con `aprobado: true` → escribe "Sí" en CRM columna AI |
-| Auto-sync al entrar | `dashboard/app.js` | IntersectionObserver llama `syncWolfboard()` en vez de `loadWolfboard()` — sincroniza ambas vías al abrir la sección |
-
-## Próximos pasos
-
-1. **Resolver HG-1 a HG-4** (Matias confirma tab names, offset, permisos)
-2. **Primer sync dry-run real** con las vars configuradas en .env
-3. **Primer sync real** (quitar `WOLFB_DRY_RUN`) sobre una copia/staging de las hojas
-4. **Sprint 2:** Campo Origen (columna en Admin + display en tabla + panel + CSV)
-5. **Fase 3** Drive link wiring (bmc-calc-specialist, integración en calculadora)
-6. **PR de seguridad** para remover service-account.json del repo
-7. **Canales adicionales** (IG, FB, Email blocks en UI Wolfboard) — siguientes sprints
+1. Tras `saveQuotation()` / URL Drive, llamar `POST /api/wolfboard/presupuesto` con `adminRow` activo (p. ej. `window.__wolfboardAdminRow` desde el detalle Wolfboard).
+2. Alternativa ya soportada: pegar URL en el campo **J** en el panel y **Guardar en CRM**.
 
 ---
 
-*Generado por Claude Code Terminal · branch `feature/wolfboard-crm` · 2026-04-23*
+## Seguridad (nota preexistente)
+
+`docs/bmc-dashboard-modernization/service-account.json` no debe permanecer versionado con claves reales; rotar claves y usar path local / secret manager.
+
+---
+
+*Actualizado: batch, ritual (`warning` + `WOLFB_RITUAL_LOG`), pipeline P0, auditoría ML ampliada, UX omnicanal — 2026-04-23*

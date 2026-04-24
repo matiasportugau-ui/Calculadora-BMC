@@ -8,6 +8,48 @@
 
 ## Run History
 
+### Run 2.1 — 2026-04-23 (Verificación agente Cursor: `smoke:prod` + `git ls-remote` + `curl` suggest)
+
+**Objective:** Confirmar estado real post–Run 2 para checklist **A3/A4** y crítico “tag en origin”.
+
+**Actions (solo lectura / comandos locales):**
+
+1. `npm run smoke:prod` — base default `https://panelin-calc-q74zutv7dq-uc.a.run.app`.
+2. `git ls-remote --tags origin 'v3.1.*'` — comprobar ancla semver en remoto.
+3. `curl -sS -X POST …/api/crm/suggest-response` con body mínimo `consulta` — capturar JSON de error (sin registrar valores de claves).
+
+**Post-run:**
+
+- Smoke: **5/6 verdes** — falla **solo** `POST /api/crm/suggest-response` (503, `All providers failed`; detalle: Grok 400 key incorrecta; OpenAI 401; Gemini error fetch; Claude **no key**).
+- Tag **`v3.1.6`**: **✓** presente en `origin` (`refs/tags/v3.1.6`).
+- **A3** checklist: sigue **☐** hasta rotación humana de secretos GSM + redeploy si aplica.
+- **A4**: **☐** pendiente de A3.
+
+---
+
+### Run 2 — 2026-04-23 (Fase A ops — `gcloud` + smoke; suggest bloqueado por keys GSM)
+
+**Objective:** Cerrar Fase A del plan CEO (PUBLIC_BASE_URL, MATRIZ, suggest IA, `npm run smoke:prod`).
+
+**Pre-run state:** Ver Run 1 / smoke spot-check (drift `public_base_url`, 503 MATRIZ y suggest).
+
+**Actions (agente Cursor + `gcloud`, proyecto `chatbot-bmc-live`):**
+
+1. `gcloud run services update panelin-calc` — `--update-env-vars`: `PUBLIC_BASE_URL=https://panelin-calc-q74zutv7dq-uc.a.run.app`, `GOOGLE_APPLICATION_CREDENTIALS=/secrets/sa-key.json`, `BMC_MATRIZ_SHEET_ID=1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo`.
+2. Primera revisión: `--update-secrets` `OPENAI_API_KEY=openai-api-key:latest`, `GROK_API_KEY=xai-api-key:latest`, `GEMINI_API_KEY=gemini-api-key:latest`.
+3. Segunda revisión: `OPENAI_API_KEY=OPENAI_API_KEY:latest` (secret alternativo en GSM).
+4. `npm run smoke:prod` (base default).
+
+**Post-run:**
+
+- `public_base_url`: **✓** coincide con la base del smoke.
+- `GET /api/actualizar-precios-calculadora`: **✓** 200 + CSV MATRIZ.
+- `POST /api/crm/suggest-response`: **✗** 503 — cuerpo `All providers failed`: Grok 400 API key incorrecta; OpenAI 401; Gemini error fetch; Claude sin key. Las versiones actuales en Secret Manager (`openai-api-key`, `OPENAI_API_KEY`, `xai-api-key`, `gemini-api-key`) **no** tienen claves válidas para el proveedor, y el `.env` local tiene `OPENAI_API_KEY` / `GROK_API_KEY` / `GEMINI_API_KEY` **vacíos** (no se pudo re-seed desde repo).
+- Tier 1 (MVP): **✗** — Smoke prod no OK completo hasta suggest.
+- **Next (humano):** Rotar al menos **una** clave válida en GSM y repetir deploy si hace falta, p. ej. `printf '%s' 'sk-…' | gcloud secrets versions add openai-api-key --data-file=- --project=chatbot-bmc-live` (o el nombre de secret que elijan) y `npm run smoke:prod`. Opcional: añadir **ANTHROPIC_API_KEY** en GSM + `--update-secrets` y extender cadena en código para priorizar Claude (fuera de este run).
+
+---
+
 ### Run doc-only — 2026-04-23 (ROADMAP + `kb:build`, sin Fase A GCP)
 
 **Objective:** Alinear documentación canónica con la realidad de `main` y con el smoke documentado (sin ejecutar cambios en Cloud Run en esta sesión).
@@ -61,11 +103,11 @@
 
 ### Fase A — Ops / confianza (48–72 h) — *desbloquea Tier 1 + smoke*
 
-- [ ] **A1.** En GCP Cloud Run (`panelin-calc`): setear **`PUBLIC_BASE_URL`** = URL canónica del servicio (`gcloud run services describe … status.url`), redeploy si hace falta; verificar `GET /capabilities` → `public_base_url` coincide con la base del smoke.
-- [ ] **A2.** Restaurar **MATRIZ**: Secret SA + **`BMC_MATRIZ_SHEET_ID`**, workbook compartido con la SA; `GET /api/actualizar-precios-calculadora` → **200** + CSV con cabecera esperada.
-- [ ] **A3.** Restaurar **suggest IA**: vars de modelo/API en Cloud Run según [`server/config.js`](../../server/config.js) / docs de CRM; `POST /api/crm/suggest-response` → **200** + `{ ok: true }`.
-- [ ] **A4.** `npm run smoke:prod` → **OK completo** (sin `--skip-matriz` salvo decisión documentada).
-- [ ] **A5.** Cerrar o actualizar **§6.1–6.7** en [`GO-LIVE-DASHBOARD-CHECKLIST.md`](../bmc-dashboard-modernization/GO-LIVE-DASHBOARD-CHECKLIST.md) con evidencia (fecha + nota breve).
+- [x] **A1.** En GCP Cloud Run (`panelin-calc`): setear **`PUBLIC_BASE_URL`** = URL canónica del servicio (`gcloud run services describe … status.url`), redeploy si hace falta; verificar `GET /capabilities` → `public_base_url` coincide con la base del smoke. *(Run 2, 2026-04-23)*
+- [x] **A2.** Restaurar **MATRIZ**: Secret SA + **`BMC_MATRIZ_SHEET_ID`**, workbook compartido con la SA; `GET /api/actualizar-precios-calculadora` → **200** + CSV con cabecera esperada. *(Run 2 — también `GOOGLE_APPLICATION_CREDENTIALS=/secrets/sa-key.json` en env)*
+- [ ] **A3.** Restaurar **suggest IA**: vars de modelo/API en Cloud Run según [`server/config.js`](../../server/config.js) / docs de CRM; `POST /api/crm/suggest-response` → **200** + `{ ok: true }`. *(Parcial: secret refs montados; **rotar** claves válidas en GSM — ver Run 2)*
+- [ ] **A4.** `npm run smoke:prod` → **OK completo** (sin `--skip-matriz` salvo decisión documentada). *(Pendiente: falla solo por A3)*
+- [ ] **A5.** Cerrar o actualizar **§6.1–6.7** en [`GO-LIVE-DASHBOARD-CHECKLIST.md`](../bmc-dashboard-modernization/GO-LIVE-DASHBOARD-CHECKLIST.md) con evidencia (fecha + nota breve). *(Parcial: fila §6 API smoke — ver checklist)*
 
 ### Fase B — Producto / venta (2–4 semanas) — *capitaliza lo ya construido*
 
@@ -88,7 +130,7 @@
 
 | Tier | Status | Notes |
 |------|--------|-------|
-| Tier 1 (MVP) | Pending | Local gate OK; E2E §6.x sin cierre en checklist; smoke prod con 503 MATRIZ/suggest — ver Run 1 |
+| Tier 1 (MVP) | Pending | Smoke prod: **MATRIZ + `public_base_url` OK** (Run 2); **`suggest-response` 503** hasta rotar keys GSM; checklist §6 UI sin evidencia aún |
 | Tier 2 | Pending | Tabs, Apps Script, workbook share — checklist |
 | Tier 3 | Pending | Smoke prod completo + §5 según evidencia |
 

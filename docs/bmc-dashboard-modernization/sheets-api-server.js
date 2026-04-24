@@ -44,8 +44,34 @@ const WOLFB_ADMIN_TAB = process.env.WOLFB_ADMIN_TAB        || 'Admin.';
 const WOLFB_CRM_TAB   = process.env.WOLFB_CRM_MAIN_TAB     || 'CRM_Operativo';
 const WOLFB_ENV_TAB   = process.env.WOLFB_CRM_ENVIADOS_TAB || 'Enviados';
 const WOLFB_DRY_RUN        = process.env.WOLFB_DRY_RUN === '1';
-// Admin 2.0: headers at row 1, data from row 2 (confirmed by operator)
-const WOLFB_ADMIN_DATA_ROW = 2;
+/** Libro CRM (crm_automatizado). Si vacío, se usa BMC_SHEET_ID. */
+const WOLFB_CRM_SHEET_ID = process.env.WOLFB_CRM_SHEET_ID || '';
+// Admin 2.0: primera fila de datos H:K (encabezados suelen estar arriba; configurable)
+const WOLFB_ADMIN_DATA_ROW = parseInt(
+  process.env.WOLFB_ADMIN_FIRST_DATA_ROW || process.env.WOLFB_ADMIN_DATA_ROW || '2',
+  10
+) || 2;
+/** Si distinto de "1", al sincronizar / guardar se reescribe CRM G con consulta+respuesta+link (bloques). */
+const WOLFB_WRITE_COMPOSED_G = process.env.WOLFB_SKIP_COMPOSED_G !== '1';
+/** JSON-lines a stdout por evento Wolfboard (ritual / auditoría). */
+const WOLFB_RITUAL_LOG = process.env.WOLFB_RITUAL_LOG === '1';
+/** Base URL API calculadora (Panelin) para encadenar cotizar → presupuesto desde scripts externos. */
+const WOLFB_CALC_API_BASE = process.env.WOLFB_CALC_API_BASE || '';
+
+const CRM_G_SEPARATOR = '\n\n---\n\n';
+
+function wolfboardRitualLog(event, detail) {
+  if (!WOLFB_RITUAL_LOG) return;
+  try {
+    console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...detail }));
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function getWolfboardCrmSpreadsheetId() {
+  return WOLFB_CRM_SHEET_ID || SHEET_ID;
+}
 
 function getStartOfWeek(d) {
   const date = new Date(d);
@@ -197,18 +223,40 @@ async function getOptionalSheetRows(sheetName) {
 
 function checkWolfboardAvailable() {
   const credsPath = resolveCredentialsPath();
-  return Boolean(WOLFB_ADMIN_ID && SHEET_ID && credsPath && fs.existsSync(credsPath));
+  const crmId = getWolfboardCrmSpreadsheetId();
+  return Boolean(WOLFB_ADMIN_ID && crmId && credsPath && fs.existsSync(credsPath));
 }
 
 function noWolfboardConfig(res) {
   sendJson(res, 503, {
     ok: false,
-    error: 'Wolfboard Sheets not configured (set WOLFB_ADMIN_SHEET_ID + BMC_SHEET_ID + GOOGLE_APPLICATION_CREDENTIALS)',
+    error:
+      'Wolfboard Sheets not configured (set WOLFB_ADMIN_SHEET_ID + BMC_SHEET_ID or WOLFB_CRM_SHEET_ID + GOOGLE_APPLICATION_CREDENTIALS)',
   });
 }
 
 function normalizeText(s) {
   return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 150);
+}
+
+function composeCrmG(consulta, respuesta, link) {
+  const c = String(consulta || '').trim();
+  const r = String(respuesta || '').trim();
+  const l = String(link || '').trim();
+  const parts = [];
+  if (c) parts.push(c);
+  if (r) parts.push(r);
+  if (l) parts.push(l);
+  return parts.join(CRM_G_SEPARATOR);
+}
+
+function crmGMatchesConsulta(crmG, adminConsulta) {
+  const ac = normalizeText(adminConsulta);
+  if (!ac) return false;
+  const g = String(crmG || '');
+  if (normalizeText(g) === ac) return true;
+  const first = g.split(/\n\n---\n\n/)[0];
+  return normalizeText(first) === ac;
 }
 
 async function getSheetsClient(useWrite = false) {
@@ -217,28 +265,28 @@ async function getSheetsClient(useWrite = false) {
   return google.sheets({ version: 'v4', auth: authClient });
 }
 
-// Read Admin 2.0 rows — real layout confirmed by operator:
-//   I = Consulta (match key ↔ CRM.G)
-//   J = Respuesta AI
-//   K = Link presupuesto
-//   L = Enviado (checkbox)
+// Read Admin 2.0 rows — layout 2.0 Administrador (plan / captura):
+//   H = Consulta (match key ↔ CRM.G primer bloque)
+//   I = Respuesta AI
+//   J = Link presupuesto
+//   K = Enviado (checkbox)
 async function readAdminRows(useWrite = false) {
   const sheets = await getSheetsClient(useWrite);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: WOLFB_ADMIN_ID,
-    range: `'${WOLFB_ADMIN_TAB}'!I${WOLFB_ADMIN_DATA_ROW}:L`,
+    range: `'${WOLFB_ADMIN_TAB}'!H${WOLFB_ADMIN_DATA_ROW}:K`,
     valueRenderOption: 'FORMATTED_VALUE',
   });
   const rows = res.data.values || [];
   const adminAnchor = (rowNum) =>
-    `https://docs.google.com/spreadsheets/d/${WOLFB_ADMIN_ID}/edit#gid=0&range=I${rowNum}`;
+    `https://docs.google.com/spreadsheets/d/${WOLFB_ADMIN_ID}/edit#gid=0&range=H${rowNum}`;
   return rows
     .map((row, idx) => ({
       rowNum:    idx + WOLFB_ADMIN_DATA_ROW,
-      consulta:  row[0] ?? '',   // I
-      respuesta: row[1] ?? '',   // J
-      link:      row[2] ?? '',   // K
-      enviado:   String(row[3] ?? '').toUpperCase() === 'TRUE', // L
+      consulta:  row[0] ?? '',   // H
+      respuesta: row[1] ?? '',   // I
+      link:      row[2] ?? '',   // J
+      enviado:   String(row[3] ?? '').toUpperCase() === 'TRUE', // K
       sheetUrl:  adminAnchor(idx + WOLFB_ADMIN_DATA_ROW),
     }))
     .filter(r => r.consulta || r.respuesta || r.link);
@@ -247,9 +295,10 @@ async function readAdminRows(useWrite = false) {
 // Read CRM_Operativo rows — header row 3 (HEADER_ROW), data from row 4
 // Accesses columns by index (A=0): G=6, AF=31, AH=33, AI=34
 async function readCrmRows(useWrite = false) {
+  const crmSpreadsheetId = getWolfboardCrmSpreadsheetId();
   const sheets = await getSheetsClient(useWrite);
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_ID,
+    spreadsheetId: crmSpreadsheetId,
     range: `'${WOLFB_CRM_TAB}'!A4:AK`,
     valueRenderOption: 'FORMATTED_VALUE',
   });
@@ -268,6 +317,65 @@ async function readCrmRows(useWrite = false) {
     .filter(r => r.G || r.B || r.C);
 }
 
+async function handleWolfboardPipeline(res) {
+  const crmId = getWolfboardCrmSpreadsheetId();
+  const mask = (id) => (id && id.length > 10 ? `${id.slice(0, 8)}…` : id || 'unset');
+  sendJson(res, 200, {
+    ok: true,
+    configured: checkWolfboardAvailable(),
+    dryRun: WOLFB_DRY_RUN,
+    writeComposedG: WOLFB_WRITE_COMPOSED_G,
+    adminFirstDataRow: WOLFB_ADMIN_DATA_ROW,
+    tabs: { admin: WOLFB_ADMIN_TAB, crm: WOLFB_CRM_TAB, enviados: WOLFB_ENV_TAB },
+    spreadsheetIds: { admin: mask(WOLFB_ADMIN_ID), crm: mask(crmId) },
+    columnsPlan:
+      'Admin: H consulta · I respuesta IA · J link Drive · K enviado. CRM: G cuerpo compuesto (H+I+J), AF/AH/AI, F=Origen.',
+    endpoints: [
+      'GET /api/wolfboard/pendientes',
+      'GET /api/wolfboard/pipeline',
+      'POST /api/wolfboard/sync',
+      'POST /api/wolfboard/row',
+      'POST /api/wolfboard/presupuesto',
+      'POST /api/wolfboard/batch',
+      'GET /api/wolfboard/export',
+      'POST /api/wolfboard/enviados',
+      'POST /api/wolfboard/setup-admin',
+    ],
+    mlCrmAudit: {
+      verdict: 'parcial',
+      note:
+        'ML→CRM existe (server/ml-crm-sync.js + webhook en server/index.js). Wolfboard cubre Admin 2.0↔CRM en el dashboard :3849.',
+      codePaths: [
+        'server/ml-crm-sync.js — append/upsert CRM_Operativo (tab fija, HEADER_ROW=3)',
+        'server/index.js — webhook Mercado Libre dispara sync ML→CRM cuando corresponde',
+        'scripts/panelsim-ml-crm-sync.js — CLI batch para operador',
+      ],
+      failureModes: [
+        'Credenciales / BMC_SHEET_ID incorrectos o sin permiso Editor en CRM',
+        'Cuota 429 Google Sheets (reintentar; ver BMC_SHEETS_READ_MAX_RETRIES en API principal)',
+        'Pregunta ML sin texto deducible → fila CRM incompleta (revisar columnas mapeadas en ml-crm-sync)',
+        'Wolfboard: texto H Admin no coincide con primer bloque de G en CRM → sync skipped (ver warning en POST /sync)',
+      ],
+      wolfboardToCrm: 'POST /api/wolfboard/row o /presupuesto o /batch con match H↔G; sin match, warning explícito en JSON.',
+    },
+    p0BudgetPipeline: {
+      steps: [
+        '1 Ingesta (canales / carga manual Admin H)',
+        '2 Motor cotización: calculadora o POST /calc/cotizar en API Panelin (WOLFB_CALC_API_BASE)',
+        '3 Guardar artefacto en Drive (cliente calculadora o flujo propio)',
+        '4 Publicar link: POST /api/wolfboard/presupuesto { adminRow, driveUrl, respuestaText? } → J + CRM AF/AH/G',
+        '5 Opcional lote: POST /api/wolfboard/batch { items: [...] }',
+      ],
+      calcApiBase: WOLFB_CALC_API_BASE || null,
+    },
+    massTrigger: {
+      note:
+        'Trigger “nueva fila en Admin” requiere Apps Script / automatismo externo que llame POST /api/wolfboard/presupuesto o /batch; este servidor no observa Sheets en tiempo real.',
+      batchEndpoint: 'POST /api/wolfboard/batch',
+    },
+  });
+}
+
 // ─── Wolfboard route handlers ─────────────────────────────────────────────────
 
 async function handleWolfboardPendientes(res) {
@@ -275,12 +383,25 @@ async function handleWolfboardPendientes(res) {
     const [adminRows, crmRows] = await Promise.all([readAdminRows(), readCrmRows()]);
     const enriched = adminRows.map(aRow => {
       const crmMatch = aRow.consulta
-        ? crmRows.find(cr => cr.G && normalizeText(cr.G) === normalizeText(aRow.consulta))
+        ? crmRows.find(cr => cr.G && crmGMatchesConsulta(cr.G, aRow.consulta))
         : null;
       return { ...aRow, origen: crmMatch ? crmMatch.F : '' };
     });
     const pending = enriched.filter(r => !r.enviado);
-    sendJson(res, 200, { ok: true, data: pending, total: enriched.length, pending: pending.length });
+    const originCounts = {};
+    for (const r of pending) {
+      const key = String(r.origen || '—').trim() || '—';
+      originCounts[key] = (originCounts[key] || 0) + 1;
+    }
+    sendJson(res, 200, {
+      ok: true,
+      data: pending,
+      total: enriched.length,
+      pending: pending.length,
+      originCounts,
+      bidirectionalHint:
+        'Al abrir Wolfboard se ejecuta sync both (Admin↔CRM). Usá Sincronizar para repetir sin recargar.',
+    });
   } catch (e) {
     sheetsUnavailable(res, e.message);
   }
@@ -299,14 +420,22 @@ async function handleWolfboardSync(body, res) {
     if (direction === 'admin_to_crm' || direction === 'both') {
       for (const aRow of adminRows) {
         if (!aRow.respuesta && !aRow.link) { skipped++; continue; }
-        // Match Admin.I (consulta) ↔ CRM.G (consulta del cliente)
-        const match = crmRows.find(cr => cr.G && aRow.consulta && normalizeText(cr.G) === normalizeText(aRow.consulta));
+        const match = crmRows.find(cr => cr.G && aRow.consulta && crmGMatchesConsulta(cr.G, aRow.consulta));
         if (!match) { skipped++; continue; }
         // CRM: AF=respuesta, AG=provider(blank), AH=link
         crmBatch.push({
           range: `'${WOLFB_CRM_TAB}'!AF${match._rowNum}:AH${match._rowNum}`,
           values: [[aRow.respuesta, '', aRow.link]],
         });
+        if (WOLFB_WRITE_COMPOSED_G) {
+          const composed = composeCrmG(aRow.consulta, aRow.respuesta, aRow.link);
+          if (composed) {
+            crmBatch.push({
+              range: `'${WOLFB_CRM_TAB}'!G${match._rowNum}`,
+              values: [[composed]],
+            });
+          }
+        }
         updatedCrm++;
       }
     }
@@ -315,26 +444,46 @@ async function handleWolfboardSync(body, res) {
       for (const cRow of crmRows) {
         if (!cRow.AF && !cRow.AH) { skipped++; continue; }
         if (cRow.AI === 'Sí') { skipped++; continue; }
-        // Match CRM.G ↔ Admin.I (consulta)
-        const match = adminRows.find(ar => ar.consulta && cRow.G && normalizeText(ar.consulta) === normalizeText(cRow.G));
+        const match = adminRows.find(ar => ar.consulta && cRow.G && crmGMatchesConsulta(cRow.G, ar.consulta));
         if (!match) { skipped++; continue; }
-        // Admin: J=respuesta, K=link
+        // Admin: I=respuesta, J=link
         adminBatch.push({
-          range: `'${WOLFB_ADMIN_TAB}'!J${match.rowNum}:K${match.rowNum}`,
+          range: `'${WOLFB_ADMIN_TAB}'!I${match.rowNum}:J${match.rowNum}`,
           values: [[cRow.AF, cRow.AH]],
         });
         updatedAdmin++;
       }
     }
 
+    const hadAdminPayload = adminRows.some(r => r.respuesta || r.link);
+    const hadCrmPayload = crmRows.some(c => (c.AF || c.AH) && c.AI !== 'Sí');
+    let warning = null;
+    if (updatedCrm === 0 && updatedAdmin === 0 && (hadAdminPayload || hadCrmPayload)) {
+      warning =
+        'Sync sin celdas actualizadas: revisá coincidencia Admin H ↔ CRM G (primer bloque) o que en CRM existan AF/AH con AI distinto de Sí.';
+    }
+
     if (WOLFB_DRY_RUN) {
-      return sendJson(res, 200, { ok: true, dryRun: true, updatedAdmin, updatedCrm, skipped, preview: { crmBatch, adminBatch } });
+      wolfboardRitualLog('WOLFBOARD_SYNC', { direction, dryRun: true, updatedAdmin, updatedCrm, skipped, warning });
+      return sendJson(res, 200, {
+        ok: true,
+        dryRun: true,
+        updatedAdmin,
+        updatedCrm,
+        skipped,
+        totalAdminRows: adminRows.length,
+        totalCrmRows: crmRows.length,
+        warning,
+        bidirectional: direction === 'both',
+        preview: { crmBatch, adminBatch },
+      });
     }
 
     const sheets = await getSheetsClient(true);
+    const crmSpreadsheetId = getWolfboardCrmSpreadsheetId();
     if (crmBatch.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: SHEET_ID,
+        spreadsheetId: crmSpreadsheetId,
         requestBody: { valueInputOption: 'USER_ENTERED', data: crmBatch },
       });
     }
@@ -344,69 +493,161 @@ async function handleWolfboardSync(body, res) {
         requestBody: { valueInputOption: 'USER_ENTERED', data: adminBatch },
       });
     }
-    sendJson(res, 200, { ok: true, dryRun: false, updatedAdmin, updatedCrm, skipped });
+    wolfboardRitualLog('WOLFBOARD_SYNC', { direction, dryRun: false, updatedAdmin, updatedCrm, skipped, warning });
+    sendJson(res, 200, {
+      ok: true,
+      dryRun: false,
+      updatedAdmin,
+      updatedCrm,
+      skipped,
+      totalAdminRows: adminRows.length,
+      totalCrmRows: crmRows.length,
+      warning,
+      bidirectional: direction === 'both',
+    });
   } catch (e) {
     sheetsUnavailable(res, e.message);
   }
 }
 
-async function handleWolfboardRow(body, res) {
+/**
+ * Aplica escrituras Admin I/J y CRM AF/AH/AI/G. Usado por /row, /presupuesto y /batch.
+ * @returns {Promise<{adminRow:number, crmRow:number|null, warning:string|null, dryRun:boolean, adminBatchLen:number, crmBatchLen:number, adminBatch?:array, crmBatch?:array}>}
+ */
+async function performWolfboardRowMutation(body) {
   const { adminRow, respuesta, link, aprobado } = body || {};
   const rowNum = Number(adminRow);
   if (!rowNum || isNaN(rowNum)) {
-    sendJson(res, 400, { ok: false, error: 'adminRow (number) required' });
-    return;
+    const err = new Error('adminRow (number) required');
+    err.statusCode = 400;
+    throw err;
   }
-  try {
-    const sheets = await getSheetsClient(true);
-    const adminBatch = [];
-    const crmBatch = [];
+  const sheets = await getSheetsClient(true);
+  const adminBatch = [];
+  const crmBatch = [];
+  const crmSpreadsheetId = getWolfboardCrmSpreadsheetId();
 
-    // Admin: J=respuesta, K=link
-    if (respuesta !== undefined) {
-      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!J${rowNum}`, values: [[respuesta]] });
-    }
-    if (link !== undefined) {
-      adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!K${rowNum}`, values: [[link]] });
-    }
+  const snapRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: WOLFB_ADMIN_ID,
+    range: `'${WOLFB_ADMIN_TAB}'!H${rowNum}:J${rowNum}`,
+  });
+  const snap = (snapRes.data.values || [['', '', '']])[0] || ['', '', ''];
+  const hConsulta = snap[0] || '';
+  const iAfter = respuesta !== undefined ? respuesta : (snap[1] || '');
+  const jAfter = link !== undefined ? link : (snap[2] || '');
 
-    // Find matching CRM row by Admin.I (consulta) value
-    let crmRowNum = null;
-    if (respuesta !== undefined || link !== undefined || aprobado !== undefined) {
-      const hRes = await sheets.spreadsheets.values.get({
-        spreadsheetId: WOLFB_ADMIN_ID,
-        range: `'${WOLFB_ADMIN_TAB}'!I${rowNum}`,
-      });
-      const hVal = ((hRes.data.values || [['']])[0] || [''])[0] || '';
-      if (hVal) {
-        const crmRows = await readCrmRows();
-        const match = crmRows.find(cr => normalizeText(cr.G) === normalizeText(hVal));
-        if (match) {
-          crmRowNum = match._rowNum;
-          if (respuesta !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AF${crmRowNum}`, values: [[respuesta]] });
-          if (link !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AH${crmRowNum}`, values: [[link]] });
-          if (aprobado !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AI${crmRowNum}`, values: [[aprobado ? 'Sí' : 'No']] });
+  if (respuesta !== undefined) {
+    adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!I${rowNum}`, values: [[respuesta]] });
+  }
+  if (link !== undefined) {
+    adminBatch.push({ range: `'${WOLFB_ADMIN_TAB}'!J${rowNum}`, values: [[link]] });
+  }
+
+  let crmRowNum = null;
+  if (respuesta !== undefined || link !== undefined || aprobado !== undefined) {
+    if (hConsulta) {
+      const crmRows = await readCrmRows();
+      const match = crmRows.find(cr => crmGMatchesConsulta(cr.G, hConsulta));
+      if (match) {
+        crmRowNum = match._rowNum;
+        if (respuesta !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AF${crmRowNum}`, values: [[respuesta]] });
+        if (link !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AH${crmRowNum}`, values: [[link]] });
+        if (aprobado !== undefined) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!AI${crmRowNum}`, values: [[aprobado ? 'Sí' : 'No']] });
+        if (WOLFB_WRITE_COMPOSED_G && (respuesta !== undefined || link !== undefined)) {
+          const composed = composeCrmG(hConsulta, iAfter, jAfter);
+          if (composed) crmBatch.push({ range: `'${WOLFB_CRM_TAB}'!G${crmRowNum}`, values: [[composed]] });
         }
       }
     }
+  }
 
-    if (WOLFB_DRY_RUN) {
-      return sendJson(res, 200, { ok: true, dryRun: true, adminRow: rowNum, crmRow: crmRowNum, adminBatch, crmBatch });
+  let warning = null;
+  if (respuesta !== undefined || link !== undefined || aprobado !== undefined) {
+    if (!crmRowNum) {
+      if (!hConsulta) warning = 'Consulta (H) vacía: no hay clave para escribir en CRM.';
+      else warning = 'No hay fila CRM cuyo G coincida con H (match por primer bloque de G). Revisá CRM_Operativo.';
     }
+  }
 
-    if (adminBatch.length > 0) {
-      await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: WOLFB_ADMIN_ID,
-        requestBody: { valueInputOption: 'USER_ENTERED', data: adminBatch },
-      });
+  if (WOLFB_DRY_RUN) {
+    wolfboardRitualLog('WOLFBOARD_ROW', { adminRow: rowNum, crmRow: crmRowNum, warning, dryRun: true });
+    return {
+      adminRow: rowNum,
+      crmRow: crmRowNum,
+      warning,
+      dryRun: true,
+      adminBatchLen: adminBatch.length,
+      crmBatchLen: crmBatch.length,
+      adminBatch,
+      crmBatch,
+    };
+  }
+
+  if (adminBatch.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: WOLFB_ADMIN_ID,
+      requestBody: { valueInputOption: 'USER_ENTERED', data: adminBatch },
+    });
+  }
+  if (crmBatch.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: crmSpreadsheetId,
+      requestBody: { valueInputOption: 'USER_ENTERED', data: crmBatch },
+    });
+  }
+  wolfboardRitualLog('WOLFBOARD_ROW', { adminRow: rowNum, crmRow: crmRowNum, warning, dryRun: false });
+  return {
+    adminRow: rowNum,
+    crmRow: crmRowNum,
+    warning,
+    dryRun: false,
+    adminBatchLen: adminBatch.length,
+    crmBatchLen: crmBatch.length,
+  };
+}
+
+async function handleWolfboardRow(body, res) {
+  try {
+    const out = await performWolfboardRowMutation(body);
+    sendJson(res, 200, { ok: true, ...out });
+  } catch (e) {
+    if (e.statusCode === 400) {
+      sendJson(res, 400, { ok: false, error: e.message });
+      return;
     }
-    if (crmBatch.length > 0) {
-      await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: SHEET_ID,
-        requestBody: { valueInputOption: 'USER_ENTERED', data: crmBatch },
-      });
+    sheetsUnavailable(res, e.message);
+  }
+}
+
+async function handleWolfboardBatch(body, res) {
+  const items = body?.items;
+  if (!Array.isArray(items) || items.length === 0) {
+    sendJson(res, 400, { ok: false, error: 'items (non-empty array) required' });
+    return;
+  }
+  if (items.length > 30) {
+    sendJson(res, 400, { ok: false, error: 'max 30 items per batch' });
+    return;
+  }
+  try {
+    const results = [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i] || {};
+      const merged = {
+        adminRow: it.adminRow,
+        link: it.driveUrl !== undefined ? it.driveUrl : it.link,
+        respuesta: it.respuestaText !== undefined ? it.respuestaText : it.respuesta,
+      };
+      try {
+        const out = await performWolfboardRowMutation(merged);
+        results.push({ index: i, ok: true, ...out });
+      } catch (e) {
+        results.push({ index: i, ok: false, error: e.message || String(e) });
+      }
     }
-    sendJson(res, 200, { ok: true, dryRun: false, adminRow: rowNum, crmRow: crmRowNum });
+    const applied = results.filter(r => r.ok).length;
+    wolfboardRitualLog('WOLFBOARD_BATCH', { total: items.length, applied, dryRun: WOLFB_DRY_RUN });
+    sendJson(res, 200, { ok: true, dryRun: WOLFB_DRY_RUN, total: items.length, applied, results });
   } catch (e) {
     sheetsUnavailable(res, e.message);
   }
@@ -418,7 +659,7 @@ async function handleWolfboardExport(res) {
     const date = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="wolfboard-export-${date}.csv"`);
-    const header = 'rowNum,I_consulta,J_respuesta,K_link,L_enviado,sheetUrl\n';
+    const header = 'rowNum,H_consulta,I_respuesta,J_link,K_enviado,sheetUrl\n';
     const csvRow = (r) => [r.rowNum, r.consulta, r.respuesta, r.link, r.enviado ? 'TRUE' : 'FALSE', r.sheetUrl]
       .map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',');
     res.statusCode = 200;
@@ -438,7 +679,7 @@ async function handleWolfboardEnviados(body, res) {
     return;
   }
   // Safety gate: require explicit force=true
-  const preview = { adminRow: rowNum, action: 'move to Enviados + set L=TRUE (enviado checkbox) + delete from Admin' };
+  const preview = { adminRow: rowNum, action: 'move to Enviados + set K=TRUE (enviado) + delete from Admin' };
   if (!force) {
     sendJson(res, 409, { ok: false, error: 'requires force=true to move row', preview });
     return;
@@ -453,11 +694,11 @@ async function handleWolfboardEnviados(body, res) {
     });
     const rowData = (rowRes.data.values || [[]])[0] || [];
 
-    // Mark L=TRUE in Admin (Enviado checkbox — column L)
+    // Mark K=TRUE in Admin (Enviado checkbox — column K)
     if (!WOLFB_DRY_RUN) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: WOLFB_ADMIN_ID,
-        range: `'${WOLFB_ADMIN_TAB}'!L${rowNum}`,
+        range: `'${WOLFB_ADMIN_TAB}'!K${rowNum}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [['TRUE']] },
       });
@@ -466,9 +707,10 @@ async function handleWolfboardEnviados(body, res) {
     // Append to CRM Enviados tab: [timestamp, ...rowData]
     const timestamp = new Date().toISOString();
     const envRow = [timestamp, ...rowData];
+    const crmSpreadsheetId = getWolfboardCrmSpreadsheetId();
     if (!WOLFB_DRY_RUN) {
       await sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID,
+        spreadsheetId: crmSpreadsheetId,
         range: `'${WOLFB_ENV_TAB}'!A:Z`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [envRow] },
@@ -495,6 +737,7 @@ async function handleWolfboardEnviados(body, res) {
       }
     }
 
+    wolfboardRitualLog('WOLFBOARD_ENVIADOS', { adminRow: rowNum, dryRun: WOLFB_DRY_RUN });
     sendJson(res, 200, { ok: true, dryRun: WOLFB_DRY_RUN, adminRow: rowNum, movedToCrm: true });
   } catch (e) {
     sheetsUnavailable(res, e.message);
@@ -709,6 +952,11 @@ const server = http.createServer(async (req, res) => {
   if (pathname === '/api/server-export' && req.method === 'GET') {
     const envVars = [
       'BMC_SHEET_ID',
+      'WOLFB_CRM_SHEET_ID',
+      'WOLFB_ADMIN_SHEET_ID',
+      'WOLFB_DRY_RUN',
+      'WOLFB_RITUAL_LOG',
+      'WOLFB_CALC_API_BASE',
       'GOOGLE_APPLICATION_CREDENTIALS',
       'BMC_SHEETS_API_PORT',
     ];
@@ -717,6 +965,10 @@ const server = http.createServer(async (req, res) => {
       const v = process.env[k];
       if (k === 'GOOGLE_APPLICATION_CREDENTIALS') {
         env[k] = v ? 'set (path hidden)' : 'unset';
+      } else if (k === 'WOLFB_DRY_RUN' || k === 'WOLFB_RITUAL_LOG') {
+        env[k] = v === '1' ? 'on' : 'off';
+      } else if (k === 'WOLFB_CALC_API_BASE') {
+        env[k] = v ? 'set' : 'unset';
       } else {
         env[k] = v ? 'set' : 'unset';
       }
@@ -738,8 +990,11 @@ const server = http.createServer(async (req, res) => {
           { method: 'POST', path: '/api/marcar-entregado', description: 'body: { cotizacionId, comentarios }' },
           { method: 'GET', path: '/api/server-export', description: 'This export (conditions and features)' },
           { method: 'GET', path: '/api/wolfboard/pendientes', description: 'Admin 2.0 pending rows (K≠TRUE)' },
+          { method: 'GET', path: '/api/wolfboard/pipeline', description: 'Estado P0 Wolfboard + mapping + auditoría ML↔CRM (JSON)' },
           { method: 'POST', path: '/api/wolfboard/sync', description: 'body: { direction: "both"|"admin_to_crm"|"crm_to_admin" }' },
           { method: 'POST', path: '/api/wolfboard/row', description: 'body: { adminRow, respuesta?, link?, aprobado? }' },
+          { method: 'POST', path: '/api/wolfboard/presupuesto', description: 'body: { adminRow, driveUrl|link, respuestaText? } → escribe J+CRM' },
+          { method: 'POST', path: '/api/wolfboard/batch', description: 'body: { items:[{adminRow, driveUrl?, respuestaText?}] } max 30' },
           { method: 'GET', path: '/api/wolfboard/export', description: 'CSV export of all Admin 2.0 rows' },
           { method: 'POST', path: '/api/wolfboard/enviados', description: 'body: { adminRow, force: true } — move to Enviados' },
         ],
@@ -884,6 +1139,57 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname === '/api/wolfboard/pipeline' && req.method === 'GET') {
+    await handleWolfboardPipeline(res);
+    return;
+  }
+
+  if (pathname === '/api/wolfboard/presupuesto' && req.method === 'POST') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        const driveUrl = parsed.driveUrl || parsed.link || '';
+        const adminRow = Number(parsed.adminRow);
+        if (!adminRow || isNaN(adminRow)) {
+          sendJson(res, 400, { ok: false, error: 'adminRow (number) required' });
+          return;
+        }
+        if (!String(driveUrl).trim()) {
+          sendJson(res, 400, { ok: false, error: 'driveUrl or link (URL presupuesto) required' });
+          return;
+        }
+        const resp =
+          parsed.respuestaText !== undefined
+            ? parsed.respuestaText
+            : parsed.respuesta !== undefined
+              ? parsed.respuesta
+              : undefined;
+        await handleWolfboardRow({ adminRow, link: driveUrl, ...(resp !== undefined ? { respuesta: resp } : {}) }, res);
+      } catch (e) {
+        sendJson(res, 400, { ok: false, error: e.message || 'Invalid JSON' });
+      }
+    });
+    return;
+  }
+
+  if (pathname === '/api/wolfboard/batch' && req.method === 'POST') {
+    if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        await handleWolfboardBatch(parsed, res);
+      } catch (e) {
+        sendJson(res, 400, { ok: false, error: e.message || 'Invalid JSON' });
+      }
+    });
+    return;
+  }
+
   if (pathname === '/api/wolfboard/enviados' && req.method === 'POST') {
     if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
     let body = '';
@@ -895,7 +1201,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/wolfboard/setup-admin — create checkbox validation in column L of Admin 2.0
+  // POST /api/wolfboard/setup-admin — create checkbox validation in column K (Enviado) of Admin 2.0
   if (pathname === '/api/wolfboard/setup-admin' && req.method === 'POST') {
     if (!checkWolfboardAvailable()) { noWolfboardConfig(res); return; }
     try {
@@ -906,26 +1212,25 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 404, { ok: false, error: `Tab "${WOLFB_ADMIN_TAB}" not found in Admin 2.0` });
         return;
       }
-      // Add checkbox (BOOLEAN) validation to L2:L1000
+      // K = column index 10 (A=0). Checkbox validation K2:K1000
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: WOLFB_ADMIN_ID,
         requestBody: {
           requests: [{
             setDataValidation: {
-              range: { sheetId: adminSheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 11, endColumnIndex: 12 },
+              range: { sheetId: adminSheetId, startRowIndex: 1, endRowIndex: 1000, startColumnIndex: 10, endColumnIndex: 11 },
               rule: { condition: { type: 'BOOLEAN' }, strict: true, showCustomUi: true },
             },
           }, {
-            // Add header label "Enviado" in L1
             repeatCell: {
-              range: { sheetId: adminSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 11, endColumnIndex: 12 },
+              range: { sheetId: adminSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 10, endColumnIndex: 11 },
               cell: { userEnteredValue: { stringValue: 'Enviado' } },
               fields: 'userEnteredValue',
             },
           }],
         },
       });
-      sendJson(res, 200, { ok: true, message: 'Column L set as checkbox (Enviado) with header in L1' });
+      sendJson(res, 200, { ok: true, message: 'Column K set as checkbox (Enviado) with header in K1' });
     } catch (e) {
       sheetsUnavailable(res, e.message);
     }
@@ -964,7 +1269,7 @@ server.listen(PORT, () => {
   console.log(`BMC Dashboard: http://localhost:${PORT}/`);
   console.log(`  API: /api/cotizaciones, /api/proximas-entregas, /api/coordinacion-logistica, /api/audit`);
   console.log(`  API: /api/pagos-pendientes, /api/metas-ventas, /api/kpi-financiero`);
-  console.log(`  Wolfboard: /api/wolfboard/pendientes|sync|row|export|enviados`);
-  if (!SHEET_ID) console.warn('Set BMC_SHEET_ID and GOOGLE_APPLICATION_CREDENTIALS');
+  console.log(`  Wolfboard: /api/wolfboard/pendientes|pipeline|sync|row|presupuesto|batch|export|enviados`);
+  if (!SHEET_ID && !WOLFB_CRM_SHEET_ID) console.warn('Set BMC_SHEET_ID or WOLFB_CRM_SHEET_ID and GOOGLE_APPLICATION_CREDENTIALS');
   if (!WOLFB_ADMIN_ID) console.warn('Wolfboard: set WOLFB_ADMIN_SHEET_ID to enable /api/wolfboard/* endpoints');
 });

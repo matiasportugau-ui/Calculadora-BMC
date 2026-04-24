@@ -213,6 +213,30 @@
         "path": "/api/email/draft-outbound",
         "summary": "Borrador email proveedor/cliente (no envía; misma auth que cockpit)",
         "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/email/draft-outbound"
+      },
+      {
+        "method": "GET",
+        "path": "/api/internal/panelin/whoami",
+        "summary": "Panelin interno: rol efectivo + muestra RBAC dashboard (Bearer + X-Panelin-Role)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/internal/panelin/whoami"
+      },
+      {
+        "method": "GET",
+        "path": "/api/internal/panelin/tools",
+        "summary": "Panelin interno: catálogo HTTP tools para orquestador",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/internal/panelin/tools"
+      },
+      {
+        "method": "GET",
+        "path": "/api/internal/panelin/policies",
+        "summary": "Panelin interno: matriz mínima método+path → rol",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/internal/panelin/policies"
+      },
+      {
+        "method": "POST",
+        "path": "/api/internal/panelin/invoke",
+        "summary": "Panelin interno: ejecutar tool por tool_id (RBAC; proxy localhost)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/internal/panelin/invoke"
       }
     ]
   },

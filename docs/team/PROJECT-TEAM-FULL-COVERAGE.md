@@ -60,6 +60,7 @@
 | **Audit/Debug** | bmc-dashboard-audit-runner, cloudrun-diagnostics-reporter | Audit | Auditoría, logs, diagnóstico |
 | **Reporter** | bmc-implementation-plan-reporter | Reporting | Planes Solution/Coding, handoffs |
 | **Orchestrator** | bmc-dashboard-team-orchestrator, ai-interactive-team | Coordinación | Orden, handoffs, diálogo entre agentes |
+| **Liaison** | bmc-team-liaison, contribut-input-mode | Coordinación / Humano–IA | Copiloto de alineación: interpreta pedidos vagos, brief + rutas (`AGENTS.md`, gates, `PROJECT-STATE`); sugiere agente/skill siguiente y modo Contribut; no sustituye Orquestador ni implementación profunda salvo pedido explícito |
 | **MATPROMT** | matprompt | Coordinación / Prompts | Genera prompts orientadores por rol para cada full team run (paso 0a); refina instrucciones ante tareas nuevas durante el run (delta prompts); participa en planificación del run con Orquestador y Parallel/Serial; entrega bundles en docs/team/MATPROMT-FULL-RUN-PROMPTS.md o matprompt/MATPROMT-RUN-*.md |
 | **Contract** | bmc-api-contract-validator | API | Validar respuestas contra contrato canónico |
 | **Calc** | bmc-calculadora-specialist | Calculadora | BOM, precios, Drive, PDF, 5173 |

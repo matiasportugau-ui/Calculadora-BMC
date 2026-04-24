@@ -70,6 +70,8 @@ gcloud run services describe panelin-calc --region=us-central1 --project=chatbot
 - [ ] `API_AUTH_TOKEN` o `API_KEY` si usan cockpit / rutas protegidas.
 - [ ] `WHATSAPP_*`, claves de IA, `SHOPIFY_*` si están en este mismo servicio.
 
+**`POST /api/crm/suggest-response` (smoke prod):** montar `OPENAI_API_KEY`, `GROK_API_KEY`, `GEMINI_API_KEY` desde Secret Manager (`--update-secrets=…:latest`) y **rotar** versiones si el endpoint devuelve 503 con `All providers failed` (401/400 en proveedores). El `.env` local puede tener esas variables **vacías**; la fuente de verdad en prod es GSM. Comando típico (sin pegar la clave en historial de chat): `printf '%s' "$OPENAI_API_KEY" | gcloud secrets versions add openai-api-key --data-file=- --project=chatbot-bmc-live` (repetir para `xai-api-key` / `gemini-api-key` o el nombre de secret que use el servicio).
+
 **Sincronizar un subconjunto desde `.env` local (opcional, con cuidado):**
 
 ```bash

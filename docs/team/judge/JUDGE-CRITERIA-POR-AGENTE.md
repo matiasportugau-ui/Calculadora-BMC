@@ -292,6 +292,19 @@
 
 ---
 
+## Liaison (bmc-team-liaison, contribut-input-mode)
+
+| Criterio | Entregable / Cómo juzgar |
+|----------|---------------------------|
+| **Brief** | Intención del usuario restablecida en pocas frases; alcance y restricciones visibles |
+| **Enrutamiento** | 1–2 agentes o skills siguientes nombrados (ruta bajo `.cursor/agents/` o `.cursor/skills/`) con justificación breve |
+| **Conformidad** | Referencias correctas a `AGENTS.md`, gates humanos cuando aplica, `PROJECT-STATE` / tabla §2 sin inventar éxito técnico |
+| **Límites** | No usurpa Orquestador/CEO en full team; no implementación profunda salvo pedido explícito del usuario |
+
+**Áreas de ranqueo:** Claridad del brief (1–5), Calidad del enrutamiento (1–5), Respeto de gates y secretos (1–5).
+
+---
+
 ## Regla para nuevos agentes
 
 Cuando se añade un nuevo rol a PROJECT-TEAM-FULL-COVERAGE §2, **debe** añadirse una sección aquí con:

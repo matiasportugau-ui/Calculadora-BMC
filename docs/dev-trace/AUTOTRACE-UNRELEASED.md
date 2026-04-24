@@ -49,6 +49,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3c93ff7` feat: GCS quote storage + SuperAgent tool endpoint
 - `aa6d84b` feat(wolfboard): add local dev scripts + rebuild kb.json
 - `c8b33e6` feat(wolfboard): add local dev scripts and update kb.json
+- `47957df` feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook `[tests]`
+- `e7ee3ee` feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot
 
 ## Fixes
 
@@ -131,6 +133,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `53b3a60` chore(dev-trace): record AUTOTRACE for commit 07a5a8d
 - `d33a49c` chore(dev-trace): record AUTOTRACE for docs ROADMAP smoke alignment (c811945)
 - `c7cd9a3` chore(dev-trace): record AUTOTRACE for dev-trace commit d33a49c
+- `f7e8016` chore(tooling): bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload
 
 ## Other
 

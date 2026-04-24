@@ -104,5 +104,13 @@
 
 ---
 
+## 6. Historial y drift (documentación externa)
+
+| Documento | Uso |
+|-----------|-----|
+| [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](./BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) | Contraste entre la guía `BMC_SYSTEM_GUIDE.md` del backup `master-knowledge-analysis` (oct-2025) y el stack actual de Calculadora-BMC (sin reproducir secretos del backup). |
+
+---
+
 **Última actualización:** 2026-03-19 (run31; full team post-autopilot — revisión inventario, sin cambio rutas)
-**Handoff:** Usar con dependencies.md para validar integración end-to-end.
+**Handoff:** Usar con dependencies.md para validar integración end-to-end. Para guías legacy vs repo actual, ver §6.

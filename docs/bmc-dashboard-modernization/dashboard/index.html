@@ -329,25 +329,41 @@
         <div>
           <p class="section-kicker">CRM</p>
           <h2>Wolfboard — Consultas pendientes</h2>
-          <p class="section-desc">Admin 2.0 ↔ CRM_Operativo. Sync bidireccional, edición de respuesta y link, cierre a Enviados.</p>
+          <p class="section-desc">Admin 2.0 ↔ CRM_Operativo. Sync bidireccional al abrir esta sección; edición de respuesta (I), link (J) y cierre a Enviados (K).</p>
+          <p class="section-desc wf-ritual-hint">Vista unificada por <strong>Origen</strong> (CRM col F). Flujo: pre-respuesta en I → <strong>Guardar en CRM</strong> → revisar → <strong>Aprobar</strong> (requiere texto en I).</p>
         </div>
         <div class="filter-group">
           <span id="wfSummary" class="section-desc">-</span>
         </div>
       </div>
-      <div class="audit-toolbar">
+      <div class="audit-toolbar audit-toolbar-wrap">
         <button type="button" class="btn btn-primary btn-sm" id="wfSyncBtn">Sincronizar</button>
         <a class="btn btn-secondary btn-sm" id="wfExportBtn" href="/api/wolfboard/export" download="wolfboard-export.csv">Exportar CSV</a>
+        <div class="filter-group wf-filter-group">
+          <label class="label compact" for="wfCanalFilter">Canal</label>
+          <select id="wfCanalFilter" class="select-control" title="Filtrar por Origen (CRM col F)">
+            <option value="">Todos los canales</option>
+            <option value="WA">WhatsApp</option>
+            <option value="IG">Instagram</option>
+            <option value="FB">Facebook</option>
+            <option value="EM">Email</option>
+            <option value="CL">Cliente / web</option>
+            <option value="LO">Local / oficina</option>
+            <option value="LL">Teléfono</option>
+            <option value="ML">Mercado Libre</option>
+          </select>
+        </div>
       </div>
+      <div id="wfOriginStrip" class="wf-origin-strip" role="list" aria-label="Pendientes por canal / origen"></div>
       <div class="table-wrap table-wrap-sticky">
         <table class="data-table" id="wfTable">
           <thead>
             <tr>
               <th>#</th>
-              <th>Consulta (I)</th>
-              <th>Respuesta IA (J)</th>
-              <th>Link</th>
-              <th>Estado</th>
+              <th>Consulta (H)</th>
+              <th>Respuesta IA (I)</th>
+              <th>Link (J)</th>
+              <th>Estado (K)</th>
               <th>Canal</th>
               <th class="col-actions">Acciones</th>
             </tr>

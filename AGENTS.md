@@ -124,6 +124,8 @@ Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico
 3. Leer `docs/team/knowledge/<TuRol>.md` si existe. **SIM / PANELSIM:** `docs/team/panelsim/AGENT-SIMULATOR-SIM.md` e índice `docs/team/panelsim/knowledge/PANELSIM-FULL-PROJECT-KB.md` (hub `docs/team/panelsim/README.md`). **Correo / bandeja (repo aparte):** skill `.cursor/skills/panelsim-email-inbox/` — variable opcional `BMC_EMAIL_INBOX_REPO` en `.env` (ver `.env.example`).
 4. Consultar `docs/google-sheets-module/README.md` (hub) y `planilla-inventory.md` para Sheets; mapeo canónico en `MAPPER-PRECISO-PLANILLAS-CODIGO.md` y sync de accesos en `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md`.
 5. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
+6. **Pedidos vagos o “quién hace esto”:** agente `.cursor/agents/bmc-team-liaison.md` y skill `.cursor/skills/bmc-team-liaison/SKILL.md` — brief + sugerencia de siguiente rol/skill y gates; modo refinamiento de input: `.cursor/skills/contribut-input-mode/SKILL.md`.
+7. **Panelin interno / orquestador en app (Claude u otro agente en terminal):** [`docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md`](docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md) — fases RBAC → tools → cola de aprobación; prompts listos para pegar en `claude "…"`.
 
 En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 

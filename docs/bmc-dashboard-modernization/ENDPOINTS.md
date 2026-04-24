@@ -4,6 +4,8 @@
 
 **Fuente:** server/routes/bmcDashboard.js, server/index.js.
 
+**Drift / guías legacy:** [BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md](./BMC-SYSTEM-GUIDE-BACKUP-vs-CURRENT.md) (backup `BMC_SYSTEM_GUIDE.md` vs este repo).
+
 ---
 
 ## Rutas GET (bmcDashboard)

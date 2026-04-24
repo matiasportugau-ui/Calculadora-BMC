@@ -3872,6 +3872,124 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "47957df3a4a4632ac1fc8a63b61ac230720c19f6",
+      "short_hash": "47957df",
+      "date": "2026-04-24",
+      "time": "00:07:13",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "panelin-internal",
+      "title": "RBAC + invoke + tool catalog + orchestrator runbook",
+      "subject": "feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook",
+      "files": [
+        "docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md",
+        "docs/team/PANELIN-INTERNAL-RBAC.md",
+        "server/index.js",
+        "server/lib/panelinInternalInvoke.js",
+        "server/lib/panelinInternalRbac.js",
+        "server/lib/panelinInternalToolCatalog.js",
+        "server/routes/panelinInternal.js",
+        "tests/validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "server",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "e7ee3eed29c05ec46eac47a14ecc77d81bed20e0",
+      "short_hash": "e7ee3ee",
+      "date": "2026-04-24",
+      "time": "00:07:23",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wolfboard",
+      "title": "canales hub + admin cotizaciones + AI analytics + quote snapshot",
+      "subject": "feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot",
+      "files": [
+        "server/lib/aiEnvironmentTrends.js",
+        "server/lib/wolfboardQuoteSnapshot.js",
+        "server/routes/aiAnalytics.js",
+        "server/routes/bmcDashboard.js",
+        "server/routes/wolfboard.js",
+        "src/App.jsx",
+        "src/components/BmcAdminCotizacionesModule.jsx",
+        "src/components/BmcCanalesUnificadosModule.jsx",
+        "src/components/BmcModuleNav.jsx",
+        "src/components/BmcWolfboardHub.jsx",
+        "src/components/PanelinDevPanel.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "f7e8016ce7baafcbefedc5a14fcec13ddcdd87b4",
+      "short_hash": "f7e8016",
+      "date": "2026-04-24",
+      "time": "00:07:32",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "tooling",
+      "title": "bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload",
+      "subject": "chore(tooling): bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload",
+      "files": [
+        ".accessible-base/admin_cotizaciones.json",
+        ".accessible-base/crm_operativo.json",
+        ".accessible-base/kb.json",
+        ".accessible-base/manifest.json",
+        ".accessible-base/matriz_precios.json",
+        ".env.example",
+        "package.json",
+        "scripts/accessible-base-sync.js",
+        "scripts/bmc-dev-verify.sh",
+        "scripts/playwright-hub-canales-smoke.mjs",
+        "scripts/smoke-prod-api.mjs",
+        "server/agentCapabilitiesManifest.js",
+        "server/config.js",
+        "server/lib/gcsUpload.js",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "scripts",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

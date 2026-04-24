@@ -70,6 +70,14 @@
           { method: 'GET', path: '/api/ventas', detail: 'ventas 2.0.' },
           { method: 'GET', path: '/api/stock-ecommerce', detail: 'inventario de stock.' },
           { method: 'GET', path: '/api/stock-kpi', detail: 'KPIs de stock.' },
+          { method: 'GET', path: '/api/wolfboard/pendientes', detail: 'Wolfboard: consultas pendientes Admin 2.0 (H–K).' },
+          { method: 'GET', path: '/api/wolfboard/pipeline', detail: 'Wolfboard: estado env + mapping + auditoría ML↔CRM.' },
+          { method: 'POST', path: '/api/wolfboard/sync', detail: 'sync bidireccional Admin ↔ CRM.' },
+          { method: 'POST', path: '/api/wolfboard/row', detail: 'guardar I/J y CRM AF/AH/G; aprobado → AI.' },
+          { method: 'POST', path: '/api/wolfboard/presupuesto', detail: 'P0: driveUrl + adminRow → columna J + CRM.' },
+          { method: 'POST', path: '/api/wolfboard/batch', detail: 'lote máx. 30 filas presupuesto/link → CRM.' },
+          { method: 'GET', path: '/api/wolfboard/export', detail: 'CSV export Wolfboard.' },
+          { method: 'POST', path: '/api/wolfboard/enviados', detail: 'K → pestaña Enviados (force: true).' },
         ],
         hint: 'Desarrollo: con ?dev=1 en la URL, GET /api/dev/dashboard-mtime puede disparar recarga al cambiar estos archivos estáticos.',
       },
@@ -1370,6 +1378,52 @@
   let wolfboardData = [];
   let wfActiveRow = null;
 
+  function renderWolfboardOriginStrip(counts) {
+    const el = byId('wfOriginStrip');
+    if (!el) return;
+    if (!counts || !Object.keys(counts).length) {
+      el.innerHTML = '<span class="wf-origin-empty">Sin pendientes o sin Origen en CRM para estas filas.</span>';
+      return;
+    }
+    const keys = Object.keys(counts).sort();
+    el.innerHTML = keys
+      .map(function (k) {
+        return (
+          '<span class="wf-origin-pill" role="listitem" title="Origen ' +
+          escapeHtml(k) +
+          '">' +
+          escapeHtml(k) +
+          ' <strong>' +
+          escapeHtml(String(counts[k])) +
+          '</strong></span>'
+        );
+      })
+      .join('');
+  }
+
+  function updateWolfboardApproveGate() {
+    const iEl = byId('wfDetailI');
+    const btn = byId('wfDetailAprobar');
+    if (!btn || !iEl) return;
+    const empty = !String(iEl.value || '').trim();
+    btn.disabled = empty;
+    btn.title = empty ? 'Completá la respuesta (I) antes de aprobar' : 'Marca aprobado en CRM (AI)';
+  }
+
+  function getWolfboardCanalFilter() {
+    const sel = byId('wfCanalFilter');
+    return sel && sel.value ? String(sel.value).trim() : '';
+  }
+
+  function wolfboardRowsForDisplay() {
+    const canal = getWolfboardCanalFilter();
+    if (!canal) return wolfboardData;
+    return wolfboardData.filter(function (r) {
+      const o = String(r.origen || '').toUpperCase();
+      return o === canal.toUpperCase() || o.indexOf(canal.toUpperCase()) === 0;
+    });
+  }
+
   async function fetchWolfboardPendientes() {
     const res = await fetch(API_BASE + '/api/wolfboard/pendientes');
     return readJsonResponse(res, 'Error al cargar consultas pendientes');
@@ -1386,15 +1440,27 @@
       return;
     }
 
-    if (!rows || rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin consultas pendientes — todo enviado o sin datos configurados.</td></tr>';
-      if (summary) summary.textContent = '0 pendientes';
+    const displayRows = rows || wolfboardRowsForDisplay();
+    const canal = getWolfboardCanalFilter();
+
+    if (!displayRows || displayRows.length === 0) {
+      const emptyMsg = canal
+        ? 'Ninguna fila con canal "' + escapeHtml(canal) + '" en pendientes.'
+        : 'Sin consultas pendientes — todo enviado o sin datos configurados.';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">' + emptyMsg + '</td></tr>';
+      if (summary) summary.textContent = canal ? '0 (filtro)' : '0 pendientes';
       return;
     }
 
-    if (summary) summary.textContent = rows.length + ' pendiente' + (rows.length === 1 ? '' : 's');
+    if (summary) {
+      const base = wolfboardData.length;
+      const shown = displayRows.length;
+      summary.textContent = canal
+        ? shown + ' mostrada' + (shown === 1 ? '' : 's') + ' · ' + base + ' total'
+        : shown + ' pendiente' + (shown === 1 ? '' : 's');
+    }
 
-    tbody.innerHTML = rows.map(function (row) {
+    tbody.innerHTML = displayRows.map(function (row) {
       const consulta = escapeHtml((row.consulta || '').slice(0, 80)) + (row.consulta && row.consulta.length > 80 ? '…' : '');
       const respuesta = escapeHtml((row.respuesta || '').slice(0, 55)) + (row.respuesta && row.respuesta.length > 55 ? '…' : '');
       const linkCell = row.link
@@ -1410,7 +1476,7 @@
         ? ' <a href="' + escapeHtml(row.sheetUrl) + '" target="_blank" rel="noopener" title="Abrir fila en Sheets">↗</a>'
         : '';
       return (
-        '<tr>' +
+        '<tr class="wf-data-row" data-row="' + escapeHtml(String(row.rowNum)) + '">' +
           '<td><code>' + escapeHtml(String(row.rowNum)) + '</code>' + ancla + '</td>' +
           '<td>' + consulta + '</td>' +
           '<td>' + (respuesta || '<span class="empty-cell">—</span>') + '</td>' +
@@ -1429,8 +1495,10 @@
     try {
       const json = await fetchWolfboardPendientes();
       wolfboardData = json.data || [];
-      renderWolfboard(wolfboardData);
+      renderWolfboardOriginStrip(json.originCounts || {});
+      renderWolfboard(null);
     } catch (err) {
+      renderWolfboardOriginStrip({});
       renderWolfboard(null, err.message || 'Error al cargar Wolfboard');
     }
   }
@@ -1447,6 +1515,7 @@
       const json = await readJsonResponse(res, 'Error al sincronizar');
       const dry = json.dryRun ? '[dry-run] ' : '';
       showToast(dry + 'Sync OK · Admin: ' + (json.updatedAdmin || 0) + ' · CRM: ' + (json.updatedCrm || 0) + ' · Omitidos: ' + (json.skipped || 0));
+      if (json.warning) showToast(json.warning);
       await loadWolfboard();
     } catch (err) {
       showToast('Sync fallido: ' + (err.message || 'error'), 'error');
@@ -1473,6 +1542,7 @@
     if (iEl) iEl.value = row.respuesta || '';
     if (jEl) jEl.value = row.link || '';
     if (feedbackEl) { feedbackEl.textContent = ''; feedbackEl.className = 'wf-feedback'; }
+    updateWolfboardApproveGate();
     panel.hidden = false;
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -1500,6 +1570,13 @@
       const msg = dry + 'Guardado · Admin fila ' + json.adminRow + (json.crmRow ? ' · CRM fila ' + json.crmRow : '');
       if (feedbackEl) { feedbackEl.textContent = msg; feedbackEl.className = 'wf-feedback wf-feedback--ok'; }
       showToast(msg);
+      if (json.warning) {
+        if (feedbackEl) {
+          feedbackEl.textContent = msg + ' — ' + json.warning;
+          feedbackEl.className = 'wf-feedback wf-feedback--warn';
+        }
+        showToast(json.warning);
+      }
       await loadWolfboard();
     } catch (err) {
       const errMsg = 'Error: ' + (err.message || 'fallo al guardar');
@@ -1512,7 +1589,7 @@
 
   async function markWolfboardEnviado() {
     if (!wfActiveRow) return;
-    if (!confirm('¿Mover fila ' + wfActiveRow + ' a Enviados? Esto marca K=TRUE y borra la fila del Administrador. No se puede deshacer fácilmente.')) return;
+    if (!confirm('¿Mover fila ' + wfActiveRow + ' a la pestaña Enviados del CRM? Se marca K=TRUE en Admin, se archiva la fila y se elimina del Administrador. Operación difícil de deshacer.')) return;
     const feedbackEl = byId('wfDetailFeedback');
     const envBtn = byId('wfDetailEnviado');
     if (envBtn) { envBtn.disabled = true; envBtn.textContent = 'Procesando…'; }
@@ -1539,6 +1616,11 @@
 
   async function approveWolfboardRow() {
     if (!wfActiveRow) return;
+    const iEl = byId('wfDetailI');
+    if (!iEl || !String(iEl.value || '').trim()) {
+      showToast('Completá la respuesta (I) antes de aprobar', 'error');
+      return;
+    }
     const feedbackEl = byId('wfDetailFeedback');
     const btn = byId('wfDetailAprobar');
     if (btn) { btn.disabled = true; btn.textContent = 'Aprobando…'; }
@@ -1552,8 +1634,12 @@
       const json = await readJsonResponse(res, 'Error al aprobar');
       const dry = json.dryRun ? '[dry-run] ' : '';
       const msg = dry + 'Aprobado · CRM fila ' + (json.crmRow || '?');
-      if (feedbackEl) { feedbackEl.textContent = msg; feedbackEl.className = 'wf-feedback wf-feedback--ok'; }
+      if (feedbackEl) {
+        feedbackEl.textContent = json.warning ? msg + ' — ' + json.warning : msg;
+        feedbackEl.className = 'wf-feedback ' + (json.warning ? 'wf-feedback--warn' : 'wf-feedback--ok');
+      }
       showToast(msg);
+      if (json.warning) showToast(json.warning);
     } catch (err) {
       const errMsg = 'Error: ' + (err.message || 'fallo al aprobar');
       if (feedbackEl) { feedbackEl.textContent = errMsg; feedbackEl.className = 'wf-feedback wf-feedback--error'; }
@@ -1565,6 +1651,10 @@
 
   // Event listeners
   byId('wfSyncBtn') && byId('wfSyncBtn').addEventListener('click', syncWolfboard);
+  byId('wfCanalFilter') &&
+    byId('wfCanalFilter').addEventListener('change', function () {
+      renderWolfboard(null);
+    });
   byId('wfDetailClose') && byId('wfDetailClose').addEventListener('click', function () {
     const p = byId('wfDetailPanel');
     if (p) p.hidden = true;
@@ -1578,9 +1668,19 @@
   if (wfTableEl) {
     wfTableEl.addEventListener('click', function (e) {
       const btn = e.target.closest('.wf-detail-btn');
-      if (btn) openWolfboardDetail(btn.dataset.row);
+      if (btn) {
+        openWolfboardDetail(btn.dataset.row);
+        return;
+      }
+      const tr = e.target.closest('tr.wf-data-row');
+      if (tr && tr.dataset.row) openWolfboardDetail(tr.dataset.row);
     });
   }
+
+  byId('wfDetailI') &&
+    byId('wfDetailI').addEventListener('input', function () {
+      updateWolfboardApproveGate();
+    });
 
   // Auto-sync + load when section scrolls into view
   const wfSection = document.getElementById('wolfboard');
