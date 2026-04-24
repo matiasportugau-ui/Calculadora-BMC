@@ -42,6 +42,8 @@
     "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js && node tests/cockpitTokenOrigin.js",
     "test:playwright:roof-bordes-local": "node scripts/playwright-roof-bordes-local.mjs",
     "test:playwright:hub-canales": "node scripts/playwright-hub-canales-smoke.mjs",
+    "test:playwright:wizard": "node scripts/playwright-wizard-happy-path.mjs",
+    "test:e2e:wizard": "node scripts/playwright-calculator-wizard.mjs",
     "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js",
     "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
