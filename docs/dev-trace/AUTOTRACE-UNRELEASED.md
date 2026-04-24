@@ -60,6 +60,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `93d4631` feat(ml-ui): arcade cabinet skin for ML Operativo operator panel
 - `f2709c3` feat(chat): add daily stats widget to dev panel
 - `3cdcbde` feat(kb): add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion
+- `9acb23a` feat(kb): add kb-006/007/008 — instalación, plazos, cobertura geográfica
+- `8919f3d` feat(wizard): redesign step indicator to connected track
 
 ## Fixes
 
@@ -188,6 +190,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `dc79bce` chore(dev-trace): sync post-arcade-ml [SKIP_AUTOTRACE]
 - `5a402bd` chore(dev-trace): sync + dashboard minor fix [SKIP_AUTOTRACE]
 - `2586c2c` chore(dev-trace): sync post-arcade-fire-test [SKIP_AUTOTRACE]
+- `d7a324b` chore(dev-trace): sync post-deployment-sheets-audit [SKIP_AUTOTRACE]
+- `2e9aa33` chore: pricing consistency verified 2026-04-24
 
 ## Other
 

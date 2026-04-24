@@ -5735,6 +5735,126 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "d7a324bb785ece3f9244ea0c0971586d5d0baf39",
+      "short_hash": "d7a324b",
+      "date": "2026-04-24",
+      "time": "06:06:37",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync post-deployment-sheets-audit [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): sync post-deployment-sheets-audit [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0e80f38.md",
+        "docs/dev-trace/commits/2026/04/2586c2c.md",
+        "docs/dev-trace/commits/2026/04/835bdba.md",
+        "docs/dev-trace/commits/2026/04/a954b6f.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "2e9aa3381ba0c961d7abce5bd58140d50203fc94",
+      "short_hash": "2e9aa33",
+      "date": "2026-04-24",
+      "time": "06:24:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "pricing consistency verified 2026-04-24",
+      "subject": "chore: pricing consistency verified 2026-04-24",
+      "files": [
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "9acb23a909a938ce50964f22a2585367075f4329",
+      "short_hash": "9acb23a",
+      "date": "2026-04-24",
+      "time": "06:24:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "add kb-006/007/008 — instalación, plazos, cobertura geográfica",
+      "subject": "feat(kb): add kb-006/007/008 — instalación, plazos, cobertura geográfica",
+      "files": [
+        ".accessible-base/kb.json",
+        "data/training-kb.example.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "data"
+        ]
+      }
+    },
+    {
+      "hash": "8919f3dab1abe4c0c4c4b07dfa2639a9adfa666f",
+      "short_hash": "8919f3d",
+      "date": "2026-04-24",
+      "time": "06:28:15",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "wizard",
+      "title": "redesign step indicator to connected track",
+      "subject": "feat(wizard): redesign step indicator to connected track",
+      "files": [
+        "src/components/PanelinCalculadoraV3_backup.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }

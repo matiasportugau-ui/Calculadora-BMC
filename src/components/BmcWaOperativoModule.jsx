@@ -111,7 +111,7 @@ const td = {
 
 function getStoredToken() {
   try {
-    return sessionStorage.getItem(STORAGE_KEY) || "";
+    return localStorage.getItem(STORAGE_KEY) || "";
   } catch {
     return "";
   }
@@ -119,8 +119,8 @@ function getStoredToken() {
 
 function setStoredToken(t) {
   try {
-    if (t) sessionStorage.setItem(STORAGE_KEY, t);
-    else sessionStorage.removeItem(STORAGE_KEY);
+    if (t) localStorage.setItem(STORAGE_KEY, t);
+    else localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }

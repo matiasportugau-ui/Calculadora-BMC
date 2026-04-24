@@ -176,3 +176,7 @@
 - 2026-04-24 05:50:20 — `835bdba` — docs(sheets): CRM column mapping validation 2026-04-24
 - 2026-04-24 06:04:13 — `0e80f38` — docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
 - 2026-04-24 06:04:55 — `a954b6f` — fix(docs): correct admin_cotizaciones col offset H→I (Gap 1 from sheets audit)
+- 2026-04-24 06:06:37 — `d7a324b` — chore(dev-trace): sync post-deployment-sheets-audit [SKIP_AUTOTRACE]
+- 2026-04-24 06:24:28 — `2e9aa33` — chore: pricing consistency verified 2026-04-24
+- 2026-04-24 06:24:28 — `9acb23a` — feat(kb): add kb-006/007/008 — instalación, plazos, cobertura geográfica
+- 2026-04-24 06:28:15 — `8919f3d` — feat(wizard): redesign step indicator to connected track
