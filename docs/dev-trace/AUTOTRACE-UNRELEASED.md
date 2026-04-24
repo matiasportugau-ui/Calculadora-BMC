@@ -91,6 +91,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ad94912` fix(pricing): sync all panel prices against Matriz 2026 (BROMYROS CSV)
 - `5c41030` fix(data): remove ISODEC_EPS_PARED — producto inexistente `[regresión? · tests]`
 - `fe9b447` fix(agents): change judge+orchestrator model opus→sonnet to fix advisor() incompatibility
+- `3a2ceb2` fix(smoke): add WhatsApp webhook liveness check to smoke-prod
+- `5e9427e` fix(pdf): improve HOJA VISUAL CLIENTE design — 5 corrections
 
 ## Documentation
 

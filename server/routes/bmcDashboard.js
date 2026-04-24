@@ -2785,6 +2785,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
   router.post("/crm/cockpit/sync-ml", requireCrmCockpitAuth, async (req, res) => {
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
     if (!sheetId) return noConfig(res);
+    const logger = req.log ?? console;
     try {
       const ts = createTokenStore({
         storageType: config.tokenStorage,
@@ -2792,17 +2793,18 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         gcsBucket: config.tokenGcsBucket,
         gcsObject: config.tokenGcsObject,
         encryptionKey: config.tokenEncryptionKey,
+        logger,
       });
       const tokens = await ts.read();
       if (!tokens?.access_token) {
         return res.status(503).json({ ok: false, error: "No ML tokens — run /auth/ml/start first" });
       }
-      const mlClient = createMercadoLibreClient({ config, tokenStore: ts, logger: req.log });
+      const mlClient = createMercadoLibreClient({ config, tokenStore: ts, logger });
       const result = await syncUnansweredQuestions({
         ml: mlClient,
         sheetId,
         credsPath,
-        logger: req.log,
+        logger,
       });
       return res.json({ ok: true, synced: result.synced });
     } catch (e) {
@@ -3010,17 +3012,18 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           gcsBucket: config.tokenGcsBucket,
           gcsObject: config.tokenGcsObject,
           encryptionKey: config.tokenEncryptionKey,
+          logger: req.log ?? console,
         });
         const tokens = await ts.read();
         if (!tokens?.access_token) {
           result.mercadolibre.error = "No ML tokens — run /auth/ml/start first";
         } else {
-          const mlClient = createMercadoLibreClient({ config, tokenStore: ts, logger: req.log });
+          const mlClient = createMercadoLibreClient({ config, tokenStore: ts, logger: req.log ?? console });
           const syncResult = await syncUnansweredQuestions({
             ml: mlClient,
             sheetId,
             credsPath,
-            logger: req.log,
+            logger: req.log ?? console,
           });
           result.mercadolibre.synced = syncResult.synced ?? 0;
         }

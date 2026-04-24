@@ -169,3 +169,5 @@
 - 2026-04-24 05:21:17 — `fe9b447` — fix(agents): change judge+orchestrator model opus→sonnet to fix advisor() incompatibility
 - 2026-04-24 05:23:18 — `ed1c034` — docs(judge): session evaluation 2026-04-24 — score +9, 14 commits, agent ranking
 - 2026-04-24 05:23:29 — `3cdcbde` — feat(kb): add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion
+- 2026-04-24 05:28:42 — `3a2ceb2` — fix(smoke): add WhatsApp webhook liveness check to smoke-prod
+- 2026-04-24 05:29:07 — `5e9427e` — fix(pdf): improve HOJA VISUAL CLIENTE design — 5 corrections
