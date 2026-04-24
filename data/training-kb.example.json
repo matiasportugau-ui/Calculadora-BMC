@@ -74,6 +74,42 @@
       "permanent": true,
       "createdAt": "2026-04-24T12:00:00.000Z",
       "updatedAt": "2026-04-24T12:00:00.000Z"
+    },
+    {
+      "id": "kb-006-instalacion-tecnica",
+      "category": "product",
+      "question": "¿Cómo se instalan los paneles? ¿Necesito un instalador profesional o lo puedo hacer yo?",
+      "badAnswer": "Es fácil, cualquiera puede instalarlo.",
+      "goodAnswer": "La instalación de paneles Panelin tiene pasos técnicos que requieren criterio y herramientas adecuadas. Resumen del proceso: (1) Verificar estructura portante: vigas o correas deben estar a la distancia adecuada para el vano libre del panel (consultar tabla de cargas por espesor y pendiente). (2) Colocar primer panel alineado con hilo y nivel, fijándolo con tornillos autoperforantes en las crestas o en el macho según el sistema. (3) Encajar cada panel siguiente en el perfil macho-hembra del anterior; aplicar butilo en el encuentro antes del cierre si corresponde al sistema. (4) Sellado: aplicar silicona neutra en cumbrera, limahoyas, babetas y alero. (5) Tornillería: usar tornillos de acero inoxidable o bicromatados con arandela EPDM; torque recomendado para no deformar la chapa. Herramientas mínimas: taladro/atornillador de velocidad variable, sierra circular o tijera de chapa (nunca amoladora — genera chispas que oxidan la chapa), nivel, cinta métrica, líneas de referencia. Tiempo estimado orientativo: equipo de 2 personas puede instalar entre 60 y 100 m² por día en techo simple, dependiendo de la experiencia y la geometría. Para proyectos de más de 200 m² o geometrías complejas (limahoyas, claraboyas, múltiples pendientes), se recomienda instalador con experiencia en paneles sándwich. BMC puede referir instaladores de confianza en Montevideo y área metropolitana — consultá al equipo.",
+      "context": "Proceso de instalación, herramientas necesarias, si requiere profesional, tiempo por m², pasos técnicos",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T14:00:00.000Z",
+      "updatedAt": "2026-04-24T14:00:00.000Z"
+    },
+    {
+      "id": "kb-007-plazos-entrega",
+      "category": "sales",
+      "question": "¿Cuánto tiempo tarda la entrega? ¿Tienen stock o hay que encargar?",
+      "badAnswer": "Entregamos en 2-3 días hábiles siempre.",
+      "goodAnswer": "Los plazos de entrega dependen del producto y el volumen. Orientación general (siempre confirmar con el equipo comercial al momento del pedido): (1) Stock disponible: los perfiles estándar más comunes (ISOROOF 3G, ISODEC EPS en espesores 50mm y 80mm, colores estándar) suelen tener stock en planta. Entrega en Montevideo: 2 a 5 días hábiles desde la confirmación del pedido. (2) Producción bajo pedido: espesores no estándar, colores especiales, o paneles de pared (ISOWALL) pueden requerir fabricación. Plazo estimado: 10 a 20 días hábiles dependiendo de la carga de producción. Siempre consultar disponibilidad antes de cerrar plazos de obra. (3) Logística al interior: para departamentos del interior de Uruguay, se coordina con fletes. Plazo adicional de 2 a 5 días hábiles sobre el plazo base. (4) Para obras grandes (más de 500 m²), conviene coordinar entregas parciales para no comprometer la obra. BMC puede organizar entregas escalonadas. Nota: los plazos indicados son orientativos. La confirmación oficial del plazo la da el equipo comercial al momento de emitir la cotización.",
+      "context": "Plazos de entrega, stock vs encargo, fabricación, logística, tiempo de espera, urgencia de obra",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T14:00:00.000Z",
+      "updatedAt": "2026-04-24T14:00:00.000Z"
+    },
+    {
+      "id": "kb-008-cobertura-geografica",
+      "category": "conversational",
+      "question": "¿Hacen envíos al interior? ¿Operan en todo Uruguay o solo en Montevideo?",
+      "badAnswer": "Solo operamos en Montevideo.",
+      "goodAnswer": "BMC Uruguay opera principalmente desde Montevideo pero atiende proyectos en todo el territorio nacional. (1) Montevideo y área metropolitana (Canelones, San José, Ciudad de la Costa): entrega directa con camión propio o flete coordinado por BMC. (2) Interior del país: se trabaja con empresas de transporte de carga. El costo de flete se cotiza según volumen, peso y destino — se incluye en la cotización o se indica por separado. Para ciudades como Maldonado, Colonia, Paysandú y Salto hay frecuencia de flete regular. Para destinos más alejados o con acceso difícil, consultar al equipo comercial. (3) Proyectos grandes en el interior: en algunos casos se puede coordinar la entrega directamente desde planta o con transportistas de confianza del cliente. (4) Instalación en el interior: BMC puede referir instaladores locales en algunas ciudades, pero no garantiza cobertura de instalación en todo el país — consultar caso a caso. Para cotizar un proyecto fuera de Montevideo, informar la ciudad y el volumen aproximado para incluir el costo logístico desde el inicio.",
+      "context": "Cobertura geográfica, envíos al interior, departamentos, logística, flete, instaladores en el interior",
+      "source": "kb-audit-2026-04-24",
+      "permanent": true,
+      "createdAt": "2026-04-24T14:00:00.000Z",
+      "updatedAt": "2026-04-24T14:00:00.000Z"
     }
   ]
 }
