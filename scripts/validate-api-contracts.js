@@ -285,6 +285,52 @@ async function main() {
     passed++;
   }
 
+  // ── /api/crm/cockpit/row/:rowNum — linkPresupuesto null|URL (4b7da4b fix) ──
+  if (apiToken) {
+    const nameRow = "GET /api/crm/cockpit/row/2 (auth) — linkPresupuesto null|URL";
+    try {
+      const { status, data } = await fetchJson("/api/crm/cockpit/row/2", {
+        headers: { Authorization: `Bearer ${apiToken}` },
+      });
+      if (status === 503 && data?.error?.includes?.("API_AUTH_TOKEN")) {
+        console.log(`  ⚠️  ${nameRow} — 503 cockpit auth not configured on server`);
+        passed++;
+      } else if (status === 503 && String(data?.error || "").toLowerCase().includes("sheet")) {
+        console.log(`  ⚠️  ${nameRow} — 503 Sheets unavailable, skip contract`);
+        passed++;
+      } else if (status !== 200) {
+        console.log(`  ❌ ${nameRow} — HTTP ${status}`);
+        failed++;
+      } else {
+        const parsed = data?.parsed;
+        if (!data || data.ok !== true) {
+          console.log(`  ❌ ${nameRow} — ok must be true`);
+          failed++;
+        } else if (!parsed || typeof parsed !== "object") {
+          console.log(`  ❌ ${nameRow} — parsed must be an object`);
+          failed++;
+        } else {
+          // linkPresupuesto must be null OR a string starting with "http" (never a bare number/label)
+          const lp = parsed.linkPresupuesto;
+          const lpOk = lp === null || (typeof lp === "string" && lp.startsWith("http"));
+          if (!lpOk) {
+            console.log(`  ❌ ${nameRow} — linkPresupuesto must be null or URL string, got: ${JSON.stringify(lp)}`);
+            failed++;
+          } else {
+            console.log(`  ✅ ${nameRow}`);
+            passed++;
+          }
+        }
+      }
+    } catch (err) {
+      console.log(`  ❌ ${nameRow} — ${err.message}`);
+      failed++;
+    }
+  } else {
+    console.log("  ⚠️  GET /api/crm/cockpit/row/:rowNum — skip (set API_AUTH_TOKEN for contract check)");
+    passed++;
+  }
+
   // ── /api/agent/stats (requires auth token) ───────────────────────────────
   if (apiToken) {
     const nameStats = "GET /api/agent/stats (auth)";
