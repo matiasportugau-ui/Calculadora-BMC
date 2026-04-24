@@ -32,7 +32,7 @@ Un deploy es **100% limpio** cuando:
 |------|---------|-------------|--------|
 | Calculator (BOM / pricing / wizard) | 🟢 8/10 | 🟡 7/10 | Estable, mejoras activas |
 | 2D Roof Plan (RoofPreview / SVG / cotas) | 🟢 9/10 | 🟢 8/10 | Producción — sólido |
-| AI Chat (Panelin Chat / agentChat SSE) | 🟡 6/10 | 🟡 5/10 | Funcional, sin KPI de uso |
+| AI Chat (Panelin Chat / agentChat SSE) | 🟡 7/10 | 🟢 8/10 | stats endpoint + dev panel + 8 KB entries; training-kb poblada |
 | CRM / Dashboard (WolfBoard / Sheets) | 🟢 8/10 | 🟡 7/10 | Wolfboard prod OK; `suggest-response` ✅ verde (claude, 2026-04-24); QA visual `/hub/canales` `/hub/admin` `/hub/ml` OK |
 | MercadoLibre Integration | 🟢 8/10 | 🟡 7/10 | OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua |
 | WhatsApp / Meta (omnicanal) | 🟢 7/10 | 🟡 6/10 | cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica |
@@ -43,9 +43,9 @@ Un deploy es **100% limpio** cuando:
 | Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
 | Panelin Internal RBAC | 🟢 8/10 | 🟢 8/10 | En prod; 29 E2E API tests ✅ (2026-04-24 commit 9c89f74) |
 | Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
-| Fiscal / Compliance | 🟡 6/10 | 🔴 5/10 | IVA en quotes OK; BPS/IRAE no trazado |
+| Fiscal / Compliance | 🟡 6/10 | 🟡 7/10 | irae_prevision en /kpi-report; BPS doc; IVA en quotes OK |
 
-**Score global estimado:** 🟢 **82 / 100** *(2026-04-24 — items 7/7b/7c/8/10/13 DONE + Playwright wizard E2E 12/12. Real pendiente: cm-1 ML humano, fiscal BPS/IRAE completo.)*
+**Score global estimado:** 🟢 **85 / 100** *(2026-04-24 — AI Chat c:5→8 (stats endpoint + dev panel + 8 KB entries + training-kb poblada); Fiscal c:5→7 (irae_prevision + BPS doc); tests 368 pass + Playwright 12/12 + API contract assertions; CORS locked; HMAC gap doc; Sheets 5 gaps doc + Gap 1 fixed. Real pendiente: cm-1 ML humano, fiscal BPS/IRAE completo, WHATSAPP_APP_SECRET HMAC.)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
@@ -57,6 +57,7 @@ Un deploy es **100% limpio** cuando:
 | 2026-04-24 | 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
 | 2026-04-24 | 80/100 | PDF QA 22/22 checks ✅ — API path + enriched path (planta 2D, BOM, selladores, bordes) |
 | 2026-04-24 | 82/100 | Playwright wizard 12/12, daily stats widget, ML arcade skin, irae_prevision /kpi-report, agent/stats endpoint |
+| 2026-04-24 | 85/100 | AI Chat c:5→8 (8 KB entries + training-kb + stats); Fiscal c:5→7 (irae_prevision + BPS doc); API contract assertions; Sheets 5 gaps doc + Gap 1 fixed; HMAC gap doc |
 
 ---
 
@@ -222,3 +223,4 @@ PENDIENTE REAL (2026-04-24):
 | 2026-04-24 | 🟢 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
 | 2026-04-24 | 🟢 80/100 | PDF QA 22/22 checks ✅ — API path + enriched path (planta 2D, BOM, selladores, bordes) |
 | 2026-04-24 | 🟢 82/100 | Playwright wizard 12/12 ✅, daily stats widget, ML arcade skin, irae_prevision /kpi-report, agent/stats endpoint |
+| 2026-04-24 | 🟢 85/100 | AI Chat c:5→8 (8 KB entries + training-kb + stats); Fiscal c:5→7 (irae_prevision + BPS doc); API contract assertions; Sheets 5 gaps doc + Gap 1 fixed; HMAC gap doc |
