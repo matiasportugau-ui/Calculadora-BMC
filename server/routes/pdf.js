@@ -30,12 +30,24 @@ export function createPdfRouter() {
 
     let browser;
     try {
-      // @sparticuz/chromium decompresses the binary to /tmp on first call.
-      // CHROMIUM_EXECUTABLE_PATH env var overrides (useful for local dev with
-      // a system-installed Chrome/Chromium).
+      const { existsSync } = await import("node:fs");
+
       const executablePath =
         process.env.CHROMIUM_EXECUTABLE_PATH ||
         (await chromium.executablePath());
+
+      // Debug: log state to Cloud Run logs so we can diagnose remotely
+      console.info("[pdf] executablePath:", executablePath);
+      console.info("[pdf] exists:", existsSync(executablePath));
+      console.info("[pdf] chromium.headless:", chromium.headless);
+      console.info("[pdf] chromium.args:", JSON.stringify(chromium.args));
+
+      if (!existsSync(executablePath)) {
+        // List /tmp to see what's there
+        const { readdirSync } = await import("node:fs");
+        try { console.info("[pdf] /tmp contents:", readdirSync("/tmp").join(", ")); } catch { /**/ }
+        return res.status(503).json({ error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
+      }
 
       browser = await puppeteer.launch({
         args: chromium.args,
