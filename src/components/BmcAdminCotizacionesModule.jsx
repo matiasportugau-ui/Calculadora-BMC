@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
+import BmcFiscalCard from "./BmcFiscalCard.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -325,6 +326,9 @@ export default function BmcAdminCotizacionesModule() {
           Cotizaciones / consultas del tab <strong>Admin 2.0</strong> (planilla configurada en el servidor). Podés listar solo la cola con consulta (I) o
           <strong> todas las filas con datos</strong> en A–M. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.
         </p>
+
+        {/* Fiscal BPS/IRAE tracking card */}
+        <BmcFiscalCard />
 
         {/* Token */}
         <div style={card}>

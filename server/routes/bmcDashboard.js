@@ -1894,6 +1894,100 @@ export default function createBmcDashboardRouter(config) {
     }
   });
 
+  /**
+   * GET /api/fiscal/bps-irae
+   *
+   * Returns Uruguay tax estimates for the current month derived from Ventas data.
+   * Tax rates applied:
+   *   - IVA:  22% (Decreto 220/998, Art. 1 — tasa básica)
+   *   - IRAE: 25% on net profit (Art. 15, Ley 18.083)
+   *   - BPS empleador: 7.5% nominal (aporte patronal básico Art. 153, Ley 16.713)
+   *
+   * resultado_neto = IVA débito (ventas) − IVA crédito (compras) — posición neta DGI.
+   *
+   * If Ventas sheet is unavailable → returns zeros with estimated: true (200, not 503).
+   * If Sheets creds missing entirely → 503 via noConfig.
+   */
+  router.get("/fiscal/bps-irae", async (_req, res) => {
+    // Require at minimum that Google creds exist (same guard used by kpi-report)
+    const credsPath =
+      config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
+    const hasCreds =
+      credsPath &&
+      fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath));
+    if (!hasCreds) return noConfig(res);
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const mesLabel = `${MESES_ES[mm] || mm} ${yyyy}`;
+
+    // Attempt to read Ventas rows; fall back to zeros if sheet not configured
+    let ventasRows = [];
+    let estimated = false;
+    if (checkVentasAvailable(config)) {
+      try {
+        ventasRows = await getAllVentasData(config.bmcVentasSheetId);
+      } catch (e) {
+        // Sheets returned an error — degrade gracefully (200 + estimated flag)
+        estimated = true;
+      }
+    } else {
+      estimated = true;
+    }
+
+    // Filter rows belonging to current month using FECHA_ENTREGA
+    const currentMonthRows = (ventasRows || []).filter((row) => {
+      const fecha = parseDate(findKey(row, "FECHA_ENTREGA", "FECHA ENTREGA", "Fecha entrega"));
+      return (
+        fecha &&
+        fecha.getFullYear() === yyyy &&
+        String(fecha.getMonth() + 1).padStart(2, "0") === mm
+      );
+    });
+
+    // Aggregate costo (base compra sin IVA) and ganancia (margen sin IVA)
+    let costoMes = 0;
+    let gananciaMes = 0;
+    for (const row of currentMonthRows) {
+      costoMes += parseNum(findKey(row, "COSTO SIN IVA", "COSTO", "Costo SIN IVA", "Costo")) || 0;
+      gananciaMes +=
+        parseNum(findKey(row, "GANANCIAS SIN IVA", "GANANCIA", "Ganancia")) || 0;
+    }
+
+    const ventaNeta = costoMes + gananciaMes; // venta sin IVA
+
+    // IVA débito: IVA cobrado al cliente sobre el precio de venta
+    const iva_ventas = Math.round(ventaNeta * 0.22 * 100) / 100;
+    // IVA crédito: IVA pagado al proveedor sobre el costo de compra
+    const iva_compras = Math.round(costoMes * 0.22 * 100) / 100;
+    // Posición neta IVA ante DGI (débito − crédito)
+    const resultado_neto = Math.round((iva_ventas - iva_compras) * 100) / 100;
+
+    // IRAE: 25% sobre ganancia (margen bruto, sin ajustes por gastos deducibles)
+    const irae_estimado = Math.round(gananciaMes * 0.25 * 100) / 100;
+
+    // BPS empleador: 7.5% sobre masa salarial — sin datos de nómina en Sheets → 0 + flag
+    const bps_empleador = 0;
+    const bps_dependiente = 0;
+
+    res.json({
+      ok: true,
+      mes: `${yyyy}-${mm}`,
+      mes_label: mesLabel,
+      irae_estimado,
+      bps_empleador,
+      bps_dependiente,
+      iva_ventas,
+      iva_compras,
+      resultado_neto,
+      estimated: estimated || currentMonthRows.length === 0,
+      filas_mes: currentMonthRows.length,
+      fiscal_disclaimer:
+        "Estimaciones fiscales sobre margen bruto Sheets. No incluyen ajustes por gastos deducibles, depreciación ni nómina. Consultar contador.",
+    });
+  });
+
   router.post("/cotizaciones", async (req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     if (schema !== "CRM_Operativo") {

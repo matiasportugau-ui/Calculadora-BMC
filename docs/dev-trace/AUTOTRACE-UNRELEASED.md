@@ -115,6 +115,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a75c9a7` fix(pdf): omit empty client fields + tmux multi-terminal workspace
 - `c98c41e` fix(pdf): @media print CSS + PDF+ vectorial print path
 - `524e7f1` fix(tooling): bmc-workspace port pre-check, gate window, broadcast guard
+- `43a9206` fix(pdf): move playwright to dependencies for Cloud Run runtime
 
 ## Documentation
 
