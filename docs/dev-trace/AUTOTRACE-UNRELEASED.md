@@ -70,6 +70,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `b8f1a1b` feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1
 - `d4ff115` feat(pdf+tooling): hide empty client fields in visual + multiterminator skill + tmux setup
 - `1e91224` feat(pdf+tooling): enhance visual output and multi-terminal orchestration
+- `26079f9` feat(pdf): Playwright server-side PDF route + pdfGenerator strategy chain
+- `cd369b3` feat(pdf): server-side PDF generation via Playwright + pdfGenerator refactor
+- `3d8529b` feat(pdf): server-side PDF via Playwright — vectorial quality for Drive uploads
 
 ## Fixes
 
@@ -109,6 +112,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `4f381fb` fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233
 - `5349960` fix(pdf): responsive SVG strips (viewBox + width 100%) + postcss audit fix + KB sync
 - `a75c9a7` fix(pdf): omit empty client fields + tmux multi-terminal workspace
+- `c98c41e` fix(pdf): @media print CSS + PDF+ vectorial print path
 
 ## Documentation
 
@@ -218,6 +222,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f715469` chore(dev-trace): AUTOTRACE sync 2026-04-24 [SKIP_AUTOTRACE]
 - `ac39207` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `a6e0548` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- `baef360` chore: regenerate quotation preview — resolve merge conflict
 
 ## Other
 

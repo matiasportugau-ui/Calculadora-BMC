@@ -206,3 +206,8 @@
 - 2026-04-25 02:32:24 — `a75c9a7` — fix(pdf): omit empty client fields + tmux multi-terminal workspace
 - 2026-04-25 02:32:28 — `d4ff115` — feat(pdf+tooling): hide empty client fields in visual + multiterminator skill + tmux setup
 - 2026-04-25 02:34:12 — `1e91224` — feat(pdf+tooling): enhance visual output and multi-terminal orchestration
+- 2026-04-25 02:51:03 — `26079f9` — feat(pdf): Playwright server-side PDF route + pdfGenerator strategy chain
+- 2026-04-25 02:54:37 — `cd369b3` — feat(pdf): server-side PDF generation via Playwright + pdfGenerator refactor
+- 2026-04-25 03:01:07 — `3d8529b` — feat(pdf): server-side PDF via Playwright — vectorial quality for Drive uploads
+- 2026-04-25 03:05:22 — `baef360` — chore: regenerate quotation preview — resolve merge conflict
+- 2026-04-25 03:06:16 — `c98c41e` — fix(pdf): @media print CSS + PDF+ vectorial print path

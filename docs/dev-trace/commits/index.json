@@ -6742,6 +6742,152 @@
           "public"
         ]
       }
+    },
+    {
+      "hash": "26079f917bc7b3105229f832bbd527b19e54e64d",
+      "short_hash": "26079f9",
+      "date": "2026-04-25",
+      "time": "02:51:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "Playwright server-side PDF route + pdfGenerator strategy chain",
+      "subject": "feat(pdf): Playwright server-side PDF route + pdfGenerator strategy chain",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/commits/2026/04/faa3f29.md",
+        "server/routes/pdf.js",
+        "src/utils/pdfGenerator.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "cd369b37caeb92a88cda957661c6c0e524803ee5",
+      "short_hash": "cd369b3",
+      "date": "2026-04-25",
+      "time": "02:54:37",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "server-side PDF generation via Playwright + pdfGenerator refactor",
+      "subject": "feat(pdf): server-side PDF generation via Playwright + pdfGenerator refactor",
+      "files": [
+        "server/index.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "3d8529b509eaf0b315883f4baa54e315a595a050",
+      "short_hash": "3d8529b",
+      "date": "2026-04-25",
+      "time": "03:01:07",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "server-side PDF via Playwright — vectorial quality for Drive uploads",
+      "subject": "feat(pdf): server-side PDF via Playwright — vectorial quality for Drive uploads",
+      "files": [
+        "server/routes/pdf.js",
+        "src/utils/pdfGenerator.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "baef360091148e675dd634e2490073ee2add4e5c",
+      "short_hash": "baef360",
+      "date": "2026-04-25",
+      "time": "03:05:22",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "regenerate quotation preview — resolve merge conflict",
+      "subject": "chore: regenerate quotation preview — resolve merge conflict",
+      "files": [
+        "public/quotation-preview/__ts.json",
+        "public/quotation-preview/hoja-visual-cliente.html"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "public"
+        ]
+      }
+    },
+    {
+      "hash": "c98c41eeb19c46f986729a1f7a539c0e025e3b26",
+      "short_hash": "c98c41e",
+      "date": "2026-04-25",
+      "time": "03:06:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "@media print CSS + PDF+ vectorial print path",
+      "subject": "fix(pdf): @media print CSS + PDF+ vectorial print path",
+      "files": [
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/utils/helpers.js",
+        "src/utils/quotationViews.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }
