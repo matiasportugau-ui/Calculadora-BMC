@@ -34,13 +34,15 @@ LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app
 
-# System libs required by @sparticuz/chromium (decompresses binary to /tmp at runtime)
+# System libs for @sparticuz/chromium (compiled for Amazon Linux 2023 / x86_64)
+# /lib64 symlink: AL2023 binaries reference /lib64/ld-linux-x86-64.so.2 — absent in Debian slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
     libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 \
     ca-certificates fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 2>/dev/null || true
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
