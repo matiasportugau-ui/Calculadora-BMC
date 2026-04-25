@@ -125,6 +125,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `56eb949` fix(ci): skip disk:precheck on Alpine (bash not found)
 - `85716d5` fix(pdf): playwright install chromium at build time — PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 - `6f88020` fix(pdf): switch runtime to node:20-slim — Playwright Debian first-class support
+- `b914003` fix(pdf): PLAYWRIGHT_BROWSERS_PATH before install — fix user/root path mismatch
 
 ## Documentation
 

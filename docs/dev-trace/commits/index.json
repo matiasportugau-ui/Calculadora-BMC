@@ -7338,6 +7338,43 @@
         "src_touched": false,
         "areas": []
       }
+    },
+    {
+      "hash": "b9140032714d618a9820801a234ca6da68127b44",
+      "short_hash": "b914003",
+      "date": "2026-04-25",
+      "time": "04:14:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "PLAYWRIGHT_BROWSERS_PATH before install — fix user/root path mismatch",
+      "subject": "fix(pdf): PLAYWRIGHT_BROWSERS_PATH before install — fix user/root path mismatch",
+      "files": [
+        ".accessible-base/kb.json",
+        "Dockerfile.bmc-dashboard",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/56eb949.md",
+        "docs/dev-trace/commits/2026/04/6f88020.md",
+        "docs/dev-trace/commits/2026/04/85716d5.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-25.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
     }
   ]
 }

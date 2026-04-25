@@ -13,6 +13,7 @@ on:
       - 'server/**'
       - 'src/utils/**'
       - 'src/data/**'
+      - 'Dockerfile.bmc-dashboard'
       - '.github/workflows/deploy-calc-api.yml'
   workflow_dispatch:
 
