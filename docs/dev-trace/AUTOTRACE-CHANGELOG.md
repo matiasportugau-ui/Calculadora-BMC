@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-18 21:16:45 — `fa2ba6a` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- 2026-04-18 21:17:00 — `553941e` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- 2026-04-18 21:17:22 — `57932df` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - 2026-04-18 21:17:46 — `f3d6153` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - 2026-04-18 21:18:13 — `5a907b8` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - 2026-04-18 21:30:15 — `3dc1e29` — chore(dev-trace): complete AUTOTRACE sync and PROJECT-STATE
@@ -222,3 +219,6 @@
 - 2026-04-25 03:48:42 — `85716d5` — fix(pdf): playwright install chromium at build time — PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 - 2026-04-25 03:52:35 — `6f88020` — fix(pdf): switch runtime to node:20-slim — Playwright Debian first-class support
 - 2026-04-25 04:14:43 — `b914003` — fix(pdf): PLAYWRIGHT_BROWSERS_PATH before install — fix user/root path mismatch
+- 2026-04-25 04:24:33 — `8d3c176` — fix(ci): add Dockerfile.bmc-dashboard to deploy trigger paths
+- 2026-04-25 04:29:16 — `e056913` — feat(pdf): vectorial SVG plano 2D + robust chromium glob discovery
+- 2026-04-25 04:34:00 — `61ccb14` — fix(ci): bump Cloud Run memory 256Mi→512Mi, timeout 30→60s for Playwright

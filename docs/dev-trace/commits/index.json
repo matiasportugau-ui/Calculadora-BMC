@@ -7375,6 +7375,99 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "8d3c176645a3c270cfd7d7f61af42e41d3697238",
+      "short_hash": "8d3c176",
+      "date": "2026-04-25",
+      "time": "04:24:33",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "ci",
+      "title": "add Dockerfile.bmc-dashboard to deploy trigger paths",
+      "subject": "fix(ci): add Dockerfile.bmc-dashboard to deploy trigger paths",
+      "files": [
+        ".accessible-base/kb.json",
+        ".github/workflows/deploy-calc-api.yml",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/b914003.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-25.md"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          ".github",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "e056913b66ff9ee949d54d1e3e455f58aa9baa7e",
+      "short_hash": "e056913",
+      "date": "2026-04-25",
+      "time": "04:29:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "vectorial SVG plano 2D + robust chromium glob discovery",
+      "subject": "feat(pdf): vectorial SVG plano 2D + robust chromium glob discovery",
+      "files": [
+        "server/routes/pdf.js",
+        "src/utils/captureDomToPng.js",
+        "src/utils/quotationViews.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "61ccb14137043b2ff02ed802f0e7e4f943e6baec",
+      "short_hash": "61ccb14",
+      "date": "2026-04-25",
+      "time": "04:34:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "ci",
+      "title": "bump Cloud Run memory 256Mi→512Mi, timeout 30→60s for Playwright",
+      "subject": "fix(ci): bump Cloud Run memory 256Mi→512Mi, timeout 30→60s for Playwright",
+      "files": [
+        ".github/workflows/deploy-calc-api.yml"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".github"
+        ]
+      }
     }
   ]
 }

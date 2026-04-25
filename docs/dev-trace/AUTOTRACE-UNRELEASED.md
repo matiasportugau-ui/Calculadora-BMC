@@ -77,6 +77,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e2ac5e0` feat(fiscal): BPS/IRAE tracking endpoint + dashboard card
 - `323c104` feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
 - `3ba47ab` feat(workspace): /bmc-claude-workspace skill + setup script
+- `e056913` feat(pdf): vectorial SVG plano 2D + robust chromium glob discovery
 
 ## Fixes
 
@@ -126,6 +127,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `85716d5` fix(pdf): playwright install chromium at build time — PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 - `6f88020` fix(pdf): switch runtime to node:20-slim — Playwright Debian first-class support
 - `b914003` fix(pdf): PLAYWRIGHT_BROWSERS_PATH before install — fix user/root path mismatch
+- `8d3c176` fix(ci): add Dockerfile.bmc-dashboard to deploy trigger paths
+- `61ccb14` fix(ci): bump Cloud Run memory 256Mi→512Mi, timeout 30→60s for Playwright
 
 ## Documentation
 
