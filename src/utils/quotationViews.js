@@ -216,7 +216,14 @@ export function buildSnapshotSectionHtml(snapshots, clientMode = false) {
   row(L.a, snapshots.summary);
   row(L.b, snapshots.totals);
   row(L.c, snapshots.borders);
-  row(clientMode ? "Plano 2D de cubierta" : "Captura — plano 2D de cubierta", snapshots.roofPlan2d);
+  // For roof plan: prefer vectorial SVG over raster PNG
+  if (snapshots.roofPlan2dSvg && typeof snapshots.roofPlan2dSvg === "string") {
+    const t = clientMode ? "Plano 2D de cubierta" : "Captura — plano 2D de cubierta";
+    const tEsc = t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    blocks.push(`<div style="margin-bottom:12px"><div style="font-size:9pt;font-weight:700;color:#003366;margin-bottom:4px">${tEsc}</div>${snapshots.roofPlan2dSvg}</div>`);
+  } else {
+    row(clientMode ? "Plano 2D de cubierta" : "Captura — plano 2D de cubierta", snapshots.roofPlan2d);
+  }
   row(clientMode ? "Vista 3D de cubierta" : "Captura — vista 3D de cubierta", snapshots.roof3d);
   if (!blocks.length) return "";
   return `<div style="margin-bottom:14px;padding-bottom:8px;border-bottom:1pt solid #E5E5EA">${blocks.join("")}<p style="margin:6px 0 0;font-size:8pt;color:#777">${L.foot}</p></div>`;
@@ -294,15 +301,25 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
   const snaps = snapshots && typeof snapshots === "object" ? snapshots : {};
   const snapsNoRoof = { ...snaps };
   delete snapsNoRoof.roofPlan2d;
+  delete snapsNoRoof.roofPlan2dSvg;
   const snapBlock = buildSnapshotSectionHtml(snapsNoRoof, clientMode);
 
-  const roofPlanImg =
-    snaps.roofPlan2d && typeof snaps.roofPlan2d === "string" && snaps.roofPlan2d.startsWith("data:")
-      ? `<div style="margin-bottom:12px;padding:12px;background:#F8FAFC;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.07)">
-          <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:8px;letter-spacing:0.02em">Planta 2D · cubierta</div>
-          <img src="${snaps.roofPlan2d}" style="width:100%;height:auto;display:block;border-radius:6px;min-height:60px;background:#F8FAFC" alt="" />
-        </div>`
-      : "";
+  // Prefer vectorial SVG (serialized from React DOM) — perfect quality in PDF.
+  // Fall back to rasterized PNG if SVG not available.
+  const roofPlanImg = (() => {
+    const wrapper = (inner) =>
+      `<div style="margin-bottom:12px;padding:12px;background:#F8FAFC;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.07)">
+        <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:8px;letter-spacing:0.02em">Planta 2D · cubierta</div>
+        ${inner}
+      </div>`;
+    if (snaps.roofPlan2dSvg && typeof snaps.roofPlan2dSvg === "string") {
+      return wrapper(snaps.roofPlan2dSvg);
+    }
+    if (snaps.roofPlan2d && typeof snaps.roofPlan2d === "string" && snaps.roofPlan2d.startsWith("data:")) {
+      return wrapper(`<img src="${snaps.roofPlan2d}" style="width:100%;height:auto;display:block;border-radius:6px;min-height:60px;background:#F8FAFC" alt="" />`);
+    }
+    return "";
+  })();
 
   let diagrams = "";
   const roofBlocks = ap.roofBlocks && ap.roofBlocks.length > 0 ? ap.roofBlocks : (roofBlock ? [roofBlock] : []);

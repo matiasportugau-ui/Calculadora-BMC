@@ -27,24 +27,45 @@ export async function captureElementToDataUrl(element, opts = {}) {
 }
 
 /**
+ * Serialize an SVG element to a plain SVG string — vectorial, no rasterization.
+ * Used for PDF injection: the string is embedded directly in the HTML so
+ * Playwright (or the browser print path) renders it at full vector quality.
+ * @param {SVGSVGElement | null} svgEl
+ * @returns {string | null}
+ */
+export function serializeRoofPlanSvgToString(svgEl) {
+  if (!svgEl) return null;
+  try {
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.style.cssText = 'width:100%;height:auto;display:block';
+    return new XMLSerializer().serializeToString(clone);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parallel capture of calculator regions for PDF appendix.
+ * roofPlan2dSvg — vectorial SVG string (preferred for PDF quality)
+ * roofPlan2d    — rasterized PNG data URL (fallback / legacy)
  * @param {{ summaryEl?: HTMLElement | null, totalsEl?: HTMLElement | null, bordersEl?: HTMLElement | null, roofPlanSvgEl?: SVGSVGElement | null, roof3dCanvasEl?: HTMLCanvasElement | null }} targets
- * @returns {Promise<{ summary?: string, totals?: string, borders?: string, roofPlan2d?: string, roof3d?: string }>}
+ * @returns {Promise<{ summary?: string, totals?: string, borders?: string, roofPlan2dSvg?: string, roofPlan2d?: string, roof3d?: string }>}
  */
 export async function capturePdfSnapshotTargets(targets = {}) {
   const { summaryEl, totalsEl, bordersEl, roofPlanSvgEl, roof3dCanvasEl } = targets;
-  const [summary, totals, borders, roofPlan2d] = await Promise.all([
+  const [summary, totals, borders] = await Promise.all([
     summaryEl ? captureElementToDataUrl(summaryEl) : Promise.resolve(null),
     totalsEl ? captureElementToDataUrl(totalsEl) : Promise.resolve(null),
     bordersEl ? captureElementToDataUrl(bordersEl) : Promise.resolve(null),
-    roofPlanSvgEl ? captureRoofPlanSvgToDataUrl(roofPlanSvgEl) : Promise.resolve(null),
   ]);
   const roof3d = roof3dCanvasEl ? capture3dCanvasToDataUrl(roof3dCanvasEl) : null;
+  const roofPlan2dSvg = roofPlanSvgEl ? serializeRoofPlanSvgToString(roofPlanSvgEl) : null;
   const out = {};
   if (summary) out.summary = summary;
   if (totals) out.totals = totals;
   if (borders) out.borders = borders;
-  if (roofPlan2d) out.roofPlan2d = roofPlan2d;
+  if (roofPlan2dSvg) out.roofPlan2dSvg = roofPlan2dSvg;
   if (roof3d) out.roof3d = roof3d;
   return out;
 }

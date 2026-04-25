@@ -12,6 +12,52 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
+import { existsSync } from "node:fs";
+import { glob } from "node:fs/promises";
+import os from "node:os";
+
+// Locate the Chromium executable across all known installation paths.
+// Cloud Run maps container users dynamically (uid may differ from Dockerfile USER),
+// so os.homedir() at runtime may not match the build-time root install path.
+async function findChromiumExecutable(chromium) {
+  // 1. Explicit override via env var
+  if (process.env.CHROMIUM_PATH && existsSync(process.env.CHROMIUM_PATH)) {
+    return process.env.CHROMIUM_PATH;
+  }
+
+  // 2. Playwright canonical path (works when PLAYWRIGHT_BROWSERS_PATH is set
+  //    and the binary was installed to that exact path as the same user)
+  try {
+    const playwrightPath = chromium.executablePath();
+    if (existsSync(playwrightPath)) return playwrightPath;
+    console.info("[pdf] chromium.executablePath() not found:", playwrightPath);
+  } catch { /* playwright not installed */ }
+
+  // 3. Glob search — covers root-installed playwright cache regardless of runtime user
+  const searchRoots = [
+    "/root/.cache/ms-playwright",
+    "/ms-playwright",
+    `${os.homedir()}/.cache/ms-playwright`,
+    "/home/node/.cache/ms-playwright",
+  ];
+  for (const root of searchRoots) {
+    if (!existsSync(root)) continue;
+    for await (const f of glob("chromium-*/chrome-linux64/chrome", { cwd: root })) {
+      const full = `${root}/${f}`;
+      if (existsSync(full)) {
+        console.info("[pdf] chromium found via glob:", full);
+        return full;
+      }
+    }
+  }
+
+  // 4. System chromium (apk/apt install)
+  for (const p of ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]) {
+    if (existsSync(p)) return p;
+  }
+
+  return null;
+}
 
 export function createPdfRouter() {
   const router = express.Router();
@@ -30,10 +76,13 @@ export function createPdfRouter() {
     try {
       const { chromium } = await import("playwright");
 
-      // Executable path: CHROMIUM_PATH env override, else Playwright-managed binary.
-      // In prod (Cloud Run) PLAYWRIGHT_BROWSERS_PATH=/ms-playwright is set in the
-      // Dockerfile so chromium.executablePath() resolves to the correct global path.
-      const executablePath = process.env.CHROMIUM_PATH || chromium.executablePath();
+      const executablePath = await findChromiumExecutable(chromium);
+      if (!executablePath) {
+        console.error("[pdf/generate] chromium binary not found anywhere");
+        return res.status(503).json({ error: "pdf_renderer_unavailable" });
+      }
+
+      console.info("[pdf/generate] launching chromium at:", executablePath);
 
       browser = await chromium.launch({
         executablePath,
