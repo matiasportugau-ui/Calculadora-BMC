@@ -6154,6 +6154,127 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "db36ae8efdff4811490963b90d68dbe0b937d56f",
+      "short_hash": "db36ae8",
+      "date": "2026-04-24",
+      "time": "21:20:38",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-ui",
+      "title": "add arcade instruction card explaining SYNC / FIRE! / COLA",
+      "subject": "feat(ml-ui): add arcade instruction card explaining SYNC / FIRE! / COLA",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/9a38ef6.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md",
+        "src/components/BmcMlOperativoModule.jsx",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "38578737d4aa3a278c8032c54244fcba7ed2b237",
+      "short_hash": "3857873",
+      "date": "2026-04-24",
+      "time": "21:51:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-module",
+      "title": "complete visual overhaul + save-response endpoint",
+      "subject": "feat(ml-module): complete visual overhaul + save-response endpoint",
+      "files": [
+        "server/routes/bmcDashboard.js",
+        "src/components/BmcMlOperativoModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "4f381fb0115a2b9249a198a9b6f2ff0f728cca99",
+      "short_hash": "4f381fb",
+      "date": "2026-04-24",
+      "time": "22:19:35",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "security",
+      "title": "WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233",
+      "subject": "fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233",
+      "files": [
+        ".env.example"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "4b11416958762fe6bdc915cbeb2db659bedc40bd",
+      "short_hash": "4b11416",
+      "date": "2026-04-24",
+      "time": "22:24:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "cockpit",
+      "title": "unified persistent token panel across all modules",
+      "subject": "feat(cockpit): unified persistent token panel across all modules",
+      "files": [
+        "src/components/BmcAdminCotizacionesModule.jsx",
+        "src/components/BmcCanalesUnificadosModule.jsx",
+        "src/components/BmcWaOperativoModule.jsx",
+        "src/components/CockpitTokenPanel.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }

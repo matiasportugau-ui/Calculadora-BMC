@@ -62,6 +62,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3cdcbde` feat(kb): add 5 missing KB entries for mantenimiento, comparativas, garantia, ROI, ampliacion
 - `9acb23a` feat(kb): add kb-006/007/008 — instalación, plazos, cobertura geográfica
 - `8919f3d` feat(wizard): redesign step indicator to connected track
+- `db36ae8` feat(ml-ui): add arcade instruction card explaining SYNC / FIRE! / COLA
+- `3857873` feat(ml-module): complete visual overhaul + save-response endpoint
+- `4b11416` feat(cockpit): unified persistent token panel across all modules
 
 ## Fixes
 
@@ -98,6 +101,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a954b6f` fix(docs): correct admin_cotizaciones col offset H→I (Gap 1 from sheets audit)
 - `72d8e68` fix(data): remove residual ISODEC_EPS_PARED refs from SCENARIOS_DEF
 - `4b7da4b` fix(sheets): treat non-URL link_presupuesto values as null instead of returning display text
+- `4f381fb` fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233
 
 ## Documentation
 

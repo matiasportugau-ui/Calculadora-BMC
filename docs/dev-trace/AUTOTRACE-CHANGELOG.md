@@ -189,3 +189,7 @@
 - 2026-04-24 06:40:11 — `8cc9f80` — docs(state): end-of-session sync 2026-04-24
 - 2026-04-24 06:40:28 — `f1c2f5a` — test(contracts): handle null linkPresupuesto in cockpit row contract
 - 2026-04-24 06:40:52 — `9a38ef6` — chore(dev-trace): final session sync 2026-04-24 [SKIP_AUTOTRACE]
+- 2026-04-24 21:20:38 — `db36ae8` — feat(ml-ui): add arcade instruction card explaining SYNC / FIRE! / COLA
+- 2026-04-24 21:51:25 — `3857873` — feat(ml-module): complete visual overhaul + save-response endpoint
+- 2026-04-24 22:19:35 — `4f381fb` — fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233
+- 2026-04-24 22:24:44 — `4b11416` — feat(cockpit): unified persistent token panel across all modules
