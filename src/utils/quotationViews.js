@@ -10,7 +10,7 @@
 
 import { BORDER_OPTIONS } from "../data/constants.js";
 import { COMPANY, buildLogo } from "./helpers.js";
-import { zonasToPlantRectsWithAutoGap, formatZonaDisplayTitle, isLateralAnnexZona } from "./roofLateralAnnexLayout.js";
+import { zonasToPlantRectsWithAutoGap, formatZonaDisplayTitle } from "./roofLateralAnnexLayout.js";
 import { findEncounters, encounterPairKey } from "./roofPlanGeometry.js";
 import { buildZoneBorderExteriorLines } from "./roofPlanEdgeSegments.js";
 import { buildAnchoStripsPlanta } from "./roofPanelStripsPlanta.js";
@@ -207,14 +207,13 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
   const rects = zonasToPlantRectsWithAutoGap(zonas, tipoAguas);
   if (!rects.length) return "";
 
-  const encounters = findEncounters(rects);
-  const extLines = buildZoneBorderExteriorLines(rects, zonas);
+  const encounters  = findEncounters(rects);
+  const extLines    = buildZoneBorderExteriorLines(rects, zonas);
 
-  // Bounding box (meters)
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const r of rects) {
-    if (r.x < minX) minX = r.x;
-    if (r.y < minY) minY = r.y;
+    if (r.x       < minX) minX = r.x;
+    if (r.y       < minY) minY = r.y;
     if (r.x + r.w > maxX) maxX = r.x + r.w;
     if (r.y + r.h > maxY) maxY = r.y + r.h;
   }
@@ -223,58 +222,93 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
   if (!(bW > 0) || !(bH > 0)) return "";
 
   // ── Viewport ──────────────────────────────────────────────────────────────
-  const VW = 1000;
-  const PAD_L = 76;   // Y-axis dim labels
-  const PAD_R = 32;
-  const PAD_T = 36;
-  const PAD_B = 88;   // X-axis labels + legend
+  const VW     = 1000;
+  const PAD_L  = 78;   // Y-axis labels
+  const PAD_R  = 92;   // right-side height dim + title block
+  const PAD_T  = 38;
+  const PAD_B  = 112;  // X dims + span + legend + scale bar
   const DRAW_W = VW - PAD_L - PAD_R;
-  const DRAW_H_MAX = 500;
+  const DRAW_H_MAX = 480;
 
-  const scale = Math.min(DRAW_W / bW, DRAW_H_MAX / bH);
+  const scale  = Math.min(DRAW_W / bW, DRAW_H_MAX / bH);
   const DRAW_H = bH * scale;
-  const SVG_H = Math.ceil(PAD_T + DRAW_H + PAD_B);
+  const SVG_H  = Math.ceil(PAD_T + DRAW_H + PAD_B);
 
-  // Coordinate transform: meters → SVG units
-  const sx = m => PAD_L + (m - minX) * scale;
-  const sy = m => PAD_T + (m - minY) * scale;
+  const DX1 = PAD_L;
+  const DX2 = PAD_L + DRAW_W;
+  const DY1 = PAD_T;
+  const DY2 = PAD_T + DRAW_H;
+
+  const sx = m => DX1 + (m - minX) * scale;
+  const sy = m => DY1 + (m - minY) * scale;
 
   // ── Design tokens ─────────────────────────────────────────────────────────
+  const C_BG         = "#F8FAFC";
+  const C_DRAW_BG    = "#FFFFFF";
+  const C_BORDER     = "#1e3a5f";
+  const C_PANEL_EVEN = "#EBF5FC";
+  const C_PANEL_ODD  = "#D6E9F8";
+  const C_JOINT      = "#4A7FB5";
+  const C_HATCH      = "#4A7FB5";
+  const C_GRID       = "#CBD5E1";
+  const C_DIM        = "#5c6470";
+  const C_DIM_DARK   = "#374151";
+  const C_LABEL_Z    = "#003366";
+  const C_LABEL_DIM  = "#64748B";
+  const C_LABEL_AREA = "#475569";
+  const C_CONTINUO   = "#94A3B8";
+  const C_PRETIL     = "#f97316";
+  const C_CUMBRERA   = "#3b82f6";
+  const C_DESNIVEL   = "#ef4444";
   const LW_BORDER    = 3.4;
-  const LW_ENCOUNTER = 2.2;
+  const LW_ENC       = 2.2;
   const LW_JOINT     = 0.9;
   const LW_DIM       = 1.1;
-  const LW_TICK      = 1.1;
 
-  const C_BG          = "#F8FAFC";
-  const C_DRAW_BG     = "#FFFFFF";
-  const C_BORDER      = "#1e3a5f";
-  const C_PANEL_EVEN  = "#EBF4FC";
-  const C_PANEL_ODD   = "#D6E9F8";
-  const C_JOINT       = "#4A7FB5";
-  const C_DIM         = "#5c6470";
-  const C_LABEL_ZONE  = "#003366";
-  const C_LABEL_DIM   = "#64748B";
-  const C_CONTINUO    = "#94A3B8";
-  const C_PRETIL      = "#f97316";
-  const C_CUMBRERA    = "#3b82f6";
-  const C_DESNIVEL    = "#ef4444";
-
-  // ── Encounter mode lookup ─────────────────────────────────────────────────
-  const encPairs = encounterByPair && typeof encounterByPair === "object" ? encounterByPair : {};
-  const getMode = (giA, giB) => {
-    const pk = encounterPairKey(giA, giB);
-    const raw = encPairs[pk];
+  // ── Encounter lookup ──────────────────────────────────────────────────────
+  const encPairs = (encounterByPair && typeof encounterByPair === "object") ? encounterByPair : {};
+  const getMode  = (a, b) => {
+    const raw = encPairs[encounterPairKey(a, b)];
     return raw ? (normalizeEncounter(raw).modo || "continuo") : "continuo";
   };
+  const encCol = m => ({ cumbrera: C_CUMBRERA, pretil: C_PRETIL, desnivel: C_DESNIVEL }[m] || C_CONTINUO);
 
   let out = "";
 
-  // ── Background ────────────────────────────────────────────────────────────
-  out += `<rect x="0" y="0" width="${VW}" height="${SVG_H}" fill="${C_BG}"/>`;
-  out += `<rect x="${PAD_L - 6}" y="${PAD_T - 6}" width="${DRAW_W + 12}" height="${DRAW_H + 12}" fill="${C_DRAW_BG}" stroke="#E2E8F0" stroke-width="0.8" rx="2"/>`;
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 1 — <defs>: hatch pattern + ISO closed-arrow markers
+  // ══════════════════════════════════════════════════════════════════════════
+  out += `<defs>
+    <pattern id="fp-hatch" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="10" x2="10" y2="0" stroke="${C_HATCH}" stroke-width="0.55" opacity="0.2"/>
+    </pattern>
+    <marker id="fp-arr" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0,0 10,3.5 0,7" fill="${C_DIM}"/>
+    </marker>
+    <marker id="fp-arr-r" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <polygon points="0,0 10,3.5 0,7" fill="${C_DIM}"/>
+    </marker>
+  </defs>`;
 
-  // ── Panel strips ──────────────────────────────────────────────────────────
+  // ── Outer + drawing area backgrounds ─────────────────────────────────────
+  out += `<rect x="0" y="0" width="${VW}" height="${SVG_H}" fill="${C_BG}"/>`;
+  out += `<rect x="${DX1 - 6}" y="${DY1 - 6}" width="${DRAW_W + 12}" height="${DRAW_H + 12}" fill="${C_DRAW_BG}" stroke="#E2E8F0" stroke-width="0.8" rx="2"/>`;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 2 — 1 m × 1 m metric grid (before fills, very subtle)
+  // ══════════════════════════════════════════════════════════════════════════
+  for (let gx = Math.ceil(minX); gx < maxX; gx++) {
+    const gxs = sx(gx);
+    if (gxs <= DX1 + 1 || gxs >= DX2 - 1) continue;
+    out += `<line x1="${gxs.toFixed(1)}" y1="${DY1}" x2="${gxs.toFixed(1)}" y2="${DY2}" stroke="${C_GRID}" stroke-width="0.5" opacity="0.38"/>`;
+  }
+  for (let gy = Math.ceil(minY); gy < maxY; gy++) {
+    const gys = sy(gy);
+    if (gys <= DY1 + 1 || gys >= DY2 - 1) continue;
+    out += `<line x1="${DX1}" y1="${gys.toFixed(1)}" x2="${DX2}" y2="${gys.toFixed(1)}" stroke="${C_GRID}" stroke-width="0.5" opacity="0.38"/>`;
+  }
+
+  // ── Panel strips per zone ─────────────────────────────────────────────────
   for (const r of rects) {
     const rx0 = sx(r.x);
     const ry0 = sy(r.y);
@@ -287,125 +321,163 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
         const s  = strips[i];
         const sx0 = rx0 + s.x0 * scale;
         const sw  = s.width * scale;
-        const fill = i % 2 === 0 ? C_PANEL_EVEN : C_PANEL_ODD;
-        out += `<rect x="${sx0.toFixed(2)}" y="${ry0.toFixed(2)}" width="${sw.toFixed(2)}" height="${rh.toFixed(2)}" fill="${fill}"/>`;
+        out += `<rect x="${sx0.toFixed(2)}" y="${ry0.toFixed(2)}" width="${sw.toFixed(2)}" height="${rh.toFixed(2)}" fill="${i % 2 === 0 ? C_PANEL_EVEN : C_PANEL_ODD}"/>`;
       }
-      // Panel joint lines (vertical, between panels)
       for (let i = 1; i < strips.length; i++) {
         const jx = (rx0 + strips[i].x0 * scale).toFixed(2);
-        out += `<line x1="${jx}" y1="${ry0.toFixed(2)}" x2="${jx}" y2="${(ry0 + rh).toFixed(2)}" stroke="${C_JOINT}" stroke-width="${LW_JOINT}" opacity="0.55"/>`;
+        out += `<line x1="${jx}" y1="${ry0.toFixed(2)}" x2="${jx}" y2="${(ry0 + rh).toFixed(2)}" stroke="${C_JOINT}" stroke-width="${LW_JOINT}" opacity="0.5"/>`;
       }
     } else {
       out += `<rect x="${rx0.toFixed(2)}" y="${ry0.toFixed(2)}" width="${rw.toFixed(2)}" height="${rh.toFixed(2)}" fill="${C_PANEL_EVEN}"/>`;
     }
 
-    // Slope direction arrow
-    const slopeMark = r.z?.preview?.slopeMark;
-    if (slopeMark && slopeMark !== "off") {
-      const cx   = rx0 + rw / 2;
-      const cy   = ry0 + rh / 2;
-      const aLen = Math.min(rh * 0.28, 38, rw * 0.38);
-      const isPos = slopeMark === "along_largo_pos";
-      const dy = aLen / 2;
-      const y1 = (cy - dy).toFixed(2);
-      const y2 = (cy + dy).toFixed(2);
-      const cxs = cx.toFixed(2);
-      const hs = Math.min(7, aLen * 0.3);
-      const tipY = isPos ? parseFloat(y2) : parseFloat(y1);
-      const bY   = isPos ? tipY - hs : tipY + hs;
-      out += `<line x1="${cxs}" y1="${y1}" x2="${cxs}" y2="${y2}" stroke="${C_DIM}" stroke-width="1.6" stroke-linecap="round" opacity="0.45"/>`;
-      out += `<polygon points="${cxs},${tipY.toFixed(2)} ${(cx - hs * 0.55).toFixed(2)},${bY.toFixed(2)} ${(cx + hs * 0.55).toFixed(2)},${bY.toFixed(2)}" fill="${C_DIM}" opacity="0.45"/>`;
-    }
+    // ══════════════════════════════════════════════════════════════════════════
+    // ITERATION 3 — Architectural diagonal hatch overlay (ISO roof convention)
+    // ══════════════════════════════════════════════════════════════════════════
+    out += `<rect x="${rx0.toFixed(2)}" y="${ry0.toFixed(2)}" width="${rw.toFixed(2)}" height="${rh.toFixed(2)}" fill="url(#fp-hatch)" pointer-events="none"/>`;
   }
 
   // ── Encounter lines ───────────────────────────────────────────────────────
-  const usedModes = new Set();
+  const usedModes  = new Set();
+  const encCache   = [];
   for (const enc of encounters) {
     const [giA, giB] = enc.zoneIndices;
     const modo = getMode(giA, giB);
     if (modo !== "continuo") usedModes.add(modo);
+    const col = encCol(modo);
 
-    const ex1 = sx(enc.x1).toFixed(2);
-    const ey1 = sy(enc.y1).toFixed(2);
-    const ex2 = sx(enc.x2).toFixed(2);
-    const ey2 = sy(enc.y2).toFixed(2);
+    const ex1 = sx(enc.x1);
+    const ey1 = sy(enc.y1);
+    const ex2 = sx(enc.x2);
+    const ey2 = sy(enc.y2);
 
-    let col, dash, lw;
+    let dash, lw;
+    if (modo === "cumbrera") { dash = "none"; lw = LW_ENC + 0.7; }
+    else if (modo === "pretil")   { dash = "9,5";  lw = LW_ENC; }
+    else if (modo === "desnivel") { dash = "5,3";  lw = LW_ENC; }
+    else                          { dash = "7,4";  lw = LW_ENC - 0.5; }
+
+    const da = dash === "none" ? "" : ` stroke-dasharray="${dash}"`;
+    out += `<line x1="${ex1.toFixed(2)}" y1="${ey1.toFixed(2)}" x2="${ex2.toFixed(2)}" y2="${ey2.toFixed(2)}" stroke="${col}" stroke-width="${lw}" stroke-linecap="round"${da}/>`;
+
     if (modo === "cumbrera") {
-      col = C_CUMBRERA; dash = "none"; lw = LW_ENCOUNTER + 0.7;
-    } else if (modo === "pretil") {
-      col = C_PRETIL; dash = "9,5"; lw = LW_ENCOUNTER;
-    } else if (modo === "desnivel") {
-      col = C_DESNIVEL; dash = "5,3"; lw = LW_ENCOUNTER;
-    } else {
-      col = C_CONTINUO; dash = "7,4"; lw = LW_ENCOUNTER - 0.5;
-    }
-
-    const dashAttr = dash === "none" ? "" : ` stroke-dasharray="${dash}"`;
-    out += `<line x1="${ex1}" y1="${ey1}" x2="${ex2}" y2="${ey2}" stroke="${col}" stroke-width="${lw}" stroke-linecap="round"${dashAttr}/>`;
-
-    // Cumbrera: double-line signature (ridge)
-    if (modo === "cumbrera") {
-      const off = 3.0;
+      const off = 3;
       if (enc.orientation === "vertical") {
-        out += `<line x1="${(parseFloat(ex1) + off).toFixed(2)}" y1="${ey1}" x2="${(parseFloat(ex2) + off).toFixed(2)}" y2="${ey2}" stroke="${C_CUMBRERA}" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>`;
+        out += `<line x1="${(ex1+off).toFixed(2)}" y1="${ey1.toFixed(2)}" x2="${(ex2+off).toFixed(2)}" y2="${ey2.toFixed(2)}" stroke="${C_CUMBRERA}" stroke-width="1.2" opacity="0.4"/>`;
       } else {
-        out += `<line x1="${ex1}" y1="${(parseFloat(ey1) + off).toFixed(2)}" x2="${ex2}" y2="${(parseFloat(ey2) + off).toFixed(2)}" stroke="${C_CUMBRERA}" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>`;
+        out += `<line x1="${ex1.toFixed(2)}" y1="${(ey1+off).toFixed(2)}" x2="${ex2.toFixed(2)}" y2="${(ey2+off).toFixed(2)}" stroke="${C_CUMBRERA}" stroke-width="1.2" opacity="0.4"/>`;
       }
     }
+    encCache.push({ enc, ex1, ey1, ex2, ey2, modo, col });
   }
 
-  // ── Exterior zone borders (suppresses same-body internal joints) ───────────
+  // ── Exterior zone borders ─────────────────────────────────────────────────
   for (const r of rects) {
     for (const seg of extLines[r.gi] || []) {
       out += `<line x1="${sx(seg.x1).toFixed(2)}" y1="${sy(seg.y1).toFixed(2)}" x2="${sx(seg.x2).toFixed(2)}" y2="${sy(seg.y2).toFixed(2)}" stroke="${C_BORDER}" stroke-width="${LW_BORDER}" stroke-linecap="square"/>`;
     }
   }
 
-  // ── Zone labels ───────────────────────────────────────────────────────────
-  for (const r of rects) {
-    const rx0 = sx(r.x);
-    const ry0 = sy(r.y);
-    const rw  = r.w * scale;
-    const rh  = r.h * scale;
-    const cxs = (rx0 + rw / 2).toFixed(1);
-    const cys = (ry0 + rh / 2).toFixed(1);
-
-    const title = formatZonaDisplayTitle(zonas, r.gi);
-    const dim   = _fmtDimLabel(r.h, r.w);
-    const fs1   = Math.min(18, Math.max(9, rh * 0.13));
-    const fs2   = Math.min(12, Math.max(7, rh * 0.085));
-    const midY  = ry0 + rh / 2;
-
-    out += `<text x="${cxs}" y="${(midY - fs1 * 0.25).toFixed(1)}" text-anchor="middle" font-size="${fs1.toFixed(1)}" font-weight="800" fill="${C_LABEL_ZONE}" font-family="system-ui,sans-serif">${_escSvg(title)}</text>`;
-    out += `<text x="${cxs}" y="${(midY + fs1 * 0.8).toFixed(1)}" text-anchor="middle" font-size="${fs2.toFixed(1)}" fill="${C_LABEL_DIM}" font-family="system-ui,sans-serif">${_escSvg(dim)}</text>`;
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 6 — Encounter inline labels with halo (mid-segment, rotated)
+  // ══════════════════════════════════════════════════════════════════════════
+  const ENC_SHORT = { pretil: "Pretil", cumbrera: "Cumbrera", desnivel: "Desnivel" };
+  for (const { enc, ex1, ey1, ex2, ey2, modo, col } of encCache) {
+    const label = ENC_SHORT[modo];
+    if (!label) continue;
+    const mx = ((ex1 + ex2) / 2).toFixed(1);
+    const my = ((ey1 + ey2) / 2).toFixed(1);
+    const rot = enc.orientation === "vertical" ? ` transform="rotate(-90,${mx},${my})"` : "";
+    out += `<text x="${mx}" y="${my}" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-weight="700" fill="white" stroke="white" stroke-width="3.5" paint-order="stroke"${rot}>${_escSvg(label)}</text>`;
+    out += `<text x="${mx}" y="${my}" text-anchor="middle" dominant-baseline="middle" font-size="8.5" font-weight="700" fill="${col}"${rot}>${_escSvg(label)}</text>`;
   }
 
-  // ── X-axis dimension ticks + labels ───────────────────────────────────────
-  const dimY  = PAD_T + DRAW_H;
-  const tickY = dimY + 10;
-  const labY  = dimY + 27;
-  const baseY = PAD_T + DRAW_H;
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 5 — Zone labels: title + dims + area (m²) + panel count
+  // ══════════════════════════════════════════════════════════════════════════
+  for (const r of rects) {
+    const rx0   = sx(r.x);
+    const ry0   = sy(r.y);
+    const rw    = r.w * scale;
+    const rh    = r.h * scale;
+    const cxs   = (rx0 + rw / 2).toFixed(1);
+    const midY  = ry0 + rh / 2;
+
+    const title    = formatZonaDisplayTitle(zonas, r.gi);
+    const dimLabel = _fmtDimLabel(r.h, r.w);
+    const fs1      = Math.min(18, Math.max(9,   rh * 0.13));
+    const fs2      = Math.min(12, Math.max(7,   rh * 0.085));
+    const fs3      = Math.min(10, Math.max(6.5, rh * 0.07));
+
+    const declaredAncho = Number(r.z?.ancho) || r.w;
+    const areaM2  = (r.h * declaredAncho).toFixed(2);
+    const nPan    = panelAu > 0 ? Math.ceil(r.w / panelAu) : null;
+    const hasExtra = rh > 72;
+
+    const y1 = hasExtra ? midY - fs1 * 0.65 : midY - fs1 * 0.2;
+    const y2 = y1 + fs1 * 0.95;
+    const y3 = y2 + fs2 * 1.15;
+    const y4 = y3 + fs3 * 1.25;
+
+    out += `<text x="${cxs}" y="${y1.toFixed(1)}" text-anchor="middle" font-size="${fs1.toFixed(1)}" font-weight="800" fill="${C_LABEL_Z}" font-family="system-ui,sans-serif">${_escSvg(title)}</text>`;
+    out += `<text x="${cxs}" y="${y2.toFixed(1)}" text-anchor="middle" font-size="${fs2.toFixed(1)}" fill="${C_LABEL_DIM}" font-family="system-ui,sans-serif">${_escSvg(dimLabel)}</text>`;
+    if (hasExtra) {
+      out += `<text x="${cxs}" y="${y3.toFixed(1)}" text-anchor="middle" font-size="${fs3.toFixed(1)}" fill="${C_LABEL_AREA}" font-family="system-ui,sans-serif">Área ${areaM2} m²</text>`;
+      if (nPan) {
+        out += `<text x="${cxs}" y="${y4.toFixed(1)}" text-anchor="middle" font-size="${fs3.toFixed(1)}" fill="${C_LABEL_DIM}" font-family="system-ui,sans-serif">${nPan} pan · AU ${panelAu} m</text>`;
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 8 — Slope direction arrows with "↓ pendiente" annotation
+  // ══════════════════════════════════════════════════════════════════════════
+  for (const r of rects) {
+    const slopeMark = r.z?.preview?.slopeMark;
+    if (!slopeMark || slopeMark === "off") continue;
+    const rx0   = sx(r.x);
+    const ry0   = sy(r.y);
+    const rw    = r.w * scale;
+    const rh    = r.h * scale;
+    const isPos = slopeMark === "along_largo_pos";
+    const cx    = rx0 + rw * 0.76;
+    const cy    = ry0 + rh / 2;
+    const aLen  = Math.min(rh * 0.32, 46, rw * 0.3);
+    const dy    = aLen / 2;
+    const hs    = Math.min(9, aLen * 0.32);
+    const y1    = cy - dy;
+    const y2    = cy + dy;
+    const tipY  = isPos ? y2 : y1;
+    const bY    = isPos ? tipY - hs : tipY + hs;
+    out += `<line x1="${cx.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${cx.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${C_DIM_DARK}" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>`;
+    out += `<polygon points="${cx.toFixed(2)},${tipY.toFixed(2)} ${(cx-hs*0.6).toFixed(2)},${bY.toFixed(2)} ${(cx+hs*0.6).toFixed(2)},${bY.toFixed(2)}" fill="${C_DIM_DARK}" opacity="0.6"/>`;
+    const lblY = isPos ? tipY + 11 : bY - 3;
+    out += `<text x="${cx.toFixed(1)}" y="${lblY.toFixed(1)}" text-anchor="middle" font-size="7" fill="${C_DIM_DARK}" opacity="0.5" font-family="system-ui,sans-serif">${isPos ? "↓" : "↑"} pendiente</text>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 4 — ISO closed-arrow dimension lines (X-axis, per zone)
+  // ══════════════════════════════════════════════════════════════════════════
+  const baseY = DY2;
+  const dimLY = baseY + 24;
 
   for (const r of rects) {
     const x0 = sx(r.x);
     const x1 = sx(r.x + r.w);
     const cx  = ((x0 + x1) / 2).toFixed(1);
-    // dim line
-    out += `<line x1="${x0.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${baseY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.6"/>`;
-    // ticks
-    out += `<line x1="${x0.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${x0.toFixed(2)}" y2="${tickY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-    out += `<line x1="${x1.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${tickY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-    // label
-    out += `<text x="${cx}" y="${labY.toFixed(1)}" text-anchor="middle" font-size="13" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.w))}</text>`;
+    const dy  = baseY + 9;
+    // Extension lines
+    out += `<line x1="${x0.toFixed(2)}" y1="${baseY}" x2="${x0.toFixed(2)}" y2="${dy + 4}" stroke="${C_DIM}" stroke-width="0.8" opacity="0.5"/>`;
+    out += `<line x1="${x1.toFixed(2)}" y1="${baseY}" x2="${x1.toFixed(2)}" y2="${dy + 4}" stroke="${C_DIM}" stroke-width="0.8" opacity="0.5"/>`;
+    // Dim line with ISO arrows
+    out += `<line x1="${x0.toFixed(2)}" y1="${dy}" x2="${x1.toFixed(2)}" y2="${dy}" stroke="${C_DIM}" stroke-width="${LW_DIM}" marker-start="url(#fp-arr-r)" marker-end="url(#fp-arr)"/>`;
+    out += `<text x="${cx}" y="${dimLY.toFixed(1)}" text-anchor="middle" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.w))}</text>`;
   }
 
-  // ── Y-axis labels — only for leftmost column; deduplicate same height ────
+  // Y-axis: leftmost column only, deduplicate heights, ISO arrows
   {
-    const lx  = PAD_L - 8;
-    const tlx = PAD_L - 12;
+    const lx    = DX1 - 9;
     const seenH = new Set();
-    // Only zones whose left edge is at global minX get a Y annotation
     for (const r of rects) {
       if (Math.abs(r.x - minX) > 0.002) continue;
       const hKey = r.h.toFixed(4);
@@ -414,66 +486,95 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
       const y0 = sy(r.y);
       const y1 = sy(r.y + r.h);
       const cy = ((y0 + y1) / 2).toFixed(1);
-      out += `<line x1="${lx.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.45"/>`;
-      out += `<line x1="${(lx - 4).toFixed(2)}" y1="${y0.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${y0.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-      out += `<line x1="${(lx - 4).toFixed(2)}" y1="${y1.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-      out += `<text x="${tlx.toFixed(1)}" y="${cy}" dominant-baseline="middle" text-anchor="end" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.h))}</text>`;
+      out += `<line x1="${lx}" y1="${y0.toFixed(2)}" x2="${lx}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" marker-start="url(#fp-arr-r)" marker-end="url(#fp-arr)"/>`;
+      out += `<text x="${(lx - 6).toFixed(1)}" y="${cy}" dominant-baseline="middle" text-anchor="end" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.h))}</text>`;
     }
   }
 
-  // ── Total-width span dimension (all zones together) ───────────────────────
-  if (rects.length > 1) {
-    const txLeft  = sx(minX);
-    const txRight = sx(maxX);
-    const spanY   = PAD_T + DRAW_H + 50;
-    out += `<line x1="${txLeft.toFixed(2)}" y1="${spanY.toFixed(2)}" x2="${txRight.toFixed(2)}" y2="${spanY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.5"/>`;
-    out += `<line x1="${txLeft.toFixed(2)}" y1="${(spanY - 4).toFixed(2)}" x2="${txLeft.toFixed(2)}" y2="${(spanY + 4).toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-    out += `<line x1="${txRight.toFixed(2)}" y1="${(spanY - 4).toFixed(2)}" x2="${txRight.toFixed(2)}" y2="${(spanY + 4).toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-    out += `<text x="${((txLeft + txRight) / 2).toFixed(1)}" y="${(spanY + 14).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(bW))} total</text>`;
-  }
-
-  // ── Scale bar (bottom-right corner) ──────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 7 — Right-side total-height dimension (ISO arrows, rotated label)
+  // ══════════════════════════════════════════════════════════════════════════
   {
-    const barM  = scale >= 40 ? 1 : scale >= 20 ? 2 : 5; // pick readable reference
-    const barPx = barM * scale;
-    const sbX2  = VW - PAD_R - 4;
-    const sbX1  = sbX2 - barPx;
-    const sbY   = SVG_H - 20;
-    out += `<line x1="${sbX1.toFixed(2)}" y1="${sbY}" x2="${sbX2.toFixed(2)}" y2="${sbY}" stroke="${C_DIM}" stroke-width="1.8" stroke-linecap="square"/>`;
-    out += `<line x1="${sbX1.toFixed(2)}" y1="${(sbY - 4)}" x2="${sbX1.toFixed(2)}" y2="${(sbY + 4)}" stroke="${C_DIM}" stroke-width="1.4"/>`;
-    out += `<line x1="${sbX2.toFixed(2)}" y1="${(sbY - 4)}" x2="${sbX2.toFixed(2)}" y2="${(sbY + 4)}" stroke="${C_DIM}" stroke-width="1.4"/>`;
-    out += `<text x="${((sbX1 + sbX2) / 2).toFixed(1)}" y="${(sbY - 6)}" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif">${barM} m</text>`;
+    const rdx  = DX2 + 18;
+    const ry0  = sy(minY);
+    const ry1  = sy(maxY);
+    const rcy  = ((ry0 + ry1) / 2).toFixed(1);
+    out += `<line x1="${DX2}" y1="${ry0.toFixed(2)}" x2="${rdx + 3}" y2="${ry0.toFixed(2)}" stroke="${C_DIM}" stroke-width="0.8" opacity="0.5"/>`;
+    out += `<line x1="${DX2}" y1="${ry1.toFixed(2)}" x2="${rdx + 3}" y2="${ry1.toFixed(2)}" stroke="${C_DIM}" stroke-width="0.8" opacity="0.5"/>`;
+    out += `<line x1="${rdx}" y1="${ry0.toFixed(2)}" x2="${rdx}" y2="${ry1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" marker-start="url(#fp-arr-r)" marker-end="url(#fp-arr)"/>`;
+    out += `<text x="${(rdx + 14).toFixed(1)}" y="${rcy}" dominant-baseline="middle" text-anchor="middle" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif" transform="rotate(90,${(rdx+14).toFixed(1)},${rcy})">${_escSvg(_fmtM(bH))}</text>`;
   }
 
   // ── Orientation labels ────────────────────────────────────────────────────
-  const midX = ((PAD_L + VW - PAD_R) / 2).toFixed(1);
-  out += `<text x="${midX}" y="22" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.65">▲ fondo</text>`;
-  out += `<text x="${midX}" y="${(PAD_T + DRAW_H + 42).toFixed(1)}" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.65">▼ frente</text>`;
+  const midX = ((DX1 + DX2) / 2).toFixed(1);
+  out += `<text x="${midX}" y="24" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.6">▲ fondo</text>`;
+  out += `<text x="${midX}" y="${(DY2 + 38).toFixed(1)}" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.6">▼ frente</text>`;
 
-  // ── Compass rose (simplified N marker) ───────────────────────────────────
-  const nx = VW - 22;
-  const ny = PAD_T + 20;
-  out += `<circle cx="${nx}" cy="${ny}" r="13" fill="none" stroke="${C_DIM}" stroke-width="0.9" opacity="0.35"/>`;
-  out += `<text x="${nx}" y="${(ny + 4.5).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.55">N</text>`;
+  // N compass (inside draw area, top-right to avoid right margin)
+  const nx = DX2 - 18;
+  const ny = DY1 + 18;
+  out += `<circle cx="${nx}" cy="${ny}" r="12" fill="${C_DRAW_BG}" stroke="${C_DIM}" stroke-width="0.9" opacity="0.45"/>`;
+  out += `<text x="${nx}" y="${(ny + 4.5).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.6">N</text>`;
 
-  // ── Legend (only if non-continuo encounters exist) ────────────────────────
+  // Total-width span dim (multi-zone)
+  if (rects.length > 1) {
+    const txL = sx(minX);
+    const txR = sx(maxX);
+    const spY = DY2 + 52;
+    out += `<line x1="${txL.toFixed(2)}" y1="${spY}" x2="${txR.toFixed(2)}" y2="${spY}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.55" marker-start="url(#fp-arr-r)" marker-end="url(#fp-arr)"/>`;
+    out += `<text x="${((txL + txR) / 2).toFixed(1)}" y="${(spY + 15).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(bW))} total</text>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 9 — Professional title block (bottom-right margin)
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const tbW = PAD_R - 12;
+    const tbH = 64;
+    const tbX = VW - PAD_R + 6;
+    const tbY = SVG_H - tbH - 6;
+    const tcx = (tbX + tbW / 2).toFixed(1);
+    out += `<rect x="${tbX}" y="${tbY}" width="${tbW}" height="${tbH}" fill="${C_DRAW_BG}" stroke="${C_DIM}" stroke-width="0.8" rx="1"/>`;
+    out += `<line x1="${tbX}" y1="${(tbY + 22).toFixed(2)}" x2="${tbX + tbW}" y2="${(tbY + 22).toFixed(2)}" stroke="${C_DIM}" stroke-width="0.5" opacity="0.5"/>`;
+    out += `<line x1="${tbX}" y1="${(tbY + 44).toFixed(2)}" x2="${tbX + tbW}" y2="${(tbY + 44).toFixed(2)}" stroke="${C_DIM}" stroke-width="0.5" opacity="0.5"/>`;
+    out += `<text x="${tcx}" y="${(tbY + 14).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="800" fill="${C_LABEL_Z}" font-family="system-ui,sans-serif">PLANTA CUBIERTA</text>`;
+    out += `<text x="${tcx}" y="${(tbY + 34).toFixed(1)}" text-anchor="middle" font-size="7" fill="${C_DIM}" font-family="system-ui,sans-serif">Vista esquemática · sin escala</text>`;
+    out += `<text x="${tcx}" y="${(tbY + 56).toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="600" fill="${C_LABEL_Z}" font-family="system-ui,sans-serif">BMC Uruguay · Panelin</text>`;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ITERATION 10 — ISO surveying scale bar (alternating filled segments)
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    const barM  = scale >= 50 ? 1 : scale >= 24 ? 2 : 5;
+    const barPx = barM * scale;
+    const sbX2  = DX2;
+    const sbX1  = sbX2 - barPx;
+    const sbY   = SVG_H - 30;
+    const half  = barPx / 2;
+    // Alternating filled + empty halves (ISO land surveying convention)
+    out += `<rect x="${sbX1.toFixed(2)}" y="${sbY - 3}" width="${half.toFixed(2)}" height="6" fill="${C_DIM_DARK}" opacity="0.75"/>`;
+    out += `<rect x="${(sbX1 + half).toFixed(2)}" y="${sbY - 3}" width="${half.toFixed(2)}" height="6" fill="white" stroke="${C_DIM_DARK}" stroke-width="0.7"/>`;
+    out += `<rect x="${sbX1.toFixed(2)}" y="${sbY - 3}" width="${barPx.toFixed(2)}" height="6" fill="none" stroke="${C_DIM_DARK}" stroke-width="0.9"/>`;
+    out += `<text x="${sbX1.toFixed(1)}" y="${(sbY - 7)}" text-anchor="start" font-size="9" fill="${C_DIM}" font-family="system-ui,sans-serif">0</text>`;
+    out += `<text x="${sbX2.toFixed(1)}" y="${(sbY - 7)}" text-anchor="end" font-size="9" fill="${C_DIM}" font-family="system-ui,sans-serif">${barM} m</text>`;
+  }
+
+  // ── Legend (encounter types present in drawing) ───────────────────────────
   const LEGEND = { pretil: ["Pretil", C_PRETIL, "8,4"], cumbrera: ["Cumbrera", C_CUMBRERA, "none"], desnivel: ["Desnivel", C_DESNIVEL, "5,3"] };
   const modesInPlan = [...usedModes].filter(m => LEGEND[m]);
-  if (modesInPlan.length > 0 || encounters.length > 0) {
-    let lx = PAD_L;
-    const ly = SVG_H - 18;
-    // Always show continuo if encounters present
-    if (encounters.length > 0) {
-      out += `<line x1="${lx}" y1="${ly}" x2="${lx + 20}" y2="${ly}" stroke="${C_CONTINUO}" stroke-width="1.5" stroke-dasharray="7,4"/>`;
-      out += `<text x="${lx + 26}" y="${(ly + 4).toFixed(1)}" font-size="11" fill="${C_DIM}" font-family="system-ui,sans-serif">Continuo</text>`;
-      lx += 96;
-    }
+  if (encounters.length > 0) {
+    let lx = DX1;
+    const ly = SVG_H - 28;
+    out += `<line x1="${lx}" y1="${ly}" x2="${lx + 18}" y2="${ly}" stroke="${C_CONTINUO}" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+    out += `<text x="${lx + 24}" y="${(ly + 4).toFixed(1)}" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif">Continuo</text>`;
+    lx += 88;
     for (const modo of modesInPlan) {
       const [label, col, dash] = LEGEND[modo];
-      const dashAttr = dash === "none" ? "" : ` stroke-dasharray="${dash}"`;
-      out += `<line x1="${lx}" y1="${ly}" x2="${lx + 20}" y2="${ly}" stroke="${col}" stroke-width="2"${dashAttr}/>`;
-      out += `<text x="${lx + 26}" y="${(ly + 4).toFixed(1)}" font-size="11" fill="${C_DIM}" font-family="system-ui,sans-serif">${label}</text>`;
-      lx += 96;
+      const da = dash === "none" ? "" : ` stroke-dasharray="${dash}"`;
+      out += `<line x1="${lx}" y1="${ly}" x2="${lx + 18}" y2="${ly}" stroke="${col}" stroke-width="2"${da}/>`;
+      out += `<text x="${lx + 24}" y="${(ly + 4).toFixed(1)}" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif">${label}</text>`;
+      lx += 88;
     }
   }
 
