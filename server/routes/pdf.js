@@ -1,18 +1,18 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// server/routes/pdf.js — Server-side PDF generation via @sparticuz/chromium-min
+// server/routes/pdf.js — Server-side PDF generation via @sparticuz/chromium
 //
 // POST /api/pdf/generate
 //   body: { html: string, filename?: string }
 //   returns: application/pdf blob
 //
-// Uses @sparticuz/chromium-min (Chromium optimized for serverless / Cloud Run).
+// Uses @sparticuz/chromium (Chromium optimized for serverless / Cloud Run).
 // Preserves @page CSS, SVG vectors, fonts, colors — identical to window.print().
 // Falls back gracefully: if Chromium is unavailable the route returns 503
 // and pdfGenerator.js client-side falls back to html2pdf.js.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
-import chromium from "@sparticuz/chromium-min";
+import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 
 export function createPdfRouter() {
@@ -30,7 +30,7 @@ export function createPdfRouter() {
 
     let browser;
     try {
-      // @sparticuz/chromium-min decompresses the binary to /tmp on first call.
+      // @sparticuz/chromium decompresses the binary to /tmp on first call.
       // CHROMIUM_EXECUTABLE_PATH env var overrides (useful for local dev with
       // a system-installed Chrome/Chromium).
       const executablePath =

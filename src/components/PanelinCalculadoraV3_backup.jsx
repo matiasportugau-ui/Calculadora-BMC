@@ -3534,6 +3534,11 @@ export default function PanelinCalculadoraV3() {
     if (!groups.length) return;
     showToast("Preparando vista para imprimir…");
     try {
+      // Serialize the 2D floor plan SVG directly — vectorial, all cotas and labels
+      const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
+      const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
+      const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
+
       const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
       const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
       const appendix = buildPdfAppendixPayload({
@@ -3551,7 +3556,7 @@ export default function PanelinCalculadoraV3() {
         groups: groups.map(g => ({ title: g.title, items: g.items })),
         totals: grandTotal,
         appendix,
-        snapshotImages: {},
+        snapshotImages: roofPlan2dSvg ? { roofPlan2dSvg } : {},
         includePlantaResumenPage: pdfPlantaResumenPage,
       });
       openPrintWindow(html);
