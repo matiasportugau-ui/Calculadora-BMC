@@ -43,10 +43,20 @@ export function createPdfRouter() {
       console.info("[pdf] chromium.args:", JSON.stringify(chromium.args));
 
       if (!existsSync(executablePath)) {
-        // List /tmp to see what's there
-        const { readdirSync } = await import("node:fs");
-        try { console.info("[pdf] /tmp contents:", readdirSync("/tmp").join(", ")); } catch { /**/ }
         return res.status(503).json({ error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
+      }
+
+      // Ensure executable — @sparticuz decompresses but may not chmod in all envs
+      const { chmodSync, statSync } = await import("node:fs");
+      try {
+        const mode = statSync(executablePath).mode;
+        console.info("[pdf] file mode:", mode.toString(8));
+        if (!(mode & 0o111)) {
+          chmodSync(executablePath, 0o755);
+          console.info("[pdf] chmod 755 applied");
+        }
+      } catch (e) {
+        console.warn("[pdf] chmod failed:", e.message);
       }
 
       browser = await puppeteer.launch({
