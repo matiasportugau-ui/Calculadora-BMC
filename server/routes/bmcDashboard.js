@@ -2647,6 +2647,27 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     }
   });
 
+  /** Save an AI-generated response to column AF (respuestaSugerida) for a CRM row. */
+  router.post("/crm/cockpit/save-response", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    const text = String(req.body?.text || "").trim();
+    if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: "Invalid row" });
+    if (!text) return res.status(400).json({ ok: false, error: "Missing text" });
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    try {
+      const sheets = await getCrmSheetsWrite();
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: `'${CRM_TAB}'!AF${row}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [[text]] },
+      });
+      return res.json({ ok: true, row, respuestaSugerida: text });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   /** Same rules as legacy POST /crm/cockpit/send-approved — body.row = CRM_Operativo row. */
   async function handleCrmCockpitSendApproved(req, res) {
     const row = Number(req.body?.row);
