@@ -167,6 +167,9 @@ function buildPdfHead(title) {
     padding: 3mm 12mm 2mm;
     border-top: 0.5pt solid #E5E5EA;
   }
+  @media print {
+    a { color: inherit !important; text-decoration: none !important; }
+  }
 </style>
 </head><body>`;
 }

@@ -468,6 +468,7 @@ function MobileBottomBar({
   onCosteo,
   onCopyTSV,
   onPdfEnriquecido,
+  onPdfEnriquecidoPrint,
   pdfPlantaResumenPage,
   onPdfPlantaResumenPageChange,
 }) {
@@ -562,6 +563,9 @@ function MobileBottomBar({
           <button type="button" onClick={() => run(onInternalReport)} style={{ ...sheetBtn, background: C.surface, color: C.brand, border: `1.5px solid ${C.brand}` }}><ClipboardList size={18} />Informe interno</button>
           <button type="button" onClick={() => run(onCopyTSV)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Table size={18} />TSV Sheets</button>
           <button type="button" onClick={() => run(onPdfEnriquecido)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Download size={18} />PDF+</button>
+          {pdfPlantaResumenPage && typeof onPdfEnriquecidoPrint === "function" && (
+            <button type="button" onClick={() => run(onPdfEnriquecidoPrint)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Printer size={18} />PDF+ vectorial</button>
+          )}
         </div>
       </div>
     </>
@@ -3526,6 +3530,36 @@ export default function PanelinCalculadoraV3() {
     }
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage]);
 
+  const handlePdfEnriquecidoPrint = useCallback(async () => {
+    if (!groups.length) return;
+    showToast("Preparando vista para imprimir…");
+    try {
+      const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+      const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
+      const appendix = buildPdfAppendixPayload({
+        scenario, scenarioDef: scenarioDef_, vis: vis_,
+        techo, pared, camara, results, grandTotal,
+        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+        PANELS_TECHO, PANELS_PARED,
+      });
+      const html = generateClientVisualHTML({
+        client: proyecto, project: proyecto, scenario,
+        panel: panelInfo,
+        groups: groups.map(g => ({ title: g.title, items: g.items })),
+        totals: grandTotal,
+        appendix,
+        snapshotImages: {},
+        includePlantaResumenPage: pdfPlantaResumenPage,
+      });
+      openPrintWindow(html);
+    } catch (err) {
+      showToast("Error: " + (err?.message || err));
+    }
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfPlantaResumenPage]);
+
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
       client: proyecto, project: proyecto, scenario,
@@ -6311,6 +6345,7 @@ export default function PanelinCalculadoraV3() {
             <button onClick={handleCosteo} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><CircleDollarSign size={16} />Costeo</button>
             <button onClick={handleCopyTSV} style={{ flex: 1, minWidth: 110, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Table size={16} />TSV Sheets</button>
             <button onClick={handlePdfEnriquecido} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Download size={16} />PDF+</button>
+            {pdfPlantaResumenPage && <button onClick={handlePdfEnriquecidoPrint} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Printer size={16} />PDF+ vectorial</button>}
           </div>}
 
           {/* Transparency Panel */}
@@ -6437,6 +6472,7 @@ export default function PanelinCalculadoraV3() {
           onCosteo={handleCosteo}
           onCopyTSV={handleCopyTSV}
           onPdfEnriquecido={handlePdfEnriquecido}
+          onPdfEnriquecidoPrint={handlePdfEnriquecidoPrint}
           pdfPlantaResumenPage={pdfPlantaResumenPage}
           onPdfPlantaResumenPageChange={setPdfPlantaResumenPage}
         />
