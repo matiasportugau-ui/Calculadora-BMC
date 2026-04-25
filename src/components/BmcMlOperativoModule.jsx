@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -605,56 +606,73 @@ export default function BmcMlOperativoModule() {
           <div style={scoreDisplay}>
             1UP &nbsp;&nbsp; SCORE: {String(cycleScore).padStart(4, "0")} &nbsp;&nbsp; HI: {String(Math.max(cycleScore, 0)).padStart(4, "0")}
           </div>
+
+          {/* ── Instruction card ── */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 8,
+            marginTop: 18,
+            padding: "12px 10px",
+            background: "#0d0d0d",
+            border: "1px solid #2a2a2a",
+            borderRadius: 8,
+          }}>
+            {[
+              {
+                icon: "⟳",
+                color: "#ccaa00",
+                name: "SYNC",
+                desc: "Trae las preguntas nuevas de MercadoLibre al CRM. Úsalo antes de FIRE! para asegurarte de tener todo al día.",
+              },
+              {
+                icon: "🔴",
+                color: "#ff4422",
+                name: "FIRE!",
+                desc: "Ciclo completo en 1 click: sincroniza ML → carga la cola → aprueba cada respuesta sugerida → envía a ML.",
+              },
+              {
+                icon: "↺",
+                color: "#4488ff",
+                name: "COLA",
+                desc: "Recarga la tabla de preguntas pendientes desde el CRM sin sincronizar con ML.",
+              },
+            ].map(({ icon, color, name, desc }) => (
+              <div key={name} style={{ padding: "8px 10px", borderRadius: 6, border: `1px solid ${color}22`, background: `${color}08` }}>
+                <div style={{ fontFamily: "'Courier New', monospace", fontSize: 11, color, fontWeight: 700, letterSpacing: 2, marginBottom: 6 }}>
+                  {icon} {name}
+                </div>
+                <div style={{ fontFamily: "'Courier New', monospace", fontSize: 10, color: "#888", lineHeight: 1.55 }}>
+                  {desc}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         {/* ══ END ARCADE PANEL ══════════════════════════════════════════════ */}
 
         <div style={card}>
-          {tokenAutoLoaded ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, color: "#2a7a2a", fontWeight: 600 }}>
-                Token cargado desde servidor
-              </span>
-              <button
-                type="button"
-                style={{ ...btnGhost, fontSize: 12, padding: "4px 10px" }}
-                onClick={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
-              >
-                Cambiar token
-              </button>
-              <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
-                {loading ? "Cargando…" : "Actualizar cola"}
-              </button>
-              <button type="button" style={btnGhost} onClick={runSync} disabled={syncing || !token}>
-                {syncing ? "Sincronizando…" : "Sincronizar ML → CRM"}
-              </button>
-            </div>
-          ) : (
-            <>
-              <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Autenticación cockpit</div>
-              {tokenLoadError && (
-                <div style={{ fontSize: 12, color: "#8b4000", marginBottom: 8 }}>{tokenLoadError}</div>
-              )}
-              <input
-                type="password"
-                autoComplete="off"
-                placeholder="Pegá API_AUTH_TOKEN"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                style={{ ...input, marginBottom: 10 }}
-              />
-              <div style={rowActions}>
-                <button type="button" style={btnPrimary} onClick={saveToken}>
-                  Guardar token
-                </button>
+          <CockpitTokenPanel
+            tokenAutoLoaded={tokenAutoLoaded}
+            tokenLoadError={tokenLoadError}
+            tokenInput={tokenInput}
+            setTokenInput={setTokenInput}
+            onSave={saveToken}
+            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            inputStyle={input}
+            btnPrimaryStyle={btnPrimary}
+            btnGhostStyle={btnGhost}
+            actions={
+              <>
                 <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
                   {loading ? "Cargando…" : "Actualizar cola"}
                 </button>
                 <button type="button" style={btnGhost} onClick={runSync} disabled={syncing || !token}>
                   {syncing ? "Sincronizando…" : "Sincronizar ML → CRM"}
                 </button>
-              </div>
-            </>
-          )}
+              </>
+            }
+          />
         </div>
 
         {error ? (

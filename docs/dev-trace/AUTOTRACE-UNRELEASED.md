@@ -200,6 +200,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `777f9cd` chore(dev-trace): sync post-kb-pricing-sprint [SKIP_AUTOTRACE]
 - `25fc842` chore(dev-trace): sync post-score-85 [SKIP_AUTOTRACE]
 - `49d4064` chore(dev-trace): sync post-link-presupuesto-fix [SKIP_AUTOTRACE]
+- `9a38ef6` chore(dev-trace): final session sync 2026-04-24 [SKIP_AUTOTRACE]
 
 ## Other
 

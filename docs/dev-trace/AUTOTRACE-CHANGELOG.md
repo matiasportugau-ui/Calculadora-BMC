@@ -188,3 +188,4 @@
 - 2026-04-24 06:38:39 — `49d4064` — chore(dev-trace): sync post-link-presupuesto-fix [SKIP_AUTOTRACE]
 - 2026-04-24 06:40:11 — `8cc9f80` — docs(state): end-of-session sync 2026-04-24
 - 2026-04-24 06:40:28 — `f1c2f5a` — test(contracts): handle null linkPresupuesto in cockpit row contract
+- 2026-04-24 06:40:52 — `9a38ef6` — chore(dev-trace): final session sync 2026-04-24 [SKIP_AUTOTRACE]
