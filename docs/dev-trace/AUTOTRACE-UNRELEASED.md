@@ -105,6 +105,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `72d8e68` fix(data): remove residual ISODEC_EPS_PARED refs from SCENARIOS_DEF
 - `4b7da4b` fix(sheets): treat non-URL link_presupuesto values as null instead of returning display text
 - `4f381fb` fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233
+- `5349960` fix(pdf): responsive SVG strips (viewBox + width 100%) + postcss audit fix + KB sync
 
 ## Documentation
 
