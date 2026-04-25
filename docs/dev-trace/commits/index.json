@@ -6662,6 +6662,29 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "837bff1495f8ae818e8a1c280cba76c21522dd8b",
+      "short_hash": "837bff1",
+      "date": "2026-04-25",
+      "time": "02:48:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "cockpit-final",
+      "type": "chore",
+      "scope": "",
+      "title": "resolve rebase conflicts — take main versions for bmc scripts and quotation views",
+      "subject": "chore: resolve rebase conflicts — take main versions for bmc scripts and quotation views",
+      "files": [],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
     }
   ]
 }

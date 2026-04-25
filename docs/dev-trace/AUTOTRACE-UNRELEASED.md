@@ -216,6 +216,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f715469` chore(dev-trace): AUTOTRACE sync 2026-04-24 [SKIP_AUTOTRACE]
 - `ac39207` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `a6e0548` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- `837bff1` chore: resolve rebase conflicts — take main versions for bmc scripts and quotation views
 
 ## Other
 
