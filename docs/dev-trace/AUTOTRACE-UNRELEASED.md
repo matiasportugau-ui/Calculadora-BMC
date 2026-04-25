@@ -106,6 +106,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `4b7da4b` fix(sheets): treat non-URL link_presupuesto values as null instead of returning display text
 - `4f381fb` fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233
 - `5349960` fix(pdf): responsive SVG strips (viewBox + width 100%) + postcss audit fix + KB sync
+- `a75c9a7` fix(pdf): omit empty client fields + tmux multi-terminal workspace
 
 ## Documentation
 

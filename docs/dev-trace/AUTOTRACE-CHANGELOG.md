@@ -203,3 +203,4 @@
 - 2026-04-25 00:01:33 — `ac39207` — chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - 2026-04-25 00:12:36 — `a6e0548` — chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - 2026-04-25 00:23:36 — `5349960` — fix(pdf): responsive SVG strips (viewBox + width 100%) + postcss audit fix + KB sync
+- 2026-04-25 02:32:24 — `a75c9a7` — fix(pdf): omit empty client fields + tmux multi-terminal workspace

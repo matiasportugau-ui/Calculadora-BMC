@@ -6632,6 +6632,36 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "a75c9a70906c16d4f08dc3b6dead1f3f46916827",
+      "short_hash": "a75c9a7",
+      "date": "2026-04-25",
+      "time": "02:32:24",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "omit empty client fields + tmux multi-terminal workspace",
+      "subject": "fix(pdf): omit empty client fields + tmux multi-terminal workspace",
+      "files": [
+        "scripts/bmc-workspace.sh",
+        "setup_team_tmux.sh",
+        "src/utils/quotationViews.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "scripts",
+          "src"
+        ]
+      }
     }
   ]
 }
