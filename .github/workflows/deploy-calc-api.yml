@@ -72,9 +72,9 @@ jobs:
             --allow-unauthenticated
             --min-instances=0
             --max-instances=10
-            --memory=256Mi
+            --memory=512Mi
             --cpu=1
-            --timeout=30
+            --timeout=60
 
       - name: Show service URL
         run: |
