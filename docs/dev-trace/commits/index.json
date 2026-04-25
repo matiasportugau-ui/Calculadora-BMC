@@ -7185,6 +7185,70 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "f1b23c5a6b6aaf19c8d57dd8c520086149c764d9",
+      "short_hash": "f1b23c5",
+      "date": "2026-04-25",
+      "time": "03:42:45",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "Alpine chromium path + robust fallback resolution",
+      "subject": "fix(pdf): Alpine chromium path + robust fallback resolution",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3ba47ab.md",
+        "docs/dev-trace/commits/2026/04/bd2ab02.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-25.md",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "9c5cf0a0abb73e88d4c4ec54d1296bd2a53d01a0",
+      "short_hash": "9c5cf0a",
+      "date": "2026-04-25",
+      "time": "03:45:46",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "runtime chromium discovery via which — resilient to Alpine path variance",
+      "subject": "fix(pdf): runtime chromium discovery via which — resilient to Alpine path variance",
+      "files": [
+        "server/routes/pdf.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }

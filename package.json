@@ -12,7 +12,7 @@
     "readme:generate": "node scripts/generate-readme-presentation.mjs",
     "readme:sync": "npm run version:data && node scripts/generate-readme-presentation.mjs",
     "readme:check": "node scripts/generate-readme-presentation.mjs --check",
-    "disk:precheck": "bash scripts/disk-space-precheck.sh .",
+    "disk:precheck": "test \"$BMC_DISK_PRECHECK_SKIP\" = \"1\" || bash scripts/disk-space-precheck.sh .",
     "predev": "npm run disk:precheck",
     "dev": "npm run version:data && vite",
     "dev:api": "node --watch server/index.js",

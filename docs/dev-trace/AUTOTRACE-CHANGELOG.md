@@ -220,3 +220,5 @@
 - 2026-04-25 03:23:36 — `323c104` — feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
 - 2026-04-25 03:35:02 — `3ba47ab` — feat(workspace): /bmc-claude-workspace skill + setup script
 - 2026-04-25 03:41:27 — `bd2ab02` — fix(pdf): chromium path — Alpine uses /usr/bin/chromium not chromium-browser
+- 2026-04-25 03:42:45 — `f1b23c5` — fix(pdf): Alpine chromium path + robust fallback resolution
+- 2026-04-25 03:45:46 — `9c5cf0a` — fix(pdf): runtime chromium discovery via which — resilient to Alpine path variance

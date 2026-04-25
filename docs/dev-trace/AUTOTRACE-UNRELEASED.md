@@ -120,6 +120,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `524e7f1` fix(tooling): bmc-workspace port pre-check, gate window, broadcast guard
 - `43a9206` fix(pdf): move playwright to dependencies for Cloud Run runtime
 - `bd2ab02` fix(pdf): chromium path — Alpine uses /usr/bin/chromium not chromium-browser
+- `f1b23c5` fix(pdf): Alpine chromium path + robust fallback resolution
+- `9c5cf0a` fix(pdf): runtime chromium discovery via which — resilient to Alpine path variance
 
 ## Documentation
 
