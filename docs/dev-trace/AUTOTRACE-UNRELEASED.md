@@ -73,6 +73,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `26079f9` feat(pdf): Playwright server-side PDF route + pdfGenerator strategy chain
 - `cd369b3` feat(pdf): server-side PDF generation via Playwright + pdfGenerator refactor
 - `3d8529b` feat(pdf): server-side PDF via Playwright — vectorial quality for Drive uploads
+- `686d161` feat(pdf): Cloud Run Chromium support — Alpine apk + CHROMIUM_PATH env
 
 ## Fixes
 
@@ -113,6 +114,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5349960` fix(pdf): responsive SVG strips (viewBox + width 100%) + postcss audit fix + KB sync
 - `a75c9a7` fix(pdf): omit empty client fields + tmux multi-terminal workspace
 - `c98c41e` fix(pdf): @media print CSS + PDF+ vectorial print path
+- `524e7f1` fix(tooling): bmc-workspace port pre-check, gate window, broadcast guard
 
 ## Documentation
 
@@ -224,6 +226,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a6e0548` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `baef360` chore: regenerate quotation preview — resolve merge conflict
 - `c5750df` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- `eb54831` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 
 ## Other
 

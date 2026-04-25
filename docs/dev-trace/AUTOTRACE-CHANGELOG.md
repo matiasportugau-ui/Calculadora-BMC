@@ -212,3 +212,6 @@
 - 2026-04-25 03:05:22 — `baef360` — chore: regenerate quotation preview — resolve merge conflict
 - 2026-04-25 03:06:16 — `c98c41e` — fix(pdf): @media print CSS + PDF+ vectorial print path
 - 2026-04-25 03:07:04 — `c5750df` — chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- 2026-04-25 03:09:20 — `eb54831` — chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- 2026-04-25 03:09:47 — `524e7f1` — fix(tooling): bmc-workspace port pre-check, gate window, broadcast guard
+- 2026-04-25 03:15:18 — `686d161` — feat(pdf): Cloud Run Chromium support — Alpine apk + CHROMIUM_PATH env
