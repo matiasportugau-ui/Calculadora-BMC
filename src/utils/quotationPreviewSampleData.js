@@ -34,9 +34,9 @@ export const sampleClientVisualData = {
       items: [
         { label: "Frente Inf: Canalón", cant: 5, unidad: "unid", pu: 69.54, total: 347.70 },
         { label: "Soporte canalón", cant: 2, unidad: "unid", pu: 15.94, total: 31.88 },
-        { label: "Frente Sup: gotero_frontal", cant: 5, unidad: "unid", pu: 15.67, total: 78.35 },
-        { label: "Lat.Izq: gotero_lateral", cant: 6, unidad: "unid", pu: 20.77, total: 124.62 },
-        { label: "Lat.Der: gotero_lateral", cant: 2, unidad: "unid", pu: 20.77, total: 41.54 },
+        { label: "Frente Sup: Gotero frontal Superior", cant: 5, unidad: "unid", pu: 15.67, total: 78.35 },
+        { label: "Lat.Izq: Gotero Lateral", cant: 6, unidad: "unid", pu: 20.77, total: 124.62 },
+        { label: "Lat.Der: Gotero Lateral", cant: 2, unidad: "unid", pu: 20.77, total: 41.54 },
         { label: "Tornillo T1 (perfilería)", cant: 182, unidad: "unid", pu: 0.05, total: 8.95 },
       ],
     },

@@ -2,7 +2,7 @@
 // src/utils/calculations.js — Pure calculation functions for BMC calculator
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { p } from "../data/constants.js";
+import { p, BORDER_OPTIONS } from "../data/constants.js";
 import { getPricing } from "../data/pricing.js";
 import { getIVA } from "./calculatorConfig.js";
 import { getDimensioningParam } from "./dimensioningFormulas.js";
@@ -427,6 +427,13 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
   const dimLatIzq = em && Number.isFinite(em.latIzq) ? em.latIzq : largo;
   const dimLatDer = em && Number.isFinite(em.latDer) ? em.latDer : largo;
 
+  const bLabel = (side, id) => {
+    const opts = BORDER_OPTIONS[side] || [];
+    const hit = opts.find(o => o.id === id && o.familias?.includes(familiaP))
+      || opts.find(o => o.id === id);
+    return hit ? hit.label : id;
+  };
+
   // Canalón en frente: agregar canalón + soporte automáticamente
   if (borders.frente === "canalon") {
     const canData = resolveSKU_techo("canalon", familiaP, espesor);
@@ -479,17 +486,17 @@ export function calcPerfileriaTecho(borders, cantP, largo, anchoTotal, familiaP,
       });
     }
   } else if (borders.frente && borders.frente !== "none" && dimFrente > 0) {
-    addPerfil("Frente Inf: " + borders.frente, borders.frente, dimFrente);
+    addPerfil("Frente Inf: " + bLabel("frente", borders.frente), borders.frente, dimFrente);
   }
 
   if (borders.fondo && borders.fondo !== "none" && dimFondo > 0) {
-    addPerfil("Frente Sup: " + borders.fondo, borders.fondo, dimFondo);
+    addPerfil("Frente Sup: " + bLabel("fondo", borders.fondo), borders.fondo, dimFondo);
   }
   if (borders.latIzq && borders.latIzq !== "none" && dimLatIzq > 0) {
-    addPerfil("Lat.Izq: " + borders.latIzq, borders.latIzq, dimLatIzq);
+    addPerfil("Lat.Izq: " + bLabel("latIzq", borders.latIzq), borders.latIzq, dimLatIzq);
   }
   if (borders.latDer && borders.latDer !== "none" && dimLatDer > 0) {
-    addPerfil("Lat.Der: " + borders.latDer, borders.latDer, dimLatDer);
+    addPerfil("Lat.Der: " + bLabel("latDer", borders.latDer), borders.latDer, dimLatDer);
   }
 
   if (opciones && opciones.inclGotSup) {
