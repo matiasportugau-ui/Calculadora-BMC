@@ -400,17 +400,49 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
     out += `<text x="${cx}" y="${labY.toFixed(1)}" text-anchor="middle" font-size="13" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.w))}</text>`;
   }
 
-  // ── Y-axis dimension ticks + labels ───────────────────────────────────────
-  for (const r of rects) {
-    const y0  = sy(r.y);
-    const y1  = sy(r.y + r.h);
-    const cy  = ((y0 + y1) / 2).toFixed(1);
-    const lx  = (PAD_L - 8).toFixed(1);
-    const tlx = (PAD_L - 10).toFixed(1);
-    out += `<line x1="${lx}" y1="${y0.toFixed(2)}" x2="${lx}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.45"/>`;
-    out += `<line x1="${(parseFloat(lx) - 4).toFixed(2)}" y1="${y0.toFixed(2)}" x2="${lx}" y2="${y0.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-    out += `<line x1="${(parseFloat(lx) - 4).toFixed(2)}" y1="${y1.toFixed(2)}" x2="${lx}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
-    out += `<text x="${tlx}" y="${cy}" dominant-baseline="middle" text-anchor="end" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.h))}</text>`;
+  // ── Y-axis labels — only for leftmost column; deduplicate same height ────
+  {
+    const lx  = PAD_L - 8;
+    const tlx = PAD_L - 12;
+    const seenH = new Set();
+    // Only zones whose left edge is at global minX get a Y annotation
+    for (const r of rects) {
+      if (Math.abs(r.x - minX) > 0.002) continue;
+      const hKey = r.h.toFixed(4);
+      if (seenH.has(hKey)) continue;
+      seenH.add(hKey);
+      const y0 = sy(r.y);
+      const y1 = sy(r.y + r.h);
+      const cy = ((y0 + y1) / 2).toFixed(1);
+      out += `<line x1="${lx.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.45"/>`;
+      out += `<line x1="${(lx - 4).toFixed(2)}" y1="${y0.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${y0.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+      out += `<line x1="${(lx - 4).toFixed(2)}" y1="${y1.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+      out += `<text x="${tlx.toFixed(1)}" y="${cy}" dominant-baseline="middle" text-anchor="end" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.h))}</text>`;
+    }
+  }
+
+  // ── Total-width span dimension (all zones together) ───────────────────────
+  if (rects.length > 1) {
+    const txLeft  = sx(minX);
+    const txRight = sx(maxX);
+    const spanY   = PAD_T + DRAW_H + 50;
+    out += `<line x1="${txLeft.toFixed(2)}" y1="${spanY.toFixed(2)}" x2="${txRight.toFixed(2)}" y2="${spanY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.5"/>`;
+    out += `<line x1="${txLeft.toFixed(2)}" y1="${(spanY - 4).toFixed(2)}" x2="${txLeft.toFixed(2)}" y2="${(spanY + 4).toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+    out += `<line x1="${txRight.toFixed(2)}" y1="${(spanY - 4).toFixed(2)}" x2="${txRight.toFixed(2)}" y2="${(spanY + 4).toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+    out += `<text x="${((txLeft + txRight) / 2).toFixed(1)}" y="${(spanY + 14).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(bW))} total</text>`;
+  }
+
+  // ── Scale bar (bottom-right corner) ──────────────────────────────────────
+  {
+    const barM  = scale >= 40 ? 1 : scale >= 20 ? 2 : 5; // pick readable reference
+    const barPx = barM * scale;
+    const sbX2  = VW - PAD_R - 4;
+    const sbX1  = sbX2 - barPx;
+    const sbY   = SVG_H - 20;
+    out += `<line x1="${sbX1.toFixed(2)}" y1="${sbY}" x2="${sbX2.toFixed(2)}" y2="${sbY}" stroke="${C_DIM}" stroke-width="1.8" stroke-linecap="square"/>`;
+    out += `<line x1="${sbX1.toFixed(2)}" y1="${(sbY - 4)}" x2="${sbX1.toFixed(2)}" y2="${(sbY + 4)}" stroke="${C_DIM}" stroke-width="1.4"/>`;
+    out += `<line x1="${sbX2.toFixed(2)}" y1="${(sbY - 4)}" x2="${sbX2.toFixed(2)}" y2="${(sbY + 4)}" stroke="${C_DIM}" stroke-width="1.4"/>`;
+    out += `<text x="${((sbX1 + sbX2) / 2).toFixed(1)}" y="${(sbY - 6)}" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif">${barM} m</text>`;
   }
 
   // ── Orientation labels ────────────────────────────────────────────────────

@@ -12,46 +12,42 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
-import { existsSync } from "node:fs";
-import { glob } from "node:fs/promises";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import os from "node:os";
 
-// Locate the Chromium executable across all known installation paths.
-// Cloud Run maps container users dynamically (uid may differ from Dockerfile USER),
-// so os.homedir() at runtime may not match the build-time root install path.
-async function findChromiumExecutable(chromium) {
-  // 1. Explicit override via env var
+// Locate the Chromium executable across known installation paths.
+// Node 20 compatible — no fs.promises.glob (added in Node 22).
+function findChromiumSync(chromium) {
+  // 1. Explicit override
   if (process.env.CHROMIUM_PATH && existsSync(process.env.CHROMIUM_PATH)) {
     return process.env.CHROMIUM_PATH;
   }
 
-  // 2. Playwright canonical path (works when PLAYWRIGHT_BROWSERS_PATH is set
-  //    and the binary was installed to that exact path as the same user)
+  // 2. Playwright canonical path
   try {
-    const playwrightPath = chromium.executablePath();
-    if (existsSync(playwrightPath)) return playwrightPath;
-    console.info("[pdf] chromium.executablePath() not found:", playwrightPath);
-  } catch { /* playwright not installed */ }
+    const p = chromium.executablePath();
+    if (existsSync(p)) return p;
+  } catch { /* not installed */ }
 
-  // 3. Glob search — covers root-installed playwright cache regardless of runtime user
-  const searchRoots = [
-    "/root/.cache/ms-playwright",
+  // 3. Search known ms-playwright cache roots (handles root vs user installs)
+  const roots = [
     "/ms-playwright",
+    "/root/.cache/ms-playwright",
     `${os.homedir()}/.cache/ms-playwright`,
     "/home/node/.cache/ms-playwright",
   ];
-  for (const root of searchRoots) {
+  for (const root of roots) {
     if (!existsSync(root)) continue;
-    for await (const f of glob("chromium-*/chrome-linux64/chrome", { cwd: root })) {
-      const full = `${root}/${f}`;
-      if (existsSync(full)) {
-        console.info("[pdf] chromium found via glob:", full);
-        return full;
+    try {
+      for (const dir of readdirSync(root)) {
+        const candidate = join(root, dir, "chrome-linux64", "chrome");
+        if (existsSync(candidate)) return candidate;
       }
-    }
+    } catch { /* skip unreadable dirs */ }
   }
 
-  // 4. System chromium (apk/apt install)
+  // 4. System chromium (apk/apt)
   for (const p of ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]) {
     if (existsSync(p)) return p;
   }
@@ -76,7 +72,7 @@ export function createPdfRouter() {
     try {
       const { chromium } = await import("playwright");
 
-      const executablePath = await findChromiumExecutable(chromium);
+      const executablePath = findChromiumSync(chromium);
       if (!executablePath) {
         console.error("[pdf/generate] chromium binary not found anywhere");
         return res.status(503).json({ error: "pdf_renderer_unavailable" });
