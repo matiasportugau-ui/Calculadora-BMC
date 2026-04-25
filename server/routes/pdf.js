@@ -30,9 +30,18 @@ export function createPdfRouter() {
     try {
       const { chromium } = await import("playwright");
 
-      // Use the bundled full browser (not headless_shell) — avoids macOS spawn -88
+      // Executable path resolution:
+      //   CHROMIUM_PATH env var   → explicit override (CI, custom installs)
+      //   NODE_ENV=production     → /usr/bin/chromium-browser (Alpine apk install in Dockerfile)
+      //   dev/local               → Playwright bundled Google Chrome for Testing
+      const executablePath =
+        process.env.CHROMIUM_PATH ||
+        (process.env.NODE_ENV === "production"
+          ? "/usr/bin/chromium-browser"
+          : chromium.executablePath());
+
       browser = await chromium.launch({
-        executablePath: chromium.executablePath(),
+        executablePath,
         headless: true,
         args: [
           "--no-sandbox",

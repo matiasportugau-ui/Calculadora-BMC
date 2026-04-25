@@ -9,6 +9,9 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
+# playwright is needed at runtime (server-side PDF); PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+# skips bundled Chromium download — we use system chromium instead (apk add chromium)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci --omit=dev --legacy-peer-deps
 
 FROM node:20-alpine AS calc-build
@@ -33,6 +36,14 @@ FROM node:20-alpine AS runtime
 LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app
+
+# Chromium for server-side PDF generation (/api/pdf/generate)
+# Binary available at /usr/bin/chromium-browser inside the container
+RUN apk add --no-cache chromium
+
+# Tell Playwright to use the system Chromium (avoids bundled binary download)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    CHROMIUM_PATH=/usr/bin/chromium-browser
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
