@@ -34,7 +34,7 @@ LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app
 
-# System libs required by @sparticuz/chromium-min (decompresses to /tmp at runtime)
+# System libs required by @sparticuz/chromium (decompresses binary to /tmp at runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
