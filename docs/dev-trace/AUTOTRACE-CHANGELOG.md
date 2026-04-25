@@ -2,10 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-18 21:17:46 — `f3d6153` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- 2026-04-18 21:18:13 — `5a907b8` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- 2026-04-18 21:30:15 — `3dc1e29` — chore(dev-trace): complete AUTOTRACE sync and PROJECT-STATE
-- 2026-04-18 21:31:03 — `3390a72` — chore(dev-trace): record AUTOTRACE output for traceability commit
 - 2026-04-18 21:31:47 — `11d78a6` — chore(dev-trace): update AUTOTRACE documentation and status
 - 2026-04-18 21:32:01 — `f08ea7c` — chore(dev-trace): update AUTOTRACE documentation and status
 - 2026-04-18 21:34:39 — `ed9e830` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
@@ -222,3 +218,7 @@
 - 2026-04-25 04:24:33 — `8d3c176` — fix(ci): add Dockerfile.bmc-dashboard to deploy trigger paths
 - 2026-04-25 04:29:16 — `e056913` — feat(pdf): vectorial SVG plano 2D + robust chromium glob discovery
 - 2026-04-25 04:34:00 — `61ccb14` — fix(ci): bump Cloud Run memory 256Mi→512Mi, timeout 30→60s for Playwright
+- 2026-04-25 04:37:44 — `1bc5d48` — fix(ci): update deployment triggers and Cloud Run configuration
+- 2026-04-25 04:41:31 — `f3fbba5` — fix(docker): deps stage must match runtime — node:20-slim for glibc compat
+- 2026-04-25 04:48:40 — `beef934` — fix(docker): remove playwright install from runtime container
+- 2026-04-25 04:56:42 — `9c74853` — fix(deps): move playwright to devDependencies — breaks Alpine Docker build

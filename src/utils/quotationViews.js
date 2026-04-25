@@ -10,6 +10,11 @@
 
 import { BORDER_OPTIONS } from "../data/constants.js";
 import { COMPANY, buildLogo } from "./helpers.js";
+import { zonasToPlantRectsWithAutoGap, formatZonaDisplayTitle, isLateralAnnexZona } from "./roofLateralAnnexLayout.js";
+import { findEncounters, encounterPairKey } from "./roofPlanGeometry.js";
+import { buildZoneBorderExteriorLines } from "./roofPlanEdgeSegments.js";
+import { buildAnchoStripsPlanta } from "./roofPanelStripsPlanta.js";
+import { normalizeEncounter } from "./roofEncounterModel.js";
 
 export const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -104,6 +109,10 @@ export function buildPdfAppendixPayload({
     borderExtras,
     roofBlock,
     wallBlock,
+    zonas: Array.isArray(techo.zonas) ? techo.zonas : [],
+    tipoAguas: techo.tipoAguas || "una_agua",
+    panelAu: roofFam?.au || 0,
+    encounterByPair: techo.preview?.encounterByPair || techo.encounterByPair || {},
     kpi: {
       area: kpiArea,
       paneles: kpiPaneles,
@@ -154,18 +163,296 @@ export function svgParedStrip(wallBlock) {
 }
 
 /**
- * Plano en planta SVG desde datos de zonas — siempre vectorial, siempre nítido en PDF.
- * Reemplaza el screenshot rasterizado. Todas las zonas se dibujan a la misma escala.
+ * Plano en planta SVG — siempre vectorial, siempre nítido en PDF.
+ * Cuando zonas[] está disponible usa el motor geométrico completo (posiciones reales,
+ * encuentros semánticos, juntas de panel, flechas de pendiente).
+ * Fallback a layout simple cuando solo hay roofBlocks (legacy).
+ *
+ * @param {object[]} roofBlocks — bloques simplificados (fallback)
+ * @param {object[]} [zonas]    — techo.zonas con preview.x/y (render geométrico)
+ * @param {string}  [tipoAguas] — "una_agua" | "dos_aguas"
+ * @param {object}  [encounterByPair] — techo.preview.encounterByPair
+ * @param {number}  [panelAu]   — ancho útil del panel en metros
  */
-export function svgFloorPlan(roofBlocks) {
+export function svgFloorPlan(roofBlocks, zonas, tipoAguas = "una_agua", encounterByPair = {}, panelAu = 0) {
+  // Geometric path: requires valid zonas
+  if (Array.isArray(zonas) && zonas.some(z => z?.largo > 0 && z?.ancho > 0)) {
+    try {
+      return _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu);
+    } catch { /* fall through to legacy */ }
+  }
+  // Legacy path: simple side-by-side blocks
   if (!Array.isArray(roofBlocks) || roofBlocks.length === 0) return "";
+  const blocks = roofBlocks.filter(rb => (rb.anchoTotal || rb.ancho || 0) > 0 && (rb.largo || 0) > 0);
+  if (!blocks.length) return "";
+  return _svgFloorPlanLegacy(blocks);
+}
+
+function _escSvg(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function _fmtM(n) {
+  const v = Number(n);
+  return Math.abs(v - Math.round(v)) < 1e-4 ? `${Math.round(v)} m` : `${v.toFixed(2)} m`;
+}
+
+function _fmtDimLabel(h, w) {
+  const fmt = x => Math.abs(x - Math.round(x)) < 1e-4 ? String(Math.round(x)) : Number(x).toFixed(2).replace(/\.?0+$/, "");
+  return `${fmt(h)} × ${fmt(w)} m`;
+}
+
+function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
+  // ── Geometry ──────────────────────────────────────────────────────────────
+  const rects = zonasToPlantRectsWithAutoGap(zonas, tipoAguas);
+  if (!rects.length) return "";
+
+  const encounters = findEncounters(rects);
+  const extLines = buildZoneBorderExteriorLines(rects, zonas);
+
+  // Bounding box (meters)
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of rects) {
+    if (r.x < minX) minX = r.x;
+    if (r.y < minY) minY = r.y;
+    if (r.x + r.w > maxX) maxX = r.x + r.w;
+    if (r.y + r.h > maxY) maxY = r.y + r.h;
+  }
+  const bW = maxX - minX;
+  const bH = maxY - minY;
+  if (!(bW > 0) || !(bH > 0)) return "";
+
+  // ── Viewport ──────────────────────────────────────────────────────────────
+  const VW = 1000;
+  const PAD_L = 76;   // Y-axis dim labels
+  const PAD_R = 32;
+  const PAD_T = 36;
+  const PAD_B = 88;   // X-axis labels + legend
+  const DRAW_W = VW - PAD_L - PAD_R;
+  const DRAW_H_MAX = 500;
+
+  const scale = Math.min(DRAW_W / bW, DRAW_H_MAX / bH);
+  const DRAW_H = bH * scale;
+  const SVG_H = Math.ceil(PAD_T + DRAW_H + PAD_B);
+
+  // Coordinate transform: meters → SVG units
+  const sx = m => PAD_L + (m - minX) * scale;
+  const sy = m => PAD_T + (m - minY) * scale;
+
+  // ── Design tokens ─────────────────────────────────────────────────────────
+  const LW_BORDER    = 3.4;
+  const LW_ENCOUNTER = 2.2;
+  const LW_JOINT     = 0.9;
+  const LW_DIM       = 1.1;
+  const LW_TICK      = 1.1;
+
+  const C_BG          = "#F8FAFC";
+  const C_DRAW_BG     = "#FFFFFF";
+  const C_BORDER      = "#1e3a5f";
+  const C_PANEL_EVEN  = "#EBF4FC";
+  const C_PANEL_ODD   = "#D6E9F8";
+  const C_JOINT       = "#4A7FB5";
+  const C_DIM         = "#5c6470";
+  const C_LABEL_ZONE  = "#003366";
+  const C_LABEL_DIM   = "#64748B";
+  const C_CONTINUO    = "#94A3B8";
+  const C_PRETIL      = "#f97316";
+  const C_CUMBRERA    = "#3b82f6";
+  const C_DESNIVEL    = "#ef4444";
+
+  // ── Encounter mode lookup ─────────────────────────────────────────────────
+  const encPairs = encounterByPair && typeof encounterByPair === "object" ? encounterByPair : {};
+  const getMode = (giA, giB) => {
+    const pk = encounterPairKey(giA, giB);
+    const raw = encPairs[pk];
+    return raw ? (normalizeEncounter(raw).modo || "continuo") : "continuo";
+  };
+
+  let out = "";
+
+  // ── Background ────────────────────────────────────────────────────────────
+  out += `<rect x="0" y="0" width="${VW}" height="${SVG_H}" fill="${C_BG}"/>`;
+  out += `<rect x="${PAD_L - 6}" y="${PAD_T - 6}" width="${DRAW_W + 12}" height="${DRAW_H + 12}" fill="${C_DRAW_BG}" stroke="#E2E8F0" stroke-width="0.8" rx="2"/>`;
+
+  // ── Panel strips ──────────────────────────────────────────────────────────
+  for (const r of rects) {
+    const rx0 = sx(r.x);
+    const ry0 = sy(r.y);
+    const rw  = r.w * scale;
+    const rh  = r.h * scale;
+
+    if (panelAu > 0 && r.w > 0) {
+      const strips = buildAnchoStripsPlanta(r.w, panelAu);
+      for (let i = 0; i < strips.length; i++) {
+        const s  = strips[i];
+        const sx0 = rx0 + s.x0 * scale;
+        const sw  = s.width * scale;
+        const fill = i % 2 === 0 ? C_PANEL_EVEN : C_PANEL_ODD;
+        out += `<rect x="${sx0.toFixed(2)}" y="${ry0.toFixed(2)}" width="${sw.toFixed(2)}" height="${rh.toFixed(2)}" fill="${fill}"/>`;
+      }
+      // Panel joint lines (vertical, between panels)
+      for (let i = 1; i < strips.length; i++) {
+        const jx = (rx0 + strips[i].x0 * scale).toFixed(2);
+        out += `<line x1="${jx}" y1="${ry0.toFixed(2)}" x2="${jx}" y2="${(ry0 + rh).toFixed(2)}" stroke="${C_JOINT}" stroke-width="${LW_JOINT}" opacity="0.55"/>`;
+      }
+    } else {
+      out += `<rect x="${rx0.toFixed(2)}" y="${ry0.toFixed(2)}" width="${rw.toFixed(2)}" height="${rh.toFixed(2)}" fill="${C_PANEL_EVEN}"/>`;
+    }
+
+    // Slope direction arrow
+    const slopeMark = r.z?.preview?.slopeMark;
+    if (slopeMark && slopeMark !== "off") {
+      const cx   = rx0 + rw / 2;
+      const cy   = ry0 + rh / 2;
+      const aLen = Math.min(rh * 0.28, 38, rw * 0.38);
+      const isPos = slopeMark === "along_largo_pos";
+      const dy = aLen / 2;
+      const y1 = (cy - dy).toFixed(2);
+      const y2 = (cy + dy).toFixed(2);
+      const cxs = cx.toFixed(2);
+      const hs = Math.min(7, aLen * 0.3);
+      const tipY = isPos ? parseFloat(y2) : parseFloat(y1);
+      const bY   = isPos ? tipY - hs : tipY + hs;
+      out += `<line x1="${cxs}" y1="${y1}" x2="${cxs}" y2="${y2}" stroke="${C_DIM}" stroke-width="1.6" stroke-linecap="round" opacity="0.45"/>`;
+      out += `<polygon points="${cxs},${tipY.toFixed(2)} ${(cx - hs * 0.55).toFixed(2)},${bY.toFixed(2)} ${(cx + hs * 0.55).toFixed(2)},${bY.toFixed(2)}" fill="${C_DIM}" opacity="0.45"/>`;
+    }
+  }
+
+  // ── Encounter lines ───────────────────────────────────────────────────────
+  const usedModes = new Set();
+  for (const enc of encounters) {
+    const [giA, giB] = enc.zoneIndices;
+    const modo = getMode(giA, giB);
+    if (modo !== "continuo") usedModes.add(modo);
+
+    const ex1 = sx(enc.x1).toFixed(2);
+    const ey1 = sy(enc.y1).toFixed(2);
+    const ex2 = sx(enc.x2).toFixed(2);
+    const ey2 = sy(enc.y2).toFixed(2);
+
+    let col, dash, lw;
+    if (modo === "cumbrera") {
+      col = C_CUMBRERA; dash = "none"; lw = LW_ENCOUNTER + 0.7;
+    } else if (modo === "pretil") {
+      col = C_PRETIL; dash = "9,5"; lw = LW_ENCOUNTER;
+    } else if (modo === "desnivel") {
+      col = C_DESNIVEL; dash = "5,3"; lw = LW_ENCOUNTER;
+    } else {
+      col = C_CONTINUO; dash = "7,4"; lw = LW_ENCOUNTER - 0.5;
+    }
+
+    const dashAttr = dash === "none" ? "" : ` stroke-dasharray="${dash}"`;
+    out += `<line x1="${ex1}" y1="${ey1}" x2="${ex2}" y2="${ey2}" stroke="${col}" stroke-width="${lw}" stroke-linecap="round"${dashAttr}/>`;
+
+    // Cumbrera: double-line signature (ridge)
+    if (modo === "cumbrera") {
+      const off = 3.0;
+      if (enc.orientation === "vertical") {
+        out += `<line x1="${(parseFloat(ex1) + off).toFixed(2)}" y1="${ey1}" x2="${(parseFloat(ex2) + off).toFixed(2)}" y2="${ey2}" stroke="${C_CUMBRERA}" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>`;
+      } else {
+        out += `<line x1="${ex1}" y1="${(parseFloat(ey1) + off).toFixed(2)}" x2="${ex2}" y2="${(parseFloat(ey2) + off).toFixed(2)}" stroke="${C_CUMBRERA}" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>`;
+      }
+    }
+  }
+
+  // ── Exterior zone borders (suppresses same-body internal joints) ───────────
+  for (const r of rects) {
+    for (const seg of extLines[r.gi] || []) {
+      out += `<line x1="${sx(seg.x1).toFixed(2)}" y1="${sy(seg.y1).toFixed(2)}" x2="${sx(seg.x2).toFixed(2)}" y2="${sy(seg.y2).toFixed(2)}" stroke="${C_BORDER}" stroke-width="${LW_BORDER}" stroke-linecap="square"/>`;
+    }
+  }
+
+  // ── Zone labels ───────────────────────────────────────────────────────────
+  for (const r of rects) {
+    const rx0 = sx(r.x);
+    const ry0 = sy(r.y);
+    const rw  = r.w * scale;
+    const rh  = r.h * scale;
+    const cxs = (rx0 + rw / 2).toFixed(1);
+    const cys = (ry0 + rh / 2).toFixed(1);
+
+    const title = formatZonaDisplayTitle(zonas, r.gi);
+    const dim   = _fmtDimLabel(r.h, r.w);
+    const fs1   = Math.min(18, Math.max(9, rh * 0.13));
+    const fs2   = Math.min(12, Math.max(7, rh * 0.085));
+    const midY  = ry0 + rh / 2;
+
+    out += `<text x="${cxs}" y="${(midY - fs1 * 0.25).toFixed(1)}" text-anchor="middle" font-size="${fs1.toFixed(1)}" font-weight="800" fill="${C_LABEL_ZONE}" font-family="system-ui,sans-serif">${_escSvg(title)}</text>`;
+    out += `<text x="${cxs}" y="${(midY + fs1 * 0.8).toFixed(1)}" text-anchor="middle" font-size="${fs2.toFixed(1)}" fill="${C_LABEL_DIM}" font-family="system-ui,sans-serif">${_escSvg(dim)}</text>`;
+  }
+
+  // ── X-axis dimension ticks + labels ───────────────────────────────────────
+  const dimY  = PAD_T + DRAW_H;
+  const tickY = dimY + 10;
+  const labY  = dimY + 27;
+  const baseY = PAD_T + DRAW_H;
+
+  for (const r of rects) {
+    const x0 = sx(r.x);
+    const x1 = sx(r.x + r.w);
+    const cx  = ((x0 + x1) / 2).toFixed(1);
+    // dim line
+    out += `<line x1="${x0.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${baseY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.6"/>`;
+    // ticks
+    out += `<line x1="${x0.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${x0.toFixed(2)}" y2="${tickY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+    out += `<line x1="${x1.toFixed(2)}" y1="${baseY.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${tickY.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+    // label
+    out += `<text x="${cx}" y="${labY.toFixed(1)}" text-anchor="middle" font-size="13" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.w))}</text>`;
+  }
+
+  // ── Y-axis dimension ticks + labels ───────────────────────────────────────
+  for (const r of rects) {
+    const y0  = sy(r.y);
+    const y1  = sy(r.y + r.h);
+    const cy  = ((y0 + y1) / 2).toFixed(1);
+    const lx  = (PAD_L - 8).toFixed(1);
+    const tlx = (PAD_L - 10).toFixed(1);
+    out += `<line x1="${lx}" y1="${y0.toFixed(2)}" x2="${lx}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_DIM}" opacity="0.45"/>`;
+    out += `<line x1="${(parseFloat(lx) - 4).toFixed(2)}" y1="${y0.toFixed(2)}" x2="${lx}" y2="${y0.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+    out += `<line x1="${(parseFloat(lx) - 4).toFixed(2)}" y1="${y1.toFixed(2)}" x2="${lx}" y2="${y1.toFixed(2)}" stroke="${C_DIM}" stroke-width="${LW_TICK}"/>`;
+    out += `<text x="${tlx}" y="${cy}" dominant-baseline="middle" text-anchor="end" font-size="12" fill="${C_DIM}" font-family="system-ui,sans-serif">${_escSvg(_fmtM(r.h))}</text>`;
+  }
+
+  // ── Orientation labels ────────────────────────────────────────────────────
+  const midX = ((PAD_L + VW - PAD_R) / 2).toFixed(1);
+  out += `<text x="${midX}" y="22" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.65">▲ fondo</text>`;
+  out += `<text x="${midX}" y="${(PAD_T + DRAW_H + 42).toFixed(1)}" text-anchor="middle" font-size="10" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.65">▼ frente</text>`;
+
+  // ── Compass rose (simplified N marker) ───────────────────────────────────
+  const nx = VW - 22;
+  const ny = PAD_T + 20;
+  out += `<circle cx="${nx}" cy="${ny}" r="13" fill="none" stroke="${C_DIM}" stroke-width="0.9" opacity="0.35"/>`;
+  out += `<text x="${nx}" y="${(ny + 4.5).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${C_DIM}" font-family="system-ui,sans-serif" opacity="0.55">N</text>`;
+
+  // ── Legend (only if non-continuo encounters exist) ────────────────────────
+  const LEGEND = { pretil: ["Pretil", C_PRETIL, "8,4"], cumbrera: ["Cumbrera", C_CUMBRERA, "none"], desnivel: ["Desnivel", C_DESNIVEL, "5,3"] };
+  const modesInPlan = [...usedModes].filter(m => LEGEND[m]);
+  if (modesInPlan.length > 0 || encounters.length > 0) {
+    let lx = PAD_L;
+    const ly = SVG_H - 18;
+    // Always show continuo if encounters present
+    if (encounters.length > 0) {
+      out += `<line x1="${lx}" y1="${ly}" x2="${lx + 20}" y2="${ly}" stroke="${C_CONTINUO}" stroke-width="1.5" stroke-dasharray="7,4"/>`;
+      out += `<text x="${lx + 26}" y="${(ly + 4).toFixed(1)}" font-size="11" fill="${C_DIM}" font-family="system-ui,sans-serif">Continuo</text>`;
+      lx += 96;
+    }
+    for (const modo of modesInPlan) {
+      const [label, col, dash] = LEGEND[modo];
+      const dashAttr = dash === "none" ? "" : ` stroke-dasharray="${dash}"`;
+      out += `<line x1="${lx}" y1="${ly}" x2="${lx + 20}" y2="${ly}" stroke="${col}" stroke-width="2"${dashAttr}/>`;
+      out += `<text x="${lx + 26}" y="${(ly + 4).toFixed(1)}" font-size="11" fill="${C_DIM}" font-family="system-ui,sans-serif">${label}</text>`;
+      lx += 96;
+    }
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${VW} ${SVG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Planta 2D cubierta" style="display:block">${out}</svg>`;
+}
+
+function _svgFloorPlanLegacy(blocks) {
   const vW = 1000;
   const GAP_M = 0.5;
   const LABEL_H = 52;
-  const blocks = roofBlocks.filter(rb => (rb.anchoTotal || rb.ancho || 0) > 0 && (rb.largo || 0) > 0);
-  if (blocks.length === 0) return "";
-  const totalW_m = blocks.reduce((s, rb) => s + (rb.anchoTotal || rb.ancho || 0), 0)
-    + GAP_M * (blocks.length - 1);
+  const totalW_m = blocks.reduce((s, rb) => s + (rb.anchoTotal || rb.ancho || 0), 0) + GAP_M * (blocks.length - 1);
   const scale = vW / totalW_m;
   const maxH_coord = Math.round(Math.max(...blocks.map(rb => rb.largo * scale)));
   const totalH = maxH_coord + LABEL_H;
@@ -182,15 +469,13 @@ export function svgFloorPlan(roofBlocks) {
     for (let i = 0; i < n; i++) {
       const rx = +(curX + i * stripe + 0.5).toFixed(1);
       const rw = +(Math.max(stripe - 1, 1)).toFixed(1);
-      const fill = i % 2 ? "#D6E9F8" : "#EBF4FC";
-      inner += `<rect x="${rx}" y="${zY}" width="${rw}" height="${zH}" fill="${fill}" stroke="#4A7FB5" stroke-width="0.8"/>`;
+      inner += `<rect x="${rx}" y="${zY}" width="${rw}" height="${zH}" fill="${i % 2 ? "#D6E9F8" : "#EBF4FC"}" stroke="#4A7FB5" stroke-width="0.8"/>`;
     }
     inner += `<rect x="${curX}" y="${zY}" width="${zW}" height="${zH}" fill="none" stroke="#003366" stroke-width="2.2"/>`;
     const cx = (curX + zW / 2).toFixed(0);
-    const multiZona = blocks.length > 1;
     const y1 = maxH_coord + 20;
     const y2 = maxH_coord + 37;
-    if (multiZona) {
+    if (blocks.length > 1) {
       inner += `<text x="${cx}" y="${y1}" font-size="15" font-weight="800" fill="#003366" text-anchor="middle">Z${idx + 1}</text>`;
       inner += `<text x="${cx}" y="${y2}" font-size="12" fill="#64748B" text-anchor="middle">${largo.toFixed(1)}m × ${ancho.toFixed(2)}m · ${n}p</text>`;
     } else {
@@ -491,9 +776,15 @@ export function generateClientVisualHTML(data) {
     ? `Líneas cotizadas · ${esc(scenarioLabel)}`
     : `${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} · ${esc(scenarioLabel)}`;
   const _fpBlocks = appendix?.roofBlocks?.length > 0 ? appendix.roofBlocks : (appendix?.roofBlock ? [appendix.roofBlock] : []);
-  const _fpSvg = svgFloorPlan(_fpBlocks);
+  const _fpSvg = svgFloorPlan(
+    _fpBlocks,
+    appendix?.zonas,
+    appendix?.tipoAguas || "una_agua",
+    appendix?.encounterByPair || {},
+    appendix?.panelAu || 0,
+  );
   const floorPlanHtml = _fpSvg
-    ? `<div style="margin-bottom:8px;padding:8px 10px;background:#F8FAFC;border-radius:6px;border:0.5pt solid #E2E8F0;page-break-inside:avoid;break-inside:avoid"><div style="font-size:8pt;font-weight:700;color:#003366;margin-bottom:5px">Planta 2D · cubierta</div>${_fpSvg}</div>`
+    ? `<div style="margin-bottom:8px;padding:8px 10px;background:#F8FAFC;border-radius:6px;border:0.5pt solid #E2E8F0;page-break-inside:avoid;break-inside:avoid"><div style="font-size:8pt;font-weight:700;color:#003366;margin-bottom:5px">Planta 2D · cubierta</div><div style="max-height:260px;overflow:hidden">${_fpSvg}</div></div>`
     : "";
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Hoja visual cliente — BMC Uruguay</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:10pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}th,td{border:0.4pt solid #D0D0D0}.pdf-page2{page-break-before:always;break-before:page}@media screen{html{background:#dce3ec;min-height:100%}body{max-width:794px;margin:40px auto 60px;padding:32px 36px;background:#fff;box-shadow:0 4px 28px rgba(0,0,0,0.14);border-radius:3px}.pdf-page2{margin-top:48px;padding-top:20px;border-top:2pt solid #003366}}@media print{a{color:inherit!important;text-decoration:none!important}}</style></head><body>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">${buildLogo()}<div style="background:#003366;color:#fff;font-size:11pt;font-weight:800;padding:4px 12px;border-radius:4px;letter-spacing:0.04em">HOJA VISUAL CLIENTE</div></div>

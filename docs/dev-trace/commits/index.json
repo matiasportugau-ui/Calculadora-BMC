@@ -7468,6 +7468,119 @@
           ".github"
         ]
       }
+    },
+    {
+      "hash": "1bc5d4854720332bd918ca11cae19909579619a8",
+      "short_hash": "1bc5d48",
+      "date": "2026-04-25",
+      "time": "04:37:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "ci",
+      "title": "update deployment triggers and Cloud Run configuration",
+      "subject": "fix(ci): update deployment triggers and Cloud Run configuration",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/61ccb14.md",
+        "docs/dev-trace/commits/2026/04/8d3c176.md",
+        "docs/dev-trace/commits/2026/04/e056913.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-25.md",
+        "scripts/bmc-var-tracker.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "scripts"
+        ]
+      }
+    },
+    {
+      "hash": "f3fbba5ade5c00547aa0e8c4fdcb1a3e1c7ec91c",
+      "short_hash": "f3fbba5",
+      "date": "2026-04-25",
+      "time": "04:41:31",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "deps stage must match runtime — node:20-slim for glibc compat",
+      "subject": "fix(docker): deps stage must match runtime — node:20-slim for glibc compat",
+      "files": [
+        "Dockerfile.bmc-dashboard"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "beef934ec893e94a589f2c1ab26354f1a4012044",
+      "short_hash": "beef934",
+      "date": "2026-04-25",
+      "time": "04:48:40",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "remove playwright install from runtime container",
+      "subject": "fix(docker): remove playwright install from runtime container",
+      "files": [
+        "Dockerfile.bmc-dashboard"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "9c74853767f64996794ba4a6a696c5fb6070411d",
+      "short_hash": "9c74853",
+      "date": "2026-04-25",
+      "time": "04:56:42",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deps",
+      "title": "move playwright to devDependencies — breaks Alpine Docker build",
+      "subject": "fix(deps): move playwright to devDependencies — breaks Alpine Docker build",
+      "files": [
+        "package.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
     }
   ]
 }

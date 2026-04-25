@@ -129,6 +129,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `b914003` fix(pdf): PLAYWRIGHT_BROWSERS_PATH before install — fix user/root path mismatch
 - `8d3c176` fix(ci): add Dockerfile.bmc-dashboard to deploy trigger paths
 - `61ccb14` fix(ci): bump Cloud Run memory 256Mi→512Mi, timeout 30→60s for Playwright
+- `1bc5d48` fix(ci): update deployment triggers and Cloud Run configuration
+- `f3fbba5` fix(docker): deps stage must match runtime — node:20-slim for glibc compat
+- `beef934` fix(docker): remove playwright install from runtime container
+- `9c74853` fix(deps): move playwright to devDependencies — breaks Alpine Docker build
 
 ## Documentation
 
