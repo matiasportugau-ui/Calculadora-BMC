@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-18 21:31:47 — `11d78a6` — chore(dev-trace): update AUTOTRACE documentation and status
 - 2026-04-18 21:32:01 — `f08ea7c` — chore(dev-trace): update AUTOTRACE documentation and status
 - 2026-04-18 21:34:39 — `ed9e830` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - 2026-04-18 21:35:17 — `9bbae4b` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
@@ -222,3 +221,4 @@
 - 2026-04-25 04:41:31 — `f3fbba5` — fix(docker): deps stage must match runtime — node:20-slim for glibc compat
 - 2026-04-25 04:48:40 — `beef934` — fix(docker): remove playwright install from runtime container
 - 2026-04-25 04:56:42 — `9c74853` — fix(deps): move playwright to devDependencies — breaks Alpine Docker build
+- 2026-04-25 05:00:51 — `33e28d9` — fix: update deployment triggers and Cloud Run configuration

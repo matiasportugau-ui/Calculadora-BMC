@@ -73,6 +73,14 @@ export const sampleClientVisualData = {
       { largo: 6.00, ancho: 5.60, anchoTotal: 5.60, cantPaneles: 5, au: 1.12, label: "ISODEC EPS 100mm" },
     ],
     wallBlock: null,
+    zonas: [
+      { largo: 8.00, ancho: 8.96, preview: {} },
+      { largo: 6.00, ancho: 5.60, preview: {} },
+      { largo: 6.00, ancho: 5.60, preview: {} },
+    ],
+    tipoAguas: "una_agua",
+    panelAu: 1.12,
+    encounterByPair: {},
     kpi: {
       area: 138.88,
       paneles: 18,

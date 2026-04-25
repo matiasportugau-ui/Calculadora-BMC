@@ -119,7 +119,12 @@ export function createPdfRouter() {
 
     } catch (err) {
       console.error("[pdf/generate] error:", err.code, err.message);
-      if (err.code === "ERR_MODULE_NOT_FOUND") {
+      const isUnavailable =
+        err.code === "ERR_MODULE_NOT_FOUND" ||
+        /executable doesn't exist/i.test(err.message) ||
+        /Failed to launch/i.test(err.message) ||
+        /browserType\.launch/i.test(err.message);
+      if (isUnavailable) {
         return res.status(503).json({ error: "pdf_renderer_unavailable" });
       }
       return res.status(500).json({ error: "pdf_generation_failed", detail: err.message });

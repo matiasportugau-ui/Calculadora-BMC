@@ -133,6 +133,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f3fbba5` fix(docker): deps stage must match runtime — node:20-slim for glibc compat
 - `beef934` fix(docker): remove playwright install from runtime container
 - `9c74853` fix(deps): move playwright to devDependencies — breaks Alpine Docker build
+- `33e28d9` fix: update deployment triggers and Cloud Run configuration
 
 ## Documentation
 
