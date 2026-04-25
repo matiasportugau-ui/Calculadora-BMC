@@ -198,3 +198,4 @@
 - 2026-04-24 22:44:23 — `9e9b542` — feat(ml-auto): webhook-driven auto-answer pipeline + server autoMode API
 - 2026-04-24 22:51:43 — `b8f1a1b` — feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1
 - 2026-04-24 23:07:30 — `e04fcce` — test(ml-auto): smoke test script for /api/ml/auto-mode endpoints
+- 2026-04-24 23:53:22 — `3c89a78` — chore(dev-trace): update kb.json timestamps and sync documentation
