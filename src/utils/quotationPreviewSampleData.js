@@ -73,10 +73,12 @@ export const sampleClientVisualData = {
       { largo: 6.00, ancho: 5.60, anchoTotal: 5.60, cantPaneles: 5, au: 1.12, label: "ISODEC EPS 100mm" },
     ],
     wallBlock: null,
+    // Real BMC-2026-0112 zone layout: T-shape
+    // Z0 = raíz 8×8.96m, Z1 = anexo-der, Z2 = anexo-izq manual y=-6 (hacia fondo)
     zonas: [
-      { largo: 8.00, ancho: 8.96, preview: {} },
-      { largo: 6.00, ancho: 5.60, preview: {} },
-      { largo: 6.00, ancho: 5.60, preview: {} },
+      { largo: 8,   ancho: 8.96, preview: {} },
+      { largo: 6,   ancho: 5.60, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
+      { largo: 6,   ancho: 5.60, preview: { attachParentGi: 0, lateralSide: "izq", lateralRank: 1, x: 1.6686530303955076, y: -6, lateralManual: true } },
     ],
     tipoAguas: "una_agua",
     panelAu: 1.12,

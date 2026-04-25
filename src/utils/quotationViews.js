@@ -110,9 +110,17 @@ export function buildPdfAppendixPayload({
     roofBlock,
     wallBlock,
     zonas: Array.isArray(techo.zonas) ? techo.zonas : [],
-    tipoAguas: techo.tipoAguas || "una_agua",
+    tipoAguas: techo.tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua",
     panelAu: roofFam?.au || 0,
-    encounterByPair: techo.preview?.encounterByPair || techo.encounterByPair || {},
+    encounterByPair: (() => {
+      // encounterByPair stored per-zone: zonas[low].preview.encounterByPair[pairKey]
+      const merged = {};
+      for (const z of (Array.isArray(techo.zonas) ? techo.zonas : [])) {
+        const ebp = z?.preview?.encounterByPair;
+        if (ebp && typeof ebp === "object") Object.assign(merged, ebp);
+      }
+      return merged;
+    })(),
     kpi: {
       area: kpiArea,
       paneles: kpiPaneles,
