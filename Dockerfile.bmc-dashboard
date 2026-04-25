@@ -29,29 +29,17 @@ ENV VITE_BASE=/calculadora/ \
     BMC_DISK_PRECHECK_SKIP=1
 RUN npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:20-slim AS runtime
 LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app
 
-# System libs required by Playwright Chromium on Alpine
-RUN apk add --no-cache \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    udev \
-    chromium
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 
-# Install Playwright's Chromium to a global path (not user-home dependent)
-# PLAYWRIGHT_BROWSERS_PATH must be set BEFORE `playwright install`
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN npx playwright install chromium && \
-    chmod -R o+rx /ms-playwright
+# Install Playwright Chromium + all required system deps (Debian/slim first-class support)
+# --with-deps handles libnss, libglib2, fonts etc. automatically
+RUN npx playwright install --with-deps chromium
 
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
@@ -59,8 +47,8 @@ COPY src/data/ ./src/data/
 COPY docs/bmc-dashboard-modernization/dashboard ./docs/bmc-dashboard-modernization/dashboard
 COPY --from=calc-build /app/dist ./dist
 
-RUN addgroup -g 1001 -S bmc && \
-    adduser -S -u 1001 -G bmc bmc && \
+RUN groupadd -g 1001 bmc && \
+    useradd -u 1001 -g bmc -s /bin/sh -m bmc && \
     chown -R bmc:bmc /app
 
 USER bmc
