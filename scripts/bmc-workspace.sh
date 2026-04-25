@@ -13,7 +13,7 @@
 #   bmc-focus <ventana>             — enfoca una ventana
 
 SESSION="bmc"
-SOCKET="/tmp/bmc-tmux.sock"
+SOCKET="/tmp/bmc-tmux.sock"   # socket compartido — mismo en todos los scripts BMC
 
 # ── Funciones helper (disponibles vía `source ... env`) ──────────────────────
 bmc-send() {
@@ -41,6 +41,8 @@ bmc-focus() {
 
 bmc-broadcast() {
   local cmd="$*"
+  read -r -p "Broadcast '$cmd' a todas las ventanas? [y/N] " confirm
+  [[ "$confirm" != "y" ]] && echo "Cancelado." && return 1
   tmux -S "$SOCKET" list-windows -t "$SESSION" -F '#{window_name}' 2>/dev/null \
     | while read -r win; do
         echo "→ $win: $cmd"
@@ -70,11 +72,21 @@ fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Pre-check de puertos antes de crear la sesión
+for port in 3001 5173; do
+  if lsof -ti :"$port" >/dev/null 2>&1; then
+    echo "⚠️  Puerto $port ya está en uso. Verificá con: lsof -i :$port"
+    echo "   Si querés adjuntarte a la sesión existente: bash scripts/bmc-workspace.sh attach"
+    exit 1
+  fi
+done
+
 # Crear sesión con ventana inicial
 tmux -S "$SOCKET" new-session -d -s "$SESSION" -n "dev" -c "$ROOT"
 
 # Ventanas nombradas
 tmux -S "$SOCKET" new-window -t "$SESSION" -n "api"     -c "$ROOT"
+tmux -S "$SOCKET" new-window -t "$SESSION" -n "gate"    -c "$ROOT"
 tmux -S "$SOCKET" new-window -t "$SESSION" -n "tests"   -c "$ROOT"
 tmux -S "$SOCKET" new-window -t "$SESSION" -n "preview" -c "$ROOT"
 tmux -S "$SOCKET" new-window -t "$SESSION" -n "git"     -c "$ROOT"
@@ -82,6 +94,7 @@ tmux -S "$SOCKET" new-window -t "$SESSION" -n "git"     -c "$ROOT"
 # Comandos iniciales por ventana
 tmux -S "$SOCKET" send-keys -t "${SESSION}:dev"     "npm run dev" Enter
 tmux -S "$SOCKET" send-keys -t "${SESSION}:api"     "npm run dev:api" Enter
+tmux -S "$SOCKET" send-keys -t "${SESSION}:gate"    "bash scripts/bmc-gate-chain.sh watch" Enter
 tmux -S "$SOCKET" send-keys -t "${SESSION}:preview" "npm run preview:watch" Enter
 tmux -S "$SOCKET" send-keys -t "${SESSION}:git"     "git status" Enter
 
@@ -95,7 +108,7 @@ echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║  BMC Workspace listo                                    ║"
 echo "╠══════════════════════════════════════════════════════════╣"
-echo "║  Ventanas: dev · api · tests · preview · git           ║"
+echo "║  Ventanas: dev · api · gate · tests · preview · git    ║"
 echo "╠══════════════════════════════════════════════════════════╣"
 echo "║  Desde cualquier terminal Cursor:                       ║"
 echo "║                                                          ║"
