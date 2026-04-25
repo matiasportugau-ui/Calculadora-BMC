@@ -7620,6 +7620,163 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "cb826f4525130415c088732c9412472233073c27",
+      "short_hash": "cb826f4",
+      "date": "2026-04-25",
+      "time": "05:03:24",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "return 503 on launch failure + sample data + var-tracker",
+      "subject": "fix(pdf): return 503 on launch failure + sample data + var-tracker",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/33e28d9.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-25.md",
+        "public/quotation-preview/hoja-visual-cliente.html",
+        "server/routes/pdf.js",
+        "src/utils/quotationPreviewSampleData.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "public",
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "a047c23095b96755befe2f0fb4c5c243ad2d6085",
+      "short_hash": "a047c23",
+      "date": "2026-04-25",
+      "time": "05:09:32",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "replace fs.promises.glob with readdirSync — Node 20 compat",
+      "subject": "fix(pdf): replace fs.promises.glob with readdirSync — Node 20 compat",
+      "files": [
+        "server/routes/pdf.js",
+        "src/utils/quotationViews.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "dd2804717e1050be651ebcc926d0c9fad7990770",
+      "short_hash": "dd28047",
+      "date": "2026-04-25",
+      "time": "05:16:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "replace Playwright with @sparticuz/chromium-min + puppeteer-core",
+      "subject": "feat(pdf): replace Playwright with @sparticuz/chromium-min + puppeteer-core",
+      "files": [
+        "package-lock.json",
+        "package.json",
+        "server/routes/pdf.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "c5c836dc322ff0a2409a877d849f9c400957106b",
+      "short_hash": "c5c836d",
+      "date": "2026-04-25",
+      "time": "05:28:18",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "floor-plan",
+      "title": "10-iteration professional SVG plano en planta",
+      "subject": "feat(floor-plan): 10-iteration professional SVG plano en planta",
+      "files": [
+        "src/utils/quotationViews.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "05d199e4030104b634a57475bfff7bfebafdc29c",
+      "short_hash": "05d199e",
+      "date": "2026-04-25",
+      "time": "05:30:32",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF",
+      "subject": "feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF",
+      "files": [
+        "Dockerfile.bmc-dashboard",
+        "package-lock.json",
+        "package.json",
+        "server/routes/pdf.js",
+        "src/components/PanelinCalculadoraV3_backup.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

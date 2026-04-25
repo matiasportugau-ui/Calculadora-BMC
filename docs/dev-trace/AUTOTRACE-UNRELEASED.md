@@ -78,6 +78,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `323c104` feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
 - `3ba47ab` feat(workspace): /bmc-claude-workspace skill + setup script
 - `e056913` feat(pdf): vectorial SVG plano 2D + robust chromium glob discovery
+- `dd28047` feat(pdf): replace Playwright with @sparticuz/chromium-min + puppeteer-core
+- `c5c836d` feat(floor-plan): 10-iteration professional SVG plano en planta
+- `05d199e` feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
 
 ## Fixes
 
@@ -134,6 +137,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `beef934` fix(docker): remove playwright install from runtime container
 - `9c74853` fix(deps): move playwright to devDependencies — breaks Alpine Docker build
 - `33e28d9` fix: update deployment triggers and Cloud Run configuration
+- `cb826f4` fix(pdf): return 503 on launch failure + sample data + var-tracker
+- `a047c23` fix(pdf): replace fs.promises.glob with readdirSync — Node 20 compat
 
 ## Documentation
 

@@ -2,11 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-18 21:32:01 — `f08ea7c` — chore(dev-trace): update AUTOTRACE documentation and status
-- 2026-04-18 21:34:39 — `ed9e830` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
-- 2026-04-18 21:35:17 — `9bbae4b` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
-- 2026-04-18 21:36:16 — `fbc024b` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
-- 2026-04-18 21:39:19 — `8c00277` — chore(ops): Cloud Run 300s timeout; sync dev-trace
 - 2026-04-18 21:39:34 — `fa3e400` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - 2026-04-18 21:40:19 — `4a19616` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - 2026-04-18 22:08:22 — `680cf98` — fix(docs): correct typo in Atlas Browser Go-Live manual steps prompt title
@@ -222,3 +217,8 @@
 - 2026-04-25 04:48:40 — `beef934` — fix(docker): remove playwright install from runtime container
 - 2026-04-25 04:56:42 — `9c74853` — fix(deps): move playwright to devDependencies — breaks Alpine Docker build
 - 2026-04-25 05:00:51 — `33e28d9` — fix: update deployment triggers and Cloud Run configuration
+- 2026-04-25 05:03:24 — `cb826f4` — fix(pdf): return 503 on launch failure + sample data + var-tracker
+- 2026-04-25 05:09:32 — `a047c23` — fix(pdf): replace fs.promises.glob with readdirSync — Node 20 compat
+- 2026-04-25 05:16:43 — `dd28047` — feat(pdf): replace Playwright with @sparticuz/chromium-min + puppeteer-core
+- 2026-04-25 05:28:18 — `c5c836d` — feat(floor-plan): 10-iteration professional SVG plano en planta
+- 2026-04-25 05:30:32 — `05d199e` — feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
