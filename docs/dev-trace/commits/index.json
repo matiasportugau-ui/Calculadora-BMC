@@ -6662,6 +6662,47 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "d4ff1158deee320ff51660dba899c1b9c79915e7",
+      "short_hash": "d4ff115",
+      "date": "2026-04-25",
+      "time": "02:32:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf+tooling",
+      "title": "hide empty client fields in visual + multiterminator skill + tmux setup",
+      "subject": "feat(pdf+tooling): hide empty client fields in visual + multiterminator skill + tmux setup",
+      "files": [
+        ".accessible-base/kb.json",
+        ".cursor/skills/multiterminator/SKILL.md",
+        "GEMINI.md",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/a75c9a7.md",
+        "docs/dev-trace/commits/2026/04/dd548d5.md",
+        "docs/dev-trace/commits/2026/04/f1e0fab.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-25.md",
+        "public/quotation-preview/hoja-visual-cliente.html"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          ".cursor",
+          "docs",
+          "public"
+        ]
+      }
     }
   ]
 }

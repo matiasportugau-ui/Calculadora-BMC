@@ -68,6 +68,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `9ac1a95` feat(ml-module): AUTOMATISMOS cockpit panel with aircraft toggle switches
 - `9e9b542` feat(ml-auto): webhook-driven auto-answer pipeline + server autoMode API
 - `b8f1a1b` feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1
+- `d4ff115` feat(pdf+tooling): hide empty client fields in visual + multiterminator skill + tmux setup
 
 ## Fixes
 
