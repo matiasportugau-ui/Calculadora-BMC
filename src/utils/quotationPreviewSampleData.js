@@ -76,13 +76,17 @@ export const sampleClientVisualData = {
     // Real BMC-2026-0112 zone layout: T-shape
     // Z0 = raíz 8×8.96m, Z1 = anexo-der, Z2 = anexo-izq manual y=-6 (hacia fondo)
     zonas: [
-      { largo: 8,   ancho: 8.96, preview: {} },
-      { largo: 6,   ancho: 5.60, preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0 } },
-      { largo: 6,   ancho: 5.60, preview: { attachParentGi: 0, lateralSide: "izq", lateralRank: 1, x: 1.6686530303955076, y: -6, lateralManual: true } },
+      { largo: 8, ancho: 8.96, dosAguas: false,
+        preview: { slopeMark: "along_largo_pos" } },
+      { largo: 6, ancho: 5.60, dosAguas: false,
+        preview: { attachParentGi: 0, lateralSide: "der", lateralRank: 0, slopeMark: "along_largo_pos" } },
+      { largo: 6, ancho: 5.60, dosAguas: false,
+        preview: { attachParentGi: 0, lateralSide: "izq", lateralRank: 1, x: 1.6686530303955076, y: -6, lateralManual: true, slopeMark: "along_largo_neg" } },
     ],
     tipoAguas: "una_agua",
     panelAu: 1.12,
     encounterByPair: {},
+    globalBorders: { fondo: null, frente: "gotero_frontal", latIzq: "gotero_lateral", latDer: "gotero_lateral" },
     kpi: {
       area: 138.88,
       paneles: 18,
