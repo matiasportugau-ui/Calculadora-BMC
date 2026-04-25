@@ -236,6 +236,7 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
 
   // 8. Escribir
   let written = 0;
+  const newRows = [];
   for (let i = 0; i < newQuestions.length && i < emptyRows.length; i++) {
     const q         = newQuestions[i];
     const rowNum    = emptyRows[i];
@@ -271,9 +272,10 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
       },
     });
 
+    newRows.push({ questionId: String(q.id), rowNum, questionText: q.text || "", itemTitle, nickname });
     logger.info?.(`  ✓ F${rowNum} — Q:${q.id} | ${nickname} | "${q.text?.slice(0, 45)}"${hasPriceMismatch ? " 🔴 revisión precio" : ""}`);
     written++;
   }
 
-  return { synced: written };
+  return { synced: written, rows: newRows };
 }

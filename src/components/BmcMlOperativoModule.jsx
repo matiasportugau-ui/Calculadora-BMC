@@ -345,6 +345,24 @@ export default function BmcMlOperativoModule() {
     localStorage.setItem("bmc-auto-cfg", JSON.stringify(auto));
   }, [auto]);
 
+  // ── sync fullAuto with server autoMode on token load ───────────────────────
+  useEffect(() => {
+    if (!token) return;
+    cockpitFetch(token, "/api/ml/auto-mode")
+      .then(({ ok, data }) => {
+        if (!ok || data?.autoMode?.fullAuto === undefined) return;
+        const serverOn = data.autoMode.fullAuto;
+        setAuto(prev => {
+          if (serverOn === prev.fullAuto) return prev;
+          const next = { ...prev, fullAuto: serverOn };
+          if (serverOn) Object.assign(next, { mlPull: true, crmPull: true, sync: true, generate: true });
+          return next;
+        });
+        if (serverOn) setCycleLog(l => [...l, "● SERVIDOR: 100% AUTÓNOMO activo — webhook ML conectado"]);
+      })
+      .catch(() => {}); // server may not have endpoint yet
+  }, [token]);
+
   const showToast = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
   // ── PULL CRM — load queue ──────────────────────────────────────────────────
@@ -491,9 +509,21 @@ export default function BmcMlOperativoModule() {
       const next = { ...prev, [key]: !prev[key] };
       if (key === "fullAuto" && !prev.fullAuto)
         Object.assign(next, { mlPull: true, crmPull: true, sync: true, generate: true });
+      // Sync fullAuto toggle to server (fire-and-forget)
+      if (key === "fullAuto" && token) {
+        cockpitFetch(token, "/api/ml/auto-mode", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: !prev.fullAuto }),
+        }).catch(() => {});
+        const enabling = !prev.fullAuto;
+        setCycleLog(l => [...l, enabling
+          ? "● SERVIDOR: 100% AUTÓNOMO ON — webhook ML armado"
+          : "○ SERVIDOR: 100% AUTÓNOMO OFF — webhook ML desconectado"
+        ]);
+      }
       return next;
     });
-  }, []);
+  }, [token]);
 
   const handleEject = useCallback(() => {
     clearInterval(mlPullTimerRef.current);
@@ -505,7 +535,14 @@ export default function BmcMlOperativoModule() {
     setAuto(DEFAULT_AUTO);
     setCoverOpen(false);
     setCycleLog(l => [...l, "[EJECT] Todos los automatismos desactivados"]);
-  }, []);
+    // Notify server
+    if (token) {
+      cockpitFetch(token, "/api/ml/auto-mode", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: false }),
+      }).catch(() => {});
+    }
+  }, [token]);
 
   // ── interval setup/teardown ────────────────────────────────────────────────
   useEffect(() => {
@@ -616,23 +653,32 @@ export default function BmcMlOperativoModule() {
         }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24", fontFamily: MONO, letterSpacing: 2, textTransform: "uppercase" }}>
                 ⚠ AUTOMATISMOS
               </span>
-              {/* Active indicator */}
               {Object.values(auto).some(Boolean) && (
                 <span style={{
                   fontSize: 9, fontFamily: MONO, color: "#00ff66",
-                  background: "#002200", border: "1px solid #00441100",
-                  padding: "1px 7px", borderRadius: 10,
-                  boxShadow: "0 0 6px #00ff6633",
-                  letterSpacing: 0.5,
+                  background: "#002200", padding: "1px 7px", borderRadius: 10,
+                  boxShadow: "0 0 6px #00ff6633", letterSpacing: 0.5,
                 }}>
                   ● ACTIVO
                 </span>
               )}
+              {auto.fullAuto && (
+                <span style={{
+                  fontSize: 9, fontFamily: MONO, color: "#ff9944",
+                  background: "#1a0d00", border: "1px solid #ff994422",
+                  padding: "1px 7px", borderRadius: 10, letterSpacing: 0.5,
+                }}>
+                  🔗 WEBHOOK ML
+                </span>
+              )}
             </div>
+            <span style={{ fontSize: 9, fontFamily: MONO, color: "#4a4a5a" }}>
+              TRIGGER: questions topic
+            </span>
           </div>
           <p style={{
             margin: "0 0 16px", fontSize: 10, fontStyle: "italic",

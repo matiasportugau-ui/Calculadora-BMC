@@ -9,6 +9,7 @@ import pinoHttp from "pino-http";
 import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
+import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
 import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
@@ -80,6 +81,11 @@ const stateTtlMs = 10 * 60 * 1000;
 const oauthStates = new Map();
 const webhookEvents = [];
 const maxWebhookEvents = 250;
+
+// ── ML auto-mode (persisted to disk; resets to false on Cloud Run cold start) ──
+const ML_AUTOMODE_FILE = path.join(__dirname, ".ml-automode.json");
+let autoMode = { fullAuto: false };
+try { autoMode = JSON.parse(fs.readFileSync(ML_AUTOMODE_FILE, "utf8")); } catch { /* first run */ }
 
 const tokenStore = createTokenStore({
   storageType: config.tokenStorage,
@@ -425,8 +431,25 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
   const topic = req.body?.topic || req.headers["x-topic"];
   if (topic === "questions" && config.bmcSheetId) {
     const credsPath = config.googleApplicationCredentials || process.env.GOOGLE_APPLICATION_CREDENTIALS || "";
-    syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log })
-      .catch((err) => req.log.error({ err }, "ML→CRM webhook sync failed"));
+    (async () => {
+      try {
+        const syncResult = await syncMLCRM({ ml, sheetId: config.bmcSheetId, credsPath, logger: req.log });
+        if (autoMode.fullAuto && syncResult.rows?.length > 0) {
+          req.log.info({ count: syncResult.rows.length }, "ML auto-mode ON — running auto-answer pipeline");
+          const { answered } = await autoAnswerPipeline({
+            rows:      syncResult.rows,
+            ml,
+            sheetId:   config.bmcSheetId,
+            credsPath,
+            config,
+            logger:    req.log,
+          });
+          req.log.info({ answered }, "ML auto-answer pipeline complete");
+        }
+      } catch (err) {
+        req.log.error({ err }, "ML→CRM webhook pipeline failed");
+      }
+    })();
   }
 
   res.status(200).json({ ok: true, eventId: event.id });
@@ -434,6 +457,26 @@ app.post("/webhooks/ml", asyncHandler(async (req, res) => {
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
   res.json({ ok: true, count: webhookEvents.length, events: webhookEvents });
+}));
+
+// ── ML auto-mode API ──────────────────────────────────────────────────────────
+app.get("/api/ml/auto-mode", (_req, res) => {
+  res.json({ ok: true, autoMode });
+});
+
+app.post("/api/ml/auto-mode", asyncHandler(async (req, res) => {
+  const tkn = config.apiAuthToken;
+  if (tkn) {
+    const auth = req.headers.authorization || "";
+    const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
+    if (bearer !== tkn) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  const { enabled } = req.body || {};
+  if (typeof enabled !== "boolean") return res.status(400).json({ ok: false, error: "body.enabled must be boolean" });
+  autoMode = { fullAuto: enabled };
+  try { fs.writeFileSync(ML_AUTOMODE_FILE, JSON.stringify(autoMode)); } catch { /* ephemeral env */ }
+  req.log.info({ autoMode }, "ML auto-mode updated");
+  res.json({ ok: true, autoMode });
 }));
 
 // ── WhatsApp Business Cloud API webhook ──
