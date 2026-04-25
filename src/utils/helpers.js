@@ -31,7 +31,15 @@ export function bomToGroups(result) {
   const selladorItems = [];
 
   if (result.allItems) {
-    result.allItems.filter(i => i.unidad === "m²").forEach(i => panelItems.push({ ...i }));
+    result.allItems.filter(i => i.unidad === "m²").forEach(i => {
+      const item = { ...i };
+      if (item.cantPaneles && item.largoPanel) {
+        item.label = `${item.label} · ${item.cantPaneles} paneles × ${Number(item.largoPanel).toFixed(2)} m`;
+      } else if (item.cantPaneles) {
+        item.label = `${item.label} · ${item.cantPaneles} paneles`;
+      }
+      panelItems.push(item);
+    });
   }
 
   const perfilKeys = ["perfileria", "perfilesU", "esquineros", "perfilesExtra"];

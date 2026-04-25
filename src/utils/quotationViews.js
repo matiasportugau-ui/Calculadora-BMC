@@ -257,12 +257,16 @@ export function buildPdfPlantaResumenPageHtml(esc, ap, snapshots = {}, clientMod
       : "";
 
   let diagrams = "";
-  if (roofBlock) {
-    diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
-      <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:4px">Esquema en planta · cubierta</div>
-      <div style="font-size:8pt;color:#64748B;margin-bottom:8px">${esc(roofBlock.label)} · ${esc(String(roofBlock.cantPaneles))} paneles</div>
-      ${svgTechoStrip(roofBlock)}
+  const roofBlocks = ap.roofBlocks && ap.roofBlocks.length > 0 ? ap.roofBlocks : (roofBlock ? [roofBlock] : []);
+  if (roofBlocks.length > 0) {
+    roofBlocks.forEach((rb, idx) => {
+      const zoneLabel = roofBlocks.length > 1 ? `Zona ${idx + 1}` : "Esquema en planta · cubierta";
+      diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
+      <div style="font-size:9.5pt;font-weight:800;color:${PDF_PLANTA_BRAND};margin-bottom:4px">${esc(zoneLabel)}</div>
+      <div style="font-size:8pt;color:#64748B;margin-bottom:8px">${esc(rb.label)} · ${esc(String(rb.cantPaneles))} paneles</div>
+      ${svgTechoStrip(rb)}
     </div>`;
+    });
   }
   if (wallBlock) {
     diagrams += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:10px;border:0.5pt solid #E2E8F0;box-shadow:0 2px 10px rgba(0,51,102,0.06)">
@@ -421,7 +425,7 @@ export function generateClientVisualHTML(data) {
   const productoCliente = scenario === "presupuesto_libre"
     ? `Líneas cotizadas · ${esc(scenarioLabel)}`
     : `${esc(panel.label)} · ${panel.espesor}mm · Color: ${esc(panel.color)} · ${esc(scenarioLabel)}`;
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Hoja visual cliente — BMC Uruguay</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:10pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}th,td{border:0.4pt solid #D0D0D0}.pdf-page2{page-break-before:always;break-before:page}</style></head><body>
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Hoja visual cliente — BMC Uruguay</title><style>@page{size:A4;margin:12mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:10pt;color:#1D1D1F;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}table{border-collapse:collapse;width:100%}th,td{border:0.4pt solid #D0D0D0}.pdf-page2{page-break-before:always;break-before:page}@media screen{html{background:#dce3ec;min-height:100%}body{max-width:794px;margin:40px auto 60px;padding:32px 36px;background:#fff;box-shadow:0 4px 28px rgba(0,0,0,0.14);border-radius:3px}.pdf-page2{margin-top:48px;padding-top:20px;border-top:2pt solid #003366}}</style></head><body>
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">${buildLogo()}<div style="background:#003366;color:#fff;font-size:11pt;font-weight:800;padding:4px 12px;border-radius:4px;letter-spacing:0.04em">HOJA VISUAL CLIENTE</div></div>
 <div style="border-bottom:2.5pt solid #003366;margin-bottom:4px"></div>
 <div style="font-size:8.5pt;color:#6E6E73;margin-bottom:8px">Propuesta comercial · bmcuruguay.com.uy · 092 663 245</div>
@@ -431,6 +435,7 @@ export function generateClientVisualHTML(data) {
 <div><b>Tel:</b> ${esc(client.telefono)}</div><div><b>Dir:</b> ${esc(client.direccion)}</div>
 </div>
 <div style="background:#F0F4F8;padding:6px 10px;border-radius:4px;margin-bottom:6px"><b style="color:#003366">Producto / alcance:</b> ${productoCliente}</div>
+${snaps.roofPlan2d ? `<div style="margin-bottom:8px;padding:8px 10px;background:#F8FAFC;border-radius:6px;border:0.5pt solid #E2E8F0;page-break-inside:avoid;break-inside:avoid"><div style="font-size:8pt;font-weight:700;color:#003366;margin-bottom:5px">Planta 2D · cubierta</div><img src="${snaps.roofPlan2d}" style="width:100%;height:auto;display:block;border-radius:4px;max-height:180px;object-fit:contain" alt="Planta 2D cubierta" /></div>` : ""}
 <table style="font-size:9pt;margin-bottom:6px"><thead><tr style="background:#EDEDED;font-weight:700"><th style="text-align:left;width:42%;padding:3px 6px">Descripción</th><th style="text-align:right;width:12%;padding:3px 6px">Cant.</th><th style="text-align:center;width:10%;padding:3px 6px">Unid.</th><th style="text-align:right;width:16%;padding:3px 6px">P.U. USD</th><th style="text-align:right;width:20%;padding:3px 6px">Total USD</th></tr></thead><tbody>${tableBody}</tbody></table>
 <div style="display:flex;justify-content:flex-end;margin-bottom:6px"><table style="min-width:260px;font-size:10pt"><tr><td style="padding:2px 8px">Subtotal s/IVA</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.subtotalSinIVA)}</td></tr><tr><td style="padding:2px 8px">IVA 22%</td><td style="text-align:right;padding:2px 8px">$${fmtPrice(totals.iva)}</td></tr><tr style="border-top:1pt solid #000;font-size:14pt;font-weight:800"><td style="padding:2px 8px">TOTAL USD</td><td style="text-align:right;color:#003366;padding:2px 8px">$${fmtPrice(totals.totalFinal)}</td></tr></table></div>
 <div style="font-size:8pt;line-height:1.4;margin-bottom:6px"><b>Condiciones comerciales:</b><ul style="margin:0;padding-left:14px"><li style="font-weight:700">Fabricación y entrega 10 a 45 días (depende producción).</li><li style="color:#FF3B30;font-weight:600">Oferta válida 10 días.</li><li style="font-weight:700;color:#FF3B30">Seña 60% al confirmar. Saldo 40% previo a retiro de fábrica.</li><li>Precios en USD; IVA incluido en el total indicado.</li></ul></div>

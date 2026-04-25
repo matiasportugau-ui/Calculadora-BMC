@@ -1339,7 +1339,7 @@ function PlantaBordesEdgeStrips({
     const cy = y + h / 2;
     // Constraining dimension: strip thickness (h for horiz bands, w for vert bands)
     const thick = isVert ? w : h;
-    const fontSize = Math.max(0.055 * zm, Math.min(0.115 * zm, thick * 0.52));
+    const fontSize = Math.max(0.044 * zm, Math.min(0.095 * zm, thick * 0.42));
     return { cx, cy, fontSize };
   };
 
@@ -1398,7 +1398,7 @@ function PlantaBordesEdgeStrips({
 
         const shortLabel = (() => {
           if (!active) return null;
-          return SHORT_LABELS[val] ?? resolveFullLabel(side, val) ?? val;
+          return resolveFullLabel(side, val) ?? val;
         })();
 
         // Minimum size to show label: avoid rendering unreadable text in tiny sub-strips
