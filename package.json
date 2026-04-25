@@ -170,6 +170,7 @@
     "@google/generative-ai": "^0.24.1",
     "@react-three/drei": "^9.114.3",
     "@react-three/fiber": "^8.17.10",
+    "@sparticuz/chromium-min": "^147.0.2",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -181,6 +182,7 @@
     "pg": "^8.13.1",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",
+    "puppeteer-core": "^24.42.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^2.1.9",
@@ -201,8 +203,7 @@
     "nodemailer": "^8.0.5",
     "picomatch": "^4.0.4",
     "vite": "^7.0.0",
-    "vite-plugin-pwa": "^1.2.0",
-    "playwright": "^1.58.2"
+    "vite-plugin-pwa": "^1.2.0"
   },
   "keywords": [
     "calculadora",

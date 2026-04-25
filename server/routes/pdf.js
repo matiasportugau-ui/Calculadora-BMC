@@ -1,59 +1,19 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// server/routes/pdf.js — Server-side PDF generation via Playwright/Chromium
+// server/routes/pdf.js — Server-side PDF generation via @sparticuz/chromium-min
 //
 // POST /api/pdf/generate
 //   body: { html: string, filename?: string }
 //   returns: application/pdf blob
 //
-// Uses the browser already bundled with Playwright — renders HTML exactly as
-// window.print() would, preserving @page CSS, SVG vectors, fonts, colors.
-// Falls back gracefully: if Playwright is unavailable the route returns 503
-// and the client falls back to html2pdf.js.
+// Uses @sparticuz/chromium-min (Chromium optimized for serverless / Cloud Run).
+// Preserves @page CSS, SVG vectors, fonts, colors — identical to window.print().
+// Falls back gracefully: if Chromium is unavailable the route returns 503
+// and pdfGenerator.js client-side falls back to html2pdf.js.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import os from "node:os";
-
-// Locate the Chromium executable across known installation paths.
-// Node 20 compatible — no fs.promises.glob (added in Node 22).
-function findChromiumSync(chromium) {
-  // 1. Explicit override
-  if (process.env.CHROMIUM_PATH && existsSync(process.env.CHROMIUM_PATH)) {
-    return process.env.CHROMIUM_PATH;
-  }
-
-  // 2. Playwright canonical path
-  try {
-    const p = chromium.executablePath();
-    if (existsSync(p)) return p;
-  } catch { /* not installed */ }
-
-  // 3. Search known ms-playwright cache roots (handles root vs user installs)
-  const roots = [
-    "/ms-playwright",
-    "/root/.cache/ms-playwright",
-    `${os.homedir()}/.cache/ms-playwright`,
-    "/home/node/.cache/ms-playwright",
-  ];
-  for (const root of roots) {
-    if (!existsSync(root)) continue;
-    try {
-      for (const dir of readdirSync(root)) {
-        const candidate = join(root, dir, "chrome-linux64", "chrome");
-        if (existsSync(candidate)) return candidate;
-      }
-    } catch { /* skip unreadable dirs */ }
-  }
-
-  // 4. System chromium (apk/apt)
-  for (const p of ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]) {
-    if (existsSync(p)) return p;
-  }
-
-  return null;
-}
+import chromium from "@sparticuz/chromium-min";
+import puppeteer from "puppeteer-core";
 
 export function createPdfRouter() {
   const router = express.Router();
@@ -70,33 +30,26 @@ export function createPdfRouter() {
 
     let browser;
     try {
-      const { chromium } = await import("playwright");
+      // @sparticuz/chromium-min decompresses the binary to /tmp on first call.
+      // CHROMIUM_EXECUTABLE_PATH env var overrides (useful for local dev with
+      // a system-installed Chrome/Chromium).
+      const executablePath =
+        process.env.CHROMIUM_EXECUTABLE_PATH ||
+        (await chromium.executablePath());
 
-      const executablePath = findChromiumSync(chromium);
-      if (!executablePath) {
-        console.error("[pdf/generate] chromium binary not found anywhere");
-        return res.status(503).json({ error: "pdf_renderer_unavailable" });
-      }
-
-      console.info("[pdf/generate] launching chromium at:", executablePath);
-
-      browser = await chromium.launch({
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
         executablePath,
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
+        headless: chromium.headless,
       });
 
       const page = await browser.newPage();
 
       // Emulate print media so @page / @media print rules take effect
-      await page.emulateMedia({ media: "print" });
+      await page.emulateMediaType("print");
 
-      await page.setContent(html, { waitUntil: "networkidle" });
+      await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
 
       const pdfBuffer = await page.pdf({
         format: "A4",
@@ -114,16 +67,8 @@ export function createPdfRouter() {
       return res.send(pdfBuffer);
 
     } catch (err) {
-      console.error("[pdf/generate] error:", err.code, err.message);
-      const isUnavailable =
-        err.code === "ERR_MODULE_NOT_FOUND" ||
-        /executable doesn't exist/i.test(err.message) ||
-        /Failed to launch/i.test(err.message) ||
-        /browserType\.launch/i.test(err.message);
-      if (isUnavailable) {
-        return res.status(503).json({ error: "pdf_renderer_unavailable" });
-      }
-      return res.status(500).json({ error: "pdf_generation_failed", detail: err.message });
+      console.error("[pdf/generate] error:", err.code, err.message?.slice(0, 200));
+      return res.status(503).json({ error: "pdf_renderer_unavailable", detail: err.message?.slice(0, 120) });
     } finally {
       await browser?.close().catch(() => {});
     }
