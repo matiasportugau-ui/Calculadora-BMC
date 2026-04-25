@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "createdAt": "2026-04-03T00:00:00.000Z",
-  "updatedAt": "2026-04-24T12:00:00.000Z",
+  "updatedAt": "2026-04-25T00:00:00.000Z",
   "entries": [
     {
       "id": "example-1",
@@ -110,6 +110,66 @@
       "permanent": true,
       "createdAt": "2026-04-24T14:00:00.000Z",
       "updatedAt": "2026-04-24T14:00:00.000Z"
+    },
+    {
+      "id": "kb-009-garantias-proceso",
+      "category": "sales",
+      "question": "¿Cómo activo la garantía si tengo un problema con los paneles? ¿A quién reclamo, a BMC o a Kingspan?",
+      "badAnswer": "Llamá a Kingspan directamente.",
+      "goodAnswer": "El proceso de garantía funciona así: (1) Interlocutor: el reclamo se hace siempre a BMC Uruguay (METALOG SAS), que es el distribuidor autorizado de Kingspan en Uruguay y quien asume la garantía ante el cliente final. No se gestiona directamente con Kingspan. (2) Documentación indispensable para activar la garantía: remito de compra original con fecha y SKU del producto, ficha técnica del panel afectado, y si es posible, fotos del proceso de instalación (selladores, tornillería, solapamiento). Sin remito no hay garantía. (3) Descripción del problema: incluí fotos claras del defecto (óxido, delaminación, deformación), el ambiente de la obra (urbano, costero, industrial), y cuánto tiempo lleva instalado el panel. (4) Plazo de respuesta: BMC analiza el caso y, si aplica la garantía, coordina la solución (reposición de material, visita técnica, etc.). El plazo de respuesta inicial suele ser de 5 a 10 días hábiles. (5) Qué no es garantía: daños por instalación incorrecta, cortes de obra sin protección de cantos, uso de productos incompatibles (pinturas con solventes, disolventes sobre chapa prepintada), o deterioro por mal uso del panel. En esos casos BMC puede igualmente asesorar sobre cómo resolverlo. Para iniciar: contactar al equipo comercial de BMC por WhatsApp o email con los datos del remito.",
+      "context": "Proceso de garantía, cómo reclamar, documentación necesaria, BMC vs Kingspan, post-venta, reclamo de cliente",
+      "source": "kb-batch-2026-04-25",
+      "permanent": true,
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z"
+    },
+    {
+      "id": "kb-010-dimensiones-tecnicas",
+      "category": "product",
+      "question": "¿Cuáles son las dimensiones de los paneles? ¿Qué largo, ancho y peso tienen?",
+      "badAnswer": "Los paneles miden 1 metro de ancho y pesan poco.",
+      "goodAnswer": "Dimensiones de referencia por familia (los largos exactos se fabrican a pedido según el proyecto; estos son valores típicos de catálogo — confirmar con BMC al cotizar): (1) ISODEC EPS / ISODEC PIR (techo): ancho útil ~1,12 m; largo fabricable típico entre 2,3 y 14 m. Peso aproximado: 10 a 15 kg/m² según espesor (EPS 100 mm ≈ 10,5 kg/m²; PIR 80 mm ≈ 11,8 kg/m²). (2) ISOROOF 3G / FOIL / PLUS / COLONIAL (techo cubierta): ancho útil ~1,00 m; largo fabricable típico entre 3,5 y 8,5 m. Peso: 9 a 13 kg/m² según espesor (3G 50mm ≈ 9,2 kg/m²). (3) ISOPANEL EPS (pared): ancho útil ~1,14 m; largo fabricable típico entre 2,3 y 14 m. ISOWALL PIR (pared): ancho útil ~1,10 m; largo 3,5 a 14 m. Peso: 10 a 16 kg/m² según espesor. Notas importantes: (a) El largo del panel se fabrica al largo de obra — no hay corte longitudinal de fábrica. Si el proyecto necesita un largo no estándar menor al mínimo fabricable, consultar con BMC para opciones. (b) El peso de 9–12 kg/m² contrasta con la teja cerámica (40–70 kg/m²) — ventaja estructural significativa para estructuras livianas. (c) El espesor nominal incluye las dos chapas de acero prepintado (0,4–0,5 mm cada una) y el núcleo. Para el cálculo estructural oficial, siempre solicitar la ficha técnica del panel específico.",
+      "context": "Dimensiones, peso, largo, ancho útil, espesor, ficha técnica, datos técnicos de paneles",
+      "source": "kb-batch-2026-04-25",
+      "permanent": true,
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z"
+    },
+    {
+      "id": "kb-011-zonas-humedas",
+      "category": "product",
+      "question": "¿Los paneles sirven para zonas húmedas, baños, vestuarios, cámaras frigoríficas o ambientes con vapor?",
+      "badAnswer": "Los paneles son para techos solamente y no aguantan la humedad.",
+      "goodAnswer": "Panelin tiene soluciones específicas para ambientes húmedos, pero la elección del producto importa mucho: (1) Cámaras frigoríficas: se usa ISOPANEL EPS o ISOWALL PIR de alta densidad. El sistema de cámara tiene perfiles especiales (perfil de suelo, cielorrasos, tapas de junta) sellados con espuma PU de célula cerrada para impermeabilidad total. El PIR es especialmente recomendado para cámaras porque su núcleo de célula cerrada no absorbe agua, a diferencia del EPS que puede absorber humedad si hay falla del sellado. (2) Vestuarios, baños y áreas de vapor en industria: se puede usar el sistema de pared (ISOPANEL EPS o ISOWALL PIR) con sellado integral de juntas y zócalos. Clave: el panel de pared tiene cara interna de chapa prepintada — no es apto para contacto directo con agua corriente (ducha sin revestimiento). Se recomienda revestimiento cerámico o panelería impermeable en las zonas de ducha directa. (3) Zonas costeras (menos de 5 km del mar): para exteriores en ambientes marinos se recomienda solicitar la opción de chapa con prepintado marino (mayor resistencia a la corrosión salina). El plazo de garantía en estos ambientes baja a 5 años. (4) Industria alimentaria, frigoríficos, mataderos: el sistema de panel Kingspan/Bromyros para cámaras tiene certificación de uso en industria alimentaria. Consultar al equipo BMC para la solución integral (pisos, juntas sanitarias, iluminación integrable). En cualquier proyecto con alta humedad, el sellado de juntas con butilo + silicona neutra es obligatorio — un panel bien sellado es el corazón del sistema.",
+      "context": "Zonas húmedas, cámara frigorífica, baños, vestuarios, industria alimentaria, humedad, vapor, ambiente marino, costero",
+      "source": "kb-batch-2026-04-25",
+      "permanent": true,
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z"
+    },
+    {
+      "id": "kb-012-mantenimiento-limpieza",
+      "category": "product",
+      "question": "¿Con qué puedo limpiar los paneles? ¿Qué productos son seguros y cuáles dañan la chapa?",
+      "badAnswer": "Podés limpiar con cualquier producto de limpieza.",
+      "goodAnswer": "Protocolo de limpieza para paneles Panelin: (1) Productos SEGUROS: agua con detergente neutro (pH entre 6 y 8), esponja suave o trapo de microfibra. Para suciedad más resistente (hollín, polvo industrial compactado): jabón de fregar doméstico diluido al 2-5% en agua tibia. Enjuagar siempre con agua limpia al finalizar. (2) Productos que DAÑAN el panel y están PROHIBIDOS: (a) Disolventes orgánicos (aguarrás, acetona, thinner, solvente de pintura) — atacan el recubrimiento prepintado y dejan manchas permanentes. (b) Detergentes alcalinos o ácidos fuertes (ácido muriático, limpiadores industriales con pH <5 o >9) — corroen el zinc del acero subyacente. (c) Lana de acero, esponjas abrasivas, discos de amoladora — rayan la chapa y la dejan sin protección anticorrosión. (d) Presión de agua alta directamente sobre las juntas o perfiles (puede ingresar agua al interior del panel). (3) Para manchas de óxido superficial en cortes: lijar con lija fina (grano 150+), limpiar con trapo seco y aplicar convertidor de óxido + pintura anticorrosión del mismo tono. (4) Frecuencia recomendada: en ambientes urbanos o industriales, lavar 1 vez por año. En zonas costeras, cada 6 meses. La suciedad retenida (hojas, polvo orgánico, excremento de aves) retiene humedad y acelera la corrosión. (5) Musgo o algas: en techos con poca pendiente o zonas húmedas puede aparecer musgo. Tratarlo con producto antimoss específico para metales (no usar lejía directa sobre la chapa sin diluir). Enjuagar bien.",
+      "context": "Limpieza de paneles, productos seguros, qué no usar, protocolo de mantenimiento, chapa prepintada, óxido en cortes, mantenimiento preventivo",
+      "source": "kb-batch-2026-04-25",
+      "permanent": true,
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z"
+    },
+    {
+      "id": "kb-013-comparacion-lana-mineral",
+      "category": "sales",
+      "question": "¿En qué se diferencia el panel Panelin de la lana mineral o lana de vidrio?",
+      "badAnswer": "El panel es mejor que la lana mineral en todo.",
+      "goodAnswer": "Comparación honesta entre panel sándwich Panelin y lana mineral (lana de vidrio / lana de roca): (1) INSTALACIÓN: el panel sándwich es un sistema industrializado — va directo sobre la estructura portante, sin capas adicionales. La lana mineral requiere estructura secundaria de apoyo, fijación mecánica o adhesiva, barrera de vapor, y terminación interior (cielorraso, chapa, yeso). Para una obra nueva, el panel reduce el tiempo de instalación significativamente. (2) HUMEDAD: la lana mineral absorbe agua y pierde hasta el 50-70% de su poder aislante cuando se moja. El núcleo EPS del panel es resistente a la humedad; el PIR con célula cerrada es prácticamente impermeable al vapor. En ambientes húmedos (cámaras, vestuarios, litoral) el panel es la opción más confiable a largo plazo. (3) RESISTENCIA MECÁNICA: el panel tiene dos chapas de acero que lo hacen rígido y transitable (con tablones). La lana mineral es un producto blando que se comprime y pierde eficiencia con el tiempo si se pisa o tiene carga mecánica. (4) MANTENIMIENTO: el panel necesita limpieza de chapa y revisión de selladores. La lana mineral oculta detrás de un cielorraso puede deteriorarse silenciosamente (humedad, roedores) sin que se note desde afuera. (5) PRECIO: la lana mineral tiene menor costo de material por m² (especialmente en espesores bajos). El panel tiene mayor costo inicial pero elimina las capas adicionales de obra — en muchos proyectos industriales el costo total por m² de techo terminado es similar o menor con panel. (6) CUÁNDO PUEDE PREFERIRSE LA LANA MINERAL: en reformas de edificios donde la estructura no soporta más peso, en aplicaciones acústicas específicas (la lana de roca tiene mejor absorción acústica) o en superficies irregulares donde el panel plano no encaja bien. En esos casos BMC puede asesorar sobre si existe una solución de panel adaptada o si la lana mineral es la opción más práctica.",
+      "context": "Comparación lana mineral, lana de vidrio, lana de roca, diferencias con panel sándwich, humedad, instalación, precio, ventajas y desventajas",
+      "source": "kb-batch-2026-04-25",
+      "permanent": true,
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z"
     }
   ]
 }
