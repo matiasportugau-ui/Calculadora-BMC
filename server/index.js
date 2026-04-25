@@ -28,6 +28,7 @@ import { createWolfboardRouter } from "./routes/wolfboard.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
+import { createPdfRouter } from "./routes/pdf.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -735,6 +736,8 @@ app.use("/api/agent", createSuperAgentRouter(config));
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
+// PDF generation (Playwright/Chromium server-side — vectorial quality)
+app.use("/api/pdf", createPdfRouter());
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
