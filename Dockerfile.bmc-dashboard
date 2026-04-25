@@ -9,9 +9,6 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# playwright is needed at runtime (server-side PDF); PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-# skips bundled Chromium download — we use system chromium instead (apk add chromium)
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci --omit=dev --legacy-peer-deps
 
 FROM node:20-alpine AS calc-build
@@ -37,17 +34,25 @@ LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app
 
-# Chromium for server-side PDF generation (/api/pdf/generate)
-# Alpine apk installs the binary at /usr/bin/chromium (not chromium-browser)
-RUN apk add --no-cache chromium && \
-    ls /usr/bin/chrom* 2>/dev/null || true
-
-# Tell Playwright to use the system Chromium (avoids bundled binary download)
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    CHROMIUM_PATH=/usr/bin/chromium
+# System libs required by Playwright Chromium on Alpine
+RUN apk add --no-cache \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    udev \
+    chromium
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
+
+# Install Playwright's Chromium to a global path (not user-home dependent)
+# PLAYWRIGHT_BROWSERS_PATH must be set BEFORE `playwright install`
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install chromium && \
+    chmod -R o+rx /ms-playwright
+
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/

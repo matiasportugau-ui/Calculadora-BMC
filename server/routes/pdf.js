@@ -30,19 +30,10 @@ export function createPdfRouter() {
     try {
       const { chromium } = await import("playwright");
 
-      // Executable path resolution (in order):
-      //   1. CHROMIUM_PATH env var — explicit override
-      //   2. `which chromium` / `which chromium-browser` — Alpine apk install location
-      //      varies by Alpine version; runtime discovery is the most resilient
-      //   3. Playwright bundled binary — local dev / environments with `playwright install`
-      const { execSync } = await import("node:child_process");
-      const executablePath = process.env.CHROMIUM_PATH || (() => {
-        try {
-          return execSync("which chromium 2>/dev/null || which chromium-browser 2>/dev/null", {
-            encoding: "utf8", timeout: 3000,
-          }).trim() || null;
-        } catch { return null; }
-      })() || chromium.executablePath();
+      // Executable path: CHROMIUM_PATH env override, else Playwright-managed binary.
+      // In prod (Cloud Run) PLAYWRIGHT_BROWSERS_PATH=/ms-playwright is set in the
+      // Dockerfile so chromium.executablePath() resolves to the correct global path.
+      const executablePath = process.env.CHROMIUM_PATH || chromium.executablePath();
 
       browser = await chromium.launch({
         executablePath,
