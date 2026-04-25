@@ -30,7 +30,9 @@ export function createPdfRouter() {
     try {
       const { chromium } = await import("playwright");
 
+      // Use the bundled full browser (not headless_shell) — avoids macOS spawn -88
       browser = await chromium.launch({
+        executablePath: chromium.executablePath(),
         headless: true,
         args: [
           "--no-sandbox",
@@ -63,12 +65,11 @@ export function createPdfRouter() {
       return res.send(pdfBuffer);
 
     } catch (err) {
-      if (err.code === "ERR_MODULE_NOT_FOUND" || err.message?.includes("playwright")) {
-        // Playwright not installed in this environment — client should fallback
+      console.error("[pdf/generate] error:", err.code, err.message);
+      if (err.code === "ERR_MODULE_NOT_FOUND") {
         return res.status(503).json({ error: "pdf_renderer_unavailable" });
       }
-      console.error("[pdf/generate]", err.message);
-      return res.status(500).json({ error: "pdf_generation_failed" });
+      return res.status(500).json({ error: "pdf_generation_failed", detail: err.message });
     } finally {
       await browser?.close().catch(() => {});
     }
