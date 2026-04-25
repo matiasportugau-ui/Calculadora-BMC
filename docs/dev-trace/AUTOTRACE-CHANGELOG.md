@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-18 21:39:34 — `fa3e400` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - 2026-04-18 21:40:19 — `4a19616` — docs: update PROJECT-STATE and SESSION-WORKSPACE-CRM with recent changes
 - 2026-04-18 22:08:22 — `680cf98` — fix(docs): correct typo in Atlas Browser Go-Live manual steps prompt title
 - 2026-04-18 22:26:59 — `bc5c1fc` — fix(docs): update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title
@@ -222,3 +221,4 @@
 - 2026-04-25 05:16:43 — `dd28047` — feat(pdf): replace Playwright with @sparticuz/chromium-min + puppeteer-core
 - 2026-04-25 05:28:18 — `c5c836d` — feat(floor-plan): 10-iteration professional SVG plano en planta
 - 2026-04-25 05:30:32 — `05d199e` — feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
+- 2026-04-25 05:30:43 — `7e0c3b9` — fix(pdf): use @sparticuz/chromium (full, with binary) not chromium-min

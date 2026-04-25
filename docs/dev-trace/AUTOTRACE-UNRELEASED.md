@@ -139,6 +139,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `33e28d9` fix: update deployment triggers and Cloud Run configuration
 - `cb826f4` fix(pdf): return 503 on launch failure + sample data + var-tracker
 - `a047c23` fix(pdf): replace fs.promises.glob with readdirSync — Node 20 compat
+- `7e0c3b9` fix(pdf): use @sparticuz/chromium (full, with binary) not chromium-min
 
 ## Documentation
 
