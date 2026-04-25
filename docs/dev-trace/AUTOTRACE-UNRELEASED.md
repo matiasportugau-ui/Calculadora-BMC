@@ -69,6 +69,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `9e9b542` feat(ml-auto): webhook-driven auto-answer pipeline + server autoMode API
 - `b8f1a1b` feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1
 - `d4ff115` feat(pdf+tooling): hide empty client fields in visual + multiterminator skill + tmux setup
+- `1e91224` feat(pdf+tooling): enhance visual output and multi-terminal orchestration
 
 ## Fixes
 

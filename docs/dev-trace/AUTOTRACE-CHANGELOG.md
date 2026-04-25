@@ -205,3 +205,4 @@
 - 2026-04-25 00:23:36 — `5349960` — fix(pdf): responsive SVG strips (viewBox + width 100%) + postcss audit fix + KB sync
 - 2026-04-25 02:32:24 — `a75c9a7` — fix(pdf): omit empty client fields + tmux multi-terminal workspace
 - 2026-04-25 02:32:28 — `d4ff115` — feat(pdf+tooling): hide empty client fields in visual + multiterminator skill + tmux setup
+- 2026-04-25 02:34:12 — `1e91224` — feat(pdf+tooling): enhance visual output and multi-terminal orchestration
