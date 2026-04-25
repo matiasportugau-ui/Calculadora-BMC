@@ -2,7 +2,7 @@
   "_meta": {
     "key": "matriz_precios",
     "label": "MATRIZ Costos y Ventas 2026 — precios canónicos BMC",
-    "synced_at": "2026-04-24T05:55:26.499Z",
+    "synced_at": "2026-04-25T03:22:49.092Z",
     "row_count": 170,
     "spreadsheet_id": "1oDMkBgWxX7cu7TpSvuO30tCTUWl68IBDhC4cQTP79Xo",
     "source_env": "BMC_MATRIZ_SHEET_ID"
@@ -1590,6 +1590,16 @@
     },
     {
       "sku": "",
+      "descripcion": "Pistola de Silicona ",
+      "costo_m2_usd_ex_iva": null,
+      "venta_local": null,
+      "venta_local_iva_inc": null,
+      "venta_web_usd": null,
+      "venta_web_iva_inc": null,
+      "_row": 179
+    },
+    {
+      "sku": "",
       "descripcion": "Faltan Tornillos autoperfoantes para cotizar cuando retiren de BROMYROS ",
       "costo_m2_usd_ex_iva": null,
       "venta_local": null,
@@ -1687,16 +1697,6 @@
       "venta_web_usd": null,
       "venta_web_iva_inc": null,
       "_row": 192
-    },
-    {
-      "sku": "",
-      "descripcion": "Pistola de Silicona ",
-      "costo_m2_usd_ex_iva": null,
-      "venta_local": null,
-      "venta_local_iva_inc": null,
-      "venta_web_usd": null,
-      "venta_web_iva_inc": null,
-      "_row": 193
     },
     {
       "sku": "",

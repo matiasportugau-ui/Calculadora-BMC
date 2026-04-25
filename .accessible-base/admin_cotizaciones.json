@@ -2,8 +2,8 @@
   "_meta": {
     "key": "admin_cotizaciones",
     "label": "Admin 2.0 — Administrador de Cotizaciones (Wolfboard source)",
-    "synced_at": "2026-04-24T05:55:29.768Z",
-    "row_count": 8,
+    "synced_at": "2026-04-25T03:22:51.199Z",
+    "row_count": 13,
     "spreadsheet_id": "1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0",
     "source_env": "WOLFB_ADMIN_SHEET_ID"
   },
@@ -51,18 +51,53 @@
       "_row": 7
     },
     {
-      "consulta": "URGENTE: Cotización Cubierta ISODEC 200mm - Ampliación Médica Uruguaya // Isofrig - Sala Limpia 200 mm - 89.25+iva ",
+      "consulta": "Isodec 150 / Isoroof Foil 30mm / Cuanto me sale para un techo de 5 mts de ancho x 4,50 de largo",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
       "_row": 8
     },
     {
+      "consulta": "URGENTE: iSODEC eps 150MM + iSOPANEL 100MM / 350 M2 DE CADA UNO. / Ver planos para calcular cantidades de paneles + accesorios + anclajes / Con flete",
+      "respuesta": "",
+      "link_presupuesto": "",
+      "enviado": false,
+      "_row": 9
+    },
+    {
+      "consulta": "Precio de cahapas con aislante termico  ",
+      "respuesta": "",
+      "link_presupuesto": "",
+      "enviado": false,
+      "_row": 10
+    },
+    {
+      "consulta": "Isopanel e Isodec 100mm / Ver planos en Ventas Altura minima 2,5m altura máxima 2,75m (en techo encajonado sumar 40cm)/ Opción Techo encajonado y opción techo con alero de 20cm perimetral / Agregar 2 caños laminados BECAM de 100x100 x 2mm + 1 caño laminado BECAM de 100x60x2mm / Completo + Flete",
+      "respuesta": "",
+      "link_presupuesto": "",
+      "enviado": false,
+      "_row": 11
+    },
+    {
+      "consulta": "Plegados especiales Cal 24 BECAM galvanizadas / Ver detalles y cantidades",
+      "respuesta": "",
+      "link_presupuesto": "",
+      "enviado": false,
+      "_row": 12
+    },
+    {
+      "consulta": "olicitamos su cotización para la realización de trabajos en Isopanel en la Planta 7 de Florida (Torre Stork).",
+      "respuesta": "",
+      "link_presupuesto": "",
+      "enviado": false,
+      "_row": 13
+    },
+    {
       "consulta": "a",
       "respuesta": "",
       "link_presupuesto": "",
       "enviado": false,
-      "_row": 16
+      "_row": 15
     }
   ]
 }

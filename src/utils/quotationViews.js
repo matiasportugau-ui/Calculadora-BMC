@@ -119,38 +119,39 @@ export function buildPdfAppendixPayload({
 export function svgTechoStrip(roofBlock) {
   const { largo, anchoTotal, cantPaneles, au } = roofBlock;
   const n = Math.max(1, Math.min(40, Number(cantPaneles) || 1));
-  const maxW = 420;
-  const maxH = 200;
+  const vW = 1000;
   const ar = anchoTotal > 0 && largo > 0 ? largo / anchoTotal : 0.6;
-  let w = maxW;
-  let h = w * ar;
-  if (h > maxH) { h = maxH; w = Math.min(maxW, h / ar); }
-  const stripe = w / n;
+  const vH = Math.round(vW * Math.min(ar, 2));
+  const capH = 40;
+  const stripe = vW / n;
   let rects = "";
   for (let i = 0; i < n; i += 1) {
-    const x = i * stripe + 0.5;
+    const x = +(i * stripe + 0.5).toFixed(2);
+    const sw = +(Math.max(stripe - 1.5, 1)).toFixed(2);
     const fill = i % 2 ? "#E8EEF5" : "#F5F8FC";
-    rects += `<rect x="${x}" y="0.5" width="${Math.max(stripe - 1, 2)}" height="${Math.max(h - 1, 2)}" fill="${fill}" stroke="#003366" stroke-width="0.8"/>`;
+    rects += `<rect x="${x}" y="0.5" width="${sw}" height="${vH - 1}" fill="${fill}" stroke="#003366" stroke-width="1.2"/>`;
   }
-  const capH = 28;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + capH}" viewBox="0 0 ${w} ${h + capH}" role="img" aria-label="Esquema techo"><rect x="0" y="0" width="${w}" height="${h}" fill="none" stroke="#ccc" stroke-width="0.5"/>${rects}<text x="4" y="${h + 14}" font-size="9" fill="#444">Largo ${Number(largo).toFixed(2)} m · Ancho útil ${Number(anchoTotal).toFixed(2)} m · ${n} paneles × AU ${au} m</text></svg>`;
+  const totalH = vH + capH;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${vW} ${totalH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Esquema techo" style="display:block"><rect x="0" y="0" width="${vW}" height="${vH}" fill="none" stroke="#ccc" stroke-width="1"/>${rects}<text x="6" y="${vH + 28}" font-size="18" fill="#444">Largo ${Number(largo).toFixed(2)} m · Ancho útil ${Number(anchoTotal).toFixed(2)} m · ${n} paneles × AU ${au} m</text></svg>`;
 }
 
 /** Diagrama SVG de paneles de pared/cerramiento. */
 export function svgParedStrip(wallBlock) {
   const { alto, perimetro, cantPaneles, au } = wallBlock;
   const n = Math.max(1, Math.min(40, Number(cantPaneles) || 1));
-  const maxW = 420;
-  const stripe = maxW / n;
-  const h = 72;
+  const vW = 1000;
+  const vH = 200;
+  const capH = 40;
+  const stripe = vW / n;
   let rects = "";
   for (let i = 0; i < n; i += 1) {
-    const x = i * stripe + 0.5;
+    const x = +(i * stripe + 0.5).toFixed(2);
+    const sw = +(Math.max(stripe - 1.5, 1)).toFixed(2);
     const fill = i % 2 ? "#E8EEF5" : "#F5F8FC";
-    rects += `<rect x="${x}" y="0.5" width="${Math.max(stripe - 1, 2)}" height="${h - 1}" fill="${fill}" stroke="#003366" stroke-width="0.8"/>`;
+    rects += `<rect x="${x}" y="0.5" width="${sw}" height="${vH - 1}" fill="${fill}" stroke="#003366" stroke-width="1.2"/>`;
   }
-  const capH = 28;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${maxW}" height="${h + capH}" viewBox="0 0 ${maxW} ${h + capH}" role="img" aria-label="Esquema fachada"><rect x="0" y="0" width="${maxW}" height="${h}" fill="none" stroke="#ccc" stroke-width="0.5"/>${rects}<text x="4" y="${h + 14}" font-size="9" fill="#444">Alto ${Number(alto).toFixed(2)} m · Perímetro ${Number(perimetro).toFixed(2)} m · ${n} paneles × AU ${au} m</text></svg>`;
+  const totalH = vH + capH;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${vW} ${totalH}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Esquema fachada" style="display:block"><rect x="0" y="0" width="${vW}" height="${vH}" fill="none" stroke="#ccc" stroke-width="1"/>${rects}<text x="6" y="${vH + 28}" font-size="18" fill="#444">Alto ${Number(alto).toFixed(2)} m · Perímetro ${Number(perimetro).toFixed(2)} m · ${n} paneles × AU ${au} m</text></svg>`;
 }
 
 /** Sección HTML con capturas/snapshots para incluir en PDF. */

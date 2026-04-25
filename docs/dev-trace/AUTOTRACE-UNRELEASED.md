@@ -213,6 +213,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3c89a78` chore(dev-trace): update kb.json timestamps and sync documentation
 - `f715469` chore(dev-trace): AUTOTRACE sync 2026-04-24 [SKIP_AUTOTRACE]
 - `ac39207` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- `a6e0548` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 
 ## Other
 
