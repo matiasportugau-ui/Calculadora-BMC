@@ -218,3 +218,5 @@
 - 2026-04-25 03:15:52 — `43a9206` — fix(pdf): move playwright to dependencies for Cloud Run runtime
 - 2026-04-25 03:20:32 — `e2ac5e0` — feat(fiscal): BPS/IRAE tracking endpoint + dashboard card
 - 2026-04-25 03:23:36 — `323c104` — feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
+- 2026-04-25 03:35:02 — `3ba47ab` — feat(workspace): /bmc-claude-workspace skill + setup script
+- 2026-04-25 03:41:27 — `bd2ab02` — fix(pdf): chromium path — Alpine uses /usr/bin/chromium not chromium-browser

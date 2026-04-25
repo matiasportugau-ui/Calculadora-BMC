@@ -76,6 +76,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `686d161` feat(pdf): Cloud Run Chromium support — Alpine apk + CHROMIUM_PATH env
 - `e2ac5e0` feat(fiscal): BPS/IRAE tracking endpoint + dashboard card
 - `323c104` feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
+- `3ba47ab` feat(workspace): /bmc-claude-workspace skill + setup script
 
 ## Fixes
 
@@ -118,6 +119,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c98c41e` fix(pdf): @media print CSS + PDF+ vectorial print path
 - `524e7f1` fix(tooling): bmc-workspace port pre-check, gate window, broadcast guard
 - `43a9206` fix(pdf): move playwright to dependencies for Cloud Run runtime
+- `bd2ab02` fix(pdf): chromium path — Alpine uses /usr/bin/chromium not chromium-browser
 
 ## Documentation
 
