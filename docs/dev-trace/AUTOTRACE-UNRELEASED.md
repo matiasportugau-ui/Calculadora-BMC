@@ -122,6 +122,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `bd2ab02` fix(pdf): chromium path — Alpine uses /usr/bin/chromium not chromium-browser
 - `f1b23c5` fix(pdf): Alpine chromium path + robust fallback resolution
 - `9c5cf0a` fix(pdf): runtime chromium discovery via which — resilient to Alpine path variance
+- `56eb949` fix(ci): skip disk:precheck on Alpine (bash not found)
+- `85716d5` fix(pdf): playwright install chromium at build time — PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+- `6f88020` fix(pdf): switch runtime to node:20-slim — Playwright Debian first-class support
 
 ## Documentation
 

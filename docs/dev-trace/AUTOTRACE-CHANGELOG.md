@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-18 21:12:17 — `352f730` — feat: Enhance WhatsApp integration and add AUTOTRACE system
-- 2026-04-18 21:12:58 — `8dc43fd` — feat: Enhance WhatsApp integration and add AUTOTRACE system
-- 2026-04-18 21:13:19 — `db62c95` — feat: Enhance WhatsApp integration and add AUTOTRACE system
 - 2026-04-18 21:13:32 — `d8455c0` — feat: Enhance WhatsApp integration and add AUTOTRACE system
 - 2026-04-18 21:16:45 — `fa2ba6a` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - 2026-04-18 21:17:00 — `553941e` — feat: Enhance WhatsApp integration and update AUTOTRACE documentation
@@ -222,3 +219,6 @@
 - 2026-04-25 03:41:27 — `bd2ab02` — fix(pdf): chromium path — Alpine uses /usr/bin/chromium not chromium-browser
 - 2026-04-25 03:42:45 — `f1b23c5` — fix(pdf): Alpine chromium path + robust fallback resolution
 - 2026-04-25 03:45:46 — `9c5cf0a` — fix(pdf): runtime chromium discovery via which — resilient to Alpine path variance
+- 2026-04-25 03:46:05 — `56eb949` — fix(ci): skip disk:precheck on Alpine (bash not found)
+- 2026-04-25 03:48:42 — `85716d5` — fix(pdf): playwright install chromium at build time — PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+- 2026-04-25 03:52:35 — `6f88020` — fix(pdf): switch runtime to node:20-slim — Playwright Debian first-class support

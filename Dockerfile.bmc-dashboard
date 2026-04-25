@@ -37,9 +37,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 
-# Install Playwright Chromium + all required system deps (Debian/slim first-class support)
-# --with-deps handles libnss, libglib2, fonts etc. automatically
-RUN npx playwright install --with-deps chromium
+# Install Playwright Chromium into a fixed world-readable path.
+# PLAYWRIGHT_BROWSERS_PATH must be set BEFORE install so both build-time (root)
+# and runtime (user bmc) resolve the same binary location.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install --with-deps chromium && chmod -R 755 /ms-playwright
 
 COPY server/ ./server/
 COPY src/utils/ ./src/utils/
