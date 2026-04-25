@@ -211,3 +211,4 @@
 - 2026-04-25 03:01:07 — `3d8529b` — feat(pdf): server-side PDF via Playwright — vectorial quality for Drive uploads
 - 2026-04-25 03:05:22 — `baef360` — chore: regenerate quotation preview — resolve merge conflict
 - 2026-04-25 03:06:16 — `c98c41e` — fix(pdf): @media print CSS + PDF+ vectorial print path
+- 2026-04-25 03:07:04 — `c5750df` — chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]

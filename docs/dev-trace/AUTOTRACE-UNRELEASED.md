@@ -223,6 +223,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ac39207` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `a6e0548` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `baef360` chore: regenerate quotation preview — resolve merge conflict
+- `c5750df` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 
 ## Other
 
