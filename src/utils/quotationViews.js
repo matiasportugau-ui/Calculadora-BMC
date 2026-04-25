@@ -483,9 +483,9 @@ export function generateClientVisualHTML(data) {
 <div style="border-bottom:2.5pt solid #003366;margin-bottom:4px"></div>
 <div style="font-size:8.5pt;color:#6E6E73;margin-bottom:8px">Propuesta comercial · bmcuruguay.com.uy · 092 663 245</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:10pt;margin-bottom:8px">
-<div><b>Cliente:</b> ${esc(client.nombre)}</div><div><b>Fecha:</b> ${esc(project.fecha)}</div>
-<div><b>Obra:</b> ${esc(project.descripcion)}</div><div><b>Ref:</b> ${esc(project.refInterna)}</div>
-<div><b>Tel:</b> ${esc(client.telefono)}</div><div><b>Dir:</b> ${esc(client.direccion)}</div>
+${client.nombre ? `<div><b>Cliente:</b> ${esc(client.nombre)}</div>` : "<div></div>"}<div><b>Fecha:</b> ${esc(project.fecha)}</div>
+${project.descripcion ? `<div><b>Obra:</b> ${esc(project.descripcion)}</div>` : "<div></div>"}<div><b>Ref:</b> ${esc(project.refInterna)}</div>
+${client.telefono ? `<div><b>Tel:</b> ${esc(client.telefono)}</div>` : "<div></div>"}${client.direccion ? `<div><b>Dir:</b> ${esc(client.direccion)}</div>` : "<div></div>"}
 </div>
 <div style="background:#F0F4F8;padding:6px 10px;border-radius:4px;margin-bottom:6px"><b style="color:#003366">Producto / alcance:</b> ${productoCliente}</div>
 ${floorPlanHtml}
