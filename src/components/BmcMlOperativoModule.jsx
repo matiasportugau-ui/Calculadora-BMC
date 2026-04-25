@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
@@ -24,10 +24,10 @@ function isSi(v) { const s = String(v || "").trim().toLowerCase(); return s === 
 
 // ── per-row status ────────────────────────────────────────────────────────────
 function rowStatus(parsed) {
-  if (parsed?.enviadoEl)                     return { label: "Enviado",         color: "#00875a", bg: "#e3fcef", dot: "🟢" };
-  if (isSi(parsed?.aprobadoEnviar))          return { label: "Aprobado",        color: "#974f0c", bg: "#fff3e0", dot: "🟠" };
-  if (parsed?.respuestaSugerida?.trim())     return { label: "Con respuesta",   color: "#0055bb", bg: "#e8f0ff", dot: "🔵" };
-  return                                            { label: "Sin respuesta",   color: "#cc0000", bg: "#fff0f0", dot: "🔴" };
+  if (parsed?.enviadoEl)                 return { label: "Enviado",       color: "#00875a", bg: "#e3fcef", dot: "🟢" };
+  if (isSi(parsed?.aprobadoEnviar))      return { label: "Aprobado",      color: "#974f0c", bg: "#fff3e0", dot: "🟠" };
+  if (parsed?.respuestaSugerida?.trim()) return { label: "Con respuesta", color: "#0055bb", bg: "#e8f0ff", dot: "🔵" };
+  return                                        { label: "Sin respuesta", color: "#cc0000", bg: "#fff0f0", dot: "🔴" };
 }
 function sourceBadge(questionId) {
   if (questionId) return { label: "ML",  color: "#a35900", bg: "#fff3cd", title: `Pregunta ML: ${questionId}` };
@@ -39,7 +39,6 @@ const wrap  = { minHeight: "100vh", display: "flex", flexDirection: "column", ba
 const main  = { flex: 1, padding: "24px 20px 48px", maxWidth: 1180, margin: "0 auto", width: "100%", boxSizing: "border-box" };
 const card  = { background: "#fff", borderRadius: 12, border: "1px solid #e5e5ea", padding: 16, marginBottom: 16, fontFamily: FF };
 const badge = (color, bg) => ({ display: "inline-block", fontSize: 11, fontWeight: 700, color, background: bg, borderRadius: 5, padding: "1px 7px", letterSpacing: 0.3 });
-
 const th = { textAlign: "left", padding: "8px 10px", borderBottom: "2px solid #e5e5ea", color: "#6e6e73", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap", fontFamily: FF };
 const td = { padding: "9px 10px", borderBottom: "1px solid #f0f0f2", verticalAlign: "top", fontSize: 12, fontFamily: FF };
 
@@ -90,10 +89,10 @@ function CrtLog({ lines, firing, token, queueLen }) {
     backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,0,0.03) 3px, rgba(0,255,0,0.03) 6px)",
     boxShadow: "inset 0 0 16px #00000066", overflowY: "auto", maxHeight: 120,
   };
-  const idle = { color: "#00cc44", textShadow: "0 0 5px #00ff4455" };
+  const idle   = { color: "#00cc44", textShadow: "0 0 5px #00ff4455" };
   const yellow = { color: "#ffcc00", textShadow: "0 0 6px #ffcc0077" };
-  const green = { color: "#00ff88", textShadow: "0 0 8px #00ff8855" };
-  const red = { color: "#ff4444", textShadow: "0 0 6px #ff444455" };
+  const green  = { color: "#00ff88", textShadow: "0 0 8px #00ff8855" };
+  const red    = { color: "#ff4444", textShadow: "0 0 6px #ff444455" };
   return (
     <div style={screen}>
       {lines.length === 0 ? (
@@ -108,7 +107,7 @@ function CrtLog({ lines, firing, token, queueLen }) {
             : line.startsWith("✗") || line.startsWith("⚠") ? red
             : (i === lines.length - 1 && firing) ? yellow
             : idle;
-          return <div key={i} style={style}>{line || " "}</div>;
+          return <div key={i} style={style}>{line || " "}</div>;
         })
       )}
       {firing && <span style={{ ...yellow }}> █</span>}
@@ -116,30 +115,212 @@ function CrtLog({ lines, firing, token, queueLen }) {
   );
 }
 
+// ── aircraft switch ───────────────────────────────────────────────────────────
+function AircraftSwitch({ label, on, onToggle, disabled }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        onClick={() => !disabled && onToggle()}
+        style={{
+          background: "#1c1c1e",
+          border: `1.5px solid ${on ? "#2a4a2a" : "#3a3a3c"}`,
+          borderRadius: 6, padding: "8px 10px",
+          boxShadow: on
+            ? "inset 0 1px 3px #00000088, 0 2px 4px #00000066, 0 0 10px #00ff6622"
+            : "inset 0 1px 3px #00000088, 0 2px 4px #00000066",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.4 : 1,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          minWidth: 52, userSelect: "none",
+          transition: "border-color 0.2s, box-shadow 0.2s",
+        }}
+      >
+        {/* LED indicator */}
+        <div style={{
+          width: 10, height: 10, borderRadius: "50%",
+          background: on ? "#00ff66" : "#3a1a1a",
+          boxShadow: on ? "0 0 8px #00ff66aa, 0 0 3px #00ff66" : "none",
+          transition: "background 0.2s, box-shadow 0.2s",
+        }} />
+        {/* Toggle lever */}
+        <div style={{
+          width: 14, height: 28, borderRadius: 4,
+          background: on ? "#aaaaaa" : "#555555",
+          border: "1px solid #666",
+          boxShadow: "0 2px 4px #00000077",
+          transform: on ? "translateY(-4px)" : "translateY(4px)",
+          transition: "transform 0.15s, background 0.15s",
+        }} />
+      </div>
+      {label && (
+        <span style={{
+          fontSize: 9, fontFamily: MONO,
+          color: on ? "#aaffaa" : "#9ca3af",
+          textAlign: "center", letterSpacing: 0.5,
+          textTransform: "uppercase", maxWidth: 72, lineHeight: 1.2,
+          transition: "color 0.2s",
+        }}>
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── covered switch (protective guard for 100% AUTÓNOMO) ───────────────────────
+function CoveredSwitch({ label, on, onToggle, coverOpen, onCoverToggle }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{ position: "relative", perspective: "200px" }}>
+        <AircraftSwitch label="" on={on} onToggle={onToggle} disabled={!coverOpen} />
+        {/* Guard cover — rotates on hinge when opened */}
+        <div
+          onClick={coverOpen ? undefined : onCoverToggle}
+          title={coverOpen ? undefined : "Abrir cobertor primero"}
+          style={{
+            position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
+            background: coverOpen ? "rgba(180,0,0,0.08)" : "rgba(180,0,0,0.60)",
+            border: `1.5px solid ${coverOpen ? "rgba(220,38,38,0.15)" : "#dc2626"}`,
+            borderRadius: 6,
+            transformOrigin: "top center",
+            transform: coverOpen ? "rotateX(-80deg)" : "rotateX(0deg)",
+            transition: "transform 0.22s ease, background 0.2s, border-color 0.2s",
+            backfaceVisibility: "hidden",
+            cursor: coverOpen ? "default" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            pointerEvents: coverOpen ? "none" : "auto",
+          }}
+        >
+          {!coverOpen && (
+            <span style={{ fontSize: 12, lineHeight: 1 }}>🔒</span>
+          )}
+        </div>
+        {/* "ABIERTO" warning label, appears below when guard is open */}
+        {coverOpen && (
+          <div
+            onClick={onCoverToggle}
+            style={{
+              position: "absolute", bottom: -14, left: "50%",
+              transform: "translateX(-50%)",
+              fontSize: 8, color: "#ff6666", fontFamily: MONO,
+              cursor: "pointer", whiteSpace: "nowrap", letterSpacing: 0.4,
+            }}
+          >
+            ⚠ ABIERTO
+          </div>
+        )}
+      </div>
+      <span style={{
+        fontSize: 9, fontFamily: MONO,
+        color: on ? "#ffaaaa" : "#9ca3af",
+        textAlign: "center", letterSpacing: 0.5,
+        textTransform: "uppercase", maxWidth: 72, lineHeight: 1.2,
+        marginTop: coverOpen ? 10 : 0,
+        transition: "color 0.2s, margin-top 0.2s",
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ── eject button ──────────────────────────────────────────────────────────────
+function EjectButton({ onEject }) {
+  const [pressed, setPressed] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{
+        padding: 7, borderRadius: 10,
+        backgroundImage: "repeating-linear-gradient(45deg, #fbbf24 0px, #fbbf24 5px, #1c1c1e 5px, #1c1c1e 11px)",
+        border: "2px solid #fbbf24",
+        boxShadow: hovered ? "0 0 18px #fbbf2455" : "none",
+        transition: "box-shadow 0.2s",
+      }}>
+        <button
+          type="button"
+          onMouseDown={() => setPressed(true)}
+          onMouseUp={() => { setPressed(false); onEject(); }}
+          onMouseLeave={() => { setPressed(false); setHovered(false); }}
+          onMouseEnter={() => setHovered(true)}
+          style={{
+            width: 58, height: 58, borderRadius: "50%",
+            background: pressed ? "#b91c1c" : hovered ? "#ef4444" : "#dc2626",
+            border: `3px solid ${pressed ? "#450a0a" : "#7f1d1d"}`,
+            cursor: "pointer",
+            boxShadow: pressed
+              ? "0 1px 0 #450a0a, inset 0 2px 4px #00000044"
+              : hovered
+              ? "0 4px 0 #7f1d1d, 0 0 20px #dc262677"
+              : "0 4px 0 #7f1d1d, 0 2px 8px #dc262644",
+            transform: pressed ? "translateY(3px)" : "translateY(0px)",
+            transition: "transform 0.08s, box-shadow 0.08s, background 0.12s",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexDirection: "column", gap: 1,
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1 }}>⏏</span>
+          <span style={{ fontSize: 9, fontWeight: 800, color: "#fff", fontFamily: MONO, letterSpacing: 1 }}>EJECT</span>
+        </button>
+      </div>
+      <span style={{ fontSize: 9, fontFamily: MONO, color: "#ff9966", letterSpacing: 0.5, textTransform: "uppercase" }}>
+        CORTAR TODO
+      </span>
+    </div>
+  );
+}
+
+// ── automation defaults ────────────────────────────────────────────────────────
+const DEFAULT_AUTO = { mlPull: false, crmPull: false, sync: false, generate: false, fullAuto: false };
+
 // ══════════════════════════════════════════════════════════════════════════════
 export default function BmcMlOperativoModule() {
-  const [tokenInput, setTokenInput]       = useState("");
-  const [token, setToken]                 = useState("");
-  const [items, setItems]                 = useState([]);
-  const [loading, setLoading]             = useState(false);
-  const [error, setError]                 = useState("");
-  const [toast, setToast]                 = useState("");
-  const [tokenLoadError, setTokenLoadError] = useState("");
+  const [tokenInput, setTokenInput]           = useState("");
+  const [token, setToken]                     = useState("");
+  const [items, setItems]                     = useState([]);
+  const [loading, setLoading]                 = useState(false);
+  const [error, setError]                     = useState("");
+  const [toast, setToast]                     = useState("");
+  const [tokenLoadError, setTokenLoadError]   = useState("");
   const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
-  const [cycleLog, setCycleLog]           = useState([]);
-  const [firing, setFiring]               = useState(false);
-  const [generating, setGenerating]       = useState(false);
-  const [lastSync, setLastSync]           = useState(null);
-  const [lastSyncCount, setLastSyncCount] = useState(null);
-  const [expandedRow, setExpandedRow]     = useState(null);
+  const [cycleLog, setCycleLog]               = useState([]);
+  const [firing, setFiring]                   = useState(false);
+  const [generating, setGenerating]           = useState(false);
+  const [lastSync, setLastSync]               = useState(null);
+  const [lastSyncCount, setLastSyncCount]     = useState(null);
+  const [expandedRow, setExpandedRow]         = useState(null);
+
+  // ── automation state ───────────────────────────────────────────────────────
+  const [auto, setAuto] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("bmc-auto-cfg") || "null") || DEFAULT_AUTO; }
+    catch { return DEFAULT_AUTO; }
+  });
+  const [coverOpen, setCoverOpen] = useState(false);
+
+  // ── refs for stale-closure safety in intervals ─────────────────────────────
+  const autoRef         = useRef(auto);
+  const itemsRef        = useRef(items);
+  const firingRef       = useRef(firing);
+  const generatingRef   = useRef(generating);
+  const mlPullTimerRef  = useRef(null);
+  const crmPullTimerRef = useRef(null);
+  const syncTimerRef    = useRef(null);
+
+  useEffect(() => { autoRef.current = auto; },           [auto]);
+  useEffect(() => { itemsRef.current = items; },         [items]);
+  useEffect(() => { firingRef.current = firing; },       [firing]);
+  useEffect(() => { generatingRef.current = generating; }, [generating]);
 
   // ── stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    const fromMl      = items.filter(i => i.questionId).length;
-    const withResp    = items.filter(i => i.parsed?.respuestaSugerida?.trim()).length;
-    const approved    = items.filter(i => isSi(i.parsed?.aprobadoEnviar)).length;
-    const sent        = items.filter(i => i.parsed?.enviadoEl).length;
-    const noResp      = items.filter(i => !i.parsed?.respuestaSugerida?.trim()).length;
+    const fromMl   = items.filter(i => i.questionId).length;
+    const withResp = items.filter(i => i.parsed?.respuestaSugerida?.trim()).length;
+    const approved = items.filter(i => isSi(i.parsed?.aprobadoEnviar)).length;
+    const sent     = items.filter(i => i.parsed?.enviadoEl).length;
+    const noResp   = items.filter(i => !i.parsed?.respuestaSugerida?.trim()).length;
     return { total: items.length, fromMl, withResp, approved, sent, noResp };
   }, [items]);
 
@@ -151,7 +332,7 @@ export default function BmcMlOperativoModule() {
     fetch(`${base.replace(/\/+$/, "")}/api/crm/cockpit-token`, { credentials: "omit" })
       .then(async r => {
         const data = await r.json().catch(() => ({}));
-        if (!r.ok || !data?.ok) { setTokenLoadError(`No se pudo cargar el token del servidor. Pegá API_AUTH_TOKEN manualmente.`); return; }
+        if (!r.ok || !data?.ok) { setTokenLoadError("No se pudo cargar el token del servidor. Pegá API_AUTH_TOKEN manualmente."); return; }
         const t = String(data?.token || "").trim();
         if (t) { setStoredToken(t); setTokenInput(t); setToken(t); setTokenAutoLoaded(true); }
         else setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
@@ -159,9 +340,14 @@ export default function BmcMlOperativoModule() {
       .catch(() => setTokenLoadError("Error de red al pedir el token."));
   }, []);
 
+  // ── persist automation config ──────────────────────────────────────────────
+  useEffect(() => {
+    localStorage.setItem("bmc-auto-cfg", JSON.stringify(auto));
+  }, [auto]);
+
   const showToast = msg => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
-  // ── PULL CRM — load queue from CRM ─────────────────────────────────────────
+  // ── PULL CRM — load queue ──────────────────────────────────────────────────
   const loadQueue = useCallback(async () => {
     if (!token) { setError("Guardá el API token para cargar la cola."); return; }
     setLoading(true); setError("");
@@ -179,9 +365,9 @@ export default function BmcMlOperativoModule() {
     showToast(t ? "Token guardado." : "Token borrado.");
   };
 
-  // ── PULL ML — sync new questions from ML into CRM ──────────────────────────
-  const runPullMl = async () => {
-    if (!token || firing) return;
+  // ── PULL ML ────────────────────────────────────────────────────────────────
+  const runPullMl = useCallback(async () => {
+    if (!token || firingRef.current) return;
     setFiring(true); setCycleLog(["▶ PULL ML — sincronizando preguntas nuevas..."]); setError("");
     const { ok, status, data } = await cockpitFetch(token, "/api/crm/cockpit/sync-ml", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
@@ -195,11 +381,11 @@ export default function BmcMlOperativoModule() {
     setCycleLog([`✓ PULL ML OK — ${n} pregunta(s) nueva(s) agregada(s) al CRM`]);
     await loadQueue();
     setFiring(false);
-  };
+  }, [token, loadQueue]);
 
-  // ── SYNC CRM — pull ML + reload ────────────────────────────────────────────
-  const runSyncCrm = async () => {
-    if (!token || firing) return;
+  // ── SYNC CRM ───────────────────────────────────────────────────────────────
+  const runSyncCrm = useCallback(async () => {
+    if (!token || firingRef.current) return;
     setFiring(true); setCycleLog(["▶ SYNC — pull ML + reload CRM..."]); setError("");
     const syncRes = await cockpitFetch(token, "/api/crm/cockpit/sync-ml", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
@@ -212,15 +398,15 @@ export default function BmcMlOperativoModule() {
     setLastSync(new Date()); setLastSyncCount(n);
     setCycleLog([`✓ ML → CRM: ${n} nueva(s)`, "▶ Recargando cola..."]);
     await loadQueue();
-    setCycleLog(l => [...l, `✓ SYNC COMPLETO`]);
+    setCycleLog(l => [...l, "✓ SYNC COMPLETO"]);
     setFiring(false);
     showToast(`Sync completo: ${n} nueva(s) desde ML.`);
-  };
+  }, [token, loadQueue]);
 
-  // ── GENERATE RESPONSES — AI-generate responses for items without one ────────
-  const runGenerate = async () => {
-    if (!token || generating) return;
-    const pending = items.filter(i => !i.parsed?.respuestaSugerida?.trim());
+  // ── GENERATE RESPONSES ─────────────────────────────────────────────────────
+  const runGenerate = useCallback(async () => {
+    if (!token || generatingRef.current) return;
+    const pending = itemsRef.current.filter(i => !i.parsed?.respuestaSugerida?.trim());
     if (!pending.length) { showToast("Todos los ítems ya tienen respuesta."); return; }
     setGenerating(true); setCycleLog([`▶ GENERAR — ${pending.length} ítem(s) sin respuesta...`]);
     let generated = 0;
@@ -243,16 +429,16 @@ export default function BmcMlOperativoModule() {
       if (saveRes.ok) { generated++; setCycleLog(l => [...l, `★ FILA ${row}: respuesta guardada en CRM`]); }
       else setCycleLog(l => [...l, `⚠ FILA ${row}: no se pudo guardar — ${saveRes.data?.error || "err"}`]);
     }
-    setCycleLog(l => [...l, ``, `✓ GENERADAS ${generated}/${pending.length} respuestas`]);
+    setCycleLog(l => [...l, "", `✓ GENERADAS ${generated}/${pending.length} respuestas`]);
     setGenerating(false);
     showToast(`${generated} respuesta(s) generada(s).`);
     await loadQueue();
-  };
+  }, [token, loadQueue]);
 
-  // ── SEND ALL — approve + send all items with a response ────────────────────
-  const runSendAll = async () => {
-    if (!token || firing) return;
-    const ready = items.filter(i => i.parsed?.respuestaSugerida?.trim() && !i.parsed?.enviadoEl);
+  // ── SEND ALL ───────────────────────────────────────────────────────────────
+  const runSendAll = useCallback(async () => {
+    if (!token || firingRef.current) return;
+    const ready = itemsRef.current.filter(i => i.parsed?.respuestaSugerida?.trim() && !i.parsed?.enviadoEl);
     if (!ready.length) { showToast("No hay ítems listos para enviar."); return; }
     setFiring(true); setCycleLog([`▶ ENVIAR TODO — ${ready.length} ítem(s) con respuesta...`]); setError("");
     let sent = 0;
@@ -270,11 +456,11 @@ export default function BmcMlOperativoModule() {
       if (sendRes.ok) { sent++; setCycleLog(l => [...l, `★ FILA ${row}: ENVIADO (${sendRes.data?.channel || "ok"})`]); }
       else setCycleLog(l => [...l, `⚠ FILA ${row}: envío falló — ${sendRes.data?.error || "err"}`]);
     }
-    setCycleLog(l => [...l, ``, `✓ ${sent}/${ready.length} ENVIADOS`]);
+    setCycleLog(l => [...l, "", `✓ ${sent}/${ready.length} ENVIADOS`]);
     setFiring(false);
     showToast(`${sent} respuesta(s) enviada(s) a ML.`);
     await loadQueue();
-  };
+  }, [token, loadQueue]);
 
   // ── per-row actions ────────────────────────────────────────────────────────
   const approveRow = async (row) => {
@@ -298,6 +484,56 @@ export default function BmcMlOperativoModule() {
     try { await navigator.clipboard.writeText(t); showToast(`${label} copiado`); }
     catch { showToast("No se pudo copiar"); }
   };
+
+  // ── AUTOMATISMOS — toggle + eject ──────────────────────────────────────────
+  const toggleAuto = useCallback((key) => {
+    setAuto(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      if (key === "fullAuto" && !prev.fullAuto)
+        Object.assign(next, { mlPull: true, crmPull: true, sync: true, generate: true });
+      return next;
+    });
+  }, []);
+
+  const handleEject = useCallback(() => {
+    clearInterval(mlPullTimerRef.current);
+    clearInterval(crmPullTimerRef.current);
+    clearInterval(syncTimerRef.current);
+    mlPullTimerRef.current = null;
+    crmPullTimerRef.current = null;
+    syncTimerRef.current = null;
+    setAuto(DEFAULT_AUTO);
+    setCoverOpen(false);
+    setCycleLog(l => [...l, "[EJECT] Todos los automatismos desactivados"]);
+  }, []);
+
+  // ── interval setup/teardown ────────────────────────────────────────────────
+  useEffect(() => {
+    clearInterval(mlPullTimerRef.current);
+    clearInterval(crmPullTimerRef.current);
+    clearInterval(syncTimerRef.current);
+    if (!token) return;
+
+    if (auto.mlPull)
+      mlPullTimerRef.current = setInterval(() => runPullMl(), 300_000);   // 5 min
+
+    if (auto.crmPull)
+      crmPullTimerRef.current = setInterval(async () => {
+        await loadQueue();
+        const noResp = itemsRef.current.filter(i => !i.parsed?.respuestaSugerida?.trim()).length;
+        if (autoRef.current.generate && noResp > 0) await runGenerate();
+        if (autoRef.current.fullAuto) await runSendAll();
+      }, 120_000);   // 2 min
+
+    if (auto.sync)
+      syncTimerRef.current = setInterval(() => runSyncCrm(), 600_000);    // 10 min
+
+    return () => {
+      clearInterval(mlPullTimerRef.current);
+      clearInterval(crmPullTimerRef.current);
+      clearInterval(syncTimerRef.current);
+    };
+  }, [auto, token, loadQueue, runPullMl, runSyncCrm, runGenerate, runSendAll]);
 
   const busy = firing || generating;
 
@@ -326,12 +562,12 @@ export default function BmcMlOperativoModule() {
 
         {/* ── stats bar ── */}
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-          <StatPill value={stats.total}    label="En cola"         color="#374151" />
-          <StatPill value={stats.fromMl}   label="Desde ML"        color="#a35900" sub="con Q:id" />
-          <StatPill value={stats.noResp}   label="Sin respuesta"   color="#cc0000" />
-          <StatPill value={stats.withResp} label="Con respuesta"   color="#0055bb" />
-          <StatPill value={stats.approved} label="Aprobados"       color="#974f0c" />
-          <StatPill value={stats.sent}     label="Enviados"        color="#00875a" />
+          <StatPill value={stats.total}    label="En cola"       color="#374151" />
+          <StatPill value={stats.fromMl}   label="Desde ML"      color="#a35900" sub="con Q:id" />
+          <StatPill value={stats.noResp}   label="Sin respuesta" color="#cc0000" />
+          <StatPill value={stats.withResp} label="Con respuesta" color="#0055bb" />
+          <StatPill value={stats.approved} label="Aprobados"     color="#974f0c" />
+          <StatPill value={stats.sent}     label="Enviados"      color="#00875a" />
         </div>
 
         {/* ── CRT log ── */}
@@ -368,6 +604,80 @@ export default function BmcMlOperativoModule() {
           />
         </div>
 
+        {/* ── AUTOMATISMOS panel ── */}
+        <div style={{
+          background: "#0f0f1a",
+          border: "1.5px solid #2a2a3e",
+          borderRadius: 12,
+          padding: "14px 18px 18px",
+          marginBottom: 16,
+          boxShadow: "inset 0 0 24px #00000077, 0 2px 10px #00000044",
+          backgroundImage: "radial-gradient(ellipse at 50% 0%, #1a1a2e 0%, #0f0f1a 70%)",
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: "#fbbf24", fontFamily: MONO, letterSpacing: 2, textTransform: "uppercase" }}>
+                ⚠ AUTOMATISMOS
+              </span>
+              {/* Active indicator */}
+              {Object.values(auto).some(Boolean) && (
+                <span style={{
+                  fontSize: 9, fontFamily: MONO, color: "#00ff66",
+                  background: "#002200", border: "1px solid #00441100",
+                  padding: "1px 7px", borderRadius: 10,
+                  boxShadow: "0 0 6px #00ff6633",
+                  letterSpacing: 0.5,
+                }}>
+                  ● ACTIVO
+                </span>
+              )}
+            </div>
+          </div>
+          <p style={{
+            margin: "0 0 16px", fontSize: 10, fontStyle: "italic",
+            color: "#d97706", fontFamily: MONO, letterSpacing: 0.3,
+          }}>
+            USE CON PRECAUCIÓN — exceso de automatismos puede generar mucho tiempo libre
+          </p>
+
+          {/* Switch grid */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-end" }}>
+            <AircraftSwitch
+              label="ML-AUTO-PULL"
+              on={auto.mlPull}
+              onToggle={() => toggleAuto("mlPull")}
+              disabled={!token}
+            />
+            <AircraftSwitch
+              label="CRM-AUTO-PULL"
+              on={auto.crmPull}
+              onToggle={() => toggleAuto("crmPull")}
+              disabled={!token}
+            />
+            <AircraftSwitch
+              label="AUTO-SYNC"
+              on={auto.sync}
+              onToggle={() => toggleAuto("sync")}
+              disabled={!token}
+            />
+            <AircraftSwitch
+              label={<span style={{ fontSize: 8 }}>AI-RESPONSE<br/>AUTO-GEN</span>}
+              on={auto.generate}
+              onToggle={() => toggleAuto("generate")}
+              disabled={!token}
+            />
+            <CoveredSwitch
+              label="100% AUTÓNOMO"
+              on={auto.fullAuto}
+              onToggle={() => { toggleAuto("fullAuto"); if (auto.fullAuto) setCoverOpen(false); }}
+              coverOpen={coverOpen}
+              onCoverToggle={() => setCoverOpen(v => !v)}
+            />
+            <EjectButton onEject={handleEject} />
+          </div>
+        </div>
+
         {/* ── token panel ── */}
         <div style={card}>
           <CockpitTokenPanel
@@ -394,9 +704,7 @@ export default function BmcMlOperativoModule() {
         {/* ── queue table ── */}
         <div style={card}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, fontFamily: FF }}>
-              Cola ML ({items.length})
-            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, fontFamily: FF }}>Cola ML ({items.length})</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[
                 { dot: "🔴", label: "Sin respuesta" },
@@ -444,9 +752,7 @@ export default function BmcMlOperativoModule() {
                         <td style={td}>
                           <span style={badge(st.color, st.bg)}>{st.dot} {st.label}</span>
                           {parsed?.enviadoEl && (
-                            <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>
-                              {parsed.enviadoEl.slice(0, 16)}
-                            </div>
+                            <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{parsed.enviadoEl.slice(0, 16)}</div>
                           )}
                         </td>
                         <td style={{ ...td, maxWidth: 120 }}>{parsed?.cliente || "—"}</td>
