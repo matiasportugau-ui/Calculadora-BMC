@@ -15,7 +15,7 @@ function log(ok, label, detail = '') {
   results.push({ ok, label });
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ channel: "chrome", headless: true });
 const page = await browser.newPage();
 const consoleErrors = [];
 page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
@@ -26,7 +26,7 @@ console.log('  Flow: Solo Techo → 1 Agua → Precio BMC → ISOROOF 3G → 40m
 
 // ── 1. Page load ─────────────────────────────────────────────────────────────
 try {
-  const res = await page.goto(BASE, { waitUntil: 'networkidle', timeout: 30000 });
+  const res = await page.goto(BASE, { waitUntil: 'load', timeout: 30000 });
   log(res.status() === 200, 'Page load', `HTTP ${res.status()}`);
 } catch (e) { log(false, 'Page load', e.message); await browser.close(); process.exit(1); }
 await page.waitForTimeout(2000);

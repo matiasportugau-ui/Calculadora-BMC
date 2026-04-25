@@ -29,7 +29,7 @@ function assert(name, condition, detail = "") {
   }
 }
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ channel: "chrome", headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
 const consoleErrors = [];
@@ -55,7 +55,7 @@ try {
 // ── 2. AUTOMATISMOS heading visible ──────────────────────────────────────────
 try {
   await page.getByText(/AUTOMATISMOS/i).first().waitFor({ timeout: 15_000 });
-  assert("AUTOMATISMOS heading visible");
+  assert("AUTOMATISMOS heading visible", true);
 } catch {
   assert("AUTOMATISMOS heading visible", false, "not found within 15s");
 }
@@ -63,7 +63,7 @@ try {
 // ── 3. Aircraft switch ML-AUTO-PULL rendered ──────────────────────────────────
 try {
   await page.locator('[aria-label="ML-AUTO-PULL"]').first().waitFor({ state: "attached", timeout: 8_000 });
-  assert('AircraftSwitch [aria-label="ML-AUTO-PULL"] in DOM');
+  assert('AircraftSwitch [aria-label="ML-AUTO-PULL"] in DOM', true);
 } catch {
   assert('AircraftSwitch [aria-label="ML-AUTO-PULL"] in DOM', false, "not found");
 }

@@ -13,7 +13,7 @@ const url = `${BASE}/hub/canales`;
 const out = process.env.PLAYWRIGHT_SCREENSHOT || "";
 
 async function main() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
