@@ -74,6 +74,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `cd369b3` feat(pdf): server-side PDF generation via Playwright + pdfGenerator refactor
 - `3d8529b` feat(pdf): server-side PDF via Playwright — vectorial quality for Drive uploads
 - `686d161` feat(pdf): Cloud Run Chromium support — Alpine apk + CHROMIUM_PATH env
+- `e2ac5e0` feat(fiscal): BPS/IRAE tracking endpoint + dashboard card
+- `323c104` feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
 
 ## Fixes
 

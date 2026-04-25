@@ -216,3 +216,5 @@
 - 2026-04-25 03:09:47 — `524e7f1` — fix(tooling): bmc-workspace port pre-check, gate window, broadcast guard
 - 2026-04-25 03:15:18 — `686d161` — feat(pdf): Cloud Run Chromium support — Alpine apk + CHROMIUM_PATH env
 - 2026-04-25 03:15:52 — `43a9206` — fix(pdf): move playwright to dependencies for Cloud Run runtime
+- 2026-04-25 03:20:32 — `e2ac5e0` — feat(fiscal): BPS/IRAE tracking endpoint + dashboard card
+- 2026-04-25 03:23:36 — `323c104` — feat(chat): kb-009..013 garantías, dimensiones, húmedas, mantenimiento, lana mineral
