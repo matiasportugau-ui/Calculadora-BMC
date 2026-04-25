@@ -65,6 +65,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `db36ae8` feat(ml-ui): add arcade instruction card explaining SYNC / FIRE! / COLA
 - `3857873` feat(ml-module): complete visual overhaul + save-response endpoint
 - `4b11416` feat(cockpit): unified persistent token panel across all modules
+- `9ac1a95` feat(ml-module): AUTOMATISMOS cockpit panel with aircraft toggle switches
+- `9e9b542` feat(ml-auto): webhook-driven auto-answer pipeline + server autoMode API
+- `b8f1a1b` feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1
 
 ## Fixes
 
@@ -145,6 +148,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `2a32c1b` test(e2e): add Playwright wizard happy path smoke test
 - `51a7795` test(contracts): add shape assertions for /api/agent/stats
 - `f1c2f5a` test(contracts): handle null linkPresupuesto in cockpit row contract
+- `e04fcce` test(ml-auto): smoke test script for /api/ml/auto-mode endpoints
 
 ## Chores
 
@@ -205,6 +209,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `25fc842` chore(dev-trace): sync post-score-85 [SKIP_AUTOTRACE]
 - `49d4064` chore(dev-trace): sync post-link-presupuesto-fix [SKIP_AUTOTRACE]
 - `9a38ef6` chore(dev-trace): final session sync 2026-04-24 [SKIP_AUTOTRACE]
+- `642c30c` chore(dev-trace): sync autotrace + kb [SKIP_AUTOTRACE]
 
 ## Other
 

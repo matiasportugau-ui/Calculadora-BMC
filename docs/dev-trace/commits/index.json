@@ -6275,6 +6275,160 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "642c30c9b115d3291e9b876711362c46628fc50e",
+      "short_hash": "642c30c",
+      "date": "2026-04-24",
+      "time": "22:24:52",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "dev-trace",
+      "title": "sync autotrace + kb [SKIP_AUTOTRACE]",
+      "subject": "chore(dev-trace): sync autotrace + kb [SKIP_AUTOTRACE]",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3857873.md",
+        "docs/dev-trace/commits/2026/04/4b11416.md",
+        "docs/dev-trace/commits/2026/04/4f381fb.md",
+        "docs/dev-trace/commits/2026/04/db36ae8.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-24.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "9ac1a9555394e46162edaaac4c9bf3afb50ca299",
+      "short_hash": "9ac1a95",
+      "date": "2026-04-24",
+      "time": "22:27:24",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-module",
+      "title": "AUTOMATISMOS cockpit panel with aircraft toggle switches",
+      "subject": "feat(ml-module): AUTOMATISMOS cockpit panel with aircraft toggle switches",
+      "files": [
+        "src/components/BmcMlOperativoModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "9e9b542bffef74a94563e4b6223ae1e78d4692ee",
+      "short_hash": "9e9b542",
+      "date": "2026-04-24",
+      "time": "22:44:23",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-auto",
+      "title": "webhook-driven auto-answer pipeline + server autoMode API",
+      "subject": "feat(ml-auto): webhook-driven auto-answer pipeline + server autoMode API",
+      "files": [
+        "server/index.js",
+        "server/lib/mlAutoAnswer.js",
+        "server/lib/suggestResponse.js",
+        "server/ml-crm-sync.js",
+        "src/components/BmcMlOperativoModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "b8f1a1bac54d5af8d02df5cf53c1682fedf1d9d5",
+      "short_hash": "b8f1a1b",
+      "date": "2026-04-24",
+      "time": "22:51:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf+roofplan",
+      "title": "full profile names in 2D strips + 2D plan on page 1",
+      "subject": "feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "src/utils/helpers.js",
+        "src/utils/quotationPreviewSampleData.js",
+        "src/utils/quotationViews.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "e04fccee15739346f0ea554c92092fe131b4c930",
+      "short_hash": "e04fcce",
+      "date": "2026-04-24",
+      "time": "23:07:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "test",
+      "scope": "ml-auto",
+      "title": "smoke test script for /api/ml/auto-mode endpoints",
+      "subject": "test(ml-auto): smoke test script for /api/ml/auto-mode endpoints",
+      "files": [
+        "package.json",
+        "scripts/test-ml-auto-mode.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "scripts"
+        ]
+      }
     }
   ]
 }

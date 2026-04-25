@@ -1,7 +1,7 @@
 // Versión completa: Google Drive, historial de presupuestos, responsive (v3.0 modular)
 // Canonical Calculadora component: PanelinCalculadoraV3_backup (see docs/bmc-dashboard-modernization/IA.md)
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getRouterBasename } from "./utils/routerBasename.js";
 import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
@@ -34,6 +34,8 @@ const suspenseFallback = (
 );
 
 function Shell({ children }) {
+  const { pathname } = useLocation();
+  const isCalc = pathname === "/" || pathname === "/calculadora";
   return (
     <div
       style={{
@@ -43,7 +45,7 @@ function Shell({ children }) {
         background: "#F5F5F7",
       }}
     >
-      <BmcModuleNav />
+      {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
     </div>
   );

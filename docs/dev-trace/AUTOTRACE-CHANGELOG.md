@@ -193,3 +193,8 @@
 - 2026-04-24 21:51:25 — `3857873` — feat(ml-module): complete visual overhaul + save-response endpoint
 - 2026-04-24 22:19:35 — `4f381fb` — fix(security): WHATSAPP_APP_SECRET created in Secret Manager + mounted Cloud Run rev-00233
 - 2026-04-24 22:24:44 — `4b11416` — feat(cockpit): unified persistent token panel across all modules
+- 2026-04-24 22:24:52 — `642c30c` — chore(dev-trace): sync autotrace + kb [SKIP_AUTOTRACE]
+- 2026-04-24 22:27:24 — `9ac1a95` — feat(ml-module): AUTOMATISMOS cockpit panel with aircraft toggle switches
+- 2026-04-24 22:44:23 — `9e9b542` — feat(ml-auto): webhook-driven auto-answer pipeline + server autoMode API
+- 2026-04-24 22:51:43 — `b8f1a1b` — feat(pdf+roofplan): full profile names in 2D strips + 2D plan on page 1
+- 2026-04-24 23:07:30 — `e04fcce` — test(ml-auto): smoke test script for /api/ml/auto-mode endpoints

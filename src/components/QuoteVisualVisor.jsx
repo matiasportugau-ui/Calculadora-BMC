@@ -229,15 +229,13 @@ export default function QuoteVisualVisor({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px",
+          padding: "8px 16px",
           border: "none",
           background: C.surfaceAlt,
           cursor: "pointer",
           fontSize: 12,
-          fontWeight: 700,
-          color: C.tp,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
+          fontWeight: 600,
+          color: C.ts,
         }}
       >
         <span>Visor visual · {showListaStep ? "Panelin" : heading}</span>

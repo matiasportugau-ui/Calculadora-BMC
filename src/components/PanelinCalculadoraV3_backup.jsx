@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
-  ChevronDown, ChevronUp, Printer, Trash2, Copy, Check,
+  ChevronDown, ChevronUp, ChevronLeft, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
   Download, Save, Archive, Cloud, Settings,
@@ -318,7 +318,7 @@ function ColorChips({ colors = [], value, onChange, notes = {}, onColorDoubleCli
         return (
           <button
             key={color}
-            onClick={() => onChange(color)}
+            onClick={() => { if (color === value) { onColorDoubleClick?.(color); } else { onChange(color); } }}
             onDoubleClick={() => onColorDoubleClick?.(color)}
             onMouseEnter={() => onHover?.(color)}
             onFocus={() => onHover?.(color)}
@@ -4307,6 +4307,12 @@ export default function PanelinCalculadoraV3() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ fontSize: isPhone ? 18 : 20, fontWeight: 800, letterSpacing: "-0.5px" }}>BMC Uruguay</div>
           <div style={{ fontSize: 12, opacity: 0.7 }}>{PANELIN_VERSION_BADGE}</div>
+          {!isPhone && (
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <button onClick={() => navigate("/hub")} style={{ padding: "2px 9px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.65)", fontSize: 11, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>Hub</button>
+              <button onClick={() => navigate("/logistica")} style={{ padding: "2px 9px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.65)", fontSize: 11, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>Logística</button>
+            </div>
+          )}
           {currentBudgetCode && (
             <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
           )}
@@ -4425,12 +4431,12 @@ export default function PanelinCalculadoraV3() {
           padding: isPhone ? 12 : isTablet ? 16 : 24,
           maxWidth: 1600,
           margin: "0 auto",
-          height: isCompactLayout ? "auto" : "calc(100vh - 100px)",
+          height: isCompactLayout ? "auto" : "calc(100vh - 62px)",
           overflow: isCompactLayout ? "visible" : "hidden",
           minHeight: 0,
         }}
       >
-        <Panel defaultSize={isCompactLayout ? 55 : 28} minSize={isCompactLayout ? 24 : 20} maxSize={isCompactLayout ? 85 : 48} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel defaultSize={isCompactLayout ? 55 : 35} minSize={isCompactLayout ? 24 : 24} maxSize={isCompactLayout ? 85 : 55} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* LEFT PANEL — Wizard (Modo Vendedor) o formulario completo (Modo Cliente) */}
         <div className="bmc-left-panel" style={{ flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", paddingLeft: isPhone ? 0 : 12, paddingRight: isPhone ? 0 : 12 }}>
           {modoVendedor && scenario === "solo_techo" ? (
@@ -4519,44 +4525,59 @@ export default function PanelinCalculadoraV3() {
                       );
                     })}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: C.ts, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      Paso {wizardStep + 1} de {SOLO_TECHO_STEPS.length}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, overflow: "visible" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: C.tp }}>{step?.label}</div>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: C.tt, flexShrink: 0 }}>{wizardStep + 1}/{SOLO_TECHO_STEPS.length}</div>
                     </div>
-                    {/* Acceso rápido a Datos del proyecto */}
                     {proyectoStepIdx >= 0 && wizardStep !== proyectoStepIdx && (
                       <button
                         type="button"
                         onClick={() => { setWizardStep(proyectoStepIdx); setMaxReachedStep(mr => Math.max(mr, proyectoStepIdx)); }}
                         title="Datos del proyecto — siempre accesible"
-                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+                        style={{ padding: "3px 10px", borderRadius: 20, border: `1.5px solid ${C.warning}`, background: "transparent", color: C.warning, fontSize: 10, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
                       >
-                        📋 Proyecto
+                        <FileText size={11} />Proyecto
                       </button>
                     )}
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: C.tp, marginBottom: 20, overflow: "visible", minWidth: 0 }}>{step?.label}</div>
                   {stepId === "escenario" && (
                     <div
                       style={{ display: "grid", gridTemplateColumns: scenarioGridCols, gap: 12 }}
                       onMouseLeave={() => setScenarioHoverId(null)}
                     >
-                      {SCENARIOS_DEF.map(sc => (
-                        <div
-                          key={sc.id}
-                          onMouseEnter={() => setScenarioHoverId(sc.id)}
-                          onClick={() => setScenario(sc.id)}
-                          onDoubleClick={() => {
-                            setScenario(sc.id);
-                            advanceWizardStep();
-                          }}
-                          style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${scenario === sc.id ? C.primary : C.border}`, background: scenario === sc.id ? C.primarySoft : C.surface, transition: TR, boxShadow: scenario === sc.id ? `0 0 0 4px ${C.primarySoft}` : SHC }}
-                        >
-                          <ScenarioStepIcon scenarioId={sc.id} size={28} selected={scenario === sc.id} color={scenario === sc.id ? C.primary : C.tp} />
-                          <div style={{ fontSize: 14, fontWeight: 600, color: scenario === sc.id ? C.primary : C.tp }}>{sc.label}</div>
-                          <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
-                        </div>
-                      ))}
+                      {SCENARIOS_DEF.map(sc => {
+                        const isSel = scenario === sc.id;
+                        const isFeatured = sc.id === "solo_techo";
+                        return (
+                          <div
+                            key={sc.id}
+                            onMouseEnter={() => setScenarioHoverId(sc.id)}
+                            onClick={() => {
+                              setScenario(sc.id);
+                              if (sc.id === "solo_techo") advanceWizardStep();
+                            }}
+                            style={{
+                              borderRadius: 16, padding: 16, cursor: "pointer",
+                              border: `2px solid ${isSel ? C.primary : C.border}`,
+                              background: isSel ? C.primarySoft : C.surface,
+                              transition: TR,
+                              boxShadow: isSel ? `0 0 0 4px ${C.primarySoft}` : SHC,
+                              ...(isFeatured ? {
+                                gridColumn: "1 / -1",
+                                display: "flex", alignItems: "center", gap: 14, flexDirection: "row",
+                              } : {}),
+                            }}
+                          >
+                            <ScenarioStepIcon scenarioId={sc.id} size={isFeatured ? 32 : 26} selected={isSel} color={isSel ? C.primary : C.tp} />
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: isSel ? C.primary : C.tp }}>{sc.label}</div>
+                              <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
+                              {isFeatured && <div style={{ fontSize: 10, color: isSel ? C.primary : C.ts, marginTop: 3, fontWeight: 500 }}>Asistente paso a paso →</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   {stepId === "familia" && (
@@ -4573,16 +4594,7 @@ export default function PanelinCalculadoraV3() {
                               key={opt.value}
                               onMouseEnter={() => setHoverTechoFamilia(opt.value)}
                               onFocus={() => setHoverTechoFamilia(opt.value)}
-                              onClick={(e) => {
-                                setTechoFamilia(opt.value);
-                                setHoverTechoFamilia("");
-                                // Fallback for environments where onDoubleClick is flaky:
-                                // second consecutive click still reports detail >= 2.
-                                if ((e?.detail || 0) >= 2) {
-                                  advanceWizardStep();
-                                }
-                              }}
-                              onDoubleClick={() => {
+                              onClick={() => {
                                 setTechoFamilia(opt.value);
                                 setHoverTechoFamilia("");
                                 advanceWizardStep();
@@ -6105,7 +6117,7 @@ export default function PanelinCalculadoraV3() {
           hitAreaMargins={isCompactLayout ? { top: 4, bottom: 4, left: 0, right: 0 } : { left: 4, right: 4, top: 0, bottom: 0 }}
           onDoubleClick={(e) => { e.preventDefault(); if (!isCompactLayout) resetMainSplitLayout(); }}
         />
-        <Panel defaultSize={isCompactLayout ? 45 : 72} minSize={isCompactLayout ? 20 : 38} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
+        <Panel defaultSize={isCompactLayout ? 45 : 65} minSize={isCompactLayout ? 20 : 32} style={{ minWidth: 0, minHeight: 0, display: "flex" }}>
         {/* RIGHT PANEL */}
         <div className="bmc-right-panel" style={{ position: "relative", flex: 1, minHeight: 0, minWidth: 0, overflowY: isCompactLayout ? "visible" : "auto", overflowX: "hidden", paddingLeft: isCompactLayout ? 0 : 8, paddingBottom: groups.length > 0 && isCompactLayout ? 96 : 0 }}>
           {useDockedRoofBorderSelector && (
@@ -6393,23 +6405,25 @@ export default function PanelinCalculadoraV3() {
       />
 
       <Toast message={toast} visible={!!toast} />
-      <InteractionLogPanel
-        getSnapshot={() => ({
-          scenario,
-          listaPrecios,
-          proyecto,
-          techo,
-          pared,
-          camara,
-          flete,
-          overrides,
-          excludedItems,
-          categoriasActivas,
-          techoAnchoModo,
-          groupsCount: groups.length,
-          grandTotal: grandTotal?.totalFinal,
-        })}
-      />
+      {devMode && (
+        <InteractionLogPanel
+          getSnapshot={() => ({
+            scenario,
+            listaPrecios,
+            proyecto,
+            techo,
+            pared,
+            camara,
+            flete,
+            overrides,
+            excludedItems,
+            categoriasActivas,
+            techoAnchoModo,
+            groupsCount: groups.length,
+            grandTotal: grandTotal?.totalFinal,
+          })}
+        />
+      )}
 
       {/* Mobile bottom bar with sticky total */}
       {groups.length > 0 && (
