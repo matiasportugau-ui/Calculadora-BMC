@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -327,31 +328,17 @@ export default function BmcAdminCotizacionesModule() {
 
         {/* Token */}
         <div style={card}>
-          {tokenAutoLoaded ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, color: "#2a7a2a", fontWeight: 600 }}>Token cargado</span>
-              <button type="button" style={{ ...btnGhost, fontSize: 12, padding: "4px 10px" }}
-                onClick={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}>
-                Cambiar token
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f" }}>API Token</label>
-              {tokenLoadError && <p style={{ margin: 0, fontSize: 12, color: "#c00" }}>{tokenLoadError}</p>}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input
-                  type="password"
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveToken()}
-                  placeholder="API_AUTH_TOKEN"
-                  style={{ ...input, maxWidth: 360 }}
-                />
-                <button type="button" style={btnPrimary} onClick={saveToken}>Guardar</button>
-              </div>
-            </div>
-          )}
+          <CockpitTokenPanel
+            tokenAutoLoaded={tokenAutoLoaded}
+            tokenLoadError={tokenLoadError}
+            tokenInput={tokenInput}
+            setTokenInput={setTokenInput}
+            onSave={saveToken}
+            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            inputStyle={{ ...input, maxWidth: 360 }}
+            btnPrimaryStyle={btnPrimary}
+            btnGhostStyle={btnGhost}
+          />
         </div>
 
         {/* Actions toolbar */}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -399,41 +400,17 @@ export default function BmcCanalesUnificadosModule() {
         </div>
 
         <div style={card}>
-          {tokenAutoLoaded ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, color: "#2a7a2a", fontWeight: 600 }}>Token cargado desde servidor</span>
-              <button
-                type="button"
-                style={{ ...btnGhost, fontSize: 12, padding: "4px 10px" }}
-                onClick={() => {
-                  setTokenAutoLoaded(false);
-                  setStoredToken("");
-                  setToken("");
-                  setTokenInput("");
-                }}
-              >
-                Cambiar token
-              </button>
-            </div>
-          ) : (
-            <>
-              <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Autenticación cockpit</div>
-              {tokenLoadError && (
-                <div style={{ fontSize: 12, color: "#8b4000", marginBottom: 8 }}>{tokenLoadError}</div>
-              )}
-              <input
-                type="password"
-                autoComplete="off"
-                placeholder="Pegá API_AUTH_TOKEN"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                style={{ ...input, marginBottom: 10 }}
-              />
-              <button type="button" style={btnPrimary} onClick={saveToken}>
-                Guardar token
-              </button>
-            </>
-          )}
+          <CockpitTokenPanel
+            tokenAutoLoaded={tokenAutoLoaded}
+            tokenLoadError={tokenLoadError}
+            tokenInput={tokenInput}
+            setTokenInput={setTokenInput}
+            onSave={saveToken}
+            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            inputStyle={input}
+            btnPrimaryStyle={btnPrimary}
+            btnGhostStyle={btnGhost}
+          />
         </div>
 
         <div style={{ ...card, padding: "10px 12px" }}>

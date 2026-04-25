@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
+import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
 
@@ -139,6 +140,7 @@ async function cockpitFetch(token, path, options = {}) {
 export default function BmcWaOperativoModule() {
   const [tokenInput, setTokenInput] = useState("");
   const [token, setToken] = useState("");
+  const [tokenAutoLoaded, setTokenAutoLoaded] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -150,6 +152,7 @@ export default function BmcWaOperativoModule() {
     if (stored) {
       setTokenInput(stored);
       setToken(stored);
+      setTokenAutoLoaded(true);
       return;
     }
     const base = getCalcApiBase();
@@ -170,6 +173,7 @@ export default function BmcWaOperativoModule() {
           setStoredToken(t);
           setTokenInput(t);
           setToken(t);
+          setTokenAutoLoaded(true);
           setTokenLoadError("");
         } else {
           setTokenLoadError("El servidor no devolvió token. Pegá API_AUTH_TOKEN manualmente.");
@@ -218,7 +222,8 @@ export default function BmcWaOperativoModule() {
     const t = tokenInput.trim();
     setStoredToken(t);
     setToken(t);
-    showToast(t ? "Token guardado en esta sesión." : "Token borrado.");
+    if (t) setTokenAutoLoaded(true);
+    showToast(t ? "Token guardado." : "Token borrado.");
   };
 
   const approveRow = async (row) => {
@@ -289,38 +294,23 @@ export default function BmcWaOperativoModule() {
         </p>
 
         <div style={card}>
-          <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Autenticación cockpit</div>
-          <input
-            type="password"
-            autoComplete="off"
-            placeholder="Pegá API_AUTH_TOKEN"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            style={{ ...input, marginBottom: 10 }}
+          <CockpitTokenPanel
+            tokenAutoLoaded={tokenAutoLoaded}
+            tokenLoadError={tokenLoadError}
+            tokenInput={tokenInput}
+            setTokenInput={setTokenInput}
+            onSave={saveToken}
+            onClear={() => { setTokenAutoLoaded(false); setStoredToken(""); setToken(""); setTokenInput(""); }}
+            inputStyle={input}
+            btnPrimaryStyle={{ ...btnGhost, border: "1.5px solid #25d366" }}
+            btnGhostStyle={btnGhost}
+            actions={
+              <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
+                {loading ? "Cargando…" : "Actualizar cola"}
+              </button>
+            }
           />
-          <div style={rowActions}>
-            <button type="button" style={{ ...btnGhost, border: "1.5px solid #25d366" }} onClick={saveToken}>
-              Guardar token (sesión)
-            </button>
-            <button type="button" style={btnGhost} onClick={loadQueue} disabled={loading || !token}>
-              {loading ? "Cargando…" : "Actualizar cola"}
-            </button>
-          </div>
         </div>
-
-        {tokenLoadError ? (
-          <div
-            style={{
-              ...card,
-              borderColor: "#ffe066",
-              background: "#fffbeb",
-              color: "#5c4d00",
-              fontSize: 13,
-            }}
-          >
-            {tokenLoadError}
-          </div>
-        ) : null}
 
         {error ? (
           <div
