@@ -38,12 +38,13 @@ LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sh
 WORKDIR /app
 
 # Chromium for server-side PDF generation (/api/pdf/generate)
-# Binary available at /usr/bin/chromium-browser inside the container
-RUN apk add --no-cache chromium
+# Alpine apk installs the binary at /usr/bin/chromium (not chromium-browser)
+RUN apk add --no-cache chromium && \
+    ls /usr/bin/chrom* 2>/dev/null || true
 
 # Tell Playwright to use the system Chromium (avoids bundled binary download)
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    CHROMIUM_PATH=/usr/bin/chromium-browser
+    CHROMIUM_PATH=/usr/bin/chromium
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./

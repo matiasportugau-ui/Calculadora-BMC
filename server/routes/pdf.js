@@ -31,14 +31,15 @@ export function createPdfRouter() {
       const { chromium } = await import("playwright");
 
       // Executable path resolution:
-      //   CHROMIUM_PATH env var   → explicit override (CI, custom installs)
-      //   NODE_ENV=production     → /usr/bin/chromium-browser (Alpine apk install in Dockerfile)
-      //   dev/local               → Playwright bundled Google Chrome for Testing
+      //   CHROMIUM_PATH env var → explicit override (set in Dockerfile.bmc-dashboard)
+      //   Alpine apk installs to /usr/bin/chromium (not chromium-browser)
+      //   dev/local             → Playwright bundled Google Chrome for Testing
+      const { existsSync } = await import("node:fs");
+      const ALPINE_PATHS = ["/usr/bin/chromium", "/usr/bin/chromium-browser"];
       const executablePath =
         process.env.CHROMIUM_PATH ||
-        (process.env.NODE_ENV === "production"
-          ? "/usr/bin/chromium-browser"
-          : chromium.executablePath());
+        ALPINE_PATHS.find(existsSync) ||
+        chromium.executablePath();
 
       browser = await chromium.launch({
         executablePath,
