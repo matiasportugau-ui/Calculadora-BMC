@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Upload, X, ChevronDown, ChevronUp, Check, AlertTriangle, Loader } from "lucide-react";
 import { C, FONT, SHI, TR, TN, PANELS_TECHO, PANELS_PARED } from "../data/constants.js";
@@ -24,6 +24,11 @@ function Select({ label, value, options, onChange, placeholder = "Seleccioná…
     if (ref.current && !ref.current.contains(e.target)) setOpen(false);
   }, []);
 
+  useEffect(() => {
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, handleClickOutside]);
+
   return (
     <div ref={ref} style={{ position: "relative", fontFamily: FONT }} onClick={(e) => e.stopPropagation()}>
       {label && (
@@ -33,11 +38,7 @@ function Select({ label, value, options, onChange, placeholder = "Seleccioná…
       )}
       <button
         type="button"
-        onClick={() => {
-          if (!open) document.addEventListener("mousedown", handleClickOutside);
-          else document.removeEventListener("mousedown", handleClickOutside);
-          setOpen(o => !o);
-        }}
+        onClick={() => setOpen(o => !o)}
         style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: 10, border: `1.5px solid ${open ? C.primary : C.border}`, background: C.surface, cursor: "pointer", fontSize: 13, color: selected ? C.tp : C.tt, boxShadow: open ? `0 0 0 3px ${C.primarySoft}` : SHI, transition: TR, fontFamily: FONT }}
       >
         <span>{selected ? selected.label : placeholder}</span>
@@ -48,7 +49,7 @@ function Select({ label, value, options, onChange, placeholder = "Seleccioná…
           {options.map(opt => (
             <div
               key={opt.value}
-              onClick={() => { onChange(opt.value); setOpen(false); document.removeEventListener("mousedown", handleClickOutside); }}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", cursor: "pointer", fontSize: 13, background: String(opt.value) === String(value) ? C.primarySoft : "transparent", fontWeight: String(opt.value) === String(value) ? 600 : 400, color: C.tp, transition: TR }}
             >
               <span>{opt.label}</span>
