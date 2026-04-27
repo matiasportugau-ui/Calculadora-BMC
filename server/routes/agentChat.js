@@ -24,7 +24,8 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry } from "../lib/trainingKB.js";
+import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
   logConversationTurn,
@@ -796,6 +797,36 @@ router.post("/agent/chat", async (req, res) => {
           });
         }
         send({ type: "done" });
+
+        // Fire-and-forget autolearn: extract Q→A pairs from full exchange once
+        // there are ≥2 complete turns. Only on production (not devMode).
+        if (!devMode && conversationId && allTurns.length >= 3) {
+          const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
+          setImmediate(() => {
+            extractLearnablePairs(fullTurns)
+              .then((pairs) => {
+                for (const p of pairs) {
+                  addTrainingEntry({
+                    question: p.question,
+                    goodAnswer: p.goodAnswer,
+                    badAnswer: p.badAnswer || "",
+                    category: p.category || "conversational",
+                    context: p.rationale || "",
+                    source: "autolearned",
+                    status: p.confidence >= 0.92 ? "active" : "pending",
+                    confidence: p.confidence,
+                    convId: conversationId,
+                  });
+                }
+                if (pairs.length > 0) {
+                  req.log?.info({ conversationId, pairs: pairs.length }, "autolearn: extracted KB candidates");
+                }
+              })
+              .catch((err) => {
+                req.log?.warn({ err: err.message }, "autolearn extraction failed (non-blocking)");
+              });
+          });
+        }
       }
       clearInterval(heartbeat);
       res.end();
