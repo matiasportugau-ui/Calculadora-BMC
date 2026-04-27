@@ -191,6 +191,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8cc9f80` docs(state): end-of-session sync 2026-04-24
 - `21d0fde` docs: autotrace + kb sync 2026-04-27
 - `9d43fee` docs: update kb.json timestamp and build metadata; sync autotrace documentation
+- `1a43445` docs(pdf-designs): add E-soft-modern template + update INDEX
 
 ## Tests
 

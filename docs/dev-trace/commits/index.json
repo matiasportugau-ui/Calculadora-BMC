@@ -8299,6 +8299,43 @@
           "public"
         ]
       }
+    },
+    {
+      "hash": "1a43445cd3470d207a7e079633cac254212aadd4",
+      "short_hash": "1a43445",
+      "date": "2026-04-27",
+      "time": "01:21:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "pdf-designs",
+      "title": "add E-soft-modern template + update INDEX",
+      "subject": "docs(pdf-designs): add E-soft-modern template + update INDEX",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/4be9a18.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "public/pdf-designs/E-soft-modern.html",
+        "public/pdf-designs/INDEX.html"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "public"
+        ]
+      }
     }
   ]
 }
