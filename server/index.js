@@ -116,11 +116,11 @@ const asyncHandler =
     Promise.resolve(fn(req, res, next)).catch(next);
 
 const ensureValidState = (state) => {
-  const createdAt = oauthStates.get(state);
-  if (!createdAt) return false;
-  const expired = Date.now() - createdAt > stateTtlMs;
+  const entry = oauthStates.get(state);
+  if (!entry) return null;
+  const expired = Date.now() - entry.createdAt > stateTtlMs;
   oauthStates.delete(state);
-  return !expired;
+  return expired ? null : entry;
 };
 
 /** Single discovery manifest for AI agents (Calculator + Dashboard + UI pointers) */
@@ -165,9 +165,11 @@ app.post(
 );
 
 app.get("/auth/ml/start", asyncHandler(async (req, res) => {
+  const codeVerifier = crypto.randomBytes(32).toString("base64url");
+  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
   const state = crypto.randomBytes(16).toString("hex");
-  oauthStates.set(state, Date.now());
-  const authUrl = ml.buildAuthUrl(state);
+  oauthStates.set(state, { createdAt: Date.now(), codeVerifier });
+  const authUrl = ml.buildAuthUrl(state, codeChallenge);
 
   if (req.query.mode === "json") {
     return res.json({ authUrl, state });
@@ -187,11 +189,12 @@ app.get("/auth/ml/callback", asyncHandler(async (req, res) => {
   if (!code) {
     return res.status(400).json({ ok: false, error: "Missing code in callback querystring" });
   }
-  if (!state || !ensureValidState(String(state))) {
+  const stateEntry = ensureValidState(String(state));
+  if (!state || !stateEntry) {
     return res.status(400).json({ ok: false, error: "Invalid or expired OAuth state" });
   }
 
-  const tokens = await ml.exchangeCodeForTokens(String(code));
+  const tokens = await ml.exchangeCodeForTokens(String(code), stateEntry.codeVerifier);
   return res.json({
     ok: true,
     userId: tokens.user_id,
