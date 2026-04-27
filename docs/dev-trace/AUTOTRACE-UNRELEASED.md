@@ -4,8 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `9a0dc85` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3) `[tests]`
-- `04f7b41` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
 - `6d95be9` feat(roof): render encounter lines as clickable SVG elements
 - `fe55309` feat(roof): split border strips by exterior intervals on partial encounters
 - `773e0df` feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
@@ -84,6 +82,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `25b9083` feat(agent): add generar_pdf tool — agent produces shareable PDF URL
 - `0c29e5b` feat(kb): add 8 math entries to example KB seed
 - `bc6cd03` feat(roof): merge/reset encounter segments — unblock split-only workflow `[tests]`
+- `7465e2f` feat(pdf-layouts): add layout selector to mobile bottom sheet
+- `cdeef3c` feat(agent): unified KB brain for Chat, WA and ML channels
 
 ## Fixes
 
@@ -161,6 +161,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `2d4e1cb` fix(agent): remove stale hardcoded prices from CATALOG section
 - `fff3d23` fix(autolearn): dedup uses question-only token overlap, not permanentBonus
 - `812e9c8` fix(agent): normalize familia to UPPER_SNAKE in all tool handlers
+- `d12f8f1` fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback `[regresión? · tests]`
+- `3a7b3bf` fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation `[regresión? · tests]`
 
 ## Documentation
 
@@ -214,6 +216,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a3c33d6` docs: autotrace sync 2026-04-27 end-of-session
 - `36c7613` docs: autotrace sync autolearn dedup fix
 - `e96d9e8` docs: update AUTOTRACE documentation and sync changes
+- `e4361e6` docs: autotrace sync familia normalization fix
 
 ## Tests
 

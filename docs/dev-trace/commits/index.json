@@ -9429,6 +9429,156 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "e4361e6bf80465b2b21af8ec8564073452bc8949",
+      "short_hash": "e4361e6",
+      "date": "2026-04-27",
+      "time": "14:49:36",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync familia normalization fix",
+      "subject": "docs: autotrace sync familia normalization fix",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/812e9c8.md",
+        "docs/dev-trace/commits/2026/04/e96d9e8.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "7465e2fe970461cc54f1434aad2d11fca34ee470",
+      "short_hash": "7465e2f",
+      "date": "2026-04-27",
+      "time": "14:51:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "add layout selector to mobile bottom sheet",
+      "subject": "feat(pdf-layouts): add layout selector to mobile bottom sheet",
+      "files": [
+        "src/components/PanelinCalculadoraV3_backup.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "d12f8f1106e68bfb741b3522345e68495da92c47",
+      "short_hash": "d12f8f1",
+      "date": "2026-04-27",
+      "time": "15:15:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "install Alpine Chromium + fix html2pdf Shadow DOM fallback",
+      "subject": "fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback",
+      "files": [
+        "server/Dockerfile",
+        "src/utils/pdfGenerator.js",
+        "tests/pdf-pipeline.test.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "3a7b3bf4fb63c101affc94826541891eaea96d77",
+      "short_hash": "3a7b3bf",
+      "date": "2026-04-27",
+      "time": "15:29:41",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "add system Chromium to Dockerfile.bmc-dashboard for PDF generation",
+      "subject": "fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation",
+      "files": [
+        "Dockerfile.bmc-dashboard",
+        "tests/pdf-pipeline.test.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "cdeef3ccde0a484e3cf70acd451c2e1a8a92b9d1",
+      "short_hash": "cdeef3c",
+      "date": "2026-04-27",
+      "time": "15:33:42",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "unified KB brain for Chat, WA and ML channels",
+      "subject": "feat(agent): unified KB brain for Chat, WA and ML channels",
+      "files": [
+        "server/index.js",
+        "server/lib/agentCore.js",
+        "server/lib/suggestResponse.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }

@@ -2,11 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 04:33:55 — `27804a0` — fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
-- 2026-04-23 04:40:35 — `5884c90` — feat(ci): add dedicated smoke job for prod API health on main push
-- 2026-04-23 04:40:56 — `be2c7ed` — feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
-- 2026-04-23 04:44:00 — `845bb68` — fix(wolfboard): wire origenEl in detail panel + correct table header labels
-- 2026-04-23 04:48:59 — `ee74167` — chore: post-live-test state — Wolfboard + Accessible Base first sync
 - 2026-04-23 04:50:16 — `7a2d303` — docs(ops): cm-2 email ingest prod DONE — todos los gates completos
 - 2026-04-23 04:54:10 — `5d5363c` — fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - 2026-04-23 05:05:49 — `11d1f8c` — fix(ml-ui): persist ML token in localStorage instead of sessionStorage
@@ -222,3 +217,8 @@
 - 2026-04-27 14:37:23 — `bc6cd03` — feat(roof): merge/reset encounter segments — unblock split-only workflow
 - 2026-04-27 14:38:30 — `e96d9e8` — docs: update AUTOTRACE documentation and sync changes
 - 2026-04-27 14:49:35 — `812e9c8` — fix(agent): normalize familia to UPPER_SNAKE in all tool handlers
+- 2026-04-27 14:49:36 — `e4361e6` — docs: autotrace sync familia normalization fix
+- 2026-04-27 14:51:25 — `7465e2f` — feat(pdf-layouts): add layout selector to mobile bottom sheet
+- 2026-04-27 15:15:50 — `d12f8f1` — fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback
+- 2026-04-27 15:29:41 — `3a7b3bf` — fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation
+- 2026-04-27 15:33:42 — `cdeef3c` — feat(agent): unified KB brain for Chat, WA and ML channels
