@@ -155,6 +155,15 @@ export function saveTrainingKB(kb) {
 
 // ─── Entry CRUD ───────────────────────────────────────────────────────────────
 
+// Freshness windows per category (days until reviewDueAt). null = never stale.
+const FRESHNESS_DAYS = { sales: 30, product: 90, conversational: 180, math: null };
+
+function reviewDueAt(category) {
+  const days = FRESHNESS_DAYS[category] ?? null;
+  if (!days) return null;
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+}
+
 function normalizeCategory(category) {
   const value = String(category || "conversational").trim().toLowerCase();
   if (value === "mercadolibre" || value === "ml") return "sales";
@@ -191,6 +200,9 @@ export function addTrainingEntry(payload = {}) {
     status: ["active", "pending", "rejected"].includes(payload.status) ? payload.status : "active",
     confidence: payload.confidence != null ? Number(payload.confidence) : null,
     convId: payload.convId ? String(payload.convId) : null,
+    retrievalCount: 0,
+    lastRetrievedAt: null,
+    reviewDueAt: payload.permanent ? null : reviewDueAt(normalizeCategory(payload.category)),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -290,10 +302,10 @@ export function hasSimilarQuestion(question, { threshold = 4 } = {}) {
     });
 }
 
-export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
+export function findRelevantExamples(query, { limit = 5, scoringConfig, track = true } = {}) {
   const cfg = scoringConfig || loadScoringConfig();
   const kb = loadTrainingKB();
-  const entries = kb.entries
+  const matched = kb.entries
     .filter((e) => !e.archived && (e.status == null || e.status === "active"))
     .map((entry) => {
       const score =
@@ -305,9 +317,30 @@ export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
     })
     .filter((it) => it.score > 0)
     .sort((a, b) => b.score - a.score || b.entry.updatedAt.localeCompare(a.entry.updatedAt))
-    .slice(0, limit)
-    .map((it) => ({ ...it.entry, matchScore: it.score }));
-  return entries;
+    .slice(0, limit);
+
+  // Track retrieval counts — write-back is async/fire-and-forget to avoid
+  // blocking the chat response. Uses setImmediate so the caller gets results first.
+  if (track && matched.length > 0) {
+    const ids = new Set(matched.map((m) => m.entry.id));
+    const now = new Date().toISOString();
+    setImmediate(() => {
+      try {
+        const kb2 = loadTrainingKB();
+        let changed = false;
+        for (const e of kb2.entries) {
+          if (ids.has(e.id)) {
+            e.retrievalCount = (e.retrievalCount ?? 0) + 1;
+            e.lastRetrievedAt = now;
+            changed = true;
+          }
+        }
+        if (changed) saveTrainingKB(kb2);
+      } catch { /* non-critical */ }
+    });
+  }
+
+  return matched.map((it) => ({ ...it.entry, matchScore: it.score }));
 }
 
 export function bulkDeleteEntries(ids) {
@@ -339,14 +372,40 @@ export function bulkPatchEntries(ids, patch) {
 }
 
 export function getTrainingStats() {
-  const entries = listTrainingEntries();
-  const byCategory = entries.reduce((acc, e) => {
+  const kb = loadTrainingKB();
+  const all = kb.entries;
+  const active = all.filter((e) => !e.archived && (e.status == null || e.status === "active"));
+  const now = Date.now();
+  const thirtyDaysAgo = new Date(now - 30 * 86_400_000).toISOString();
+
+  const byCategory = active.reduce((acc, e) => {
     acc[e.category] = (acc[e.category] || 0) + 1;
     return acc;
   }, {});
+
+  const bySource = active.reduce((acc, e) => {
+    const s = e.source || "manual";
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Health signals
+  const stale = active.filter((e) => e.reviewDueAt && e.reviewDueAt < new Date().toISOString()).length;
+  const zeroRetrieval = active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && e.createdAt < thirtyDaysAgo).length;
+  const mlGap = active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML).length;
+  const pending = all.filter((e) => e.status === "pending").length;
+
   return {
-    total: entries.length,
+    total: active.length,
+    pending,
     byCategory,
+    bySource,
+    health: {
+      stale,           // have reviewDueAt in the past
+      zeroRetrieval,   // never retrieved, older than 30 days
+      mlGap,           // goodAnswer too long for ML channel, no override
+      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3),
+    },
     updatedAt: new Date().toISOString(),
   };
 }
