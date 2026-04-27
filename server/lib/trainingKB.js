@@ -86,6 +86,9 @@ function ensureKbFile() {
 
 let _gcsInitPromise = null;
 
+/** Public: await before any read when GCS mode is active (Cloud Run cold-start guard). */
+export function ensureGcsInit() { return _ensureGcsInit(); }
+
 function _ensureGcsInit() {
   if (!USE_GCS) return Promise.resolve();
   if (!_gcsInitPromise) {
@@ -211,6 +214,8 @@ export function addTrainingEntry(payload = {}) {
   if (!entry.question || !entry.goodAnswer) {
     throw new Error("question and goodAnswer are required");
   }
+  // Flag conflicts at ingest time (non-blocking — stored on entry for admin review)
+  entry.conflictWith = detectConflicts(entry).map((c) => c.id);
   kb.entries.unshift(entry);
   saveTrainingKB(kb);
   return entry;
@@ -250,6 +255,7 @@ export function updateTrainingEntry(entryId, patch = {}) {
     status: patch.status && ["active", "pending", "rejected"].includes(patch.status) ? patch.status : prev.status ?? "active",
     goodAnswerML: patch.goodAnswerML !== undefined ? (patch.goodAnswerML ? String(patch.goodAnswerML).trim() : null) : prev.goodAnswerML ?? null,
     goodAnswerWA: patch.goodAnswerWA !== undefined ? (patch.goodAnswerWA ? String(patch.goodAnswerWA).trim() : null) : prev.goodAnswerWA ?? null,
+    conflictWith: patch.conflictWith !== undefined ? (Array.isArray(patch.conflictWith) ? patch.conflictWith : []) : prev.conflictWith ?? [],
     updatedAt: new Date().toISOString(),
   };
   kb.entries[idx] = next;
@@ -290,6 +296,51 @@ export function loadScoringConfig() {
 export function saveScoringConfig(config) {
   ensureDir(dataDir);
   fs.writeFileSync(path.join(dataDir, "kb-score-config.json"), JSON.stringify(config, null, 2), "utf8");
+}
+
+/**
+ * Detect conflicts: entries with similar question (≥3 tokens) but different answer (≤2 tokens overlap).
+ * Same topic + different answer = likely contradiction.
+ * Excludes the entry itself (by id) and rejected/archived entries.
+ */
+export function detectConflicts(entry, { questionThreshold = 3, answerThreshold = 2 } = {}) {
+  const kb = loadTrainingKB();
+  const qTokens = String(entry.question || "").toLowerCase().split(/[^a-z0-9áéíóúñü]+/i).filter(t => t.length >= 3);
+  const aTokens = String(entry.goodAnswer || "").toLowerCase().split(/[^a-z0-9áéíóúñü]+/i).filter(t => t.length >= 3);
+  if (qTokens.length === 0) return [];
+
+  return kb.entries.filter((e) => {
+    if (e.id === entry.id) return false;
+    if (e.archived || e.status === "rejected") return false;
+
+    let qScore = 0;
+    for (const t of qTokens) { if (String(e.question || "").toLowerCase().includes(t)) qScore++; }
+    if (qScore < questionThreshold) return false;
+
+    let aScore = 0;
+    for (const t of aTokens) { if (String(e.goodAnswer || "").toLowerCase().includes(t)) aScore++; }
+    return aScore <= answerThreshold;
+  }).map((e) => ({ id: e.id, question: e.question, goodAnswer: e.goodAnswer.slice(0, 150) }));
+}
+
+/** Run conflict detection across all active entries and return pairs. */
+export function findAllConflicts() {
+  const kb = loadTrainingKB();
+  const active = kb.entries.filter((e) => !e.archived && (e.status == null || e.status === "active"));
+  const seen = new Set();
+  const pairs = [];
+
+  for (const entry of active) {
+    const conflicts = detectConflicts(entry);
+    for (const c of conflicts) {
+      const key = [entry.id, c.id].sort().join("|");
+      if (!seen.has(key)) {
+        seen.add(key);
+        pairs.push({ a: { id: entry.id, question: entry.question, goodAnswer: entry.goodAnswer }, b: c });
+      }
+    }
+  }
+  return pairs;
 }
 
 /** Question-only dedup check — ignores permanentBonus, compares question tokens only. */

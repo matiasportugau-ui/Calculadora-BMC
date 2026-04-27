@@ -7,6 +7,8 @@ import {
   bulkDeleteEntries,
   bulkPatchEntries,
   deleteTrainingEntry,
+  detectConflicts,
+  findAllConflicts,
   findRelevantExamples,
   getTrainingPaths,
   getTrainingStats,
@@ -21,6 +23,7 @@ import {
   DEFAULT_SCORING_CONFIG,
   updatePromptSection,
   updateTrainingEntry,
+  ensureGcsInit,
 } from "../lib/trainingKB.js";
 import { clearKnowledgeCache } from "../lib/knowledgeLoader.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
@@ -110,7 +113,8 @@ router.delete("/agent/train/:id", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.get("/agent/training-kb", requireDevModeAuth, (req, res) => {
+router.get("/agent/training-kb", requireDevModeAuth, async (req, res) => {
+  await ensureGcsInit(); // wait for GCS cold-start load before reading KB
   const entries = listTrainingEntries({ category: req.query.category });
   const stats = getTrainingStats();
   res.json({ ok: true, entries, stats, paths: getTrainingPaths() });
@@ -263,6 +267,30 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
   try {
     const entry = rejectTrainingEntry(req.params.id, req.body?.reason || "");
     res.json({ ok: true, entry });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+// ─── Conflict detection ───────────────────────────────────────────────────────
+
+router.get("/agent/training-kb/conflicts", requireDevModeAuth, (req, res) => {
+  try {
+    const pairs = findAllConflicts();
+    res.json({ ok: true, count: pairs.length, pairs });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.post("/agent/training-kb/:id/resolve-conflict", requireDevModeAuth, (req, res) => {
+  try {
+    const { keepId, archiveId } = req.body || {};
+    if (!keepId || !archiveId) return res.status(400).json({ ok: false, error: "keepId and archiveId required" });
+    // Archive the losing entry and clear conflictWith on winner
+    const archived = updateTrainingEntry(archiveId, { status: "rejected" });
+    const winner = updateTrainingEntry(keepId, { conflictWith: [] });
+    res.json({ ok: true, kept: winner, archived });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message || String(err) });
   }

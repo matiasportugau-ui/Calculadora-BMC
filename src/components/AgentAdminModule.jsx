@@ -1303,6 +1303,88 @@ function AutoLearnTab() {
   );
 }
 
+// ── CONFLICTS TAB ────────────────────────────────────────────────────────────
+function ConflictsTab() {
+  const [pairs, setPairs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({});
+  const [msg, setMsg] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    const d = await apiFetch("/api/agent/training-kb/conflicts");
+    setPairs(d.pairs || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function resolve(keepId, archiveId) {
+    const key = `${keepId}|${archiveId}`;
+    setBusy((b) => ({ ...b, [key]: true }));
+    const d = await apiFetch(`/api/agent/training-kb/${keepId}/resolve-conflict`, {
+      method: "POST",
+      body: JSON.stringify({ keepId, archiveId }),
+    });
+    setBusy((b) => ({ ...b, [key]: false }));
+    if (d.ok) {
+      setMsg("Conflicto resuelto");
+      setPairs((prev) => prev.filter((p) => p.a.id !== keepId && p.a.id !== archiveId && p.b.id !== keepId && p.b.id !== archiveId));
+    } else {
+      setMsg("Error: " + (d.error || "desconocido"));
+    }
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Buscando conflictos…</div>;
+
+  return (
+    <div>
+      {msg && (
+        <div style={{ marginBottom: 16, padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>
+          {msg}
+        </div>
+      )}
+      {pairs.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
+          Sin conflictos detectados — preguntas similares tienen respuestas consistentes.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>
+            {pairs.length} par{pairs.length !== 1 ? "es" : ""} conflictivo{pairs.length !== 1 ? "s" : ""} — misma pregunta, respuestas distintas.
+          </div>
+          {pairs.map((p, i) => {
+            const key = `${p.a.id}|${p.b.id}`;
+            return (
+              <div key={key} style={{ background: C.white, borderRadius: 12, border: "1.5px solid #fca5a5", padding: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                  Conflicto #{i + 1}
+                </div>
+                {[{ label: "A", entry: p.a }, { label: "B", entry: p.b }].map(({ label, entry }) => (
+                  <div key={entry.id} style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 4 }}>[{label}] {entry.question}</div>
+                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>{entry.goodAnswer}</div>
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        onClick={() => resolve(entry.id, label === "A" ? p.b.id : p.a.id)}
+                        disabled={!!busy[key]}
+                        style={{ padding: "5px 14px", borderRadius: 7, border: "none", background: "#16a34a", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {busy[key] ? "…" : `Mantener ${label}, archivar ${label === "A" ? "B" : "A"}`}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── MAIN MODULE ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: "kb", label: "Base de conocimiento", icon: "📚" },
@@ -1311,6 +1393,7 @@ const TABS = [
   { id: "stats", label: "Estadísticas", icon: "📊" },
   { id: "analytics", label: "Analytics IA", icon: "🔍" },
   { id: "autolearn", label: "Cola IA", icon: "🧠" },
+  { id: "conflicts", label: "Conflictos", icon: "⚡" },
   { id: "config", label: "Configuración", icon: "⚙️" },
 ];
 
@@ -1392,6 +1475,7 @@ export default function AgentAdminModule() {
           {tab === "stats" && <StatsTab />}
           {tab === "analytics" && <AnalyticsTab />}
           {tab === "autolearn" && <AutoLearnTab />}
+          {tab === "conflicts" && <ConflictsTab />}
           {tab === "config" && <ConfigTab />}
         </main>
       </div>
