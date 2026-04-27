@@ -200,6 +200,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ea068c5` docs: sync PROJECT-STATE + autotrace post-session 2026-04-27
 - `a7b4a8a` docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel
 - `8f27ed3` docs: autotrace sync + version bump 2026-04-27 (session end)
+- `8787ceb` docs: autotrace stray commit doc 80102b1
 
 ## Tests
 
