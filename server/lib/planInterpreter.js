@@ -78,11 +78,18 @@ async function callClaude(buffer, mimeType, isImage, isPdf, isDxf) {
   });
 
   const resp = await anthropic.messages.create({
-    model: config.anthropicChatModel || "claude-opus-4-7",
+    model: config.anthropicPlanModel || config.anthropicChatModel || "claude-sonnet-4-6",
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }],
   });
+
+  if (resp.stop_reason === "max_tokens") {
+    throw Object.assign(
+      new Error("Respuesta IA truncada — plano demasiado complejo. Intentá con una sección más simple."),
+      { status: 422 }
+    );
+  }
 
   return parseAiJson(resp.content[0]?.text || "");
 }
