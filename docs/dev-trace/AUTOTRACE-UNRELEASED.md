@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `f62400e` feat: log Sketchfab integration commit in worklog
 - `9a0dc85` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3) `[tests]`
 - `04f7b41` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
 - `6d95be9` feat(roof): render encounter lines as clickable SVG elements
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `5b98ba4` feat(agent): auto-trigger autolearn after each production chat turn
 - `25b9083` feat(agent): add generar_pdf tool — agent produces shareable PDF URL
 - `0c29e5b` feat(kb): add 8 math entries to example KB seed
+- `bc6cd03` feat(roof): merge/reset encounter segments — unblock split-only workflow `[tests]`
 
 ## Fixes
 
@@ -211,6 +211,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `74f2568` docs: autotrace sync autolearn commit
 - `90babd2` docs: autotrace sync autolearn trigger
 - `a3c33d6` docs: autotrace sync 2026-04-27 end-of-session
+- `36c7613` docs: autotrace sync autolearn dedup fix
 
 ## Tests
 

@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 04:14:49 — `0437665` — fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
-- 2026-04-23 04:18:16 — `8a30cd2` — feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - 2026-04-23 04:28:45 — `e782464` — feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 - 2026-04-23 04:30:00 — `af7b601` — docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)
 - 2026-04-23 04:33:55 — `27804a0` — fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
@@ -222,3 +220,5 @@
 - 2026-04-27 05:22:34 — `2d4e1cb` — fix(agent): remove stale hardcoded prices from CATALOG section
 - 2026-04-27 10:09:35 — `0c29e5b` — feat(kb): add 8 math entries to example KB seed
 - 2026-04-27 14:32:45 — `fff3d23` — fix(autolearn): dedup uses question-only token overlap, not permanentBonus
+- 2026-04-27 14:32:46 — `36c7613` — docs: autotrace sync autolearn dedup fix
+- 2026-04-27 14:37:23 — `bc6cd03` — feat(roof): merge/reset encounter segments — unblock split-only workflow
