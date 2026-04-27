@@ -3,7 +3,7 @@
  * Candidates below confidence threshold or too similar to existing KB entries are dropped.
  */
 import { config } from "../config.js";
-import { findRelevantExamples } from "./trainingKB.js";
+import { hasSimilarQuestion } from "./trainingKB.js";
 
 const EXTRACT_MODEL = "claude-haiku-4-5-20251001";
 const MIN_CONFIDENCE = 0.70;
@@ -65,11 +65,9 @@ export async function extractLearnablePairs(turns) {
     .filter((p) => p && p.question && p.goodAnswer && typeof p.confidence === "number" && p.confidence >= MIN_CONFIDENCE)
     .slice(0, MAX_PAIRS_PER_CONV);
 
-  // Dedup: drop candidates too similar to existing active KB entries
-  const unique = filtered.filter((p) => {
-    const matches = findRelevantExamples(p.question, { limit: 1 });
-    return matches.length === 0 || matches[0].matchScore < DEDUP_SCORE_THRESHOLD;
-  });
+  // Dedup: drop candidates whose question overlaps strongly with existing active KB entries.
+  // Uses question-only token overlap (no permanentBonus) to avoid false positives.
+  const unique = filtered.filter((p) => !hasSimilarQuestion(p.question, { threshold: DEDUP_SCORE_THRESHOLD }));
 
   return unique;
 }

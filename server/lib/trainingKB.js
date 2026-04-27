@@ -177,6 +177,20 @@ export function saveScoringConfig(config) {
   fs.writeFileSync(path.join(dataDir, "kb-score-config.json"), JSON.stringify(config, null, 2), "utf8");
 }
 
+/** Question-only dedup check — ignores permanentBonus, compares question tokens only. */
+export function hasSimilarQuestion(question, { threshold = 4 } = {}) {
+  const kb = loadTrainingKB();
+  const qTokens = String(question || "").toLowerCase().split(/[^a-z0-9áéíóúñü]+/i).filter(t => t.length >= 3);
+  if (qTokens.size === 0) return false;
+  return kb.entries
+    .filter((e) => !e.archived && (e.status == null || e.status === "active"))
+    .some((e) => {
+      let score = 0;
+      for (const t of qTokens) { if (String(e.question || "").toLowerCase().includes(t)) score++; }
+      return score >= threshold;
+    });
+}
+
 export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
   const cfg = scoringConfig || loadScoringConfig();
   const kb = loadTrainingKB();
