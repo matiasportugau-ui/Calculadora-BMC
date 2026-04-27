@@ -35,6 +35,7 @@ import {
 import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
+import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 
 const router = Router();
 
@@ -594,7 +595,6 @@ router.post("/agent/chat", async (req, res) => {
         resolvedModel = model;
 
         const isOpus47 = model === "claude-opus-4-7";
-        // effort param supported on Opus 4.7, 4.6 and Sonnet 4.6; errors on Haiku 4.5 / Sonnet 4.5
         const supportsEffort = isOpus47
           || model === "claude-opus-4-6"
           || model === "claude-sonnet-4-6";
@@ -602,18 +602,17 @@ router.post("/agent/chat", async (req, res) => {
         const claudeOpts = {
           model,
           max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
-          // Wrap system prompt in a content block to enable prompt caching on the stable prefix
           system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
           messages: msgs,
+          tools: AGENT_TOOLS,
+          tool_choice: { type: "auto" },
         };
 
         if (thinkingMode) {
           if (isOpus47) {
-            // Opus 4.7: adaptive-only; display:"summarized" prevents blank pause before streaming
             claudeOpts.thinking = { type: "adaptive", display: "summarized" };
             claudeOpts.output_config = { effort: "xhigh" };
           } else {
-            // Older models: legacy extended thinking
             claudeOpts.thinking = { type: "enabled", budget_tokens: 2048 };
           }
           send({ type: "thinking_start" });
@@ -621,25 +620,57 @@ router.post("/agent/chat", async (req, res) => {
           claudeOpts.output_config = { effort: "high" };
         }
 
-        const stream = anthropic.messages.stream(claudeOpts);
         let cacheReadTokens = 0;
-        for await (const chunk of stream) {
-          if (chunk.type === "message_start" && chunk.message?.usage) {
-            cacheReadTokens = chunk.message.usage.cache_read_input_tokens ?? 0;
-            inputTokens = chunk.message.usage.input_tokens ?? 0;
+        // Tool-use loop: model may call tools up to 5 times before final response
+        const toolMsgs = [...msgs];
+        for (let toolRound = 0; toolRound < 5; toolRound++) {
+          const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
+          const toolCalls = [];
+          let roundText = "";
+
+          for await (const chunk of stream) {
+            if (chunk.type === "message_start" && chunk.message?.usage) {
+              cacheReadTokens = chunk.message.usage.cache_read_input_tokens ?? 0;
+              inputTokens += chunk.message.usage.input_tokens ?? 0;
+            }
+            if (chunk.type === "message_delta" && chunk.usage) {
+              outputTokens += chunk.usage.output_tokens ?? 0;
+            }
+            if (chunk.type === "content_block_start" && chunk.content_block?.type === "tool_use") {
+              toolCalls.push({ id: chunk.content_block.id, name: chunk.content_block.name, inputRaw: "" });
+            }
+            if (chunk.type === "content_block_delta") {
+              if (chunk.delta?.type === "input_json_delta" && toolCalls.length > 0) {
+                toolCalls[toolCalls.length - 1].inputRaw += chunk.delta.partial_json || "";
+              }
+              if (chunk.delta?.type === "text_delta" && chunk.delta.text) {
+                roundText += chunk.delta.text;
+                buf += chunk.delta.text;
+                buf = flushLines(buf);
+              }
+            }
           }
-          if (chunk.type === "message_delta" && chunk.usage) {
-            outputTokens = chunk.usage.output_tokens ?? 0;
-          }
-          if (
-            chunk.type === "content_block_delta" &&
-            chunk.delta?.type === "text_delta" &&
-            chunk.delta.text
-          ) {
-            buf += chunk.delta.text;
-            buf = flushLines(buf);
-          }
+
+          const finalMsg = await stream.finalMessage();
+          const stopReason = finalMsg?.stop_reason;
+
+          if (toolCalls.length === 0 || stopReason !== "tool_use") break;
+
+          // Execute all tool calls for this round
+          const assistantContent = finalMsg.content || [];
+          const toolResults = toolCalls.map((tc) => {
+            let toolInput = {};
+            try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
+            send({ type: "tool_call", tool: tc.name, input: toolInput });
+            const result = executeTool(tc.name, toolInput, calcState);
+            req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
+            return { type: "tool_result", tool_use_id: tc.id, content: result };
+          });
+
+          toolMsgs.push({ role: "assistant", content: assistantContent });
+          toolMsgs.push({ role: "user", content: toolResults });
         }
+
         if (thinkingMode) send({ type: "thinking_done" });
         if (devMode && cacheReadTokens > 0) {
           req.log?.info({ cacheReadTokens, model }, "Claude prompt cache hit");

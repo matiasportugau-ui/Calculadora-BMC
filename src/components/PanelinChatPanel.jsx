@@ -1001,6 +1001,17 @@ export default function PanelinChatPanel({
                       msg.content
                     )}
                   </div>
+                  {/* Tool-call indicators (shown in devMode or as subtle pills) */}
+                  {!isUser && msg.toolCalls?.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, paddingLeft: 2 }}>
+                      {msg.toolCalls.map((tc, i) => (
+                        <div key={i} style={{ fontSize: 10, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 6, padding: "1px 7px", display: "flex", alignItems: "center", gap: 3, fontFamily: FONT }}>
+                          <span style={{ color: "#8b5cf6" }}>⚙</span>
+                          <span>{tc.tool}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Action feedback badges */}
                   {!isUser && msg.actions?.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 2 }}>
