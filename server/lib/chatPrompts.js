@@ -457,6 +457,7 @@ Tenés tools del motor de cotización. Las reglas son estrictas:
 - SIEMPRE llamá \`obtener_precio_panel\` antes de citar un precio USD/m² al cliente. No uses los precios de PRECIOS CANÓNICOS directamente para el output — consultá la tool primero.
 - Usá \`listar_opciones_panel\` cuando el usuario pregunte qué opciones hay o pida comparar familias.
 - Usá \`get_calc_state\` cuando necesites confirmar el estado actual antes de actuar.
+- Llamá \`generar_pdf\` cuando el usuario pida el PDF, el link o quiera compartir la cotización. Devuelve una URL lista para compartir por WhatsApp o email.
 Los precios en PRECIOS CANÓNICOS son de referencia para orientarte, pero la cifra que le decís al cliente DEBE venir de una tool.`;
 
   return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]

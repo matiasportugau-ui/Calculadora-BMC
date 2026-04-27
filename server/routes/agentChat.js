@@ -657,16 +657,17 @@ router.post("/agent/chat", async (req, res) => {
 
           if (toolCalls.length === 0 || stopReason !== "tool_use") break;
 
-          // Execute all tool calls for this round
+          // Execute all tool calls for this round (sequential to preserve order)
           const assistantContent = finalMsg.content || [];
-          const toolResults = toolCalls.map((tc) => {
+          const toolResults = [];
+          for (const tc of toolCalls) {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = executeTool(tc.name, toolInput, calcState);
+            const result = await executeTool(tc.name, toolInput, calcState);
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
-            return { type: "tool_result", tool_use_id: tc.id, content: result };
-          });
+            toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
+          }
 
           toolMsgs.push({ role: "assistant", content: assistantContent });
           toolMsgs.push({ role: "user", content: toolResults });

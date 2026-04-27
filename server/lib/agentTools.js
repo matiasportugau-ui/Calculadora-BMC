@@ -12,6 +12,7 @@ import {
   mergeZonaResults,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
+import { config } from "../config.js";
 
 // ─── Tool definitions (Anthropic input_schema format) ────────────────────────
 
@@ -158,6 +159,71 @@ export const AGENT_TOOLS = [
       properties: {},
     },
   },
+
+  {
+    name: "generar_pdf",
+    description:
+      "Genera un PDF de cotización y devuelve una URL para compartir con el cliente. " +
+      "Llamar SOLO después de que calcular_cotizacion confirmó los datos y el usuario aprobó la cotización. " +
+      "La URL se puede compartir por WhatsApp o email — el cliente la abre en el navegador e imprime.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario: {
+          type: "string",
+          enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"],
+        },
+        listaPrecios: { type: "string", enum: ["web", "venta"] },
+        techo: {
+          type: "object",
+          properties: {
+            familia: { type: "string" },
+            espesor: { type: "number" },
+            tipoAguas: { type: "string" },
+            pendiente: { type: "number" },
+            tipoEst: { type: "string" },
+            color: { type: "string" },
+            zonas: { type: "array", items: { type: "object", properties: { largo: { type: "number" }, ancho: { type: "number" } }, required: ["largo", "ancho"] } },
+            borders: { type: "object" },
+          },
+        },
+        pared: {
+          type: "object",
+          properties: {
+            familia: { type: "string" },
+            espesor: { type: "number" },
+            alto: { type: "number" },
+            perimetro: { type: "number" },
+            numEsqExt: { type: "number" },
+            numEsqInt: { type: "number" },
+            color: { type: "string" },
+          },
+        },
+        camara: {
+          type: "object",
+          properties: {
+            largo_int: { type: "number" },
+            ancho_int: { type: "number" },
+            alto_int: { type: "number" },
+          },
+        },
+        flete: { type: "number", description: "Flete en USD" },
+        cliente: {
+          type: "object",
+          description: "Datos del cliente para el encabezado del PDF",
+          properties: {
+            nombre: { type: "string" },
+            rut: { type: "string" },
+            telefono: { type: "string" },
+            direccion: { type: "string" },
+            obra: { type: "string" },
+            ref: { type: "string" },
+          },
+        },
+      },
+      required: ["scenario"],
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -248,9 +314,9 @@ function summarizeResult(result, scenario) {
  * @param {string} name - Tool name
  * @param {object} input - Tool input
  * @param {object} calcState - Current calculator state from frontend
- * @returns {string} JSON-stringified result
+ * @returns {Promise<string>} JSON-stringified result
  */
-export function executeTool(name, input, calcState = {}) {
+export async function executeTool(name, input, calcState = {}) {
   try {
     if (name === "get_calc_state") {
       const liveResult = (() => {
@@ -375,6 +441,50 @@ export function executeTool(name, input, calcState = {}) {
       }
 
       return JSON.stringify({ error: `Escenario "${scenario}" no soportado` });
+    }
+
+    if (name === "generar_pdf") {
+      const { scenario, listaPrecios = "web", techo, pared, camara, flete = 0, cliente = {} } = input;
+
+      // Map tool input to /calc/cotizar/pdf body format
+      const body = {
+        lista: listaPrecios,
+        escenario: scenario,
+        flete,
+        cliente,
+        ...(techo && {
+          techo: {
+            ...techo,
+            espesor: techo.espesor ? String(techo.espesor) : undefined,
+          },
+        }),
+        ...(pared && {
+          pared: {
+            ...pared,
+            espesor: pared.espesor ? String(pared.espesor) : undefined,
+          },
+        }),
+        ...(camara && { camara }),
+      };
+
+      const apiBase = config.publicBaseUrl.replace(/\/$/, "");
+      const resp = await fetch(`${apiBase}/calc/cotizar/pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al generar PDF" });
+
+      return JSON.stringify({
+        ok: true,
+        pdf_url: data.pdf_url,
+        gcs_url: data.gcs_url || null,
+        expires_in_hours: data.expires_in_hours || null,
+        resumen: data.resumen,
+        instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
+      });
     }
 
     return JSON.stringify({ error: `Tool "${name}" no implementada` });
