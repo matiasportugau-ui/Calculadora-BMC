@@ -152,6 +152,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `523d61f` fix(plan-import): install multer, add stop_reason guard, downgrade model to Sonnet
 - `77ec61b` fix(plan-import): replace manual listener mgmt with useEffect in Select
 - `e85d190` fix(plan-import): update plan import handling and UI components
+- `4be9a18` fix(plan-import): update plan import handling and UI components
 
 ## Documentation
 
