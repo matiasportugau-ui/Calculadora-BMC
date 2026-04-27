@@ -21,6 +21,11 @@ async function cockpitFetch(token, path, options = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 function isSi(v) { const s = String(v || "").trim().toLowerCase(); return s === "si" || s === "sí"; }
+function parseMlObs(obs) {
+  const m = String(obs || "").match(/Q:(\d+)\s*\|\s*([^|]+?)\s*\|\s*(\S+)\s+(.*?)(?:\s*\|.*)?$/);
+  if (!m) return { dateTime: null, itemId: null, itemTitle: null };
+  return { dateTime: m[2].trim(), itemId: m[3].trim(), itemTitle: m[4].trim() };
+}
 
 // ── per-row status ────────────────────────────────────────────────────────────
 function rowStatus(parsed) {
@@ -434,9 +439,17 @@ export default function BmcMlOperativoModule() {
       const consulta = parsed?.consulta?.trim();
       if (!consulta) { setCycleLog(l => [...l, `⚠ FILA ${row}: sin consulta — omitida`]); continue; }
       setCycleLog(l => [...l, `▶ FILA ${row}: generando respuesta IA...`]);
+      const { itemId, itemTitle } = parseMlObs(parsed?.observaciones);
       const aiRes = await cockpitFetch(token, "/api/crm/suggest-response", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consulta, origen: questionId ? "ML" : "CRM", cliente: parsed?.cliente || "" }),
+        body: JSON.stringify({
+          consulta,
+          origen: questionId ? "ML" : "CRM",
+          cliente: parsed?.cliente || "",
+          producto: itemTitle || "",
+          observaciones: parsed?.observaciones || "",
+          itemId: itemId || "",
+        }),
       });
       if (!aiRes.ok) { setCycleLog(l => [...l, `⚠ FILA ${row}: IA falló — ${aiRes.data?.error || "err"}`]); continue; }
       const text = aiRes.data?.text || aiRes.data?.respuesta || "";
@@ -797,16 +810,19 @@ export default function BmcMlOperativoModule() {
                     <th style={th}>Fuente</th>
                     <th style={th}>Estado</th>
                     <th style={th}>Cliente</th>
+                    <th style={th}>Fecha / Producto</th>
                     <th style={th}>Consulta</th>
                     <th style={th}>Respuesta sugerida</th>
                     <th style={th}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map(({ row, parsed, questionId }) => {
+                  {items.map((item) => {
+                    const { row, parsed, questionId } = item;
                     const st = rowStatus(parsed);
                     const src = sourceBadge(questionId);
                     const expanded = expandedRow === row;
+                    const { dateTime, itemId, itemTitle } = parseMlObs(parsed?.observaciones);
                     return (
                       <tr key={row} style={{ background: expanded ? "#f8faff" : "transparent" }}>
                         <td style={{ ...td, color: "#6e6e73" }}>#{row}</td>
@@ -823,6 +839,11 @@ export default function BmcMlOperativoModule() {
                           )}
                         </td>
                         <td style={{ ...td, maxWidth: 120 }}>{parsed?.cliente || "—"}</td>
+                        <td style={{ ...td, maxWidth: 160 }}>
+                          {dateTime && <div style={{ fontSize: 11, color: "#374151", fontWeight: 600 }}>{dateTime}</div>}
+                          {itemTitle && <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }} title={itemId}>{itemTitle.slice(0, 60)}{itemTitle.length > 60 ? "…" : ""}</div>}
+                          {!dateTime && !itemTitle && <span style={{ color: "#9ca3af" }}>—</span>}
+                        </td>
                         <td style={{ ...td, maxWidth: 240 }}>
                           <div
                             onClick={() => setExpandedRow(expanded ? null : row)}

@@ -2098,7 +2098,7 @@ export default function createBmcDashboardRouter(config) {
   });
 
   router.post("/crm/suggest-response", async (req, res) => {
-    const { consulta, origen, cliente, producto, observaciones, provider } = req.body || {};
+    const { consulta, origen, cliente, producto, observaciones, provider, itemId } = req.body || {};
     if (!consulta) return res.status(400).json({ ok: false, error: "Missing consulta" });
 
     // Ranking: 1-Claude (best instruction following + rioplatense)
@@ -2125,13 +2125,41 @@ export default function createBmcDashboardRouter(config) {
       });
     }
 
+    // Look up previous Q&A from the same client on the same product
+    let historyContext = "";
+    if (cliente && itemId && checkSheetsAvailable(config)) {
+      try {
+        const sheets = await getCrmSheetsWrite();
+        const r = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetId,
+          range: `'${CRM_TAB}'!A${FIRST_DATA_ROW}:AK500`,
+        });
+        const history = [];
+        for (const rawRow of (r.data.values || [])) {
+          const p = parseCrmRowAtoAK([rawRow]);
+          if (String(p.cliente || "").trim() !== String(cliente).trim()) continue;
+          if (!String(p.observaciones || "").includes(itemId)) continue;
+          if (String(p.consulta || "").trim() === String(consulta).trim()) continue;
+          const ans = p.respuestaSugerida || p.enviadoEl;
+          if (!ans) continue;
+          history.push({ pregunta: p.consulta, respuesta: p.respuestaSugerida, fecha: p.fecha });
+        }
+        if (history.length > 0) {
+          const recent = history.slice(-3);
+          historyContext = "\n\nHistorial de consultas previas del mismo cliente sobre este producto:\n" +
+            recent.map((h, i) => `[${i + 1}] (${h.fecha || "s/f"}) Preguntó: "${h.pregunta}"\n    Respondimos: "${h.respuesta}"`).join("\n");
+        }
+      } catch (_) { /* non-fatal — continue without history */ }
+    }
+
     const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
 
     const userMsg = [
       `Canal: ${origen || "desconocido"}`,
       `Cliente: ${cliente || "desconocido"}`,
-      producto     ? `Producto/publicación: ${producto}`     : null,
-      observaciones ? `Observaciones: ${observaciones}`      : null,
+      producto      ? `Producto/publicación: ${producto}`  : null,
+      observaciones ? `Observaciones: ${observaciones}`    : null,
+      historyContext || null,
       `Consulta: ${consulta}`,
     ].filter(Boolean).join("\n");
 
