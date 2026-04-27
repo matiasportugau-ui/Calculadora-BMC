@@ -108,7 +108,7 @@ function _ensureGcsInit() {
           } catch { _setCache(emptyKb()); }
         }
       })
-      .catch(() => { /* GCS unavailable — fall through to local */ });
+      .catch((err) => { console.error("[KB] GCS init failed:", err?.message || err); });
   }
   return _gcsInitPromise;
 }
