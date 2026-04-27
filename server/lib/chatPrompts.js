@@ -451,7 +451,15 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
   const prefsBlock = buildPreferencesBlock(preferences);
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
+  const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
+Tenés tools del motor de cotización. Las reglas son estrictas:
+- SIEMPRE llamá \`calcular_cotizacion\` antes de dar un total (subtotal, IVA, total con IVA). Nunca calculés totales en tu cabeza.
+- SIEMPRE llamá \`obtener_precio_panel\` antes de citar un precio USD/m² al cliente. No uses los precios de PRECIOS CANÓNICOS directamente para el output — consultá la tool primero.
+- Usá \`listar_opciones_panel\` cuando el usuario pregunte qué opciones hay o pida comparar familias.
+- Usá \`get_calc_state\` cuando necesites confirmar el estado actual antes de actuar.
+Los precios en PRECIOS CANÓNICOS son de referencia para orientarte, pero la cifra que le decís al cliente DEBE venir de una tool.`;
+
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }
