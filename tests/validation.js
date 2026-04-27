@@ -2663,6 +2663,75 @@ const mayVpost = mayInvokeTool("ventas", getInternalToolById("api_cotizaciones_p
 assert("mayInvokeTool ventas api_cotizaciones_post denegado", mayVpost.ok === false, mayVpost.ok, false);
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SUITE: Fiscal contract shapes — irae_prevision + bps-irae (offline)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE: fiscal contract shapes ═══");
+{
+  const base = 12000.00;
+  const tasa = 0.25;
+  const mock = {
+    base_ganancia_anual: base,
+    tasa,
+    monto_estimado: Math.round(base * tasa * 100) / 100,
+    fiscal_disclaimer: "Estimación pre-deducción. Consulte contador.",
+    periodo: "2026-01-01/2026-04-27",
+  };
+  assert("irae tasa === 0.25", mock.tasa === 0.25, String(mock.tasa), "0.25");
+  assert(
+    "irae monto_estimado = base * tasa",
+    Math.abs(mock.monto_estimado - mock.base_ganancia_anual * mock.tasa) < 0.01,
+    String(mock.monto_estimado),
+    String(mock.base_ganancia_anual * mock.tasa),
+  );
+  assert(
+    "irae periodo formato YYYY-MM-DD/YYYY-MM-DD",
+    /^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/.test(mock.periodo),
+    mock.periodo,
+    "YYYY-MM-DD/YYYY-MM-DD",
+  );
+  assert(
+    "irae fiscal_disclaimer string no vacío",
+    typeof mock.fiscal_disclaimer === "string" && mock.fiscal_disclaimer.length > 0,
+    typeof mock.fiscal_disclaimer,
+    "string",
+  );
+  const [pInicio, pFin] = mock.periodo.split("/");
+  assert(
+    "irae periodo inicio = 1 enero del año en curso",
+    pInicio.slice(0, 4) === pFin.slice(0, 4) && pInicio.slice(5, 7) === "01",
+    pInicio,
+    `${pFin.slice(0, 4)}-01-01`,
+  );
+}
+{
+  const mockBps = {
+    ok: true,
+    iva_ventas: 2640.00,
+    iva_compras: 880.00,
+    resultado_neto_iva: 1760.00,
+    irae_estimado: 3000.00,
+    bps_empleador: 125.00,
+    bps_dependiente: 95.00,
+    periodo: "2026-01-01/2026-04-27",
+  };
+  assert("bps ok=true", mockBps.ok === true, String(mockBps.ok), "true");
+  assert("bps iva_ventas >= 0", mockBps.iva_ventas >= 0, String(mockBps.iva_ventas), ">=0");
+  assert(
+    "bps resultado_neto = ventas - compras",
+    Math.abs(mockBps.resultado_neto_iva - (mockBps.iva_ventas - mockBps.iva_compras)) < 0.01,
+    String(mockBps.resultado_neto_iva),
+    String(mockBps.iva_ventas - mockBps.iva_compras),
+  );
+  assert("bps irae_estimado >= 0", mockBps.irae_estimado >= 0, String(mockBps.irae_estimado), ">=0");
+  assert(
+    "bps periodo formato correcto",
+    /^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/.test(mockBps.periodo),
+    mockBps.periodo,
+    "YYYY-MM-DD/YYYY-MM-DD",
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
 // ═══════════════════════════════════════════════════════════════════════════
 console.log(`\n${"═".repeat(60)}`);

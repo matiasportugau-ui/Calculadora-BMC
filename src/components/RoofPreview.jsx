@@ -3168,9 +3168,42 @@ export default function RoofPreview({
                           </select>
                         </label>
                         {selVal === "__desnivel__" ? (
-                          <span style={{ fontSize: 10, color: C.ts, flex: "1 1 140px" }}>
-                            Desnivel: usá los botones superiores o elegí un perfil único en el catálogo para reemplazar el tramo.
-                          </span>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "1 1 200px", minWidth: 0 }}>
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 600, color: C.ts }}>
+                              Perfil lado bajo
+                              <select
+                                value={run.normalized.desnivel?.perfilBajo ?? "pretil"}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  const cur = run.normalized.desnivel ?? {};
+                                  const next = patchEncounterPairSegment(rawPair, run.id, {
+                                    encounter: { tipo: "perfil", modo: "desnivel", perfil: v, desnivel: { perfilBajo: v, perfilAlto: cur.perfilAlto ?? "cumbrera" } },
+                                  });
+                                  onEncounterPairChange(pk, next);
+                                }}
+                                style={{ fontSize: 12, fontWeight: 500, color: C.tp, padding: "6px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, maxWidth: "100%" }}
+                              >
+                                {encCatalogOpts.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                              </select>
+                            </label>
+                            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 10, fontWeight: 600, color: C.ts }}>
+                              Perfil lado alto
+                              <select
+                                value={run.normalized.desnivel?.perfilAlto ?? "cumbrera"}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  const cur = run.normalized.desnivel ?? {};
+                                  const next = patchEncounterPairSegment(rawPair, run.id, {
+                                    encounter: { tipo: "perfil", modo: "desnivel", perfil: cur.perfilBajo ?? "pretil", desnivel: { perfilBajo: cur.perfilBajo ?? "pretil", perfilAlto: v } },
+                                  });
+                                  onEncounterPairChange(pk, next);
+                                }}
+                                style={{ fontSize: 12, fontWeight: 500, color: C.tp, padding: "6px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, maxWidth: "100%" }}
+                              >
+                                {encCatalogOpts.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                              </select>
+                            </label>
+                          </div>
                         ) : null}
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                           <button
