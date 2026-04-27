@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `38269e1` feat(kb): retrieval tracking + freshness TTL + health stats
 - `f0ea719` feat(kb): channel renderer + ML/WA overrides + health badges in admin
 - `3c6fc50` feat(kb): auto-generate ML overrides for all gap entries
+- `c49b772` feat(kb): conflict detection — same question, different answer
 
 ## Fixes
 
@@ -224,6 +224,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0594c89` docs: autotrace sync KB GCS persistence
 - `3bf63c4` docs: autotrace sync kb health stats
 - `e4ec409` docs: autotrace sync channel renderer
+- `99b310a` docs: autotrace sync ML overrides batch
 
 ## Tests
 
