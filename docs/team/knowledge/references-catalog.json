@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-23T13:00:12.333Z",
+  "updatedAt": "2026-04-26T14:09:04.404Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -7186,6 +7186,279 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_f74d55ae80229d0c"
+      ]
+    },
+    {
+      "id": "ref_a5db3552a9833486",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Introducing GPT-5.5]]>",
+      "url": "https://openai.com/index/introducing-gpt-5-5",
+      "summary": "",
+      "publishedAt": "2026-04-23T11:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.889Z",
+      "lastSeenAt": "2026-04-25T13:28:00.889Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_2c9c36d7179f3857"
+      ]
+    },
+    {
+      "id": "ref_23422b87172838b6",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[GPT-5.5 System Card]]>",
+      "url": "https://openai.com/index/gpt-5-5-system-card",
+      "summary": "",
+      "publishedAt": "2026-04-23T11:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9211ac53cb4320a3"
+      ]
+    },
+    {
+      "id": "ref_ab6c54cb91fe4120",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Automations]]>",
+      "url": "https://openai.com/academy/codex-automations",
+      "summary": "",
+      "publishedAt": "2026-04-23T10:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ba9ed997417410ce"
+      ]
+    },
+    {
+      "id": "ref_c1c009fddcd1da7c",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Top 10 uses for Codex at work]]>",
+      "url": "https://openai.com/academy/top-10-use-cases-codex-for-work",
+      "summary": "",
+      "publishedAt": "2026-04-23T10:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_ba0eb4fe3c3f2e82"
+      ]
+    },
+    {
+      "id": "ref_bfe994cda01ce9a0",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Plugins and skills]]>",
+      "url": "https://openai.com/academy/codex-plugins-and-skills",
+      "summary": "",
+      "publishedAt": "2026-04-23T10:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f38c955dde94480a"
+      ]
+    },
+    {
+      "id": "ref_798eb75a73a5be1d",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Working with Codex]]>",
+      "url": "https://openai.com/academy/working-with-codex",
+      "summary": "",
+      "publishedAt": "2026-04-23T10:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_29a5b3525c80d8b5"
+      ]
+    },
+    {
+      "id": "ref_b0ba729373c128c8",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Codex settings]]>",
+      "url": "https://openai.com/academy/codex-settings",
+      "summary": "",
+      "publishedAt": "2026-04-23T10:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8c5ad65ef5029a80"
+      ]
+    },
+    {
+      "id": "ref_ff765b946f236afa",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[What is Codex?]]>",
+      "url": "https://openai.com/academy/what-is-codex",
+      "summary": "",
+      "publishedAt": "2026-04-23T10:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:00.890Z",
+      "lastSeenAt": "2026-04-25T13:28:00.890Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_c0d198ee00462076"
+      ]
+    },
+    {
+      "id": "ref_e9917300627ca99c",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.91.1",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.91.1",
+      "summary": "## 0.91.1 (2026-04-24) Full Changelog: [sdk-v0.91.0...sdk-v0.91.1](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.91.0...sdk-v0.91.1) ### Bug Fixes * **memory:** use restrictive file mode for memory files ([#901](https://github.com/anthropics/anthropic-sdk-typescript/issues/901)) ([6db3b7e](https://github.com/anthropics/anthropic-sdk-typescript/commit/6db3b7e2218430971cbc137081b5a55ad593fca8)) ### Chores * **formatter:** run prettier and eslint separately ([974d22f](https://github.com/anthropics/anthropic-sdk-typescript/commit/974d22fcf607b942bff3376c699bc3f6cb3b3ae5))",
+      "publishedAt": "2026-04-24T23:26:44Z",
+      "firstSeenAt": "2026-04-25T13:28:01.036Z",
+      "lastSeenAt": "2026-04-25T13:28:01.036Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_9179d06f9ea67279"
+      ]
+    },
+    {
+      "id": "ref_ea0e2aaaadd769de",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.91.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.91.0",
+      "summary": "## 0.91.0 (2026-04-23) Full Changelog: [sdk-v0.90.0...sdk-v0.91.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.90.0...sdk-v0.91.0) ### Features * **api:** CMA Memory public beta ([ddf732f](https://github.com/anthropics/anthropic-sdk-typescript/commit/ddf732f5f35c123f963fa270669e35707a2e3f7f)) * **bedrock:** use auth header for mantle client ([#866](https://github.com/anthropics/anthropic-sdk-typescript/issues/866)) ([aec801a](https://github.com/anthropics/anthropic-sdk-typescript/commit/aec801afc7d37d9e8ca1471748ca599b442cbce4)) ### Bug Fixes * **api:** fix errors in api spec ([ae10768](https://github.com/anthropics/anthropic-sdk-typescript/commit/ae1076848587c6f994b45e3030269a635d38bc0b)) * **api:** restore missing features ([1a5b47b](https://github.com/anthropics/anthropic-sdk-typescript/commit/1a5b47b6895ee2c47af8adea1f403b76dd3ca62f)) ### Chores * **internal:** more robust bootstrap script ([7716e19](https://github.com/anthropics/anthropic-sdk-typescript/commit/7716e19f7fceeb63bb20b9e4df904a021ae705dc)) * **tests:** bump steady to v0.22.1 ([219a971](https://github.com/anthropics/anthropic-sdk-typescript/commit/219a9717439a458189ac83633b2d5cd9f1ad7d25))",
+      "publishedAt": "2026-04-23T20:47:35Z",
+      "firstSeenAt": "2026-04-25T13:28:01.036Z",
+      "lastSeenAt": "2026-04-25T13:28:01.036Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b25b9b6651e384fe"
+      ]
+    },
+    {
+      "id": "ref_595f0c45f8a04931",
+      "sourceId": "anthropic-news-rss",
+      "title": "bedrock-sdk: v0.29.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/bedrock-sdk-v0.29.0",
+      "summary": "## 0.29.0 (2026-04-23) Full Changelog: [bedrock-sdk-v0.28.1...bedrock-sdk-v0.29.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/bedrock-sdk-v0.28.1...bedrock-sdk-v0.29.0) ### Features * **bedrock:** use auth header for mantle client ([#866](https://github.com/anthropics/anthropic-sdk-typescript/issues/866)) ([aec801a](https://github.com/anthropics/anthropic-sdk-typescript/commit/aec801afc7d37d9e8ca1471748ca599b442cbce4))",
+      "publishedAt": "2026-04-23T20:47:41Z",
+      "firstSeenAt": "2026-04-25T13:28:01.036Z",
+      "lastSeenAt": "2026-04-25T13:28:01.036Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_93a8d44727f8f7cf"
+      ]
+    },
+    {
+      "id": "ref_92786fad4548c2a8",
+      "sourceId": "huggingface-blog-rss",
+      "title": "DeepSeek-V4: a million-token context that agents can actually use",
+      "url": "https://huggingface.co/blog/deepseekv4",
+      "summary": "",
+      "publishedAt": "2026-04-24T00:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:03.166Z",
+      "lastSeenAt": "2026-04-25T13:28:03.166Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_f56f19397415e198"
+      ]
+    },
+    {
+      "id": "ref_a8a20f0faa658382",
+      "sourceId": "huggingface-blog-rss",
+      "title": "How to Use Transformers.js in a Chrome Extension",
+      "url": "https://huggingface.co/blog/transformersjs-chrome-extension",
+      "summary": "",
+      "publishedAt": "2026-04-23T00:00:00.000Z",
+      "firstSeenAt": "2026-04-25T13:28:03.167Z",
+      "lastSeenAt": "2026-04-25T13:28:03.167Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_7857fae66647d6a3"
       ]
     }
   ]

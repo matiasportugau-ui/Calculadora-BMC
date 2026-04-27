@@ -102,25 +102,56 @@ export function buildPdfAppendixPayload({
   const borderExtras = [];
   if (vis.canalGot && techo.opciones?.inclCanalon) borderExtras.push("Canalón");
   if (vis.canalGot && techo.opciones?.inclGotSup) borderExtras.push("Gotero superior");
+
+  // Gap A — derive tipoAguas from per-zone dosAguas flags (same logic as derivedTipoAguas
+  // in the component; techo.tipoAguas field is @deprecated and stored as "" in saved state).
+  const validZonasArr = Array.isArray(techo.zonas) ? techo.zonas : [];
+  const tipoAguasDerived = validZonasArr
+    .filter(z => !Number.isFinite(Number(z?.preview?.attachParentGi)) || Number(z?.preview?.attachParentGi) < 0)
+    .some(z => z?.dosAguas)
+    ? "dos_aguas" : "una_agua";
+  const is2A = tipoAguasDerived === "dos_aguas";
+
+  // Gap B — per-zone roofBlocks for individual strip diagrams.
+  // Reconstructed from zone dimensions + panelAu (no access to per-zone BOM results here).
+  const au = roofFam?.au || 0;
+  const panelLabel = (roofFam && techo.familia && techo.espesor)
+    ? `${roofFam.label} ${techo.espesor}mm` : null;
+  const zonaRoofBlocks = (roofFam && scenarioDef.hasTecho && panelLabel && au > 0)
+    ? validZonasArr
+        .filter(z => z?.largo > 0 && z?.ancho > 0)
+        .map((z) => {
+          const anchoPlanta = is2A ? z.ancho / 2 : z.ancho;
+          const n = Math.max(1, Math.ceil(anchoPlanta / au - 1e-9));
+          return { largo: z.largo, ancho: anchoPlanta, anchoTotal: anchoPlanta, cantPaneles: n, au, label: panelLabel };
+        })
+    : null;
+
+  // Gap B (fallback) — keep the merged roofBlock for single-zone or legacy paths.
+  const effectiveRoofBlocks = (zonaRoofBlocks && zonaRoofBlocks.length > 0)
+    ? zonaRoofBlocks
+    : (roofBlock ? [roofBlock] : []);
+
+  // encounterByPair stored per-zone: zonas[low].preview.encounterByPair[pairKey]
+  const encounterByPairMerged = {};
+  for (const z of validZonasArr) {
+    const ebp = z?.preview?.encounterByPair;
+    if (ebp && typeof ebp === "object") Object.assign(encounterByPairMerged, ebp);
+  }
+
   return {
     scenarioLabel: { solo_techo: "Techo", solo_fachada: "Fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica", presupuesto_libre: "Presupuesto libre" }[scenario] || scenario,
     showBorders: !!vis.borders,
     borders: techo.borders,
     borderExtras,
     roofBlock,
+    roofBlocks: effectiveRoofBlocks,
     wallBlock,
-    zonas: Array.isArray(techo.zonas) ? techo.zonas : [],
-    tipoAguas: techo.tipoAguas === "dos_aguas" ? "dos_aguas" : "una_agua",
-    panelAu: roofFam?.au || 0,
-    encounterByPair: (() => {
-      // encounterByPair stored per-zone: zonas[low].preview.encounterByPair[pairKey]
-      const merged = {};
-      for (const z of (Array.isArray(techo.zonas) ? techo.zonas : [])) {
-        const ebp = z?.preview?.encounterByPair;
-        if (ebp && typeof ebp === "object") Object.assign(merged, ebp);
-      }
-      return merged;
-    })(),
+    zonas: validZonasArr,
+    tipoAguas: tipoAguasDerived,
+    panelAu: au,
+    encounterByPair: encounterByPairMerged,
+    globalBorders: techo.borders && typeof techo.borders === "object" ? techo.borders : {},
     kpi: {
       area: kpiArea,
       paneles: kpiPaneles,
@@ -182,11 +213,11 @@ export function svgParedStrip(wallBlock) {
  * @param {object}  [encounterByPair] — techo.preview.encounterByPair
  * @param {number}  [panelAu]   — ancho útil del panel en metros
  */
-export function svgFloorPlan(roofBlocks, zonas, tipoAguas = "una_agua", encounterByPair = {}, panelAu = 0) {
+export function svgFloorPlan(roofBlocks, zonas, tipoAguas = "una_agua", encounterByPair = {}, panelAu = 0, globalBorders = {}) {
   // Geometric path: requires valid zonas
   if (Array.isArray(zonas) && zonas.some(z => z?.largo > 0 && z?.ancho > 0)) {
     try {
-      return _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu);
+      return _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu, globalBorders);
     } catch { /* fall through to legacy */ }
   }
   // Legacy path: simple side-by-side blocks
@@ -210,7 +241,44 @@ function _fmtDimLabel(h, w) {
   return `${fmt(h)} × ${fmt(w)} m`;
 }
 
-function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
+/** Shortened zone title for small zones in the floor plan. */
+function _fpZoneTitle(zonas, gi, rhPx) {
+  const full = formatZonaDisplayTitle(zonas, gi);
+  if (rhPx >= 58 || full.length <= 20) return full;
+  // "Zona N · extensión lateral (2ª en cadena)" → "Z.N ext.lat.#2"
+  const m = full.match(/^Zona\s+(\d+)\s+·\s+extensión lateral(?:\s+\((\d+))?/);
+  if (m) return m[2] ? `Z${m[1]} ext.lat.#${m[2]}` : `Z${m[1]} ext.lat.`;
+  return full.length > 20 ? full.slice(0, 19) + "…" : full;
+}
+
+/** Determine the semantic side of an exterior segment relative to its zone rect. */
+function _segSide(seg, r) {
+  const EPS = 0.01;
+  if (Math.abs(seg.y1 - seg.y2) < EPS) {
+    if (Math.abs(seg.y1 - r.y) < EPS) return "fondo";
+    if (Math.abs(seg.y1 - (r.y + r.h)) < EPS) return "frente";
+  } else {
+    if (Math.abs(seg.x1 - r.x) < EPS) return "latIzq";
+    if (Math.abs(seg.x1 - (r.x + r.w)) < EPS) return "latDer";
+  }
+  return null;
+}
+
+// Border-type color coding (matches RoofPreview semantic colors)
+const _BORDER_COLOR = {
+  gotero_frontal: "#0ea5e9", gotero_frontal_greca: "#0ea5e9",
+  gotero_lateral: "#0ea5e9", gotero_lateral_camara: "#06b6d4",
+  babeta_adosar: "#8b5cf6", babeta_empotrar: "#7c3aed",
+  canalon: "#0284c7", cumbrera: "#3b82f6", pretil: "#f97316",
+};
+const _BORDER_ABBREV = {
+  gotero_frontal: "Gotero", gotero_frontal_greca: "Greca",
+  gotero_lateral: "Got.lat.", gotero_lateral_camara: "Cámara",
+  babeta_adosar: "Bab.↗", babeta_empotrar: "Bab.↙",
+  canalon: "Canalón", cumbrera: "Cumbrera", pretil: "Pretil",
+};
+
+function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu, globalBorders = {}) {
   // ── Geometry ──────────────────────────────────────────────────────────────
   const rects = zonasToPlantRectsWithAutoGap(zonas, tipoAguas);
   if (!rects.length) return "";
@@ -386,6 +454,44 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
     }
   }
 
+  // ── Gap D — Border profile stripes on exterior edges (colored inside-edge) ──
+  // Merges techo-level globalBorders with per-zone preview.borders (zone wins).
+  {
+    const STRIPE = 5; // SVG units wide, drawn inside the zone edge
+    for (const r of rects) {
+      const gbl = (globalBorders && typeof globalBorders === "object") ? globalBorders : {};
+      const bords = { ...gbl, ...(r.z?.preview?.borders ?? {}) };
+      for (const seg of extLines[r.gi] || []) {
+        const side = _segSide(seg, r);
+        if (!side) continue;
+        const bval = bords[side];
+        if (!bval || bval === "none") continue;
+        const col = _BORDER_COLOR[bval];
+        if (!col) continue;
+        const abbr = _BORDER_ABBREV[bval] ?? bval;
+        const ax1 = sx(seg.x1);
+        const ay1 = sy(seg.y1);
+        const ax2 = sx(seg.x2);
+        const ay2 = sy(seg.y2);
+        if (side === "fondo" || side === "frente") {
+          const iny  = side === "fondo" ? ay1 : ay1 - STRIPE;
+          const segW = Math.abs(ax2 - ax1);
+          const x0   = Math.min(ax1, ax2);
+          out += `<rect x="${x0.toFixed(2)}" y="${iny.toFixed(2)}" width="${segW.toFixed(2)}" height="${STRIPE}" fill="${col}" opacity="0.5"/>`;
+          out += `<text x="${(x0 + segW / 2).toFixed(1)}" y="${(iny + STRIPE / 2 + 3.5).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="600" fill="white" paint-order="stroke" stroke="white" stroke-width="1.5" font-family="system-ui,sans-serif">${_escSvg(abbr)}</text>`;
+        } else {
+          const inx  = side === "latIzq" ? ax1 : ax1 - STRIPE;
+          const segH = Math.abs(ay2 - ay1);
+          const y0   = Math.min(ay1, ay2);
+          const my   = (y0 + segH / 2).toFixed(1);
+          const mx   = (inx + STRIPE / 2).toFixed(1);
+          out += `<rect x="${inx.toFixed(2)}" y="${y0.toFixed(2)}" width="${STRIPE}" height="${segH.toFixed(2)}" fill="${col}" opacity="0.5"/>`;
+          out += `<text x="${mx}" y="${my}" text-anchor="middle" dominant-baseline="middle" font-size="7" font-weight="600" fill="white" paint-order="stroke" stroke="white" stroke-width="1.5" font-family="system-ui,sans-serif" transform="rotate(-90,${mx},${my})">${_escSvg(abbr)}</text>`;
+        }
+      }
+    }
+  }
+
   // ══════════════════════════════════════════════════════════════════════════
   // ITERATION 6 — Encounter inline labels with halo (mid-segment, rotated)
   // ══════════════════════════════════════════════════════════════════════════
@@ -411,7 +517,7 @@ function _svgFloorPlanGeometric(zonas, tipoAguas, encounterByPair, panelAu) {
     const cxs   = (rx0 + rw / 2).toFixed(1);
     const midY  = ry0 + rh / 2;
 
-    const title    = formatZonaDisplayTitle(zonas, r.gi);
+    const title    = _fpZoneTitle(zonas, r.gi, rh);
     const dimLabel = _fmtDimLabel(r.h, r.w);
     const fs1      = Math.min(18, Math.max(9,   rh * 0.13));
     const fs2      = Math.min(12, Math.max(7,   rh * 0.085));
@@ -923,6 +1029,7 @@ export function generateClientVisualHTML(data) {
     appendix?.tipoAguas || "una_agua",
     appendix?.encounterByPair || {},
     appendix?.panelAu || 0,
+    appendix?.globalBorders || {},
   );
   const floorPlanHtml = _fpSvg
     ? `<div style="margin-bottom:8px;padding:8px 10px;background:#F8FAFC;border-radius:6px;border:0.5pt solid #E2E8F0;page-break-inside:avoid;break-inside:avoid"><div style="font-size:8pt;font-weight:700;color:#003366;margin-bottom:5px">Planta 2D · cubierta</div><div style="max-height:260px;overflow:hidden">${_fpSvg}</div></div>`

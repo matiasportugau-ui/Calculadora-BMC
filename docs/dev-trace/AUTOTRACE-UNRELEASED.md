@@ -81,6 +81,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `dd28047` feat(pdf): replace Playwright with @sparticuz/chromium-min + puppeteer-core
 - `c5c836d` feat(floor-plan): 10-iteration professional SVG plano en planta
 - `05d199e` feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
+- `857cdba` feat(floor-plan): Gap A-D expansion — tipoAguas, per-zone roofBlocks, borders, labels
 
 ## Fixes
 
@@ -140,6 +141,13 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `cb826f4` fix(pdf): return 503 on launch failure + sample data + var-tracker
 - `a047c23` fix(pdf): replace fs.promises.glob with readdirSync — Node 20 compat
 - `7e0c3b9` fix(pdf): use @sparticuz/chromium (full, with binary) not chromium-min
+- `1473bec` fix(pdf): return 503 on launch failure + update sample data and var-tracker
+- `1011293` fix(pdf): swap chromium-min → chromium for Cloud Run runtime
+- `3af1469` fix(floor-plan): real zone positions + encounterByPair extraction + tipoAguas normalization
+- `2cc04d9` fix(pdf): add diagnostic logging for @sparticuz binary path
+- `be41d53` fix(pdf): chmod 755 chromium binary after @sparticuz decompression
+- `351bc2f` fix(pdf): /lib64 symlink for @sparticuz AL2023 ELF interpreter on Debian slim
+- `f84aabb` fix(pdf): update PDF error handling and sample data
 
 ## Documentation
 
@@ -176,6 +184,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0e80f38` docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
 - `3a5615c` docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
 - `8cc9f80` docs(state): end-of-session sync 2026-04-24
+- `21d0fde` docs: autotrace + kb sync 2026-04-27
+- `9d43fee` docs: update kb.json timestamp and build metadata; sync autotrace documentation
 
 ## Tests
 
