@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-24
+**Última actualización:** 2026-04-27
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-04-27 (Dev+Ops — plan-import E2E, desnivel por segmento, fiscal tests, PDF templates):** Cuatro áreas entregadas en sesión continua. **1) Plan-import CAD→presupuesto** (`447b9b4`…`4be9a18`): `BmcPlanImportModule` (`/hub/plan-import`), `server/routes/planInterpret.js` + `server/lib/planInterpreter.js` (Anthropic vision → JSON schema), `multer` instalado. Flujo completo verificado: upload PNG con cotas → IA extrae zonas → usuario selecciona familia/espesor → "Abrir en calculadora" → presupuesto completo generado. Cloud Run **rev-00275** live e incluye la feature (deploy automático vía `deploy-calc-api.yml` por cambios en `server/**`). **2) Floor-plan desnivel por segmento** (`a5b2b34`): `RoofPreview.jsx` — hint text de desnivel reemplazado por dos selects `perfilBajo`/`perfilAlto` por tramo; usa `patchEncounterPairSegment` existente; verificado en browser (label SVG muestra `"Pretil / Cumbrera"`). **3) Fiscal contract tests** (`a5b2b34`): 10 nuevas assertions en `tests/validation.js` — `irae_prevision` (tasa=0.25, monto=base×0.25, periodo regex) y `bps-irae` shape; **tests: 378 pass** (de 368). **4) PDF templates** (`1a43445`): `public/pdf-designs/E-soft-modern.html` nuevo template; `INDEX.html` actualizado; 5 templates A–E en total. Commits: `a5b2b34`, `42f7a48`, `cb653d5`, `1a43445`, `4be9a18`, `e85d190`, `77ec61b`, `523d61f`. **Affects:** bmc-calc-specialist (plan-import + desnivel UI), calculo-especialist (desnivel por segmento), bmc-fiscal (tests contrato), bmc-deployment (rev-00275).
 
 **2026-04-25 (Ops — ml-auto smoke prod, postcss fix, KB sync):** Cloud Run confirmado en **`rev-00240`** (KB tenía `rev-00170-5jb` — desactualizado). `npm run test:ml-auto:prod` → **10/10 passed**: GET, auth enforcement, enable/disable round-trip, webhook events — pipeline ml-auto operativo en prod. `npm audit fix` → postcss XSS fix aplicado; 3 moderate restantes = cadena `uuid → @google-cloud/storage` (server-side GCS, sin vector de explotación directo; major bump requerido — pendiente evaluación). Tests: **368 pass** (KB health tenía 350). Commits dev-trace: `f715469`, `ac39207`, `a6e0548`. **Affects:** bmc-deployment (rev actualizada), bmc-security (postcss fix), kb.json (sync).
 

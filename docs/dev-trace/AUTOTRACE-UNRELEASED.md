@@ -192,6 +192,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `21d0fde` docs: autotrace + kb sync 2026-04-27
 - `9d43fee` docs: update kb.json timestamp and build metadata; sync autotrace documentation
 - `1a43445` docs(pdf-designs): add E-soft-modern template + update INDEX
+- `cb653d5` docs: autotrace sync 2026-04-27 (1a43445)
 
 ## Tests
 

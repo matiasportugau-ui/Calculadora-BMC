@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-20 22:53:49 — `0f3f008` — chore: update Google Drive OAuth setup scripts and documentation
 - 2026-04-21 01:52:11 — `691b550` — chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation
 - 2026-04-21 02:45:30 — `9a0dc85` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
 - 2026-04-21 02:46:10 — `04f7b41` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
@@ -222,3 +221,4 @@
 - 2026-04-27 01:10:51 — `e85d190` — fix(plan-import): update plan import handling and UI components
 - 2026-04-27 01:17:27 — `4be9a18` — fix(plan-import): update plan import handling and UI components
 - 2026-04-27 01:21:28 — `1a43445` — docs(pdf-designs): add E-soft-modern template + update INDEX
+- 2026-04-27 02:02:23 — `cb653d5` — docs: autotrace sync 2026-04-27 (1a43445)
