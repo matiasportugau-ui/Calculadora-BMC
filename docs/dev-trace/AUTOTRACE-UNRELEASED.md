@@ -160,6 +160,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `211c672` fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq
 - `2d4e1cb` fix(agent): remove stale hardcoded prices from CATALOG section
 - `fff3d23` fix(autolearn): dedup uses question-only token overlap, not permanentBonus
+- `812e9c8` fix(agent): normalize familia to UPPER_SNAKE in all tool handlers
 
 ## Documentation
 
@@ -212,6 +213,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `90babd2` docs: autotrace sync autolearn trigger
 - `a3c33d6` docs: autotrace sync 2026-04-27 end-of-session
 - `36c7613` docs: autotrace sync autolearn dedup fix
+- `e96d9e8` docs: update AUTOTRACE documentation and sync changes
 
 ## Tests
 
