@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `8dc43fd` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `db62c95` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `d8455c0` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `fa2ba6a` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a5b2b34` feat(floor-plan): per-segment desnivel UI + fiscal contract tests `[tests]`
 - `0d80f5d` feat(ml-hub): inline edit for ML responses + auto-save to training KB
 - `8cdd219` feat(ml-hub): date/product column + previous-question context for AI
+- `ebeb68a` feat(agent-admin): add Agent Admin module for knowledge base management
 
 ## Fixes
 
