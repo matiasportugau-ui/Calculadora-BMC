@@ -10,6 +10,7 @@ import BmcMlOperativoModule from "./components/BmcMlOperativoModule.jsx";
 import BmcWaOperativoModule from "./components/BmcWaOperativoModule.jsx";
 import BmcCanalesUnificadosModule from "./components/BmcCanalesUnificadosModule.jsx";
 import BmcAdminCotizacionesModule from "./components/BmcAdminCotizacionesModule.jsx";
+import BmcPlanImportModule from "./components/BmcPlanImportModule.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 
 const PanelinCalculadora = lazy(() => import("./components/PanelinCalculadoraV3_backup.jsx"));
@@ -103,6 +104,7 @@ export default function App() {
             </Shell>
           }
         />
+        <Route path="/hub/plan-import" element={<BmcPlanImportModule />} />
         <Route
           path="/"
           element={

@@ -92,6 +92,7 @@ import {
 } from "../utils/googleDrive.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import PlanUploadModal from "./PlanUploadModal.jsx";
+import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
 import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
@@ -2524,6 +2525,17 @@ export default function PanelinCalculadoraV3() {
     setPendingQuote(null);
   }, []);
 
+  // Apply plan payload saved by BmcPlanImportModule via localStorage
+  useEffect(() => {
+    const raw = localStorage.getItem("bmc_pending_plan_import");
+    if (!raw) return;
+    localStorage.removeItem("bmc_pending_plan_import");
+    try {
+      const payload = JSON.parse(raw);
+      applyQuoteSnapshot(payload, { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto });
+    } catch { /* malformed payload — ignore */ }
+  }, [setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto]);
+
   const chatSendRef = useRef(null);
   const handleQuoteAdjust = useCallback((msg) => {
     setPendingQuote(null);
@@ -4805,6 +4817,12 @@ export default function PanelinCalculadoraV3() {
                           ) : null}
                         </div>
                       )}
+                      <PlanInlineDropZone
+                        onZonasLoaded={(zonas, tipoAguas, pendiente) =>
+                          setTecho(t => ({ ...t, zonas, tipoAguas, pendiente }))
+                        }
+                        disabled={false}
+                      />
                       {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>

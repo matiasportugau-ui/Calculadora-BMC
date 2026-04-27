@@ -135,6 +135,15 @@ export default function BmcWolfboardHub() {
               Abrir Admin operativo
             </Link>
           </div>
+          <div style={card}>
+            <h2 style={cardTitle}>Importar plano</h2>
+            <p style={cardDesc}>
+              Subí un plano (JPG, PNG, PDF o DXF) y la IA extrae las dimensiones automáticamente. Elegí el panel y abrí directo en la calculadora.
+            </p>
+            <Link to="/hub/plan-import" style={{ ...cta, background: "#0071e3" }}>
+              Importar plano
+            </Link>
+          </div>
         </div>
 
         {/* ── Herramientas internas ───────────────────────────────────────── */}
