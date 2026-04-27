@@ -81,6 +81,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `dd28047` feat(pdf): replace Playwright with @sparticuz/chromium-min + puppeteer-core
 - `c5c836d` feat(floor-plan): 10-iteration professional SVG plano en planta
 - `05d199e` feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
+- `857cdba` feat(floor-plan): Gap A-D expansion — tipoAguas, per-zone roofBlocks, borders, labels
 
 ## Fixes
 
@@ -140,6 +141,12 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `cb826f4` fix(pdf): return 503 on launch failure + sample data + var-tracker
 - `a047c23` fix(pdf): replace fs.promises.glob with readdirSync — Node 20 compat
 - `7e0c3b9` fix(pdf): use @sparticuz/chromium (full, with binary) not chromium-min
+- `1473bec` fix(pdf): return 503 on launch failure + update sample data and var-tracker
+- `1011293` fix(pdf): swap chromium-min → chromium for Cloud Run runtime
+- `3af1469` fix(floor-plan): real zone positions + encounterByPair extraction + tipoAguas normalization
+- `2cc04d9` fix(pdf): add diagnostic logging for @sparticuz binary path
+- `be41d53` fix(pdf): chmod 755 chromium binary after @sparticuz decompression
+- `351bc2f` fix(pdf): /lib64 symlink for @sparticuz AL2023 ELF interpreter on Debian slim
 
 ## Documentation
 
