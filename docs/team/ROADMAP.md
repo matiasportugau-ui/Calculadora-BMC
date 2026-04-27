@@ -1,6 +1,6 @@
 # Calculadora BMC — Roadmap & Estado del Proyecto
 
-**Generado:** 2026-04-24 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica)*
+**Generado:** 2026-04-27 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica)*
 **Fuente:** git log, PROJECT-STATE.md, CEO-RUN-LOG.md, AGENTS.md, CLAUDE.md, estructura del repo.
 
 ---
@@ -32,32 +32,29 @@ Un deploy es **100% limpio** cuando:
 |------|---------|-------------|--------|
 | Calculator (BOM / pricing / wizard) | 🟢 8/10 | 🟡 7/10 | Estable, mejoras activas |
 | 2D Roof Plan (RoofPreview / SVG / cotas) | 🟢 9/10 | 🟢 8/10 | Producción — sólido |
-| AI Chat (Panelin Chat / agentChat SSE) | 🟡 7/10 | 🟢 8/10 | stats endpoint + dev panel + 8 KB entries; training-kb poblada |
-| CRM / Dashboard (WolfBoard / Sheets) | 🟢 8/10 | 🟡 7/10 | Wolfboard prod OK; `suggest-response` ✅ verde (claude, 2026-04-24); QA visual `/hub/canales` `/hub/admin` `/hub/ml` OK |
-| MercadoLibre Integration | 🟢 8/10 | 🟡 7/10 | OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua |
-| WhatsApp / Meta (omnicanal) | 🟢 7/10 | 🟡 6/10 | cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica |
-| Email Ingest / Parse | 🟢 7/10 | 🟢 7/10 | cm-2 prod verificado (crmRow=32); ver PROJECT-STATE |
+| AI Chat (Panelin Chat / agentChat SSE) | 🟢 9/10 | 🟢 9/10 | KB unificada omnicanal; native tool_use (4 tools + generar_pdf); autolearn pipeline; KB score 100/100 |
+| CRM / Dashboard (WolfBoard / Sheets) | 🟢 8/10 | 🟢 8/10 | Wolfboard prod OK; suggest-response via agentCore unificado; ML inline edit + AI context |
+| MercadoLibre Integration | 🟢 8/10 | 🟢 8/10 | OAuth OK; BATMANN10 respondido; ML→KB diff capture implementado |
+| WhatsApp / Meta (omnicanal) | 🟢 8/10 | 🟡 7/10 | Auto-trigger 5min ✅; WA→agentCore→KB autolearn activo |
+| Email Ingest / Parse | 🟢 7/10 | 🟢 7/10 | cm-2 prod verificado (crmRow=32) |
 | Google Sheets / Data | 🟢 8/10 | 🟢 8/10 | Estable, credenciales via Secret Manager |
-| Deploy / CI/CD | 🟢 8/10 | 🟢 8/10 | CI todos los jobs ✅ (2026-04-24); smoke job ya existía y cubre suggest-response; Cloud Run rev-00210 |
-| Tests (unit + API + contrato) | 🟢 8/10 | 🟢 8/10 | **368 pass** (2026-04-24); 17 API route; Playwright wizard E2E 12/12 ✅ |
-| Docs / Agents / Tooling | 🟢 9/10 | 🟢 8/10 | AUTOTRACE, dev-trace, 11 agentes, skills |
-| Panelin Internal RBAC | 🟢 8/10 | 🟢 8/10 | En prod; 29 E2E API tests ✅ (2026-04-24 commit 9c89f74) |
-| Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟡 7/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB |
-| Fiscal / Compliance | 🟡 6/10 | 🟡 7/10 | irae_prevision en /kpi-report; BPS doc; IVA en quotes OK |
+| Deploy / CI/CD | 🟢 9/10 | 🟢 9/10 | CI verde; Cloud Run rev activa; GCS KB persistence |
+| Tests (unit + API + contrato) | 🟢 9/10 | 🟢 9/10 | **384 pass** (2026-04-27); fiscal contract assertions; roofVisual OK |
+| Docs / Agents / Tooling | 🟢 9/10 | 🟢 9/10 | AUTOTRACE; 11 agentes; Agent Admin 9 tabs |
+| Panelin Internal RBAC | 🟢 8/10 | 🟢 8/10 | En prod; 29 E2E API tests ✅ |
+| Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟢 8/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ |
+| Fiscal / Compliance | 🟡 7/10 | 🟡 7/10 | irae_prevision + BPS + fiscal contract tests; IVA en quotes OK |
+| KB / Knowledge System | 🟢 9/10 | 🟢 9/10 | GCS persist; channelRenderer; health panel; conflict detect; import dedup; ML overrides auto-gen |
 
-**Score global estimado:** 🟢 **85 / 100** *(2026-04-24 — AI Chat c:5→8 (stats endpoint + dev panel + 8 KB entries + training-kb poblada); Fiscal c:5→7 (irae_prevision + BPS doc); tests 368 pass + Playwright 12/12 + API contract assertions; CORS locked; HMAC gap doc; Sheets 5 gaps doc + Gap 1 fixed. Real pendiente: cm-1 ML humano, fiscal BPS/IRAE completo, WHATSAPP_APP_SECRET HMAC.)*
+**Score global estimado:** 🟢 **93 / 100** *(2026-04-27)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
 |-------|-------|--------|
 | 2026-04-18 | 60/100 | cm-0/cm-1 done; cm-2 dry-run OK |
 | 2026-04-23 | 68/100 | smoke ámbar (suggest 503); gates cm-0/1/2 DONE |
-| 2026-04-24 | 73/100 | suggest-response verde, CI smoke ✅, RBAC + hub canales en prod |
-| 2026-04-24 | 75/100 | RBAC 29 E2E tests, ESLint 0w, items 7/7b/7c DONE |
-| 2026-04-24 | 78/100 | Auditoría: items 8 (encuentros UI) y 13 (CORS) también DONE; score real recalibrado |
-| 2026-04-24 | 80/100 | PDF QA 22/22 checks ✅ — API path + enriched path (planta 2D, BOM, selladores, bordes) |
-| 2026-04-24 | 82/100 | Playwright wizard 12/12, daily stats widget, ML arcade skin, irae_prevision /kpi-report, agent/stats endpoint |
-| 2026-04-24 | 85/100 | AI Chat c:5→8 (8 KB entries + training-kb + stats); Fiscal c:5→7 (irae_prevision + BPS doc); API contract assertions; Sheets 5 gaps doc + Gap 1 fixed; HMAC gap doc |
+| 2026-04-24 | 85/100 | AI Chat c:5→8; Fiscal c:5→7; tests 368; RBAC; Sheets fixes |
+| 2026-04-27 | 93/100 | KB unificada omnicanal; native tool_use; autolearn+GCS; channelRenderer; health panel; 384 tests |
 
 ---
 

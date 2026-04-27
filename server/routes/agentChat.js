@@ -40,6 +40,9 @@ import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 
 const router = Router();
 
+// Track which conversations have already run autolearn — prevents multi-call per session.
+const _autolearned = new Set();
+
 const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
 /** @type {Record<string, Set<string>>} */
 const ALLOWED_MODELS = {
@@ -802,9 +805,21 @@ router.post("/agent/chat", async (req, res) => {
         }
         send({ type: "done" });
 
-        // Fire-and-forget autolearn: extract Q→A pairs from full exchange once
-        // there are ≥2 complete turns. Only on production (not devMode).
-        if (!devMode && conversationId && allTurns.length >= 3) {
+        // Fire-and-forget autolearn — runs ONCE per conversation (not per turn).
+        // Gate: production only, ≥4 turns (2 full exchanges), no prior autolearn for this convId.
+        const shouldAutolearn = (
+          !devMode &&
+          conversationId &&
+          allTurns.length >= 4 &&
+          !_autolearned.has(conversationId)
+        );
+        if (shouldAutolearn) {
+          _autolearned.add(conversationId);
+          // Prune set to avoid unbounded growth (keep last 500)
+          if (_autolearned.size > 500) {
+            const first = _autolearned.values().next().value;
+            _autolearned.delete(first);
+          }
           const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
           setImmediate(() => {
             extractLearnablePairs(fullTurns)
