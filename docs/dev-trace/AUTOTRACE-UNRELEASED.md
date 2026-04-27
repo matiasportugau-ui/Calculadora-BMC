@@ -166,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `55be547` fix(kb): persist training-kb.json to GCS on Cloud Run
 - `473aa6c` fix(pdf): add Cloud Run sandbox flags to puppeteer launch
 - `6cc7b08` fix(kb): await GCS init before KB reads — cold-start race condition `[regresión?]`
+- `9212008` fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
 
 ## Documentation
 
@@ -227,6 +228,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e4ec409` docs: autotrace sync channel renderer
 - `99b310a` docs: autotrace sync ML overrides batch
 - `51d7271` docs: autotrace sync conflict detection
+- `209c6e4` docs: autotrace sync health panel + import
 
 ## Tests
 

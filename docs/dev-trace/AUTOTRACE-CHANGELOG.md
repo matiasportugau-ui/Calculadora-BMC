@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 06:26:55 — `8149dc2` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 06:27:05 — `027b1e1` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 06:37:52 — `a22ce4e` — feat(wolfboard): add pendientes, sync, row, enviados, export routes
 - 2026-04-23 06:40:29 — `5e1c03f` — fix: prevent autolog hook self-loop on dev-trace commits
 - 2026-04-23 06:40:51 — `945e83b` — feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
@@ -222,3 +220,5 @@
 - 2026-04-27 16:26:44 — `c49b772` — feat(kb): conflict detection — same question, different answer
 - 2026-04-27 16:27:49 — `6cc7b08` — fix(kb): await GCS init before KB reads — cold-start race condition
 - 2026-04-27 16:30:24 — `3e353f1` — feat(kb): health panel + import with dedup (Week 4)
+- 2026-04-27 16:30:25 — `209c6e4` — docs: autotrace sync health panel + import
+- 2026-04-27 16:56:03 — `9212008` — fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
