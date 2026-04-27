@@ -468,6 +468,8 @@ function MobileBottomBar({
   onInternalReport,
   onCosteo,
   onCopyTSV,
+  pdfLayout,
+  onPdfLayoutChange,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   useEffect(() => {
@@ -529,6 +531,20 @@ function MobileBottomBar({
       <div className={`bmc-bottom-sheet${sheetOpen ? " open" : ""}`} role="dialog" aria-label="Más acciones">
         <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, color: C.tp, fontFamily: FONT }}>Más acciones</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ts, padding: "2px 0" }}>
+            <span style={{ fontWeight: 700, color: C.tp, whiteSpace: "nowrap" }}>Diseño PDF:</span>
+            <select
+              value={pdfLayout}
+              onChange={e => onPdfLayoutChange(e.target.value)}
+              style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13 }}
+            >
+              <option value="soft-modern">E — Soft Modern</option>
+              <option value="executive-dark">A — Executive Dark</option>
+              <option value="blueprint">B — Blueprint</option>
+              <option value="minimalist">C — Minimalist</option>
+              <option value="construction-bold">D — Construction Bold</option>
+            </select>
+          </label>
           <button type="button" onClick={() => run(onClientePdf)} style={{ ...sheetBtn, background: C.primary, color: "#fff" }}><Download size={18} />PDF Cliente</button>
           <button type="button" onClick={() => run(onOpenDrive)} style={{ ...sheetBtn, background: "#4285F4", color: "#fff" }}><Cloud size={18} />Drive</button>
           <button type="button" onClick={() => run(onCosteo)} style={{ ...sheetBtn, background: "#7c3aed", color: "#fff" }}><CircleDollarSign size={18} />Costeo</button>
@@ -6513,6 +6529,8 @@ export default function PanelinCalculadoraV3() {
           onInternalReport={handleInternalReport}
           onCosteo={handleCosteo}
           onCopyTSV={handleCopyTSV}
+          pdfLayout={pdfLayout}
+          onPdfLayoutChange={v => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
         />
       )}
 
