@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
 - `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f0ea719` feat(kb): channel renderer + ML/WA overrides + health badges in admin
 - `3c6fc50` feat(kb): auto-generate ML overrides for all gap entries
 - `c49b772` feat(kb): conflict detection — same question, different answer
+- `3e353f1` feat(kb): health panel + import with dedup (Week 4)
 
 ## Fixes
 
@@ -165,6 +165,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3a7b3bf` fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation `[regresión? · tests]`
 - `55be547` fix(kb): persist training-kb.json to GCS on Cloud Run
 - `473aa6c` fix(pdf): add Cloud Run sandbox flags to puppeteer launch
+- `6cc7b08` fix(kb): await GCS init before KB reads — cold-start race condition `[regresión?]`
 
 ## Documentation
 
@@ -225,6 +226,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3bf63c4` docs: autotrace sync kb health stats
 - `e4ec409` docs: autotrace sync channel renderer
 - `99b310a` docs: autotrace sync ML overrides batch
+- `51d7271` docs: autotrace sync conflict detection
 
 ## Tests
 

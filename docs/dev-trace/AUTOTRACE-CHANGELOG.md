@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 05:42:27 — `0f97d63` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 06:14:07 — `85bc343` — docs: update AUTOTRACE documentation and worklog for 2026-04-23
-- 2026-04-23 06:18:46 — `b24e8dd` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 06:26:55 — `8149dc2` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 06:27:05 — `027b1e1` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 06:37:52 — `a22ce4e` — feat(wolfboard): add pendientes, sync, row, enviados, export routes
@@ -221,4 +218,7 @@
 - 2026-04-27 16:16:43 — `f0ea719` — feat(kb): channel renderer + ML/WA overrides + health badges in admin
 - 2026-04-27 16:23:57 — `3c6fc50` — feat(kb): auto-generate ML overrides for all gap entries
 - 2026-04-27 16:24:07 — `99b310a` — docs: autotrace sync ML overrides batch
+- 2026-04-27 16:26:44 — `51d7271` — docs: autotrace sync conflict detection
 - 2026-04-27 16:26:44 — `c49b772` — feat(kb): conflict detection — same question, different answer
+- 2026-04-27 16:27:49 — `6cc7b08` — fix(kb): await GCS init before KB reads — cold-start race condition
+- 2026-04-27 16:30:24 — `3e353f1` — feat(kb): health panel + import with dedup (Week 4)
