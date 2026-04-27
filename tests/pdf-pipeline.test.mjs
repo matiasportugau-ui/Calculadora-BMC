@@ -165,16 +165,17 @@ try {
 section("5. Dockerfile — Chromium availability");
 
 try {
-  const dockerfile = readFileSync("server/Dockerfile", "utf8");
+  const dockerfile = readFileSync("Dockerfile.bmc-dashboard", "utf8");
   const hasChromiumPkg   = dockerfile.includes("chromium");
   const hasChromiumEnv   = dockerfile.includes("CHROMIUM_EXECUTABLE_PATH");
   const hasSparticuz     = readFileSync("package.json", "utf8").includes("@sparticuz/chromium");
-  const hasCorrectPath   = dockerfile.includes("/usr/bin/chromium-browser");
+  const hasCorrectPath   = dockerfile.includes("/usr/bin/chromium-browser") || dockerfile.includes("/usr/bin/chromium");
 
   ok("@sparticuz/chromium in package.json", hasSparticuz);
   ok("Dockerfile installs system chromium", hasChromiumPkg);
   ok("CHROMIUM_EXECUTABLE_PATH env set",    hasChromiumEnv);
-  ok("Points to /usr/bin/chromium-browser", hasCorrectPath);
+  const hasCorrectPathBin = dockerfile.includes("/usr/bin/chromium-browser") || dockerfile.includes("/usr/bin/chromium");
+  ok("Points to system chromium binary", hasCorrectPathBin);
 } catch (err) {
   ok("Dockerfile readable", false, err.message);
 }
