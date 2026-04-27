@@ -24,6 +24,7 @@ import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.j
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
+import { addTrainingEntry } from "../lib/trainingKB.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -2745,6 +2746,9 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
   router.post("/crm/cockpit/save-response", requireCrmCockpitAuth, async (req, res) => {
     const row = Number(req.body?.row);
     const text = String(req.body?.text || "").trim();
+    const original = String(req.body?.original || "").trim();
+    const question = String(req.body?.question || "").trim();
+    const questionId = String(req.body?.questionId || "").trim();
     if (!row || row < FIRST_DATA_ROW) return res.status(400).json({ ok: false, error: "Invalid row" });
     if (!text) return res.status(400).json({ ok: false, error: "Missing text" });
     if (!checkSheetsAvailable(config)) return noConfig(res);
@@ -2756,7 +2760,20 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [[text]] },
       });
-      return res.json({ ok: true, row, respuestaSugerida: text });
+      let trainingEntry = null;
+      if (question && original && original !== text) {
+        try {
+          trainingEntry = addTrainingEntry({
+            category: "sales",
+            question,
+            goodAnswer: text,
+            badAnswer: original,
+            context: questionId ? `Mercado Libre Q:${questionId}` : "Mercado Libre",
+            source: "ml-edit",
+          });
+        } catch (_) { /* non-fatal */ }
+      }
+      return res.json({ ok: true, row, respuestaSugerida: text, trainingEntry: trainingEntry?.id ?? null });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }

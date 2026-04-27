@@ -299,6 +299,7 @@ export default function BmcMlOperativoModule() {
     catch { return DEFAULT_AUTO; }
   });
   const [coverOpen, setCoverOpen] = useState(false);
+  const [editState, setEditState] = useState({});
 
   // ── refs for stale-closure safety in intervals ─────────────────────────────
   const autoRef         = useRef(auto);
@@ -501,6 +502,26 @@ export default function BmcMlOperativoModule() {
     if (!t) { showToast("Nada para copiar"); return; }
     try { await navigator.clipboard.writeText(t); showToast(`${label} copiado`); }
     catch { showToast("No se pudo copiar"); }
+  };
+  const saveEdit = async (row, item) => {
+    const editText = editState[row]?.text?.trim();
+    if (!editText) { showToast("Respuesta vacía"); return; }
+    const original = editState[row]?.original || "";
+    const { ok, data } = await cockpitFetch(token, "/api/crm/cockpit/save-response", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        row,
+        text: editText,
+        original,
+        question: item.parsed?.consulta || "",
+        questionId: item.questionId || "",
+      }),
+    });
+    if (!ok) { showToast(data?.error || "No se pudo guardar"); return; }
+    const saved = data.trainingEntry ? " (training guardado)" : "";
+    showToast(`Fila ${row}: respuesta guardada${saved}.`);
+    setEditState(s => { const n = { ...s }; delete n[row]; return n; });
+    await loadQueue();
   };
 
   // ── AUTOMATISMOS — toggle + eject ──────────────────────────────────────────
@@ -814,20 +835,42 @@ export default function BmcMlOperativoModule() {
                           </div>
                         </td>
                         <td style={{ ...td, maxWidth: 260 }}>
-                          {parsed?.respuestaSugerida ? (
+                          {editState[row] ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                              <textarea
+                                value={editState[row].text}
+                                onChange={e => setEditState(s => ({ ...s, [row]: { ...s[row], text: e.target.value } }))}
+                                rows={5}
+                                style={{ width: "100%", fontSize: 12, fontFamily: FF, padding: 6, borderRadius: 6, border: "1px solid #0071e3", resize: "vertical", boxSizing: "border-box" }}
+                              />
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <button type="button" onClick={() => saveEdit(row, item)}
+                                  style={{ flex: 1, padding: "4px 0", borderRadius: 6, border: "none", background: "#0071e3", color: "#fff", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+                                  Guardar
+                                </button>
+                                <button type="button" onClick={() => setEditState(s => { const n = { ...s }; delete n[row]; return n; })}
+                                  style={{ flex: 1, padding: "4px 0", borderRadius: 6, border: "1px solid #e5e5ea", background: "#f9f9f9", color: "#374151", fontSize: 11, cursor: "pointer" }}>
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ) : parsed?.respuestaSugerida ? (
                             <div>
                               <div style={{ color: "#1d1d1f" }}>
                                 {expanded
                                   ? parsed.respuestaSugerida
                                   : parsed.respuestaSugerida.slice(0, 100) + (parsed.respuestaSugerida.length > 100 ? "…" : "")}
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => copyText(parsed.respuestaSugerida, "Respuesta")}
-                                style={{ marginTop: 4, fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #e5e5ea", background: "#f9f9f9", cursor: "pointer", color: "#374151" }}
-                              >
-                                Copiar
-                              </button>
+                              <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                                <button type="button" onClick={() => copyText(parsed.respuestaSugerida, "Respuesta")}
+                                  style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #e5e5ea", background: "#f9f9f9", cursor: "pointer", color: "#374151" }}>
+                                  Copiar
+                                </button>
+                                <button type="button" onClick={() => setEditState(s => ({ ...s, [row]: { text: parsed.respuestaSugerida, original: parsed.respuestaSugerida } }))}
+                                  style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #d97706", background: "#fffbeb", cursor: "pointer", color: "#92400e" }}>
+                                  Editar
+                                </button>
+                              </div>
                             </div>
                           ) : (
                             <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Sin respuesta — usá GENERAR</span>
