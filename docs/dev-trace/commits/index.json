@@ -9112,6 +9112,70 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "90babd2093881ea41d792bbfb01662c65d7f02c3",
+      "short_hash": "90babd2",
+      "date": "2026-04-27",
+      "time": "05:11:56",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync autolearn trigger",
+      "subject": "docs: autotrace sync autolearn trigger",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/5b98ba4.md",
+        "docs/dev-trace/commits/2026/04/74f2568.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "25b9083f97c33feb1b239adf4a12ac5cbad684b7",
+      "short_hash": "25b9083",
+      "date": "2026-04-27",
+      "time": "05:15:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "add generar_pdf tool — agent produces shareable PDF URL",
+      "subject": "feat(agent): add generar_pdf tool — agent produces shareable PDF URL",
+      "files": [
+        "server/lib/agentTools.js",
+        "server/lib/chatPrompts.js",
+        "server/routes/agentChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }

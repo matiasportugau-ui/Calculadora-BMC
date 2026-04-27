@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `efa9f65` feat: add Sketchfab integration and enhance documentation
 - `c7c660b` feat: add Sketchfab integration and enhance documentation
 - `f62400e` feat: log Sketchfab integration commit in worklog
 - `9a0dc85` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3) `[tests]`
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `eb98362` feat(agent): add TOOLS block to system prompt — forces tool use for pricing
 - `ffa578f` feat(agent): auto-evolutionary learning pipeline
 - `5b98ba4` feat(agent): auto-trigger autolearn after each production chat turn
+- `25b9083` feat(agent): add generar_pdf tool — agent produces shareable PDF URL
 
 ## Fixes
 
@@ -207,6 +207,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d34d875` docs: session update 2026-04-27 — endpoint fixes, GCS token storage
 - `42fb631` docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch
 - `74f2568` docs: autotrace sync autolearn commit
+- `90babd2` docs: autotrace sync autolearn trigger
 
 ## Tests
 

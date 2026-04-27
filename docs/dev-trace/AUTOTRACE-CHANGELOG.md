@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 03:22:37 — `b33cf43` — feat(sheets): Accessible Base sync + expert workspace map
-- 2026-04-23 03:23:47 — `890d2c7` — chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
 - 2026-04-23 03:25:01 — `d83ca03` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 - 2026-04-23 03:28:27 — `1966b38` — fix(lint): resolve all ESLint warnings in new and existing components
 - 2026-04-23 03:45:05 — `7130acd` — feat(nxt): wire ROADMAP.md as baseline source + add score history
@@ -222,3 +220,5 @@
 - 2026-04-27 05:09:40 — `ffa578f` — feat(agent): auto-evolutionary learning pipeline
 - 2026-04-27 05:09:46 — `74f2568` — docs: autotrace sync autolearn commit
 - 2026-04-27 05:11:51 — `5b98ba4` — feat(agent): auto-trigger autolearn after each production chat turn
+- 2026-04-27 05:11:56 — `90babd2` — docs: autotrace sync autolearn trigger
+- 2026-04-27 05:15:03 — `25b9083` — feat(agent): add generar_pdf tool — agent produces shareable PDF URL
