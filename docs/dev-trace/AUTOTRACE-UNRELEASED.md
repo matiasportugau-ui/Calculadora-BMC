@@ -196,6 +196,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `1a43445` docs(pdf-designs): add E-soft-modern template + update INDEX
 - `cb653d5` docs: autotrace sync 2026-04-27 (1a43445)
 - `ea068c5` docs: sync PROJECT-STATE + autotrace post-session 2026-04-27
+- `a7b4a8a` docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel
 
 ## Tests
 

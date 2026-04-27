@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-27T06:03:57.934Z",
-    "build_ms": 93,
+    "ts": "2026-04-27T06:08:43.956Z",
+    "build_ms": 76,
     "score": 85,
     "score_delta": 0,
     "sources": [
@@ -26,7 +26,7 @@
   },
   "state": {
     "branch": "main",
-    "last_change": "2026-04-27 (Dev+Ops — plan-import E2E, desnivel por segmento, fiscal tests, PDF templates):",
+    "last_change": "2026-04-27 (Dev — ML Hub inline edit + AI context, Agent Admin, ML OAuth PKCE):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",

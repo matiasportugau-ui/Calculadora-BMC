@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-21 03:49:34 — `773e0df` — feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
 - 2026-04-21 04:07:02 — `5715776` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - 2026-04-21 04:12:55 — `acaebad` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - 2026-04-21 19:23:28 — `391c695` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
@@ -222,3 +221,4 @@
 - 2026-04-27 02:51:14 — `0d80f5d` — feat(ml-hub): inline edit for ML responses + auto-save to training KB
 - 2026-04-27 03:02:03 — `8cdd219` — feat(ml-hub): date/product column + previous-question context for AI
 - 2026-04-27 03:03:57 — `ebeb68a` — feat(agent-admin): add Agent Admin module for knowledge base management
+- 2026-04-27 03:08:43 — `a7b4a8a` — docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel
