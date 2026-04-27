@@ -2852,6 +2852,26 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           valueInputOption: "USER_ENTERED",
           requestBody: { values: [[sentAt]] },
         });
+
+        // KB: human-approved ML answer → save as high-confidence active entry
+        const kbQuestion = String(parsed.consulta || parsed.observaciones || "").trim();
+        if (kbQuestion && text) {
+          setImmediate(() => {
+            try {
+              addTrainingEntry({
+                question: kbQuestion,
+                goodAnswer: text,
+                category: "sales",
+                context: `[ML] Q:${qid} | ${String(parsed.producto || "").slice(0, 80)}`,
+                source: "human_ml",
+                status: "active",
+                confidence: 1.0,
+                convId: String(qid),
+              });
+            } catch { /* non-critical */ }
+          });
+        }
+
         return res.json({ ok: true, channel: "ml", questionId: qid, sentAt, ml: data });
       }
 

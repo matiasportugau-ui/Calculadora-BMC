@@ -361,8 +361,11 @@ export async function executeTool(name, input, calcState = {}) {
         precio_venta: fmt2(espDef.venta),
         autoportancia_m: espDef.ap ?? null,
         ancho_util_m: def.au,
+        largo_min_m: def.lmin ?? null,
+        largo_max_m: def.lmax ?? null,
         sistema_fijacion: def.sist,
         tipo: def.tipo,
+        nota: def[`nota${espesor}`] ?? null,
       });
     }
 
