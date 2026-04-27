@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 04:50:16 — `7a2d303` — docs(ops): cm-2 email ingest prod DONE — todos los gates completos
-- 2026-04-23 04:54:10 — `5d5363c` — fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - 2026-04-23 05:05:49 — `11d1f8c` — fix(ml-ui): persist ML token in localStorage instead of sessionStorage
 - 2026-04-23 05:07:35 — `7f1c805` — fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
 - 2026-04-23 05:08:12 — `e918bef` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
@@ -222,3 +220,5 @@
 - 2026-04-27 15:15:50 — `d12f8f1` — fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback
 - 2026-04-27 15:29:41 — `3a7b3bf` — fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation
 - 2026-04-27 15:33:42 — `cdeef3c` — feat(agent): unified KB brain for Chat, WA and ML channels
+- 2026-04-27 15:33:47 — `0a79835` — docs: autotrace sync unified agent brain
+- 2026-04-27 15:44:46 — `861d168` — feat(agent): panel specs in tools + ML answers auto-save to KB
