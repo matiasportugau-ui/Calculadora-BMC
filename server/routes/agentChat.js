@@ -24,7 +24,7 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit } from "../lib/trainingKB.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
@@ -480,6 +480,9 @@ router.post("/agent/chat", async (req, res) => {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+
+  // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
+  await ensureGcsInit();
 
   // Always use KB — not just devMode
   const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
