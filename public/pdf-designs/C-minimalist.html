@@ -1,263 +1,256 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<title>Design C — Swiss Minimalist · BMC Uruguay</title>
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8"><title>C — Minimalist · BMC Uruguay</title>
 <style>
-@page { size: A4; margin: 0; }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --black: #0A0A0A;
-  --gray-800: #1F1F1F;
-  --gray-500: #6B6B6B;
-  --gray-200: #E8E8E8;
-  --gray-100: #F5F5F5;
-  --red: #C0392B;
-  --white: #FFFFFF;
-}
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  font-size: 9.5pt;
-  color: var(--black);
-  margin: 0; background: #fff;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
-@media screen {
-  html { background: #EBEBEB; min-height: 100%; padding: 40px 20px 60px; }
-  body { max-width: 794px; margin: 0 auto; box-shadow: 0 4px 40px rgba(0,0,0,0.15); }
-}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@page{size:A4;margin:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;font-size:10pt;color:#000;background:#fff}
+.page{width:210mm;min-height:297mm;position:relative;overflow:hidden;background:#fff;padding:14mm}
+@media screen{body{background:#ddd;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 2px 20px rgba(0,0,0,.18);max-width:794px}}
+@media print{.page{page-break-after:always;break-after:page}.page:last-child{page-break-after:auto;break-after:auto}}
+/* COVER */
+.logo-line{display:flex;align-items:baseline;gap:8px;margin-bottom:14mm}
+.logo-mark{font-size:28pt;font-weight:900;color:#000;letter-spacing:-.02em}
+.logo-sub{font-size:8pt;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:#888}
+.rule{height:.5pt;background:#000;margin:0 0 10mm}
+.cover-label{font-size:7pt;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#999;margin-bottom:3mm}
+.cover-h1{font-size:32pt;font-weight:900;letter-spacing:-.02em;line-height:1.0;margin-bottom:3mm;color:#000}
+.cover-product{font-size:10pt;color:#555;margin-bottom:12mm}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:10mm;border-top:.5pt solid #000;border-left:.5pt solid #000}
+.mg{border-right:.5pt solid #000;border-bottom:.5pt solid #000;padding:5px 8px}
+.mgl{font-size:6.5pt;color:#999;text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin-bottom:1mm}
+.mgv{font-size:9.5pt;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:.5pt solid #000;border-left:.5pt solid #000;margin-bottom:10mm}
+.kk{border-right:.5pt solid #000;border-bottom:.5pt solid #000;padding:8px}
+.kkl{font-size:6pt;color:#999;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.kkv{font-size:22pt;font-weight:900;letter-spacing:-.02em;line-height:1}
+.kku{font-size:7pt;color:#888;margin-top:1px}
+.groups{margin-bottom:8mm}
+.gr{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:.3pt solid #E8E8E8;font-size:9.5pt}
+.gn{color:#333}.gv{font-weight:700;font-variant-numeric:tabular-nums}
+.total-block{border-top:2pt solid #000;border-bottom:.5pt solid #000;padding:6px 0;display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6mm}
+.total-label{font-size:8pt;color:#555;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.total-sub{font-size:7.5pt;color:#888;margin-top:1px}
+.total-amount{font-size:30pt;font-weight:900;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#FF3B30}
+.cond{font-size:7.5pt;color:#888;line-height:1.6}
+.cond strong{color:#000}
+.pg-line{position:absolute;bottom:14mm;left:14mm;right:14mm;display:flex;justify-content:space-between;font-size:7pt;color:#aaa;border-top:.3pt solid #E8E8E8;padding-top:2.5mm}
+.pg-n{font-weight:700;color:#000}
+/* PAGE HEADER */
+.ph{display:flex;justify-content:space-between;align-items:baseline;border-bottom:.5pt solid #000;padding-bottom:4mm;margin-bottom:6mm}
+.ph-left{font-size:13pt;font-weight:900;letter-spacing:-.01em}
+.ph-right{font-size:8pt;color:#555;text-align:right}
+.ph-right strong{color:#000}
+.sec{font-size:6.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#aaa;margin:4mm 0 3mm;padding-bottom:2mm;border-bottom:.3pt solid #E8E8E8}
+/* PLAN */
+.plan-wrap{border:.5pt solid #000;margin-bottom:5mm}
+.plan-hdr{padding:4px 8px;font-size:7pt;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-bottom:.5pt solid #000;display:flex;justify-content:space-between}
+.plan-body{padding:4px;background:#fff}
+.leg{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5mm 4mm;margin-bottom:3mm}
+.li{display:flex;align-items:center;gap:6px;font-size:7.5pt;color:#666}
+.sw{width:20px;height:10px;border-radius:0;flex-shrink:0}
+/* ZONE TABLE */
+.zt{width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:3mm}
+.zt th{padding:4px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:.5pt solid #000;border-top:.5pt solid #000;text-align:right}
+.zt th:first-child,.zt th:nth-child(2){text-align:left}
+.zt td{padding:4px 6px;border-bottom:.3pt solid #E8E8E8;text-align:right;font-variant-numeric:tabular-nums}
+.zt td:first-child,.zt td:nth-child(2){text-align:left}
+/* BOM */
+.bom{width:100%;border-collapse:collapse;font-size:8.5pt}
+.bom th{padding:4px 6px;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:.5pt solid #000;border-top:.5pt solid #000;text-align:right}
+.bom th:first-child{text-align:left}
+.bom td{padding:3px 6px;border-bottom:.3pt solid #EBEBEB;text-align:right;font-variant-numeric:tabular-nums}
+.bom td:first-child{text-align:left}
+.bom .bg td{font-weight:800!important;border-bottom:.5pt solid #000!important;border-top:.5pt solid #000!important;padding-top:5px!important;padding-bottom:5px!important;background:#fff!important;color:#000!important}
+.bom .bg td:first-child{color:#FF3B30!important}
+.tots{margin-top:4mm;display:flex;justify-content:flex-end}
+.ti{min-width:220px;border-top:.5pt solid #000}
+.tr{display:flex;justify-content:space-between;padding:2px 0;font-size:9pt;font-variant-numeric:tabular-nums;border-bottom:.3pt solid #E8E8E8}
+.trt{border-top:2pt solid #000;border-bottom:none;padding-top:4px;font-size:14pt;font-weight:900}
+.cond-q{margin-top:4mm;font-size:7.5pt;color:#666;line-height:1.6;padding-top:3mm;border-top:.3pt solid #E8E8E8}
+.cond-q strong{color:#000}
+.bank{margin-top:3mm;font-size:7.5pt;display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;padding:8px;background:#F5F5F5;border-left:2pt solid #FF3B30}
+.bank strong{color:#000;font-weight:700}.bankt{grid-column:1/-1;font-size:6pt;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:#999;margin-bottom:2px}
+</style></head><body>
 
-/* ─── RED TOP RULE ─── */
-.top-rule { height: 4px; background: var(--red); }
+<!-- PAGE 1 COVER -->
+<div class="page">
+  <div class="logo-line">
+    <span class="logo-mark">BMC</span>
+    <span class="logo-sub">Uruguay</span>
+  </div>
+  <div class="rule"></div>
+  <div class="cover-label">Propuesta Comercial</div>
+  <div class="cover-h1">Cotización</div>
+  <div class="cover-product">ISODEC EPS 100mm · Color Blanco · Techo · 3 Zonas</div>
+  <div class="meta-grid">
+    <div class="mg"><div class="mgl">Referencia</div><div class="mgv">BMC-2026-0112</div></div>
+    <div class="mg"><div class="mgl">Fecha</div><div class="mgv">25/04/2026</div></div>
+    <div class="mg"><div class="mgl">Escenario</div><div class="mgv">Solo Techo</div></div>
+    <div class="mg"><div class="mgl">Validez</div><div class="mgv">10 días</div></div>
+  </div>
+  <div class="kpis">
+    <div class="kk"><div class="kkl">Área</div><div class="kkv">138.9</div><div class="kku">m²</div></div>
+    <div class="kk"><div class="kkl">Paneles</div><div class="kkv">18</div><div class="kku">unid</div></div>
+    <div class="kk"><div class="kkl">Apoyos</div><div class="kkv">3</div><div class="kku">estruct</div></div>
+    <div class="kk"><div class="kkl">Fijaciones</div><div class="kkv">95</div><div class="kku">puntos</div></div>
+  </div>
+  <div class="groups">
+    <div class="gr"><span class="gn">Paneles ISODEC EPS 100mm</span><span class="gv">USD 6,564.02</span></div>
+    <div class="gr"><span class="gn">Sistema de fijaciones</span><span class="gv">USD 304.79</span></div>
+    <div class="gr"><span class="gn">Selladores y cintas</span><span class="gv">USD 506.25</span></div>
+    <div class="gr"><span class="gn">Flete con entrega en obra</span><span class="gv">USD 280.00</span></div>
+  </div>
+  <div class="total-block">
+    <div><div class="total-label">Total con IVA 22%</div><div class="total-sub">Subtotal s/IVA: USD 7,655.06 · IVA: USD 1,684.11</div></div>
+    <div class="total-amount">9,339.17</div>
+  </div>
+  <div class="cond"><strong>Condiciones:</strong> Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD.</div>
+  <div class="pg-line"><span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span><span class="pg-n">1 / 3</span></div>
+</div>
 
-/* ─── HEADER ─────────────────────────────────────────── */
-.hdr { padding: 28px 36px 20px; border-bottom: 1px solid var(--gray-200); }
-.hdr-inner { display: flex; justify-content: space-between; align-items: flex-end; }
-.logo {
-  font-size: 36pt; font-weight: 900; color: var(--black);
-  letter-spacing: -0.03em; line-height: 0.9;
-}
-.logo-country {
-  font-size: 8pt; font-weight: 400; color: var(--gray-500);
-  letter-spacing: 0.25em; text-transform: uppercase; margin-top: 4px;
-}
-.hdr-meta { text-align: right; }
-.meta-label {
-  font-size: 7pt; font-weight: 700; color: var(--red);
-  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 3px;
-}
-.meta-ref { font-size: 11pt; font-weight: 700; color: var(--black); }
-.meta-date { font-size: 8pt; color: var(--gray-500); margin-top: 2px; }
-
-/* ─── CLIENT / PROJECT ─────────────────────────────────── */
-.client-section { padding: 16px 36px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; border-bottom: 1px solid var(--gray-200); }
-.cs-item {}
-.cs-lbl { font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gray-500); margin-bottom: 3px; }
-.cs-val { font-size: 9pt; color: var(--black); font-weight: 500; line-height: 1.3; }
-
-/* ─── SCOPE LINE ─────────────────────────────────────── */
-.scope-line { padding: 10px 36px; background: var(--gray-100); border-bottom: 1px solid var(--gray-200); }
-.scope-line span:first-child { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gray-500); margin-right: 12px; }
-.scope-line span:last-child { font-size: 9pt; color: var(--black); font-weight: 500; }
-
-/* ─── BOM ─────────────────────────────────────────────── */
-.bom-section { padding: 16px 36px; }
-.sec-title {
-  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.25em; color: var(--gray-500);
-  margin-bottom: 8px; padding-bottom: 6px;
-  border-bottom: 2px solid var(--black);
-}
-
-table.bom { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-.bom thead th {
-  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.15em; color: var(--gray-500);
-  padding: 4px 0; text-align: left;
-  border-bottom: 1px solid var(--gray-200);
-}
-.bom thead th.r { text-align: right; }
-.bom thead th.c { text-align: center; }
-.bom .grp td {
-  padding: 8px 0 3px;
-  font-size: 7pt; font-weight: 700; color: var(--gray-500);
-  text-transform: uppercase; letter-spacing: 0.15em;
-  border-top: none;
-}
-.bom .grp td.tot { text-align: right; }
-.bom .item td {
-  padding: 4px 0; border-bottom: 1px solid var(--gray-200);
-  vertical-align: middle; color: var(--black);
-}
-.bom .item td.r { text-align: right; font-variant-numeric: tabular-nums; }
-.bom .item td.c { text-align: center; color: var(--gray-500); }
-.bom .item td.name { }
-.bom .item td.amt { font-weight: 600; }
-
-/* ─── TOTALS ─────────────────────────────────────────── */
-.totals-section { padding: 0 36px 14px; display: flex; justify-content: flex-end; }
-.totals-inner { min-width: 260px; }
-.total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 9pt; }
-.total-row .tl { color: var(--gray-500); }
-.total-row .tv { font-variant-numeric: tabular-nums; }
-.total-divider { border-top: 1px solid var(--gray-200); margin: 6px 0; }
-.total-final {
-  display: flex; justify-content: space-between; padding: 8px 0;
-  border-top: 3px solid var(--black); border-bottom: 1px solid var(--black);
-}
-.total-final .tl { font-size: 11pt; font-weight: 900; color: var(--black); }
-.total-final .tv { font-size: 16pt; font-weight: 900; color: var(--red); font-variant-numeric: tabular-nums; }
-
-/* ─── CONDITIONS ─────────────────────────────────────── */
-.conditions-section { padding: 14px 36px 12px; border-top: 1px solid var(--gray-200); display: grid; grid-template-columns: 1fr 1fr; gap: 12px 32px; }
-.cond-item .ci-lbl {
-  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.2em; color: var(--gray-500); margin-bottom: 3px;
-}
-.cond-item .ci-val { font-size: 9pt; color: var(--black); font-weight: 500; }
-.cond-item .ci-val.alert { color: var(--red); font-weight: 600; }
-
-/* ─── BANK ─────────────────────────────────────────── */
-.bank-section { padding: 12px 36px 0; border-top: 1px solid var(--gray-200); }
-.bank-label { font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gray-500); margin-bottom: 6px; }
-.bank-fields { display: flex; gap: 32px; }
-.bank-field .bf-lbl { font-size: 6.5pt; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1px; }
-.bank-field .bf-val { font-size: 9pt; font-weight: 600; color: var(--black); }
-
-/* ─── FOOTER ─────────────────────────────────────────── */
-.footer {
-  margin-top: 20px; padding: 10px 36px;
-  border-top: 1px solid var(--gray-200);
-  display: flex; justify-content: space-between; align-items: center;
-}
-.footer-left { font-size: 7pt; color: var(--gray-500); }
-.footer-right { font-size: 7pt; color: var(--gray-500); }
-.footer-right strong { color: var(--black); }
-</style>
-</head>
-<body>
-
-<!-- ─── TOP ACCENT ─── -->
-<div class="top-rule"></div>
-
-<!-- ─── HEADER ─── -->
-<div class="hdr">
-  <div class="hdr-inner">
-    <div>
-      <div class="logo">BMC</div>
-      <div class="logo-country">Uruguay · Metalog SAS</div>
+<!-- PAGE 2 PLAN -->
+<div class="page">
+  <div class="ph"><span class="ph-left">BMC Uruguay</span><div class="ph-right"><div><strong>Ref:</strong> BMC-2026-0112</div><div><strong>Fecha:</strong> 25/04/2026</div></div></div>
+  <div class="sec">Visualización 2D · Planta de Cubierta</div>
+  <div class="plan-wrap">
+    <div class="plan-hdr"><span>Planta Cubierta — Una Agua · 3 Zonas</span><span>138.88 m² · 18 paneles · AU 1.12 m</span></div>
+    <div class="plan-body">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 430" width="100%" style="display:block">
+  <rect width="700" height="430" fill="#fff"/>
+  <rect x="60" y="160" width="28" height="200" fill="#F5F5F5"/><rect x="88" y="160" width="28" height="200" fill="#E8E8E8"/>
+  <rect x="116" y="160" width="28" height="200" fill="#F5F5F5"/><rect x="144" y="160" width="28" height="200" fill="#E8E8E8"/>
+  <rect x="172" y="160" width="28" height="200" fill="#F5F5F5"/><rect x="200" y="160" width="28" height="200" fill="#E8E8E8"/>
+  <rect x="228" y="160" width="28" height="200" fill="#F5F5F5"/><rect x="256" y="160" width="28" height="200" fill="#E8E8E8"/>
+  <rect x="284" y="160" width="28" height="150" fill="#F5F5F5"/><rect x="312" y="160" width="28" height="150" fill="#E8E8E8"/>
+  <rect x="340" y="160" width="28" height="150" fill="#F5F5F5"/><rect x="368" y="160" width="28" height="150" fill="#E8E8E8"/>
+  <rect x="396" y="160" width="28" height="150" fill="#F5F5F5"/>
+  <rect x="102" y="10" width="28" height="150" fill="#F5F5F5"/><rect x="130" y="10" width="28" height="150" fill="#E8E8E8"/>
+  <rect x="158" y="10" width="28" height="150" fill="#F5F5F5"/><rect x="186" y="10" width="28" height="150" fill="#E8E8E8"/>
+  <rect x="214" y="10" width="28" height="150" fill="#F5F5F5"/>
+  <line x1="88" y1="160" x2="88" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="116" y1="160" x2="116" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="144" y1="160" x2="144" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="172" y1="160" x2="172" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="200" y1="160" x2="200" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="228" y1="160" x2="228" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="256" y1="160" x2="256" y2="360" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="312" y1="160" x2="312" y2="310" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="340" y1="160" x2="340" y2="310" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="368" y1="160" x2="368" y2="310" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="396" y1="160" x2="396" y2="310" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="130" y1="10" x2="130" y2="160" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="158" y1="10" x2="158" y2="160" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="186" y1="10" x2="186" y2="160" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <line x1="214" y1="10" x2="214" y2="160" stroke="#AAAAAA" stroke-width="0.8" opacity="0.5"/>
+  <polygon points="102,10 242,10 242,160 284,160 424,160 424,310 284,310 284,360 60,360 60,160 102,160" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="miter"/>
+  <line x1="102" y1="160" x2="242" y2="160" stroke="#AAAAAA" stroke-width="1.4" stroke-dasharray="6,4"/>
+  <line x1="284" y1="160" x2="284" y2="310" stroke="#AAAAAA" stroke-width="1.4" stroke-dasharray="6,4"/>
+  <rect x="56" y="160" width="4" height="200" fill="#FF3B30" opacity="0.65"/>
+  <rect x="60" y="360" width="224" height="4" fill="#FF3B30" opacity="0.65"/>
+  <rect x="284" y="310" width="140" height="4" fill="#FF3B30" opacity="0.65"/>
+  <rect x="424" y="160" width="4" height="150" fill="#FF3B30" opacity="0.65"/>
+  <rect x="98" y="10" width="4" height="150" fill="#FF3B30" opacity="0.65"/>
+  <rect x="242" y="10" width="4" height="150" fill="#FF3B30" opacity="0.65"/>
+  <line x1="172" y1="232" x2="172" y2="270" stroke="#333" stroke-width="1.4" opacity="0.45"/>
+  <polygon points="172,270 167,260 177,260" fill="#333" opacity="0.45"/>
+  <text x="172" y="283" text-anchor="middle" font-size="8" fill="#555" font-family="system-ui,sans-serif">↓ pendiente</text>
+  <line x1="354" y1="210" x2="354" y2="248" stroke="#333" stroke-width="1.4" opacity="0.45"/>
+  <polygon points="354,248 349,238 359,238" fill="#333" opacity="0.45"/>
+  <line x1="172" y1="78" x2="172" y2="116" stroke="#333" stroke-width="1.4" opacity="0.45"/>
+  <polygon points="172,78 167,88 177,88" fill="#333" opacity="0.45"/>
+  <text x="172" y="128" text-anchor="middle" font-size="8" fill="#555" font-family="system-ui,sans-serif">↑ pendiente</text>
+  <text x="172" y="204" text-anchor="middle" font-size="13" font-weight="900" fill="#000" font-family="-apple-system,sans-serif">Zona 1</text>
+  <text x="172" y="218" text-anchor="middle" font-size="8.5" fill="#666" font-family="system-ui,sans-serif">8×8.96 m · 8 pan · 71.68 m²</text>
+  <text x="354" y="188" text-anchor="middle" font-size="12" font-weight="900" fill="#000" font-family="-apple-system,sans-serif">Zona 2</text>
+  <text x="354" y="201" text-anchor="middle" font-size="8" fill="#666" font-family="system-ui,sans-serif">6×5.60 m · 5 pan</text>
+  <text x="172" y="48" text-anchor="middle" font-size="12" font-weight="900" fill="#000" font-family="-apple-system,sans-serif">Zona 3</text>
+  <text x="172" y="61" text-anchor="middle" font-size="8" fill="#666" font-family="system-ui,sans-serif">6×5.60 m · 5 pan</text>
+  <line x1="60" y1="370" x2="60" y2="379" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="284" y1="370" x2="284" y2="379" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="60" y1="375" x2="284" y2="375" stroke="#555" stroke-width="1" opacity="0.65"/>
+  <text x="172" y="390" text-anchor="middle" font-size="10" fill="#555" font-family="system-ui,sans-serif">8.96 m</text>
+  <line x1="284" y1="319" x2="284" y2="328" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="424" y1="319" x2="424" y2="328" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="284" y1="324" x2="424" y2="324" stroke="#555" stroke-width="1" opacity="0.65"/>
+  <text x="354" y="340" text-anchor="middle" font-size="10" fill="#555" font-family="system-ui,sans-serif">5.60 m</text>
+  <line x1="432" y1="160" x2="444" y2="160" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="432" y1="360" x2="444" y2="360" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="440" y1="160" x2="440" y2="360" stroke="#555" stroke-width="1" opacity="0.65"/>
+  <text x="454" y="264" dominant-baseline="middle" font-size="10" fill="#555" font-family="system-ui,sans-serif">8 m</text>
+  <line x1="250" y1="10" x2="262" y2="10" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="250" y1="160" x2="262" y2="160" stroke="#555" stroke-width="0.8" opacity="0.65"/>
+  <line x1="257" y1="10" x2="257" y2="160" stroke="#555" stroke-width="1" opacity="0.65"/>
+  <text x="270" y="88" dominant-baseline="middle" font-size="10" fill="#555" font-family="system-ui,sans-serif">6 m</text>
+  <text x="252" y="406" text-anchor="middle" font-size="9" fill="#999" font-family="system-ui,sans-serif">▼ frente</text>
+  <text x="172" y="24" text-anchor="middle" font-size="9" fill="#999" font-family="system-ui,sans-serif">▲ fondo</text>
+  <circle cx="614" cy="36" r="14" fill="none" stroke="#555" stroke-width="0.8" opacity="0.4"/>
+  <text x="614" y="41" text-anchor="middle" font-size="12" font-weight="900" fill="#555" font-family="system-ui,sans-serif" opacity="0.55">N</text>
+  <rect x="488" y="368" width="206" height="58" fill="#fff" stroke="#000" stroke-width="0.6" rx="0" opacity="0.95"/>
+  <line x1="488" y1="384" x2="694" y2="384" stroke="#000" stroke-width="0.4" opacity="0.4"/>
+  <text x="591" y="378" text-anchor="middle" font-size="8.5" font-weight="900" fill="#000" font-family="system-ui,sans-serif">PLANTA CUBIERTA</text>
+  <text x="591" y="395" text-anchor="middle" font-size="7" fill="#666" font-family="system-ui,sans-serif">Vista esquemática · sin escala</text>
+  <text x="591" y="407" text-anchor="middle" font-size="7" fill="#666" font-family="system-ui,sans-serif">ISODEC EPS 100mm · 18 paneles</text>
+  <text x="591" y="420" text-anchor="middle" font-size="8" font-weight="700" fill="#000" font-family="system-ui,sans-serif">BMC Uruguay · BMC-2026-0112</text>
+</svg>
     </div>
-    <div class="hdr-meta">
-      <div class="meta-label">Cotización</div>
-      <div class="meta-ref">BMC-2026-0427-01</div>
-      <div class="meta-date">27 de abril de 2026</div>
-    </div>
   </div>
+  <div class="sec">Leyenda</div>
+  <div class="leg">
+    <div class="li"><div class="sw" style="background:#F5F5F5;border:1px solid #000"></div><span>Panel impar</span></div>
+    <div class="li"><div class="sw" style="background:#E8E8E8;border:1px solid #000"></div><span>Panel par</span></div>
+    <div class="li"><div class="sw" style="background:#FF3B30;height:5px;margin-top:2px"></div><span>Gotero perimetral</span></div>
+    <div class="li"><div class="sw" style="background:none;border:1.5px dashed #AAAAAA"></div><span>Encuentro zonas</span></div>
+    <div class="li" style="gap:8px"><span style="font-size:11pt;line-height:1">↓</span><span>Pendiente</span></div>
+    <div class="li"><div class="sw" style="background:#000"></div><span>Borde sellado</span></div>
+  </div>
+  <div class="sec">Resumen de Zonas</div>
+  <table class="zt"><thead><tr>
+    <th style="text-align:left">Zona</th><th style="text-align:left">Descripción</th>
+    <th>Largo</th><th>Ancho útil</th><th>Pan.</th><th>Área</th><th>AU</th>
+  </tr></thead><tbody>
+    <tr><td><strong>Zona 1</strong></td><td>Principal</td><td>8.00 m</td><td>8.96 m</td><td>8</td><td>71.68 m²</td><td>1.12 m</td></tr>
+    <tr><td><strong>Zona 2</strong></td><td>Ext. lateral der.</td><td>6.00 m</td><td>5.60 m</td><td>5</td><td>33.60 m²</td><td>1.12 m</td></tr>
+    <tr><td><strong>Zona 3</strong></td><td>Ext. lateral izq. (2ª)</td><td>6.00 m</td><td>5.60 m</td><td>5</td><td>33.60 m²</td><td>1.12 m</td></tr>
+    <tr style="font-weight:900;border-top:.5pt solid #000"><td colspan="4">Total</td><td>18</td><td>138.88 m²</td><td></td></tr>
+  </tbody></table>
+  <div class="pg-line"><span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span><span class="pg-n">2 / 3</span></div>
 </div>
 
-<!-- ─── CLIENT ─── -->
-<div class="client-section">
-  <div class="cs-item">
-    <div class="cs-lbl">Cliente</div>
-    <div class="cs-val">Constructora Sol del Este S.A.</div>
+<!-- PAGE 3 BOM -->
+<div class="page">
+  <div class="ph"><span class="ph-left">BMC Uruguay</span><div class="ph-right"><div><strong>Ref:</strong> BMC-2026-0112</div><div><strong>Fecha:</strong> 25/04/2026</div></div></div>
+  <div class="sec">Presupuesto Detallado</div>
+  <table class="bom"><thead><tr>
+    <th style="text-align:left;width:44%">Descripción</th>
+    <th style="width:11%">Cant.</th><th style="width:9%;text-align:center">Unid.</th>
+    <th style="width:17%">P.U. USD</th><th style="width:19%">Total USD</th>
+  </tr></thead><tbody>
+    <tr class="bg"><td colspan="4">— PANELES</td><td>6,564.02</td></tr>
+    <tr><td>ISODEC EPS 100mm · 18 paneles</td><td style="text-align:right">138.88</td><td style="text-align:center">m²</td><td style="text-align:right">47.26</td><td>6,564.02</td></tr>
+    <tr class="bg"><td colspan="4">— FIJACIONES</td><td>304.79</td></tr>
+    <tr><td>Varilla roscada 3/8" (1m)</td><td style="text-align:right">20</td><td style="text-align:center">unid</td><td style="text-align:right">3.68</td><td>73.64</td></tr>
+    <tr><td>Tuerca 3/8" galv.</td><td style="text-align:right">190</td><td style="text-align:center">unid</td><td style="text-align:right">0.08</td><td>15.96</td></tr>
+    <tr><td>Arandela carrocero 3/8"</td><td style="text-align:right">95</td><td style="text-align:center">unid</td><td style="text-align:right">0.66</td><td>62.51</td></tr>
+    <tr><td>Arandela plana 3/8"</td><td style="text-align:right">95</td><td style="text-align:center">unid</td><td style="text-align:right">0.10</td><td>9.04</td></tr>
+    <tr><td>Tortuga PVC (arand. PP)</td><td style="text-align:right">95</td><td style="text-align:center">unid</td><td style="text-align:right">1.51</td><td>143.64</td></tr>
+    <tr class="bg"><td colspan="4">— SELLADORES</td><td>506.25</td></tr>
+    <tr><td>Silicona Bromplast 8×600</td><td style="text-align:right">16</td><td style="text-align:center">unid</td><td style="text-align:right">11.24</td><td>179.88</td></tr>
+    <tr><td>Silicona neutra 300 ml (Silva)</td><td style="text-align:right">32</td><td style="text-align:center">unid</td><td style="text-align:right">8.40</td><td>268.80</td></tr>
+    <tr><td>Cinta Butilo 2mm×15mm×22.5m</td><td style="text-align:right">3</td><td style="text-align:center">unid</td><td style="text-align:right">19.19</td><td>57.57</td></tr>
+    <tr class="bg"><td colspan="4">— SERVICIOS</td><td>280.00</td></tr>
+    <tr><td>Flete con entrega en obra</td><td style="text-align:right">1</td><td style="text-align:center">servicio</td><td style="text-align:right">280.00</td><td>280.00</td></tr>
+  </tbody></table>
+  <div class="tots"><div class="ti">
+    <div class="tr"><span>Subtotal sin IVA</span><span>USD 7,655.06</span></div>
+    <div class="tr"><span>IVA 22%</span><span>USD 1,684.11</span></div>
+    <div class="tr trt"><span>Total USD</span><span style="color:#FF3B30">9,339.17</span></div>
+  </div></div>
+  <div class="cond-q"><strong>Condiciones:</strong> Fabricación y entrega 10 a 45 días. Oferta válida 10 días. Seña <strong>60%</strong> al confirmar · saldo <strong>40%</strong> previo a retiro de fábrica. Precios en USD · IVA incluido.</div>
+  <div class="bank">
+    <div class="bankt">Datos para depósito bancario</div>
+    <div>Titular: <strong>Metalog SAS</strong></div><div>RUT: <strong>120403430012</strong></div>
+    <div>BROU · Cta. Dólares: <strong>110520638-00002</strong></div><div>Tel: <strong>092 663 245</strong></div>
   </div>
-  <div class="cs-item">
-    <div class="cs-lbl">Obra</div>
-    <div class="cs-val">Galpón almacenamiento<br>Maldonado</div>
-  </div>
-  <div class="cs-item">
-    <div class="cs-lbl">Contacto</div>
-    <div class="cs-val">+598 92 555 010<br>Ruta 9 Km 110</div>
-  </div>
+  <div class="pg-line"><span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span><span class="pg-n">3 / 3</span></div>
 </div>
-
-<!-- ─── SCOPE ─── -->
-<div class="scope-line">
-  <span>Alcance</span>
-  <span>ISODEC EPS · 100 mm · Color Blanco · Techo · 3 zonas · 138.88 m²</span>
-</div>
-
-<!-- ─── BOM ─── -->
-<div class="bom-section">
-  <div class="sec-title">Lista de materiales y servicios</div>
-  <table class="bom">
-    <thead>
-      <tr>
-        <th style="width:46%">Descripción</th>
-        <th class="r" style="width:9%">Cant.</th>
-        <th class="c" style="width:8%">Unid.</th>
-        <th class="r" style="width:13%">P.U. USD</th>
-        <th class="r" style="width:14%">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr class="grp"><td>Paneles</td><td colspan="3"></td><td class="tot">$6,564.02</td></tr>
-      <tr class="item"><td class="name">ISODEC EPS 100mm · 18 paneles (3 zonas)</td><td class="r">138.88</td><td class="c">m²</td><td class="r">47.26</td><td class="r amt">$6,564.02</td></tr>
-
-      <tr class="grp"><td>Fijaciones</td><td colspan="3"></td><td class="tot">$304.79</td></tr>
-      <tr class="item"><td class="name">Varilla roscada 3/8" (1m)</td><td class="r">20</td><td class="c">unid</td><td class="r">3.68</td><td class="r amt">$73.64</td></tr>
-      <tr class="item"><td class="name">Tuerca 3/8" galvanizada</td><td class="r">190</td><td class="c">unid</td><td class="r">0.08</td><td class="r amt">$15.96</td></tr>
-      <tr class="item"><td class="name">Arandela carrocero 3/8"</td><td class="r">95</td><td class="c">unid</td><td class="r">0.66</td><td class="r amt">$62.51</td></tr>
-      <tr class="item"><td class="name">Arandela plana 3/8"</td><td class="r">95</td><td class="c">unid</td><td class="r">0.10</td><td class="r amt">$9.04</td></tr>
-      <tr class="item"><td class="name">Tortuga PVC (arandela PP)</td><td class="r">95</td><td class="c">unid</td><td class="r">1.51</td><td class="r amt">$143.64</td></tr>
-
-      <tr class="grp"><td>Selladores</td><td colspan="3"></td><td class="tot">$506.25</td></tr>
-      <tr class="item"><td class="name">Silicona Bromplast 8×600</td><td class="r">16</td><td class="c">unid</td><td class="r">11.24</td><td class="r amt">$179.88</td></tr>
-      <tr class="item"><td class="name">Silicona neutra 300 ml</td><td class="r">32</td><td class="c">unid</td><td class="r">8.40</td><td class="r amt">$268.80</td></tr>
-      <tr class="item"><td class="name">Cinta Butilo 2mm×15mm×22.5m</td><td class="r">3</td><td class="c">unid</td><td class="r">19.19</td><td class="r amt">$57.57</td></tr>
-
-      <tr class="grp"><td>Servicios</td><td colspan="3"></td><td class="tot">$280.00</td></tr>
-      <tr class="item"><td class="name">Flete con entrega en obra</td><td class="r">1</td><td class="c">servicio</td><td class="r">280.00</td><td class="r amt">$280.00</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- ─── TOTALS ─── -->
-<div class="totals-section">
-  <div class="totals-inner">
-    <div class="total-row"><span class="tl">Subtotal s/IVA</span><span class="tv">$7,655.06</span></div>
-    <div class="total-row"><span class="tl">IVA 22%</span><span class="tv">$1,684.11</span></div>
-    <div class="total-final"><span class="tl">Total USD</span><span class="tv">$9,339.17</span></div>
-  </div>
-</div>
-
-<!-- ─── CONDITIONS ─── -->
-<div class="conditions-section">
-  <div class="cond-item">
-    <div class="ci-lbl">Plazo de entrega</div>
-    <div class="ci-val">10 a 45 días hábiles</div>
-  </div>
-  <div class="cond-item">
-    <div class="ci-lbl">Validez de oferta</div>
-    <div class="ci-val alert">10 días desde emisión</div>
-  </div>
-  <div class="cond-item">
-    <div class="ci-lbl">Condición de pago</div>
-    <div class="ci-val alert">Seña 60% · Saldo 40% previo retiro</div>
-  </div>
-  <div class="cond-item">
-    <div class="ci-lbl">Moneda</div>
-    <div class="ci-val">Dólares americanos (USD) · IVA incluido</div>
-  </div>
-</div>
-
-<!-- ─── BANK ─── -->
-<div class="bank-section">
-  <div class="bank-label">Datos bancarios</div>
-  <div class="bank-fields">
-    <div class="bank-field"><div class="bf-lbl">Titular</div><div class="bf-val">Metalog SAS</div></div>
-    <div class="bank-field"><div class="bf-lbl">RUT</div><div class="bf-val">120403430012</div></div>
-    <div class="bank-field"><div class="bf-lbl">Banco · Cuenta USD</div><div class="bf-val">BROU · 110520638-00002</div></div>
-    <div class="bank-field"><div class="bf-lbl">Consultas</div><div class="bf-val">092 663 245</div></div>
-  </div>
-</div>
-
-<!-- ─── FOOTER ─── -->
-<div class="footer">
-  <div class="footer-left">bmcuruguay.com.uy · 092 663 245 · info@bmcuruguay.com.uy</div>
-  <div class="footer-right"><strong>Pág. 1</strong> / 2</div>
-</div>
-
-</body>
-</html>
+</body></html>

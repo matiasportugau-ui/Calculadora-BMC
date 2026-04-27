@@ -8223,6 +8223,45 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "e85d190203b99d11c1cb87a26853e0b85af19b9a",
+      "short_hash": "e85d190",
+      "date": "2026-04-27",
+      "time": "01:10:51",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "plan-import",
+      "title": "update plan import handling and UI components",
+      "subject": "fix(plan-import): update plan import handling and UI components",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/523d61f.md",
+        "docs/dev-trace/commits/2026/04/77ec61b.md",
+        "docs/dev-trace/commits/2026/04/a5b2b34.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "public/pdf-designs/A-executive-dark.html",
+        "public/pdf-designs/B-blueprint.html"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "public"
+        ]
+      }
     }
   ]
 }

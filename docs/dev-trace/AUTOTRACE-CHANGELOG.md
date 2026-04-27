@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-20 20:53:41 — `6d1e0ac` — chore(dev-trace): record autotrace for editor ergonomics commit
 - 2026-04-20 21:01:25 — `c57f6f4` — chore(dev-trace): refine autotrace logging and documentation updates
 - 2026-04-20 22:23:18 — `1306642` — chore: add Google Drive OAuth setup scripts and documentation
 - 2026-04-20 22:53:49 — `0f3f008` — chore: update Google Drive OAuth setup scripts and documentation
@@ -222,3 +221,4 @@
 - 2026-04-27 00:53:21 — `a5b2b34` — feat(floor-plan): per-segment desnivel UI + fiscal contract tests
 - 2026-04-27 00:53:56 — `523d61f` — fix(plan-import): install multer, add stop_reason guard, downgrade model to Sonnet
 - 2026-04-27 00:59:12 — `77ec61b` — fix(plan-import): replace manual listener mgmt with useEffect in Select
+- 2026-04-27 01:10:51 — `e85d190` — fix(plan-import): update plan import handling and UI components
