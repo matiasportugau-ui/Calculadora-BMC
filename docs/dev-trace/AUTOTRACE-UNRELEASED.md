@@ -147,6 +147,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `2cc04d9` fix(pdf): add diagnostic logging for @sparticuz binary path
 - `be41d53` fix(pdf): chmod 755 chromium binary after @sparticuz decompression
 - `351bc2f` fix(pdf): /lib64 symlink for @sparticuz AL2023 ELF interpreter on Debian slim
+- `f84aabb` fix(pdf): update PDF error handling and sample data
 
 ## Documentation
 

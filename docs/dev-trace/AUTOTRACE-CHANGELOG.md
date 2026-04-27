@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-19 07:15:41 — `f62400e` — feat: log Sketchfab integration commit in worklog
 - 2026-04-19 07:25:28 — `ef8734c` — chore: sync autotrace docs and data version for Sketchfab integration commits
 - 2026-04-19 07:36:10 — `0a5667b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-19 07:45:36 — `dec007b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
@@ -222,3 +221,4 @@
 - 2026-04-25 06:11:37 — `be41d53` — fix(pdf): chmod 755 chromium binary after @sparticuz decompression
 - 2026-04-25 06:15:10 — `351bc2f` — fix(pdf): /lib64 symlink for @sparticuz AL2023 ELF interpreter on Debian slim
 - 2026-04-25 06:18:17 — `857cdba` — feat(floor-plan): Gap A-D expansion — tipoAguas, per-zone roofBlocks, borders, labels
+- 2026-04-27 00:01:36 — `f84aabb` — fix(pdf): update PDF error handling and sample data
