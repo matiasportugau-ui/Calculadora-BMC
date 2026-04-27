@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `fe55309` feat(roof): split border strips by exterior intervals on partial encounters
 - `773e0df` feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
 - `5715776` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7465e2f` feat(pdf-layouts): add layout selector to mobile bottom sheet
 - `cdeef3c` feat(agent): unified KB brain for Chat, WA and ML channels
 - `861d168` feat(agent): panel specs in tools + ML answers auto-save to KB
+- `38269e1` feat(kb): retrieval tracking + freshness TTL + health stats
 
 ## Fixes
 
@@ -164,6 +164,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d12f8f1` fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback `[regresión? · tests]`
 - `3a7b3bf` fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation `[regresión? · tests]`
 - `55be547` fix(kb): persist training-kb.json to GCS on Cloud Run
+- `473aa6c` fix(pdf): add Cloud Run sandbox flags to puppeteer launch
 
 ## Documentation
 
@@ -220,6 +221,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e4361e6` docs: autotrace sync familia normalization fix
 - `0a79835` docs: autotrace sync unified agent brain
 - `d3afcfd` docs: autotrace sync specs+ml-kb
+- `0594c89` docs: autotrace sync KB GCS persistence
 
 ## Tests
 

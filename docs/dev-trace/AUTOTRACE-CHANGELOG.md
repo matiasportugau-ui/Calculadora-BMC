@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 05:08:12 — `e918bef` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
-- 2026-04-23 05:08:49 — `759d82e` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
-- 2026-04-23 05:11:39 — `e77b34b` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 05:16:32 — `13e4393` — chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
 - 2026-04-23 05:18:01 — `27139d5` — chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
 - 2026-04-23 05:20:14 — `543f747` — docs: dev-trace autolog update (2026-04-23)
@@ -221,4 +218,7 @@
 - 2026-04-27 15:33:47 — `0a79835` — docs: autotrace sync unified agent brain
 - 2026-04-27 15:44:46 — `861d168` — feat(agent): panel specs in tools + ML answers auto-save to KB
 - 2026-04-27 15:44:47 — `d3afcfd` — docs: autotrace sync specs+ml-kb
+- 2026-04-27 15:53:40 — `0594c89` — docs: autotrace sync KB GCS persistence
 - 2026-04-27 15:53:40 — `55be547` — fix(kb): persist training-kb.json to GCS on Cloud Run
+- 2026-04-27 16:06:30 — `473aa6c` — fix(pdf): add Cloud Run sandbox flags to puppeteer launch
+- 2026-04-27 16:12:53 — `38269e1` — feat(kb): retrieval tracking + freshness TTL + health stats
