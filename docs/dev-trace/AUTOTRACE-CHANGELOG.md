@@ -2,10 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 03:25:01 — `d83ca03` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
-- 2026-04-23 03:28:27 — `1966b38` — fix(lint): resolve all ESLint warnings in new and existing components
-- 2026-04-23 03:45:05 — `7130acd` — feat(nxt): wire ROADMAP.md as baseline source + add score history
-- 2026-04-23 04:00:24 — `63c1410` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
 - 2026-04-23 04:14:49 — `0437665` — fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
 - 2026-04-23 04:18:16 — `8a30cd2` — feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - 2026-04-23 04:28:45 — `e782464` — feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
@@ -222,3 +218,7 @@
 - 2026-04-27 05:11:51 — `5b98ba4` — feat(agent): auto-trigger autolearn after each production chat turn
 - 2026-04-27 05:11:56 — `90babd2` — docs: autotrace sync autolearn trigger
 - 2026-04-27 05:15:03 — `25b9083` — feat(agent): add generar_pdf tool — agent produces shareable PDF URL
+- 2026-04-27 05:18:00 — `a3c33d6` — docs: autotrace sync 2026-04-27 end-of-session
+- 2026-04-27 05:22:34 — `2d4e1cb` — fix(agent): remove stale hardcoded prices from CATALOG section
+- 2026-04-27 10:09:35 — `0c29e5b` — feat(kb): add 8 math entries to example KB seed
+- 2026-04-27 14:32:45 — `fff3d23` — fix(autolearn): dedup uses question-only token overlap, not permanentBonus

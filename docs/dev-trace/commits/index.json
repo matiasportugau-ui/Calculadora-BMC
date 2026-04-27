@@ -9176,6 +9176,123 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "a3c33d6876a145d636efc55facb9b52727ea2185",
+      "short_hash": "a3c33d6",
+      "date": "2026-04-27",
+      "time": "05:18:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync 2026-04-27 end-of-session",
+      "subject": "docs: autotrace sync 2026-04-27 end-of-session",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/25b9083.md",
+        "docs/dev-trace/commits/2026/04/90babd2.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "2d4e1cbc191d6709e0c8fc50f8cf33764388ee57",
+      "short_hash": "2d4e1cb",
+      "date": "2026-04-27",
+      "time": "05:22:34",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "agent",
+      "title": "remove stale hardcoded prices from CATALOG section",
+      "subject": "fix(agent): remove stale hardcoded prices from CATALOG section",
+      "files": [
+        "server/lib/chatPrompts.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "0c29e5b7a161a7a9946ff1104db0fd27eed65caa",
+      "short_hash": "0c29e5b",
+      "date": "2026-04-27",
+      "time": "10:09:35",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "add 8 math entries to example KB seed",
+      "subject": "feat(kb): add 8 math entries to example KB seed",
+      "files": [
+        "data/training-kb.example.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "data"
+        ]
+      }
+    },
+    {
+      "hash": "fff3d23dc08fe706a6835399dd5e9d0c4a3b82af",
+      "short_hash": "fff3d23",
+      "date": "2026-04-27",
+      "time": "14:32:45",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "autolearn",
+      "title": "dedup uses question-only token overlap, not permanentBonus",
+      "subject": "fix(autolearn): dedup uses question-only token overlap, not permanentBonus",
+      "files": [
+        "server/lib/autoLearnExtractor.js",
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }
