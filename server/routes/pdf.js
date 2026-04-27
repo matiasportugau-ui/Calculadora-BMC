@@ -59,11 +59,23 @@ export function createPdfRouter() {
         console.warn("[pdf] chmod failed:", e.message);
       }
 
+      // Cloud Run / container sandbox flags — required for headless Chromium
+      const extraArgs = [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",   // /dev/shm is 64MB in Cloud Run — use /tmp instead
+        "--disable-gpu",
+        "--single-process",          // avoids zygote + sandbox restrictions in containers
+      ];
+      const launchArgs = [
+        ...new Set([...(chromium.args || []), ...extraArgs]),
+      ];
+
       browser = await puppeteer.launch({
-        args: chromium.args,
+        args: launchArgs,
         defaultViewport: chromium.defaultViewport,
         executablePath,
-        headless: chromium.headless,
+        headless: true,
       });
 
       const page = await browser.newPage();
