@@ -178,6 +178,7 @@
     "googleapis": "^171.4.0",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^0.263.1",
+    "multer": "^2.1.1",
     "openai": "^6.32.0",
     "pg": "^8.13.1",
     "pino": "^10.1.0",
@@ -191,7 +192,7 @@
     "web-vitals": "^5.2.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.3",
+    "@eslint/js": "^10.0.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@vitejs/plugin-react": "^4.0.0",
     "concurrently": "^9.1.0",

@@ -12,7 +12,7 @@ import {
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
   Download, Save, Archive, Cloud, Settings,
-  Table, LayoutTemplate, CircleDollarSign, MoreHorizontal,
+  Table, LayoutTemplate, CircleDollarSign, MoreHorizontal, Upload,
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
@@ -91,6 +91,7 @@ import {
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
+import PlanUploadModal from "./PlanUploadModal.jsx";
 import InteractionLogPanel from "./InteractionLogPanel.jsx";
 import ConfigPanel from "./ConfigPanel.jsx";
 import FloorPlanEditor from "./FloorPlanEditor.jsx";
@@ -4047,6 +4048,7 @@ export default function PanelinCalculadoraV3() {
 
   // ── Google Drive state ──
   const [showDrivePanel, setShowDrivePanel] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [driveAuth, setDriveAuth] = useState(false);
   const [driveQuotations, setDriveQuotations] = useState([]);
   const [driveLoading, setDriveLoading] = useState(false);
@@ -4393,6 +4395,9 @@ export default function PanelinCalculadoraV3() {
           </div>
           <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
             <Settings size={14} />Config
+          </button>
+          <button onClick={() => setShowPlanModal(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
+            <Upload size={14} />Plano
           </button>
           <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: driveAuth ? "rgba(66,133,244,0.25)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
             <Cloud size={14} />Drive
@@ -6498,6 +6503,17 @@ export default function PanelinCalculadoraV3() {
         onClose={() => setShowConfigPanel(false)}
         onConfigChange={() => setConfigVersion(v => v + 1)}
       />
+      <PlanUploadModal
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        currentTecho={techo}
+        currentPared={pared}
+        onApply={(payload) => {
+          applyQuoteSnapshot(payload, { setScenario, setLP, setTecho, setPared, setCamara, setFlete, setProyecto });
+          setShowPlanModal(false);
+        }}
+      />
+
       <GoogleDrivePanel
         visible={showDrivePanel}
         onClose={() => setShowDrivePanel(false)}
