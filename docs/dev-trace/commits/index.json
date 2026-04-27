@@ -8491,6 +8491,49 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "ebeb68a2c220c3fa7eba6d1e423be833c6e0e42a",
+      "short_hash": "ebeb68a",
+      "date": "2026-04-27",
+      "time": "03:03:57",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent-admin",
+      "title": "add Agent Admin module for knowledge base management",
+      "subject": "feat(agent-admin): add Agent Admin module for knowledge base management",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0d80f5d.md",
+        "docs/dev-trace/commits/2026/04/6af2db3.md",
+        "docs/dev-trace/commits/2026/04/8cdd219.md",
+        "docs/dev-trace/commits/2026/04/ea068c5.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "src/App.jsx",
+        "src/components/AgentAdminModule.jsx",
+        "src/components/BmcModuleNav.jsx",
+        "src/components/BmcWolfboardHub.jsx",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }
