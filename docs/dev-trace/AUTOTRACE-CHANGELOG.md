@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-19 07:45:36 — `dec007b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
-- 2026-04-20 20:33:19 — `0f9ab57` — fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
-- 2026-04-20 20:53:27 — `bcefb3e` — chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor
 - 2026-04-20 20:53:41 — `6d1e0ac` — chore(dev-trace): record autotrace for editor ergonomics commit
 - 2026-04-20 21:01:25 — `c57f6f4` — chore(dev-trace): refine autotrace logging and documentation updates
 - 2026-04-20 22:23:18 — `1306642` — chore: add Google Drive OAuth setup scripts and documentation
@@ -222,3 +219,6 @@
 - 2026-04-27 00:01:36 — `f84aabb` — fix(pdf): update PDF error handling and sample data
 - 2026-04-27 00:08:42 — `21d0fde` — docs: autotrace + kb sync 2026-04-27
 - 2026-04-27 00:23:30 — `9d43fee` — docs: update kb.json timestamp and build metadata; sync autotrace documentation
+- 2026-04-27 00:53:21 — `a5b2b34` — feat(floor-plan): per-segment desnivel UI + fiscal contract tests
+- 2026-04-27 00:53:56 — `523d61f` — fix(plan-import): install multer, add stop_reason guard, downgrade model to Sonnet
+- 2026-04-27 00:59:12 — `77ec61b` — fix(plan-import): replace manual listener mgmt with useEffect in Select

@@ -8140,6 +8140,89 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "a5b2b3485cdaf1d74aaeba1323c3954bf6f6e8b0",
+      "short_hash": "a5b2b34",
+      "date": "2026-04-27",
+      "time": "00:53:21",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "floor-plan",
+      "title": "per-segment desnivel UI + fiscal contract tests",
+      "subject": "feat(floor-plan): per-segment desnivel UI + fiscal contract tests",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "tests/validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "523d61f3ced8aabe7a2634e16fe8ca9089ccc662",
+      "short_hash": "523d61f",
+      "date": "2026-04-27",
+      "time": "00:53:56",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "plan-import",
+      "title": "install multer, add stop_reason guard, downgrade model to Sonnet",
+      "subject": "fix(plan-import): install multer, add stop_reason guard, downgrade model to Sonnet",
+      "files": [
+        "server/lib/planInterpreter.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "77ec61b7376891716e3f7359fd2e8c35a494cbb9",
+      "short_hash": "77ec61b",
+      "date": "2026-04-27",
+      "time": "00:59:12",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "plan-import",
+      "title": "replace manual listener mgmt with useEffect in Select",
+      "subject": "fix(plan-import): replace manual listener mgmt with useEffect in Select",
+      "files": [
+        "src/components/PlanUploadModal.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }

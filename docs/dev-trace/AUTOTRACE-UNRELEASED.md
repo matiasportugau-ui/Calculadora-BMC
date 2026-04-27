@@ -82,6 +82,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c5c836d` feat(floor-plan): 10-iteration professional SVG plano en planta
 - `05d199e` feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
 - `857cdba` feat(floor-plan): Gap A-D expansion — tipoAguas, per-zone roofBlocks, borders, labels
+- `a5b2b34` feat(floor-plan): per-segment desnivel UI + fiscal contract tests `[tests]`
 
 ## Fixes
 
@@ -148,6 +149,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `be41d53` fix(pdf): chmod 755 chromium binary after @sparticuz decompression
 - `351bc2f` fix(pdf): /lib64 symlink for @sparticuz AL2023 ELF interpreter on Debian slim
 - `f84aabb` fix(pdf): update PDF error handling and sample data
+- `523d61f` fix(plan-import): install multer, add stop_reason guard, downgrade model to Sonnet
+- `77ec61b` fix(plan-import): replace manual listener mgmt with useEffect in Select
 
 ## Documentation
 
