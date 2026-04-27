@@ -3,16 +3,19 @@ import { config } from "../config.js";
 import {
   addTrainingEntry,
   appendTrainingSessionEvent,
+  approveTrainingEntry,
   bulkDeleteEntries,
   bulkPatchEntries,
   deleteTrainingEntry,
   findRelevantExamples,
   getTrainingPaths,
   getTrainingStats,
+  listPendingEntries,
   listTrainingEntries,
   loadPromptSectionHistory,
   loadPromptSections,
   loadScoringConfig,
+  rejectTrainingEntry,
   revertPromptSection,
   saveScoringConfig,
   DEFAULT_SCORING_CONFIG,
@@ -20,6 +23,8 @@ import {
   updateTrainingEntry,
 } from "../lib/trainingKB.js";
 import { clearKnowledgeCache } from "../lib/knowledgeLoader.js";
+import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
+import { loadConversationById } from "../lib/conversationLog.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 
 const router = Router();
@@ -195,6 +200,69 @@ router.post("/agent/training-kb/score-config", requireDevModeAuth, (req, res) =>
     };
     saveScoringConfig(cfg);
     res.json({ ok: true, config: cfg });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+// ─── Auto-learn queue ────────────────────────────────────────────────────────
+
+router.post("/agent/autolearn", requireDevModeAuth, async (req, res) => {
+  try {
+    const { conversationId, turns: rawTurns } = req.body || {};
+    let turns = rawTurns;
+    if (!turns && conversationId) {
+      const conv = loadConversationById(String(conversationId));
+      if (!conv) return res.status(404).json({ ok: false, error: "Conversation not found" });
+      turns = conv.turns;
+    }
+    if (!Array.isArray(turns) || turns.length < 2) {
+      return res.status(400).json({ ok: false, error: "turns array required (min 2)" });
+    }
+    const pairs = await extractLearnablePairs(turns);
+    const added = pairs.map((p) =>
+      addTrainingEntry({
+        question: p.question,
+        goodAnswer: p.goodAnswer,
+        badAnswer: p.badAnswer || "",
+        category: p.category || "conversational",
+        context: p.rationale || "",
+        source: "autolearned",
+        status: p.confidence >= 0.92 ? "active" : "pending",
+        confidence: p.confidence,
+        convId: conversationId || null,
+      })
+    );
+    const autoApproved = added.filter((e) => e.status === "active").length;
+    const pending = added.filter((e) => e.status === "pending").length;
+    res.json({ ok: true, extracted: pairs.length, autoApproved, pending, entries: added });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.get("/agent/autolearn/pending", requireDevModeAuth, (req, res) => {
+  try {
+    res.json({ ok: true, entries: listPendingEntries() });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.post("/agent/autolearn/:id/approve", requireDevModeAuth, (req, res) => {
+  try {
+    const entry = approveTrainingEntry(req.params.id);
+    clearKnowledgeCache();
+    res.json({ ok: true, entry });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
+  try {
+    const entry = rejectTrainingEntry(req.params.id, req.body?.reason || "");
+    res.json({ ok: true, entry });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message || String(err) });
   }

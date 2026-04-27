@@ -89,6 +89,9 @@ export function addTrainingEntry(payload = {}) {
     context: String(payload.context || "").trim(),
     source: String(payload.source || "manual"),
     permanent: Boolean(payload.permanent),
+    status: ["active", "pending", "rejected"].includes(payload.status) ? payload.status : "active",
+    confidence: payload.confidence != null ? Number(payload.confidence) : null,
+    convId: payload.convId ? String(payload.convId) : null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -98,6 +101,24 @@ export function addTrainingEntry(payload = {}) {
   kb.entries.unshift(entry);
   saveTrainingKB(kb);
   return entry;
+}
+
+export function approveTrainingEntry(entryId) {
+  return updateTrainingEntry(entryId, { status: "active" });
+}
+
+export function rejectTrainingEntry(entryId, reason = "") {
+  const kb = loadTrainingKB();
+  const idx = kb.entries.findIndex((e) => e.id === entryId);
+  if (idx < 0) throw new Error("entry not found");
+  kb.entries[idx] = { ...kb.entries[idx], status: "rejected", rejectReason: String(reason), updatedAt: new Date().toISOString() };
+  saveTrainingKB(kb);
+  return kb.entries[idx];
+}
+
+export function listPendingEntries() {
+  const kb = loadTrainingKB();
+  return kb.entries.filter((e) => e.status === "pending");
 }
 
 export function updateTrainingEntry(entryId, patch = {}) {
@@ -113,6 +134,7 @@ export function updateTrainingEntry(entryId, patch = {}) {
     goodAnswer: patch.goodAnswer != null ? String(patch.goodAnswer).trim() : prev.goodAnswer,
     context: patch.context != null ? String(patch.context).trim() : prev.context,
     permanent: patch.permanent != null ? Boolean(patch.permanent) : prev.permanent,
+    status: patch.status && ["active", "pending", "rejected"].includes(patch.status) ? patch.status : prev.status ?? "active",
     updatedAt: new Date().toISOString(),
   };
   kb.entries[idx] = next;
@@ -159,7 +181,7 @@ export function findRelevantExamples(query, { limit = 5, scoringConfig } = {}) {
   const cfg = scoringConfig || loadScoringConfig();
   const kb = loadTrainingKB();
   const entries = kb.entries
-    .filter((e) => !e.archived)
+    .filter((e) => !e.archived && (e.status == null || e.status === "active"))
     .map((entry) => {
       const score =
         (entry.permanent ? cfg.permanentBonus : 0) +

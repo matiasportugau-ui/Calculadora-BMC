@@ -1171,6 +1171,98 @@ function ConfigTab() {
   );
 }
 
+// ── AUTO-LEARN QUEUE TAB ─────────────────────────────────────────────────────
+function AutoLearnTab() {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({});
+  const [msg, setMsg] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    const d = await apiFetch("/api/agent/autolearn/pending");
+    setEntries(d.entries || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function act(id, action, reason = "") {
+    setBusy((b) => ({ ...b, [id]: true }));
+    const d = await apiFetch(`/api/agent/autolearn/${id}/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (d.ok) {
+      setMsg(action === "approve" ? "Aprobado y activo en KB" : "Rechazado");
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } else {
+      setMsg("Error: " + (d.error || "desconocido"));
+    }
+  }
+
+  const confColor = (c) => c >= 0.9 ? "#16a34a" : c >= 0.75 ? "#d97706" : "#dc2626";
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Cargando cola…</div>;
+
+  return (
+    <div>
+      {msg && (
+        <div style={{ marginBottom: 16, padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>
+          {msg} <button onClick={() => setMsg(null)} style={{ marginLeft: 12, background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>×</button>
+        </div>
+      )}
+      {entries.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
+          Cola vacía — no hay entradas pendientes de revisión.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>
+            {entries.length} entrada{entries.length !== 1 ? "s" : ""} pendiente{entries.length !== 1 ? "s" : ""}. Las de confianza ≥ 0.92 se auto-aprueban.
+          </div>
+          {entries.map((e) => (
+            <div key={e.id} style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: C.navy, flex: 1 }}>{e.question}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: confColor(e.confidence ?? 0), background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px" }}>
+                    {e.confidence != null ? `${Math.round(e.confidence * 100)}%` : "—"}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.muted, background: "#f1f5f9", borderRadius: 6, padding: "2px 8px" }}>{e.category}</span>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: C.text, background: "#f8fafc", borderRadius: 8, padding: "10px 12px", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                {e.goodAnswer}
+              </div>
+              {e.context && (
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, fontStyle: "italic" }}>Contexto: {e.context}</div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => act(e.id, "approve")}
+                  disabled={!!busy[e.id]}
+                  style={{ padding: "7px 18px", borderRadius: 8, border: "none", background: "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {busy[e.id] ? "…" : "Aprobar"}
+                </button>
+                <button
+                  onClick={() => act(e.id, "reject")}
+                  disabled={!!busy[e.id]}
+                  style={{ padding: "7px 18px", borderRadius: 8, border: "1px solid #fca5a5", background: "#fff", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Rechazar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── MAIN MODULE ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: "kb", label: "Base de conocimiento", icon: "📚" },
@@ -1178,6 +1270,7 @@ const TABS = [
   { id: "conversations", label: "Conversaciones", icon: "💬" },
   { id: "stats", label: "Estadísticas", icon: "📊" },
   { id: "analytics", label: "Analytics IA", icon: "🔍" },
+  { id: "autolearn", label: "Cola IA", icon: "🧠" },
   { id: "config", label: "Configuración", icon: "⚙️" },
 ];
 
@@ -1258,6 +1351,7 @@ export default function AgentAdminModule() {
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}
           {tab === "analytics" && <AnalyticsTab />}
+          {tab === "autolearn" && <AutoLearnTab />}
           {tab === "config" && <ConfigTab />}
         </main>
       </div>
