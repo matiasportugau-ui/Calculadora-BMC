@@ -349,6 +349,8 @@ function KBTab() {
   const [uploading, setUploading] = useState(false);
   const [matchQuery, setMatchQuery] = useState("");
   const [matchResults, setMatchResults] = useState(null);
+  const [generatingML, setGeneratingML] = useState(false);
+  const [mlGenMsg, setMlGenMsg] = useState("");
   const fileRef = useRef();
 
   const PAGE_SIZE = 30;
@@ -464,6 +466,19 @@ function KBTab() {
     setMatchResults(data.matches || []);
   }
 
+  async function generateMLOverrides() {
+    setGeneratingML(true); setMlGenMsg("");
+    const data = await apiFetch("/api/agent/training-kb/generate-ml-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGeneratingML(false);
+    if (data.ok) {
+      setMlGenMsg(`✓ ${data.generated} overrides ML generados (${data.failed} fallaron)`);
+      load();
+    } else {
+      setMlGenMsg("Error: " + (data.error || "desconocido"));
+    }
+    setTimeout(() => setMlGenMsg(""), 6000);
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Stats bar */}
@@ -500,6 +515,12 @@ function KBTab() {
           <Input value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder="Buscar en KB…" style={{ width: 220 }} />
           <Btn onClick={load} disabled={loading}>{loading ? "Cargando…" : "↺ Recargar"}</Btn>
           <Btn onClick={() => { setEditEntry(null); setShowEdit(true); }} variant="primary">+ Nueva entrada</Btn>
+          {(stats?.health?.mlGap || 0) > 0 && (
+            <Btn onClick={generateMLOverrides} disabled={generatingML} style={{ background: "#dc2626", color: "#fff", border: "none" }}>
+              {generatingML ? "Generando…" : `⚡ Auto-ML (${stats.health.mlGap})`}
+            </Btn>
+          )}
+          {mlGenMsg && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>{mlGenMsg}</span>}
           <div style={{ flex: 1 }} />
           <label
             style={{

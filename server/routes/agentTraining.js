@@ -268,4 +268,48 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
   }
 });
 
+// ─── ML override batch generator ──────────────────────────────────────────────
+
+router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, async (req, res) => {
+  const apiKey = config.anthropicApiKey;
+  if (!apiKey) return res.status(503).json({ ok: false, error: "ANTHROPIC_API_KEY not set" });
+
+  const { ids } = req.body || {}; // optional: specific entry IDs; omit = all gaps
+  const all = listTrainingEntries();
+  const targets = ids
+    ? all.filter((e) => ids.includes(e.id))
+    : all.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML && e.status !== "rejected");
+
+  if (targets.length === 0) return res.json({ ok: true, processed: 0, message: "No ML gaps found" });
+
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic({ apiKey });
+
+  const results = [];
+  for (const entry of targets) {
+    try {
+      const msg = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 100,
+        messages: [{
+          role: "user",
+          content: `Resumí esta respuesta en máximo 320 caracteres para MercadoLibre. Sin markdown, sin URLs. Mantené los datos clave (precios, plazos, datos técnicos). Directo y profesional. Solo devolvé el texto, sin comillas ni explicaciones.\n\nRespuesta original:\n${entry.goodAnswer}`,
+        }],
+      });
+      const mlText = (msg.content?.[0]?.text || "").trim().slice(0, 350);
+      if (mlText) {
+        updateTrainingEntry(entry.id, { goodAnswerML: mlText });
+        results.push({ id: entry.id, ok: true, chars: mlText.length });
+      } else {
+        results.push({ id: entry.id, ok: false, error: "empty response" });
+      }
+    } catch (err) {
+      results.push({ id: entry.id, ok: false, error: err.message });
+    }
+  }
+
+  const done = results.filter((r) => r.ok).length;
+  res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results });
+});
+
 export default router;
