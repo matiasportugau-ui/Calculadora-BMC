@@ -13,25 +13,150 @@ const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
 const KB_VERSION = "1.0.0";
 
+// ─── GCS persistence (Cloud Run) ─────────────────────────────────────────────
+// Cloud Run filesystem is ephemeral — every deploy loses local writes.
+// When running in Cloud Run (K_SERVICE env set) and GCS_KB_BUCKET is configured,
+// loadTrainingKB() reads from GCS and saveTrainingKB() writes to GCS.
+// A 60-second in-memory cache avoids GCS reads on every chat turn.
+
+const GCS_BUCKET = process.env.GCS_KB_BUCKET || process.env.GCS_QUOTES_BUCKET || "";
+const GCS_OBJECT = process.env.GCS_KB_OBJECT || "kb/training-kb.json";
+const IS_CLOUD_RUN = !!(process.env.K_SERVICE);
+const USE_GCS = IS_CLOUD_RUN && !!GCS_BUCKET;
+
+let _kbCache = null; // { kb, loadedAt }
+const CACHE_TTL_MS = 60_000;
+
+function _cacheValid() {
+  return _kbCache && (Date.now() - _kbCache.loadedAt < CACHE_TTL_MS);
+}
+
+function _setCache(kb) {
+  _kbCache = { kb: JSON.parse(JSON.stringify(kb)), loadedAt: Date.now() };
+}
+
+export function clearKbCache() {
+  _kbCache = null;
+}
+
+async function _loadFromGcs() {
+  const { Storage } = await import("@google-cloud/storage");
+  const storage = new Storage();
+  try {
+    const [contents] = await storage.bucket(GCS_BUCKET).file(GCS_OBJECT).download();
+    return JSON.parse(contents.toString("utf8"));
+  } catch (err) {
+    if (err.code === 404) return null; // first boot — no remote file yet
+    throw err;
+  }
+}
+
+async function _saveToGcs(safe) {
+  const { Storage } = await import("@google-cloud/storage");
+  const storage = new Storage();
+  await storage.bucket(GCS_BUCKET).file(GCS_OBJECT).save(
+    JSON.stringify(safe, null, 2),
+    { contentType: "application/json; charset=utf-8", resumable: false }
+  );
+}
+
+// ─── Local helpers ────────────────────────────────────────────────────────────
+
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
 }
 
-function ensureKbFile() {
-  ensureDir(dataDir);
-  if (fs.existsSync(kbPath)) return;
-  const initial = {
+function emptyKb() {
+  return {
     version: KB_VERSION,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     entries: [],
   };
-  fs.writeFileSync(kbPath, JSON.stringify(initial, null, 2), "utf8");
 }
+
+function ensureKbFile() {
+  ensureDir(dataDir);
+  if (!fs.existsSync(kbPath)) fs.writeFileSync(kbPath, JSON.stringify(emptyKb(), null, 2), "utf8");
+}
+
+// ─── GCS startup init ─────────────────────────────────────────────────────────
+// On Cloud Run: pre-load KB from GCS into memory cache at import time.
+// Writes propagate: local snapshot (fast) + async GCS (persistent).
+
+let _gcsInitPromise = null;
+
+function _ensureGcsInit() {
+  if (!USE_GCS) return Promise.resolve();
+  if (!_gcsInitPromise) {
+    _gcsInitPromise = _loadFromGcs()
+      .then((remote) => {
+        if (remote && Array.isArray(remote.entries)) {
+          _setCache(remote);
+          // Mirror remote → local for dev inspection
+          try { ensureDir(dataDir); fs.writeFileSync(kbPath, JSON.stringify(remote, null, 2), "utf8"); } catch { /* read-only FS ok */ }
+        } else {
+          // No remote yet — push local file to GCS as seed
+          ensureKbFile();
+          try {
+            const local = JSON.parse(fs.readFileSync(kbPath, "utf8"));
+            _setCache(local);
+            _saveToGcs(local).catch(() => {});
+          } catch { _setCache(emptyKb()); }
+        }
+      })
+      .catch(() => { /* GCS unavailable — fall through to local */ });
+  }
+  return _gcsInitPromise;
+}
+
+// Kick off immediately on import in Cloud Run
+if (USE_GCS) _ensureGcsInit();
+
+// ─── Public load / save ───────────────────────────────────────────────────────
+
+export function loadTrainingKB() {
+  if (USE_GCS && _cacheValid()) return JSON.parse(JSON.stringify(_kbCache.kb));
+
+  ensureKbFile();
+  try {
+    const raw = fs.readFileSync(kbPath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.entries)) throw new Error("Invalid KB shape");
+    if (USE_GCS) _setCache(parsed);
+    return parsed;
+  } catch {
+    const fallback = emptyKb();
+    if (USE_GCS) _setCache(fallback);
+    return fallback;
+  }
+}
+
+export function saveTrainingKB(kb) {
+  const safe = {
+    version: KB_VERSION,
+    createdAt: kb.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    entries: Array.isArray(kb.entries) ? kb.entries : [],
+  };
+
+  // Local write (dev + Cloud Run snapshot)
+  try { ensureDir(dataDir); fs.writeFileSync(kbPath, JSON.stringify(safe, null, 2), "utf8"); } catch { /* ignore on read-only FS */ }
+
+  if (USE_GCS) {
+    _setCache(safe); // immediate cache update so next read sees new data
+    _saveToGcs(safe).catch((err) => {
+      console.error("[KB] GCS save failed (non-critical):", err.message);
+    });
+  }
+
+  return safe;
+}
+
+// ─── Entry CRUD ───────────────────────────────────────────────────────────────
 
 function normalizeCategory(category) {
   const value = String(category || "conversational").trim().toLowerCase();
-  // Mercado Libre → misma bolsa que ventas para matching; usar `context` con "Mercado Libre" y Q:id
   if (value === "mercadolibre" || value === "ml") return "sales";
   if (["sales", "math", "product", "conversational"].includes(value)) return value;
   return "conversational";
@@ -50,32 +175,6 @@ function scoreOverlap(query, text) {
     if (String(text || "").toLowerCase().includes(token)) score += 1;
   }
   return score;
-}
-
-export function loadTrainingKB() {
-  ensureKbFile();
-  try {
-    const raw = fs.readFileSync(kbPath, "utf8");
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.entries)) throw new Error("Invalid KB shape");
-    return parsed;
-  } catch {
-    ensureKbFile();
-    const fallback = fs.readFileSync(kbPath, "utf8");
-    return JSON.parse(fallback);
-  }
-}
-
-export function saveTrainingKB(kb) {
-  ensureKbFile();
-  const safe = {
-    version: KB_VERSION,
-    createdAt: kb.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    entries: Array.isArray(kb.entries) ? kb.entries : [],
-  };
-  fs.writeFileSync(kbPath, JSON.stringify(safe, null, 2), "utf8");
-  return safe;
 }
 
 export function addTrainingEntry(payload = {}) {
@@ -181,7 +280,7 @@ export function saveScoringConfig(config) {
 export function hasSimilarQuestion(question, { threshold = 4 } = {}) {
   const kb = loadTrainingKB();
   const qTokens = String(question || "").toLowerCase().split(/[^a-z0-9áéíóúñü]+/i).filter(t => t.length >= 3);
-  if (qTokens.size === 0) return false;
+  if (qTokens.length === 0) return false;
   return kb.entries
     .filter((e) => !e.archived && (e.status == null || e.status === "active"))
     .some((e) => {
@@ -281,7 +380,6 @@ export function updatePromptSection(sectionName, nextContent) {
   const end = source.indexOf("`;", contentStart);
   if (end < 0) throw new Error(`Could not locate end of ${target}`);
 
-  // Save backup before overwriting (keep last 3 versions)
   const currentContent = source.slice(contentStart, end);
   savePromptSectionBackup(target, currentContent);
 
@@ -306,7 +404,7 @@ function savePromptSectionBackup(sectionName, content) {
     if (!Array.isArray(versions)) versions = [];
   } catch { versions = []; }
   versions.push({ savedAt: new Date().toISOString(), content });
-  versions = versions.slice(-3); // keep last 3
+  versions = versions.slice(-3);
   fs.writeFileSync(backupPath, JSON.stringify(versions, null, 2), "utf8");
 }
 
@@ -334,7 +432,6 @@ export function revertPromptSection(sectionName, versionIndex) {
   if (!fs.existsSync(backupPath)) throw new Error("No backup found");
   const versions = JSON.parse(fs.readFileSync(backupPath, "utf8"));
   if (!Array.isArray(versions) || versions.length === 0) throw new Error("Version not found");
-  // loadPromptSectionHistory returns versions reversed (newest first), so translate back to file order
   const fileIndex = versions.length - 1 - Number(versionIndex);
   if (fileIndex < 0 || fileIndex >= versions.length || !versions[fileIndex]) throw new Error("Version not found");
   return updatePromptSection(target, versions[fileIndex].content);
@@ -345,14 +442,11 @@ export function appendTrainingSessionEvent(event = {}) {
   const stamp = new Date();
   const day = stamp.toISOString().slice(0, 10);
   const filePath = path.join(sessionsDir, `SESSION-${day}.jsonl`);
-  const row = {
-    ts: stamp.toISOString(),
-    ...event,
-  };
+  const row = { ts: stamp.toISOString(), ...event };
   fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf8");
   return filePath;
 }
 
 export function getTrainingPaths() {
-  return { kbPath, sessionsDir, chatPromptsPath, backupsDir };
+  return { kbPath, sessionsDir, chatPromptsPath, backupsDir, gcs: USE_GCS ? `gs://${GCS_BUCKET}/${GCS_OBJECT}` : null };
 }
