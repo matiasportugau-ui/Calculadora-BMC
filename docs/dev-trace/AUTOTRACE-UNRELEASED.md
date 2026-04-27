@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `5715776` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `861d168` feat(agent): panel specs in tools + ML answers auto-save to KB
 - `38269e1` feat(kb): retrieval tracking + freshness TTL + health stats
 - `f0ea719` feat(kb): channel renderer + ML/WA overrides + health badges in admin
+- `3c6fc50` feat(kb): auto-generate ML overrides for all gap entries
 
 ## Fixes
 
@@ -223,6 +223,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d3afcfd` docs: autotrace sync specs+ml-kb
 - `0594c89` docs: autotrace sync KB GCS persistence
 - `3bf63c4` docs: autotrace sync kb health stats
+- `e4ec409` docs: autotrace sync channel renderer
 
 ## Tests
 
