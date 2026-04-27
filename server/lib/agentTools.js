@@ -232,6 +232,10 @@ function fmt2(n) {
   return typeof n === "number" ? +n.toFixed(2) : n;
 }
 
+function normalizeFamilia(f) {
+  return f ? String(f).toUpperCase().replace(/-/g, "_") : f;
+}
+
 function runTecho(techo, lista) {
   setListaPrecios(lista === "venta" ? "venta" : "web");
   const zonas = techo.zonas || [];
@@ -239,7 +243,7 @@ function runTecho(techo, lista) {
 
   const zonaResults = zonas.map((z) =>
     calcTechoCompleto({
-      familia: techo.familia,
+      familia: normalizeFamilia(techo.familia),
       espesor: Number(techo.espesor),
       largo: Number(z.largo),
       ancho: Number(z.ancho),
@@ -263,7 +267,7 @@ function runTecho(techo, lista) {
 function runPared(pared, lista) {
   setListaPrecios(lista === "venta" ? "venta" : "web");
   return calcParedCompleto({
-    familia: pared.familia,
+    familia: normalizeFamilia(pared.familia),
     espesor: Number(pared.espesor),
     alto: Number(pared.alto),
     perimetro: Number(pared.perimetro),
@@ -337,7 +341,8 @@ export async function executeTool(name, input, calcState = {}) {
     }
 
     if (name === "obtener_precio_panel") {
-      const { familia, espesor, lista } = input;
+      const { familia: familiaRaw, espesor, lista } = input;
+      const familia = normalizeFamilia(familiaRaw);
       const allPanels = { ...PANELS_TECHO, ...PANELS_PARED };
       const def = allPanels[familia];
       if (!def) return JSON.stringify({ error: `Familia "${familia}" no encontrada`, familias_disponibles: Object.keys(allPanels) });
@@ -455,12 +460,14 @@ export async function executeTool(name, input, calcState = {}) {
         ...(techo && {
           techo: {
             ...techo,
+            familia: techo.familia ? String(techo.familia).toUpperCase().replace(/-/g, "_") : undefined,
             espesor: techo.espesor ? String(techo.espesor) : undefined,
           },
         }),
         ...(pared && {
           pared: {
             ...pared,
+            familia: pared.familia ? String(pared.familia).toUpperCase().replace(/-/g, "_") : undefined,
             espesor: pared.espesor ? String(pared.espesor) : undefined,
           },
         }),
