@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-22 04:26:25 — `2a3be46` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 - 2026-04-22 04:37:56 — `54a641f` — fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - 2026-04-23 00:18:25 — `cc153d7` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 - 2026-04-23 01:36:03 — `8e90b56` — docs: dev-trace autolog update (2026-04-23)
@@ -222,3 +221,4 @@
 - 2026-04-27 04:25:59 — `8f27ed3` — docs: autotrace sync + version bump 2026-04-27 (session end)
 - 2026-04-27 04:27:41 — `8787ceb` — docs: autotrace stray commit doc 80102b1
 - 2026-04-27 04:27:50 — `5af4ae7` — docs: autotrace final sync main 2026-04-27
+- 2026-04-27 04:27:58 — `1c495db` — docs: autotrace flush (hook chain end)

@@ -202,6 +202,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8f27ed3` docs: autotrace sync + version bump 2026-04-27 (session end)
 - `8787ceb` docs: autotrace stray commit doc 80102b1
 - `5af4ae7` docs: autotrace final sync main 2026-04-27
+- `1c495db` docs: autotrace flush (hook chain end)
 
 ## Tests
 
