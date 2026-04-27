@@ -4,8 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `db62c95` feat: Enhance WhatsApp integration and add AUTOTRACE system
-- `d8455c0` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `fa2ba6a` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `553941e` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `57932df` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
@@ -84,6 +82,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0d80f5d` feat(ml-hub): inline edit for ML responses + auto-save to training KB
 - `8cdd219` feat(ml-hub): date/product column + previous-question context for AI
 - `ebeb68a` feat(agent-admin): add Agent Admin module for knowledge base management
+- `af27c62` feat(calculator): unify PDF export → handleClientePdf + simplify action bar
+- `df65ada` feat(pdf-layouts): add template system + E-soft-modern layout + dropdown selector
 
 ## Fixes
 
@@ -155,6 +155,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e85d190` fix(plan-import): update plan import handling and UI components
 - `4be9a18` fix(plan-import): update plan import handling and UI components
 - `6af2db3` fix(ml-oauth): add PKCE (S256) support to MercadoLibre OAuth flow
+- `6c85bdd` fix(vercel): proxy /api/* and /calc/* to Cloud Run
+- `2b4270b` fix(dashboard): restore 6 broken Sheets endpoints + harden config
 
 ## Documentation
 
