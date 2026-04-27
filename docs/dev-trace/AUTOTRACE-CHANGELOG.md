@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 05:16:32 — `13e4393` — chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
-- 2026-04-23 05:18:01 — `27139d5` — chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
 - 2026-04-23 05:20:14 — `543f747` — docs: dev-trace autolog update (2026-04-23)
 - 2026-04-23 05:33:25 — `6949ce3` — feat: add BmcAdminCotizacionesModule and integrate into App routing
 - 2026-04-23 05:35:30 — `3779d80` — docs: dev-trace autolog update (2026-04-23)
@@ -222,3 +220,5 @@
 - 2026-04-27 15:53:40 — `55be547` — fix(kb): persist training-kb.json to GCS on Cloud Run
 - 2026-04-27 16:06:30 — `473aa6c` — fix(pdf): add Cloud Run sandbox flags to puppeteer launch
 - 2026-04-27 16:12:53 — `38269e1` — feat(kb): retrieval tracking + freshness TTL + health stats
+- 2026-04-27 16:12:58 — `3bf63c4` — docs: autotrace sync kb health stats
+- 2026-04-27 16:16:43 — `f0ea719` — feat(kb): channel renderer + ML/WA overrides + health badges in admin

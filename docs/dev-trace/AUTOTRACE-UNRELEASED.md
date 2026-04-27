@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `773e0df` feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
 - `5715776` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `cdeef3c` feat(agent): unified KB brain for Chat, WA and ML channels
 - `861d168` feat(agent): panel specs in tools + ML answers auto-save to KB
 - `38269e1` feat(kb): retrieval tracking + freshness TTL + health stats
+- `f0ea719` feat(kb): channel renderer + ML/WA overrides + health badges in admin
 
 ## Fixes
 
@@ -222,6 +222,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0a79835` docs: autotrace sync unified agent brain
 - `d3afcfd` docs: autotrace sync specs+ml-kb
 - `0594c89` docs: autotrace sync KB GCS persistence
+- `3bf63c4` docs: autotrace sync kb health stats
 
 ## Tests
 
