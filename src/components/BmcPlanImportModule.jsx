@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, X, Loader, AlertTriangle, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { PANELS_TECHO } from "../data/constants.js";
@@ -30,23 +30,20 @@ function SimpleSelect({ id, value, options, onChange }) {
   const ref = useRef(null);
   const selected = options.find(o => String(o.value) === String(value));
 
-  const closeOnOutside = useCallback(e => {
-    if (ref.current && !ref.current.contains(e.target)) {
-      setOpen(false);
-      document.removeEventListener("mousedown", closeOnOutside);
-    }
-  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
 
   return (
     <div ref={ref} style={{ position: "relative", fontFamily: FONT }} id={id}>
       <button
         type="button"
-        onClick={() => {
-          const next = !open;
-          setOpen(next);
-          if (next) document.addEventListener("mousedown", closeOnOutside);
-          else document.removeEventListener("mousedown", closeOnOutside);
-        }}
+        onClick={() => setOpen(o => !o)}
         style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", borderRadius: 10, border: `1.5px solid ${open ? "#0071e3" : "#e5e5ea"}`, background: "#fff", cursor: "pointer", fontSize: 13, color: selected ? "#1d1d1f" : "#aab", fontFamily: FONT }}
       >
         <span>{selected ? selected.label : "Elegí…"}</span>
@@ -57,7 +54,7 @@ function SimpleSelect({ id, value, options, onChange }) {
           {options.map(opt => (
             <div
               key={opt.value}
-              onClick={() => { onChange(opt.value); setOpen(false); document.removeEventListener("mousedown", closeOnOutside); }}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", cursor: "pointer", fontSize: 13, background: String(opt.value) === String(value) ? "#EFF6FF" : "transparent", fontWeight: String(opt.value) === String(value) ? 600 : 400, color: "#1d1d1f" }}
             >
               <span>{opt.label}</span>
