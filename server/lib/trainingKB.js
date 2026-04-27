@@ -256,6 +256,7 @@ export function updateTrainingEntry(entryId, patch = {}) {
     goodAnswerML: patch.goodAnswerML !== undefined ? (patch.goodAnswerML ? String(patch.goodAnswerML).trim() : null) : prev.goodAnswerML ?? null,
     goodAnswerWA: patch.goodAnswerWA !== undefined ? (patch.goodAnswerWA ? String(patch.goodAnswerWA).trim() : null) : prev.goodAnswerWA ?? null,
     conflictWith: patch.conflictWith !== undefined ? (Array.isArray(patch.conflictWith) ? patch.conflictWith : []) : prev.conflictWith ?? [],
+    reviewDueAt: patch.reviewDueAt !== undefined ? (patch.reviewDueAt || null) : prev.reviewDueAt ?? null,
     updatedAt: new Date().toISOString(),
   };
   kb.entries[idx] = next;
@@ -424,6 +425,20 @@ export function bulkPatchEntries(ids, patch) {
   });
   saveTrainingKB(kb);
   return { ok: true, patchedCount, requestedCount: idSet.size };
+}
+
+/** Returns the actual entry objects for each health category (for the health panel UI). */
+export function getHealthEntries() {
+  const kb = loadTrainingKB();
+  const active = kb.entries.filter((e) => !e.archived && (e.status == null || e.status === "active"));
+  const now = new Date().toISOString();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+
+  return {
+    stale: active.filter((e) => e.reviewDueAt && e.reviewDueAt < now),
+    zeroRetrieval: active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && (e.createdAt || "") < thirtyDaysAgo),
+    mlGap: active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML),
+  };
 }
 
 export function getTrainingStats() {

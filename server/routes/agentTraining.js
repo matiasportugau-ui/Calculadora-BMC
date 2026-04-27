@@ -10,8 +10,10 @@ import {
   detectConflicts,
   findAllConflicts,
   findRelevantExamples,
+  getHealthEntries,
   getTrainingPaths,
   getTrainingStats,
+  hasSimilarQuestion,
   listPendingEntries,
   listTrainingEntries,
   loadPromptSectionHistory,
@@ -269,6 +271,77 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
     res.json({ ok: true, entry });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+// ─── Health panel ─────────────────────────────────────────────────────────────
+
+router.get("/agent/training-kb/health", requireDevModeAuth, (req, res) => {
+  try {
+    const { stale, zeroRetrieval, mlGap } = getHealthEntries();
+    res.json({ ok: true, stale, zeroRetrieval, mlGap });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+// Mark reviewed — resets reviewDueAt for next cycle
+router.post("/agent/training-kb/:id/mark-reviewed", requireDevModeAuth, (req, res) => {
+  try {
+    const FRESHNESS_DAYS = { sales: 30, product: 90, conversational: 180, math: null };
+    const all = listTrainingEntries();
+    const entry = all.find((e) => e.id === req.params.id);
+    if (!entry) return res.status(404).json({ ok: false, error: "Entry not found" });
+    const days = FRESHNESS_DAYS[entry.category] ?? null;
+    const newDue = days ? new Date(Date.now() + days * 86_400_000).toISOString() : null;
+    const updated = updateTrainingEntry(req.params.id, { reviewDueAt: newDue });
+    res.json({ ok: true, entry: updated });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+// ─── Import with dedup ────────────────────────────────────────────────────────
+
+router.post("/agent/training-kb/import", requireDevModeAuth, (req, res) => {
+  try {
+    const { entries } = req.body || {};
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({ ok: false, error: "entries array required" });
+    }
+    const MAX_IMPORT = 100;
+    const batch = entries.slice(0, MAX_IMPORT);
+    let imported = 0, skipped = 0;
+    const skippedItems = [];
+    const importedItems = [];
+
+    for (const item of batch) {
+      const question = String(item.question || "").trim();
+      const goodAnswer = String(item.goodAnswer || item.answer || "").trim();
+      if (!question || !goodAnswer) { skipped++; skippedItems.push({ question, reason: "missing fields" }); continue; }
+      if (hasSimilarQuestion(question, { threshold: 3 })) {
+        skipped++;
+        skippedItems.push({ question: question.slice(0, 60), reason: "similar entry exists" });
+        continue;
+      }
+      const entry = addTrainingEntry({
+        question,
+        goodAnswer,
+        badAnswer: item.badAnswer || "",
+        category: item.category || "conversational",
+        context: item.context || "",
+        permanent: !!item.permanent,
+        source: item.source || "import",
+        goodAnswerML: item.goodAnswerML || null,
+        goodAnswerWA: item.goodAnswerWA || null,
+      });
+      imported++;
+      importedItems.push({ id: entry.id, question: question.slice(0, 60) });
+    }
+
+    res.json({ ok: true, imported, skipped, total: batch.length, importedItems, skippedItems });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || String(err) });
   }
 });
 

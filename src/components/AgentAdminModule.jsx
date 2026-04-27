@@ -1211,6 +1211,137 @@ function ConfigTab() {
   );
 }
 
+// ── HEALTH TAB ───────────────────────────────────────────────────────────────
+function HealthTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({});
+  const [msg, setMsg] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const d = await apiFetch("/api/agent/training-kb/health");
+    setData(d);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function markReviewed(id) {
+    setBusy((b) => ({ ...b, [id]: true }));
+    const d = await apiFetch(`/api/agent/training-kb/${id}/mark-reviewed`, { method: "POST", body: JSON.stringify({}) });
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (d.ok) { setMsg("Marcada como revisada — próxima revisión en el período estándar"); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function archiveEntry(id) {
+    setBusy((b) => ({ ...b, [id]: "archive" }));
+    const d = await apiFetch(`/api/agent/train/${id}`, { method: "PUT", body: JSON.stringify({ status: "rejected" }) });
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (d.ok) { setMsg("Entrada archivada"); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function autoFixMLGaps() {
+    setGenerating(true);
+    const d = await apiFetch("/api/agent/training-kb/generate-ml-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGenerating(false);
+    if (d.ok) { setMsg(`✓ ${d.generated} overrides ML generados`); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 5000);
+  }
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Analizando KB…</div>;
+  if (!data?.ok) return <div style={{ padding: 32, color: "#dc2626" }}>Error cargando datos de salud.</div>;
+
+  const sections = [
+    {
+      key: "stale",
+      label: "Entradas vencidas",
+      color: "#dc2626",
+      hint: "reviewDueAt expirado — el contenido puede estar desactualizado.",
+      entries: data.stale || [],
+      action: (e) => (
+        <button onClick={() => markReviewed(e.id)} disabled={!!busy[e.id]}
+          style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {busy[e.id] ? "…" : "Marcar revisada"}
+        </button>
+      ),
+    },
+    {
+      key: "zeroRetrieval",
+      label: "Sin uso en 30 días",
+      color: "#6b7280",
+      hint: "Nunca fueron recuperadas — posiblemente irrelevantes o mal redactadas.",
+      entries: data.zeroRetrieval || [],
+      action: (e) => (
+        <button onClick={() => archiveEntry(e.id)} disabled={!!busy[e.id]}
+          style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {busy[e.id] === "archive" ? "…" : "Archivar"}
+        </button>
+      ),
+    },
+    {
+      key: "mlGap",
+      label: "Gap canal ML",
+      color: "#d97706",
+      hint: "goodAnswer >350 chars sin override ML — se trunca automáticamente.",
+      entries: data.mlGap || [],
+      action: null,
+      headerAction: data.mlGap?.length > 0 ? (
+        <button onClick={autoFixMLGaps} disabled={generating}
+          style={{ padding: "5px 14px", borderRadius: 7, border: "none", background: "#d97706", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {generating ? "Generando…" : `⚡ Auto-generar ${data.mlGap.length} overrides`}
+        </button>
+      ) : null,
+    },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {msg && (
+        <div style={{ padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>{msg}</div>
+      )}
+      {sections.every((s) => s.entries.length === 0) && (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
+          KB en buen estado — sin entradas vencidas, sin gaps ni entradas sin uso.
+        </div>
+      )}
+      {sections.map((sec) => sec.entries.length === 0 ? null : (
+        <div key={sec.key}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <span style={{ fontWeight: 700, fontSize: 14, color: sec.color }}>{sec.label}</span>
+              <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>({sec.entries.length})</span>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sec.hint}</div>
+            </div>
+            {sec.headerAction}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {sec.entries.map((e) => (
+              <div key={e.id} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.navy, marginBottom: 2 }}>{e.question}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>
+                    {sec.key === "stale" && `Vence: ${e.reviewDueAt?.slice(0, 10)} | cat: ${e.category}`}
+                    {sec.key === "zeroRetrieval" && `Creada: ${e.createdAt?.slice(0, 10)} | src: ${e.source || "manual"}`}
+                    {sec.key === "mlGap" && `${(e.goodAnswer || "").length} chars | cat: ${e.category}`}
+                  </div>
+                </div>
+                {sec.action && sec.action(e)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── AUTO-LEARN QUEUE TAB ─────────────────────────────────────────────────────
 function AutoLearnTab() {
   const [entries, setEntries] = useState([]);
@@ -1392,6 +1523,7 @@ const TABS = [
   { id: "conversations", label: "Conversaciones", icon: "💬" },
   { id: "stats", label: "Estadísticas", icon: "📊" },
   { id: "analytics", label: "Analytics IA", icon: "🔍" },
+  { id: "health", label: "Salud KB", icon: "🩺" },
   { id: "autolearn", label: "Cola IA", icon: "🧠" },
   { id: "conflicts", label: "Conflictos", icon: "⚡" },
   { id: "config", label: "Configuración", icon: "⚙️" },
@@ -1474,6 +1606,7 @@ export default function AgentAdminModule() {
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}
           {tab === "analytics" && <AnalyticsTab />}
+          {tab === "health" && <HealthTab />}
           {tab === "autolearn" && <AutoLearnTab />}
           {tab === "conflicts" && <ConflictsTab />}
           {tab === "config" && <ConfigTab />}
