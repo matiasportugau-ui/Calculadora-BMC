@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Design D — Construction Bold · BMC Uruguay</title>
+<style>
+@page { size: A4; margin: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --orange: #F97316;
+  --orange-dark: #EA580C;
+  --orange-light: #FFF7ED;
+  --orange-border: #FED7AA;
+  --charcoal: #1C1917;
+  --charcoal2: #292524;
+  --gray: #78716C;
+  --gray-light: #F5F4F3;
+  --border: #E7E5E4;
+  --white: #FFFFFF;
+  --green: #16A34A;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-size: 9.5pt;
+  color: var(--charcoal);
+  margin: 0; background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media screen {
+  html { background: #2C2620; min-height: 100%; padding: 40px 20px 60px; }
+  body { max-width: 794px; margin: 0 auto; box-shadow: 0 8px 60px rgba(0,0,0,0.4); }
+}
+
+/* ─── ORANGE HEADER BAND ─── */
+.hdr {
+  background: var(--orange);
+  padding: 0;
+}
+.hdr-top {
+  padding: 14px 24px 12px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.logo-area {
+  display: flex; align-items: center; gap: 14px;
+}
+.logo-box {
+  width: 44px; height: 44px; background: var(--white); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18pt; font-weight: 900; color: var(--orange);
+  line-height: 1; letter-spacing: -0.05em;
+}
+.logo-text {}
+.logo-name {
+  font-size: 16pt; font-weight: 900; color: var(--white);
+  letter-spacing: -0.01em; line-height: 1;
+}
+.logo-tagline {
+  font-size: 7.5pt; color: rgba(255,255,255,0.8);
+  font-weight: 600; margin-top: 2px; letter-spacing: 0.05em;
+}
+.hdr-ref { text-align: right; }
+.ref-label {
+  font-size: 7pt; font-weight: 700; color: rgba(255,255,255,0.7);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 2px;
+}
+.ref-num { font-size: 13pt; font-weight: 900; color: var(--white); }
+.ref-date { font-size: 8pt; color: rgba(255,255,255,0.75); margin-top: 2px; }
+
+/* charcoal sub-band */
+.hdr-sub {
+  background: var(--charcoal2); padding: 7px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.hdr-sub .client-name {
+  font-size: 9pt; font-weight: 700; color: var(--white); letter-spacing: 0.02em;
+}
+.hdr-sub .client-meta {
+  font-size: 7.5pt; color: rgba(255,255,255,0.55); margin-top: 2px;
+}
+.hdr-sub .scope-badge {
+  background: var(--orange); color: var(--white); font-size: 7.5pt;
+  font-weight: 800; padding: 3px 10px; border-radius: 4px;
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+
+/* ─── KPI STRIP ─────────────────────────────────────── */
+.kpi-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-bottom: 3px solid var(--orange);
+}
+.kpi {
+  padding: 12px 16px; border-right: 1px solid var(--border); text-align: center;
+}
+.kpi:last-child { border-right: none; }
+.kpi .kv {
+  font-size: 18pt; font-weight: 900; color: var(--charcoal); line-height: 1;
+  letter-spacing: -0.02em;
+}
+.kpi .kv.orange { color: var(--orange); }
+.kpi .kl {
+  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--gray); margin-top: 3px;
+}
+
+/* ─── BODY ─────────────────────────────────────────── */
+.body-wrap { padding: 14px 24px 20px; }
+
+/* section header */
+.sec-hdr {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px; margin-top: 12px;
+}
+.sec-hdr:first-child { margin-top: 0; }
+.sec-icon {
+  width: 24px; height: 24px; background: var(--charcoal); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9pt; font-weight: 900; color: var(--orange);
+}
+.sec-title { font-size: 8pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--charcoal2); }
+
+/* BOM table */
+table.bom {
+  width: 100%; border-collapse: collapse; font-size: 8.5pt;
+}
+.bom thead th {
+  background: var(--charcoal); color: var(--white);
+  padding: 5px 8px; font-size: 7pt; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  text-align: left;
+}
+.bom thead th.r { text-align: right; }
+.bom thead th.c { text-align: center; }
+.bom .grp td {
+  background: var(--orange-light); border-top: 2px solid var(--orange-border);
+  border-bottom: 1px solid var(--orange-border);
+  padding: 4px 8px; font-size: 7.5pt; font-weight: 800;
+  color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.bom .grp td.tot { text-align: right; font-variant-numeric: tabular-nums; }
+.bom .item td {
+  padding: 3.5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle;
+}
+.bom .item:nth-child(even) td { background: var(--gray-light); }
+.bom .item td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.bom .item td.c { text-align: center; color: var(--gray); }
+.bom .item td.amt { font-weight: 700; }
+
+/* ─── TOTALS ─────────────────────────────────────── */
+.totals-block {
+  display: flex; justify-content: flex-end; margin-top: 12px;
+}
+.totals-inner { min-width: 280px; }
+.t-row { display: flex; justify-content: space-between; padding: 3px 0; }
+.t-row .tl { color: var(--gray); font-size: 9pt; }
+.t-row .tv { font-variant-numeric: tabular-nums; font-size: 9pt; }
+.t-divider { border-top: 1px solid var(--border); margin: 6px 0; }
+.t-final {
+  background: var(--charcoal); padding: 10px 14px; border-radius: 6px;
+  display: flex; justify-content: space-between; align-items: center; margin-top: 6px;
+}
+.t-final .fl { font-size: 9pt; font-weight: 800; color: rgba(255,255,255,0.7); letter-spacing: 0.08em; text-transform: uppercase; }
+.t-final .fv { font-size: 18pt; font-weight: 900; color: var(--orange); font-variant-numeric: tabular-nums; line-height: 1; }
+
+/* ─── CONDITIONS ─────────────────────────────────── */
+.cond-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;
+}
+.cond-card {
+  border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+  border-left: 4px solid var(--charcoal);
+}
+.cond-card.alert-card { border-left-color: var(--orange); }
+.cc-lbl {
+  font-size: 6.5pt; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--gray); margin-bottom: 3px;
+}
+.cc-val { font-size: 9pt; font-weight: 600; color: var(--charcoal); line-height: 1.3; }
+.cc-val.alert { color: var(--orange-dark); }
+
+/* ─── BANK + FOOTER ─────────────────────────────── */
+.bottom-strip {
+  margin-top: 14px; display: flex; gap: 12px; align-items: stretch;
+}
+.bank-card {
+  flex: 1; background: var(--gray-light); border-radius: 6px; padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+.bank-card .bc-title {
+  font-size: 6.5pt; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--gray); margin-bottom: 6px;
+}
+.bank-fields { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.bank-field .bf-lbl { font-size: 6.5pt; color: var(--gray); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1px; }
+.bank-field .bf-val { font-size: 9pt; font-weight: 700; color: var(--charcoal); }
+
+.contact-card {
+  width: 130px; background: var(--charcoal); border-radius: 6px; padding: 10px 12px;
+  display: flex; flex-direction: column; justify-content: center; text-align: center;
+}
+.contact-card .ct-label { font-size: 6.5pt; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 4px; }
+.contact-card .ct-phone { font-size: 13pt; font-weight: 900; color: var(--orange); }
+.contact-card .ct-web { font-size: 7pt; color: rgba(255,255,255,0.5); margin-top: 3px; }
+
+/* footer bar */
+.footer-bar {
+  background: var(--orange); padding: 5px 24px;
+  display: flex; justify-content: space-between;
+}
+.footer-bar span { font-size: 7pt; color: rgba(255,255,255,0.8); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo-area">
+      <div class="logo-box">B</div>
+      <div class="logo-text">
+        <div class="logo-name">BMC Uruguay</div>
+        <div class="logo-tagline">Panelin · Aislamientos industriales</div>
+      </div>
+    </div>
+    <div class="hdr-ref">
+      <div class="ref-label">Cotización</div>
+      <div class="ref-num">BMC-2026-0427-01</div>
+      <div class="ref-date">27 de abril de 2026</div>
+    </div>
+  </div>
+  <div class="hdr-sub">
+    <div>
+      <div class="client-name">Constructora Sol del Este S.A.</div>
+      <div class="client-meta">Galpón almacenamiento · Ruta 9 Km 110, Maldonado</div>
+    </div>
+    <div class="scope-badge">TECHO · ISODEC EPS 100mm</div>
+  </div>
+</div>
+
+<!-- ─── KPI STRIP ─── -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kv">138.88</div>
+    <div class="kl">m² cubiertos</div>
+  </div>
+  <div class="kpi">
+    <div class="kv">18</div>
+    <div class="kl">paneles</div>
+  </div>
+  <div class="kpi">
+    <div class="kv">3</div>
+    <div class="kl">zonas</div>
+  </div>
+  <div class="kpi">
+    <div class="kv orange">$9,339</div>
+    <div class="kl">total USD</div>
+  </div>
+</div>
+
+<!-- ─── BODY ─── -->
+<div class="body-wrap">
+
+  <!-- BOM -->
+  <div class="sec-hdr">
+    <div class="sec-icon">☰</div>
+    <div class="sec-title">Lista de materiales y servicios</div>
+  </div>
+  <table class="bom">
+    <thead>
+      <tr>
+        <th style="width:44%">Descripción</th>
+        <th class="r" style="width:9%">Cant.</th>
+        <th class="c" style="width:8%">Unid.</th>
+        <th class="r" style="width:13%">P.U. USD</th>
+        <th class="r" style="width:14%">Total USD</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="grp"><td>Paneles aislantes</td><td colspan="3"></td><td class="tot">$6,564.02</td></tr>
+      <tr class="item"><td>ISODEC EPS 100mm · 18 paneles (3 zonas)</td><td class="r">138.88</td><td class="c">m²</td><td class="r">47.26</td><td class="r amt">$6,564.02</td></tr>
+
+      <tr class="grp"><td>Sistema de fijación</td><td colspan="3"></td><td class="tot">$304.79</td></tr>
+      <tr class="item"><td>Varilla roscada 3/8" (1m)</td><td class="r">20</td><td class="c">unid</td><td class="r">3.68</td><td class="r amt">$73.64</td></tr>
+      <tr class="item"><td>Tuerca 3/8" galvanizada</td><td class="r">190</td><td class="c">unid</td><td class="r">0.08</td><td class="r amt">$15.96</td></tr>
+      <tr class="item"><td>Arandela carrocero 3/8"</td><td class="r">95</td><td class="c">unid</td><td class="r">0.66</td><td class="r amt">$62.51</td></tr>
+      <tr class="item"><td>Arandela plana 3/8"</td><td class="r">95</td><td class="c">unid</td><td class="r">0.10</td><td class="r amt">$9.04</td></tr>
+      <tr class="item"><td>Tortuga PVC (arandela PP)</td><td class="r">95</td><td class="c">unid</td><td class="r">1.51</td><td class="r amt">$143.64</td></tr>
+
+      <tr class="grp"><td>Selladores y cintas</td><td colspan="3"></td><td class="tot">$506.25</td></tr>
+      <tr class="item"><td>Silicona Bromplast 8×600</td><td class="r">16</td><td class="c">unid</td><td class="r">11.24</td><td class="r amt">$179.88</td></tr>
+      <tr class="item"><td>Silicona neutra 300 ml</td><td class="r">32</td><td class="c">unid</td><td class="r">8.40</td><td class="r amt">$268.80</td></tr>
+      <tr class="item"><td>Cinta Butilo 2mm×15mm×22.5m</td><td class="r">3</td><td class="c">unid</td><td class="r">19.19</td><td class="r amt">$57.57</td></tr>
+
+      <tr class="grp"><td>Servicios logísticos</td><td colspan="3"></td><td class="tot">$280.00</td></tr>
+      <tr class="item"><td>Flete con entrega en obra</td><td class="r">1</td><td class="c">servicio</td><td class="r">280.00</td><td class="r amt">$280.00</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals-block">
+    <div class="totals-inner">
+      <div class="t-row"><span class="tl">Subtotal sin IVA</span><span class="tv">$7,655.06</span></div>
+      <div class="t-row"><span class="tl">IVA 22%</span><span class="tv">$1,684.11</span></div>
+      <div class="t-final"><span class="fl">Total USD</span><span class="fv">$9,339.17</span></div>
+    </div>
+  </div>
+
+  <!-- Conditions -->
+  <div class="cond-grid">
+    <div class="cond-card">
+      <div class="cc-lbl">Plazo de entrega</div>
+      <div class="cc-val">10 a 45 días hábiles según disponibilidad de producción</div>
+    </div>
+    <div class="cond-card alert-card">
+      <div class="cc-lbl">Validez de oferta</div>
+      <div class="cc-val alert">Solo 10 días desde la fecha de emisión</div>
+    </div>
+    <div class="cond-card alert-card">
+      <div class="cc-lbl">Condición de pago</div>
+      <div class="cc-val alert">60% seña al confirmar · 40% previo a retiro</div>
+    </div>
+    <div class="cond-card">
+      <div class="cc-lbl">Moneda e impuestos</div>
+      <div class="cc-val">USD · IVA 22% incluido en el total</div>
+    </div>
+  </div>
+
+  <!-- Bank + Contact -->
+  <div class="bottom-strip">
+    <div class="bank-card">
+      <div class="bc-title">Datos bancarios — Metalog SAS · RUT 120403430012</div>
+      <div class="bank-fields">
+        <div class="bank-field"><div class="bf-lbl">Banco</div><div class="bf-val">BROU</div></div>
+        <div class="bank-field"><div class="bf-lbl">Cuenta USD</div><div class="bf-val">110520638-00002</div></div>
+        <div class="bank-field"><div class="bf-lbl">Dirección</div><div class="bf-val">Ruta 9 Km 110, Maldonado</div></div>
+      </div>
+    </div>
+    <div class="contact-card">
+      <div class="ct-label">Consultas</div>
+      <div class="ct-phone">092 663 245</div>
+      <div class="ct-web">bmcuruguay.com.uy</div>
+    </div>
+  </div>
+
+</div><!-- /body-wrap -->
+
+<!-- ─── FOOTER BAR ─── -->
+<div class="footer-bar">
+  <span>bmcuruguay.com.uy · Metalog SAS</span>
+  <span>Página 1 / 2</span>
+</div>
+
+</body>
+</html>

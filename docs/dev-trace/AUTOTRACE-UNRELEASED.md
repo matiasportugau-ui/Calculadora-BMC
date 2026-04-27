@@ -184,6 +184,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0e80f38` docs(security): document WHATSAPP_APP_SECRET gap + expand permission allowlist
 - `3a5615c` docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
 - `8cc9f80` docs(state): end-of-session sync 2026-04-24
+- `21d0fde` docs: autotrace + kb sync 2026-04-27
 
 ## Tests
 

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Design C — Swiss Minimalist · BMC Uruguay</title>
+<style>
+@page { size: A4; margin: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #0A0A0A;
+  --gray-800: #1F1F1F;
+  --gray-500: #6B6B6B;
+  --gray-200: #E8E8E8;
+  --gray-100: #F5F5F5;
+  --red: #C0392B;
+  --white: #FFFFFF;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  font-size: 9.5pt;
+  color: var(--black);
+  margin: 0; background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media screen {
+  html { background: #EBEBEB; min-height: 100%; padding: 40px 20px 60px; }
+  body { max-width: 794px; margin: 0 auto; box-shadow: 0 4px 40px rgba(0,0,0,0.15); }
+}
+
+/* ─── RED TOP RULE ─── */
+.top-rule { height: 4px; background: var(--red); }
+
+/* ─── HEADER ─────────────────────────────────────────── */
+.hdr { padding: 28px 36px 20px; border-bottom: 1px solid var(--gray-200); }
+.hdr-inner { display: flex; justify-content: space-between; align-items: flex-end; }
+.logo {
+  font-size: 36pt; font-weight: 900; color: var(--black);
+  letter-spacing: -0.03em; line-height: 0.9;
+}
+.logo-country {
+  font-size: 8pt; font-weight: 400; color: var(--gray-500);
+  letter-spacing: 0.25em; text-transform: uppercase; margin-top: 4px;
+}
+.hdr-meta { text-align: right; }
+.meta-label {
+  font-size: 7pt; font-weight: 700; color: var(--red);
+  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 3px;
+}
+.meta-ref { font-size: 11pt; font-weight: 700; color: var(--black); }
+.meta-date { font-size: 8pt; color: var(--gray-500); margin-top: 2px; }
+
+/* ─── CLIENT / PROJECT ─────────────────────────────────── */
+.client-section { padding: 16px 36px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; border-bottom: 1px solid var(--gray-200); }
+.cs-item {}
+.cs-lbl { font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gray-500); margin-bottom: 3px; }
+.cs-val { font-size: 9pt; color: var(--black); font-weight: 500; line-height: 1.3; }
+
+/* ─── SCOPE LINE ─────────────────────────────────────── */
+.scope-line { padding: 10px 36px; background: var(--gray-100); border-bottom: 1px solid var(--gray-200); }
+.scope-line span:first-child { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gray-500); margin-right: 12px; }
+.scope-line span:last-child { font-size: 9pt; color: var(--black); font-weight: 500; }
+
+/* ─── BOM ─────────────────────────────────────────────── */
+.bom-section { padding: 16px 36px; }
+.sec-title {
+  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.25em; color: var(--gray-500);
+  margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 2px solid var(--black);
+}
+
+table.bom { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.bom thead th {
+  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--gray-500);
+  padding: 4px 0; text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+.bom thead th.r { text-align: right; }
+.bom thead th.c { text-align: center; }
+.bom .grp td {
+  padding: 8px 0 3px;
+  font-size: 7pt; font-weight: 700; color: var(--gray-500);
+  text-transform: uppercase; letter-spacing: 0.15em;
+  border-top: none;
+}
+.bom .grp td.tot { text-align: right; }
+.bom .item td {
+  padding: 4px 0; border-bottom: 1px solid var(--gray-200);
+  vertical-align: middle; color: var(--black);
+}
+.bom .item td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.bom .item td.c { text-align: center; color: var(--gray-500); }
+.bom .item td.name { }
+.bom .item td.amt { font-weight: 600; }
+
+/* ─── TOTALS ─────────────────────────────────────────── */
+.totals-section { padding: 0 36px 14px; display: flex; justify-content: flex-end; }
+.totals-inner { min-width: 260px; }
+.total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 9pt; }
+.total-row .tl { color: var(--gray-500); }
+.total-row .tv { font-variant-numeric: tabular-nums; }
+.total-divider { border-top: 1px solid var(--gray-200); margin: 6px 0; }
+.total-final {
+  display: flex; justify-content: space-between; padding: 8px 0;
+  border-top: 3px solid var(--black); border-bottom: 1px solid var(--black);
+}
+.total-final .tl { font-size: 11pt; font-weight: 900; color: var(--black); }
+.total-final .tv { font-size: 16pt; font-weight: 900; color: var(--red); font-variant-numeric: tabular-nums; }
+
+/* ─── CONDITIONS ─────────────────────────────────────── */
+.conditions-section { padding: 14px 36px 12px; border-top: 1px solid var(--gray-200); display: grid; grid-template-columns: 1fr 1fr; gap: 12px 32px; }
+.cond-item .ci-lbl {
+  font-size: 6.5pt; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.2em; color: var(--gray-500); margin-bottom: 3px;
+}
+.cond-item .ci-val { font-size: 9pt; color: var(--black); font-weight: 500; }
+.cond-item .ci-val.alert { color: var(--red); font-weight: 600; }
+
+/* ─── BANK ─────────────────────────────────────────── */
+.bank-section { padding: 12px 36px 0; border-top: 1px solid var(--gray-200); }
+.bank-label { font-size: 6.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gray-500); margin-bottom: 6px; }
+.bank-fields { display: flex; gap: 32px; }
+.bank-field .bf-lbl { font-size: 6.5pt; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1px; }
+.bank-field .bf-val { font-size: 9pt; font-weight: 600; color: var(--black); }
+
+/* ─── FOOTER ─────────────────────────────────────────── */
+.footer {
+  margin-top: 20px; padding: 10px 36px;
+  border-top: 1px solid var(--gray-200);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer-left { font-size: 7pt; color: var(--gray-500); }
+.footer-right { font-size: 7pt; color: var(--gray-500); }
+.footer-right strong { color: var(--black); }
+</style>
+</head>
+<body>
+
+<!-- ─── TOP ACCENT ─── -->
+<div class="top-rule"></div>
+
+<!-- ─── HEADER ─── -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div>
+      <div class="logo">BMC</div>
+      <div class="logo-country">Uruguay · Metalog SAS</div>
+    </div>
+    <div class="hdr-meta">
+      <div class="meta-label">Cotización</div>
+      <div class="meta-ref">BMC-2026-0427-01</div>
+      <div class="meta-date">27 de abril de 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CLIENT ─── -->
+<div class="client-section">
+  <div class="cs-item">
+    <div class="cs-lbl">Cliente</div>
+    <div class="cs-val">Constructora Sol del Este S.A.</div>
+  </div>
+  <div class="cs-item">
+    <div class="cs-lbl">Obra</div>
+    <div class="cs-val">Galpón almacenamiento<br>Maldonado</div>
+  </div>
+  <div class="cs-item">
+    <div class="cs-lbl">Contacto</div>
+    <div class="cs-val">+598 92 555 010<br>Ruta 9 Km 110</div>
+  </div>
+</div>
+
+<!-- ─── SCOPE ─── -->
+<div class="scope-line">
+  <span>Alcance</span>
+  <span>ISODEC EPS · 100 mm · Color Blanco · Techo · 3 zonas · 138.88 m²</span>
+</div>
+
+<!-- ─── BOM ─── -->
+<div class="bom-section">
+  <div class="sec-title">Lista de materiales y servicios</div>
+  <table class="bom">
+    <thead>
+      <tr>
+        <th style="width:46%">Descripción</th>
+        <th class="r" style="width:9%">Cant.</th>
+        <th class="c" style="width:8%">Unid.</th>
+        <th class="r" style="width:13%">P.U. USD</th>
+        <th class="r" style="width:14%">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="grp"><td>Paneles</td><td colspan="3"></td><td class="tot">$6,564.02</td></tr>
+      <tr class="item"><td class="name">ISODEC EPS 100mm · 18 paneles (3 zonas)</td><td class="r">138.88</td><td class="c">m²</td><td class="r">47.26</td><td class="r amt">$6,564.02</td></tr>
+
+      <tr class="grp"><td>Fijaciones</td><td colspan="3"></td><td class="tot">$304.79</td></tr>
+      <tr class="item"><td class="name">Varilla roscada 3/8" (1m)</td><td class="r">20</td><td class="c">unid</td><td class="r">3.68</td><td class="r amt">$73.64</td></tr>
+      <tr class="item"><td class="name">Tuerca 3/8" galvanizada</td><td class="r">190</td><td class="c">unid</td><td class="r">0.08</td><td class="r amt">$15.96</td></tr>
+      <tr class="item"><td class="name">Arandela carrocero 3/8"</td><td class="r">95</td><td class="c">unid</td><td class="r">0.66</td><td class="r amt">$62.51</td></tr>
+      <tr class="item"><td class="name">Arandela plana 3/8"</td><td class="r">95</td><td class="c">unid</td><td class="r">0.10</td><td class="r amt">$9.04</td></tr>
+      <tr class="item"><td class="name">Tortuga PVC (arandela PP)</td><td class="r">95</td><td class="c">unid</td><td class="r">1.51</td><td class="r amt">$143.64</td></tr>
+
+      <tr class="grp"><td>Selladores</td><td colspan="3"></td><td class="tot">$506.25</td></tr>
+      <tr class="item"><td class="name">Silicona Bromplast 8×600</td><td class="r">16</td><td class="c">unid</td><td class="r">11.24</td><td class="r amt">$179.88</td></tr>
+      <tr class="item"><td class="name">Silicona neutra 300 ml</td><td class="r">32</td><td class="c">unid</td><td class="r">8.40</td><td class="r amt">$268.80</td></tr>
+      <tr class="item"><td class="name">Cinta Butilo 2mm×15mm×22.5m</td><td class="r">3</td><td class="c">unid</td><td class="r">19.19</td><td class="r amt">$57.57</td></tr>
+
+      <tr class="grp"><td>Servicios</td><td colspan="3"></td><td class="tot">$280.00</td></tr>
+      <tr class="item"><td class="name">Flete con entrega en obra</td><td class="r">1</td><td class="c">servicio</td><td class="r">280.00</td><td class="r amt">$280.00</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ─── TOTALS ─── -->
+<div class="totals-section">
+  <div class="totals-inner">
+    <div class="total-row"><span class="tl">Subtotal s/IVA</span><span class="tv">$7,655.06</span></div>
+    <div class="total-row"><span class="tl">IVA 22%</span><span class="tv">$1,684.11</span></div>
+    <div class="total-final"><span class="tl">Total USD</span><span class="tv">$9,339.17</span></div>
+  </div>
+</div>
+
+<!-- ─── CONDITIONS ─── -->
+<div class="conditions-section">
+  <div class="cond-item">
+    <div class="ci-lbl">Plazo de entrega</div>
+    <div class="ci-val">10 a 45 días hábiles</div>
+  </div>
+  <div class="cond-item">
+    <div class="ci-lbl">Validez de oferta</div>
+    <div class="ci-val alert">10 días desde emisión</div>
+  </div>
+  <div class="cond-item">
+    <div class="ci-lbl">Condición de pago</div>
+    <div class="ci-val alert">Seña 60% · Saldo 40% previo retiro</div>
+  </div>
+  <div class="cond-item">
+    <div class="ci-lbl">Moneda</div>
+    <div class="ci-val">Dólares americanos (USD) · IVA incluido</div>
+  </div>
+</div>
+
+<!-- ─── BANK ─── -->
+<div class="bank-section">
+  <div class="bank-label">Datos bancarios</div>
+  <div class="bank-fields">
+    <div class="bank-field"><div class="bf-lbl">Titular</div><div class="bf-val">Metalog SAS</div></div>
+    <div class="bank-field"><div class="bf-lbl">RUT</div><div class="bf-val">120403430012</div></div>
+    <div class="bank-field"><div class="bf-lbl">Banco · Cuenta USD</div><div class="bf-val">BROU · 110520638-00002</div></div>
+    <div class="bank-field"><div class="bf-lbl">Consultas</div><div class="bf-val">092 663 245</div></div>
+  </div>
+</div>
+
+<!-- ─── FOOTER ─── -->
+<div class="footer">
+  <div class="footer-left">bmcuruguay.com.uy · 092 663 245 · info@bmcuruguay.com.uy</div>
+  <div class="footer-right"><strong>Pág. 1</strong> / 2</div>
+</div>
+
+</body>
+</html>

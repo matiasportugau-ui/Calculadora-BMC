@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>PDF Design Options — BMC Uruguay</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  background: #111; color: #eee; padding: 40px 32px 60px; min-height: 100vh;
+}
+h1 { font-size: 22pt; font-weight: 900; color: #fff; margin-bottom: 4px; }
+.subtitle { font-size: 11pt; color: #888; margin-bottom: 36px; }
+.subtitle strong { color: #ccc; }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; }
+
+.design-card {
+  background: #1a1a1a; border-radius: 10px; overflow: hidden;
+  border: 1px solid #2a2a2a; transition: border-color 0.2s;
+}
+.design-card:hover { border-color: #555; }
+
+.card-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #2a2a2a;
+  display: flex; align-items: center; gap: 12px;
+}
+.design-letter {
+  width: 34px; height: 34px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14pt; font-weight: 900; flex-shrink: 0;
+}
+.la { background: #001B3D; color: #C9A84C; }
+.lb { background: #0A1628; color: #00B4D8; }
+.lc { background: #0A0A0A; color: #C0392B; }
+.ld { background: #F97316; color: #fff; }
+
+.card-title { font-size: 13pt; font-weight: 800; color: #fff; }
+.card-desc { font-size: 8pt; color: #888; margin-top: 2px; }
+
+.preview-wrap {
+  position: relative; overflow: hidden;
+  background: #222;
+  height: 380px;
+  cursor: pointer;
+}
+.preview-wrap iframe {
+  width: 794px; height: 1123px;
+  border: none;
+  transform-origin: top left;
+  transform: scale(0.435);
+  pointer-events: none;
+}
+.preview-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(17,17,17,0.6) 100%);
+}
+
+.card-footer {
+  padding: 12px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.palette { display: flex; gap: 6px; }
+.swatch {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.open-btn {
+  display: inline-block; text-decoration: none;
+  padding: 6px 14px; border-radius: 6px; font-size: 8.5pt; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  background: #2a2a2a; color: #fff; border: 1px solid #3a3a3a;
+  cursor: pointer; transition: background 0.15s;
+}
+.open-btn:hover { background: #3a3a3a; }
+
+.verdict { padding: 0 16px 14px; font-size: 8.5pt; color: #888; line-height: 1.5; }
+
+/* vs strip */
+.vs-strip {
+  display: flex; gap: 0; margin-top: 40px; border-radius: 8px; overflow: hidden;
+  border: 1px solid #2a2a2a;
+}
+.vs-cell { flex: 1; padding: 12px 16px; border-right: 1px solid #2a2a2a; }
+.vs-cell:last-child { border-right: none; }
+.vs-cell .vc-design { font-size: 7pt; font-weight: 800; color: #666; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 4px; }
+.vs-cell .vc-name { font-size: 10pt; font-weight: 800; color: #fff; margin-bottom: 6px; }
+.vs-cell ul { font-size: 8pt; color: #888; padding-left: 14px; line-height: 1.6; }
+.vs-cell ul li.pro { color: #7EE787; }
+.vs-cell ul li.con { color: #F87171; }
+
+.note { margin-top: 28px; font-size: 9pt; color: #666; line-height: 1.6; border-left: 3px solid #333; padding-left: 14px; }
+.note strong { color: #aaa; }
+</style>
+</head>
+<body>
+
+<h1>PDF Design Options · BMC Uruguay</h1>
+<p class="subtitle">4 propuestas de diseño profesional · Página 1 (cotización/BOM) · <strong>Haga clic en "Abrir" para ver a escala real</strong></p>
+
+<div class="grid">
+
+  <!-- A -->
+  <div class="design-card">
+    <div class="card-header">
+      <div class="design-letter la">A</div>
+      <div>
+        <div class="card-title">Executive Dark</div>
+        <div class="card-desc">Navy profundo · acento oro · tabla financiera</div>
+      </div>
+    </div>
+    <div class="preview-wrap" onclick="window.open('A-executive-dark.html','_blank')">
+      <iframe src="A-executive-dark.html" scrolling="no" tabindex="-1"></iframe>
+      <div class="preview-overlay"></div>
+    </div>
+    <div class="verdict">
+      Estética premium tipo Goldman Sachs / KPMG. El total aparece sobre fondo navy oscuro con cifra en oro. Proyecta solidez financiera y confianza máxima. Ideal para obras grandes o clientes corporativos.
+    </div>
+    <div class="card-footer">
+      <div class="palette">
+        <div class="swatch" style="background:#001B3D" title="Navy"></div>
+        <div class="swatch" style="background:#C9A84C" title="Gold"></div>
+        <div class="swatch" style="background:#F7F8FA" title="Gray-50"></div>
+      </div>
+      <a class="open-btn" href="A-executive-dark.html" target="_blank">Abrir →</a>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="design-card">
+    <div class="card-header">
+      <div class="design-letter lb">B</div>
+      <div>
+        <div class="card-title">Blueprint Technical</div>
+        <div class="card-desc">Estética de plano técnico · cuadro de rotulación</div>
+      </div>
+    </div>
+    <div class="preview-wrap" onclick="window.open('B-blueprint.html','_blank')">
+      <iframe src="B-blueprint.html" scrolling="no" tabindex="-1"></iframe>
+      <div class="preview-overlay"></div>
+    </div>
+    <div class="verdict">
+      Inspirado en planos de ingeniería/AutoCAD: borde de dibujo, cuadro de rotulación (title block), fuente monoespaciada, ítems numerados por sección. Transmite rigor técnico. Diferenciador fuerte en un mercado de construcción industrial.
+    </div>
+    <div class="card-footer">
+      <div class="palette">
+        <div class="swatch" style="background:#0A1628" title="Blueprint"></div>
+        <div class="swatch" style="background:#00B4D8" title="Cyan"></div>
+        <div class="swatch" style="background:#E8F0F8" title="Light blue"></div>
+      </div>
+      <a class="open-btn" href="B-blueprint.html" target="_blank">Abrir →</a>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="design-card">
+    <div class="card-header">
+      <div class="design-letter lc">C</div>
+      <div>
+        <div class="card-title">Swiss Minimalist</div>
+        <div class="card-desc">Máximo whitespace · tipografía · acento rojo único</div>
+      </div>
+    </div>
+    <div class="preview-wrap" onclick="window.open('C-minimalist.html','_blank')">
+      <iframe src="C-minimalist.html" scrolling="no" tabindex="-1"></iframe>
+      <div class="preview-overlay"></div>
+    </div>
+    <div class="verdict">
+      Logo enorme, todo blanco, línea roja fina en el borde superior. El BOM se lee como un inventario tipografiado. El total en rojo destaca sin decoración. Estética de estudio de arquitectura o firma de diseño de alto nivel.
+    </div>
+    <div class="card-footer">
+      <div class="palette">
+        <div class="swatch" style="background:#0A0A0A" title="Black"></div>
+        <div class="swatch" style="background:#C0392B" title="Red"></div>
+        <div class="swatch" style="background:#F5F5F5" title="Gray"></div>
+      </div>
+      <a class="open-btn" href="C-minimalist.html" target="_blank">Abrir →</a>
+    </div>
+  </div>
+
+  <!-- D -->
+  <div class="design-card">
+    <div class="card-header">
+      <div class="design-letter ld">D</div>
+      <div>
+        <div class="card-title">Construction Bold</div>
+        <div class="card-desc">Naranja industrial · KPIs destacados · charcoal</div>
+      </div>
+    </div>
+    <div class="preview-wrap" onclick="window.open('D-construction-bold.html','_blank')">
+      <iframe src="D-construction-bold.html" scrolling="no" tabindex="-1"></iframe>
+      <div class="preview-overlay"></div>
+    </div>
+    <div class="verdict">
+      Header naranja intenso, franja charcoal, KPI strip con 4 cifras grandes (m², paneles, zonas, total). Proyecta energía y claridad inmediata. El cliente entiende el proyecto de un vistazo. Mejor para obras medianas/pequeñas y clientes directos.
+    </div>
+    <div class="card-footer">
+      <div class="palette">
+        <div class="swatch" style="background:#F97316" title="Orange"></div>
+        <div class="swatch" style="background:#1C1917" title="Charcoal"></div>
+        <div class="swatch" style="background:#FFF7ED" title="Orange-50"></div>
+      </div>
+      <a class="open-btn" href="D-construction-bold.html" target="_blank">Abrir →</a>
+    </div>
+  </div>
+
+</div><!-- /grid -->
+
+<!-- comparison table -->
+<div class="vs-strip">
+  <div class="vs-cell">
+    <div class="vc-design">Diseño A</div>
+    <div class="vc-name">Executive Dark</div>
+    <ul>
+      <li class="pro">Máxima autoridad y confianza</li>
+      <li class="pro">Palette atemporal navy+gold</li>
+      <li class="pro">Tabla financiera clara</li>
+      <li class="con">Más sobrio — menos dinámico</li>
+    </ul>
+  </div>
+  <div class="vs-cell">
+    <div class="vc-design">Diseño B</div>
+    <div class="vc-name">Blueprint Technical</div>
+    <ul>
+      <li class="pro">Diferenciador fuerte del mercado</li>
+      <li class="pro">Comunicado a ingenieros/técnicos</li>
+      <li class="pro">Ítems numerados tipo spec sheet</li>
+      <li class="con">Monoespaciado puede verse denso</li>
+    </ul>
+  </div>
+  <div class="vs-cell">
+    <div class="vc-design">Diseño C</div>
+    <div class="vc-name">Swiss Minimalist</div>
+    <ul>
+      <li class="pro">Muy legible, mucho espacio</li>
+      <li class="pro">Elegancia extrema</li>
+      <li class="pro">Total en rojo muy visible</li>
+      <li class="con">Puede parecer austero para obra</li>
+    </ul>
+  </div>
+  <div class="vs-cell">
+    <div class="vc-design">Diseño D</div>
+    <div class="vc-name">Construction Bold</div>
+    <ul>
+      <li class="pro">Impacto visual inmediato</li>
+      <li class="pro">KPI strip: info clave visible</li>
+      <li class="pro">Naranja = energía, confianza</li>
+      <li class="con">Menos formal para corporativos</li>
+    </ul>
+  </div>
+</div>
+
+<p class="note">
+  <strong>Nota:</strong> Estos son prototipos de la <strong>Página 1 (cotización / BOM)</strong>.
+  La Página 2 (visual técnico + plano 2D) adoptaría el lenguaje del diseño elegido.
+  Una vez que elijas el diseño final, se integra en el flujo
+  <code>htmlToPdfBlob()</code> → <code>server/routes/pdf.js</code> (Chromium) sin cambios de arquitectura.
+</p>
+
+</body>
+</html>
