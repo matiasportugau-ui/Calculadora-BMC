@@ -2339,6 +2339,7 @@ export default function PanelinCalculadoraV3() {
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
+  const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'soft-modern');
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -3551,15 +3552,36 @@ export default function PanelinCalculadoraV3() {
       const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
       const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
       const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
-      const html = generateClientVisualHTML({
-        client: proyecto, project: proyecto, scenario,
-        panel: panelInfo,
-        groups: groups.map(g => ({ title: g.title, items: g.items })),
-        totals: grandTotal,
-        appendix: null,
-        snapshotImages: roofPlan2dSvg ? { roofPlan2dSvg } : {},
-        includePlantaResumenPage: false,
+      const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+      const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
+      const appendix = buildPdfAppendixPayload({
+        scenario, scenarioDef: scenarioDef_, vis: vis_,
+        techo, pared, camara, results, grandTotal,
+        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+        PANELS_TECHO, PANELS_PARED,
       });
+      const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
+      const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
+      let html;
+      if (pdfLayout) {
+        const { renderPdfLayout, buildQuotationModel } = await import("../pdf-templates/index.js");
+        const q = buildQuotationModel({
+          client: proyecto, project: proyecto, scenario,
+          panel: panelInfo, groups: groupsMapped,
+          totals: grandTotal, appendix, snapshotImages,
+        });
+        html = await renderPdfLayout(pdfLayout, q);
+      } else {
+        html = generateClientVisualHTML({
+          client: proyecto, project: proyecto, scenario,
+          panel: panelInfo, groups: groupsMapped,
+          totals: grandTotal, appendix, snapshotImages,
+          includePlantaResumenPage: false,
+        });
+      }
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const fname = pdfFileName(
@@ -3571,7 +3593,7 @@ export default function PanelinCalculadoraV3() {
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, panelInfo, proyecto, grandTotal, showToast]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -6339,6 +6361,25 @@ export default function PanelinCalculadoraV3() {
             <div style={{ marginTop: 12, fontWeight: 700, color: C.tp }}>Datos bancarios:</div>
             <div>Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}
+
+          {/* PDF layout selector — desktop only */}
+          {groups.length > 0 && (
+            <div className="bmc-desktop-actions" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: C.ts }}>
+              <label htmlFor="bmc-pdf-layout" style={{ fontWeight: 600, color: C.tp, whiteSpace: "nowrap" }}>Diseño PDF:</label>
+              <select
+                id="bmc-pdf-layout"
+                value={pdfLayout}
+                onChange={e => { const v = e.target.value; setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
+                style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 260 }}
+              >
+                <option value="soft-modern">E — Soft Modern</option>
+                <option value="executive-dark">A — Executive Dark</option>
+                <option value="blueprint">B — Blueprint</option>
+                <option value="minimalist">C — Minimalist</option>
+                <option value="construction-bold">D — Construction Bold</option>
+              </select>
+            </div>
+          )}
 
           {/* Action buttons — desktop only */}
           {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
