@@ -185,6 +185,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3a5615c` docs(roadmap): score 82→85, AI Chat c:5→8, Fiscal c:5→7
 - `8cc9f80` docs(state): end-of-session sync 2026-04-24
 - `21d0fde` docs: autotrace + kb sync 2026-04-27
+- `9d43fee` docs: update kb.json timestamp and build metadata; sync autotrace documentation
 
 ## Tests
 

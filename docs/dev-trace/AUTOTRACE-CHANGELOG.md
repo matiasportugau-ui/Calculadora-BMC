@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-19 07:36:10 — `0a5667b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-19 07:45:36 — `dec007b` — fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-20 20:33:19 — `0f9ab57` — fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - 2026-04-20 20:53:27 — `bcefb3e` — chore(editor): ocultar dev-trace en UI y excluirlo del contexto Cursor
@@ -222,3 +221,4 @@
 - 2026-04-25 06:18:17 — `857cdba` — feat(floor-plan): Gap A-D expansion — tipoAguas, per-zone roofBlocks, borders, labels
 - 2026-04-27 00:01:36 — `f84aabb` — fix(pdf): update PDF error handling and sample data
 - 2026-04-27 00:08:42 — `21d0fde` — docs: autotrace + kb sync 2026-04-27
+- 2026-04-27 00:23:30 — `9d43fee` — docs: update kb.json timestamp and build metadata; sync autotrace documentation
