@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `5a907b8` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `efa9f65` feat: add Sketchfab integration and enhance documentation
 - `c7c660b` feat: add Sketchfab integration and enhance documentation
 - `f62400e` feat: log Sketchfab integration commit in worklog
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0314525` feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools
 - `eb98362` feat(agent): add TOOLS block to system prompt — forces tool use for pricing
 - `ffa578f` feat(agent): auto-evolutionary learning pipeline
+- `5b98ba4` feat(agent): auto-trigger autolearn after each production chat turn
 
 ## Fixes
 
@@ -206,6 +206,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `1c495db` docs: autotrace flush (hook chain end)
 - `d34d875` docs: session update 2026-04-27 — endpoint fixes, GCS token storage
 - `42fb631` docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch
+- `74f2568` docs: autotrace sync autolearn commit
 
 ## Tests
 

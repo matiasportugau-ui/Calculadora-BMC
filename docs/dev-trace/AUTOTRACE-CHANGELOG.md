@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 02:51:08 — `136482c` — chore(dev-trace): sync AUTOTRACE bundle pre-merge
-- 2026-04-23 03:14:53 — `6b35de9` — fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - 2026-04-23 03:22:37 — `b33cf43` — feat(sheets): Accessible Base sync + expert workspace map
 - 2026-04-23 03:23:47 — `890d2c7` — chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
 - 2026-04-23 03:25:01 — `d83ca03` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
@@ -222,3 +220,5 @@
 - 2026-04-27 05:02:28 — `42fb631` — docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch
 - 2026-04-27 05:07:22 — `eb98362` — feat(agent): add TOOLS block to system prompt — forces tool use for pricing
 - 2026-04-27 05:09:40 — `ffa578f` — feat(agent): auto-evolutionary learning pipeline
+- 2026-04-27 05:09:46 — `74f2568` — docs: autotrace sync autolearn commit
+- 2026-04-27 05:11:51 — `5b98ba4` — feat(agent): auto-trigger autolearn after each production chat turn
