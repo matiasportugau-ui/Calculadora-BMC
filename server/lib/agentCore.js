@@ -13,6 +13,7 @@
 import { config } from "../config.js";
 import { buildSystemPrompt } from "./chatPrompts.js";
 import { findRelevantExamples } from "./trainingKB.js";
+import { renderExamplesBlock } from "./channelRenderer.js";
 
 // ─── Channel rules ────────────────────────────────────────────────────────────
 
@@ -70,9 +71,12 @@ export async function callAgentOnce(messages, { channel = "chat", calcState = {}
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
   const kbExamples = findRelevantExamples(lastUser, { limit: 4 });
 
+  // Render KB examples using channel-appropriate text (respects goodAnswerML/goodAnswerWA overrides)
+  const kbBlock = renderExamplesBlock(kbExamples, channel);
   const basePrompt = buildSystemPrompt(calcState, { trainingExamples: kbExamples });
   const channelSection = buildChannelSection(channel);
-  const systemPrompt = `${basePrompt}\n\n${channelSection}`;
+  // kbBlock uses channel-rendered answers (ML truncated, WA friendly, chat full)
+  const systemPrompt = [basePrompt, channelSection, kbBlock].filter(Boolean).join("\n\n");
 
   const maxTokens = channel === "ml" ? 120 : channel === "wa" ? 400 : 1200;
   const chain = provider ? [provider] : PROVIDER_CHAIN;

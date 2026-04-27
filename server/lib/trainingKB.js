@@ -200,6 +200,8 @@ export function addTrainingEntry(payload = {}) {
     status: ["active", "pending", "rejected"].includes(payload.status) ? payload.status : "active",
     confidence: payload.confidence != null ? Number(payload.confidence) : null,
     convId: payload.convId ? String(payload.convId) : null,
+    goodAnswerML: payload.goodAnswerML ? String(payload.goodAnswerML).trim() : null,
+    goodAnswerWA: payload.goodAnswerWA ? String(payload.goodAnswerWA).trim() : null,
     retrievalCount: 0,
     lastRetrievedAt: null,
     reviewDueAt: payload.permanent ? null : reviewDueAt(normalizeCategory(payload.category)),
@@ -246,6 +248,8 @@ export function updateTrainingEntry(entryId, patch = {}) {
     context: patch.context != null ? String(patch.context).trim() : prev.context,
     permanent: patch.permanent != null ? Boolean(patch.permanent) : prev.permanent,
     status: patch.status && ["active", "pending", "rejected"].includes(patch.status) ? patch.status : prev.status ?? "active",
+    goodAnswerML: patch.goodAnswerML !== undefined ? (patch.goodAnswerML ? String(patch.goodAnswerML).trim() : null) : prev.goodAnswerML ?? null,
+    goodAnswerWA: patch.goodAnswerWA !== undefined ? (patch.goodAnswerWA ? String(patch.goodAnswerWA).trim() : null) : prev.goodAnswerWA ?? null,
     updatedAt: new Date().toISOString(),
   };
   kb.entries[idx] = next;

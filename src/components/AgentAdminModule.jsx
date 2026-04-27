@@ -228,6 +228,17 @@ function KBEntry({ entry, onEdit, onDelete, selected, onToggle }) {
           <Pill color={catColor}>{entry.category}</Pill>
           {entry.permanent && <Pill color={C.success}>permanente</Pill>}
           {entry.tags?.map((t) => <Pill key={t} color={C.sub}>{t}</Pill>)}
+          {(entry.goodAnswer || entry.answer || "").length > 350 && !entry.goodAnswerML && (
+            <Pill color="#dc2626" title="goodAnswer >350 chars sin override ML — truncación automática activa">⚠ ML gap</Pill>
+          )}
+          {entry.reviewDueAt && entry.reviewDueAt < new Date().toISOString() && (
+            <Pill color="#d97706" title={`Vence: ${entry.reviewDueAt?.slice(0,10)}`}>vencida</Pill>
+          )}
+          {entry.retrievalCount != null && (
+            <span style={{ fontSize: 10, color: entry.retrievalCount === 0 ? "#9ca3af" : "#16a34a", fontFamily: C.ff }}>
+              {entry.retrievalCount}× usado
+            </span>
+          )}
           <span style={{ fontSize: 10, color: C.sub, marginLeft: "auto", fontFamily: C.ff }}>
             {entry.id?.slice(0, 8)}
           </span>
@@ -459,18 +470,26 @@ function KBTab() {
       {stats && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {[
-            ["Total entradas", stats.total],
-            ["Sales", stats.byCategory?.sales || 0],
-            ["Producto", stats.byCategory?.product || 0],
-            ["Math", stats.byCategory?.math || 0],
-            ["Conversacional", stats.byCategory?.conversational || 0],
-            ["Permanentes", stats.permanent || 0],
-          ].map(([label, val]) => (
-            <Card key={label} style={{ padding: "8px 14px", flex: "none" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, fontFamily: C.ff }}>{val}</div>
+            ["Total", stats.total, null],
+            ["Sales", stats.byCategory?.sales || 0, null],
+            ["Producto", stats.byCategory?.product || 0, null],
+            ["Math", stats.byCategory?.math || 0, null],
+            ["Pendientes", stats.pending || 0, stats.pending > 0 ? "#d97706" : null],
+            ["Vencidas", stats.health?.stale || 0, stats.health?.stale > 0 ? "#dc2626" : null],
+            ["Sin uso 30d", stats.health?.zeroRetrieval || 0, stats.health?.zeroRetrieval > 0 ? "#6b7280" : null],
+            ["Gap ML", stats.health?.mlGap || 0, stats.health?.mlGap > 0 ? "#dc2626" : null],
+          ].map(([label, val, color]) => (
+            <Card key={label} style={{ padding: "8px 14px", flex: "none", borderColor: color ? color : undefined }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: color || C.navy, fontFamily: C.ff }}>{val}</div>
               <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff }}>{label}</div>
             </Card>
           ))}
+          {stats.health?.score != null && (
+            <Card style={{ padding: "8px 14px", flex: "none", borderColor: stats.health.score >= 80 ? "#16a34a" : stats.health.score >= 50 ? "#d97706" : "#dc2626" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: stats.health.score >= 80 ? "#16a34a" : stats.health.score >= 50 ? "#d97706" : "#dc2626", fontFamily: C.ff }}>{stats.health.score}/100</div>
+              <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff }}>KB Score</div>
+            </Card>
+          )}
         </div>
       )}
 
