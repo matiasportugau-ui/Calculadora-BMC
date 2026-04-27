@@ -144,6 +144,15 @@ export default function BmcWolfboardHub() {
               Importar plano
             </Link>
           </div>
+          <div style={card}>
+            <h2 style={cardTitle}>Panelin · Admin IA</h2>
+            <p style={cardDesc}>
+              Gestioná la base de conocimiento, editá el system prompt, revisá logs de conversaciones, estadísticas y configuración de scoring.
+            </p>
+            <Link to="/hub/agent-admin" style={{ ...cta, background: "#1a3a5c" }}>
+              Abrir Admin IA
+            </Link>
+          </div>
         </div>
 
         {/* ── Herramientas internas ───────────────────────────────────────── */}

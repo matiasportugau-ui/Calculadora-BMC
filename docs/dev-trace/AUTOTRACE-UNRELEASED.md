@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `352f730` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `8dc43fd` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `db62c95` feat: Enhance WhatsApp integration and add AUTOTRACE system
 - `d8455c0` feat: Enhance WhatsApp integration and add AUTOTRACE system
@@ -83,6 +82,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `05d199e` feat(pdf): A) vectorial print via window.print() + B) @sparticuz/chromium-min server PDF
 - `857cdba` feat(floor-plan): Gap A-D expansion — tipoAguas, per-zone roofBlocks, borders, labels
 - `a5b2b34` feat(floor-plan): per-segment desnivel UI + fiscal contract tests `[tests]`
+- `0d80f5d` feat(ml-hub): inline edit for ML responses + auto-save to training KB
+- `8cdd219` feat(ml-hub): date/product column + previous-question context for AI
 
 ## Fixes
 
@@ -153,6 +154,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `77ec61b` fix(plan-import): replace manual listener mgmt with useEffect in Select
 - `e85d190` fix(plan-import): update plan import handling and UI components
 - `4be9a18` fix(plan-import): update plan import handling and UI components
+- `6af2db3` fix(ml-oauth): add PKCE (S256) support to MercadoLibre OAuth flow
 
 ## Documentation
 
@@ -193,6 +195,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `9d43fee` docs: update kb.json timestamp and build metadata; sync autotrace documentation
 - `1a43445` docs(pdf-designs): add E-soft-modern template + update INDEX
 - `cb653d5` docs: autotrace sync 2026-04-27 (1a43445)
+- `ea068c5` docs: sync PROJECT-STATE + autotrace post-session 2026-04-27
 
 ## Tests
 

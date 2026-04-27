@@ -8370,6 +8370,127 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "ea068c5dd1d712dd61d1396fb7f794c799144462",
+      "short_hash": "ea068c5",
+      "date": "2026-04-27",
+      "time": "02:04:20",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "sync PROJECT-STATE + autotrace post-session 2026-04-27",
+      "subject": "docs: sync PROJECT-STATE + autotrace post-session 2026-04-27",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/cb653d5.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "docs/team/PROJECT-STATE.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "6af2db374822e2e17580c1267d35ef840a31b893",
+      "short_hash": "6af2db3",
+      "date": "2026-04-27",
+      "time": "02:44:14",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "ml-oauth",
+      "title": "add PKCE (S256) support to MercadoLibre OAuth flow",
+      "subject": "fix(ml-oauth): add PKCE (S256) support to MercadoLibre OAuth flow",
+      "files": [
+        "server/index.js",
+        "server/mercadoLibreClient.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "0d80f5d386ef81c8a234d9e1a47840e8d16ec6dd",
+      "short_hash": "0d80f5d",
+      "date": "2026-04-27",
+      "time": "02:51:14",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-hub",
+      "title": "inline edit for ML responses + auto-save to training KB",
+      "subject": "feat(ml-hub): inline edit for ML responses + auto-save to training KB",
+      "files": [
+        "server/routes/bmcDashboard.js",
+        "src/components/BmcMlOperativoModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "8cdd2190c37e3ea0eb7dbdc02e8762935a75ff82",
+      "short_hash": "8cdd219",
+      "date": "2026-04-27",
+      "time": "03:02:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "ml-hub",
+      "title": "date/product column + previous-question context for AI",
+      "subject": "feat(ml-hub): date/product column + previous-question context for AI",
+      "files": [
+        "server/routes/bmcDashboard.js",
+        "src/components/BmcMlOperativoModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

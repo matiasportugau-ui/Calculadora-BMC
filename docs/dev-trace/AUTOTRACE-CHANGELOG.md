@@ -2,10 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-21 01:52:11 — `691b550` — chore: add Playwright test script for local roof borders and update Google Drive OAuth documentation
-- 2026-04-21 02:45:30 — `9a0dc85` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
-- 2026-04-21 02:46:10 — `04f7b41` — feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
-- 2026-04-21 02:57:44 — `6d95be9` — feat(roof): render encounter lines as clickable SVG elements
 - 2026-04-21 03:38:14 — `fe55309` — feat(roof): split border strips by exterior intervals on partial encounters
 - 2026-04-21 03:49:34 — `773e0df` — feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
 - 2026-04-21 04:07:02 — `5715776` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
@@ -222,3 +218,7 @@
 - 2026-04-27 01:17:27 — `4be9a18` — fix(plan-import): update plan import handling and UI components
 - 2026-04-27 01:21:28 — `1a43445` — docs(pdf-designs): add E-soft-modern template + update INDEX
 - 2026-04-27 02:02:23 — `cb653d5` — docs: autotrace sync 2026-04-27 (1a43445)
+- 2026-04-27 02:04:20 — `ea068c5` — docs: sync PROJECT-STATE + autotrace post-session 2026-04-27
+- 2026-04-27 02:44:14 — `6af2db3` — fix(ml-oauth): add PKCE (S256) support to MercadoLibre OAuth flow
+- 2026-04-27 02:51:14 — `0d80f5d` — feat(ml-hub): inline edit for ML responses + auto-save to training KB
+- 2026-04-27 03:02:03 — `8cdd219` — feat(ml-hub): date/product column + previous-question context for AI
