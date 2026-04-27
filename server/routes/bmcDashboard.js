@@ -1490,7 +1490,7 @@ export default function createBmcDashboardRouter(config) {
   router.get("/audit", async (_req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     try {
-      const { headers, rows } = await getSheetData(sheetId, "AUDIT_LOG");
+      const { headers, rows } = await getSheetData(sheetId, config.bmcAuditTab);
       res.json({ ok: true, headers, data: rows });
     } catch (e) {
       if (schema === "CRM_Operativo") res.json({ ok: true, headers: [], data: [] });
@@ -1507,7 +1507,7 @@ export default function createBmcDashboardRouter(config) {
         const { rows: r } = await getSheetData(config.bmcPagosSheetId, sheetName, false, { schema: "Pagos_2026" });
         rows = r || [];
       } else {
-        const { rows: r } = await getSheetData(sheetId, "Pagos_Pendientes");
+        const { rows: r } = await getSheetData(sheetId, config.bmcPagosTab);
         rows = r || [];
       }
       const pending = rows.filter(
@@ -1522,7 +1522,7 @@ export default function createBmcDashboardRouter(config) {
   router.get("/metas-ventas", async (_req, res) => {
     if (!checkSheetsAvailable(config)) return noConfig(res);
     try {
-      const rows = await getOptionalSheetRows(sheetId, "Metas_Ventas");
+      const rows = await getOptionalSheetRows(sheetId, config.bmcMetasTab);
       res.json({ ok: true, data: rows });
     } catch (e) {
       sheetsUnavailable(res, e.message);
@@ -1547,7 +1547,7 @@ export default function createBmcDashboardRouter(config) {
         headers = out.headers || [];
         rows = out.rows || [];
       } else {
-        const out = await getSheetData(sheetId, "Calendario de Vencimientos");
+        const out = await getSheetData(sheetId, config.bmcCalendarioTab);
         headers = out.headers || [];
         rows = out.rows || [];
       }
@@ -1674,10 +1674,10 @@ export default function createBmcDashboardRouter(config) {
         const { rows: r } = await getSheetData(config.bmcPagosSheetId, sheetName, false, { schema: "Pagos_2026" });
         pagosRows = r || [];
       } else {
-        const { rows: r } = await getSheetData(sheetId, "Pagos_Pendientes");
+        const { rows: r } = await getSheetData(sheetId, config.bmcPagosTab);
         pagosRows = r || [];
       }
-      const metasRows = await getOptionalSheetRows(sheetId, "Metas_Ventas");
+      const metasRows = await getOptionalSheetRows(sheetId, config.bmcMetasTab);
       const pending = (pagosRows || []).filter(
         (r) => !r.ESTADO_PAGO || String(r.ESTADO_PAGO).toLowerCase() === "pendiente"
       );
@@ -1751,7 +1751,7 @@ export default function createBmcDashboardRouter(config) {
           const { rows: r } = await getSheetData(config.bmcPagosSheetId, sheetName, false, { schema: "Pagos_2026" });
           pagosRows = r || [];
         } else if (sheetId) {
-          const { rows: r } = await getSheetData(sheetId, "Pagos_Pendientes");
+          const { rows: r } = await getSheetData(sheetId, config.bmcPagosTab);
           pagosRows = r || [];
         }
         const pending = (pagosRows || []).filter(
@@ -1791,7 +1791,7 @@ export default function createBmcDashboardRouter(config) {
     async function fetchMetas() {
       if (!checkSheetsAvailable(config)) return [];
       try {
-        return await getOptionalSheetRows(sheetId, "Metas_Ventas");
+        return await getOptionalSheetRows(sheetId, config.bmcMetasTab);
       } catch {
         return [];
       }

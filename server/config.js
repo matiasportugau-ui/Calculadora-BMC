@@ -66,6 +66,10 @@ export const config = {
   /** JSONL Panelin Knowledge (events-log); default docs/team/knowledge/events-log.jsonl */
   aiKnowledgeEventsLog: process.env.AI_KNOWLEDGE_EVENTS_LOG || "",
   bmcSheetSchema: process.env.BMC_SHEET_SCHEMA || "Master_Cotizaciones",
+  bmcAuditTab: process.env.BMC_AUDIT_TAB || "AUDIT_LOG",
+  bmcPagosTab: process.env.BMC_PAGOS_TAB || "Pagos_Pendientes",
+  bmcMetasTab: process.env.BMC_METAS_TAB || "Metas_Ventas",
+  bmcCalendarioTab: process.env.BMC_CALENDARIO_TAB || "Calendario de Vencimientos",
   // AI providers — suggest-response endpoint
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",

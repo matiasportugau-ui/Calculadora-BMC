@@ -34,6 +34,7 @@ import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
+import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -145,12 +146,41 @@ app.get("/health", asyncHandler(async (req, res) => {
     credsPath &&
     fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath))
   );
+  let sheets_diagnostics = null;
+  if (hasSheets) {
+    try {
+      const diagResult = await Promise.race([
+        (async () => {
+          const auth = new google.auth.GoogleAuth({
+            scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+          });
+          const client = google.sheets({ version: "v4", auth });
+          const meta = await client.spreadsheets.get({
+            spreadsheetId: config.bmcSheetId,
+            fields: "sheets.properties.title",
+          });
+          const tabs = (meta.data.sheets || []).map((s) => s.properties?.title || "");
+          const primaryTab = config.bmcSheetSchema === "CRM_Operativo" ? "CRM_Operativo" : "Master_Cotizaciones";
+          const missing_tabs = [primaryTab].filter((t) => !tabs.includes(t));
+          return { ok: missing_tabs.length === 0, tabs, missing: missing_tabs };
+        })(),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ ok: false, error: "timeout" }), 3000)
+        ),
+      ]);
+      sheets_diagnostics = diagResult;
+    } catch (e) {
+      sheets_diagnostics = { ok: false, error: e.message };
+    }
+  }
+
   res.json({
     ok: true,
     appEnv: config.appEnv,
     hasTokens: Boolean(tokens?.access_token),
     mlTokenStoreOk,
     hasSheets,
+    sheets_diagnostics,
     missingConfig: missing,
   });
 }));
