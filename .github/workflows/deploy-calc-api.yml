@@ -84,6 +84,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest
 
       - name: Show service URL
         run: |

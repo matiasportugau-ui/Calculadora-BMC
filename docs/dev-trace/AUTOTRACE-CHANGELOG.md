@@ -2,11 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-21 04:07:02 — `5715776` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-21 04:12:55 — `acaebad` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-21 19:23:28 — `391c695` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-22 00:12:23 — `742293c` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-22 00:29:20 — `3b8fb3d` — chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement
 - 2026-04-22 00:31:09 — `826b9c4` — chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit
 - 2026-04-22 00:31:31 — `fb845a2` — chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop
 - 2026-04-22 04:26:25 — `2a3be46` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
@@ -222,3 +217,8 @@
 - 2026-04-27 03:02:03 — `8cdd219` — feat(ml-hub): date/product column + previous-question context for AI
 - 2026-04-27 03:03:57 — `ebeb68a` — feat(agent-admin): add Agent Admin module for knowledge base management
 - 2026-04-27 03:08:43 — `a7b4a8a` — docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel
+- 2026-04-27 03:54:09 — `af27c62` — feat(calculator): unify PDF export → handleClientePdf + simplify action bar
+- 2026-04-27 04:08:09 — `6c85bdd` — fix(vercel): proxy /api/* and /calc/* to Cloud Run
+- 2026-04-27 04:14:37 — `2b4270b` — fix(dashboard): restore 6 broken Sheets endpoints + harden config
+- 2026-04-27 04:24:50 — `df65ada` — feat(pdf-layouts): add template system + E-soft-modern layout + dropdown selector
+- 2026-04-27 04:25:59 — `8f27ed3` — docs: autotrace sync + version bump 2026-04-27 (session end)
