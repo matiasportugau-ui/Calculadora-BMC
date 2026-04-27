@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 05:05:49 — `11d1f8c` — fix(ml-ui): persist ML token in localStorage instead of sessionStorage
-- 2026-04-23 05:07:35 — `7f1c805` — fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
 - 2026-04-23 05:08:12 — `e918bef` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - 2026-04-23 05:08:49 — `759d82e` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - 2026-04-23 05:11:39 — `e77b34b` — docs: dev-trace autolog update (2026-04-23)
@@ -222,3 +220,5 @@
 - 2026-04-27 15:33:42 — `cdeef3c` — feat(agent): unified KB brain for Chat, WA and ML channels
 - 2026-04-27 15:33:47 — `0a79835` — docs: autotrace sync unified agent brain
 - 2026-04-27 15:44:46 — `861d168` — feat(agent): panel specs in tools + ML answers auto-save to KB
+- 2026-04-27 15:44:47 — `d3afcfd` — docs: autotrace sync specs+ml-kb
+- 2026-04-27 15:53:40 — `55be547` — fix(kb): persist training-kb.json to GCS on Cloud Run

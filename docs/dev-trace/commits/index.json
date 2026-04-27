@@ -9645,6 +9645,69 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "d3afcfd85b0a49447e33d38e0b6c17e4d0914c4a",
+      "short_hash": "d3afcfd",
+      "date": "2026-04-27",
+      "time": "15:44:47",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync specs+ml-kb",
+      "subject": "docs: autotrace sync specs+ml-kb",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0a79835.md",
+        "docs/dev-trace/commits/2026/04/861d168.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "55be5479338fdb857ea34760b083902316f0bfbf",
+      "short_hash": "55be547",
+      "date": "2026-04-27",
+      "time": "15:53:40",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "kb",
+      "title": "persist training-kb.json to GCS on Cloud Run",
+      "subject": "fix(kb): persist training-kb.json to GCS on Cloud Run",
+      "files": [
+        ".env.example",
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }

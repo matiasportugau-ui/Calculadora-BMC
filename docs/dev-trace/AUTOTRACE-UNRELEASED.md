@@ -163,6 +163,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `812e9c8` fix(agent): normalize familia to UPPER_SNAKE in all tool handlers
 - `d12f8f1` fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback `[regresión? · tests]`
 - `3a7b3bf` fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation `[regresión? · tests]`
+- `55be547` fix(kb): persist training-kb.json to GCS on Cloud Run
 
 ## Documentation
 
@@ -218,6 +219,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e96d9e8` docs: update AUTOTRACE documentation and sync changes
 - `e4361e6` docs: autotrace sync familia normalization fix
 - `0a79835` docs: autotrace sync unified agent brain
+- `d3afcfd` docs: autotrace sync specs+ml-kb
 
 ## Tests
 
