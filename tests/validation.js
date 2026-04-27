@@ -116,6 +116,8 @@ import {
   encounterBorderPerfil,
   listEncounterPairSegmentRuns,
   splitEncounterPairSegmentMid,
+  mergeAdjacentEncounterPairSegments,
+  resetEncounterPairSegments,
   patchEncounterPairSegment,
 } from "../src/utils/roofEncounterModel.js";
 import { nextRoofSlopeMark, ROOF_SLOPE_MARKS } from "../src/utils/roofSlopeMark.js";
@@ -1666,6 +1668,26 @@ assert(
     encounterBorderPerfil(runs2[1].effectiveRaw),
     "pretil",
   );
+
+  // mergeAdjacentEncounterPairSegments
+  const split2 = splitEncounterPairSegmentMid(fullPretil, "full");
+  const runsB = listEncounterPairSegmentRuns(split2);
+  const merged = mergeAdjacentEncounterPairSegments(split2, runsB[0].id);
+  const runsM = listEncounterPairSegmentRuns(merged);
+  assert("mergeAdjacentEncounterPairSegments → 1 run", runsM.length === 1, runsM.length, 1);
+  assert("merged run cubre t=[0,1]", Math.abs(runsM[0].t0) < 1e-6 && Math.abs(runsM[0].t1 - 1) < 1e-6, [runsM[0].t0, runsM[0].t1], [0, 1]);
+
+  // mergeAdjacentEncounterPairSegments on last run → no change
+  const lastRunId = runsB[runsB.length - 1].id;
+  const noChange = mergeAdjacentEncounterPairSegments(split2, lastRunId);
+  assert("merge on last run → no change", listEncounterPairSegmentRuns(noChange).length === 2, listEncounterPairSegmentRuns(noChange).length, 2);
+
+  // resetEncounterPairSegments
+  const reset = resetEncounterPairSegments(split2);
+  const runsR = listEncounterPairSegmentRuns(reset);
+  assert("resetEncounterPairSegments → single full run", runsR.length === 1, runsR.length, 1);
+  assert("reset run t=[0,1]", Math.abs(runsR[0].t0) < 1e-6 && Math.abs(runsR[0].t1 - 1) < 1e-6, [runsR[0].t0, runsR[0].t1], [0, 1]);
+  assert("reset preserves base perfil", encounterBorderPerfil(runsR[0].effectiveRaw) === "pretil", encounterBorderPerfil(runsR[0].effectiveRaw), "pretil");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

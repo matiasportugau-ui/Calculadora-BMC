@@ -206,6 +206,33 @@ export function patchEncounterPairSegment(pairRaw, segmentId, patch) {
 }
 
 /**
+ * Fusiona un tramo con el siguiente adyacente — el overlay del primero prevalece.
+ * Si el tramo no tiene siguiente, devuelve el pairRaw sin cambios.
+ */
+export function mergeAdjacentEncounterPairSegments(pairRaw, segmentId) {
+  if (!pairRaw || typeof pairRaw !== "object") return pairRaw;
+  const segs = normalizeEncounterPairSegments(pairRaw);
+  const idx = segs.findIndex((s) => s.id === segmentId);
+  if (idx < 0 || idx >= segs.length - 1) return pairRaw;
+  const a = segs[idx];
+  const b = segs[idx + 1];
+  const merged = { ...a, t0: a.t0, t1: b.t1, id: a.id.replace(/-[ab]$/, "") || a.id };
+  const next = [...segs.slice(0, idx), merged, ...segs.slice(idx + 2)];
+  return { ...pairEncounterBaseRaw(pairRaw), segments: next };
+}
+
+/**
+ * Vuelve al tramo único — descarta todos los splits y overlays de segmentos.
+ * El tipo/modo/perfil base del encuentro se preserva.
+ */
+export function resetEncounterPairSegments(pairRaw) {
+  if (!pairRaw || typeof pairRaw !== "object") return pairRaw;
+  const base = pairEncounterBaseRaw(pairRaw);
+  const { segments: _dropped, ...rest } = base;
+  return rest;
+}
+
+/**
  * Resuelve el índice de zona vecina y el lado opuesto en un encuentro de planta.
  * @param {number} gi
  * @param {"latIzq"|"latDer"|"frente"|"fondo"} side
