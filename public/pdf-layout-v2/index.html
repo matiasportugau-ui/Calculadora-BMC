@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF Layout v2 — preview de aprobación</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #1d1d1f; }
+    body { max-width: 900px; margin: 32px auto; padding: 0 18px; line-height: 1.55; }
+    h1 { font-size: 1.5rem; color: #003366; margin-bottom: 4px; }
+    h2 { font-size: 1.05rem; color: #003366; margin-top: 28px; margin-bottom: 8px; }
+    .sub { color: #64748B; font-size: 0.95rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .card { border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px 18px; background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,0.04); }
+    .card h3 { margin: 0 0 6px; color: #003366; font-size: 1.05rem; }
+    .card p { margin: 0 0 10px; font-size: 0.92rem; color: #475467; }
+    .card a { display: inline-block; margin-top: 6px; padding: 6px 12px; background: #003366; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+    .card a + a { background: #fff; color: #003366; border: 1px solid #003366; margin-left: 8px; }
+    ul { padding-left: 1.1rem; }
+    li { font-size: 0.93rem; margin-bottom: 4px; }
+    code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 0.85em; color: #0F172A; }
+    .legend { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    .chip { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: 0.04em; }
+    .note { background: #FFF8ED; border: 1px solid #F5D78E; border-radius: 8px; padding: 12px 14px; margin-top: 22px; font-size: 0.9rem; color: #6E4B00; }
+  </style>
+</head>
+<body>
+  <h1>PDF Layout v2 — preview para aprobación</h1>
+  <div class="sub">Mock con datos ficticios. Aprobá el diseño antes de tocar <code>quotationViews.js</code>.</div>
+
+  <h2>Layout propuesto: 2 páginas, siempre activas</h2>
+  <ul>
+    <li><b>Page 1</b> — cotización completa estándar + mini-thumbnail de la planta 2D + chips de tag en cada fila del BOM.</li>
+    <li><b>Page 2</b> — hero comercial, planta 2D grande con etiquetas <b>T-01..T-n</b> y zonas <b>FONDO / FRENTE / LAT-IZQ / LAT-DER</b>, leyenda de colores, KPIs, resumen compacto con los mismos tags y barra de totales.</li>
+  </ul>
+
+  <div class="legend">
+    <span class="chip" style="background:#DBEAFE;color:#1E3A8A">T-01..T-12 · paneles techo</span>
+    <span class="chip" style="background:#FEF3C7;color:#854D0E">FONDO · cumbrera</span>
+    <span class="chip" style="background:#DCFCE7;color:#166534">FRENTE · canalón</span>
+    <span class="chip" style="background:#FCE7F3;color:#9D174D">LAT-IZQ · lateral</span>
+    <span class="chip" style="background:#E9D5FF;color:#6B21A8">LAT-DER · lateral</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Página 1 — Cotización</h3>
+      <p>Encabezado, cliente, BOM agrupado, totales, condiciones. Adición nueva: <b>thumbnail 2D</b> y <b>chips de tag</b> en filas del BOM que mapean al plano.</p>
+      <a href="./page1-quote.html" target="_blank" rel="noopener">Ver Page 1</a>
+      <a href="./page1-quote.html?print=1" target="_blank" rel="noopener" onclick="setTimeout(()=>{},0)">Imprimir</a>
+    </div>
+    <div class="card">
+      <h3>Página 2 — Visual + resumen</h3>
+      <p>Hero, planta 2D grande con etiquetas T-01..T-n y bordes, leyenda, KPIs, resumen compacto identificando cada partida con su componente del plano, totales.</p>
+      <a href="./page2-visual.html" target="_blank" rel="noopener">Ver Page 2</a>
+      <a href="./page2-visual.html?print=1" target="_blank" rel="noopener">Imprimir</a>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Si aprobás:</b> portamos los cambios a <code>buildPdfPlantaResumenPageHtml()</code> y <code>generateClientVisualHTML()</code> en <code>src/utils/quotationViews.js</code>, y al SVG generado por <code>RoofPlanDimensions.jsx</code> + <code>PanelLabels</code> ya existentes (los tags T-XX ya los renderea el componente, sólo hay que propagarlos al resumen). Por defecto sería 2 páginas siempre activas (sin checkbox opcional).
+  </div>
+</body>
+</html>
