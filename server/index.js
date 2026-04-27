@@ -34,6 +34,9 @@ import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
+import { callAgentOnce } from "./lib/agentCore.js";
+import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
+import { addTrainingEntry } from "./lib/trainingKB.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -623,16 +626,18 @@ async function processWaConversation(chatId, conv) {
           requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
         });
 
-        // Generar respuesta IA para col AF
-        const aiResp = await fetch(`http://localhost:${config.port}/api/crm/suggest-response`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            consulta: d.resumen_pedido, origen: "WA-Auto",
-            cliente: d.cliente, observaciones: d.observaciones,
-          }),
-        });
-        const ai = await aiResp.json();
+        // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
+        let ai = { ok: false };
+        try {
+          const waMessages = conv.messages.map((m) => ({
+            role: "user",
+            content: `${m.from}: ${m.text}`,
+          }));
+          const result = await callAgentOnce(waMessages, { channel: "wa" });
+          ai = { ok: true, respuesta: result.text, provider: result.provider };
+        } catch (aiErr) {
+          logger.warn(`[WA] agentCore failed for ${chatId}: ${aiErr.message}`);
+        }
         if (ai.ok && ai.respuesta) {
           await sheets.spreadsheets.values.update({
             spreadsheetId: sheetId,
@@ -641,6 +646,26 @@ async function processWaConversation(chatId, conv) {
             requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
           });
         }
+
+        // Autolearn: extraer pares Q→A del intercambio WA para el KB unificado
+        setImmediate(() => {
+          const waTurns = conv.messages.map((m) => ({ role: "user", content: m.text }));
+          if (ai.ok && ai.respuesta) waTurns.push({ role: "assistant", content: ai.respuesta });
+          extractLearnablePairs(waTurns)
+            .then((pairs) => {
+              for (const p of pairs) {
+                addTrainingEntry({
+                  question: p.question, goodAnswer: p.goodAnswer,
+                  badAnswer: p.badAnswer || "", category: p.category || "conversational",
+                  context: `[WA] ${p.rationale || ""}`, source: "autolearned",
+                  status: p.confidence >= 0.92 ? "active" : "pending",
+                  confidence: p.confidence, convId: chatId,
+                });
+              }
+              if (pairs.length > 0) logger.info(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);
+            })
+            .catch(() => {});
+        });
 
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
