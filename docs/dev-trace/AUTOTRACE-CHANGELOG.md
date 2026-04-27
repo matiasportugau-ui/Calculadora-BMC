@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 02:32:02 — `311891a` — feat: add contribut and nxt workflow skills for Claude Code + Cursor
-- 2026-04-23 02:32:23 — `8c717c5` — docs: update AUTOTRACE documentation and add recent commits
-- 2026-04-23 02:44:44 — `92a1508` — docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
 - 2026-04-23 02:51:08 — `136482c` — chore(dev-trace): sync AUTOTRACE bundle pre-merge
 - 2026-04-23 03:14:53 — `6b35de9` — fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - 2026-04-23 03:22:37 — `b33cf43` — feat(sheets): Accessible Base sync + expert workspace map
@@ -222,3 +219,6 @@
 - 2026-04-27 04:34:30 — `eadf33e` — feat(pdf-layouts): implement all 5 layout templates (A-E)
 - 2026-04-27 04:50:30 — `211c672` — fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq
 - 2026-04-27 04:54:43 — `0314525` — feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools
+- 2026-04-27 05:02:28 — `42fb631` — docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch
+- 2026-04-27 05:07:22 — `eb98362` — feat(agent): add TOOLS block to system prompt — forces tool use for pricing
+- 2026-04-27 05:09:40 — `ffa578f` — feat(agent): auto-evolutionary learning pipeline

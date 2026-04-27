@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-27T07:54:44.129Z",
-    "build_ms": 90,
+    "ts": "2026-04-27T08:09:41.260Z",
+    "build_ms": 51,
     "score": 85,
     "score_delta": 0,
     "sources": [
@@ -26,7 +26,7 @@
   },
   "state": {
     "branch": "main",
-    "last_change": "2026-04-27 (Dev — ML Hub inline edit + AI context, Agent Admin, ML OAuth PKCE):",
+    "last_change": "2026-04-27 (Ops+Fix — Sheets endpoints restaurados, Cloud Run hardening, ML tokens GCS, uuid vuln patch):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",

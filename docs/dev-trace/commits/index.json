@@ -8952,6 +8952,103 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "42fb631180177a1c2167094c50a25b6c077f09ba",
+      "short_hash": "42fb631",
+      "date": "2026-04-27",
+      "time": "05:02:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch",
+      "subject": "docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0314525.md",
+        "docs/dev-trace/commits/2026/04/211c672.md",
+        "docs/dev-trace/commits/2026/04/d34d875.md",
+        "docs/dev-trace/commits/2026/04/eadf33e.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "docs/google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md",
+        "docs/team/PROJECT-STATE.md"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "eb9836245946997adeff330125668e02c36e22c2",
+      "short_hash": "eb98362",
+      "date": "2026-04-27",
+      "time": "05:07:22",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "add TOOLS block to system prompt — forces tool use for pricing",
+      "subject": "feat(agent): add TOOLS block to system prompt — forces tool use for pricing",
+      "files": [
+        "server/lib/chatPrompts.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "ffa578f7189d4a39131682ca8e8f94054e022c66",
+      "short_hash": "ffa578f",
+      "date": "2026-04-27",
+      "time": "05:09:40",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "auto-evolutionary learning pipeline",
+      "subject": "feat(agent): auto-evolutionary learning pipeline",
+      "files": [
+        "server/lib/autoLearnExtractor.js",
+        "server/lib/trainingKB.js",
+        "server/routes/agentTraining.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }
