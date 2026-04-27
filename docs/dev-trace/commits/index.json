@@ -8831,6 +8831,127 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "d34d87576f0c28826bb99db10a8748ca175bd19e",
+      "short_hash": "d34d875",
+      "date": "2026-04-27",
+      "time": "04:30:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "session update 2026-04-27 — endpoint fixes, GCS token storage",
+      "subject": "docs: session update 2026-04-27 — endpoint fixes, GCS token storage",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/1c495db.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "eadf33eb04ae87e4519c203f45f84c0030991b1d",
+      "short_hash": "eadf33e",
+      "date": "2026-04-27",
+      "time": "04:34:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "implement all 5 layout templates (A-E)",
+      "subject": "feat(pdf-layouts): implement all 5 layout templates (A-E)",
+      "files": [
+        "src/pdf-templates/blueprint.js",
+        "src/pdf-templates/construction-bold.js",
+        "src/pdf-templates/executive-dark.js",
+        "src/pdf-templates/minimalist.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "211c6721d8aac6acec8c794f1c7b0445243bb7b8",
+      "short_hash": "211c672",
+      "date": "2026-04-27",
+      "time": "04:50:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deps",
+      "title": "force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq",
+      "subject": "fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq",
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "031452574dd46fef9e7605c1b651960f8715c7de",
+      "short_hash": "0314525",
+      "date": "2026-04-27",
+      "time": "04:54:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "native Anthropic tool_use for Panelin — 4 calculator tools",
+      "subject": "feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools",
+      "files": [
+        "server/lib/agentTools.js",
+        "server/routes/agentChat.js",
+        "src/components/PanelinChatPanel.jsx",
+        "src/hooks/useChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

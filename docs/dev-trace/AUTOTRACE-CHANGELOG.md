@@ -2,10 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-22 04:37:56 — `54a641f` — fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
-- 2026-04-23 00:18:25 — `cc153d7` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
-- 2026-04-23 01:36:03 — `8e90b56` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 02:07:43 — `0ad5d93` — feat(wolfboard): add Admin 2.0 ↔ CRM operational module
 - 2026-04-23 02:32:02 — `311891a` — feat: add contribut and nxt workflow skills for Claude Code + Cursor
 - 2026-04-23 02:32:23 — `8c717c5` — docs: update AUTOTRACE documentation and add recent commits
 - 2026-04-23 02:44:44 — `92a1508` — docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
@@ -222,3 +218,7 @@
 - 2026-04-27 04:27:41 — `8787ceb` — docs: autotrace stray commit doc 80102b1
 - 2026-04-27 04:27:50 — `5af4ae7` — docs: autotrace final sync main 2026-04-27
 - 2026-04-27 04:27:58 — `1c495db` — docs: autotrace flush (hook chain end)
+- 2026-04-27 04:30:16 — `d34d875` — docs: session update 2026-04-27 — endpoint fixes, GCS token storage
+- 2026-04-27 04:34:30 — `eadf33e` — feat(pdf-layouts): implement all 5 layout templates (A-E)
+- 2026-04-27 04:50:30 — `211c672` — fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq
+- 2026-04-27 04:54:43 — `0314525` — feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools

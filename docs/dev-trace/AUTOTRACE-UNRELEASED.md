@@ -4,8 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `fa2ba6a` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- `553941e` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `57932df` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `f3d6153` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
 - `5a907b8` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
@@ -84,6 +82,8 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `ebeb68a` feat(agent-admin): add Agent Admin module for knowledge base management
 - `af27c62` feat(calculator): unify PDF export → handleClientePdf + simplify action bar
 - `df65ada` feat(pdf-layouts): add template system + E-soft-modern layout + dropdown selector
+- `eadf33e` feat(pdf-layouts): implement all 5 layout templates (A-E)
+- `0314525` feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools
 
 ## Fixes
 
@@ -157,6 +157,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `6af2db3` fix(ml-oauth): add PKCE (S256) support to MercadoLibre OAuth flow
 - `6c85bdd` fix(vercel): proxy /api/* and /calc/* to Cloud Run
 - `2b4270b` fix(dashboard): restore 6 broken Sheets endpoints + harden config
+- `211c672` fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq
 
 ## Documentation
 
@@ -203,6 +204,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `8787ceb` docs: autotrace stray commit doc 80102b1
 - `5af4ae7` docs: autotrace final sync main 2026-04-27
 - `1c495db` docs: autotrace flush (hook chain end)
+- `d34d875` docs: session update 2026-04-27 — endpoint fixes, GCS token storage
 
 ## Tests
 

@@ -14,7 +14,7 @@ Documentación de negocio previa: [planilla-inventory.md](planilla-inventory.md)
 | Variable | Uso en código | Default / notas |
 |----------|----------------|-----------------|
 | `BMC_SHEET_ID` | Workbook principal (CRM, audit, metas, fallback pagos/calendario) | Vacío → 503 en rutas que lo requieren |
-| `BMC_SHEET_SCHEMA` | Selecciona pestaña y offsets para cotizaciones / entregas | **`Master_Cotizaciones`** si no se define en `.env` |
+| `BMC_SHEET_SCHEMA` | Selecciona pestaña y offsets para cotizaciones / entregas | Código fallback: `Master_Cotizaciones`. **Producción y `.env` usan `CRM_Operativo`** (seteado en `.env` y en Cloud Run desde 2026-04-27; la planilla fue reorganizada y `Master_Cotizaciones` ya no existe como tab activa) |
 | `BMC_PAGOS_SHEET_ID` | Workbook solo pagos | Opcional; si falta, pagos pueden leerse del principal |
 | `BMC_VENTAS_SHEET_ID` | Workbook 2.0 Ventas | Requerido para `/api/ventas` |
 | `BMC_STOCK_SHEET_ID` | Stock E-Commerce | Requerido para stock |
@@ -22,13 +22,13 @@ Documentación de negocio previa: [planilla-inventory.md](planilla-inventory.md)
 | `BMC_MATRIZ_SHEET_ID` | MATRIZ costos/ventas | Default en código: `1VBbVay7pwPgC40CWCIr35VbKVuxPsKBZ` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Credencial service account | Requerido para Sheets API |
 
-**Crítico:** Con el default `BMC_SHEET_SCHEMA=Master_Cotizaciones`, las rutas usan la pestaña **`Master_Cotizaciones`** y **no** aplican `headerRowOffset: 2`. Para operación documentada como **CRM_Operativo** hay que definir:
+**Crítico:** El código fallback es `BMC_SHEET_SCHEMA=Master_Cotizaciones`, pero **la planilla fue reorganizada en 2026-04-27** — la tab `Master_Cotizaciones` ya no existe en el workbook activo. En `.env` y en Cloud Run la variable está seteada como `CRM_Operativo`. Si se omite en un entorno nuevo, las rutas buscarán una tab inexistente y devolverán 500. Siempre definir:
 
 ```bash
 BMC_SHEET_SCHEMA=CRM_Operativo
 ```
 
-Sin eso, **POST/PATCH `/api/cotizaciones`** devuelven **501** (solo permitidos con `CRM_Operativo`).
+Sin eso, **POST/PATCH `/api/cotizaciones`** devuelven **501** (solo permitidos con `CRM_Operativo`) y las lecturas fallarán contra tab inexistente.
 
 ---
 
