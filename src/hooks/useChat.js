@@ -446,6 +446,17 @@ export function useChat({
     [buildDevAuthHeaders, reloadTrainingKB, trainingEntries]
   );
 
+  const sendFeedback = useCallback(async ({ question, generatedText, rating, correction, comment }) => {
+    const apiBase = getCalcApiBase();
+    try {
+      await fetch(`${apiBase}/api/agent/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "chat", question, generatedText, rating, correction, comment, convId: conversationId }),
+      });
+    } catch { /* non-critical */ }
+  }, [conversationId]);
+
   const bulkDeleteKB = useCallback(async (ids) => {
     if (!devMode || !devAuthToken || !Array.isArray(ids) || ids.length === 0) return null;
     const apiBase = getCalcApiBase();
@@ -630,5 +641,6 @@ export function useChat({
     loadConversationList,
     loadConversationAnalysis,
     conversationId,
+    sendFeedback,
   };
 }

@@ -232,6 +232,7 @@ export default function PanelinChatPanel({
   promptPreview,
   promptSections,
   onSaveCorrection,
+  onSendFeedback,
   onReloadTrainingKB,
   onReloadPromptPreview,
   onReloadPromptSections,
@@ -1050,13 +1051,14 @@ export default function PanelinChatPanel({
                       <Volume2 size={12} /> Escuchar
                     </button>
                   )}
-                  {/* Dev training buttons — only in devMode for assistant messages with content */}
-                  {devMode && !isUser && msg.content && (
+                  {/* Feedback buttons — visible for all users on assistant messages */}
+                  {!isUser && msg.content && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 2 }}>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button
                           onClick={() => {
-                            onSaveCorrection?.({ category: "conversational", question: prevQuestion, goodAnswer: msg.content, context: "rated-good" });
+                            onSendFeedback?.({ question: prevQuestion, generatedText: msg.content, rating: "good" });
+                            if (devMode) onSaveCorrection?.({ category: "conversational", question: prevQuestion, goodAnswer: msg.content, context: "rated-good" });
                           }}
                           style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE, color: "#34c759", cursor: "pointer", fontFamily: FONT }}
                         >
@@ -1085,7 +1087,8 @@ export default function PanelinChatPanel({
                             <button
                               onClick={() => {
                                 if (!correctionText.trim()) return;
-                                onSaveCorrection?.({ category: "conversational", question: prevQuestion, badAnswer: msg.content, goodAnswer: correctionText.trim(), context: "" });
+                                onSendFeedback?.({ question: prevQuestion, generatedText: msg.content, rating: "edit", correction: correctionText.trim() });
+                                if (devMode) onSaveCorrection?.({ category: "conversational", question: prevQuestion, badAnswer: msg.content, goodAnswer: correctionText.trim(), context: "" });
                                 setCorrectingMsgId(null);
                                 setCorrectionText("");
                               }}

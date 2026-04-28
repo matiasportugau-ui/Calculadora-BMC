@@ -6485,6 +6485,7 @@ export default function PanelinCalculadoraV3() {
         promptPreview={chat.promptPreview}
         promptSections={chat.promptSections}
         onSaveCorrection={chat.saveCorrection}
+        onSendFeedback={chat.sendFeedback}
         onReloadTrainingKB={chat.reloadTrainingKB}
         onReloadPromptPreview={chat.reloadPromptPreview}
         onReloadPromptSections={chat.reloadPromptSections}

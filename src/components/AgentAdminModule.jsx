@@ -1516,6 +1516,111 @@ function ConflictsTab() {
   );
 }
 
+// ── FEEDBACK TAB ─────────────────────────────────────────────────────────────
+const RATING_COLORS = { good: "#16a34a", bad: "#dc2626", edit: "#2563eb" };
+const RATING_LABELS = { good: "✓ Buena", bad: "✗ Mala", edit: "✏ Corregida" };
+const CHANNEL_ICONS = { chat: "💬", wa: "📱", ml: "🛒" };
+
+function FeedbackTab() {
+  const [events, setEvents] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [chanFilter, setChanFilter] = useState("all");
+  const [days, setDays] = useState(7);
+
+  async function load() {
+    setLoading(true);
+    const [feedRes, statRes] = await Promise.all([
+      apiFetch(`/api/agent/feedback?days=${days}${chanFilter !== "all" ? `&channel=${chanFilter}` : ""}`),
+      apiFetch(`/api/agent/feedback/stats?days=${days}`),
+    ]);
+    setEvents(feedRes.events || []);
+    setStats(statRes);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [days, chanFilter]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Stats bar */}
+      {stats && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {[
+            ["Total", stats.total, null],
+            ["Buenas ✓", stats.byRating?.good || 0, "#16a34a"],
+            ["Malas ✗", stats.byRating?.bad || 0, "#dc2626"],
+            ["Corregidas ✏", stats.byRating?.edit || 0, "#2563eb"],
+          ].map(([label, val, color]) => (
+            <div key={label} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 14px" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: color || C.navy }}>{val}</div>
+              <div style={{ fontSize: 11, color: C.muted }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {["all", "chat", "wa", "ml"].map((ch) => (
+          <button key={ch} onClick={() => setChanFilter(ch)}
+            style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${C.border}`, background: chanFilter === ch ? C.navy : C.white, color: chanFilter === ch ? "#fff" : C.text, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            {ch === "all" ? "Todos" : `${CHANNEL_ICONS[ch]} ${ch.toUpperCase()}`}
+          </button>
+        ))}
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))}
+          style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, color: C.text, background: C.white }}>
+          {[7, 14, 30, 90].map((d) => <option key={d} value={d}>Últimos {d}d</option>)}
+        </select>
+        <button onClick={load} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.white, fontSize: 12, cursor: "pointer" }}>↺</button>
+      </div>
+
+      {/* Feed */}
+      {loading ? (
+        <div style={{ padding: 32, color: C.muted, textAlign: "center" }}>Cargando feedback…</div>
+      ) : events.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 14 }}>
+          Sin feedback en el período seleccionado.<br />
+          <span style={{ fontSize: 12 }}>Usá los botones 👍 / ✏️ en el chat o el Hub ML para registrar feedback.</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {events.map((ev) => (
+            <div key={ev.feedbackId} style={{ background: C.white, borderRadius: 12, border: `1.5px solid ${RATING_COLORS[ev.rating] || C.border}22`, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: RATING_COLORS[ev.rating], background: `${RATING_COLORS[ev.rating]}18`, borderRadius: 6, padding: "2px 8px" }}>
+                    {RATING_LABELS[ev.rating]}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.muted }}>{CHANNEL_ICONS[ev.channel] || ""} {ev.channel?.toUpperCase()}</span>
+                  <span style={{ fontSize: 11, color: C.muted }}>{ev.ts?.slice(0, 16).replace("T", " ")}</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 4 }}>{ev.question}</div>
+
+              <div style={{ fontSize: 12, color: C.text, background: "#f8fafc", borderRadius: 8, padding: "8px 10px", marginBottom: ev.correction || ev.comment ? 8 : 0, lineHeight: 1.5 }}>
+                {ev.generatedText}
+              </div>
+
+              {ev.correction && (
+                <div style={{ fontSize: 12, color: "#166534", background: "#f0fdf4", borderRadius: 8, padding: "8px 10px", marginBottom: ev.comment ? 6 : 0, lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 700 }}>Corrección: </span>{ev.correction}
+                </div>
+              )}
+              {ev.comment && (
+                <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginTop: 4 }}>
+                  💬 {ev.comment}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── MAIN MODULE ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: "kb", label: "Base de conocimiento", icon: "📚" },
@@ -1523,6 +1628,7 @@ const TABS = [
   { id: "conversations", label: "Conversaciones", icon: "💬" },
   { id: "stats", label: "Estadísticas", icon: "📊" },
   { id: "analytics", label: "Analytics IA", icon: "🔍" },
+  { id: "feedback", label: "Feedback", icon: "💬" },
   { id: "health", label: "Salud KB", icon: "🩺" },
   { id: "autolearn", label: "Cola IA", icon: "🧠" },
   { id: "conflicts", label: "Conflictos", icon: "⚡" },
@@ -1606,6 +1712,7 @@ export default function AgentAdminModule() {
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}
           {tab === "analytics" && <AnalyticsTab />}
+          {tab === "feedback" && <FeedbackTab />}
           {tab === "health" && <HealthTab />}
           {tab === "autolearn" && <AutoLearnTab />}
           {tab === "conflicts" && <ConflictsTab />}
