@@ -10150,6 +10150,103 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "ae254de6e8430cd7bcb7e81a9637a83828e35500",
+      "short_hash": "ae254de",
+      "date": "2026-04-27",
+      "time": "16:56:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync autolearn fix + roadmap",
+      "subject": "docs: autotrace sync autolearn fix + roadmap",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/209c6e4.md",
+        "docs/dev-trace/commits/2026/04/9212008.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "eb48ea178962c8922977990901c7abd001da4193",
+      "short_hash": "eb48ea1",
+      "date": "2026-04-27",
+      "time": "16:58:17",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "kb",
+      "title": "log GCS init error instead of silently swallowing",
+      "subject": "fix(kb): log GCS init error instead of silently swallowing",
+      "files": [
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "46b47d70e49e513308617413542e8ee7be1e6897",
+      "short_hash": "46b47d7",
+      "date": "2026-04-28",
+      "time": "19:44:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "feedback",
+      "title": "response review loop — Good/Correct/Comment across channels",
+      "subject": "feat(feedback): response review loop — Good/Correct/Comment across channels",
+      "files": [
+        "server/index.js",
+        "server/lib/responseFeedback.js",
+        "server/routes/agentFeedback.js",
+        "src/components/AgentAdminModule.jsx",
+        "src/components/BmcMlOperativoModule.jsx",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/components/PanelinChatPanel.jsx",
+        "src/hooks/useChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

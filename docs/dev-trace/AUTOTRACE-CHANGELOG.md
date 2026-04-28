@@ -2,9 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 06:37:52 — `a22ce4e` — feat(wolfboard): add pendientes, sync, row, enviados, export routes
-- 2026-04-23 06:40:29 — `5e1c03f` — fix: prevent autolog hook self-loop on dev-trace commits
-- 2026-04-23 06:40:51 — `945e83b` — feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
 - 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)
 - 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
 - 2026-04-23 06:52:02 — `28ef700` — fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
@@ -222,3 +219,6 @@
 - 2026-04-27 16:30:24 — `3e353f1` — feat(kb): health panel + import with dedup (Week 4)
 - 2026-04-27 16:30:25 — `209c6e4` — docs: autotrace sync health panel + import
 - 2026-04-27 16:56:03 — `9212008` — fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
+- 2026-04-27 16:56:05 — `ae254de` — docs: autotrace sync autolearn fix + roadmap
+- 2026-04-27 16:58:17 — `eb48ea1` — fix(kb): log GCS init error instead of silently swallowing
+- 2026-04-28 19:44:44 — `46b47d7` — feat(feedback): response review loop — Good/Correct/Comment across channels

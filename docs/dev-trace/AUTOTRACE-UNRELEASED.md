@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
 - `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
 - `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 - `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
@@ -84,10 +83,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3c6fc50` feat(kb): auto-generate ML overrides for all gap entries
 - `c49b772` feat(kb): conflict detection — same question, different answer
 - `3e353f1` feat(kb): health panel + import with dedup (Week 4)
+- `46b47d7` feat(feedback): response review loop — Good/Correct/Comment across channels
 
 ## Fixes
 
-- `680cf98` fix(docs): correct typo in Atlas Browser Go-Live manual steps prompt title
 - `bc5c1fc` fix(docs): update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title
 - `0a5667b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `473aa6c` fix(pdf): add Cloud Run sandbox flags to puppeteer launch
 - `6cc7b08` fix(kb): await GCS init before KB reads — cold-start race condition `[regresión?]`
 - `9212008` fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
+- `eb48ea1` fix(kb): log GCS init error instead of silently swallowing
 
 ## Documentation
 
@@ -229,6 +229,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `99b310a` docs: autotrace sync ML overrides batch
 - `51d7271` docs: autotrace sync conflict detection
 - `209c6e4` docs: autotrace sync health panel + import
+- `ae254de` docs: autotrace sync autolearn fix + roadmap
 
 ## Tests
 
