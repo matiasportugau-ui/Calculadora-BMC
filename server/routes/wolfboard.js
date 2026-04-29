@@ -338,7 +338,7 @@ export function createWolfboardRouter(config) {
     }
     const adminRowNum = Number(adminRow);
     if (!Number.isInteger(adminRowNum) || adminRowNum < 2) {
-      return res.status(400).json({ ok: false, error: "adminRow inválido" });
+      return res.status(400).json({ ok: false, error: "adminRow debe ser un número entero mayor o igual a 2" });
     }
 
     const adminSheetId = config.wolfbAdminSheetId;

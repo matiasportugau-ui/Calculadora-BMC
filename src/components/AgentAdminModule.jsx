@@ -1559,18 +1559,21 @@ function FeedbackTab() {
   const [chanFilter, setChanFilter] = useState("all");
   const [days, setDays] = useState(7);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [feedRes, statRes] = await Promise.all([
-      apiFetch(`/api/agent/feedback?days=${days}${chanFilter !== "all" ? `&channel=${chanFilter}` : ""}`),
-      apiFetch(`/api/agent/feedback/stats?days=${days}`),
-    ]);
-    setEvents(feedRes.events || []);
-    setStats(statRes);
-    setLoading(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const [feedRes, statRes] = await Promise.all([
+        apiFetch(`/api/agent/feedback?days=${days}${chanFilter !== "all" ? `&channel=${chanFilter}` : ""}`),
+        apiFetch(`/api/agent/feedback/stats?days=${days}`),
+      ]);
+      if (cancelled) return;
+      setEvents(feedRes.events || []);
+      setStats(statRes);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [days, chanFilter]);
-
-  useEffect(() => { load(); }, [load]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1946,22 +1949,25 @@ function ModelRoutingTab() {
   const [testResults, setTestResults] = useState({});
   const [testing, setTesting]         = useState({});
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [routeRes, aiRes] = await Promise.all([
-      apiFetch("/api/agent/model-routing"),
-      apiFetch("/api/agent/ai-options"),
-    ]);
-    if (routeRes.ok) {
-      setRouting(routeRes.routing || {});
-      setCatalog(routeRes.taskCatalog || []);
-      setDraft({ ...routeRes.routing });
-    }
-    if (aiRes.providers) setProviders(aiRes.providers);
-    setLoading(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const [routeRes, aiRes] = await Promise.all([
+        apiFetch("/api/agent/model-routing"),
+        apiFetch("/api/agent/ai-options"),
+      ]);
+      if (cancelled) return;
+      if (routeRes.ok) {
+        setRouting(routeRes.routing || {});
+        setCatalog(routeRes.taskCatalog || []);
+        setDraft({ ...routeRes.routing });
+      }
+      if (aiRes.providers) setProviders(aiRes.providers);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   // Build flat list of "provider/model" options for selects
   const modelOptions = [
@@ -2201,19 +2207,23 @@ function AutoEvolutionTab() {
   const [saving, setSaving]   = useState(false);
   const [msg, setMsg]         = useState({ text: "", type: "success" });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const r = await apiFetch("/api/agent/auto-evolution");
-    if (r.ok) {
-      setDefs(r.defaults);
-      setDraft({ ...r.config });
-      setMsg({ text: "", type: "success" });
-    } else {
-      setMsg({ text: r.error || "No se pudo cargar la configuración de auto-evolución.", type: "error" });
-    }
-    setLoading(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const r = await apiFetch("/api/agent/auto-evolution");
+      if (cancelled) return;
+      if (r.ok) {
+        setDefs(r.defaults);
+        setDraft({ ...r.config });
+        setMsg({ text: "", type: "success" });
+      } else {
+        setMsg({ text: r.error || "No se pudo cargar la configuración de auto-evolución.", type: "error" });
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
-  useEffect(() => { load(); }, [load]);
 
   async function save() {
     setSaving(true);
