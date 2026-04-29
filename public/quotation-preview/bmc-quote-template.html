@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BMC Quote Template — Preview</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,7 +43,6 @@
   }
   @media print {
     .sheet { padding: 0; }
-    .page-break { page-break-before: always; }
   }
 
   /* ── Header ───────────────────────────────────────────── */
@@ -83,7 +83,7 @@
   .rule { height: 2.5pt; background: var(--brand); margin: 12px 0 14px; border-radius: 2px; }
 
   /* ── Cards ────────────────────────────────────────────── */
-  .row { display: flex; gap: 12px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
   .card {
     flex: 1;
     border: 0.6pt solid var(--brand-line);
@@ -131,12 +131,14 @@
     font-weight: 700; letter-spacing: 0.04em; text-align: left;
     font-size: 8.8pt;
   }
-  table.items tr.group-row td {
+  table.items tr.group-row > * {
     background: var(--brand-soft);
     color: var(--brand);
     font-weight: 700;
     font-size: 9pt;
+    text-align: left;
   }
+  table.items tr.group-row td.num { text-align: right; }
   table.items td.num { text-align: right; font-variant-numeric: tabular-nums; }
   table.items td.cant { text-align: center; }
   table.items tbody tr:nth-child(even) td:not([colspan]) { background: #FAFBFC; }
@@ -164,9 +166,9 @@
   table.totals .grand td.num { font-size: 14pt; }
 
   /* ── Terms + Bank ────────────────────────────────────── */
-  .two-col { display: flex; gap: 12px; margin-top: 14px; }
-  .terms { flex: 1.4; }
-  .bank  { flex: 1; }
+  .two-col { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  .terms { flex: 1.4 1 280px; min-width: 280px; }
+  .bank  { flex: 1 1 240px; min-width: 240px; }
   .panel {
     border: 0.5pt solid var(--line-strong);
     border-radius: 4px;
@@ -264,7 +266,7 @@
     </thead>
     <tbody>
 
-      <tr class="group-row"><td colspan="4">▸ PANELES</td><td class="num">$6,564.02</td></tr>
+      <tr class="group-row"><th scope="rowgroup" colspan="4">▸ PANELES</th><td class="num">$6,564.02</td></tr>
       <tr>
         <td>ISODEC EPS 100mm · 18 paneles</td>
         <td class="cant">138.88</td>
@@ -273,19 +275,19 @@
         <td class="num">$6,564.02</td>
       </tr>
 
-      <tr class="group-row"><td colspan="4">▸ FIJACIONES</td><td class="num">$304.79</td></tr>
+      <tr class="group-row"><th scope="rowgroup" colspan="4">▸ FIJACIONES</th><td class="num">$304.79</td></tr>
       <tr><td>Varilla roscada 3/8" (1m)</td><td class="cant">20</td><td class="cant">unid</td><td class="num">$3.68</td><td class="num">$73.64</td></tr>
       <tr><td>Tuerca 3/8" galv.</td><td class="cant">190</td><td class="cant">unid</td><td class="num">$0.08</td><td class="num">$15.96</td></tr>
       <tr><td>Arandela carrocero 3/8"</td><td class="cant">95</td><td class="cant">unid</td><td class="num">$0.66</td><td class="num">$62.51</td></tr>
       <tr><td>Arandela plana 3/8"</td><td class="cant">95</td><td class="cant">unid</td><td class="num">$0.10</td><td class="num">$9.04</td></tr>
       <tr><td>Tortuga PVC (arand. PP)</td><td class="cant">95</td><td class="cant">unid</td><td class="num">$1.51</td><td class="num">$143.64</td></tr>
 
-      <tr class="group-row"><td colspan="4">▸ SELLADORES</td><td class="num">$506.25</td></tr>
+      <tr class="group-row"><th scope="rowgroup" colspan="4">▸ SELLADORES</th><td class="num">$506.25</td></tr>
       <tr><td>Silicona Bromplast 8 ×600</td><td class="cant">16</td><td class="cant">unid</td><td class="num">$11.24</td><td class="num">$179.88</td></tr>
       <tr><td>Silicona neutra 300 ml (Silva / lista MATRIZ)</td><td class="cant">32</td><td class="cant">unid</td><td class="num">$8.40</td><td class="num">$268.80</td></tr>
       <tr><td>Cinta Butilo 2 mm × 15 mm × 22.5 m</td><td class="cant">3</td><td class="cant">unid</td><td class="num">$19.19</td><td class="num">$57.57</td></tr>
 
-      <tr class="group-row"><td colspan="4">▸ SERVICIOS</td><td class="num">$280.00</td></tr>
+      <tr class="group-row"><th scope="rowgroup" colspan="4">▸ SERVICIOS</th><td class="num">$280.00</td></tr>
       <tr><td>Flete con entrega en obra</td><td class="cant">1</td><td class="cant">servicio</td><td class="num">$280.00</td><td class="num">$280.00</td></tr>
 
     </tbody>
