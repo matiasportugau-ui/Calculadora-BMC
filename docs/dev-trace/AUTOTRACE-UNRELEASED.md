@@ -87,7 +87,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Fixes
 
-- `0a5667b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `9212008` fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
 - `eb48ea1` fix(kb): log GCS init error instead of silently swallowing
 - `702a669` fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set
+- `7b6ff61` fix(agent-module): correct LogsTab API paths /api → /calc
 
 ## Documentation
 

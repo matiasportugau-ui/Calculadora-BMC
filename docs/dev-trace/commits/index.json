@@ -10559,6 +10559,44 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "7b6ff614212fdb711ac643f09f16d3d8d13daee7",
+      "short_hash": "7b6ff61",
+      "date": "2026-04-29",
+      "time": "02:22:26",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "agent-module",
+      "title": "correct LogsTab API paths /api → /calc",
+      "subject": "fix(agent-module): correct LogsTab API paths /api → /calc",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/00bafe7.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "src/components/AgentAdminModule.jsx",
+        "src/components/PanelinChatPanel.jsx",
+        "src/hooks/useVoiceSession.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }
