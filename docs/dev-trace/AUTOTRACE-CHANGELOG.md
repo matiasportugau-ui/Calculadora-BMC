@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 07:32:45 — `3646101` — test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles
 - 2026-04-23 07:38:58 — `52e394a` — fix(calc): make /cotizar/pdf handler async + sync autotrace
 - 2026-04-23 07:50:33 — `38dffaf` — feat(roof-plan): segment-level encounter selection in 2D plan
 - 2026-04-23 08:01:17 — `9e30028` — fix(docker): skip bash disk-precheck in Alpine build stage
@@ -222,3 +221,4 @@
 - 2026-04-29 01:25:57 — `a5aedaa` — docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
 - 2026-04-29 01:26:09 — `89ec748` — docs: autotrace sync — trace commit a5aedaa (propagation loop close)
 - 2026-04-29 01:26:24 — `75ae09a` — docs: autotrace sync — trace commit 89ec748 (close propagation chain)
+- 2026-04-29 01:54:05 — `d8f0421` — feat(agent-module): add Logs, Voz tabs + live provider status in Config

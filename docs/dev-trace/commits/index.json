@@ -10494,6 +10494,35 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "d8f0421b10d38ac7e76f1dda27e82e31ea70d552",
+      "short_hash": "d8f0421",
+      "date": "2026-04-29",
+      "time": "01:54:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent-module",
+      "title": "add Logs, Voz tabs + live provider status in Config",
+      "subject": "feat(agent-module): add Logs, Voz tabs + live provider status in Config",
+      "files": [
+        "server/routes/calc.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
 - `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
 - `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
 - `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `46b47d7` feat(feedback): response review loop — Good/Correct/Comment across channels
 - `bd76a72` feat(pdf-layouts): add BMC PDF — Blueprint Técnico template `[tests]`
 - `48af0a2` feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args
+- `d8f0421` feat(agent-module): add Logs, Voz tabs + live provider status in Config
 
 ## Fixes
 

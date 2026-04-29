@@ -220,6 +220,7 @@ export default function PanelinVoicePanel({
         fontFamily: FONT,
       }}
     >
+      <style>{`@keyframes panelin-mic-pulse{0%,100%{box-shadow:0 0 0 4px rgba(0,113,227,0.2)}50%{box-shadow:0 0 0 10px rgba(0,113,227,0.05)}}`}</style>
       {/* Transcript area */}
       <div
         style={{
