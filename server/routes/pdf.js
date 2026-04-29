@@ -59,23 +59,45 @@ export function createPdfRouter() {
         console.warn("[pdf] chmod failed:", e.message);
       }
 
-      // Cloud Run / container sandbox flags — required for headless Chromium
-      const extraArgs = [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",   // /dev/shm is 64MB in Cloud Run — use /tmp instead
-        "--disable-gpu",
-        "--single-process",          // avoids zygote + sandbox restrictions in containers
-      ];
-      const launchArgs = [
-        ...new Set([...(chromium.args || []), ...extraArgs]),
-      ];
+      // When CHROMIUM_EXECUTABLE_PATH points to a system binary (e.g. /usr/bin/chromium),
+      // @sparticuz/chromium args are Lambda-specific (--headless='shell', SwiftShader flags)
+      // and incompatible with the distro Chromium. Use a clean standard headless arg set instead.
+      const useSystemBinary = !!process.env.CHROMIUM_EXECUTABLE_PATH;
+
+      const launchArgs = useSystemBinary
+        ? [
+            "--headless=new",
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-zygote",
+            "--single-process",
+            "--disable-extensions",
+            "--disable-background-networking",
+            "--disable-default-apps",
+            "--disable-sync",
+            "--disable-translate",
+            "--metrics-recording-only",
+            "--mute-audio",
+            "--no-first-run",
+            "--safebrowsing-disable-auto-update",
+            "--font-render-hinting=none",
+          ]
+        : [
+            ...new Set([...(chromium.args || [])]),
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+          ];
+
+      console.info("[pdf] useSystemBinary:", useSystemBinary, "args[0]:", launchArgs[0]);
 
       browser = await puppeteer.launch({
         args: launchArgs,
-        defaultViewport: chromium.defaultViewport,
+        defaultViewport: { width: 1280, height: 900 },
         executablePath,
-        headless: true,
+        headless: useSystemBinary ? "new" : true,
       });
 
       const page = await browser.newPage();
