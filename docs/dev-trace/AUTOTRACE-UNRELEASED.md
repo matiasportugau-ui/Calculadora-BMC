@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
 - `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
 - `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
 - `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `3e353f1` feat(kb): health panel + import with dedup (Week 4)
 - `46b47d7` feat(feedback): response review loop — Good/Correct/Comment across channels
 - `bd76a72` feat(pdf-layouts): add BMC PDF — Blueprint Técnico template `[tests]`
+- `48af0a2` feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args
 
 ## Fixes
 
