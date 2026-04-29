@@ -62,6 +62,12 @@ load_env_key API_KEY
 load_env_key WHATSAPP_VERIFY_TOKEN
 load_env_key WHATSAPP_ACCESS_TOKEN
 load_env_key WHATSAPP_PHONE_NUMBER_ID
+load_env_key WHATSAPP_APP_SECRET
+
+# Shopify
+load_env_key SHOPIFY_CLIENT_ID
+load_env_key SHOPIFY_CLIENT_SECRET
+load_env_key SHOPIFY_WEBHOOK_SECRET
 
 # Google Sheets (todos los workbooks)
 load_env_key BMC_SHEET_ID
@@ -184,12 +190,21 @@ add_sensitive GROK_API_KEY "$GROK_API_KEY"
 [[ -n "$GEMINI_CHAT_MODEL" ]]     && PAIRS+=("GEMINI_CHAT_MODEL=$GEMINI_CHAT_MODEL")
 [[ -n "$GROK_CHAT_MODEL" ]]       && PAIRS+=("GROK_CHAT_MODEL=$GROK_CHAT_MODEL")
 
-# WhatsApp (token de acceso es alta sensibilidad; verify/phone_id son IDs)
+# WhatsApp (verify/access/app_secret son alta sensibilidad; phone_id es ID)
 if [[ -n "$WHATSAPP_VERIFY_TOKEN" ]]; then
   add_sensitive WHATSAPP_VERIFY_TOKEN "$WHATSAPP_VERIFY_TOKEN"
   add_sensitive WHATSAPP_ACCESS_TOKEN "$WHATSAPP_ACCESS_TOKEN"
+  add_sensitive WHATSAPP_APP_SECRET "$WHATSAPP_APP_SECRET"
   PAIRS+=("WHATSAPP_PHONE_NUMBER_ID=$WHATSAPP_PHONE_NUMBER_ID")
   echo "→ WhatsApp phone_id: env var"
+fi
+
+# Shopify (client_id es ID; client_secret + webhook_secret son alta sensibilidad)
+if [[ -n "$SHOPIFY_CLIENT_ID" ]]; then
+  PAIRS+=("SHOPIFY_CLIENT_ID=$SHOPIFY_CLIENT_ID")
+  add_sensitive SHOPIFY_CLIENT_SECRET "$SHOPIFY_CLIENT_SECRET"
+  add_sensitive SHOPIFY_WEBHOOK_SECRET "$SHOPIFY_WEBHOOK_SECRET"
+  echo "→ Shopify client_id: env var"
 fi
 
 # Google Sheets
