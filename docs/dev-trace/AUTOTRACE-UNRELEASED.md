@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
 - `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
 - `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `48af0a2` feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args
 - `d8f0421` feat(agent-module): add Logs, Voz tabs + live provider status in Config
 - `00bafe7` feat(agent-module): update Logs and Voz tabs with live provider status
+- `f4dd6b2` feat(agent-module): enhance Logs and Voz tabs with live provider status
 
 ## Fixes
 
