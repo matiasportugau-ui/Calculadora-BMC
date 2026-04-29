@@ -231,6 +231,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `209c6e4` docs: autotrace sync health panel + import
 - `ae254de` docs: autotrace sync autolearn fix + roadmap
 - `dd92078` docs: autotrace sync feedback system
+- `a5aedaa` docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
 
 ## Tests
 

@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 07:12:28 — `db0c9ce` — feat: wire real calculator engine into quote-batch
 - 2026-04-23 07:20:09 — `28507ff` — fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
 - 2026-04-23 07:25:49 — `03ce080` — fix(server): move wolfboard router before /api catch-all to fix 404s
 - 2026-04-23 07:32:45 — `3646101` — test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles
@@ -222,3 +221,4 @@
 - 2026-04-28 23:53:04 — `bd76a72` — feat(pdf-layouts): add BMC PDF — Blueprint Técnico template
 - 2026-04-29 00:02:15 — `702a669` — fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set
 - 2026-04-29 00:06:41 — `48af0a2` — feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args
+- 2026-04-29 01:25:57 — `a5aedaa` — docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
