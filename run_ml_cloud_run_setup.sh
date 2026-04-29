@@ -99,7 +99,16 @@ declare -a PAIRS
 PAIRS+=("ML_CLIENT_ID=$ML_CLIENT_ID")
 PAIRS+=("ML_CLIENT_SECRET=$ML_CLIENT_SECRET")
 PAIRS+=("PUBLIC_BASE_URL=$PUBLIC_URL")
-PAIRS+=("ML_USE_PROD_REDIRECT=true")
+
+# ML_USE_PROD_REDIRECT only on the canonical prod service; staging/dev services
+# get the dev redirect so OAuth callbacks don't collide.
+if [[ "$SERVICE_NAME" == "panelin-calc" ]]; then
+  PAIRS+=("ML_USE_PROD_REDIRECT=true")
+  echo "→ ML_USE_PROD_REDIRECT=true (service is prod)"
+else
+  PAIRS+=("ML_USE_PROD_REDIRECT=false")
+  echo "→ ML_USE_PROD_REDIRECT=false (service ≠ panelin-calc)"
+fi
 
 # GCS token store (persistencia ML tokens en Cloud Run)
 if [[ -n "$ML_TOKEN_GCS_BUCKET" ]]; then
