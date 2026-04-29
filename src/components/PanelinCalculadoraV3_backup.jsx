@@ -462,17 +462,14 @@ function TableGroup({ title, items = [], subtotal, collapsed = false, onToggle, 
 
 function MobileBottomBar({
   total,
-  onPrint,
   onWhatsApp,
+  onClientePdf,
   onOpenDrive,
-  onClienteVisual,
   onInternalReport,
   onCosteo,
   onCopyTSV,
-  onPdfEnriquecido,
-  onPdfEnriquecidoPrint,
-  pdfPlantaResumenPage,
-  onPdfPlantaResumenPageChange,
+  pdfLayout,
+  onPdfLayoutChange,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   useEffect(() => {
@@ -519,7 +516,7 @@ function MobileBottomBar({
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
             <button type="button" onClick={onWhatsApp} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "#25D366", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>WA</button>
-            <button type="button" onClick={onPrint} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
+            <button type="button" onClick={onClientePdf} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>PDF</button>
             <button type="button" aria-label="Más acciones" onClick={() => setSheetOpen(true)} style={{ padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.35)", background: "transparent", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <MoreHorizontal size={22} strokeWidth={2.25} />
             </button>
@@ -533,41 +530,27 @@ function MobileBottomBar({
       />
       <div className={`bmc-bottom-sheet${sheetOpen ? " open" : ""}`} role="dialog" aria-label="Más acciones">
         <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, color: C.tp, fontFamily: FONT }}>Más acciones</div>
-        {typeof onPdfPlantaResumenPageChange === "function" && (
-          <label style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            padding: "10px 4px 14px",
-            fontSize: 13,
-            color: C.ts,
-            cursor: "pointer",
-            fontFamily: FONT,
-            borderBottom: `1px solid ${C.border}`,
-            marginBottom: 8,
-          }}>
-            <input
-              type="checkbox"
-              checked={!!pdfPlantaResumenPage}
-              onChange={(e) => onPdfPlantaResumenPageChange(e.target.checked)}
-              style={{ marginTop: 3, width: 18, height: 18, flexShrink: 0 }}
-            />
-            <span>
-              <span style={{ fontWeight: 700, color: C.tp }}>PDF+</span>
-              {" · "}Incluir página Planta + resumen (diseño marca)
-            </span>
-          </label>
-        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.ts, padding: "2px 0" }}>
+            <span style={{ fontWeight: 700, color: C.tp, whiteSpace: "nowrap" }}>Diseño PDF:</span>
+            <select
+              value={pdfLayout}
+              onChange={e => onPdfLayoutChange(e.target.value)}
+              style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13 }}
+            >
+              <option value="bmc-pdf">BMC PDF — Blueprint Técnico</option>
+              <option value="soft-modern">E — Soft Modern</option>
+              <option value="executive-dark">A — Executive Dark</option>
+              <option value="blueprint">B — Blueprint</option>
+              <option value="minimalist">C — Minimalist</option>
+              <option value="construction-bold">D — Construction Bold</option>
+            </select>
+          </label>
+          <button type="button" onClick={() => run(onClientePdf)} style={{ ...sheetBtn, background: C.primary, color: "#fff" }}><Download size={18} />PDF Cliente</button>
           <button type="button" onClick={() => run(onOpenDrive)} style={{ ...sheetBtn, background: "#4285F4", color: "#fff" }}><Cloud size={18} />Drive</button>
-          <button type="button" onClick={() => run(onClienteVisual)} style={{ ...sheetBtn, background: "#0ea5e9", color: "#fff" }}><LayoutTemplate size={18} />Hoja Cliente</button>
           <button type="button" onClick={() => run(onCosteo)} style={{ ...sheetBtn, background: "#7c3aed", color: "#fff" }}><CircleDollarSign size={18} />Costeo</button>
           <button type="button" onClick={() => run(onInternalReport)} style={{ ...sheetBtn, background: C.surface, color: C.brand, border: `1.5px solid ${C.brand}` }}><ClipboardList size={18} />Informe interno</button>
           <button type="button" onClick={() => run(onCopyTSV)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Table size={18} />TSV Sheets</button>
-          <button type="button" onClick={() => run(onPdfEnriquecido)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Download size={18} />PDF+</button>
-          {pdfPlantaResumenPage && typeof onPdfEnriquecidoPrint === "function" && (
-            <button type="button" onClick={() => run(onPdfEnriquecidoPrint)} style={{ ...sheetBtn, background: C.surface, color: C.tp, border: `1.5px solid ${C.border}` }}><Printer size={18} />PDF+ vectorial</button>
-          )}
         </div>
       </div>
     </>
@@ -2373,6 +2356,7 @@ export default function PanelinCalculadoraV3() {
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
+  const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'bmc-pdf');
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
@@ -3577,6 +3561,56 @@ export default function PanelinCalculadoraV3() {
       showToast("Error: " + (err?.message || err));
     }
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfPlantaResumenPage]);
+
+  const handleClientePdf = useCallback(async () => {
+    if (!groups.length) return;
+    showToast("Generando PDF…");
+    try {
+      const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
+      const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
+      const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
+      const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+      const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
+      const appendix = buildPdfAppendixPayload({
+        scenario, scenarioDef: scenarioDef_, vis: vis_,
+        techo, pared, camara, results, grandTotal,
+        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+        PANELS_TECHO, PANELS_PARED,
+      });
+      const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
+      const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
+      let html;
+      if (pdfLayout) {
+        const { renderPdfLayout, buildQuotationModel } = await import("../pdf-templates/index.js");
+        const q = buildQuotationModel({
+          client: proyecto, project: proyecto, scenario,
+          panel: panelInfo, groups: groupsMapped,
+          totals: grandTotal, appendix, snapshotImages,
+        });
+        html = await renderPdfLayout(pdfLayout, q);
+      } else {
+        html = generateClientVisualHTML({
+          client: proyecto, project: proyecto, scenario,
+          panel: panelInfo, groups: groupsMapped,
+          totals: grandTotal, appendix, snapshotImages,
+          includePlantaResumenPage: false,
+        });
+      }
+      const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
+      const pdfBlob = await htmlToPdfBlob(html);
+      const fname = pdfFileName(
+        (proyecto.refInterna || "").trim() || "BMC",
+        proyecto.nombre,
+      );
+      downloadPdfBlob(pdfBlob, fname);
+      showToast("PDF descargado");
+    } catch (err) {
+      showToast("Error al generar PDF: " + (err?.message || err));
+    }
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -6345,35 +6379,33 @@ export default function PanelinCalculadoraV3() {
             <div>Metalog SAS · RUT: 120403430012 · BROU Cta. Dólares: 110520638-00002</div>
           </div>}
 
-          {/* PDF+ opción: página Planta + resumen — desktop */}
+          {/* PDF layout selector — desktop only */}
           {groups.length > 0 && (
-            <div className="bmc-desktop-actions" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap", fontSize: 13, color: C.ts }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}>
-                <input
-                  type="checkbox"
-                  checked={pdfPlantaResumenPage}
-                  onChange={(e) => setPdfPlantaResumenPage(e.target.checked)}
-                  style={{ width: 18, height: 18 }}
-                />
-                <span>
-                  <span style={{ fontWeight: 700, color: C.tp }}>PDF+</span>
-                  {" · "}Incluir página <b style={{ color: C.brand }}>Planta + resumen</b> (marca · obra)
-                </span>
-              </label>
+            <div className="bmc-desktop-actions" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: C.ts }}>
+              <label htmlFor="bmc-pdf-layout" style={{ fontWeight: 600, color: C.tp, whiteSpace: "nowrap" }}>Diseño PDF:</label>
+              <select
+                id="bmc-pdf-layout"
+                value={pdfLayout}
+                onChange={e => { const v = e.target.value; setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
+                style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 260 }}
+              >
+                <option value="soft-modern">E — Soft Modern</option>
+                <option value="executive-dark">A — Executive Dark</option>
+                <option value="blueprint">B — Blueprint</option>
+                <option value="minimalist">C — Minimalist</option>
+                <option value="construction-bold">D — Construction Bold</option>
+              </select>
             </div>
           )}
 
           {/* Action buttons — desktop only */}
           {groups.length > 0 && <div className="bmc-desktop-actions" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
             <button onClick={handleCopyWA} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: "none", background: "#25D366", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Copy size={16} />WhatsApp</button>
-            <button onClick={handlePrint} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><FileText size={16} />PDF</button>
+            <button onClick={handleClientePdf} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Download size={16} />PDF Cliente</button>
             <button onClick={handleInternalReport} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.brand}`, background: C.surface, color: C.brand, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><ClipboardList size={16} />Interno</button>
             <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#4285F4", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Cloud size={16} />Drive</button>
-            <button onClick={handleClienteVisual} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: "none", background: "#0ea5e9", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><LayoutTemplate size={16} />Hoja Cliente</button>
             <button onClick={handleCosteo} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: "none", background: "#7c3aed", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><CircleDollarSign size={16} />Costeo</button>
             <button onClick={handleCopyTSV} style={{ flex: 1, minWidth: 110, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Table size={16} />TSV Sheets</button>
-            <button onClick={handlePdfEnriquecido} style={{ flex: 1, minWidth: 100, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Download size={16} />PDF+</button>
-            {pdfPlantaResumenPage && <button onClick={handlePdfEnriquecidoPrint} style={{ flex: 1, minWidth: 120, padding: "12px 16px", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Printer size={16} />PDF+ vectorial</button>}
           </div>}
 
           {/* Transparency Panel */}
@@ -6454,6 +6486,7 @@ export default function PanelinCalculadoraV3() {
         promptPreview={chat.promptPreview}
         promptSections={chat.promptSections}
         onSaveCorrection={chat.saveCorrection}
+        onSendFeedback={chat.sendFeedback}
         onReloadTrainingKB={chat.reloadTrainingKB}
         onReloadPromptPreview={chat.reloadPromptPreview}
         onReloadPromptSections={chat.reloadPromptSections}
@@ -6492,17 +6525,14 @@ export default function PanelinCalculadoraV3() {
       {groups.length > 0 && (
         <MobileBottomBar
           total={grandTotal.totalFinal}
-          onPrint={handlePrint}
           onWhatsApp={handleCopyWA}
+          onClientePdf={handleClientePdf}
           onOpenDrive={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }}
-          onClienteVisual={handleClienteVisual}
           onInternalReport={handleInternalReport}
           onCosteo={handleCosteo}
           onCopyTSV={handleCopyTSV}
-          onPdfEnriquecido={handlePdfEnriquecido}
-          onPdfEnriquecidoPrint={handlePdfEnriquecidoPrint}
-          pdfPlantaResumenPage={pdfPlantaResumenPage}
-          onPdfPlantaResumenPageChange={setPdfPlantaResumenPage}
+          pdfLayout={pdfLayout}
+          onPdfLayoutChange={v => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
         />
       )}
 

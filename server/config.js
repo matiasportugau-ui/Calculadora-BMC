@@ -66,6 +66,10 @@ export const config = {
   /** JSONL Panelin Knowledge (events-log); default docs/team/knowledge/events-log.jsonl */
   aiKnowledgeEventsLog: process.env.AI_KNOWLEDGE_EVENTS_LOG || "",
   bmcSheetSchema: process.env.BMC_SHEET_SCHEMA || "Master_Cotizaciones",
+  bmcAuditTab: process.env.BMC_AUDIT_TAB || "AUDIT_LOG",
+  bmcPagosTab: process.env.BMC_PAGOS_TAB || "Pagos_Pendientes",
+  bmcMetasTab: process.env.BMC_METAS_TAB || "Metas_Ventas",
+  bmcCalendarioTab: process.env.BMC_CALENDARIO_TAB || "Calendario de Vencimientos",
   // AI providers — suggest-response endpoint
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
@@ -102,6 +106,8 @@ export const config = {
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /** Drive folder for uploaded quote HTML files (server/lib/driveUpload.js) */
+  driveQuoteFolderId: process.env.DRIVE_QUOTE_FOLDER_ID || "",
   /** Allowed CORS origins — comma-separated. Defaults to Vercel prod + local dev. */
   corsOrigins: (
     process.env.CORS_ORIGIN

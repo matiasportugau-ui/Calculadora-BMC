@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Page 1 — Cotización (preview)</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+      font-size: 10pt; color: #1D1D1F; margin: 0;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 0.4pt solid #D0D0D0; }
+    @media screen {
+      html { background: #dce3ec; min-height: 100%; }
+      body { max-width: 794px; margin: 32px auto 60px; padding: 28px 32px;
+             background: #fff; box-shadow: 0 4px 28px rgba(0,0,0,0.14); border-radius: 3px; }
+    }
+    @media print {
+      a { color: inherit !important; text-decoration: none !important; }
+    }
+
+    .hdr-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .logo { font-weight: 900; color: #003366; font-size: 16pt; letter-spacing: 0.04em; }
+    .badge { background: #003366; color: #fff; font-size: 11pt; font-weight: 800; padding: 4px 12px; border-radius: 4px; letter-spacing: 0.04em; }
+    .rule { border-bottom: 2.5pt solid #003366; margin-bottom: 4px; }
+    .meta { font-size: 8.5pt; color: #6E6E73; margin-bottom: 8px; }
+    .client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 10pt; margin-bottom: 8px; }
+    .alcance { background: #F0F4F8; padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; }
+    .alcance b { color: #003366; }
+
+    /* NEW: thumbnail strip */
+    .thumb-strip {
+      display: grid;
+      grid-template-columns: 1fr 250px;
+      gap: 10px;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      background: #F8FAFC;
+      border-radius: 6px;
+      border: 0.5pt solid #E2E8F0;
+      page-break-inside: avoid;
+    }
+    .thumb-strip .label { font-size: 8pt; font-weight: 700; color: #003366; margin-bottom: 4px; }
+    .thumb-strip .specs { font-size: 8pt; color: #475467; line-height: 1.5; }
+    .thumb-strip .specs b { color: #1D1D1F; }
+    .thumb-strip svg { width: 100%; height: auto; display: block; }
+    .ref-page { font-size: 7.5pt; color: #64748B; font-style: italic; margin-top: 4px; }
+
+    .bom { font-size: 9pt; margin-bottom: 6px; }
+    .bom thead tr { background: #EDEDED; font-weight: 700; }
+    .bom th { text-align: left; padding: 3px 6px; }
+    .bom th.r { text-align: right; }
+    .bom th.c { text-align: center; }
+    .group-row td { background: #EAF0F8; font-weight: 700; padding: 5px 8px; color: #003366; border-left: 3pt solid #003366; }
+    .group-row td.tot { text-align: right; }
+    .item-row td { padding: 3px 6px; vertical-align: middle; }
+    .item-row td.r { text-align: right; }
+    .item-row td.c { text-align: center; }
+
+    /* NEW: tag chips inside BOM rows */
+    .tag {
+      display: inline-block; font-size: 7pt; font-weight: 800; padding: 1px 5px;
+      border-radius: 3px; margin-right: 5px; letter-spacing: 0.04em;
+      vertical-align: middle;
+    }
+    .tag-T { background: #DBEAFE; color: #1E3A8A; }
+    .tag-FONDO { background: #FEF3C7; color: #854D0E; }
+    .tag-FRENTE { background: #DCFCE7; color: #166534; }
+    .tag-LATIZQ { background: #FCE7F3; color: #9D174D; }
+    .tag-LATDER { background: #E9D5FF; color: #6B21A8; }
+    .tag-FIX { background: #E0E7FF; color: #3730A3; }
+
+    .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+    .totals { min-width: 260px; font-size: 10pt; }
+    .totals td { padding: 2px 8px; }
+    .totals tr.total { border-top: 1pt solid #000; font-size: 14pt; font-weight: 800; }
+    .totals tr.total td:last-child { color: #003366; }
+
+    .terms { font-size: 8pt; line-height: 1.4; margin-bottom: 6px; }
+    .terms ul { margin: 0; padding-left: 14px; }
+    .terms li.alert { color: #FF3B30; font-weight: 600; }
+    .terms li.bold { font-weight: 700; }
+
+    .bank { font-size: 8.5pt; margin-top: 6px; }
+    .bank thead th { background: #EDEDED; font-weight: 700; text-align: left; padding: 3px 8px; }
+    .bank td { padding: 3px 8px; }
+
+    .footer-page-tag {
+      margin-top: 12px; padding: 6px 10px; background: #F1F5F9;
+      border-radius: 6px; font-size: 7.5pt; color: #64748B; text-align: center;
+    }
+    .footer-page-tag b { color: #003366; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="hdr-row">
+    <div class="logo">BMC URUGUAY</div>
+    <div class="badge">COTIZACIÓN · HOJA VISUAL CLIENTE</div>
+  </div>
+  <div class="rule"></div>
+  <div class="meta">Propuesta comercial · bmcuruguay.com.uy · 092 663 245 · Metalog SAS · RUT 120403430012</div>
+
+  <!-- Client + project grid -->
+  <div class="client-grid">
+    <div><b>Cliente:</b> Constructora Sol del Este S.A.</div>
+    <div><b>Fecha:</b> 27/04/2026</div>
+    <div><b>Obra:</b> Galpón de almacenamiento — Maldonado</div>
+    <div><b>Ref:</b> BMC-2026-0427-01</div>
+    <div><b>Tel:</b> +598 92 555 010</div>
+    <div><b>Dir:</b> Ruta 9 Km 110, Maldonado</div>
+  </div>
+
+  <!-- Producto / alcance -->
+  <div class="alcance">
+    <b>Producto / alcance:</b> ISODEC PIR 50mm · Color Blanco · Techo + Fachada · Autoportante (AU = 8.0 m)
+  </div>
+
+  <!-- NEW: thumbnail strip with mini 2D plan -->
+  <div class="thumb-strip">
+    <div>
+      <div class="label">Resumen técnico</div>
+      <div class="specs">
+        <b>Cubierta:</b> 12.0 m × 8.0 m · 2 zonas · pendiente 8% (1 agua)<br/>
+        <b>Paneles:</b> 12 unid. · ancho 1.0 m · largo 8.0 m · espesor 50 mm<br/>
+        <b>Bordes:</b> Cumbrera (Fondo) · Canalón (Frente) · Cierre lateral × 2<br/>
+        <b>Pts. fijación:</b> 96 · <b>Apoyos:</b> 4 · <b>Área:</b> 96.0 m²
+      </div>
+      <div class="ref-page">Ver detalle visual y plano completo en página 2.</div>
+    </div>
+    <div>
+      <div class="label" style="text-align:center">Planta 2D · cubierta (vista mini)</div>
+      <!-- Mini SVG: simple roof plan thumbnail -->
+      <svg viewBox="0 0 240 160" preserveAspectRatio="xMidYMid meet">
+        <!-- roof outline -->
+        <rect x="20" y="30" width="200" height="100" fill="#F8FAFC" stroke="#003366" stroke-width="1.2"/>
+        <!-- panel divisions (12 panels: 12 columns of 1m, 8m height) -->
+        <g stroke="#94A3B8" stroke-width="0.4" stroke-dasharray="2 2">
+          <line x1="36.7" y1="30" x2="36.7" y2="130"/>
+          <line x1="53.3" y1="30" x2="53.3" y2="130"/>
+          <line x1="70" y1="30" x2="70" y2="130"/>
+          <line x1="86.7" y1="30" x2="86.7" y2="130"/>
+          <line x1="103.3" y1="30" x2="103.3" y2="130"/>
+          <line x1="120" y1="30" x2="120" y2="130"/>
+          <line x1="136.7" y1="30" x2="136.7" y2="130"/>
+          <line x1="153.3" y1="30" x2="153.3" y2="130"/>
+          <line x1="170" y1="30" x2="170" y2="130"/>
+          <line x1="186.7" y1="30" x2="186.7" y2="130"/>
+          <line x1="203.3" y1="30" x2="203.3" y2="130"/>
+        </g>
+        <!-- pendiente arrow -->
+        <line x1="40" y1="80" x2="200" y2="80" stroke="#003366" stroke-width="0.6" marker-end="url(#mini-arrow)"/>
+        <defs>
+          <marker id="mini-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#003366"/>
+          </marker>
+        </defs>
+        <text x="120" y="76" font-size="6" fill="#003366" text-anchor="middle" font-weight="700">pendiente 8%</text>
+        <!-- side labels -->
+        <text x="120" y="22" font-size="6" fill="#854D0E" text-anchor="middle" font-weight="700">FONDO · cumbrera</text>
+        <text x="120" y="144" font-size="6" fill="#166534" text-anchor="middle" font-weight="700">FRENTE · canalón</text>
+        <text x="14" y="82" font-size="6" fill="#9D174D" text-anchor="middle" font-weight="700" transform="rotate(-90,14,82)">LAT-IZQ</text>
+        <text x="228" y="82" font-size="6" fill="#6B21A8" text-anchor="middle" font-weight="700" transform="rotate(90,228,82)">LAT-DER</text>
+        <!-- dimensions -->
+        <text x="120" y="156" font-size="6" fill="#DC2626" text-anchor="middle">12.00 m</text>
+        <text x="232" y="82" font-size="6" fill="#DC2626" text-anchor="middle" transform="rotate(90,232,82)">8.00 m</text>
+        <!-- T-01 / T-12 markers (only ends) -->
+        <rect x="22" y="76" width="14" height="8" rx="1.5" fill="#1E3A8A"/>
+        <text x="29" y="82" font-size="5.5" fill="#fff" text-anchor="middle" font-weight="800">T-01</text>
+        <rect x="204" y="76" width="14" height="8" rx="1.5" fill="#1E3A8A"/>
+        <text x="211" y="82" font-size="5.5" fill="#fff" text-anchor="middle" font-weight="800">T-12</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- BOM table -->
+  <table class="bom">
+    <thead>
+      <tr>
+        <th style="width:48%">Descripción</th>
+        <th class="r" style="width:10%">Cant.</th>
+        <th class="c" style="width:8%">Unid.</th>
+        <th class="r" style="width:14%">P.U. USD</th>
+        <th class="r" style="width:20%">Total USD</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Group: Paneles -->
+      <tr class="group-row"><td colspan="4">▸ Paneles ISODEC PIR 50mm</td><td class="tot">$3,720.00</td></tr>
+      <tr class="item-row" style="background:#fff">
+        <td><span class="tag tag-T">T-01..T-12</span>Panel ISODEC PIR 50mm · Blanco · 1.0 × 8.0 m</td>
+        <td class="r">12</td><td class="c">u</td><td class="r">310.00</td><td class="r">$3,720.00</td>
+      </tr>
+
+      <!-- Group: Bordes y cierres -->
+      <tr class="group-row"><td colspan="4">▸ Bordes y cierres</td><td class="tot">$642.00</td></tr>
+      <tr class="item-row" style="background:#FAFAFA">
+        <td><span class="tag tag-FONDO">FONDO</span>Cumbrera articulada · chapa galvanizada</td>
+        <td class="r">12.0</td><td class="c">m</td><td class="r">18.50</td><td class="r">$222.00</td>
+      </tr>
+      <tr class="item-row" style="background:#fff">
+        <td><span class="tag tag-FRENTE">FRENTE</span>Canalón rectangular 200mm · chapa galvanizada</td>
+        <td class="r">12.0</td><td class="c">m</td><td class="r">22.50</td><td class="r">$270.00</td>
+      </tr>
+      <tr class="item-row" style="background:#FAFAFA">
+        <td><span class="tag tag-LATIZQ">LAT-IZQ</span>Cierre lateral · chapa plegada</td>
+        <td class="r">8.0</td><td class="c">m</td><td class="r">9.40</td><td class="r">$75.00</td>
+      </tr>
+      <tr class="item-row" style="background:#fff">
+        <td><span class="tag tag-LATDER">LAT-DER</span>Cierre lateral · chapa plegada</td>
+        <td class="r">8.0</td><td class="c">m</td><td class="r">9.40</td><td class="r">$75.00</td>
+      </tr>
+
+      <!-- Group: Fijación -->
+      <tr class="group-row"><td colspan="4">▸ Fijación y accesorios</td><td class="tot">$192.00</td></tr>
+      <tr class="item-row" style="background:#FAFAFA">
+        <td><span class="tag tag-FIX">FIX</span>Tornillo autoperforante 6.3 × 80 c/arandela EPDM</td>
+        <td class="r">96</td><td class="c">u</td><td class="r">1.20</td><td class="r">$115.20</td>
+      </tr>
+      <tr class="item-row" style="background:#fff">
+        <td><span class="tag tag-FIX">FIX</span>Sellador silicona neutra · cartucho 280 ml</td>
+        <td class="r">8</td><td class="c">u</td><td class="r">9.60</td><td class="r">$76.80</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals-wrap">
+    <table class="totals">
+      <tr><td>Subtotal s/IVA</td><td style="text-align:right">$4,554.00</td></tr>
+      <tr><td>IVA 22%</td><td style="text-align:right">$1,001.88</td></tr>
+      <tr class="total"><td>TOTAL USD</td><td style="text-align:right">$5,555.88</td></tr>
+    </table>
+  </div>
+
+  <!-- Terms -->
+  <div class="terms">
+    <b>Condiciones comerciales:</b>
+    <ul>
+      <li class="bold">Fabricación y entrega 10 a 45 días (depende producción).</li>
+      <li class="alert">Oferta válida 10 días.</li>
+      <li class="bold alert">Seña 60% al confirmar. Saldo 40% previo a retiro de fábrica.</li>
+      <li>Precios en USD; IVA incluido en el total indicado.</li>
+    </ul>
+  </div>
+
+  <!-- Bank -->
+  <table class="bank">
+    <thead><tr><th colspan="2">Depósito Bancario</th></tr></thead>
+    <tbody>
+      <tr><td>Titular: <b>Metalog SAS</b></td><td>RUT: 120403430012</td></tr>
+      <tr><td>BROU · Cta. Dólares: <b>110520638-00002</b></td><td>Consultas: <b>092 663 245</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer-page-tag">
+    <b>Página 1 / 2</b> · La página siguiente contiene el plano técnico anotado y el resumen visual de obra.
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).get('print') === '1') {
+      window.addEventListener('load', () => setTimeout(() => window.print(), 250));
+    }
+  </script>
+</body>
+</html>

@@ -24,6 +24,9 @@ docs/team/
 ├── RUN55-OPERATOR-CHECKLIST.md   Run 55: WA / ML / correo — pasos operador + enlaces a gates y CLI ingest
 ├── GCLOUD-SHEETS-CREDENTIALS-SIMPLE.md  Sheets en Cloud Run: service account → Secret Manager → mount → GOOGLE_APPLICATION_CREDENTIALS (pasos simples)
 ├── PROJECT-STATE.md             Fuente única de estado; cambios recientes, pendientes
+├── roadmap/                     BMC Platform v1.3 — ADR Supabase, inventario Área 4, índice (Fase 0)
+│   └── README.md
+├── OAUTH-SUPABASE-CHECKLIST.md  Google/Meta/Supabase — evitar origin_mismatch / redirect_uri_mismatch
 ├── CHAT-EQUIPO-INTERACTIVO.md   Chat/diálogo interactivo con el equipo completo
 ├── FULL-PROJECT-STATUS-AND-TASK-PLAN.md  Plan task-by-task; evaluación equipo
 ├── PROJECT-TEAM-FULL-COVERAGE.md Equipo, áreas, propagación, protocolo

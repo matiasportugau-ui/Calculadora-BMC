@@ -35,6 +35,8 @@ import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
+import { uploadQuoteToDrive } from "../lib/driveUpload.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -90,6 +92,41 @@ router.post("/interaction-log", (req, res) => {
     const filePath = path.join(logsDir, `interaction-${ts}.json`);
     fs.writeFileSync(filePath, JSON.stringify(body, null, 2), "utf8");
     return res.json({ ok: true, path: filePath });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get("/interaction-log/list", requireAuth, (req, res) => {
+  try {
+    const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
+    if (!fs.existsSync(logsDir)) return res.json({ ok: true, files: [] });
+    const files = fs.readdirSync(logsDir)
+      .filter((f) => f.endsWith(".json"))
+      .sort()
+      .reverse()
+      .slice(0, 50)
+      .map((name) => {
+        const stat = fs.statSync(path.join(logsDir, name));
+        return { name, size: stat.size, mtime: stat.mtimeMs };
+      });
+    return res.json({ ok: true, files });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get("/interaction-log/file/:name", requireAuth, (req, res) => {
+  try {
+    const name = path.basename(req.params.name);
+    if (!name.endsWith(".json") || !name.startsWith("interaction-")) {
+      return res.status(400).json({ ok: false, error: "Invalid filename" });
+    }
+    const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
+    const filePath = path.join(logsDir, name);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ ok: false, error: "Not found" });
+    const content = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return res.json({ ok: true, name, content });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }
@@ -511,17 +548,19 @@ router.post("/cotizar/pdf", async (req, res) => {
     const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
     const pdfUrl = `${baseUrl}/calc/pdf/${pdfId}`;
 
-    // Upload to GCS for a permanent URL (best-effort; falls back to in-memory link)
-    let gcsUrl = null;
-    if (config.gcsQuotesBucket) {
-      try {
-        const code = clientInfo.quote_code || pdfId.slice(0, 8);
-        const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
-        gcsUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
-      } catch {
-        // non-critical
-      }
-    }
+    // Upload to GCS + Drive in parallel — both best-effort, falls back to in-memory link
+    const code = clientInfo.quote_code || pdfId.slice(0, 8);
+    const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
+    const [gcsRes, driveRes] = await Promise.allSettled([
+      config.gcsQuotesBucket
+        ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
+        : Promise.resolve(null),
+      config.driveQuoteFolderId
+        ? uploadQuoteToDrive(html, filename, config.driveQuoteFolderId)
+        : Promise.resolve(null),
+    ]);
+    const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
+    const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
     registerQuotation({
       pdfId,
@@ -538,6 +577,7 @@ router.post("/cotizar/pdf", async (req, res) => {
       pdf_id: pdfId,
       pdf_url: gcsUrl || pdfUrl,
       gcs_url: gcsUrl || null,
+      drive_url: driveUrl || null,
       expires_in_hours: gcsUrl ? null : 24,
       instrucciones: gcsUrl
         ? "Link permanente en GCS. Compartilo con el cliente — se abre en el navegador y se puede imprimir como PDF."

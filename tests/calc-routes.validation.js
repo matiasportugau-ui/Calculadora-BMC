@@ -143,6 +143,13 @@ async function run() {
       pdfResp.json?.pdf_url,
       "non-empty string"
     );
+    assert(
+      "PDF response includes drive_url field (null when DRIVE_QUOTE_FOLDER_ID unset)",
+      Object.prototype.hasOwnProperty.call(pdfResp.json || {}, "drive_url") &&
+        (pdfResp.json.drive_url === null || typeof pdfResp.json.drive_url === "string"),
+      pdfResp.json?.drive_url,
+      "null or string"
+    );
 
     const pdfView = await getText(`/calc/pdf/${pdfResp.json.pdf_id}`);
     assert("GET /calc/pdf/:id returns HTML", pdfView.status === 200, pdfView.status, 200);

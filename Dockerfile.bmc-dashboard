@@ -34,9 +34,11 @@ LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app
 
-# System libs for @sparticuz/chromium (compiled for Amazon Linux 2023 / x86_64)
-# /lib64 symlink: AL2023 binaries reference /lib64/ld-linux-x86-64.so.2 — absent in Debian slim
+# Chromium + system deps for server-side PDF (puppeteer-core)
+# Using system Chromium instead of @sparticuz bundle — avoids /tmp extraction
+# failures in Cloud Run where the compressed binary doesn't decompress properly.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
     libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
     libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 \
@@ -64,6 +66,8 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD sh -c 'node -e "require(\"http\").get(\"http://127.0.0.1:\"+(process.env.PORT||3001)+\"/health\",r=>{process.exit(r.statusCode===200?0:1)}).on(\"error\",()=>process.exit(1))"'
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 CMD ["node", "server/index.js"]

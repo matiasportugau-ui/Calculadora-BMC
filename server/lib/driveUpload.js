@@ -10,13 +10,23 @@
  * Scope used: drive.file — only files created by this app are accessible.
  */
 import { google } from "googleapis";
+import { Readable } from "node:stream";
 
 const SCOPE_DRIVE = "https://www.googleapis.com/auth/drive.file";
 
-async function getDriveClient() {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_DRIVE] });
-  const client = await auth.getClient();
-  return google.drive({ version: "v3", auth: client });
+let _drivePromise = null;
+function getDriveClient() {
+  if (!_drivePromise) {
+    const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_DRIVE] });
+    _drivePromise = auth.getClient()
+      .then((client) => google.drive({ version: "v3", auth: client }))
+      .catch((err) => {
+        // Reset so the next call retries instead of permanently failing
+        _drivePromise = null;
+        throw err;
+      });
+  }
+  return _drivePromise;
 }
 
 /**
@@ -30,8 +40,6 @@ export async function uploadQuoteToDrive(html, filename, folderId) {
   if (!folderId || !html) return null;
 
   const drive = await getDriveClient();
-
-  const { Readable } = await import("node:stream");
   const stream = Readable.from([html]);
 
   const createRes = await drive.files.create({

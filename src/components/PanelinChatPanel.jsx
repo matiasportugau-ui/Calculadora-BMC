@@ -232,6 +232,7 @@ export default function PanelinChatPanel({
   promptPreview,
   promptSections,
   onSaveCorrection,
+  onSendFeedback,
   onReloadTrainingKB,
   onReloadPromptPreview,
   onReloadPromptSections,
@@ -874,8 +875,8 @@ export default function PanelinChatPanel({
           </button>
         </div>
 
-        {/* ── Voice Mode ── */}
-        {voiceMode && (
+        {/* ── Voice Mode — panel stays mounted; the WebRTC session is torn down when voiceMode flips off ── */}
+        <div style={{ display: voiceMode ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           <PanelinVoicePanel
             calcState={calcState}
             onAction={onChatAction}
@@ -883,8 +884,9 @@ export default function PanelinChatPanel({
             skinTokens={activeTokens}
             devMode={devMode}
             authHeader={authHeader}
+            voiceMode={voiceMode}
           />
-        )}
+        </div>
 
         {/* ── Messages ── */}
         {!voiceMode && <div
@@ -1001,6 +1003,17 @@ export default function PanelinChatPanel({
                       msg.content
                     )}
                   </div>
+                  {/* Tool-call indicators (shown in devMode or as subtle pills) */}
+                  {!isUser && msg.toolCalls?.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, paddingLeft: 2 }}>
+                      {msg.toolCalls.map((tc, i) => (
+                        <div key={i} style={{ fontSize: 10, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 6, padding: "1px 7px", display: "flex", alignItems: "center", gap: 3, fontFamily: FONT }}>
+                          <span style={{ color: "#8b5cf6" }}>⚙</span>
+                          <span>{tc.tool}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Action feedback badges */}
                   {!isUser && msg.actions?.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 2 }}>
@@ -1039,13 +1052,14 @@ export default function PanelinChatPanel({
                       <Volume2 size={12} /> Escuchar
                     </button>
                   )}
-                  {/* Dev training buttons — only in devMode for assistant messages with content */}
-                  {devMode && !isUser && msg.content && (
+                  {/* Feedback buttons — visible for all users on assistant messages */}
+                  {!isUser && msg.content && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 2 }}>
                       <div style={{ display: "flex", gap: 4 }}>
                         <button
                           onClick={() => {
-                            onSaveCorrection?.({ category: "conversational", question: prevQuestion, goodAnswer: msg.content, context: "rated-good" });
+                            onSendFeedback?.({ question: prevQuestion, generatedText: msg.content, rating: "good" });
+                            if (devMode) onSaveCorrection?.({ category: "conversational", question: prevQuestion, goodAnswer: msg.content, context: "rated-good" });
                           }}
                           style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, border: `1px solid ${BORDER}`, background: SURFACE, color: "#34c759", cursor: "pointer", fontFamily: FONT }}
                         >
@@ -1074,7 +1088,8 @@ export default function PanelinChatPanel({
                             <button
                               onClick={() => {
                                 if (!correctionText.trim()) return;
-                                onSaveCorrection?.({ category: "conversational", question: prevQuestion, badAnswer: msg.content, goodAnswer: correctionText.trim(), context: "" });
+                                onSendFeedback?.({ question: prevQuestion, generatedText: msg.content, rating: "edit", correction: correctionText.trim() });
+                                if (devMode) onSaveCorrection?.({ category: "conversational", question: prevQuestion, badAnswer: msg.content, goodAnswer: correctionText.trim(), context: "" });
                                 setCorrectingMsgId(null);
                                 setCorrectionText("");
                               }}

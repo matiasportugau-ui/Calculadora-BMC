@@ -17,7 +17,7 @@ fi
 
 # ── Skip self-loop: do not autotrace dev-trace commits ───────────────────────
 COMMIT_MSG=$(git log -1 --pretty=%B HEAD 2>/dev/null || true)
-if [[ "$COMMIT_MSG" == "docs: dev-trace"* ]] || [[ "$COMMIT_MSG" == "autolog:"* ]]; then
+if [[ "$COMMIT_MSG" == "docs: dev-trace"* ]] || [[ "$COMMIT_MSG" == "docs: autotrace"* ]] || [[ "$COMMIT_MSG" == "autolog:"* ]]; then
   exit 0
 fi
 

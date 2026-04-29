@@ -25,7 +25,7 @@ export function createPdfRouter() {
     const { html, filename = "cotizacion.pdf" } = req.body || {};
 
     if (!html || typeof html !== "string") {
-      return res.status(400).json({ error: "body.html (string) is required" });
+      return res.status(400).json({ ok: false, error: "body.html (string) is required" });
     }
 
     let browser;
@@ -43,7 +43,7 @@ export function createPdfRouter() {
       console.info("[pdf] chromium.args:", JSON.stringify(chromium.args));
 
       if (!existsSync(executablePath)) {
-        return res.status(503).json({ error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
+        return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
       }
 
       // Ensure executable — @sparticuz decompresses but may not chmod in all envs
@@ -59,11 +59,45 @@ export function createPdfRouter() {
         console.warn("[pdf] chmod failed:", e.message);
       }
 
+      // When CHROMIUM_EXECUTABLE_PATH points to a system binary (e.g. /usr/bin/chromium),
+      // @sparticuz/chromium args are Lambda-specific (--headless='shell', SwiftShader flags)
+      // and incompatible with the distro Chromium. Use a clean standard headless arg set instead.
+      const useSystemBinary = !!process.env.CHROMIUM_EXECUTABLE_PATH;
+
+      const launchArgs = useSystemBinary
+        ? [
+            "--headless=new",
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-zygote",
+            "--single-process",
+            "--disable-extensions",
+            "--disable-background-networking",
+            "--disable-default-apps",
+            "--disable-sync",
+            "--disable-translate",
+            "--metrics-recording-only",
+            "--mute-audio",
+            "--no-first-run",
+            "--safebrowsing-disable-auto-update",
+            "--font-render-hinting=none",
+          ]
+        : [
+            ...new Set([...(chromium.args || [])]),
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+          ];
+
+      console.info("[pdf] useSystemBinary:", useSystemBinary, "args[0]:", launchArgs[0]);
+
       browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
+        args: launchArgs,
+        defaultViewport: { width: 1280, height: 900 },
         executablePath,
-        headless: chromium.headless,
+        headless: useSystemBinary ? "new" : true,
       });
 
       const page = await browser.newPage();
@@ -90,7 +124,7 @@ export function createPdfRouter() {
 
     } catch (err) {
       console.error("[pdf/generate] error:", err.code, err.message?.slice(0, 200));
-      return res.status(503).json({ error: "pdf_renderer_unavailable", detail: err.message?.slice(0, 120) });
+      return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable", detail: err.message?.slice(0, 120) });
     } finally {
       await browser?.close().catch(() => {});
     }

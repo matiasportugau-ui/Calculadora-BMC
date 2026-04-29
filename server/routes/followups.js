@@ -17,6 +17,7 @@ import {
   parseDueInput,
   parseDays,
 } from "../lib/followUpStore.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 export function createFollowupsRouter() {
   const router = Router();
@@ -34,7 +35,7 @@ export function createFollowupsRouter() {
     res.json({ ok: true, count: items.length, items });
   });
 
-  router.post("/followups", (req, res) => {
+  router.post("/followups", requireAuth, (req, res) => {
     const { title, detail, tags, nextFollowUpAt, daysUntil } = req.body || {};
     const store = loadStore();
     let due = nextFollowUpAt ? parseDueInput(nextFollowUpAt) : null;
@@ -56,7 +57,7 @@ export function createFollowupsRouter() {
     res.json({ ok: true, item });
   });
 
-  router.patch("/followups/:id", (req, res) => {
+  router.patch("/followups/:id", requireAuth, (req, res) => {
     const store = loadStore();
     const item = findItem(store, req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "Not found" });
@@ -81,7 +82,7 @@ export function createFollowupsRouter() {
     res.json({ ok: true, item: findItem(store, item.id) });
   });
 
-  router.post("/followups/:id/done", (req, res) => {
+  router.post("/followups/:id/done", requireAuth, (req, res) => {
     const store = loadStore();
     const item = markDone(store, req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "Not found" });
@@ -89,7 +90,7 @@ export function createFollowupsRouter() {
     res.json({ ok: true, item });
   });
 
-  router.post("/followups/:id/snooze", (req, res) => {
+  router.post("/followups/:id/snooze", requireAuth, (req, res) => {
     const { nextFollowUpAt, days } = req.body || {};
     const store = loadStore();
     let iso = nextFollowUpAt ? parseDueInput(nextFollowUpAt) : null;
@@ -101,7 +102,7 @@ export function createFollowupsRouter() {
     res.json({ ok: true, item });
   });
 
-  router.delete("/followups/:id", (req, res) => {
+  router.delete("/followups/:id", requireAuth, (req, res) => {
     const store = loadStore();
     const ok = deleteItem(store, req.params.id);
     if (!ok) return res.status(404).json({ ok: false, error: "Not found" });

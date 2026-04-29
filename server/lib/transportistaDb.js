@@ -6,7 +6,16 @@ let pool = null;
 export function getTransportistaPool(databaseUrl) {
   if (!databaseUrl) return null;
   if (!pool) {
-    pool = new pg.Pool({ connectionString: databaseUrl, max: 10 });
+    pool = new pg.Pool({
+      connectionString: databaseUrl,
+      max: 10,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000,
+    });
+    // Idle-client errors must not crash the process
+    pool.on("error", (err) => {
+      console.error("[transportistaDb] idle client error:", err?.message);
+    });
   }
   return pool;
 }

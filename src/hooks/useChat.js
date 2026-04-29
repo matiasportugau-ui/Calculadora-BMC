@@ -328,6 +328,14 @@ export function useChat({
                 });
               } else if (evt.type === "error") {
                 setError(evt.message || "Error del agente");
+              } else if (evt.type === "tool_call") {
+                // Append a tool-call indicator to the assistant message (visible in dev mode)
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (!last || last.role !== "assistant") return prev;
+                  const toolCalls = [...(last.toolCalls || []), { tool: evt.tool, input: evt.input }];
+                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, toolCalls } : m));
+                });
               } else if (evt.type === "kb_match") {
                 setDevMeta((prev) => ({ ...prev, kbMatches: Number(evt.count || 0) }));
               } else if (evt.type === "calc_validation") {
@@ -437,6 +445,17 @@ export function useChat({
     },
     [buildDevAuthHeaders, reloadTrainingKB, trainingEntries]
   );
+
+  const sendFeedback = useCallback(async ({ question, generatedText, rating, correction, comment }) => {
+    const apiBase = getCalcApiBase();
+    try {
+      await fetch(`${apiBase}/api/agent/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "chat", question, generatedText, rating, correction, comment, convId: conversationId }),
+      });
+    } catch { /* non-critical */ }
+  }, [conversationId]);
 
   const bulkDeleteKB = useCallback(async (ids) => {
     if (!devMode || !devAuthToken || !Array.isArray(ids) || ids.length === 0) return null;
@@ -622,5 +641,6 @@ export function useChat({
     loadConversationList,
     loadConversationAnalysis,
     conversationId,
+    sendFeedback,
   };
 }

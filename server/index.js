@@ -10,6 +10,7 @@ import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
+import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
@@ -18,6 +19,7 @@ import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
 import agentVoiceRouter from "./routes/agentVoice.js";
+import agentFeedbackRouter from "./routes/agentFeedback.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import { createFollowupsRouter } from "./routes/followups.js";
@@ -34,6 +36,10 @@ import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
+import { callAgentOnce } from "./lib/agentCore.js";
+import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
+import { addTrainingEntry } from "./lib/trainingKB.js";
+import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -145,12 +151,39 @@ app.get("/health", asyncHandler(async (req, res) => {
     credsPath &&
     fs.existsSync(path.isAbsolute(credsPath) ? credsPath : path.resolve(process.cwd(), credsPath))
   );
+  let sheets_diagnostics = null;
+  if (hasSheets) {
+    try {
+      const diagResult = await Promise.race([
+        (async () => {
+          const authClient = await getGoogleAuthClient("https://www.googleapis.com/auth/spreadsheets.readonly");
+          const client = google.sheets({ version: "v4", auth: authClient });
+          const meta = await client.spreadsheets.get({
+            spreadsheetId: config.bmcSheetId,
+            fields: "sheets.properties.title",
+          });
+          const tabs = (meta.data.sheets || []).map((s) => s.properties?.title || "");
+          const primaryTab = config.bmcSheetSchema === "CRM_Operativo" ? "CRM_Operativo" : "Master_Cotizaciones";
+          const missing_tabs = [primaryTab].filter((t) => !tabs.includes(t));
+          return { ok: missing_tabs.length === 0, tabs, missing: missing_tabs };
+        })(),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ ok: false, error: "timeout" }), 3000)
+        ),
+      ]);
+      sheets_diagnostics = diagResult;
+    } catch (e) {
+      sheets_diagnostics = { ok: false, error: e.message };
+    }
+  }
+
   res.json({
     ok: true,
     appEnv: config.appEnv,
     hasTokens: Boolean(tokens?.access_token),
     mlTokenStoreOk,
     hasSheets,
+    sheets_diagnostics,
     missingConfig: missing,
   });
 }));
@@ -593,16 +626,18 @@ async function processWaConversation(chatId, conv) {
           requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
         });
 
-        // Generar respuesta IA para col AF
-        const aiResp = await fetch(`http://localhost:${config.port}/api/crm/suggest-response`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            consulta: d.resumen_pedido, origen: "WA-Auto",
-            cliente: d.cliente, observaciones: d.observaciones,
-          }),
-        });
-        const ai = await aiResp.json();
+        // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
+        let ai = { ok: false };
+        try {
+          const waMessages = conv.messages.map((m) => ({
+            role: "user",
+            content: `${m.from}: ${m.text}`,
+          }));
+          const result = await callAgentOnce(waMessages, { channel: "wa" });
+          ai = { ok: true, respuesta: result.text, provider: result.provider };
+        } catch (aiErr) {
+          logger.warn(`[WA] agentCore failed for ${chatId}: ${aiErr.message}`);
+        }
         if (ai.ok && ai.respuesta) {
           await sheets.spreadsheets.values.update({
             spreadsheetId: sheetId,
@@ -611,6 +646,26 @@ async function processWaConversation(chatId, conv) {
             requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
           });
         }
+
+        // Autolearn: extraer pares Q→A del intercambio WA para el KB unificado
+        setImmediate(() => {
+          const waTurns = conv.messages.map((m) => ({ role: "user", content: m.text }));
+          if (ai.ok && ai.respuesta) waTurns.push({ role: "assistant", content: ai.respuesta });
+          extractLearnablePairs(waTurns)
+            .then((pairs) => {
+              for (const p of pairs) {
+                addTrainingEntry({
+                  question: p.question, goodAnswer: p.goodAnswer,
+                  badAnswer: p.badAnswer || "", category: p.category || "conversational",
+                  context: `[WA] ${p.rationale || ""}`, source: "autolearned",
+                  status: p.confidence >= 0.92 ? "active" : "pending",
+                  confidence: p.confidence, convId: chatId,
+                });
+              }
+              if (pairs.length > 0) logger.info(`[WA] autolearn: ${pairs.length} KB candidates from ${chatId}`);
+            })
+            .catch(() => {});
+        });
 
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
@@ -699,6 +754,7 @@ app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
+app.use("/api", agentFeedbackRouter);
 app.use("/api", agentVoiceRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous

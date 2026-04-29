@@ -228,6 +228,17 @@ function KBEntry({ entry, onEdit, onDelete, selected, onToggle }) {
           <Pill color={catColor}>{entry.category}</Pill>
           {entry.permanent && <Pill color={C.success}>permanente</Pill>}
           {entry.tags?.map((t) => <Pill key={t} color={C.sub}>{t}</Pill>)}
+          {(entry.goodAnswer || entry.answer || "").length > 350 && !entry.goodAnswerML && (
+            <Pill color="#dc2626" title="goodAnswer >350 chars sin override ML — truncación automática activa">⚠ ML gap</Pill>
+          )}
+          {entry.reviewDueAt && entry.reviewDueAt < new Date().toISOString() && (
+            <Pill color="#d97706" title={`Vence: ${entry.reviewDueAt?.slice(0,10)}`}>vencida</Pill>
+          )}
+          {entry.retrievalCount != null && (
+            <span style={{ fontSize: 10, color: entry.retrievalCount === 0 ? "#9ca3af" : "#16a34a", fontFamily: C.ff }}>
+              {entry.retrievalCount}× usado
+            </span>
+          )}
           <span style={{ fontSize: 10, color: C.sub, marginLeft: "auto", fontFamily: C.ff }}>
             {entry.id?.slice(0, 8)}
           </span>
@@ -338,6 +349,8 @@ function KBTab() {
   const [uploading, setUploading] = useState(false);
   const [matchQuery, setMatchQuery] = useState("");
   const [matchResults, setMatchResults] = useState(null);
+  const [generatingML, setGeneratingML] = useState(false);
+  const [mlGenMsg, setMlGenMsg] = useState("");
   const fileRef = useRef();
 
   const PAGE_SIZE = 30;
@@ -453,24 +466,45 @@ function KBTab() {
     setMatchResults(data.matches || []);
   }
 
+  async function generateMLOverrides() {
+    setGeneratingML(true); setMlGenMsg("");
+    const data = await apiFetch("/api/agent/training-kb/generate-ml-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGeneratingML(false);
+    if (data.ok) {
+      setMlGenMsg(`✓ ${data.generated} overrides ML generados (${data.failed} fallaron)`);
+      load();
+    } else {
+      setMlGenMsg("Error: " + (data.error || "desconocido"));
+    }
+    setTimeout(() => setMlGenMsg(""), 6000);
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Stats bar */}
       {stats && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {[
-            ["Total entradas", stats.total],
-            ["Sales", stats.byCategory?.sales || 0],
-            ["Producto", stats.byCategory?.product || 0],
-            ["Math", stats.byCategory?.math || 0],
-            ["Conversacional", stats.byCategory?.conversational || 0],
-            ["Permanentes", stats.permanent || 0],
-          ].map(([label, val]) => (
-            <Card key={label} style={{ padding: "8px 14px", flex: "none" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: C.navy, fontFamily: C.ff }}>{val}</div>
+            ["Total", stats.total, null],
+            ["Sales", stats.byCategory?.sales || 0, null],
+            ["Producto", stats.byCategory?.product || 0, null],
+            ["Math", stats.byCategory?.math || 0, null],
+            ["Pendientes", stats.pending || 0, stats.pending > 0 ? "#d97706" : null],
+            ["Vencidas", stats.health?.stale || 0, stats.health?.stale > 0 ? "#dc2626" : null],
+            ["Sin uso 30d", stats.health?.zeroRetrieval || 0, stats.health?.zeroRetrieval > 0 ? "#6b7280" : null],
+            ["Gap ML", stats.health?.mlGap || 0, stats.health?.mlGap > 0 ? "#dc2626" : null],
+          ].map(([label, val, color]) => (
+            <Card key={label} style={{ padding: "8px 14px", flex: "none", borderColor: color ? color : undefined }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: color || C.navy, fontFamily: C.ff }}>{val}</div>
               <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff }}>{label}</div>
             </Card>
           ))}
+          {stats.health?.score != null && (
+            <Card style={{ padding: "8px 14px", flex: "none", borderColor: stats.health.score >= 80 ? "#16a34a" : stats.health.score >= 50 ? "#d97706" : "#dc2626" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: stats.health.score >= 80 ? "#16a34a" : stats.health.score >= 50 ? "#d97706" : "#dc2626", fontFamily: C.ff }}>{stats.health.score}/100</div>
+              <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff }}>KB Score</div>
+            </Card>
+          )}
         </div>
       )}
 
@@ -481,6 +515,12 @@ function KBTab() {
           <Input value={query} onChange={(v) => { setQuery(v); setPage(1); }} placeholder="Buscar en KB…" style={{ width: 220 }} />
           <Btn onClick={load} disabled={loading}>{loading ? "Cargando…" : "↺ Recargar"}</Btn>
           <Btn onClick={() => { setEditEntry(null); setShowEdit(true); }} variant="primary">+ Nueva entrada</Btn>
+          {(stats?.health?.mlGap || 0) > 0 && (
+            <Btn onClick={generateMLOverrides} disabled={generatingML} style={{ background: "#dc2626", color: "#fff", border: "none" }}>
+              {generatingML ? "Generando…" : `⚡ Auto-ML (${stats.health.mlGap})`}
+            </Btn>
+          )}
+          {mlGenMsg && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>{mlGenMsg}</span>}
           <div style={{ flex: 1 }} />
           <label
             style={{
@@ -1095,14 +1135,19 @@ function ConfigTab() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "success" });
+  const [providers, setProviders] = useState(null);
 
   async function load() {
     setLoading(true);
-    const r = await apiFetch("/api/agent/training-kb/score-config");
-    if (r.ok) {
-      setDefaults(r.defaults);
-      setDraft({ ...r.config });
+    const [scoreRes, provRes] = await Promise.all([
+      apiFetch("/api/agent/training-kb/score-config"),
+      apiFetch("/api/agent/ai-options"),
+    ]);
+    if (scoreRes.ok) {
+      setDefaults(scoreRes.defaults);
+      setDraft({ ...scoreRes.config });
     }
+    setProviders(provRes.providers || []);
     setLoading(false);
   }
 
@@ -1167,6 +1212,691 @@ function ConfigTab() {
         <Btn onClick={reset}>Restaurar defaults</Btn>
         <Btn onClick={save} disabled={saving} variant="primary">{saving ? "Guardando…" : "Guardar"}</Btn>
       </div>
+
+      {/* Providers */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 8 }}>Proveedores IA activos</div>
+        {providers === null ? (
+          <div style={{ fontSize: 12, color: C.sub }}>Cargando…</div>
+        ) : providers.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.sub }}>Ningún proveedor configurado con API key.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {providers.map((p) => (
+              <div key={p.id} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🟢</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", fontFamily: C.ff }}>{p.label}</div>
+                  <div style={{ fontSize: 11, color: "#166534", fontFamily: "monospace" }}>
+                    default: {p.defaultModel}
+                    {p.models?.length > 1 && ` · ${p.models.length} modelos`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── HEALTH TAB ───────────────────────────────────────────────────────────────
+function HealthTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({});
+  const [msg, setMsg] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    const d = await apiFetch("/api/agent/training-kb/health");
+    setData(d);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function markReviewed(id) {
+    setBusy((b) => ({ ...b, [id]: true }));
+    const d = await apiFetch(`/api/agent/training-kb/${id}/mark-reviewed`, { method: "POST", body: JSON.stringify({}) });
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (d.ok) { setMsg("Marcada como revisada — próxima revisión en el período estándar"); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function archiveEntry(id) {
+    setBusy((b) => ({ ...b, [id]: "archive" }));
+    const d = await apiFetch(`/api/agent/train/${id}`, { method: "PUT", body: JSON.stringify({ status: "rejected" }) });
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (d.ok) { setMsg("Entrada archivada"); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  async function autoFixMLGaps() {
+    setGenerating(true);
+    const d = await apiFetch("/api/agent/training-kb/generate-ml-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGenerating(false);
+    if (d.ok) { setMsg(`✓ ${d.generated} overrides ML generados`); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 5000);
+  }
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Analizando KB…</div>;
+  if (!data?.ok) return <div style={{ padding: 32, color: "#dc2626" }}>Error cargando datos de salud.</div>;
+
+  const sections = [
+    {
+      key: "stale",
+      label: "Entradas vencidas",
+      color: "#dc2626",
+      hint: "reviewDueAt expirado — el contenido puede estar desactualizado.",
+      entries: data.stale || [],
+      action: (e) => (
+        <button onClick={() => markReviewed(e.id)} disabled={!!busy[e.id]}
+          style={{ padding: "5px 12px", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {busy[e.id] ? "…" : "Marcar revisada"}
+        </button>
+      ),
+    },
+    {
+      key: "zeroRetrieval",
+      label: "Sin uso en 30 días",
+      color: "#6b7280",
+      hint: "Nunca fueron recuperadas — posiblemente irrelevantes o mal redactadas.",
+      entries: data.zeroRetrieval || [],
+      action: (e) => (
+        <button onClick={() => archiveEntry(e.id)} disabled={!!busy[e.id]}
+          style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #d1d5db", background: "#fff", color: "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {busy[e.id] === "archive" ? "…" : "Archivar"}
+        </button>
+      ),
+    },
+    {
+      key: "mlGap",
+      label: "Gap canal ML",
+      color: "#d97706",
+      hint: "goodAnswer >350 chars sin override ML — se trunca automáticamente.",
+      entries: data.mlGap || [],
+      action: null,
+      headerAction: data.mlGap?.length > 0 ? (
+        <button onClick={autoFixMLGaps} disabled={generating}
+          style={{ padding: "5px 14px", borderRadius: 7, border: "none", background: "#d97706", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {generating ? "Generando…" : `⚡ Auto-generar ${data.mlGap.length} overrides`}
+        </button>
+      ) : null,
+    },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {msg && (
+        <div style={{ padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>{msg}</div>
+      )}
+      {sections.every((s) => s.entries.length === 0) && (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
+          KB en buen estado — sin entradas vencidas, sin gaps ni entradas sin uso.
+        </div>
+      )}
+      {sections.map((sec) => sec.entries.length === 0 ? null : (
+        <div key={sec.key}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <span style={{ fontWeight: 700, fontSize: 14, color: sec.color }}>{sec.label}</span>
+              <span style={{ fontSize: 12, color: C.muted, marginLeft: 8 }}>({sec.entries.length})</span>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sec.hint}</div>
+            </div>
+            {sec.headerAction}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {sec.entries.map((e) => (
+              <div key={e.id} style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, padding: "10px 14px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.navy, marginBottom: 2 }}>{e.question}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>
+                    {sec.key === "stale" && `Vence: ${e.reviewDueAt?.slice(0, 10)} | cat: ${e.category}`}
+                    {sec.key === "zeroRetrieval" && `Creada: ${e.createdAt?.slice(0, 10)} | src: ${e.source || "manual"}`}
+                    {sec.key === "mlGap" && `${(e.goodAnswer || "").length} chars | cat: ${e.category}`}
+                  </div>
+                </div>
+                {sec.action && sec.action(e)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── AUTO-LEARN QUEUE TAB ─────────────────────────────────────────────────────
+function AutoLearnTab() {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({});
+  const [msg, setMsg] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    const d = await apiFetch("/api/agent/autolearn/pending");
+    setEntries(d.entries || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function act(id, action, reason = "") {
+    setBusy((b) => ({ ...b, [id]: true }));
+    const d = await apiFetch(`/api/agent/autolearn/${id}/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+    setBusy((b) => ({ ...b, [id]: false }));
+    if (d.ok) {
+      setMsg(action === "approve" ? "Aprobado y activo en KB" : "Rechazado");
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } else {
+      setMsg("Error: " + (d.error || "desconocido"));
+    }
+  }
+
+  const confColor = (c) => c >= 0.9 ? "#16a34a" : c >= 0.75 ? "#d97706" : "#dc2626";
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Cargando cola…</div>;
+
+  return (
+    <div>
+      {msg && (
+        <div style={{ marginBottom: 16, padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>
+          {msg} <button onClick={() => setMsg(null)} style={{ marginLeft: 12, background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: 700 }}>×</button>
+        </div>
+      )}
+      {entries.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
+          Cola vacía — no hay entradas pendientes de revisión.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>
+            {entries.length} entrada{entries.length !== 1 ? "s" : ""} pendiente{entries.length !== 1 ? "s" : ""}. Las de confianza ≥ 0.92 se auto-aprueban.
+          </div>
+          {entries.map((e) => (
+            <div key={e.id} style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: C.navy, flex: 1 }}>{e.question}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: confColor(e.confidence ?? 0), background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px" }}>
+                    {e.confidence != null ? `${Math.round(e.confidence * 100)}%` : "—"}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.muted, background: "#f1f5f9", borderRadius: 6, padding: "2px 8px" }}>{e.category}</span>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: C.text, background: "#f8fafc", borderRadius: 8, padding: "10px 12px", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+                {e.goodAnswer}
+              </div>
+              {e.context && (
+                <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, fontStyle: "italic" }}>Contexto: {e.context}</div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => act(e.id, "approve")}
+                  disabled={!!busy[e.id]}
+                  style={{ padding: "7px 18px", borderRadius: 8, border: "none", background: "#16a34a", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {busy[e.id] ? "…" : "Aprobar"}
+                </button>
+                <button
+                  onClick={() => act(e.id, "reject")}
+                  disabled={!!busy[e.id]}
+                  style={{ padding: "7px 18px", borderRadius: 8, border: "1px solid #fca5a5", background: "#fff", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Rechazar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CONFLICTS TAB ────────────────────────────────────────────────────────────
+function ConflictsTab() {
+  const [pairs, setPairs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({});
+  const [msg, setMsg] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    const d = await apiFetch("/api/agent/training-kb/conflicts");
+    setPairs(d.pairs || []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function resolve(keepId, archiveId) {
+    const key = `${keepId}|${archiveId}`;
+    setBusy((b) => ({ ...b, [key]: true }));
+    const d = await apiFetch(`/api/agent/training-kb/${keepId}/resolve-conflict`, {
+      method: "POST",
+      body: JSON.stringify({ keepId, archiveId }),
+    });
+    setBusy((b) => ({ ...b, [key]: false }));
+    if (d.ok) {
+      setMsg("Conflicto resuelto");
+      setPairs((prev) => prev.filter((p) => p.a.id !== keepId && p.a.id !== archiveId && p.b.id !== keepId && p.b.id !== archiveId));
+    } else {
+      setMsg("Error: " + (d.error || "desconocido"));
+    }
+    setTimeout(() => setMsg(null), 4000);
+  }
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Buscando conflictos…</div>;
+
+  return (
+    <div>
+      {msg && (
+        <div style={{ marginBottom: 16, padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>
+          {msg}
+        </div>
+      )}
+      {pairs.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
+          Sin conflictos detectados — preguntas similares tienen respuestas consistentes.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>
+            {pairs.length} par{pairs.length !== 1 ? "es" : ""} conflictivo{pairs.length !== 1 ? "s" : ""} — misma pregunta, respuestas distintas.
+          </div>
+          {pairs.map((p, i) => {
+            const key = `${p.a.id}|${p.b.id}`;
+            return (
+              <div key={key} style={{ background: C.white, borderRadius: 12, border: "1.5px solid #fca5a5", padding: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                  Conflicto #{i + 1}
+                </div>
+                {[{ label: "A", entry: p.a }, { label: "B", entry: p.b }].map(({ label, entry }) => (
+                  <div key={entry.id} style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 4 }}>[{label}] {entry.question}</div>
+                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>{entry.goodAnswer}</div>
+                    <div style={{ marginTop: 8 }}>
+                      <button
+                        onClick={() => resolve(entry.id, label === "A" ? p.b.id : p.a.id)}
+                        disabled={!!busy[key]}
+                        style={{ padding: "5px 14px", borderRadius: 7, border: "none", background: "#16a34a", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        {busy[key] ? "…" : `Mantener ${label}, archivar ${label === "A" ? "B" : "A"}`}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── FEEDBACK TAB ─────────────────────────────────────────────────────────────
+const RATING_COLORS = { good: "#16a34a", bad: "#dc2626", edit: "#2563eb" };
+const RATING_LABELS = { good: "✓ Buena", bad: "✗ Mala", edit: "✏ Corregida" };
+const CHANNEL_ICONS = { chat: "💬", wa: "📱", ml: "🛒" };
+
+function FeedbackTab() {
+  const [events, setEvents] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [chanFilter, setChanFilter] = useState("all");
+  const [days, setDays] = useState(7);
+
+  async function load() {
+    setLoading(true);
+    const [feedRes, statRes] = await Promise.all([
+      apiFetch(`/api/agent/feedback?days=${days}${chanFilter !== "all" ? `&channel=${chanFilter}` : ""}`),
+      apiFetch(`/api/agent/feedback/stats?days=${days}`),
+    ]);
+    setEvents(feedRes.events || []);
+    setStats(statRes);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [days, chanFilter]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Stats bar */}
+      {stats && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {[
+            ["Total", stats.total, null],
+            ["Buenas ✓", stats.byRating?.good || 0, "#16a34a"],
+            ["Malas ✗", stats.byRating?.bad || 0, "#dc2626"],
+            ["Corregidas ✏", stats.byRating?.edit || 0, "#2563eb"],
+          ].map(([label, val, color]) => (
+            <div key={label} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 14px" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: color || C.navy }}>{val}</div>
+              <div style={{ fontSize: 11, color: C.muted }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {["all", "chat", "wa", "ml"].map((ch) => (
+          <button key={ch} onClick={() => setChanFilter(ch)}
+            style={{ padding: "5px 12px", borderRadius: 20, border: `1px solid ${C.border}`, background: chanFilter === ch ? C.navy : C.white, color: chanFilter === ch ? "#fff" : C.text, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            {ch === "all" ? "Todos" : `${CHANNEL_ICONS[ch]} ${ch.toUpperCase()}`}
+          </button>
+        ))}
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))}
+          style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, color: C.text, background: C.white }}>
+          {[7, 14, 30, 90].map((d) => <option key={d} value={d}>Últimos {d}d</option>)}
+        </select>
+        <button onClick={load} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.white, fontSize: 12, cursor: "pointer" }}>↺</button>
+      </div>
+
+      {/* Feed */}
+      {loading ? (
+        <div style={{ padding: 32, color: C.muted, textAlign: "center" }}>Cargando feedback…</div>
+      ) : events.length === 0 ? (
+        <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 14 }}>
+          Sin feedback en el período seleccionado.<br />
+          <span style={{ fontSize: 12 }}>Usá los botones 👍 / ✏️ en el chat o el Hub ML para registrar feedback.</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {events.map((ev) => (
+            <div key={ev.feedbackId} style={{ background: C.white, borderRadius: 12, border: `1.5px solid ${RATING_COLORS[ev.rating] || C.border}22`, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: RATING_COLORS[ev.rating], background: `${RATING_COLORS[ev.rating]}18`, borderRadius: 6, padding: "2px 8px" }}>
+                    {RATING_LABELS[ev.rating]}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.muted }}>{CHANNEL_ICONS[ev.channel] || ""} {ev.channel?.toUpperCase()}</span>
+                  <span style={{ fontSize: 11, color: C.muted }}>{ev.ts?.slice(0, 16).replace("T", " ")}</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.navy, marginBottom: 4 }}>{ev.question}</div>
+
+              <div style={{ fontSize: 12, color: C.text, background: "#f8fafc", borderRadius: 8, padding: "8px 10px", marginBottom: ev.correction || ev.comment ? 8 : 0, lineHeight: 1.5 }}>
+                {ev.generatedText}
+              </div>
+
+              {ev.correction && (
+                <div style={{ fontSize: 12, color: "#166534", background: "#f0fdf4", borderRadius: 8, padding: "8px 10px", marginBottom: ev.comment ? 6 : 0, lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 700 }}>Corrección: </span>{ev.correction}
+                </div>
+              )}
+              {ev.comment && (
+                <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginTop: 4 }}>
+                  💬 {ev.comment}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── LOGS TAB ─────────────────────────────────────────────────────────────────
+function LogsTab() {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [fileData, setFileData] = useState(null);
+  const [fileLoading, setFileLoading] = useState(false);
+
+  async function loadList() {
+    setLoading(true);
+    const r = await apiFetch("/calc/interaction-log/list");
+    setFiles(r.files || []);
+    setLoading(false);
+  }
+
+  async function loadFile(name) {
+    if (selected === name) { setSelected(null); setFileData(null); return; }
+    setSelected(name);
+    setFileLoading(true);
+    const r = await apiFetch(`/calc/interaction-log/file/${encodeURIComponent(name)}`);
+    setFileData(r.ok ? r.content : { error: r.error });
+    setFileLoading(false);
+  }
+
+  useEffect(() => { loadList(); }, []);
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return `${bytes}B`;
+    return `${(bytes / 1024).toFixed(1)}KB`;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, flex: 1 }}>
+          Logs de interacción guardados desde la calculadora (últimos 50).
+        </div>
+        <button onClick={loadList} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, fontSize: 12, cursor: "pointer" }}>↺ Recargar</button>
+      </div>
+
+      {loading ? (
+        <div style={{ color: C.sub, fontSize: 13, padding: 16 }}>Cargando…</div>
+      ) : files.length === 0 ? (
+        <div style={{ padding: "40px 0", textAlign: "center", color: C.sub, fontSize: 13 }}>
+          Sin logs guardados.<br />
+          <span style={{ fontSize: 11 }}>Interactuá con la calculadora y usá el panel &quot;Log interacción&quot; para guardar.</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {files.map((f) => (
+            <div key={f.name} style={{ border: `1px solid ${selected === f.name ? C.primary : C.border}`, borderRadius: 10, overflow: "hidden", background: C.surface }}>
+              <div
+                onClick={() => loadFile(f.name)}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", background: selected === f.name ? `${C.primary}0a` : "transparent" }}
+              >
+                <span style={{ fontSize: 16 }}>📄</span>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.ff }}>{f.name}</span>
+                <span style={{ fontSize: 11, color: C.sub }}>{fmtSize(f.size)}</span>
+                <span style={{ fontSize: 11, color: C.sub }}>{new Date(f.mtime).toLocaleString("es-UY")}</span>
+                <span style={{ fontSize: 12, color: selected === f.name ? C.primary : C.sub }}>{selected === f.name ? "▲" : "▼"}</span>
+              </div>
+              {selected === f.name && (
+                <div style={{ borderTop: `1px solid ${C.border}`, padding: 12 }}>
+                  {fileLoading ? (
+                    <div style={{ color: C.sub, fontSize: 12 }}>Cargando…</div>
+                  ) : (
+                    <pre style={{ margin: 0, fontSize: 11, color: C.text, overflowX: "auto", maxHeight: 320, fontFamily: "monospace", lineHeight: 1.5 }}>
+                      {JSON.stringify(fileData, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── VOICE TAB ─────────────────────────────────────────────────────────────────
+const VOICE_ACTIONS = [
+  "setScenario", "setLP", "setTecho", "setPared",
+  "setCamara", "setFlete", "setProyecto", "setWizardStep",
+  "setTechoZonas", "advanceWizard", "buildQuote",
+];
+
+function VoiceTab() {
+  const [providers, setProviders] = useState(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [errors, setErrors] = useState([]);
+  const [errorsLoading, setErrorsLoading] = useState(false);
+
+  async function loadProviders() {
+    try {
+      const r = await apiFetch("/api/agent/ai-options");
+      setProviders(r?.providers || []);
+    } catch {
+      setProviders([]);
+    }
+  }
+
+  async function loadErrors() {
+    setErrorsLoading(true);
+    try {
+      const r = await apiFetch("/api/agent/voice/errors");
+      setErrors(Array.isArray(r?.errors) ? r.errors : []);
+    } catch {
+      setErrors([]);
+    } finally {
+      setErrorsLoading(false);
+    }
+  }
+
+  async function clearErrors() {
+    try {
+      await apiFetch("/api/agent/voice/errors/clear", { method: "POST" });
+    } catch {
+      // ignore — refresh anyway
+    }
+    setErrors([]);
+  }
+
+  async function testSession() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const r = await apiFetch("/api/agent/voice/session", {
+        method: "POST",
+        body: JSON.stringify({ calcState: {}, devMode: false }),
+      });
+      setTestResult(r);
+    } catch (err) {
+      setTestResult({ ok: false, error: err?.message || "Network error" });
+    } finally {
+      setTesting(false);
+    }
+    loadErrors();
+  }
+
+  useEffect(() => {
+    loadProviders();
+    loadErrors();
+  }, []);
+
+  const voiceAvailable = providers?.some((p) => p.id === "openai");
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 600 }}>
+      {/* Status */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 10 }}>Estado del módulo de voz</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: 20 }}>{voiceAvailable ? "🟢" : "🔴"}</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: C.ff }}>
+              OpenAI Realtime
+            </div>
+            <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff }}>
+              {voiceAvailable
+                ? "OPENAI_API_KEY configurada — sesiones de voz disponibles"
+                : "OPENAI_API_KEY no configurada — voz no disponible"}
+            </div>
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, lineHeight: 1.6 }}>
+          Modelo: <code>gpt-4o-realtime-preview</code> · WebRTC peer-to-peer · Token efímero por sesión<br />
+          Rate limit: 3 sesiones/min por IP · 120 acciones/min por IP
+        </div>
+      </div>
+
+      {/* Available actions */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 10 }}>Acciones disponibles</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {VOICE_ACTIONS.map((a) => (
+            <span key={a} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: `${C.primary}18`, color: C.primary, fontFamily: "monospace", fontWeight: 600 }}>{a}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Test session */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 6 }}>Test de sesión</div>
+        <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, marginBottom: 12, lineHeight: 1.5 }}>
+          Mintea un token efímero de OpenAI Realtime. Requiere OPENAI_API_KEY en el servidor.
+        </div>
+        <Btn onClick={testSession} disabled={testing || !voiceAvailable} variant="primary">
+          {testing ? "Minteando…" : "Testear sesión de voz"}
+        </Btn>
+        {testResult && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: testResult.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${testResult.ok ? "#bbf7d0" : "#fecaca"}` }}>
+            {testResult.ok ? (
+              <div style={{ fontSize: 12, color: "#166534", fontFamily: C.ff }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Sesión creada correctamente</div>
+                <div>session_id: <code>{testResult.session_id}</code></div>
+                <div>model: <code>{testResult.model}</code></div>
+                {testResult.expires_at && (
+                  <div>expira: {new Date(testResult.expires_at * 1000).toLocaleString("es-UY")}</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "#991b1b", fontFamily: C.ff }}>
+                <span style={{ fontWeight: 700 }}>Error: </span>{testResult.error}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Error log (ring buffer, max 50, ephemeral per process) */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff }}>Errores recientes</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <Btn onClick={loadErrors} disabled={errorsLoading} variant="secondary">
+              {errorsLoading ? "…" : "Refrescar"}
+            </Btn>
+            {errors.length > 0 && (
+              <Btn onClick={clearErrors} variant="secondary">Vaciar</Btn>
+            )}
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, marginBottom: 10, lineHeight: 1.5 }}>
+          Buffer en memoria (máx. 50, se reinicia con el proceso, una copia por instancia de Cloud Run). Capturas de fallos al mintear sesiones de voz contra OpenAI Realtime.
+        </div>
+        {errors.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, fontStyle: "italic" }}>Sin errores registrados.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+            {errors.map((e, i) => (
+              <div key={`${e.ts}-${i}`} style={{ padding: 8, borderRadius: 6, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 11, fontFamily: C.ff, color: "#7f1d1d" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                  <span style={{ fontWeight: 700 }}>{e.kind}{e.status ? ` (${e.status})` : ""}</span>
+                  <span style={{ color: C.sub }}>{new Date(e.ts).toLocaleString("es-UY")}</span>
+                </div>
+                <div>{e.message}</div>
+                {e.detail && (
+                  <div style={{ marginTop: 4, fontFamily: "monospace", fontSize: 10, color: "#991b1b", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{e.detail}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1178,6 +1908,12 @@ const TABS = [
   { id: "conversations", label: "Conversaciones", icon: "💬" },
   { id: "stats", label: "Estadísticas", icon: "📊" },
   { id: "analytics", label: "Analytics IA", icon: "🔍" },
+  { id: "feedback", label: "Feedback", icon: "💬" },
+  { id: "health", label: "Salud KB", icon: "🩺" },
+  { id: "autolearn", label: "Cola IA", icon: "🧠" },
+  { id: "conflicts", label: "Conflictos", icon: "⚡" },
+  { id: "logs", label: "Logs", icon: "📋" },
+  { id: "voice", label: "Voz", icon: "🎙️" },
   { id: "config", label: "Configuración", icon: "⚙️" },
 ];
 
@@ -1258,6 +1994,12 @@ export default function AgentAdminModule() {
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}
           {tab === "analytics" && <AnalyticsTab />}
+          {tab === "feedback" && <FeedbackTab />}
+          {tab === "health" && <HealthTab />}
+          {tab === "autolearn" && <AutoLearnTab />}
+          {tab === "conflicts" && <ConflictsTab />}
+          {tab === "logs" && <LogsTab />}
+          {tab === "voice" && <VoiceTab />}
           {tab === "config" && <ConfigTab />}
         </main>
       </div>

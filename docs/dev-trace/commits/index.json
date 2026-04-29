@@ -8534,6 +8534,2468 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "a7b4a8ae2d731f0b42a2ffaa47be0c24d1f4cd6f",
+      "short_hash": "a7b4a8a",
+      "date": "2026-04-27",
+      "time": "03:08:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel",
+      "subject": "docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/ebeb68a.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "docs/team/PROJECT-STATE.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "af27c62f2f1833ffd5b30044315066d2d38cfc87",
+      "short_hash": "af27c62",
+      "date": "2026-04-27",
+      "time": "03:54:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "calculator",
+      "title": "unify PDF export → handleClientePdf + simplify action bar",
+      "subject": "feat(calculator): unify PDF export → handleClientePdf + simplify action bar",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/api-status-report.html",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/a7b4a8a.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "src/components/PanelinCalculadoraV3_backup.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "6c85bdd16ad80efd4230fcce34b660cf3fdfec29",
+      "short_hash": "6c85bdd",
+      "date": "2026-04-27",
+      "time": "04:08:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "vercel",
+      "title": "proxy /api/* and /calc/* to Cloud Run",
+      "subject": "fix(vercel): proxy /api/* and /calc/* to Cloud Run",
+      "files": [
+        "vercel.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "2b4270b93cca1fe59c20de46d2c8c569d6ed96ca",
+      "short_hash": "2b4270b",
+      "date": "2026-04-27",
+      "time": "04:14:37",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "dashboard",
+      "title": "restore 6 broken Sheets endpoints + harden config",
+      "subject": "fix(dashboard): restore 6 broken Sheets endpoints + harden config",
+      "files": [
+        ".github/workflows/deploy-calc-api.yml",
+        "scripts/verify-sheets-tabs.js",
+        "server/config.js",
+        "server/index.js",
+        "server/routes/bmcDashboard.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".github",
+          "scripts",
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "df65ada8b0c125fadbf088beab889aa847b2bdf9",
+      "short_hash": "df65ada",
+      "date": "2026-04-27",
+      "time": "04:24:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feat/pdf-layout-selector",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "add template system + E-soft-modern layout + dropdown selector",
+      "subject": "feat(pdf-layouts): add template system + E-soft-modern layout + dropdown selector",
+      "files": [
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/pdf-templates/blueprint.js",
+        "src/pdf-templates/construction-bold.js",
+        "src/pdf-templates/executive-dark.js",
+        "src/pdf-templates/index.js",
+        "src/pdf-templates/minimalist.js",
+        "src/pdf-templates/soft-modern.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "8f27ed3efc0025fdbf11ba7e85fbb795aefb26a7",
+      "short_hash": "8f27ed3",
+      "date": "2026-04-27",
+      "time": "04:25:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feat/pdf-layout-selector",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync + version bump 2026-04-27 (session end)",
+      "subject": "docs: autotrace sync + version bump 2026-04-27 (session end)",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/2b4270b.md",
+        "docs/dev-trace/commits/2026/04/6c85bdd.md",
+        "docs/dev-trace/commits/2026/04/af27c62.md",
+        "docs/dev-trace/commits/2026/04/df65ada.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "8787ceb0cfd372950c474ce919a1bb7a4ec0b276",
+      "short_hash": "8787ceb",
+      "date": "2026-04-27",
+      "time": "04:27:41",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace stray commit doc 80102b1",
+      "subject": "docs: autotrace stray commit doc 80102b1",
+      "files": [
+        "docs/dev-trace/commits/2026/04/80102b1.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "5af4ae730d7edcf404c10b075df03499dd431f04",
+      "short_hash": "5af4ae7",
+      "date": "2026-04-27",
+      "time": "04:27:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace final sync main 2026-04-27",
+      "subject": "docs: autotrace final sync main 2026-04-27",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/8787ceb.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "1c495dbf91cc482753f06ae11d98d582a4f54048",
+      "short_hash": "1c495db",
+      "date": "2026-04-27",
+      "time": "04:27:58",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace flush (hook chain end)",
+      "subject": "docs: autotrace flush (hook chain end)",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/5af4ae7.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "d34d87576f0c28826bb99db10a8748ca175bd19e",
+      "short_hash": "d34d875",
+      "date": "2026-04-27",
+      "time": "04:30:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "session update 2026-04-27 — endpoint fixes, GCS token storage",
+      "subject": "docs: session update 2026-04-27 — endpoint fixes, GCS token storage",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/1c495db.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "eadf33eb04ae87e4519c203f45f84c0030991b1d",
+      "short_hash": "eadf33e",
+      "date": "2026-04-27",
+      "time": "04:34:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "implement all 5 layout templates (A-E)",
+      "subject": "feat(pdf-layouts): implement all 5 layout templates (A-E)",
+      "files": [
+        "src/pdf-templates/blueprint.js",
+        "src/pdf-templates/construction-bold.js",
+        "src/pdf-templates/executive-dark.js",
+        "src/pdf-templates/minimalist.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "211c6721d8aac6acec8c794f1c7b0445243bb7b8",
+      "short_hash": "211c672",
+      "date": "2026-04-27",
+      "time": "04:50:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deps",
+      "title": "force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq",
+      "subject": "fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq",
+      "files": [
+        "package-lock.json",
+        "package.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "031452574dd46fef9e7605c1b651960f8715c7de",
+      "short_hash": "0314525",
+      "date": "2026-04-27",
+      "time": "04:54:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "native Anthropic tool_use for Panelin — 4 calculator tools",
+      "subject": "feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools",
+      "files": [
+        "server/lib/agentTools.js",
+        "server/routes/agentChat.js",
+        "src/components/PanelinChatPanel.jsx",
+        "src/hooks/useChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "42fb631180177a1c2167094c50a25b6c077f09ba",
+      "short_hash": "42fb631",
+      "date": "2026-04-27",
+      "time": "05:02:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch",
+      "subject": "docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0314525.md",
+        "docs/dev-trace/commits/2026/04/211c672.md",
+        "docs/dev-trace/commits/2026/04/d34d875.md",
+        "docs/dev-trace/commits/2026/04/eadf33e.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "docs/google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md",
+        "docs/team/PROJECT-STATE.md"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "eb9836245946997adeff330125668e02c36e22c2",
+      "short_hash": "eb98362",
+      "date": "2026-04-27",
+      "time": "05:07:22",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "add TOOLS block to system prompt — forces tool use for pricing",
+      "subject": "feat(agent): add TOOLS block to system prompt — forces tool use for pricing",
+      "files": [
+        "server/lib/chatPrompts.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "ffa578f7189d4a39131682ca8e8f94054e022c66",
+      "short_hash": "ffa578f",
+      "date": "2026-04-27",
+      "time": "05:09:40",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "auto-evolutionary learning pipeline",
+      "subject": "feat(agent): auto-evolutionary learning pipeline",
+      "files": [
+        "server/lib/autoLearnExtractor.js",
+        "server/lib/trainingKB.js",
+        "server/routes/agentTraining.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "74f256871ffa82b3f98c00343093efa1f286b32d",
+      "short_hash": "74f2568",
+      "date": "2026-04-27",
+      "time": "05:09:46",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync autolearn commit",
+      "subject": "docs: autotrace sync autolearn commit",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/42fb631.md",
+        "docs/dev-trace/commits/2026/04/eb98362.md",
+        "docs/dev-trace/commits/2026/04/ffa578f.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "5b98ba46c9d2681216e9b024c5e50bbf128d0c5e",
+      "short_hash": "5b98ba4",
+      "date": "2026-04-27",
+      "time": "05:11:51",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "auto-trigger autolearn after each production chat turn",
+      "subject": "feat(agent): auto-trigger autolearn after each production chat turn",
+      "files": [
+        "server/routes/agentChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "90babd2093881ea41d792bbfb01662c65d7f02c3",
+      "short_hash": "90babd2",
+      "date": "2026-04-27",
+      "time": "05:11:56",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync autolearn trigger",
+      "subject": "docs: autotrace sync autolearn trigger",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/5b98ba4.md",
+        "docs/dev-trace/commits/2026/04/74f2568.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "25b9083f97c33feb1b239adf4a12ac5cbad684b7",
+      "short_hash": "25b9083",
+      "date": "2026-04-27",
+      "time": "05:15:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "add generar_pdf tool — agent produces shareable PDF URL",
+      "subject": "feat(agent): add generar_pdf tool — agent produces shareable PDF URL",
+      "files": [
+        "server/lib/agentTools.js",
+        "server/lib/chatPrompts.js",
+        "server/routes/agentChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "a3c33d6876a145d636efc55facb9b52727ea2185",
+      "short_hash": "a3c33d6",
+      "date": "2026-04-27",
+      "time": "05:18:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync 2026-04-27 end-of-session",
+      "subject": "docs: autotrace sync 2026-04-27 end-of-session",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/25b9083.md",
+        "docs/dev-trace/commits/2026/04/90babd2.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "2d4e1cbc191d6709e0c8fc50f8cf33764388ee57",
+      "short_hash": "2d4e1cb",
+      "date": "2026-04-27",
+      "time": "05:22:34",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "agent",
+      "title": "remove stale hardcoded prices from CATALOG section",
+      "subject": "fix(agent): remove stale hardcoded prices from CATALOG section",
+      "files": [
+        "server/lib/chatPrompts.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "0c29e5b7a161a7a9946ff1104db0fd27eed65caa",
+      "short_hash": "0c29e5b",
+      "date": "2026-04-27",
+      "time": "10:09:35",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "add 8 math entries to example KB seed",
+      "subject": "feat(kb): add 8 math entries to example KB seed",
+      "files": [
+        "data/training-kb.example.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "data"
+        ]
+      }
+    },
+    {
+      "hash": "fff3d23dc08fe706a6835399dd5e9d0c4a3b82af",
+      "short_hash": "fff3d23",
+      "date": "2026-04-27",
+      "time": "14:32:45",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "autolearn",
+      "title": "dedup uses question-only token overlap, not permanentBonus",
+      "subject": "fix(autolearn): dedup uses question-only token overlap, not permanentBonus",
+      "files": [
+        "server/lib/autoLearnExtractor.js",
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "36c7613c6ae0dae28788ad5a9c3e33a595726431",
+      "short_hash": "36c7613",
+      "date": "2026-04-27",
+      "time": "14:32:46",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync autolearn dedup fix",
+      "subject": "docs: autotrace sync autolearn dedup fix",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0c29e5b.md",
+        "docs/dev-trace/commits/2026/04/2d4e1cb.md",
+        "docs/dev-trace/commits/2026/04/a3c33d6.md",
+        "docs/dev-trace/commits/2026/04/fff3d23.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/impact-map.json",
+        "docs/team/knowledge/references-catalog.json",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-2026-04-27.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-MAGAZINE-latest.html",
+        "docs/team/knowledge/reports/KNOWLEDGE-REPORT-2026-04-27.md",
+        "docs/team/knowledge/sources-registry.json"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "bc6cd03f76acaf8049e2355bc9045eac19d100fe",
+      "short_hash": "bc6cd03",
+      "date": "2026-04-27",
+      "time": "14:37:23",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "roof",
+      "title": "merge/reset encounter segments — unblock split-only workflow",
+      "subject": "feat(roof): merge/reset encounter segments — unblock split-only workflow",
+      "files": [
+        "src/components/RoofPreview.jsx",
+        "src/utils/roofEncounterModel.js",
+        "tests/validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "e96d9e8165f6d270909ebbaa563a186a6f43380b",
+      "short_hash": "e96d9e8",
+      "date": "2026-04-27",
+      "time": "14:38:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "update AUTOTRACE documentation and sync changes",
+      "subject": "docs: update AUTOTRACE documentation and sync changes",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/36c7613.md",
+        "docs/dev-trace/commits/2026/04/bc6cd03.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "812e9c86799da6ace8631f6bb623aa1d062d78c9",
+      "short_hash": "812e9c8",
+      "date": "2026-04-27",
+      "time": "14:49:35",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "agent",
+      "title": "normalize familia to UPPER_SNAKE in all tool handlers",
+      "subject": "fix(agent): normalize familia to UPPER_SNAKE in all tool handlers",
+      "files": [
+        "server/lib/agentTools.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "e4361e6bf80465b2b21af8ec8564073452bc8949",
+      "short_hash": "e4361e6",
+      "date": "2026-04-27",
+      "time": "14:49:36",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync familia normalization fix",
+      "subject": "docs: autotrace sync familia normalization fix",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/812e9c8.md",
+        "docs/dev-trace/commits/2026/04/e96d9e8.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "7465e2fe970461cc54f1434aad2d11fca34ee470",
+      "short_hash": "7465e2f",
+      "date": "2026-04-27",
+      "time": "14:51:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "add layout selector to mobile bottom sheet",
+      "subject": "feat(pdf-layouts): add layout selector to mobile bottom sheet",
+      "files": [
+        "src/components/PanelinCalculadoraV3_backup.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "d12f8f1106e68bfb741b3522345e68495da92c47",
+      "short_hash": "d12f8f1",
+      "date": "2026-04-27",
+      "time": "15:15:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "install Alpine Chromium + fix html2pdf Shadow DOM fallback",
+      "subject": "fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback",
+      "files": [
+        "server/Dockerfile",
+        "src/utils/pdfGenerator.js",
+        "tests/pdf-pipeline.test.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "3a7b3bf4fb63c101affc94826541891eaea96d77",
+      "short_hash": "3a7b3bf",
+      "date": "2026-04-27",
+      "time": "15:29:41",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "docker",
+      "title": "add system Chromium to Dockerfile.bmc-dashboard for PDF generation",
+      "subject": "fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation",
+      "files": [
+        "Dockerfile.bmc-dashboard",
+        "tests/pdf-pipeline.test.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "cdeef3ccde0a484e3cf70acd451c2e1a8a92b9d1",
+      "short_hash": "cdeef3c",
+      "date": "2026-04-27",
+      "time": "15:33:42",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "unified KB brain for Chat, WA and ML channels",
+      "subject": "feat(agent): unified KB brain for Chat, WA and ML channels",
+      "files": [
+        "server/index.js",
+        "server/lib/agentCore.js",
+        "server/lib/suggestResponse.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "0a79835f96235b678cfab88881b90eb0065092c8",
+      "short_hash": "0a79835",
+      "date": "2026-04-27",
+      "time": "15:33:47",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync unified agent brain",
+      "subject": "docs: autotrace sync unified agent brain",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3a7b3bf.md",
+        "docs/dev-trace/commits/2026/04/7465e2f.md",
+        "docs/dev-trace/commits/2026/04/cdeef3c.md",
+        "docs/dev-trace/commits/2026/04/d12f8f1.md",
+        "docs/dev-trace/commits/2026/04/e4361e6.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "861d1680b78f5160fd1f9923abddc69b24e68448",
+      "short_hash": "861d168",
+      "date": "2026-04-27",
+      "time": "15:44:46",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent",
+      "title": "panel specs in tools + ML answers auto-save to KB",
+      "subject": "feat(agent): panel specs in tools + ML answers auto-save to KB",
+      "files": [
+        "server/lib/agentTools.js",
+        "server/routes/bmcDashboard.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "d3afcfd85b0a49447e33d38e0b6c17e4d0914c4a",
+      "short_hash": "d3afcfd",
+      "date": "2026-04-27",
+      "time": "15:44:47",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync specs+ml-kb",
+      "subject": "docs: autotrace sync specs+ml-kb",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0a79835.md",
+        "docs/dev-trace/commits/2026/04/861d168.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "0594c897cffd7f0d2eb7534b997cc5c34e04fbb2",
+      "short_hash": "0594c89",
+      "date": "2026-04-27",
+      "time": "15:53:40",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync KB GCS persistence",
+      "subject": "docs: autotrace sync KB GCS persistence",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/55be547.md",
+        "docs/dev-trace/commits/2026/04/d3afcfd.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "55be5479338fdb857ea34760b083902316f0bfbf",
+      "short_hash": "55be547",
+      "date": "2026-04-27",
+      "time": "15:53:40",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "kb",
+      "title": "persist training-kb.json to GCS on Cloud Run",
+      "subject": "fix(kb): persist training-kb.json to GCS on Cloud Run",
+      "files": [
+        ".env.example",
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "473aa6c77813bcbf1720626f195f3904369b3eac",
+      "short_hash": "473aa6c",
+      "date": "2026-04-27",
+      "time": "16:06:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "add Cloud Run sandbox flags to puppeteer launch",
+      "subject": "fix(pdf): add Cloud Run sandbox flags to puppeteer launch",
+      "files": [
+        "server/routes/pdf.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "38269e15d9c997c429389562cf33955ebd0388de",
+      "short_hash": "38269e1",
+      "date": "2026-04-27",
+      "time": "16:12:53",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "retrieval tracking + freshness TTL + health stats",
+      "subject": "feat(kb): retrieval tracking + freshness TTL + health stats",
+      "files": [
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "3bf63c497bfe9b0092cbb18511a21161b211e4e6",
+      "short_hash": "3bf63c4",
+      "date": "2026-04-27",
+      "time": "16:12:58",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync kb health stats",
+      "subject": "docs: autotrace sync kb health stats",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/0594c89.md",
+        "docs/dev-trace/commits/2026/04/38269e1.md",
+        "docs/dev-trace/commits/2026/04/473aa6c.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "e4ec409258f142d4d8e5f3abc92bea0d78e0477e",
+      "short_hash": "e4ec409",
+      "date": "2026-04-27",
+      "time": "16:16:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync channel renderer",
+      "subject": "docs: autotrace sync channel renderer",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3bf63c4.md",
+        "docs/dev-trace/commits/2026/04/f0ea719.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "f0ea719344f2aeb3959fb87ee291a0abc5989842",
+      "short_hash": "f0ea719",
+      "date": "2026-04-27",
+      "time": "16:16:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "channel renderer + ML/WA overrides + health badges in admin",
+      "subject": "feat(kb): channel renderer + ML/WA overrides + health badges in admin",
+      "files": [
+        "server/lib/agentCore.js",
+        "server/lib/channelRenderer.js",
+        "server/lib/trainingKB.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "3c6fc507752fc751c8c3b9448b79c889bc24df46",
+      "short_hash": "3c6fc50",
+      "date": "2026-04-27",
+      "time": "16:23:57",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "auto-generate ML overrides for all gap entries",
+      "subject": "feat(kb): auto-generate ML overrides for all gap entries",
+      "files": [
+        "server/routes/agentTraining.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "99b310a3376db274a4cf0e91e03c305b6dae90fa",
+      "short_hash": "99b310a",
+      "date": "2026-04-27",
+      "time": "16:24:07",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync ML overrides batch",
+      "subject": "docs: autotrace sync ML overrides batch",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3c6fc50.md",
+        "docs/dev-trace/commits/2026/04/e4ec409.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "51d7271242194cca75c3299b5aea9cdb327fd9da",
+      "short_hash": "51d7271",
+      "date": "2026-04-27",
+      "time": "16:26:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync conflict detection",
+      "subject": "docs: autotrace sync conflict detection",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/99b310a.md",
+        "docs/dev-trace/commits/2026/04/c49b772.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "c49b772efbf70e4eafac1f5dc92f8155f0891927",
+      "short_hash": "c49b772",
+      "date": "2026-04-27",
+      "time": "16:26:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "conflict detection — same question, different answer",
+      "subject": "feat(kb): conflict detection — same question, different answer",
+      "files": [
+        "server/lib/trainingKB.js",
+        "server/routes/agentTraining.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "6cc7b080de721247c685afbd606d4423a2ec6db5",
+      "short_hash": "6cc7b08",
+      "date": "2026-04-27",
+      "time": "16:27:49",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "kb",
+      "title": "await GCS init before KB reads — cold-start race condition",
+      "subject": "fix(kb): await GCS init before KB reads — cold-start race condition",
+      "files": [
+        "server/routes/agentChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "3e353f152a75f71b854c79b590e14ac6308fad6f",
+      "short_hash": "3e353f1",
+      "date": "2026-04-27",
+      "time": "16:30:24",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "kb",
+      "title": "health panel + import with dedup (Week 4)",
+      "subject": "feat(kb): health panel + import with dedup (Week 4)",
+      "files": [
+        "server/lib/trainingKB.js",
+        "server/routes/agentTraining.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "209c6e49d469c86ab74ac504d0bb2cb1843658e8",
+      "short_hash": "209c6e4",
+      "date": "2026-04-27",
+      "time": "16:30:25",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync health panel + import",
+      "subject": "docs: autotrace sync health panel + import",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/3e353f1.md",
+        "docs/dev-trace/commits/2026/04/51d7271.md",
+        "docs/dev-trace/commits/2026/04/6cc7b08.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "9212008b96d567973ee8cc653d2487d3e97feea4",
+      "short_hash": "9212008",
+      "date": "2026-04-27",
+      "time": "16:56:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "autolearn",
+      "title": "1x per conversation + docs: ROADMAP score 85→93",
+      "subject": "fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93",
+      "files": [
+        "docs/team/ROADMAP.md",
+        "server/routes/agentChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "ae254de6e8430cd7bcb7e81a9637a83828e35500",
+      "short_hash": "ae254de",
+      "date": "2026-04-27",
+      "time": "16:56:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync autolearn fix + roadmap",
+      "subject": "docs: autotrace sync autolearn fix + roadmap",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/209c6e4.md",
+        "docs/dev-trace/commits/2026/04/9212008.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "eb48ea178962c8922977990901c7abd001da4193",
+      "short_hash": "eb48ea1",
+      "date": "2026-04-27",
+      "time": "16:58:17",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "kb",
+      "title": "log GCS init error instead of silently swallowing",
+      "subject": "fix(kb): log GCS init error instead of silently swallowing",
+      "files": [
+        "server/lib/trainingKB.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "46b47d70e49e513308617413542e8ee7be1e6897",
+      "short_hash": "46b47d7",
+      "date": "2026-04-28",
+      "time": "19:44:44",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "feedback",
+      "title": "response review loop — Good/Correct/Comment across channels",
+      "subject": "feat(feedback): response review loop — Good/Correct/Comment across channels",
+      "files": [
+        "server/index.js",
+        "server/lib/responseFeedback.js",
+        "server/routes/agentFeedback.js",
+        "src/components/AgentAdminModule.jsx",
+        "src/components/BmcMlOperativoModule.jsx",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/components/PanelinChatPanel.jsx",
+        "src/hooks/useChat.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "dd92078f0ffa16fd880bc391aa7b2dcafafb1328",
+      "short_hash": "dd92078",
+      "date": "2026-04-28",
+      "time": "19:44:51",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync feedback system",
+      "subject": "docs: autotrace sync feedback system",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/46b47d7.md",
+        "docs/dev-trace/commits/2026/04/ae254de.md",
+        "docs/dev-trace/commits/2026/04/eb48ea1.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-27.md",
+        "docs/dev-trace/worklog/2026/04/2026-04-28.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "bd76a72b89148ea77ba100aa3e4aca3104e02981",
+      "short_hash": "bd76a72",
+      "date": "2026-04-28",
+      "time": "23:53:04",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "add BMC PDF — Blueprint Técnico template",
+      "subject": "feat(pdf-layouts): add BMC PDF — Blueprint Técnico template",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/dd92078.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-28.md",
+        "public/pdf-designs/F-custom-template.html",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/pdf-templates/bmc-pdf.js",
+        "src/pdf-templates/custom.js",
+        "src/pdf-templates/index.js",
+        "tests/pdf-quality.test.mjs"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "public",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "702a669b519a1abe5d91603cfec6ccdea16270ca",
+      "short_hash": "702a669",
+      "date": "2026-04-29",
+      "time": "00:02:15",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "use standard headless args when CHROMIUM_EXECUTABLE_PATH is set",
+      "subject": "fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set",
+      "files": [
+        "server/routes/pdf.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "48af0a2a3bf225b7431752462e79a9af3d4a521c",
+      "short_hash": "48af0a2",
+      "date": "2026-04-29",
+      "time": "00:06:41",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf",
+      "title": "add BMC PDF — Blueprint Técnico template and fix standard headless args",
+      "subject": "feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/702a669.md",
+        "docs/dev-trace/commits/2026/04/bd76a72.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-28.md",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "a5aedaa1cad3369d029447ba96c56cbbafb3917c",
+      "short_hash": "a5aedaa",
+      "date": "2026-04-29",
+      "time": "01:25:57",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico",
+      "subject": "docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/48af0a2.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "89ec748cbd4ac0f2b389219b76bed668ae0b7fad",
+      "short_hash": "89ec748",
+      "date": "2026-04-29",
+      "time": "01:26:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync — trace commit a5aedaa (propagation loop close)",
+      "subject": "docs: autotrace sync — trace commit a5aedaa (propagation loop close)",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/a5aedaa.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "75ae09ad39aaf66ff6961fcbd54400b12cf4535a",
+      "short_hash": "75ae09a",
+      "date": "2026-04-29",
+      "time": "01:26:24",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "",
+      "title": "autotrace sync — trace commit 89ec748 (close propagation chain)",
+      "subject": "docs: autotrace sync — trace commit 89ec748 (close propagation chain)",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/89ec748.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "d8f0421b10d38ac7e76f1dda27e82e31ea70d552",
+      "short_hash": "d8f0421",
+      "date": "2026-04-29",
+      "time": "01:54:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent-module",
+      "title": "add Logs, Voz tabs + live provider status in Config",
+      "subject": "feat(agent-module): add Logs, Voz tabs + live provider status in Config",
+      "files": [
+        "server/routes/calc.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "00bafe77d7255989f65f5c1d575a47b36c7819e5",
+      "short_hash": "00bafe7",
+      "date": "2026-04-29",
+      "time": "02:01:03",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent-module",
+      "title": "update Logs and Voz tabs with live provider status",
+      "subject": "feat(agent-module): update Logs and Voz tabs with live provider status",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/d8f0421.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "src/components/PanelinVoicePanel.jsx"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "7b6ff614212fdb711ac643f09f16d3d8d13daee7",
+      "short_hash": "7b6ff61",
+      "date": "2026-04-29",
+      "time": "02:22:26",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "agent-module",
+      "title": "correct LogsTab API paths /api → /calc",
+      "subject": "fix(agent-module): correct LogsTab API paths /api → /calc",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/00bafe7.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "src/components/AgentAdminModule.jsx",
+        "src/components/PanelinChatPanel.jsx",
+        "src/hooks/useVoiceSession.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "f4dd6b29f115816d7674c38504b3a7a2fa23965d",
+      "short_hash": "f4dd6b2",
+      "date": "2026-04-29",
+      "time": "02:27:47",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "agent-module",
+      "title": "enhance Logs and Voz tabs with live provider status",
+      "subject": "feat(agent-module): enhance Logs and Voz tabs with live provider status",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/7b6ff61.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
+    },
+    {
+      "hash": "1599cdda68a6c0596c93a86ccaaad9c089f3a8aa",
+      "short_hash": "1599cdd",
+      "date": "2026-04-29",
+      "time": "03:03:31",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "voice",
+      "title": "surface real OpenAI error on session mint failure",
+      "subject": "fix(voice): surface real OpenAI error on session mint failure",
+      "files": [
+        "server/routes/agentVoice.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "34a36b03212f08d0cd471d38cc444424196ddfd4",
+      "short_hash": "34a36b0",
+      "date": "2026-04-29",
+      "time": "03:06:55",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "config",
+      "title": "add driveQuoteFolderId + expand Cloud Run secrets sync script",
+      "subject": "feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script",
+      "files": [
+        "run_ml_cloud_run_setup.sh",
+        "server/config.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "da4afcabb6b17b9a1121ce89c33bb87f7b3d3ed2",
+      "short_hash": "da4afca",
+      "date": "2026-04-29",
+      "time": "03:58:20",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "security",
+      "title": "require API_AUTH_TOKEN on interaction-log + voice-session",
+      "subject": "fix(security): require API_AUTH_TOKEN on interaction-log + voice-session",
+      "files": [
+        "package.json",
+        "server/middleware/requireAuth.js",
+        "server/routes/agentFeedback.js",
+        "server/routes/agentVoice.js",
+        "server/routes/calc.js",
+        "src/components/PanelinChatPanel.jsx",
+        "src/components/PanelinVoicePanel.jsx",
+        "tests/auth-routes.test.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "e0c6e18062fc01c4ec0b77cb3dea45493d7c1ea7",
+      "short_hash": "e0c6e18",
+      "date": "2026-04-29",
+      "time": "04:01:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp",
+      "subject": "chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp",
+      "files": [
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "3f972eb4a63bd77e0f3fb618beb7b5f00d183dd2",
+      "short_hash": "3f972eb",
+      "date": "2026-04-29",
+      "time": "04:05:27",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update drive upload functionality and related tests",
+      "subject": "chore: update drive upload functionality and related tests",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/e0c6e18.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "server/routes/calc.js",
+        "server/routes/superAgent.js",
+        "server/routes/wolfboard.js",
+        "tests/calc-routes.validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "52c66bcce12da68aba6a55c4b66d431d3a728404",
+      "short_hash": "52c66bc",
+      "date": "2026-04-29",
+      "time": "04:05:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update kb.json timestamp and build_ms value",
+      "subject": "chore: update kb.json timestamp and build_ms value",
+      "files": [
+        ".accessible-base/kb.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base"
+        ]
+      }
+    },
+    {
+      "hash": "a47cd9ac26703dc9de9cf9b6be73982c4ed0bc3e",
+      "short_hash": "a47cd9a",
+      "date": "2026-04-29",
+      "time": "04:06:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update kb.json timestamp and build_ms value",
+      "subject": "chore: update kb.json timestamp and build_ms value",
+      "files": [
+        ".accessible-base/kb.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base"
+        ]
+      }
+    },
+    {
+      "hash": "63c85d05e78ebb8651f8b037fe59020d4f76cc9b",
+      "short_hash": "63c85d0",
+      "date": "2026-04-29",
+      "time": "04:07:22",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deploy",
+      "title": "conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME",
+      "subject": "fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME",
+      "files": [
+        "run_ml_cloud_run_setup.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "36df0f56b16a4b9c7d99b08a105030df37f0595c",
+      "short_hash": "36df0f5",
+      "date": "2026-04-29",
+      "time": "04:24:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "deploy",
+      "title": "graceful Secret Manager migration for high-sensitivity keys",
+      "subject": "feat(deploy): graceful Secret Manager migration for high-sensitivity keys",
+      "files": [
+        "docs/procedimientos/SECRETS-MIGRATION.md",
+        "run_ml_cloud_run_setup.sh",
+        "scripts/provision-secrets.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs",
+          "scripts"
+        ]
+      }
+    },
+    {
+      "hash": "709045941c75b1a5c35c2e2386bd1bf3e612f4d9",
+      "short_hash": "7090459",
+      "date": "2026-04-29",
+      "time": "04:39:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update drive upload functionality and related tests",
+      "subject": "chore: update drive upload functionality and related tests",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/36df0f5.md",
+        "docs/dev-trace/commits/2026/04/3f972eb.md",
+        "docs/dev-trace/commits/2026/04/52c66bc.md",
+        "docs/dev-trace/commits/2026/04/63c85d0.md",
+        "docs/dev-trace/commits/2026/04/a47cd9a.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "docs/procedimientos/CLOUD-RUN-SECRETS-SYNC.md",
+        "docs/team/ML-CM1-VERIFICATION-CHECKLIST.md",
+        "server/lib/driveUpload.js",
+        "server/lib/voiceErrorLog.js",
+        "server/routes/agentVoice.js",
+        "server/routes/calc.js",
+        "server/routes/superAgent.js",
+        "server/routes/wolfboard.js",
+        "src/components/AgentAdminModule.jsx",
+        "src/hooks/useVoiceSession.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "src"
+        ]
+      }
+    },
+    {
+      "hash": "bc82701ba2d25ace51116cb001074b70bfa584ae",
+      "short_hash": "bc82701",
+      "date": "2026-04-29",
+      "time": "05:06:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update drive upload functionality and related tests",
+      "subject": "chore: update drive upload functionality and related tests",
+      "files": [
+        ".accessible-base/kb.json",
+        ".env.example",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/7090459.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "docs/procedimientos/CLOUD-RUN-SECRETS-SYNC.md",
+        "run_ml_cloud_run_setup.sh",
+        "server/index.js",
+        "server/lib/googleAuthCache.js",
+        "server/lib/transportistaDb.js",
+        "server/lib/whatsappOutbound.js",
+        "server/routes/agentVoice.js",
+        "server/routes/bmcDashboard.js",
+        "server/routes/followups.js",
+        "server/routes/pdf.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }
