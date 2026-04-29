@@ -42,6 +42,8 @@ const MIN_CONSULTA_LEN = 20;
 const ERROR_MARKER = "⚠ Requiere atención manual";
 const RED_BG = { red: 1.0, green: 0.267, blue: 0.267 };
 const WHITE_BG = { red: 1.0, green: 1.0, blue: 1.0 };
+const ADMIN_GRID_LAST_COL = "Z";
+const ADMIN_GRID_COL_COUNT = 26;
 
 // Column J = index 9 (A=0)
 const COL_J = 9;
@@ -310,7 +312,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A1:Z1`,
+        range: `'${adminTab}'!A1:${ADMIN_GRID_LAST_COL}1`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       headerRow = resp.data.values?.[0] || [];
@@ -318,10 +320,10 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer cabecera: " + e.message });
     }
 
-    const headers = headerRow.map((name, index) => ({
+    const headers = Array.from({ length: ADMIN_GRID_COL_COUNT }, (_, index) => ({
       index,
       col: colIndexToLetter(index),
-      name: String(name || "").trim() || colIndexToLetter(index),
+      name: String(headerRow[index] || "").trim() || colIndexToLetter(index),
     }));
 
     return res.json({ ok: true, headers });
@@ -333,6 +335,10 @@ export function createWolfboardRouter(config) {
     const { adminRow, col, value } = req.body || {};
     if (!adminRow || !col) {
       return res.status(400).json({ ok: false, error: "adminRow y col requeridos" });
+    }
+    const adminRowNum = Number(adminRow);
+    if (!Number.isInteger(adminRowNum) || adminRowNum < 2) {
+      return res.status(400).json({ ok: false, error: "adminRow inválido" });
     }
 
     const adminSheetId = config.wolfbAdminSheetId;
@@ -362,7 +368,7 @@ export function createWolfboardRouter(config) {
       try {
         await sheets.spreadsheets.values.update({
           spreadsheetId: adminSheetId,
-          range: `'${adminTab}'!${colUpper}${adminRow}`,
+          range: `'${adminTab}'!${colUpper}${adminRowNum}`,
           valueInputOption: "USER_ENTERED",
           requestBody: { values: [[value ?? ""]] },
         });
@@ -371,7 +377,7 @@ export function createWolfboardRouter(config) {
       }
     }
 
-    return res.json({ ok: true, adminRow, col: colUpper, colIndex, dryRun });
+    return res.json({ ok: true, adminRow: adminRowNum, col: colUpper, colIndex, dryRun });
   });
 
   // ── POST /sync ────────────────────────────────────────────────────────────

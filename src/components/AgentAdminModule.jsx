@@ -10,6 +10,7 @@ const C = {
   border: "#e5e5ea",
   text: "#1d1d1f",
   sub: "#6e6e73",
+  muted: "#6e6e73",
   primary: "#0071e3",
   navy: "#1a3a5c",
   danger: "#ff3b30",
@@ -1558,7 +1559,7 @@ function FeedbackTab() {
   const [chanFilter, setChanFilter] = useState("all");
   const [days, setDays] = useState(7);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const [feedRes, statRes] = await Promise.all([
       apiFetch(`/api/agent/feedback?days=${days}${chanFilter !== "all" ? `&channel=${chanFilter}` : ""}`),
@@ -1567,9 +1568,9 @@ function FeedbackTab() {
     setEvents(feedRes.events || []);
     setStats(statRes);
     setLoading(false);
-  }
+  }, [days, chanFilter]);
 
-  useEffect(() => { load(); }, [days, chanFilter]);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1945,7 +1946,7 @@ function ModelRoutingTab() {
   const [testResults, setTestResults] = useState({});
   const [testing, setTesting]         = useState({});
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const [routeRes, aiRes] = await Promise.all([
       apiFetch("/api/agent/model-routing"),
@@ -1958,9 +1959,9 @@ function ModelRoutingTab() {
     }
     if (aiRes.providers) setProviders(aiRes.providers);
     setLoading(false);
-  }
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   // Build flat list of "provider/model" options for selects
   const modelOptions = [
@@ -1991,6 +1992,7 @@ function ModelRoutingTab() {
     setSaving(false);
     if (r.ok) {
       setRouting(r.routing);
+      setDraft({ ...r.routing });
       setMsg({ text: "Routing guardado correctamente.", type: "success" });
     } else {
       setMsg({ text: r.error || "Error al guardar", type: "error" });
@@ -2193,26 +2195,28 @@ function ModelRoutingTab() {
 // ── AUTO-EVOLUTION TAB ───────────────────────────────────────────────────────
 
 function AutoEvolutionTab() {
-  const [cfg, setCfg]         = useState(null);
   const [defaults, setDefs]   = useState(null);
   const [draft, setDraft]     = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
   const [msg, setMsg]         = useState({ text: "", type: "success" });
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     const r = await apiFetch("/api/agent/auto-evolution");
-    if (r.ok) { setCfg(r.config); setDefs(r.defaults); setDraft({ ...r.config }); }
+    if (r.ok) { setDefs(r.defaults); setDraft({ ...r.config }); }
     setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
   async function save() {
     setSaving(true);
     const r = await apiFetch("/api/agent/auto-evolution", { method: "POST", body: JSON.stringify(draft) });
     setSaving(false);
-    if (r.ok) { setCfg(r.config); setMsg({ text: "Configuración guardada.", type: "success" }); }
+    if (r.ok) {
+      setDraft({ ...r.config });
+      setMsg({ text: "Configuración guardada.", type: "success" });
+    }
     else setMsg({ text: r.error || "Error", type: "error" });
     setTimeout(() => setMsg({ text: "", type: "success" }), 3000);
   }
