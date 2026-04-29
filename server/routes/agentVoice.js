@@ -10,6 +10,7 @@ import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import { findRelevantExamples } from "../lib/trainingKB.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 
@@ -48,15 +49,6 @@ const actionLimiter = rateLimit({
   message: { ok: false, error: "Demasiadas acciones de voz. Esperá un momento." },
 });
 
-function isDevAuthorized(req) {
-  if (!config.apiAuthToken) return { ok: false, status: 503, error: "API_AUTH_TOKEN not configured" };
-  const auth = String(req.headers.authorization || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-  if (bearer === config.apiAuthToken || xKey === config.apiAuthToken) return { ok: true };
-  return { ok: false, status: 401, error: "Unauthorized" };
-}
-
 /**
  * POST /api/agent/voice/session
  *
@@ -65,19 +57,12 @@ function isDevAuthorized(req) {
  *
  * Requires OPENAI_API_KEY. devMode requires dev auth header.
  */
-router.post("/agent/voice/session", sessionLimiter, async (req, res) => {
+router.post("/agent/voice/session", sessionLimiter, requireAuth, async (req, res) => {
   if (!config.openaiApiKey) {
     return res.status(503).json({ ok: false, error: "OpenAI API key not configured" });
   }
 
   const { calcState = {}, devMode = false } = req.body || {};
-
-  if (devMode) {
-    const auth = isDevAuthorized(req);
-    if (!auth.ok) {
-      return res.status(auth.status || 401).json({ ok: false, error: auth.error });
-    }
-  }
 
   let trainingExamples = [];
   try {

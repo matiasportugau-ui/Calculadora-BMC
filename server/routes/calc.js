@@ -35,6 +35,7 @@ import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -95,7 +96,7 @@ router.post("/interaction-log", (req, res) => {
   }
 });
 
-router.get("/interaction-log/list", (req, res) => {
+router.get("/interaction-log/list", requireAuth, (req, res) => {
   try {
     const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
     if (!fs.existsSync(logsDir)) return res.json({ ok: true, files: [] });
@@ -114,7 +115,7 @@ router.get("/interaction-log/list", (req, res) => {
   }
 });
 
-router.get("/interaction-log/file/:name", (req, res) => {
+router.get("/interaction-log/file/:name", requireAuth, (req, res) => {
   try {
     const name = path.basename(req.params.name);
     if (!name.endsWith(".json") || !name.startsWith("interaction-")) {

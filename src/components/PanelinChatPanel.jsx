@@ -875,7 +875,7 @@ export default function PanelinChatPanel({
           </button>
         </div>
 
-        {/* ── Voice Mode — always mounted so the WebRTC session survives mode toggles ── */}
+        {/* ── Voice Mode — panel stays mounted; the WebRTC session is torn down when voiceMode flips off ── */}
         <div style={{ display: voiceMode ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           <PanelinVoicePanel
             calcState={calcState}
@@ -884,6 +884,7 @@ export default function PanelinChatPanel({
             skinTokens={activeTokens}
             devMode={devMode}
             authHeader={authHeader}
+            voiceMode={voiceMode}
           />
         </div>
 
