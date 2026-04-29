@@ -87,7 +87,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Fixes
 
-- `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `702a669` fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set
 - `7b6ff61` fix(agent-module): correct LogsTab API paths /api → /calc
 - `1599cdd` fix(voice): surface real OpenAI error on session mint failure
+- `da4afca` fix(security): require API_AUTH_TOKEN on interaction-log + voice-session `[regresión? · tests]`
 
 ## Documentation
 

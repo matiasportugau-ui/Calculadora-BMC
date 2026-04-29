@@ -10686,6 +10686,42 @@
           "server"
         ]
       }
+    },
+    {
+      "hash": "da4afcabb6b17b9a1121ce89c33bb87f7b3d3ed2",
+      "short_hash": "da4afca",
+      "date": "2026-04-29",
+      "time": "03:58:20",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "security",
+      "title": "require API_AUTH_TOKEN on interaction-log + voice-session",
+      "subject": "fix(security): require API_AUTH_TOKEN on interaction-log + voice-session",
+      "files": [
+        "package.json",
+        "server/middleware/requireAuth.js",
+        "server/routes/agentFeedback.js",
+        "server/routes/agentVoice.js",
+        "server/routes/calc.js",
+        "src/components/PanelinChatPanel.jsx",
+        "src/components/PanelinVoicePanel.jsx",
+        "tests/auth-routes.test.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": true,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server",
+          "src",
+          "tests"
+        ]
+      }
     }
   ]
 }

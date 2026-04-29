@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 08:18:00 — `3c93ff7` — feat: GCS quote storage + SuperAgent tool endpoint
 - 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production
 - 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json
 - 2026-04-23 18:45:47 — `c8b33e6` — feat(wolfboard): add local dev scripts and update kb.json
@@ -222,3 +221,4 @@
 - 2026-04-29 02:27:47 — `f4dd6b2` — feat(agent-module): enhance Logs and Voz tabs with live provider status
 - 2026-04-29 03:03:31 — `1599cdd` — fix(voice): surface real OpenAI error on session mint failure
 - 2026-04-29 03:06:55 — `34a36b0` — feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
+- 2026-04-29 03:58:20 — `da4afca` — fix(security): require API_AUTH_TOKEN on interaction-log + voice-session
