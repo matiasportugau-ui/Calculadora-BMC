@@ -548,25 +548,19 @@ router.post("/cotizar/pdf", async (req, res) => {
     const baseUrl = config.publicBaseUrl.replace(/\/$/, "");
     const pdfUrl = `${baseUrl}/calc/pdf/${pdfId}`;
 
-    // Upload to GCS for a permanent URL (best-effort; falls back to in-memory link)
-    let gcsUrl = null;
-    let driveUrl = null;
+    // Upload to GCS + Drive in parallel — both best-effort, falls back to in-memory link
     const code = clientInfo.quote_code || pdfId.slice(0, 8);
     const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
-    if (config.gcsQuotesBucket) {
-      try {
-        gcsUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
-      } catch {
-        // non-critical
-      }
-    }
-    if (config.driveQuoteFolderId) {
-      try {
-        driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
-      } catch {
-        // non-critical — Drive mirror is optional
-      }
-    }
+    const [gcsRes, driveRes] = await Promise.allSettled([
+      config.gcsQuotesBucket
+        ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
+        : Promise.resolve(null),
+      config.driveQuoteFolderId
+        ? uploadQuoteToDrive(html, filename, config.driveQuoteFolderId)
+        : Promise.resolve(null),
+    ]);
+    const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
+    const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
     registerQuotation({
       pdfId,

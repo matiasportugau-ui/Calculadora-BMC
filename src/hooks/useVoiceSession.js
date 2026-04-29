@@ -67,7 +67,8 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
       let msg;
       try {
         msg = JSON.parse(raw);
-      } catch {
+      } catch (err) {
+        if (devMode) console.warn("[voice] dropped malformed data-channel message", err?.message);
         return;
       }
 
@@ -101,7 +102,8 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         let args = {};
         try {
           args = JSON.parse(msg.arguments || "{}");
-        } catch {
+        } catch (err) {
+          console.warn(`[voice] could not parse arguments for ${fnName}, applying empty payload`, err?.message);
           args = {};
         }
 
@@ -133,8 +135,9 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
               return;
             }
           }
-        } catch {
-          // Non-fatal: apply the raw action anyway
+        } catch (err) {
+          // Non-fatal: apply the raw action anyway, but log so the issue is visible
+          console.warn(`[voice] action relay failed for ${fnName}, applying raw payload`, err?.message);
         }
 
         // Apply the action via the calculator's handler
@@ -152,7 +155,7 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
         dcRef.current?.send(JSON.stringify({ type: "response.create" }));
       }
     },
-    [onAction, onTranscriptDelta, authHeader]
+    [onAction, onTranscriptDelta, authHeader, devMode]
   );
 
   const start = useCallback(

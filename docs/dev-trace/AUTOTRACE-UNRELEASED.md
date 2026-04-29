@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 - `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
@@ -84,10 +83,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `00bafe7` feat(agent-module): update Logs and Voz tabs with live provider status
 - `f4dd6b2` feat(agent-module): enhance Logs and Voz tabs with live provider status
 - `34a36b0` feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
+- `36df0f5` feat(deploy): graceful Secret Manager migration for high-sensitivity keys
 
 ## Fixes
 
-- `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
 - `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7b6ff61` fix(agent-module): correct LogsTab API paths /api → /calc
 - `1599cdd` fix(voice): surface real OpenAI error on session mint failure
 - `da4afca` fix(security): require API_AUTH_TOKEN on interaction-log + voice-session `[regresión? · tests]`
+- `63c85d0` fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
 
 ## Documentation
 
@@ -311,6 +311,9 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `c5750df` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `eb54831` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `e0c6e18` chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp
+- `3f972eb` chore: update drive upload functionality and related tests `[tests]`
+- `52c66bc` chore: update kb.json timestamp and build_ms value
+- `a47cd9a` chore: update kb.json timestamp and build_ms value
 
 ## Other
 

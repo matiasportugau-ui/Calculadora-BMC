@@ -722,8 +722,8 @@ export function createWolfboardRouter(config) {
         values: [[response]],
       });
 
-      // Upload quote HTML to GCS for permanent col-K link (best-effort, calc-only)
-      if (calcQuoted && calcRaw && config.gcsQuotesBucket) {
+      // Upload quote HTML to GCS+Drive in parallel (best-effort, calc-only)
+      if (calcQuoted && calcRaw && (config.gcsQuotesBucket || config.driveQuoteFolderId)) {
         try {
           const groups = bomToGroups(calcRaw);
           const totales = calcRaw.totales || calcTotalesSinIVA(calcRaw.allItems || []);
@@ -748,19 +748,20 @@ export function createWolfboardRouter(config) {
             showUnitPrices: true,
           });
           const filename = `Cotizacion-WB${row.rowNum}-${new Date().toISOString().slice(0, 10)}.html`;
-          const gcsUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
+          const [gcsRes] = await Promise.allSettled([
+            config.gcsQuotesBucket
+              ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
+              : Promise.resolve(null),
+            config.driveQuoteFolderId
+              ? uploadQuoteToDrive(html, filename, config.driveQuoteFolderId)
+              : Promise.resolve(null),
+          ]);
+          const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
           if (gcsUrl) {
             valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[gcsUrl]] });
           }
-          if (config.driveQuoteFolderId) {
-            try {
-              await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
-            } catch {
-              // Drive mirror is non-critical
-            }
-          }
         } catch {
-          // GCS upload is non-critical; proceed without link
+          // upload pipeline is non-critical; proceed without link
         }
 
         try {

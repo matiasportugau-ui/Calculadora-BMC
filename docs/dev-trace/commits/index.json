@@ -10749,6 +10749,155 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "3f972eb4a63bd77e0f3fb618beb7b5f00d183dd2",
+      "short_hash": "3f972eb",
+      "date": "2026-04-29",
+      "time": "04:05:27",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update drive upload functionality and related tests",
+      "subject": "chore: update drive upload functionality and related tests",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/e0c6e18.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "server/routes/calc.js",
+        "server/routes/superAgent.js",
+        "server/routes/wolfboard.js",
+        "tests/calc-routes.validation.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "52c66bcce12da68aba6a55c4b66d431d3a728404",
+      "short_hash": "52c66bc",
+      "date": "2026-04-29",
+      "time": "04:05:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update kb.json timestamp and build_ms value",
+      "subject": "chore: update kb.json timestamp and build_ms value",
+      "files": [
+        ".accessible-base/kb.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base"
+        ]
+      }
+    },
+    {
+      "hash": "a47cd9ac26703dc9de9cf9b6be73982c4ed0bc3e",
+      "short_hash": "a47cd9a",
+      "date": "2026-04-29",
+      "time": "04:06:00",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update kb.json timestamp and build_ms value",
+      "subject": "chore: update kb.json timestamp and build_ms value",
+      "files": [
+        ".accessible-base/kb.json"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base"
+        ]
+      }
+    },
+    {
+      "hash": "63c85d05e78ebb8651f8b037fe59020d4f76cc9b",
+      "short_hash": "63c85d0",
+      "date": "2026-04-29",
+      "time": "04:07:22",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "deploy",
+      "title": "conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME",
+      "subject": "fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME",
+      "files": [
+        "run_ml_cloud_run_setup.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": []
+      }
+    },
+    {
+      "hash": "36df0f56b16a4b9c7d99b08a105030df37f0595c",
+      "short_hash": "36df0f5",
+      "date": "2026-04-29",
+      "time": "04:24:30",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "deploy",
+      "title": "graceful Secret Manager migration for high-sensitivity keys",
+      "subject": "feat(deploy): graceful Secret Manager migration for high-sensitivity keys",
+      "files": [
+        "docs/procedimientos/SECRETS-MIGRATION.md",
+        "run_ml_cloud_run_setup.sh",
+        "scripts/provision-secrets.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs",
+          "scripts"
+        ]
+      }
     }
   ]
 }

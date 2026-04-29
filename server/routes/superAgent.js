@@ -191,8 +191,8 @@ export function createSuperAgentRouter(config) {
         responseText = resumenTexto + "\n\nSaludos, BMC URUGUAY!";
       }
 
-      // Step 4: generate PDF → GCS
-      if (config.gcsQuotesBucket) {
+      // Step 4: generate PDF and upload to GCS+Drive in parallel (best-effort)
+      if (config.gcsQuotesBucket || config.driveQuoteFolderId) {
         try {
           const groups = bomToGroups(calcRaw);
           const htmlDate = new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -207,12 +207,16 @@ export function createSuperAgentRouter(config) {
             showSKU: false, showUnitPrices: true,
           });
           const filename = `SA-${Date.now().toString(36)}-${new Date().toISOString().slice(0, 10)}.html`;
-          pdfUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
-          if (config.driveQuoteFolderId) {
-            try {
-              driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
-            } catch { /* non-critical — Drive mirror is optional */ }
-          }
+          const [gcsRes, driveRes] = await Promise.allSettled([
+            config.gcsQuotesBucket
+              ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
+              : Promise.resolve(null),
+            config.driveQuoteFolderId
+              ? uploadQuoteToDrive(html, filename, config.driveQuoteFolderId)
+              : Promise.resolve(null),
+          ]);
+          pdfUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
+          driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
         } catch { /* non-critical */ }
       }
     } else {
@@ -235,7 +239,7 @@ export function createSuperAgentRouter(config) {
       method,
       response_text: responseText,
       pdf_url: pdfUrl,
-      drive_url: driveUrl,
+      drive_url: driveUrl || null,
       bom_summary: bomSummary,
       missing_params: extracted?.faltan || [],
       total_usd: totalUsd,

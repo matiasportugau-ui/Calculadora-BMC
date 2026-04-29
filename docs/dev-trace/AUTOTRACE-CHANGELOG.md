@@ -2,11 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json
-- 2026-04-23 18:45:47 — `c8b33e6` — feat(wolfboard): add local dev scripts and update kb.json
-- 2026-04-23 18:47:08 — `792cf98` — chore(dev-trace): sync AUTOTRACE for wolfboard local dev commit c8b33e6
-- 2026-04-23 18:47:26 — `07a5a8d` — chore(dev-trace): record AUTOTRACE for commit 792cf98
-- 2026-04-23 18:47:30 — `53b3a60` — chore(dev-trace): record AUTOTRACE for commit 07a5a8d
 - 2026-04-24 00:03:07 — `c811945` — docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)
 - 2026-04-24 00:03:26 — `d33a49c` — chore(dev-trace): record AUTOTRACE for docs ROADMAP smoke alignment (c811945)
 - 2026-04-24 00:03:32 — `c7cd9a3` — chore(dev-trace): record AUTOTRACE for dev-trace commit d33a49c
@@ -222,3 +217,8 @@
 - 2026-04-29 03:06:55 — `34a36b0` — feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
 - 2026-04-29 03:58:20 — `da4afca` — fix(security): require API_AUTH_TOKEN on interaction-log + voice-session
 - 2026-04-29 04:01:50 — `e0c6e18` — chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp
+- 2026-04-29 04:05:27 — `3f972eb` — chore: update drive upload functionality and related tests
+- 2026-04-29 04:05:50 — `52c66bc` — chore: update kb.json timestamp and build_ms value
+- 2026-04-29 04:06:00 — `a47cd9a` — chore: update kb.json timestamp and build_ms value
+- 2026-04-29 04:07:22 — `63c85d0` — fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
+- 2026-04-29 04:24:30 — `36df0f5` — feat(deploy): graceful Secret Manager migration for high-sensitivity keys

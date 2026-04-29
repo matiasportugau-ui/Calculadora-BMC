@@ -10,6 +10,7 @@ import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import { findRelevantExamples } from "../lib/trainingKB.js";
+import { recordVoiceError, listVoiceErrors, clearVoiceErrors } from "../lib/voiceErrorLog.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
@@ -176,6 +177,15 @@ router.post("/agent/voice/session", sessionLimiter, requireAuth, async (req, res
       req.log?.warn({ status: response.status, body: errText }, "OpenAI Realtime session mint failed");
       let detail = "";
       try { detail = JSON.parse(errText)?.error?.message || errText; } catch { detail = errText; }
+      // Redact reflected system prompt so the error log never persists internal instructions
+      const safeDetail = (detail || errText || "")
+        .replace(/"instructions"\s*:\s*"[^"]*"/g, '"instructions":"[redacted]"');
+      recordVoiceError({
+        kind: "session_mint",
+        status: response.status,
+        message: `OpenAI ${response.status}`,
+        detail: safeDetail || null,
+      });
       return res.status(502).json({
         ok: false,
         error: `OpenAI ${response.status}: ${detail || "No se pudo iniciar sesión de voz"}`,
@@ -185,6 +195,11 @@ router.post("/agent/voice/session", sessionLimiter, requireAuth, async (req, res
     sessionData = await response.json();
   } catch (err) {
     req.log?.error({ err }, "Voice session fetch error");
+    recordVoiceError({
+      kind: "session_mint_network",
+      message: "Error de red al iniciar sesión de voz",
+      detail: err?.message || null,
+    });
     return res.status(502).json({ ok: false, error: "Error de red al iniciar sesión de voz" });
   }
 
@@ -244,6 +259,32 @@ router.post("/agent/voice/action", actionLimiter, async (req, res) => {
   }
 
   return res.json({ ok: true, action });
+});
+
+/**
+ * GET /api/agent/voice/errors
+ * Returns the in-memory ring buffer of voice mode errors (newest first, max 50).
+ * Admin-only — voice errors may include OpenAI detail strings.
+ */
+router.get("/agent/voice/errors", requireAuth, (req, res) => {
+  return res.json({ ok: true, errors: listVoiceErrors() });
+});
+
+const errorClearLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: voiceSessionKey,
+  message: { ok: false, error: "Demasiados clears. Esperá un momento." },
+});
+
+/**
+ * POST /api/agent/voice/errors/clear  — wipe the ring buffer.
+ */
+router.post("/agent/voice/errors/clear", errorClearLimiter, requireAuth, (req, res) => {
+  clearVoiceErrors();
+  return res.json({ ok: true });
 });
 
 export default router;

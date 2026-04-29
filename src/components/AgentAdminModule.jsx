@@ -1742,10 +1742,37 @@ function VoiceTab() {
   const [providers, setProviders] = useState(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [errors, setErrors] = useState([]);
+  const [errorsLoading, setErrorsLoading] = useState(false);
 
   async function loadProviders() {
-    const r = await apiFetch("/api/agent/ai-options");
-    setProviders(r.providers || []);
+    try {
+      const r = await apiFetch("/api/agent/ai-options");
+      setProviders(r?.providers || []);
+    } catch {
+      setProviders([]);
+    }
+  }
+
+  async function loadErrors() {
+    setErrorsLoading(true);
+    try {
+      const r = await apiFetch("/api/agent/voice/errors");
+      setErrors(Array.isArray(r?.errors) ? r.errors : []);
+    } catch {
+      setErrors([]);
+    } finally {
+      setErrorsLoading(false);
+    }
+  }
+
+  async function clearErrors() {
+    try {
+      await apiFetch("/api/agent/voice/errors/clear", { method: "POST" });
+    } catch {
+      // ignore — refresh anyway
+    }
+    setErrors([]);
   }
 
   async function testSession() {
@@ -1757,9 +1784,13 @@ function VoiceTab() {
     });
     setTestResult(r);
     setTesting(false);
+    loadErrors();
   }
 
-  useEffect(() => { loadProviders(); }, []);
+  useEffect(() => {
+    loadProviders();
+    loadErrors();
+  }, []);
 
   const voiceAvailable = providers?.some((p) => p.id === "openai");
 
@@ -1822,6 +1853,42 @@ function VoiceTab() {
                 <span style={{ fontWeight: 700 }}>Error: </span>{testResult.error}
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Error log (ring buffer, max 50, ephemeral per process) */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff }}>Errores recientes</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <Btn onClick={loadErrors} disabled={errorsLoading} variant="secondary">
+              {errorsLoading ? "…" : "Refrescar"}
+            </Btn>
+            {errors.length > 0 && (
+              <Btn onClick={clearErrors} variant="secondary">Vaciar</Btn>
+            )}
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, marginBottom: 10, lineHeight: 1.5 }}>
+          Buffer en memoria (máx. 50, se reinicia con el proceso, una copia por instancia de Cloud Run). Capturas de fallos al mintear sesiones de voz contra OpenAI Realtime.
+        </div>
+        {errors.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, fontStyle: "italic" }}>Sin errores registrados.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+            {errors.map((e, i) => (
+              <div key={`${e.ts}-${i}`} style={{ padding: 8, borderRadius: 6, background: "#fef2f2", border: "1px solid #fecaca", fontSize: 11, fontFamily: C.ff, color: "#7f1d1d" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                  <span style={{ fontWeight: 700 }}>{e.kind}{e.status ? ` (${e.status})` : ""}</span>
+                  <span style={{ color: C.sub }}>{new Date(e.ts).toLocaleString("es-UY")}</span>
+                </div>
+                <div>{e.message}</div>
+                {e.detail && (
+                  <div style={{ marginTop: 4, fontFamily: "monospace", fontSize: 10, color: "#991b1b", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{e.detail}</div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
