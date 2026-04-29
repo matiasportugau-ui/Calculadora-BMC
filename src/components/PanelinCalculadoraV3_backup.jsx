@@ -538,6 +538,7 @@ function MobileBottomBar({
               onChange={e => onPdfLayoutChange(e.target.value)}
               style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13 }}
             >
+              <option value="bmc-pdf">BMC PDF — Blueprint Técnico</option>
               <option value="soft-modern">E — Soft Modern</option>
               <option value="executive-dark">A — Executive Dark</option>
               <option value="blueprint">B — Blueprint</option>
@@ -2355,7 +2356,7 @@ export default function PanelinCalculadoraV3() {
   const [fleteCosto, setFleteCosto] = useState("");
   /** PDF+ (hoja cliente enriquecida): incluir página extra “Planta + resumen” (diseño hero marca). */
   const [pdfPlantaResumenPage, setPdfPlantaResumenPage] = useState(true);
-  const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'soft-modern');
+  const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLayout') ?? 'bmc-pdf');
   const [configVersion, setConfigVersion] = useState(0);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);

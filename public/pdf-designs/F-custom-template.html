@@ -1,0 +1,603 @@
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8"><title>F — Custom Template · BMC Uruguay</title>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║  BMC URUGUAY — PDF LAYOUT TEMPLATE (editable)                       ║
+  ║                                                                      ║
+  ║  HOW TO USE:                                                         ║
+  ║  1. Open this file in Chrome/Safari to preview                      ║
+  ║  2. Edit the CSS :root variables to change colors/fonts              ║
+  ║  3. Edit the HTML structure of each page section                     ║
+  ║  4. Share the file → I'll integrate it as a new layout option        ║
+  ║                                                                      ║
+  ║  SAMPLE DATA used (auto-replaced when real quote is generated):      ║
+  ║  • Ref:    BMC-2026-0112                                             ║
+  ║  • Total:  USD 9,339.17                                              ║
+  ║  • Panel:  ISODEC EPS 100mm · Color Blanco                          ║
+  ║  • Area:   138.88 m² · 18 paneles · 3 zonas                         ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 1 — CHANGE THESE VARIABLES TO DEFINE YOUR COLOR PALETTE
+   ══════════════════════════════════════════════════════════════════════*/
+:root {
+  /* Primary colors */
+  --primary:   #1a1a2e;   /* Main dark color: headers, buttons, accents */
+  --accent:    #e94560;   /* Accent/highlight color */
+  --accent2:   #0f3460;   /* Secondary accent */
+
+  /* Backgrounds */
+  --bg:        #ffffff;   /* Page background */
+  --bg-alt:    #f5f5f5;   /* Alternate row / card background */
+  --bg-cover:  #1a1a2e;   /* Cover page background */
+
+  /* Text */
+  --text:      #1a1a1a;   /* Main body text */
+  --text-soft: #666666;   /* Secondary text, labels */
+  --text-inv:  #ffffff;   /* Text on dark backgrounds */
+
+  /* Borders */
+  --border:    #e0e0e0;   /* Table borders, dividers */
+  --border-strong: #1a1a2e; /* Stronger border */
+
+  /* BOM group row highlight */
+  --group-bg:  #e94560;   /* Group header row background */
+  --group-fg:  #ffffff;   /* Group header row text */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 2 — CHANGE FONT (or leave as system default)
+   ══════════════════════════════════════════════════════════════════════*/
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  /* Other options:
+     --font: 'Georgia', 'Times New Roman', serif;          ← classic
+     --font: 'Courier New', Courier, monospace;             ← technical
+     --font: 'Arial Black', 'Arial', sans-serif;            ← bold industrial
+  */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BASE STYLES — edit carefully
+   ══════════════════════════════════════════════════════════════════════*/
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@page{size:A4;margin:0}
+body{font-family:var(--font);-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;font-size:10pt;color:var(--text);background:var(--bg)}
+.page{width:210mm;min-height:297mm;position:relative;overflow:hidden;background:var(--bg)}
+@media screen{body{background:#888;padding:24px 0}.page{margin:0 auto 32px;box-shadow:0 8px 40px rgba(0,0,0,.3);border-radius:2px;max-width:794px}}
+@media print{.page{page-break-after:always;break-after:page}.page:last-child{page-break-after:auto;break-after:auto}}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 3 — CUSTOMIZE COVER PAGE (PAGE 1)
+   ══════════════════════════════════════════════════════════════════════*/
+
+/* -- Cover outer container -- */
+.cover {
+  display: flex;
+  flex-direction: column;
+  min-height: 297mm;
+  background: var(--bg-cover);
+}
+
+/* -- Cover top band (logo + badge) -- */
+.cov-header {
+  padding: 12mm 14mm 8mm;
+  border-bottom: 1pt solid rgba(255,255,255,0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cov-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cov-logo-mark {
+  width: 44px;
+  height: 44px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20pt;
+  font-weight: 900;
+  color: var(--text-inv);
+  line-height: 1;
+}
+.cov-logo-name  { font-size: 18pt; font-weight: 800; color: var(--text-inv); letter-spacing: .04em; }
+.cov-logo-sub   { font-size: 6pt; color: rgba(255,255,255,.5); letter-spacing: .2em; text-transform: uppercase; }
+.cov-badge {
+  background: var(--accent);
+  color: var(--text-inv);
+  font-size: 7.5pt;
+  font-weight: 800;
+  padding: 5px 14px;
+  border-radius: 4px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* -- Cover body (title, metadata, KPIs, totals) -- */
+.cov-body { padding: 10mm 14mm; flex: 1; }
+.cov-title {
+  font-size: 28pt;
+  font-weight: 900;
+  color: var(--text-inv);
+  line-height: 1.05;
+  margin-bottom: 2mm;
+  letter-spacing: -.02em;
+}
+.cov-subtitle { font-size: 10pt; color: rgba(255,255,255,.6); margin-bottom: 6mm; font-weight: 500; }
+.cov-divider { height: 2px; background: linear-gradient(90deg, var(--accent), transparent); margin: 5mm 0; }
+
+/* -- Metadata grid (Ref, Fecha, Escenario, Validez) -- */
+.cov-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2mm 6mm;
+  margin-bottom: 6mm;
+}
+.meta-item { }
+.meta-label { font-size: 6pt; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .14em; font-weight: 700; margin-bottom: 1mm; }
+.meta-value { font-size: 9.5pt; font-weight: 700; color: var(--text-inv); }
+
+/* -- KPI cards (Área, Paneles, Apoyos, Fijaciones) -- */
+.cov-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3mm;
+  margin-bottom: 6mm;
+}
+.kpi-card {
+  background: rgba(255,255,255,.07);
+  border: 1pt solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.kpi-label { font-size: 6pt; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: 3px; }
+.kpi-value { font-size: 20pt; font-weight: 900; color: var(--text-inv); font-variant-numeric: tabular-nums; line-height: 1; }
+.kpi-unit  { font-size: 6.5pt; color: rgba(255,255,255,.35); margin-top: 1px; }
+
+/* -- BOM groups summary -- */
+.cov-section-label { font-size: 6.5pt; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .16em; font-weight: 800; margin: 4mm 0 2mm; }
+.cov-groups { display: flex; flex-direction: column; gap: 1.5mm; margin-bottom: 5mm; }
+.cov-group-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  background: rgba(255,255,255,.06);
+  border-radius: 5px;
+  font-size: 9pt;
+}
+.group-name  { color: rgba(255,255,255,.8); font-weight: 500; }
+.group-total { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* -- Total block -- */
+.cov-total {
+  background: var(--accent);
+  border-radius: 10px;
+  padding: 11px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4mm;
+}
+.total-label-block {}
+.total-label { font-size: 6.5pt; font-weight: 700; color: rgba(255,255,255,.65); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 1px; }
+.total-sub   { font-size: 8pt; color: rgba(255,255,255,.55); }
+.total-amount { font-size: 24pt; font-weight: 900; color: var(--text-inv); font-variant-numeric: tabular-nums; }
+
+/* -- Conditions text -- */
+.cov-conditions { font-size: 7.5pt; color: rgba(255,255,255,.45); line-height: 1.6; }
+.cov-conditions strong { color: rgba(255,255,255,.7); }
+
+/* -- Cover footer -- */
+.cov-footer {
+  border-top: 1pt solid rgba(255,255,255,.12);
+  padding: 5mm 14mm;
+  display: flex;
+  justify-content: space-between;
+  font-size: 7pt;
+  color: rgba(255,255,255,.3);
+}
+.cov-footer-pg { color: rgba(255,255,255,.5); font-weight: 700; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 4 — CUSTOMIZE SHARED PAGE HEADER (pages 2 & 3)
+   ══════════════════════════════════════════════════════════════════════*/
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2pt solid var(--primary);
+  padding-bottom: 4mm;
+  margin-bottom: 5mm;
+}
+.ph-left { display: flex; align-items: center; gap: 8px; }
+.ph-mark {
+  width: 26px; height: 26px;
+  background: var(--primary);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12pt; font-weight: 900; color: var(--text-inv);
+}
+.ph-title { font-size: 12pt; font-weight: 800; color: var(--primary); }
+.ph-sub   { font-size: 7.5pt; color: var(--text-soft); margin-top: 1px; }
+.ph-right { text-align: right; font-size: 8pt; color: var(--text-soft); }
+.ph-right strong { color: var(--primary); }
+
+.section-label {
+  font-size: 7pt;
+  font-weight: 700;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  margin: 4mm 0 2.5mm;
+  padding-bottom: 1.5mm;
+  border-bottom: .5pt solid var(--border);
+}
+.page-footer {
+  position: absolute;
+  bottom: 10mm; left: 12mm; right: 12mm;
+  display: flex;
+  justify-content: space-between;
+  font-size: 7pt;
+  color: var(--text-soft);
+  border-top: .5pt solid var(--border);
+  padding-top: 2.5mm;
+}
+.page-footer-pg { font-weight: 700; color: var(--primary); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 5 — CUSTOMIZE PLAN PAGE (PAGE 2)
+   ══════════════════════════════════════════════════════════════════════*/
+.p2 { padding: 12mm; }
+
+.plan-container {
+  border: 1pt solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 4mm;
+}
+.plan-header {
+  background: var(--primary);
+  color: var(--text-inv);
+  padding: 6px 12px;
+  font-size: 7.5pt;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+}
+.plan-body { padding: 6px 8px; background: var(--bg-alt); }
+
+/* Legend */
+.legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5mm 4mm; margin-bottom: 3mm; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 7.5pt; color: var(--text-soft); }
+.legend-swatch { width: 20px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* Zone table */
+.zone-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 3mm; }
+.zone-table th {
+  background: var(--primary);
+  color: var(--text-inv);
+  padding: 5px 7px;
+  font-size: 7pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  text-align: right;
+}
+.zone-table th:first-child, .zone-table th:nth-child(2) { text-align: left; }
+.zone-table td { padding: 4px 7px; border-bottom: .4pt solid var(--border); text-align: right; font-variant-numeric: tabular-nums; }
+.zone-table td:first-child, .zone-table td:nth-child(2) { text-align: left; }
+.zone-table tr:nth-child(even) td { background: var(--bg-alt); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STEP 6 — CUSTOMIZE BOM PAGE (PAGE 3)
+   ══════════════════════════════════════════════════════════════════════*/
+.p3 { padding: 12mm; }
+
+.bom-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.bom-table th {
+  background: var(--primary);
+  color: var(--text-inv);
+  padding: 4px 6px;
+  font-weight: 700;
+  font-size: 7.5pt;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-align: right;
+}
+.bom-table th:first-child { text-align: left; }
+.bom-table td { padding: 3px 6px; border-bottom: .3pt solid var(--border); text-align: right; font-variant-numeric: tabular-nums; }
+.bom-table td:first-child { text-align: left; }
+.bom-table tr:nth-child(even) td { background: var(--bg-alt); }
+/* Group header rows */
+.bom-table .bom-group td {
+  background: var(--group-bg) !important;
+  color: var(--group-fg) !important;
+  font-weight: 800 !important;
+  padding: 5px 7px !important;
+  border: none !important;
+  border-left: 3pt solid rgba(0,0,0,.2) !important;
+}
+
+/* Totals */
+.bom-totals { margin-top: 4mm; display: flex; justify-content: flex-end; }
+.totals-card {
+  min-width: 220px;
+  background: var(--bg);
+  border: 1pt solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.07);
+}
+.total-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 9pt; font-variant-numeric: tabular-nums; color: var(--text-soft); }
+.total-row.final {
+  border-top: 2pt solid var(--primary);
+  margin-top: 4px;
+  padding-top: 4px;
+  font-size: 14pt;
+  font-weight: 900;
+  color: var(--primary);
+}
+
+/* Conditions on page 3 */
+.bom-conditions {
+  margin-top: 3mm;
+  font-size: 7.5pt;
+  color: var(--text-soft);
+  line-height: 1.6;
+  padding: 8px 10px;
+  background: var(--bg-alt);
+  border-radius: 6px;
+  border-left: 3pt solid var(--accent);
+}
+.bom-conditions strong { color: var(--text); }
+
+/* Bank data */
+.bank-data {
+  margin-top: 2.5mm;
+  font-size: 7.5pt;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+  padding: 8px 12px;
+  background: var(--primary);
+  color: rgba(255,255,255,.65);
+  border-radius: 8px;
+}
+.bank-data strong { color: var(--text-inv); }
+.bank-title { grid-column: 1 / -1; font-size: 6pt; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: 2px; }
+
+</style></head><body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAGE 1 — COVER
+     Customize: colors in :root above, layout in .cover / .cov-* classes
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="page cover">
+
+  <div class="cov-header">
+    <div class="cov-logo">
+      <div class="cov-logo-mark">B</div>
+      <div>
+        <div class="cov-logo-name">BMC Uruguay</div>
+        <div class="cov-logo-sub">Panelin</div>
+      </div>
+    </div>
+    <div class="cov-badge">Propuesta Comercial</div>
+  </div>
+
+  <div class="cov-body">
+    <!-- ── Title area ── -->
+    <div class="cov-title">Cotización de Cubierta<br>con Paneles Aislantes</div>
+    <div class="cov-subtitle">ISODEC EPS 100mm · Color Blanco · Techo · 3 Zonas</div>
+    <div class="cov-divider"></div>
+
+    <!-- ── Metadata ── -->
+    <div class="cov-meta">
+      <div class="meta-item"><div class="meta-label">Referencia</div><div class="meta-value">BMC-2026-0112</div></div>
+      <div class="meta-item"><div class="meta-label">Fecha</div><div class="meta-value">28/04/2026</div></div>
+      <div class="meta-item"><div class="meta-label">Escenario</div><div class="meta-value">Solo Techo</div></div>
+      <div class="meta-item"><div class="meta-label">Validez</div><div class="meta-value">10 días hábiles</div></div>
+    </div>
+
+    <!-- ── KPIs ── -->
+    <div class="cov-kpis">
+      <div class="kpi-card"><div class="kpi-label">Área</div><div class="kpi-value">138.9</div><div class="kpi-unit">m²</div></div>
+      <div class="kpi-card"><div class="kpi-label">Paneles</div><div class="kpi-value">18</div><div class="kpi-unit">unid.</div></div>
+      <div class="kpi-card"><div class="kpi-label">Apoyos</div><div class="kpi-value">3</div><div class="kpi-unit">estruct.</div></div>
+      <div class="kpi-card"><div class="kpi-label">Fijaciones</div><div class="kpi-value">95</div><div class="kpi-unit">puntos</div></div>
+    </div>
+
+    <!-- ── BOM Groups summary ── -->
+    <div class="cov-section-label">Resumen por partida</div>
+    <div class="cov-groups">
+      <div class="cov-group-row"><span class="group-name">Paneles ISODEC EPS 100mm</span><span class="group-total">USD 6,564.02</span></div>
+      <div class="cov-group-row"><span class="group-name">Sistema de fijaciones</span><span class="group-total">USD 304.79</span></div>
+      <div class="cov-group-row"><span class="group-name">Selladores y cintas</span><span class="group-total">USD 506.25</span></div>
+      <div class="cov-group-row"><span class="group-name">Flete con entrega en obra</span><span class="group-total">USD 280.00</span></div>
+    </div>
+
+    <!-- ── Total ── -->
+    <div class="cov-total">
+      <div class="total-label-block">
+        <div class="total-label">Total con IVA 22%</div>
+        <div class="total-sub">Subtotal s/IVA: USD 7,655.06 · IVA: USD 1,684.11</div>
+      </div>
+      <div class="total-amount">USD 9,339.17</div>
+    </div>
+
+    <!-- ── Conditions ── -->
+    <div class="cov-conditions"><strong>Condiciones:</strong> Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD · IVA incluido.</div>
+  </div>
+
+  <div class="cov-footer">
+    <span>bmcuruguay.com.uy · 092 663 245 · Metalog SAS</span>
+    <span class="cov-footer-pg">1 / 3</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAGE 2 — PLANO 2D
+     The SVG plan is injected automatically from the calculator.
+     Customize: .plan-* classes, .legend-*, .zone-table
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="page p2">
+
+  <div class="page-header">
+    <div class="ph-left">
+      <div class="ph-mark">B</div>
+      <div><div class="ph-title">BMC Uruguay</div><div class="ph-sub">Panelin · planta de cubierta</div></div>
+    </div>
+    <div class="ph-right">
+      <div><strong>Ref:</strong> BMC-2026-0112</div>
+      <div><strong>Fecha:</strong> 28/04/2026</div>
+      <div style="font-size:7pt;margin-top:2px;opacity:.6">Sin escala</div>
+    </div>
+  </div>
+
+  <div class="section-label">Visualización 2D · Planta de Cubierta</div>
+
+  <div class="plan-container">
+    <div class="plan-header">
+      <span>Planta Cubierta — Única Agua · 3 Zonas</span>
+      <span>138.88 m² · 18 paneles · AU 1.12 m</span>
+    </div>
+    <div class="plan-body">
+      <!-- SVG floor plan is injected here from the calculator's roof plan component -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 430" width="100%" style="display:block">
+        <rect width="700" height="430" fill="#f5f5f5"/>
+        <!-- Panel strips -->
+        <rect x="60" y="160" width="28" height="200" fill="#e0e7f0"/><rect x="88" y="160" width="28" height="200" fill="#c8d8ee"/>
+        <rect x="116" y="160" width="28" height="200" fill="#e0e7f0"/><rect x="144" y="160" width="28" height="200" fill="#c8d8ee"/>
+        <rect x="172" y="160" width="28" height="200" fill="#e0e7f0"/><rect x="200" y="160" width="28" height="200" fill="#c8d8ee"/>
+        <rect x="228" y="160" width="28" height="200" fill="#e0e7f0"/><rect x="256" y="160" width="28" height="200" fill="#c8d8ee"/>
+        <rect x="284" y="160" width="28" height="150" fill="#e0e7f0"/><rect x="312" y="160" width="28" height="150" fill="#c8d8ee"/>
+        <rect x="340" y="160" width="28" height="150" fill="#e0e7f0"/><rect x="368" y="160" width="28" height="150" fill="#c8d8ee"/>
+        <rect x="396" y="160" width="28" height="150" fill="#e0e7f0"/>
+        <rect x="102" y="10" width="28" height="150" fill="#e0e7f0"/><rect x="130" y="10" width="28" height="150" fill="#c8d8ee"/>
+        <rect x="158" y="10" width="28" height="150" fill="#e0e7f0"/><rect x="186" y="10" width="28" height="150" fill="#c8d8ee"/>
+        <rect x="214" y="10" width="28" height="150" fill="#e0e7f0"/>
+        <!-- Outline -->
+        <polygon points="102,10 242,10 242,160 284,160 424,160 424,310 284,310 284,360 60,360 60,160 102,160" fill="none" stroke="#1a1a2e" stroke-width="2.5"/>
+        <!-- Zone dividers -->
+        <line x1="102" y1="160" x2="242" y2="160" stroke="#e94560" stroke-width="1.4" stroke-dasharray="6,4"/>
+        <line x1="284" y1="160" x2="284" y2="310" stroke="#e94560" stroke-width="1.4" stroke-dasharray="6,4"/>
+        <!-- Perimeter strips -->
+        <rect x="56" y="160" width="4" height="200" fill="#e94560" opacity=".8"/>
+        <rect x="60" y="360" width="224" height="4" fill="#e94560" opacity=".8"/>
+        <rect x="284" y="310" width="140" height="4" fill="#e94560" opacity=".8"/>
+        <rect x="424" y="160" width="4" height="150" fill="#e94560" opacity=".8"/>
+        <!-- Zone labels -->
+        <text x="172" y="260" text-anchor="middle" font-size="14" font-weight="800" fill="#1a1a2e" font-family="system-ui,sans-serif">Zona 1</text>
+        <text x="172" y="275" text-anchor="middle" font-size="9" fill="#666" font-family="system-ui,sans-serif">8×8.96 m · 8 pan</text>
+        <text x="354" y="235" text-anchor="middle" font-size="12" font-weight="800" fill="#1a1a2e" font-family="system-ui,sans-serif">Zona 2</text>
+        <text x="172" y="85" text-anchor="middle" font-size="12" font-weight="800" fill="#1a1a2e" font-family="system-ui,sans-serif">Zona 3</text>
+        <!-- Dimensions -->
+        <line x1="60" y1="370" x2="60" y2="379" stroke="#666" stroke-width=".8"/><line x1="284" y1="370" x2="284" y2="379" stroke="#666" stroke-width=".8"/>
+        <line x1="60" y1="375" x2="284" y2="375" stroke="#666" stroke-width="1"/>
+        <text x="172" y="392" text-anchor="middle" font-size="10" fill="#666" font-family="system-ui,sans-serif">8.96 m</text>
+        <line x1="432" y1="160" x2="444" y2="160" stroke="#666" stroke-width=".8"/><line x1="432" y1="360" x2="444" y2="360" stroke="#666" stroke-width=".8"/>
+        <line x1="440" y1="160" x2="440" y2="360" stroke="#666" stroke-width="1"/>
+        <text x="454" y="264" dominant-baseline="middle" font-size="10" fill="#666" font-family="system-ui,sans-serif">8 m</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="section-label">Leyenda</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#e0e7f0;border:1px solid #1a1a2e"></div><span>Panel impar</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#c8d8ee;border:1px solid #1a1a2e"></div><span>Panel par</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e94560;height:6px;margin-top:2px"></div><span>Gotero perimetral</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:none;border:1.5px dashed #e94560"></div><span>Encuentro de zonas</span></div>
+    <div class="legend-item" style="gap:8px"><span style="font-size:11pt;line-height:1">↓</span><span>Dirección pendiente</span></div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#1a1a2e"></div><span>Borde sellado</span></div>
+  </div>
+
+  <div class="section-label">Resumen de Zonas</div>
+  <table class="zone-table"><thead><tr>
+    <th style="text-align:left">Zona</th><th style="text-align:left">Descripción</th>
+    <th>Largo</th><th>Ancho útil</th><th>Pan.</th><th>Área</th><th>AU</th>
+  </tr></thead><tbody>
+    <tr><td><strong>Zona 1</strong></td><td>Principal</td><td>8.00 m</td><td>8.96 m</td><td>8</td><td>71.68 m²</td><td>1.12 m</td></tr>
+    <tr><td><strong>Zona 2</strong></td><td>Ext. lateral der.</td><td>6.00 m</td><td>5.60 m</td><td>5</td><td>33.60 m²</td><td>1.12 m</td></tr>
+    <tr><td><strong>Zona 3</strong></td><td>Ext. lateral izq.</td><td>6.00 m</td><td>5.60 m</td><td>5</td><td>33.60 m²</td><td>1.12 m</td></tr>
+    <tr style="font-weight:700"><td colspan="4"><strong>TOTAL</strong></td><td><strong>18</strong></td><td><strong>138.88 m²</strong></td><td></td></tr>
+  </tbody></table>
+
+  <div class="page-footer">
+    <span>BMC Uruguay · Metalog SAS · bmcuruguay.com.uy</span>
+    <span class="page-footer-pg">2 / 3</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PAGE 3 — BOM DETALLADO
+     Customize: .bom-table, .totals-card, .bom-conditions, .bank-data
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="page p3">
+
+  <div class="page-header">
+    <div class="ph-left">
+      <div class="ph-mark">B</div>
+      <div><div class="ph-title">BMC Uruguay</div><div class="ph-sub">Cotización detallada · BOM completo</div></div>
+    </div>
+    <div class="ph-right">
+      <div><strong>Ref:</strong> BMC-2026-0112</div>
+      <div><strong>Fecha:</strong> 28/04/2026</div>
+    </div>
+  </div>
+
+  <div class="section-label">Presupuesto Detallado</div>
+  <table class="bom-table"><thead><tr>
+    <th style="text-align:left;width:44%">Descripción</th>
+    <th style="width:11%">Cant.</th>
+    <th style="width:9%;text-align:center">Unid.</th>
+    <th style="width:17%">P.U. USD</th>
+    <th style="width:19%">Total USD</th>
+  </tr></thead><tbody>
+    <tr class="bom-group"><td colspan="4">▸ PANELES</td><td style="text-align:right">6,564.02</td></tr>
+    <tr><td>ISODEC EPS 100mm · 18 paneles</td><td style="text-align:right">138.88</td><td style="text-align:center">m²</td><td style="text-align:right">47.26</td><td>6,564.02</td></tr>
+    <tr class="bom-group"><td colspan="4">▸ FIJACIONES</td><td style="text-align:right">304.79</td></tr>
+    <tr><td>Varilla roscada 3/8" (1m)</td><td style="text-align:right">20</td><td style="text-align:center">unid</td><td style="text-align:right">3.68</td><td>73.64</td></tr>
+    <tr><td>Tuerca 3/8" galv.</td><td style="text-align:right">190</td><td style="text-align:center">unid</td><td style="text-align:right">0.08</td><td>15.96</td></tr>
+    <tr><td>Arandela carrocero 3/8"</td><td style="text-align:right">95</td><td style="text-align:center">unid</td><td style="text-align:right">0.66</td><td>62.51</td></tr>
+    <tr><td>Arandela plana 3/8"</td><td style="text-align:right">95</td><td style="text-align:center">unid</td><td style="text-align:right">0.10</td><td>9.04</td></tr>
+    <tr><td>Tortuga PVC (arand. PP)</td><td style="text-align:right">95</td><td style="text-align:center">unid</td><td style="text-align:right">1.51</td><td>143.64</td></tr>
+    <tr class="bom-group"><td colspan="4">▸ SELLADORES</td><td style="text-align:right">506.25</td></tr>
+    <tr><td>Silicona Bromplast 8×600</td><td style="text-align:right">16</td><td style="text-align:center">unid</td><td style="text-align:right">11.24</td><td>179.88</td></tr>
+    <tr><td>Silicona neutra 300 ml (Silva)</td><td style="text-align:right">32</td><td style="text-align:center">unid</td><td style="text-align:right">8.40</td><td>268.80</td></tr>
+    <tr><td>Cinta Butilo 2mm×15mm×22.5m</td><td style="text-align:right">3</td><td style="text-align:center">unid</td><td style="text-align:right">19.19</td><td>57.57</td></tr>
+    <tr class="bom-group"><td colspan="4">▸ SERVICIOS</td><td style="text-align:right">280.00</td></tr>
+    <tr><td>Flete con entrega en obra</td><td style="text-align:right">1</td><td style="text-align:center">servicio</td><td style="text-align:right">280.00</td><td>280.00</td></tr>
+  </tbody></table>
+
+  <div class="bom-totals"><div class="totals-card">
+    <div class="total-row"><span>Subtotal sin IVA</span><span>USD 7,655.06</span></div>
+    <div class="total-row"><span>IVA 22%</span><span>USD 1,684.11</span></div>
+    <div class="total-row final"><span>Total USD</span><span>9,339.17</span></div>
+  </div></div>
+
+  <div class="bom-conditions">
+    <strong>Condiciones:</strong> Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD · IVA incluido.
+  </div>
+  <div class="bank-data">
+    <div class="bank-title">Datos para depósito bancario</div>
+    <div>Titular: <strong>Metalog SAS</strong></div><div>RUT: <strong>120403430012</strong></div>
+    <div>BROU · Cta. Dólares: <strong>110520638-00002</strong></div><div>Consultas: <strong>092 663 245</strong></div>
+  </div>
+
+  <div class="page-footer">
+    <span>BMC Uruguay · Metalog SAS · bmcuruguay.com.uy</span>
+    <span class="page-footer-pg">3 / 3</span>
+  </div>
+</div>
+
+</body></html>

@@ -230,6 +230,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `51d7271` docs: autotrace sync conflict detection
 - `209c6e4` docs: autotrace sync health panel + import
 - `ae254de` docs: autotrace sync autolearn fix + roadmap
+- `dd92078` docs: autotrace sync feedback system
 
 ## Tests
 

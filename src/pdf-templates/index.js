@@ -3,6 +3,7 @@
 // Each template receives a QuotationModel and returns a complete HTML string.
 
 export const LAYOUT_OPTIONS = [
+  { id: 'bmc-pdf',           label: 'BMC PDF — Blueprint Técnico' },
   { id: 'soft-modern',       label: 'E — Soft Modern' },
   { id: 'executive-dark',    label: 'A — Executive Dark' },
   { id: 'blueprint',         label: 'B — Blueprint' },
@@ -111,6 +112,7 @@ export function buildQuotationModel(data) {
 }
 
 const TEMPLATE_MAP = {
+  'bmc-pdf':           () => import('./bmc-pdf.js'),
   'soft-modern':       () => import('./soft-modern.js'),
   'executive-dark':    () => import('./executive-dark.js'),
   'blueprint':         () => import('./blueprint.js'),

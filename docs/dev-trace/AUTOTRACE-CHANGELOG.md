@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)
 - 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
 - 2026-04-23 06:52:02 — `28ef700` — fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
 - 2026-04-23 06:53:14 — `8ccf8d8` — feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios
@@ -222,3 +221,4 @@
 - 2026-04-27 16:56:05 — `ae254de` — docs: autotrace sync autolearn fix + roadmap
 - 2026-04-27 16:58:17 — `eb48ea1` — fix(kb): log GCS init error instead of silently swallowing
 - 2026-04-28 19:44:44 — `46b47d7` — feat(feedback): response review loop — Good/Correct/Comment across channels
+- 2026-04-28 19:44:51 — `dd92078` — docs: autotrace sync feedback system
