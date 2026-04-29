@@ -318,11 +318,16 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer cabecera: " + e.message });
     }
 
-    const headers = headerRow.map((name, index) => ({
-      index,
-      col: colIndexToLetter(index),
-      name: String(name || "").trim() || colIndexToLetter(index),
-    }));
+    // Always return 26 headers (A–Z) so the frontend can show/edit all columns
+    // even if the sheet's header row has trailing empty cells.
+    const headers = Array.from({ length: 26 }, (_, index) => {
+      const name = headerRow[index] ?? "";
+      return {
+        index,
+        col: colIndexToLetter(index),
+        name: String(name).trim() || colIndexToLetter(index),
+      };
+    });
 
     return res.json({ ok: true, headers });
   });
@@ -330,9 +335,15 @@ export function createWolfboardRouter(config) {
   // ── POST /cell ────────────────────────────────────────────────────────────
   router.post("/cell", adminLimiter, async (req, res) => {
     if (!requireAuth(config, req, res)) return;
-    const { adminRow, col, value } = req.body || {};
-    if (!adminRow || !col) {
+    const { adminRow: rawAdminRow, col, value } = req.body || {};
+    if (!rawAdminRow || !col) {
       return res.status(400).json({ ok: false, error: "adminRow y col requeridos" });
+    }
+
+    // Validate adminRow is an integer >= 2 (row 1 is the header)
+    const adminRow = Number(rawAdminRow);
+    if (!Number.isInteger(adminRow) || adminRow < 2) {
+      return res.status(400).json({ ok: false, error: "adminRow debe ser un entero >= 2 (fila 1 es cabecera)" });
     }
 
     const adminSheetId = config.wolfbAdminSheetId;

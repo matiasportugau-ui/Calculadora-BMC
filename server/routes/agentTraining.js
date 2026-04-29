@@ -31,6 +31,16 @@ import { clearKnowledgeCache } from "../lib/knowledgeLoader.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import { loadConversationById } from "../lib/conversationLog.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
+import {
+  DEFAULT_MODEL_ROUTING,
+  DEFAULT_AUTO_EVOLUTION,
+  MODEL_ROUTING_TASK_CATALOG,
+  getRoutingStore,
+  setRoutingStore,
+  getAutoEvolutionConfig,
+  setAutoEvolutionConfig,
+  resolveTaskModel,
+} from "../lib/modelRouter.js";
 
 const router = Router();
 
@@ -386,11 +396,16 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const client = new Anthropic({ apiKey });
 
+  // Use kb_generate routing to select the model, fall back to haiku
+  const available = new Set(["claude"]);
+  const routingHit = resolveTaskModel("kb_generate", available);
+  const kbModel = routingHit?.model || "claude-haiku-4-5-20251001";
+
   const results = [];
   for (const entry of targets) {
     try {
       const msg = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
+        model: kbModel,
         max_tokens: 100,
         messages: [{
           role: "user",
@@ -410,61 +425,16 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
   }
 
   const done = results.filter((r) => r.ok).length;
-  res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results });
+  res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results, model: kbModel });
 });
 
 // ── MODEL ROUTING ──────────────────────────────────────────────────────────
-/**
- * In-memory model routing store.
- * Maps task IDs to { a, b, c } where each is "provider/model" or null.
- * Persists within the process lifetime; resets on restart (same pattern as score-config).
- */
-
-/** Default routing catalog — sensible defaults based on current codebase. */
-const DEFAULT_MODEL_ROUTING = {
-  chat:         { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  ml_response:  { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  wa_response:  { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  crm_suggest:  { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  kb_generate:  { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  quote_batch:  { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  autolearn:    { a: "claude/claude-haiku-4-5-20251001", b: null,                           c: null },
-  analytics:    { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-  super_agent:  { a: "claude/claude-haiku-4-5-20251001", b: "openai/gpt-4o-mini",          c: null },
-};
-
-let _modelRoutingStore = { ...DEFAULT_MODEL_ROUTING };
-
-/** Task catalog for the frontend — defines display metadata per task. */
-const MODEL_ROUTING_TASK_CATALOG = [
-  { id: "chat",        label: "Chat panel",           channel: "chat",  description: "Respuestas del chat en tiempo real para cotizaciones y consultas" },
-  { id: "ml_response", label: "ML — Respuestas",      channel: "ml",    description: "Respuestas automáticas a preguntas de MercadoLibre" },
-  { id: "wa_response", label: "WA — Respuestas",      channel: "wa",    description: "Respuestas a consultas de WhatsApp" },
-  { id: "crm_suggest", label: "CRM — Sugerencias",    channel: "crm",   description: "Sugerencias de respuesta multi-canal desde CRM_Operativo" },
-  { id: "kb_generate", label: "KB — Generación",      channel: "kb",    description: "Generación de nuevas entradas de Knowledge Base desde conversaciones" },
-  { id: "quote_batch", label: "Batch cotizaciones",   channel: "admin", description: "Cotizaciones IA en lote desde Admin 2.0 (wolfboard)" },
-  { id: "autolearn",   label: "Auto-aprendizaje",     channel: "train", description: "Extracción de pares Q&A para auto-entrenamiento de la KB" },
-  { id: "analytics",   label: "Analytics IA",         channel: "train", description: "Análisis de conversaciones, métricas y reportes de rendimiento" },
-  { id: "super_agent", label: "Super-agente",         channel: "chat",  description: "Orquestador de herramientas avanzado (calculadora + KB + acciones)" },
-];
-
-/** Auto-evolution config store (in-memory) */
-const DEFAULT_AUTO_EVOLUTION = {
-  autoApproveThreshold:  0.92,    // confidence >= this → auto-approve in autolearn
-  crossChannelLearning:  true,    // learn from ML/WA/chat interactions cross-channel
-  feedbackLoopEnabled:   true,    // apply feedback (👍/👎) to KB scoring
-  kbHealthAutoFix:       true,    // auto-generate ML overrides on health check
-  staleEntryDays:        90,      // days before entry marked stale
-  maxEntriesPerCategory: 500,     // cap per category to avoid KB bloat
-  deduplicateThreshold:  0.88,    // cosine-like similarity threshold for conflict detection
-  trainingLogRetention:  30,      // days to keep training event logs
-};
-let _autoEvolutionStore = { ...DEFAULT_AUTO_EVOLUTION };
+// Store lives in server/lib/modelRouter.js — imported above.
 
 router.get("/agent/model-routing", requireDevModeAuth, (req, res) => {
   res.json({
     ok: true,
-    routing: _modelRoutingStore,
+    routing: getRoutingStore(),
     defaults: DEFAULT_MODEL_ROUTING,
     taskCatalog: MODEL_ROUTING_TASK_CATALOG,
   });
@@ -487,8 +457,8 @@ router.post("/agent/model-routing", requireDevModeAuth, (req, res) => {
       c: normalizeSlot(slots?.c),
     };
   }
-  _modelRoutingStore = { ..._modelRoutingStore, ...updated };
-  const response = { ok: true, routing: _modelRoutingStore };
+  setRoutingStore({ ...getRoutingStore(), ...updated });
+  const response = { ok: true, routing: getRoutingStore() };
   if (ignored.length) response.warnings = ignored.map((id) => `Unknown taskId ignored: ${id}`);
   return res.json(response);
 });
@@ -498,9 +468,10 @@ router.get("/agent/model-routing/defaults", requireDevModeAuth, (req, res) => {
 });
 
 // ── AUTO-EVOLUTION CONFIG ─────────────────────────────────────────────────
+// Store lives in server/lib/modelRouter.js — imported above.
 
 router.get("/agent/auto-evolution", requireDevModeAuth, (req, res) => {
-  res.json({ ok: true, config: _autoEvolutionStore, defaults: DEFAULT_AUTO_EVOLUTION });
+  res.json({ ok: true, config: getAutoEvolutionConfig(), defaults: DEFAULT_AUTO_EVOLUTION });
 });
 
 router.post("/agent/auto-evolution", requireDevModeAuth, (req, res) => {
@@ -517,8 +488,8 @@ router.post("/agent/auto-evolution", requireDevModeAuth, (req, res) => {
   for (const k of boolFields) {
     if (body[k] !== undefined) patch[k] = !!body[k];
   }
-  _autoEvolutionStore = { ..._autoEvolutionStore, ...patch };
-  res.json({ ok: true, config: _autoEvolutionStore });
+  setAutoEvolutionConfig({ ...getAutoEvolutionConfig(), ...patch });
+  res.json({ ok: true, config: getAutoEvolutionConfig() });
 });
 
 export default router;

@@ -148,12 +148,6 @@ const CANAL_COLORS = {
   LL:     ["#ffe4e6", "#be123c"],
 };
 
-function canalPill(origen) {
-  if (!origen) return null;
-  const [bg, fg] = CANAL_COLORS[origen.toUpperCase()] || ["#f0f0f2", "#6e6e73"];
-  return <span style={pill(bg, fg)}>{origen}</span>;
-}
-
 function getStoredToken() {
   try { return localStorage.getItem(STORAGE_KEY) || ""; } catch { return ""; }
 }
@@ -315,17 +309,22 @@ export default function BmcAdminCotizacionesModule() {
   const commitEdit = async () => {
     if (!editCell || !token) return;
     setSavingCell(true);
-    const { ok, data } = await apiFetch(token, "/api/wolfboard/cell", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adminRow: editCell.rowNum, col: editCell.col, value: editCell.value }),
-    });
-    setSavingCell(false);
-    if (!ok) { showToast(data?.error || "Error al guardar celda"); return; }
-    const dry = data.dryRun ? " [dry-run]" : "";
-    showToast(`${editCell.col}${editCell.rowNum} guardado${dry}`);
-    setEditCell(null);
-    await loadPendientes();
+    try {
+      const { ok, data } = await apiFetch(token, "/api/wolfboard/cell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminRow: editCell.rowNum, col: editCell.col, value: editCell.value }),
+      });
+      if (!ok) { showToast(data?.error || "Error al guardar celda"); return; }
+      const dry = data.dryRun ? " [dry-run]" : "";
+      showToast(`${editCell.col}${editCell.rowNum} guardado${dry}`);
+      setEditCell(null);
+      await loadPendientes();
+    } catch {
+      showToast("Error al guardar celda");
+    } finally {
+      setSavingCell(false);
+    }
   };
 
   const handleCellKeyDown = (e) => {

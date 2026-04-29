@@ -1962,15 +1962,22 @@ function ModelRoutingTab() {
 
   useEffect(() => { load(); }, []);
 
-  // Build flat list of "provider/model" options for selects
+  // Build flat list of "provider/model" options for selects.
+  // p.models can be an array of strings or objects {id, label} depending on the /ai-options shape.
   const modelOptions = [
     { value: "", label: "— ninguno —" },
     ...providers.flatMap((p) =>
-      (p.models || [p.defaultModel]).filter(Boolean).map((m) => ({
-        value: `${p.id}/${m}`,
-        label: `${p.label} · ${m}`,
-        provider: p.id,
-      }))
+      (p.models || [p.defaultModel]).filter(Boolean).map((m) => {
+        const isObj = typeof m === "object" && m !== null;
+        const modelId    = isObj ? (m.id    || "") : String(m);
+        const modelLabel = isObj ? (m.label || m.id || String(m)) : String(m);
+        if (!modelId) return null;
+        return {
+          value: `${p.id}/${modelId}`,
+          label: `${p.label} · ${modelLabel}`,
+          provider: p.id,
+        };
+      }).filter(Boolean)
     ),
   ];
 
@@ -2155,12 +2162,11 @@ function ModelRoutingTab() {
                         onChange={(e) => setSlot(task.id, slot, e.target.value)}
                         style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${sc.border}`, background: "#fff", fontSize: 11, fontFamily: C.ff, cursor: "pointer" }}
                       >
-                        {/* Slot A requires a model — no "ninguno" option. Slots B and C are optional. */}
-                        {slot !== "a" && <option value="">— ninguno —</option>}
+                        {/* Slot A = primario: no "ninguno" option. Slots B/C = opcionales: include it. */}
                         {modelOptions
                           .filter((o) => slot === "a" ? o.value !== "" : true)
                           .map((o) => (
-                            <option key={o.value} value={o.value}>{o.label || o.value}</option>
+                            <option key={o.value || `${slot}-empty`} value={o.value}>{o.label || o.value}</option>
                           ))
                         }
                       </select>

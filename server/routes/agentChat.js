@@ -37,6 +37,7 @@ import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { buildTaskProviderChain, getAutoEvolutionConfig } from "../lib/modelRouter.js";
 
 const router = Router();
 
@@ -570,16 +571,24 @@ router.post("/agent/chat", async (req, res) => {
     (pref === "gemini" && hasGemini) ||
     (pref === "openai" && hasOpenAI);
 
+  // When a specific provider was requested, honour it and put others after.
+  // When aiProvider==="auto", use the model routing config for the "chat" task.
+  const available = new Set(defaultOrder);
+  const { chain: routedChain, modelOverrides: routingModelOverrides } =
+    buildTaskProviderChain("chat", available, defaultOrder);
+
   const providerChain =
     pref !== "auto" && prefOk
       ? [pref, ...defaultOrder.filter((p) => p !== pref)]
-      : defaultOrder;
+      : routedChain;
 
+  // Model defaults: prefer routing overrides (from model-routing config) when in auto mode;
+  // fall back to env-based defaults.
   const modelDefaults = {
-    claude: config.anthropicChatModel,
-    openai: config.openaiChatModel,
-    grok: config.grokChatModel,
-    gemini: config.geminiChatModel,
+    claude: pref === "auto" ? (routingModelOverrides.claude || config.anthropicChatModel) : config.anthropicChatModel,
+    openai: pref === "auto" ? (routingModelOverrides.openai || config.openaiChatModel)    : config.openaiChatModel,
+    grok:   pref === "auto" ? (routingModelOverrides.grok   || config.grokChatModel)      : config.grokChatModel,
+    gemini: pref === "auto" ? (routingModelOverrides.gemini || config.geminiChatModel)    : config.geminiChatModel,
   };
 
   for (const provider of providerChain) {
@@ -825,6 +834,7 @@ router.post("/agent/chat", async (req, res) => {
             extractLearnablePairs(fullTurns)
               .then((pairs) => {
                 for (const p of pairs) {
+                  const autoApproveThreshold = getAutoEvolutionConfig().autoApproveThreshold;
                   addTrainingEntry({
                     question: p.question,
                     goodAnswer: p.goodAnswer,
@@ -832,7 +842,7 @@ router.post("/agent/chat", async (req, res) => {
                     category: p.category || "conversational",
                     context: p.rationale || "",
                     source: "autolearned",
-                    status: p.confidence >= 0.92 ? "active" : "pending",
+                    status: p.confidence >= autoApproveThreshold ? "active" : "pending",
                     confidence: p.confidence,
                     convId: conversationId,
                   });
