@@ -2,82 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-21 03:49:34 — `773e0df` — feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
-- 2026-04-21 04:07:02 — `5715776` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-21 04:12:55 — `acaebad` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-21 19:23:28 — `391c695` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-22 00:12:23 — `742293c` — feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- 2026-04-22 00:29:20 — `3b8fb3d` — chore(dev-trace): record AUTOTRACE for 742293c roof encounter enhancement
-- 2026-04-22 00:31:09 — `826b9c4` — chore(dev-trace): record AUTOTRACE for 3b8fb3d dev-trace commit
-- 2026-04-22 00:31:31 — `fb845a2` — chore(dev-trace): sync AUTOTRACE bundle — close self-ref loop
-- 2026-04-22 04:26:25 — `2a3be46` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
-- 2026-04-22 04:37:56 — `54a641f` — fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
-- 2026-04-23 00:18:25 — `cc153d7` — feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
-- 2026-04-23 01:36:03 — `8e90b56` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 02:07:43 — `0ad5d93` — feat(wolfboard): add Admin 2.0 ↔ CRM operational module
-- 2026-04-23 02:32:02 — `311891a` — feat: add contribut and nxt workflow skills for Claude Code + Cursor
-- 2026-04-23 02:32:23 — `8c717c5` — docs: update AUTOTRACE documentation and add recent commits
-- 2026-04-23 02:44:44 — `92a1508` — docs: add ROADMAP.md — mission/vision, area scores, prioritized next steps
-- 2026-04-23 02:51:08 — `136482c` — chore(dev-trace): sync AUTOTRACE bundle pre-merge
-- 2026-04-23 03:14:53 — `6b35de9` — fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
-- 2026-04-23 03:22:37 — `b33cf43` — feat(sheets): Accessible Base sync + expert workspace map
-- 2026-04-23 03:23:47 — `890d2c7` — chore: sync calculatorDataVersion timestamp + AUTOTRACE post-session
-- 2026-04-23 03:25:01 — `d83ca03` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
-- 2026-04-23 03:28:27 — `1966b38` — fix(lint): resolve all ESLint warnings in new and existing components
-- 2026-04-23 03:45:05 — `7130acd` — feat(nxt): wire ROADMAP.md as baseline source + add score history
-- 2026-04-23 04:00:24 — `63c1410` — chore: update AUTOTRACE documentation and sync calculatorDataVersion timestamp
-- 2026-04-23 04:14:49 — `0437665` — fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
-- 2026-04-23 04:18:16 — `8a30cd2` — feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
-- 2026-04-23 04:28:45 — `e782464` — feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
-- 2026-04-23 04:30:00 — `af7b601` — docs(roadmap): update score history 76→80 (cm-0+cm-1 done, KB live)
-- 2026-04-23 04:33:55 — `27804a0` — fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
-- 2026-04-23 04:40:35 — `5884c90` — feat(ci): add dedicated smoke job for prod API health on main push
-- 2026-04-23 04:40:56 — `be2c7ed` — feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
-- 2026-04-23 04:44:00 — `845bb68` — fix(wolfboard): wire origenEl in detail panel + correct table header labels
-- 2026-04-23 04:48:59 — `ee74167` — chore: post-live-test state — Wolfboard + Accessible Base first sync
-- 2026-04-23 04:50:16 — `7a2d303` — docs(ops): cm-2 email ingest prod DONE — todos los gates completos
-- 2026-04-23 04:54:10 — `5d5363c` — fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
-- 2026-04-23 05:05:49 — `11d1f8c` — fix(ml-ui): persist ML token in localStorage instead of sessionStorage
-- 2026-04-23 05:07:35 — `7f1c805` — fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
-- 2026-04-23 05:08:12 — `e918bef` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
-- 2026-04-23 05:08:49 — `759d82e` — feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
-- 2026-04-23 05:11:39 — `e77b34b` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 05:16:32 — `13e4393` — chore: Cloud Run deploy 00191-tvb + AUTOTRACE sync
-- 2026-04-23 05:18:01 — `27139d5` — chore(dev-trace): sync autotrace + accessible-base for ml-ui token fix
-- 2026-04-23 05:20:14 — `543f747` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 05:33:25 — `6949ce3` — feat: add BmcAdminCotizacionesModule and integrate into App routing
-- 2026-04-23 05:35:30 — `3779d80` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 05:42:14 — `c53c155` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 05:42:27 — `0f97d63` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 06:14:07 — `85bc343` — docs: update AUTOTRACE documentation and worklog for 2026-04-23
-- 2026-04-23 06:18:46 — `b24e8dd` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 06:26:55 — `8149dc2` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 06:27:05 — `027b1e1` — docs: dev-trace autolog update (2026-04-23)
-- 2026-04-23 06:37:52 — `a22ce4e` — feat(wolfboard): add pendientes, sync, row, enviados, export routes
-- 2026-04-23 06:40:29 — `5e1c03f` — fix: prevent autolog hook self-loop on dev-trace commits
-- 2026-04-23 06:40:51 — `945e83b` — feat(wolfboard): add GET /pendientes, POST /sync, POST /row, POST /enviados, GET /export
-- 2026-04-23 06:40:58 — `fdcfbc1` — feat(fichas): add Kingspan comparison section (TIPO 5)
-- 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
-- 2026-04-23 06:52:02 — `28ef700` — fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
-- 2026-04-23 06:53:14 — `8ccf8d8` — feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios
-- 2026-04-23 07:12:28 — `db0c9ce` — feat: wire real calculator engine into quote-batch
-- 2026-04-23 07:20:09 — `28507ff` — fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
-- 2026-04-23 07:25:49 — `03ce080` — fix(server): move wolfboard router before /api catch-all to fix 404s
-- 2026-04-23 07:32:45 — `3646101` — test(encounters): integration tests for per-segment BOM — includeInBom=false and split with different profiles
-- 2026-04-23 07:38:58 — `52e394a` — fix(calc): make /cotizar/pdf handler async + sync autotrace
-- 2026-04-23 07:50:33 — `38dffaf` — feat(roof-plan): segment-level encounter selection in 2D plan
-- 2026-04-23 08:01:17 — `9e30028` — fix(docker): skip bash disk-precheck in Alpine build stage
-- 2026-04-23 08:04:51 — `97123b1` — feat(chat): structured request logging — latency, tokens, provider per turn
-- 2026-04-23 08:14:05 — `d221654` — feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
-- 2026-04-23 08:18:00 — `3c93ff7` — feat: GCS quote storage + SuperAgent tool endpoint
-- 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production
-- 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json
-- 2026-04-23 18:45:47 — `c8b33e6` — feat(wolfboard): add local dev scripts and update kb.json
-- 2026-04-23 18:47:08 — `792cf98` — chore(dev-trace): sync AUTOTRACE for wolfboard local dev commit c8b33e6
-- 2026-04-23 18:47:26 — `07a5a8d` — chore(dev-trace): record AUTOTRACE for commit 792cf98
-- 2026-04-23 18:47:30 — `53b3a60` — chore(dev-trace): record AUTOTRACE for commit 07a5a8d
-- 2026-04-24 00:03:07 — `c811945` — docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)
-- 2026-04-24 00:03:26 — `d33a49c` — chore(dev-trace): record AUTOTRACE for docs ROADMAP smoke alignment (c811945)
 - 2026-04-24 00:03:32 — `c7cd9a3` — chore(dev-trace): record AUTOTRACE for dev-trace commit d33a49c
 - 2026-04-24 00:07:13 — `47957df` — feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook
 - 2026-04-24 00:07:23 — `e7ee3ee` — feat(wolfboard): canales hub + admin cotizaciones + AI analytics + quote snapshot
@@ -222,3 +146,79 @@
 - 2026-04-27 02:51:14 — `0d80f5d` — feat(ml-hub): inline edit for ML responses + auto-save to training KB
 - 2026-04-27 03:02:03 — `8cdd219` — feat(ml-hub): date/product column + previous-question context for AI
 - 2026-04-27 03:03:57 — `ebeb68a` — feat(agent-admin): add Agent Admin module for knowledge base management
+- 2026-04-27 03:08:43 — `a7b4a8a` — docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel
+- 2026-04-27 03:54:09 — `af27c62` — feat(calculator): unify PDF export → handleClientePdf + simplify action bar
+- 2026-04-27 04:08:09 — `6c85bdd` — fix(vercel): proxy /api/* and /calc/* to Cloud Run
+- 2026-04-27 04:14:37 — `2b4270b` — fix(dashboard): restore 6 broken Sheets endpoints + harden config
+- 2026-04-27 04:24:50 — `df65ada` — feat(pdf-layouts): add template system + E-soft-modern layout + dropdown selector
+- 2026-04-27 04:25:59 — `8f27ed3` — docs: autotrace sync + version bump 2026-04-27 (session end)
+- 2026-04-27 04:27:41 — `8787ceb` — docs: autotrace stray commit doc 80102b1
+- 2026-04-27 04:27:50 — `5af4ae7` — docs: autotrace final sync main 2026-04-27
+- 2026-04-27 04:27:58 — `1c495db` — docs: autotrace flush (hook chain end)
+- 2026-04-27 04:30:16 — `d34d875` — docs: session update 2026-04-27 — endpoint fixes, GCS token storage
+- 2026-04-27 04:34:30 — `eadf33e` — feat(pdf-layouts): implement all 5 layout templates (A-E)
+- 2026-04-27 04:50:30 — `211c672` — fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq
+- 2026-04-27 04:54:43 — `0314525` — feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools
+- 2026-04-27 05:02:28 — `42fb631` — docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch
+- 2026-04-27 05:07:22 — `eb98362` — feat(agent): add TOOLS block to system prompt — forces tool use for pricing
+- 2026-04-27 05:09:40 — `ffa578f` — feat(agent): auto-evolutionary learning pipeline
+- 2026-04-27 05:09:46 — `74f2568` — docs: autotrace sync autolearn commit
+- 2026-04-27 05:11:51 — `5b98ba4` — feat(agent): auto-trigger autolearn after each production chat turn
+- 2026-04-27 05:11:56 — `90babd2` — docs: autotrace sync autolearn trigger
+- 2026-04-27 05:15:03 — `25b9083` — feat(agent): add generar_pdf tool — agent produces shareable PDF URL
+- 2026-04-27 05:18:00 — `a3c33d6` — docs: autotrace sync 2026-04-27 end-of-session
+- 2026-04-27 05:22:34 — `2d4e1cb` — fix(agent): remove stale hardcoded prices from CATALOG section
+- 2026-04-27 10:09:35 — `0c29e5b` — feat(kb): add 8 math entries to example KB seed
+- 2026-04-27 14:32:45 — `fff3d23` — fix(autolearn): dedup uses question-only token overlap, not permanentBonus
+- 2026-04-27 14:32:46 — `36c7613` — docs: autotrace sync autolearn dedup fix
+- 2026-04-27 14:37:23 — `bc6cd03` — feat(roof): merge/reset encounter segments — unblock split-only workflow
+- 2026-04-27 14:38:30 — `e96d9e8` — docs: update AUTOTRACE documentation and sync changes
+- 2026-04-27 14:49:35 — `812e9c8` — fix(agent): normalize familia to UPPER_SNAKE in all tool handlers
+- 2026-04-27 14:49:36 — `e4361e6` — docs: autotrace sync familia normalization fix
+- 2026-04-27 14:51:25 — `7465e2f` — feat(pdf-layouts): add layout selector to mobile bottom sheet
+- 2026-04-27 15:15:50 — `d12f8f1` — fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback
+- 2026-04-27 15:29:41 — `3a7b3bf` — fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation
+- 2026-04-27 15:33:42 — `cdeef3c` — feat(agent): unified KB brain for Chat, WA and ML channels
+- 2026-04-27 15:33:47 — `0a79835` — docs: autotrace sync unified agent brain
+- 2026-04-27 15:44:46 — `861d168` — feat(agent): panel specs in tools + ML answers auto-save to KB
+- 2026-04-27 15:44:47 — `d3afcfd` — docs: autotrace sync specs+ml-kb
+- 2026-04-27 15:53:40 — `0594c89` — docs: autotrace sync KB GCS persistence
+- 2026-04-27 15:53:40 — `55be547` — fix(kb): persist training-kb.json to GCS on Cloud Run
+- 2026-04-27 16:06:30 — `473aa6c` — fix(pdf): add Cloud Run sandbox flags to puppeteer launch
+- 2026-04-27 16:12:53 — `38269e1` — feat(kb): retrieval tracking + freshness TTL + health stats
+- 2026-04-27 16:12:58 — `3bf63c4` — docs: autotrace sync kb health stats
+- 2026-04-27 16:16:43 — `e4ec409` — docs: autotrace sync channel renderer
+- 2026-04-27 16:16:43 — `f0ea719` — feat(kb): channel renderer + ML/WA overrides + health badges in admin
+- 2026-04-27 16:23:57 — `3c6fc50` — feat(kb): auto-generate ML overrides for all gap entries
+- 2026-04-27 16:24:07 — `99b310a` — docs: autotrace sync ML overrides batch
+- 2026-04-27 16:26:44 — `51d7271` — docs: autotrace sync conflict detection
+- 2026-04-27 16:26:44 — `c49b772` — feat(kb): conflict detection — same question, different answer
+- 2026-04-27 16:27:49 — `6cc7b08` — fix(kb): await GCS init before KB reads — cold-start race condition
+- 2026-04-27 16:30:24 — `3e353f1` — feat(kb): health panel + import with dedup (Week 4)
+- 2026-04-27 16:30:25 — `209c6e4` — docs: autotrace sync health panel + import
+- 2026-04-27 16:56:03 — `9212008` — fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
+- 2026-04-27 16:56:05 — `ae254de` — docs: autotrace sync autolearn fix + roadmap
+- 2026-04-27 16:58:17 — `eb48ea1` — fix(kb): log GCS init error instead of silently swallowing
+- 2026-04-28 19:44:44 — `46b47d7` — feat(feedback): response review loop — Good/Correct/Comment across channels
+- 2026-04-28 19:44:51 — `dd92078` — docs: autotrace sync feedback system
+- 2026-04-28 23:53:04 — `bd76a72` — feat(pdf-layouts): add BMC PDF — Blueprint Técnico template
+- 2026-04-29 00:02:15 — `702a669` — fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set
+- 2026-04-29 00:06:41 — `48af0a2` — feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args
+- 2026-04-29 01:25:57 — `a5aedaa` — docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
+- 2026-04-29 01:26:09 — `89ec748` — docs: autotrace sync — trace commit a5aedaa (propagation loop close)
+- 2026-04-29 01:26:24 — `75ae09a` — docs: autotrace sync — trace commit 89ec748 (close propagation chain)
+- 2026-04-29 01:54:05 — `d8f0421` — feat(agent-module): add Logs, Voz tabs + live provider status in Config
+- 2026-04-29 02:01:03 — `00bafe7` — feat(agent-module): update Logs and Voz tabs with live provider status
+- 2026-04-29 02:22:26 — `7b6ff61` — fix(agent-module): correct LogsTab API paths /api → /calc
+- 2026-04-29 02:27:47 — `f4dd6b2` — feat(agent-module): enhance Logs and Voz tabs with live provider status
+- 2026-04-29 03:03:31 — `1599cdd` — fix(voice): surface real OpenAI error on session mint failure
+- 2026-04-29 03:06:55 — `34a36b0` — feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
+- 2026-04-29 03:58:20 — `da4afca` — fix(security): require API_AUTH_TOKEN on interaction-log + voice-session
+- 2026-04-29 04:01:50 — `e0c6e18` — chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp
+- 2026-04-29 04:05:27 — `3f972eb` — chore: update drive upload functionality and related tests
+- 2026-04-29 04:05:50 — `52c66bc` — chore: update kb.json timestamp and build_ms value
+- 2026-04-29 04:06:00 — `a47cd9a` — chore: update kb.json timestamp and build_ms value
+- 2026-04-29 04:07:22 — `63c85d0` — fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
+- 2026-04-29 04:24:30 — `36df0f5` — feat(deploy): graceful Secret Manager migration for high-sensitivity keys
+- 2026-04-29 04:39:09 — `7090459` — chore: update drive upload functionality and related tests
+- 2026-04-29 05:06:59 — `bc82701` — chore: update drive upload functionality and related tests

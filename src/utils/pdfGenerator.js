@@ -35,36 +35,40 @@ async function getHtml2Pdf() {
 }
 
 async function htmlToPdfViaHtml2Pdf(htmlString) {
-  const container = document.createElement("div");
-  container.style.cssText =
-    "position:fixed;left:-9999px;top:0;width:210mm;background:#fff;z-index:-1;";
-  const shadow = container.attachShadow({ mode: "open" });
-  const wrapper = document.createElement("div");
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlString, "text/html");
-  doc.querySelectorAll("style").forEach((s) => {
-    const clone = document.createElement("style");
-    clone.textContent = s.textContent;
-    shadow.appendChild(clone);
-  });
-  wrapper.innerHTML = doc.body.innerHTML;
-  shadow.appendChild(wrapper);
-  document.body.appendChild(container);
+  // Use iframe instead of Shadow DOM — html2canvas cannot render Shadow DOM.
+  // The iframe gives full CSS isolation (including :root custom properties)
+  // while remaining accessible to html2canvas.
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText =
+    "position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none;background:#fff;z-index:-1;";
+  document.body.appendChild(iframe);
   try {
+    const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iDoc.open();
+    iDoc.write(htmlString);
+    iDoc.close();
+    // Allow fonts + layout to settle
+    await new Promise((r) => setTimeout(r, 400));
     const html2pdf = await getHtml2Pdf();
     return await html2pdf()
       .set({
-        margin: [8, 8, 12, 8],
+        margin: 0,
         filename: "cotizacion.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 3, useCORS: true, logging: false, letterRendering: true },
+        image: { type: "jpeg", quality: 0.95 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          letterRendering: true,
+          windowWidth: 794,
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+        pagebreak: { mode: ["css", "legacy"], before: ".page" },
       })
-      .from(wrapper)
+      .from(iDoc.body)
       .outputPdf("blob");
   } finally {
-    document.body.removeChild(container);
+    document.body.removeChild(iframe);
   }
 }
 

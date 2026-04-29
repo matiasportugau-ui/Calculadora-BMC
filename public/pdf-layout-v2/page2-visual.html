@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Page 2 — Visual + resumen (preview)</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+      font-size: 10pt; color: #1D1D1F; margin: 0;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    @media screen {
+      html { background: #dce3ec; min-height: 100%; }
+      body { max-width: 794px; margin: 32px auto 60px; padding: 0; background: transparent; }
+      .shell { background: #fff; box-shadow: 0 4px 28px rgba(0,0,0,0.14); border-radius: 3px; padding: 24px 28px; }
+    }
+    @media print {
+      a { color: inherit !important; text-decoration: none !important; }
+      .shell { padding: 0; }
+    }
+
+    .hero {
+      background: linear-gradient(115deg, #003366 0%, #0a4c78 52%, #0c5a8f 100%);
+      color: #fff; padding: 10px 14px; border-radius: 8px 8px 0 0;
+      box-shadow: 0 4px 14px rgba(0,51,102,0.2);
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+    }
+    .hero .name { font-size: 14pt; font-weight: 800; letter-spacing: 0.03em; }
+    .hero .tagline { font-size: 7.5pt; opacity: 0.95; margin-top: 3px; font-weight: 600; }
+    .hero .right { text-align: right; }
+    .hero .scenario { font-size: 9pt; font-weight: 800; }
+    .hero .contact { font-size: 7.5pt; opacity: 0.9; margin-top: 3px; }
+
+    .card-shell {
+      border: 0.5pt solid #E2E8F0; border-top: none; border-radius: 0 0 8px 8px;
+      padding: 8px 12px 10px; background: #fff;
+      box-shadow: 0 8px 24px rgba(15,23,42,0.06);
+    }
+    .client-line {
+      padding: 6px 0 7px; font-size: 8.5pt; color: #475467;
+      border-bottom: 0.5pt solid #E2E8F0; line-height: 1.4;
+    }
+    .client-line b { color: #003366; }
+
+    /* Plan card */
+    .plan-card {
+      margin: 7px 0;
+      padding: 8px 10px;
+      background: #F8FAFC;
+      border-radius: 8px;
+      border: 0.5pt solid #E2E8F0;
+      box-shadow: 0 2px 10px rgba(0,51,102,0.07);
+    }
+    .plan-title {
+      font-size: 9pt; font-weight: 800; color: #003366;
+      margin-bottom: 4px; letter-spacing: 0.02em;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .plan-title .meta { font-size: 7.5pt; font-weight: 600; color: #64748B; }
+    .plan-svg { width: 100%; height: 235px; display: block; background: #fff; border-radius: 5px; }
+
+    /* Legend */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px;
+      padding-top: 6px; border-top: 0.5pt dashed #CBD5E1;
+    }
+    .legend .chip {
+      font-size: 7pt; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .legend .chip::before {
+      content: ""; display: inline-block; width: 7px; height: 7px;
+      border-radius: 2px; background: currentColor; opacity: 0.6;
+    }
+    .ch-T { background: #DBEAFE; color: #1E3A8A; }
+    .ch-FONDO { background: #FEF3C7; color: #854D0E; }
+    .ch-FRENTE { background: #DCFCE7; color: #166534; }
+    .ch-LATIZQ { background: #FCE7F3; color: #9D174D; }
+    .ch-LATDER { background: #E9D5FF; color: #6B21A8; }
+    .ch-FIX { background: #E0E7FF; color: #3730A3; }
+
+    /* KPI chips */
+    .kpis {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 7px 0;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .kpi {
+      flex: 1; min-width: 90px; padding: 5px 8px;
+      background: #F1F5F9; border-radius: 6px; border: 0.5pt solid #E2E8F0;
+    }
+    .kpi .k { font-size: 6.5pt; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi .v { font-size: 10pt; font-weight: 800; color: #003366; margin-top: 1px; }
+
+    /* Resumen table */
+    .res-title {
+      margin: 6px 0 4px;
+      font-size: 9.5pt; font-weight: 900; color: #003366; letter-spacing: 0.02em;
+    }
+    .res-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    .res-table tr.group td {
+      background: #E4EDF8; padding: 3px 7px; font-size: 8pt; font-weight: 800;
+      color: #003366; border-left: 3pt solid #003366;
+    }
+    .res-table td.label { padding: 3px 7px; font-size: 8pt; color: #1D1D1F; border-bottom: 0.5pt solid #ECECEC; }
+    .res-table td.val { padding: 3px 7px; font-size: 8pt; text-align: right; font-weight: 700; border-bottom: 0.5pt solid #ECECEC; font-variant-numeric: tabular-nums; }
+
+    .tag {
+      display: inline-block; font-size: 7pt; font-weight: 800; padding: 1px 5px;
+      border-radius: 3px; margin-right: 5px; letter-spacing: 0.04em; vertical-align: middle;
+    }
+    .tag-T { background: #DBEAFE; color: #1E3A8A; }
+    .tag-FONDO { background: #FEF3C7; color: #854D0E; }
+    .tag-FRENTE { background: #DCFCE7; color: #166534; }
+    .tag-LATIZQ { background: #FCE7F3; color: #9D174D; }
+    .tag-LATDER { background: #E9D5FF; color: #6B21A8; }
+    .tag-FIX { background: #E0E7FF; color: #3730A3; }
+
+    .totals-bar {
+      margin-top: 8px; padding: 8px 12px;
+      background: linear-gradient(180deg,#F8FAFC 0%,#F1F5F9 100%);
+      border-radius: 8px; border: 0.5pt solid #E2E8F0;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .totals-bar .left { font-size: 8.5pt; color: #64748B; }
+    .totals-bar .left b { color: #003366; }
+    .totals-bar .right .lbl { font-size: 7.5pt; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; }
+    .totals-bar .right .val { font-size: 15pt; font-weight: 900; color: #003366; font-variant-numeric: tabular-nums; }
+
+    .footnote { margin: 6px 0 0; font-size: 6.5pt; color: #94A3B8; line-height: 1.35; }
+    .pagetag { margin-top: 5px; padding: 4px 8px; background: #F1F5F9; border-radius: 5px; font-size: 6.5pt; color: #64748B; text-align: center; }
+    .pagetag b { color: #003366; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div>
+        <div class="name">BMC URUGUAY</div>
+        <div class="tagline">Panelin · resumen visual de obra</div>
+      </div>
+      <div class="right">
+        <div class="scenario">Techo + Fachada</div>
+        <div class="contact">bmcuruguay.com.uy · 092 663 245</div>
+      </div>
+    </div>
+
+    <div class="card-shell">
+
+      <!-- Client line -->
+      <div class="client-line">
+        <b>Cliente:</b> Constructora Sol del Este S.A. ·
+        <b>Obra:</b> Galpón de almacenamiento — Maldonado ·
+        <b>Ref:</b> BMC-2026-0427-01
+      </div>
+
+      <!-- Plan card with annotated 2D plan -->
+      <div class="plan-card">
+        <div class="plan-title">
+          <span>Planta 2D · cubierta — anotada</span>
+          <span class="meta">Vista esquemática · ISO 129 · cotas en milímetros</span>
+        </div>
+
+        <!-- Big annotated SVG.
+             - viewBox in mm (12000 × 8000), padded for cotas
+             - panels T-01..T-12, each 1000 mm wide, 8000 mm long
+             - dimension lines in red on perimeter
+             - border zone labels with brand colors -->
+        <svg class="plan-svg" viewBox="-1700 -1500 16200 11400" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="arrowR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#DC2626"/>
+            </marker>
+            <marker id="arrowRback" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M10,0 L0,5 L10,10 Z" fill="#DC2626"/>
+            </marker>
+            <marker id="arrowSlope" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#003366"/>
+            </marker>
+          </defs>
+
+          <!-- Roof outline -->
+          <rect x="0" y="0" width="12000" height="8000" fill="#F8FAFC" stroke="#003366" stroke-width="35"/>
+
+          <!-- Panel divisions (12 columns) -->
+          <g stroke="#94A3B8" stroke-width="14" stroke-dasharray="60 60">
+            <line x1="1000" y1="0" x2="1000" y2="8000"/>
+            <line x1="2000" y1="0" x2="2000" y2="8000"/>
+            <line x1="3000" y1="0" x2="3000" y2="8000"/>
+            <line x1="4000" y1="0" x2="4000" y2="8000"/>
+            <line x1="5000" y1="0" x2="5000" y2="8000"/>
+            <line x1="6000" y1="0" x2="6000" y2="8000"/>
+            <line x1="7000" y1="0" x2="7000" y2="8000"/>
+            <line x1="8000" y1="0" x2="8000" y2="8000"/>
+            <line x1="9000" y1="0" x2="9000" y2="8000"/>
+            <line x1="10000" y1="0" x2="10000" y2="8000"/>
+            <line x1="11000" y1="0" x2="11000" y2="8000"/>
+          </g>
+
+          <!-- Slope arrow (top-right corner, away from panel labels) -->
+          <g opacity="0.7">
+            <line x1="11000" y1="900" x2="11000" y2="2900" stroke="#003366" stroke-width="22" marker-end="url(#arrowSlope)"/>
+            <text x="10780" y="1900" font-size="220" fill="#003366" font-weight="700" font-family="Helvetica, Arial, sans-serif" text-anchor="end">pendiente</text>
+            <text x="10780" y="2180" font-size="220" fill="#003366" font-weight="800" font-family="Helvetica, Arial, sans-serif" text-anchor="end">8%</text>
+          </g>
+
+          <!-- Panel labels T-01..T-12 (badges) -->
+          <g font-family="Helvetica, Arial, sans-serif" font-weight="800">
+            <!-- 12 badges, centered in each panel column -->
+            <g transform="translate(500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-01</text>
+            </g>
+            <g transform="translate(1500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-02</text>
+            </g>
+            <g transform="translate(2500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-03</text>
+            </g>
+            <g transform="translate(3500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-04</text>
+            </g>
+            <g transform="translate(4500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-05</text>
+            </g>
+            <g transform="translate(5500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-06</text>
+            </g>
+            <g transform="translate(6500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-07</text>
+            </g>
+            <g transform="translate(7500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-08</text>
+            </g>
+            <g transform="translate(8500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-09</text>
+            </g>
+            <g transform="translate(9500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-10</text>
+            </g>
+            <g transform="translate(10500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-11</text>
+            </g>
+            <g transform="translate(11500,4000)">
+              <rect x="-260" y="-160" width="520" height="320" rx="60" fill="#1E3A8A"/>
+              <text x="0" y="80" text-anchor="middle" font-size="240" fill="#fff">T-12</text>
+            </g>
+          </g>
+
+          <!-- Border ribbons (FONDO top, FRENTE bottom, LAT-IZQ left, LAT-DER right) -->
+          <!-- FONDO -->
+          <rect x="0" y="-380" width="12000" height="280" fill="#FEF3C7" stroke="#854D0E" stroke-width="12"/>
+          <text x="6000" y="-180" text-anchor="middle" font-size="220" fill="#854D0E" font-weight="800" font-family="Helvetica, Arial, sans-serif">FONDO · cumbrera</text>
+          <!-- FRENTE -->
+          <rect x="0" y="8100" width="12000" height="280" fill="#DCFCE7" stroke="#166534" stroke-width="12"/>
+          <text x="6000" y="8300" text-anchor="middle" font-size="220" fill="#166534" font-weight="800" font-family="Helvetica, Arial, sans-serif">FRENTE · canalón</text>
+          <!-- LAT-IZQ -->
+          <rect x="-380" y="0" width="280" height="8000" fill="#FCE7F3" stroke="#9D174D" stroke-width="12"/>
+          <text x="-220" y="4000" text-anchor="middle" font-size="220" fill="#9D174D" font-weight="800" font-family="Helvetica, Arial, sans-serif" transform="rotate(-90,-220,4000)">LAT-IZQ</text>
+          <!-- LAT-DER -->
+          <rect x="12100" y="0" width="280" height="8000" fill="#E9D5FF" stroke="#6B21A8" stroke-width="12"/>
+          <text x="12260" y="4000" text-anchor="middle" font-size="220" fill="#6B21A8" font-weight="800" font-family="Helvetica, Arial, sans-serif" transform="rotate(90,12260,4000)">LAT-DER</text>
+
+          <!-- DIMENSION LINES (red, ISO-style) -->
+          <!-- Horizontal total: 12000 mm -->
+          <g stroke="#DC2626" stroke-width="14" font-family="Helvetica, Arial, sans-serif" fill="#DC2626">
+            <line x1="0" y1="9100" x2="12000" y2="9100" marker-start="url(#arrowRback)" marker-end="url(#arrowR)"/>
+            <line x1="0" y1="9000" x2="0" y2="9300" stroke-width="10"/>
+            <line x1="12000" y1="9000" x2="12000" y2="9300" stroke-width="10"/>
+            <text x="6000" y="9520" text-anchor="middle" font-size="280" font-weight="800">12 000</text>
+          </g>
+          <!-- Vertical total: 8000 mm -->
+          <g stroke="#DC2626" stroke-width="14" font-family="Helvetica, Arial, sans-serif" fill="#DC2626">
+            <line x1="13100" y1="0" x2="13100" y2="8000" marker-start="url(#arrowRback)" marker-end="url(#arrowR)"/>
+            <line x1="13000" y1="0" x2="13300" y2="0" stroke-width="10"/>
+            <line x1="13000" y1="8000" x2="13300" y2="8000" stroke-width="10"/>
+            <text x="13350" y="4000" text-anchor="middle" font-size="280" font-weight="800" transform="rotate(90,13350,4000)">8 000</text>
+          </g>
+          <!-- Sub-cotas: panel chain (12 × 1000) -->
+          <g stroke="#DC2626" stroke-width="10" font-family="Helvetica, Arial, sans-serif" fill="#DC2626" opacity="0.85">
+            <line x1="0" y1="-680" x2="12000" y2="-680"/>
+            <line x1="0" y1="-580" x2="0" y2="-780" stroke-width="8"/>
+            <line x1="1000" y1="-580" x2="1000" y2="-780" stroke-width="8"/>
+            <line x1="2000" y1="-580" x2="2000" y2="-780" stroke-width="8"/>
+            <line x1="3000" y1="-580" x2="3000" y2="-780" stroke-width="8"/>
+            <line x1="4000" y1="-580" x2="4000" y2="-780" stroke-width="8"/>
+            <line x1="5000" y1="-580" x2="5000" y2="-780" stroke-width="8"/>
+            <line x1="6000" y1="-580" x2="6000" y2="-780" stroke-width="8"/>
+            <line x1="7000" y1="-580" x2="7000" y2="-780" stroke-width="8"/>
+            <line x1="8000" y1="-580" x2="8000" y2="-780" stroke-width="8"/>
+            <line x1="9000" y1="-580" x2="9000" y2="-780" stroke-width="8"/>
+            <line x1="10000" y1="-580" x2="10000" y2="-780" stroke-width="8"/>
+            <line x1="11000" y1="-580" x2="11000" y2="-780" stroke-width="8"/>
+            <line x1="12000" y1="-580" x2="12000" y2="-780" stroke-width="8"/>
+            <text x="6000" y="-820" text-anchor="middle" font-size="180" font-weight="700">12 × 1 000  (paneles T-01 a T-12)</text>
+          </g>
+        </svg>
+
+        <!-- Legend -->
+        <div class="legend">
+          <span class="chip ch-T">T-01..T-12 · paneles techo</span>
+          <span class="chip ch-FONDO">FONDO · cumbrera</span>
+          <span class="chip ch-FRENTE">FRENTE · canalón</span>
+          <span class="chip ch-LATIZQ">LAT-IZQ · cierre lateral</span>
+          <span class="chip ch-LATDER">LAT-DER · cierre lateral</span>
+          <span class="chip ch-FIX">FIX · fijación / sellado</span>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpis">
+        <div class="kpi"><div class="k">Área paneles</div><div class="v">96.0 m²</div></div>
+        <div class="kpi"><div class="k">Paneles</div><div class="v">12</div></div>
+        <div class="kpi"><div class="k">Apoyos</div><div class="v">4</div></div>
+        <div class="kpi"><div class="k">Pts. fijación</div><div class="v">96</div></div>
+      </div>
+
+      <!-- Resumen de partidas, tagged -->
+      <div class="res-title">Resumen de partidas (identificadas en el plano)</div>
+      <table class="res-table">
+        <tbody>
+          <tr class="group"><td colspan="2">▸ Paneles ISODEC PIR 50mm</td></tr>
+          <tr><td class="label"><span class="tag tag-T">T-01..T-12</span>Panel ISODEC PIR 50mm · Blanco · 1.0 × 8.0 m · 12 unid.</td><td class="val">$3,720.00</td></tr>
+
+          <tr class="group"><td colspan="2">▸ Bordes y cierres</td></tr>
+          <tr><td class="label"><span class="tag tag-FONDO">FONDO</span>Cumbrera articulada · 12.0 m</td><td class="val">$222.00</td></tr>
+          <tr><td class="label"><span class="tag tag-FRENTE">FRENTE</span>Canalón rectangular 200mm · 12.0 m</td><td class="val">$270.00</td></tr>
+          <tr><td class="label"><span class="tag tag-LATIZQ">LAT-IZQ</span>Cierre lateral · 8.0 m</td><td class="val">$75.00</td></tr>
+          <tr><td class="label"><span class="tag tag-LATDER">LAT-DER</span>Cierre lateral · 8.0 m</td><td class="val">$75.00</td></tr>
+
+          <tr class="group"><td colspan="2">▸ Fijación y accesorios</td></tr>
+          <tr><td class="label"><span class="tag tag-FIX">FIX</span>Tornillo autoperforante 6.3 × 80 · 96 u</td><td class="val">$115.20</td></tr>
+          <tr><td class="label"><span class="tag tag-FIX">FIX</span>Sellador silicona neutra 280 ml · 8 u</td><td class="val">$76.80</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Totals bar -->
+      <div class="totals-bar">
+        <div class="left">
+          <div><b>Subtotal s/IVA</b> USD 4,554.00 · <b>IVA 22%</b> USD 1,001.88</div>
+        </div>
+        <div class="right">
+          <div class="lbl">Total USD</div>
+          <div class="val">$5,555.88</div>
+        </div>
+      </div>
+
+      <p class="footnote">
+        Vista esquemática para obra (no escala de plano). Los códigos T-01..T-12 y los nombres de borde (FONDO/FRENTE/LAT-IZQ/LAT-DER) referencian las posiciones del plano técnico anotado de arriba con las filas del resumen de partidas. Propuesta comercial BMC Uruguay.
+      </p>
+
+      <div class="pagetag">
+        <b>Página 2 / 2</b> · La página anterior contiene la cotización detallada.
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).get('print') === '1') {
+      window.addEventListener('load', () => setTimeout(() => window.print(), 250));
+    }
+  </script>
+</body>
+</html>

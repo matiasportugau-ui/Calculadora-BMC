@@ -18,6 +18,8 @@ import {
   listEncounterPairSegmentRuns,
   patchEncounterPairSegment,
   splitEncounterPairSegmentMid,
+  mergeAdjacentEncounterPairSegments,
+  resetEncounterPairSegments,
   normalizeEncounter,
   pairEncounterBaseRaw,
   encounterBorderPerfil,
@@ -3080,16 +3082,32 @@ export default function RoofPreview({
                   gap: 8,
                 }}
               >
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Tramos del encuentro · longitud {lenLabel}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Tramos del encuentro · longitud {lenLabel}
+                  </div>
+                  {runs.length > 1 && (
+                    <button
+                      type="button"
+                      title="Volver a un solo tramo — descarta todos los splits"
+                      onClick={() => {
+                        const reset = resetEncounterPairSegments(rawPair);
+                        if (reset) onEncounterPairChange(pk, reset);
+                      }}
+                      style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, cursor: "pointer", whiteSpace: "nowrap" }}
+                    >
+                      Unir todos
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize: 10, color: C.ts, lineHeight: 1.35 }}>
                   Partí el encuentro en tramos y asigná un perfil del catálogo por tramo (p. ej. un tramo con babeta en la zona en contacto y otro con gotero donde no).
                 </div>
-                {runs.map((run) => {
+                {runs.map((run, runIdx) => {
                   const span = run.t1 - run.t0;
                   const lenM = Number.isFinite(encLenM) && encLenM > 0 ? encLenM * span : null;
                   const canSplit = span > 0.12;
+                  const canMergeNext = runIdx < runs.length - 1;
                   const selVal = catalogSelectValueFromSegmentNormalized(run.normalized);
                   const catalogIds = new Set(encCatalogOpts.map((o) => o.id));
                   let selectValue = "none";
@@ -3228,6 +3246,19 @@ export default function RoofPreview({
                               style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.primary, cursor: "pointer" }}
                             >
                               Partir mitad
+                            </button>
+                          ) : null}
+                          {canMergeNext ? (
+                            <button
+                              type="button"
+                              title="Fusionar con el tramo siguiente"
+                              onClick={() => {
+                                const next = mergeAdjacentEncounterPairSegments(rawPair, run.id);
+                                if (next) onEncounterPairChange(pk, next);
+                              }}
+                              style={{ fontSize: 10, fontWeight: 600, padding: "4px 8px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.ts, cursor: "pointer" }}
+                            >
+                              Unir +
                             </button>
                           ) : null}
                         </div>

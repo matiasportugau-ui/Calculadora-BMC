@@ -5,6 +5,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://panelin-calc-642127786762.us-central1.run.app/api/:path*"
+    },
+    {
+      "source": "/calc/:path*",
+      "destination": "https://panelin-calc-642127786762.us-central1.run.app/calc/:path*"
+    },
+    {
       "source": "/logistica",
       "destination": "/index.html"
     },

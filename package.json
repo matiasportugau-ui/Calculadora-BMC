@@ -49,7 +49,7 @@
     "test:e2e:wizard": "node scripts/playwright-calculator-wizard.mjs",
     "test:browser:full": "node scripts/browser-test-suite.mjs",
     "test:browser:full:local": "node scripts/browser-test-suite.mjs --local",
-    "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js",
+    "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js && node tests/auth-routes.test.js",
     "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
     "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
@@ -223,7 +223,7 @@
     "url": "https://github.com/matiasportugau-ui/Calculadora-BMC.git"
   },
   "overrides": {
-    "uuid": "^10.0.0",
+    "uuid": "^14.0.0",
     "@tootallnate/once": "^3.0.0",
     "serialize-javascript": "^7.0.5"
   }

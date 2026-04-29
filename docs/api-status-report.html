@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BMC API — Status Report 2026-04-27</title>
+<style>
+  :root {
+    --ok:    #16a34a;
+    --ok-bg: #dcfce7;
+    --warn:  #d97706;
+    --warn-bg: #fef3c7;
+    --err:   #dc2626;
+    --err-bg:#fee2e2;
+    --auth:  #6366f1;
+    --auth-bg:#ede9fe;
+    --neutral:#64748b;
+    --neutral-bg:#f1f5f9;
+    --surface:#ffffff;
+    --bg:    #f8fafc;
+    --border:#e2e8f0;
+    --text:  #0f172a;
+    --muted: #64748b;
+    --radius:12px;
+    --shadow:0 1px 3px 0 rgb(0 0 0/.1),0 1px 2px -1px rgb(0 0 0/.1);
+    --shadow-lg:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);
+  }
+
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .header-left h1 { font-size: 1.5rem; font-weight: 700; }
+  .header-left p  { color: var(--muted); font-size:.875rem; margin-top:.25rem; }
+  .badge-live {
+    display:inline-flex; align-items:center; gap:.5rem;
+    background:#dcfce7; color:#15803d; font-size:.75rem; font-weight:600;
+    padding:.35rem .75rem; border-radius:999px; border:1px solid #86efac;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; background:#16a34a;
+         animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%,100%{opacity:1} 50%{opacity:.4}
+  }
+
+  /* ── SUMMARY CARDS ── */
+  .summary {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:1rem; margin-bottom:2rem;
+  }
+  .card {
+    background:var(--surface); border-radius:var(--radius);
+    border:1px solid var(--border); padding:1.25rem 1rem;
+    box-shadow:var(--shadow); text-align:center;
+  }
+  .card .num { font-size:2rem; font-weight:800; line-height:1; }
+  .card .lbl { font-size:.75rem; color:var(--muted); margin-top:.35rem; text-transform:uppercase; letter-spacing:.05em; }
+  .card.c-ok  .num { color:var(--ok); }
+  .card.c-err .num { color:var(--err); }
+  .card.c-warn .num{ color:var(--warn); }
+  .card.c-auth .num{ color:var(--auth); }
+
+  /* ── SECTIONS ── */
+  .section { margin-bottom:2rem; }
+  .section-title {
+    font-size:.65rem; font-weight:700; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted);
+    margin-bottom:.75rem; padding-left:.25rem;
+  }
+
+  /* ── TABLE ── */
+  .tbl-wrap {
+    background:var(--surface); border-radius:var(--radius);
+    border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden;
+  }
+  table { width:100%; border-collapse:collapse; font-size:.875rem; }
+  th {
+    background:#f8fafc; text-align:left; padding:.65rem 1rem;
+    font-size:.7rem; font-weight:600; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.07em;
+    border-bottom:1px solid var(--border);
+  }
+  td { padding:.7rem 1rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#f8fafc; }
+
+  .method {
+    font-family:monospace; font-size:.7rem; font-weight:700;
+    padding:.2rem .45rem; border-radius:4px; white-space:nowrap;
+  }
+  .m-get  { background:#dbeafe; color:#1d4ed8; }
+  .m-post { background:#fae8ff; color:#7e22ce; }
+  .m-patch{ background:#fef9c3; color:#854d0e; }
+  .m-delete{background:#fee2e2; color:#991b1b; }
+
+  .path { font-family:monospace; font-size:.8rem; color:#1e40af; }
+
+  .pill {
+    display:inline-flex; align-items:center; gap:.3rem;
+    font-size:.7rem; font-weight:700; padding:.2rem .6rem;
+    border-radius:999px; white-space:nowrap;
+  }
+  .p-ok   { background:var(--ok-bg);   color:var(--ok);   }
+  .p-err  { background:var(--err-bg);  color:var(--err);  }
+  .p-warn { background:var(--warn-bg); color:var(--warn); }
+  .p-auth { background:var(--auth-bg); color:var(--auth); }
+  .p-redir{ background:#f0fdf4;        color:#166534; }
+
+  .note { font-size:.78rem; color:var(--muted); }
+
+  /* ── ISSUES ── */
+  .issues { display:flex; flex-direction:column; gap:1rem; }
+  .issue {
+    background:var(--surface); border-radius:var(--radius);
+    border:1px solid var(--border); box-shadow:var(--shadow);
+    padding:1.25rem 1.25rem 1.25rem 1.5rem;
+    border-left-width:4px;
+    display:grid; grid-template-columns:auto 1fr; gap:.75rem 1rem;
+  }
+  .issue.sev-high  { border-left-color:var(--err); }
+  .issue.sev-med   { border-left-color:var(--warn); }
+  .issue.sev-info  { border-left-color:var(--auth); }
+  .issue-icon { font-size:1.4rem; line-height:1; padding-top:.15rem; }
+  .issue-body h3 { font-size:.9rem; font-weight:700; margin-bottom:.35rem; }
+  .issue-body p  { font-size:.82rem; color:var(--muted); line-height:1.5; }
+  .issue-body code {
+    font-family:monospace; font-size:.78rem;
+    background:#f1f5f9; padding:.1rem .35rem; border-radius:4px;
+  }
+  .issue-body ul { margin:.5rem 0 0 1rem; }
+  .issue-body li { font-size:.82rem; color:var(--muted); line-height:1.7; }
+
+  .sev-tag {
+    font-size:.65rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:.07em; padding:.15rem .5rem; border-radius:4px;
+    display:inline-block; margin-bottom:.4rem;
+  }
+  .sev-high  .sev-tag { background:var(--err-bg);  color:var(--err);  }
+  .sev-med   .sev-tag { background:var(--warn-bg); color:var(--warn); }
+  .sev-info  .sev-tag { background:var(--auth-bg); color:var(--auth); }
+
+  /* ── LEGEND ── */
+  .legend {
+    display:flex; flex-wrap:wrap; gap:.75rem;
+    font-size:.75rem; margin-top:.5rem;
+  }
+  .legend span { display:inline-flex; align-items:center; gap:.4rem; }
+
+  @media(max-width:640px){
+    table { display:block; overflow-x:auto; }
+    .header { flex-direction:column; align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>BMC Uruguay — API Status Report</h1>
+      <p>Calculadora BMC v3.1.5 &nbsp;·&nbsp; Local :3001 &nbsp;·&nbsp; 2026-04-27</p>
+    </div>
+    <span class="badge-live"><span class="dot"></span>Server running</span>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="summary">
+    <div class="card c-ok">
+      <div class="num">18</div>
+      <div class="lbl">Endpoints OK</div>
+    </div>
+    <div class="card c-err">
+      <div class="num">6</div>
+      <div class="lbl">Broken (503)</div>
+    </div>
+    <div class="card c-warn">
+      <div class="num">1</div>
+      <div class="lbl">Misconfigured</div>
+    </div>
+    <div class="card c-auth">
+      <div class="num">8</div>
+      <div class="lbl">Auth-gated (normal)</div>
+    </div>
+  </div>
+
+  <!-- ─── ML CONNECTOR ─── -->
+  <div class="section">
+    <div class="section-title">MercadoLibre Connector</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Path</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/auth/ml/status</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Token activo · userId 179969104 · exp ~6h</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/auth/ml/start</span></td>
+            <td><span class="pill p-redir">302 Redirect</span></td>
+            <td class="note">PKCE S256 OAuth → ML — correcto</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/ml/users/me</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note"></td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/ml/listings</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Publicaciones activas</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/ml/questions</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">518 preguntas recuperadas</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/ml/orders</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note"></td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/ml/auto-mode</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note"></td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/ml/questions/:id/answer</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere body + token ML — correcto</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── CALCULADORA ─── -->
+  <div class="section">
+    <div class="section-title">Calculadora / Quote Engine</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/calc/catalogo</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Catálogo de paneles + precios</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/calc/escenarios</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Escenarios predefinidos</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/calc/cotizar</span></td>
+            <td><span class="pill p-warn">400 body req.</span></td>
+            <td class="note">Normal — requiere payload de cotización</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/calc/cotizar/pdf</span></td>
+            <td><span class="pill p-warn">400 body req.</span></td>
+            <td class="note">Normal — requiere payload</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/calc/cotizaciones</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Historial local en memoria</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── DASHBOARD ─── -->
+  <div class="section">
+    <div class="section-title">BMC Dashboard — Google Sheets</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/metas-ventas</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Único endpoint del dashboard funcional</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/cotizaciones</span></td>
+            <td><span class="pill p-err">503 Sheets</span></td>
+            <td class="note"><code>Unable to parse range: 'Master_Cotizaciones'</code></td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/audit</span></td>
+            <td><span class="pill p-err">503 Sheets</span></td>
+            <td class="note"><code>Unable to parse range: 'AUDIT_LOG'</code></td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/kpi-financiero</span></td>
+            <td><span class="pill p-err">503 Sheets</span></td>
+            <td class="note"><code>Unable to parse range: 'Pagos_Pendientes'</code></td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/ventas</span></td>
+            <td><span class="pill p-err">503 Sheets</span></td>
+            <td class="note"><code>Sheets not configured</code> — BMC_VENTAS_SHEET_ID no accesible</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/stock-kpi</span></td>
+            <td><span class="pill p-err">503 Sheets</span></td>
+            <td class="note"><code>Sheets not configured</code> — BMC_STOCK_SHEET_ID no accesible</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/pagos-pendientes</span></td>
+            <td><span class="pill p-err">503 Sheets</span></td>
+            <td class="note">Relacionado a BMC_PAGOS_SHEET_ID / tab Pagos_Pendientes</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/api/crm/suggest-response</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere cockpit token</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/crm/cockpit/ml-queue</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere cockpit token</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── AGENT / CHAT ─── -->
+  <div class="section">
+    <div class="section-title">Agent / Chat / Training</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/agent/ai-options</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Modelos disponibles (Anthropic, Gemini, Grok, OpenAI)</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/api/agent/chat</span></td>
+            <td><span class="pill p-warn">400 body req.</span></td>
+            <td class="note">Normal — SSE chat, requiere payload</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/agent/training-kb</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere <code>x-dev-token</code> — correcto</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/api/agent/voice/session</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere auth</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── OTROS CONECTORES ─── -->
+  <div class="section">
+    <div class="section-title">Otros Conectores</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Method</th><th>Path</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/transportista/health</span></td>
+            <td><span class="pill p-err">503 DB</span></td>
+            <td class="note"><code>DATABASE_URL not configured</code> — PostgreSQL faltante en .env local</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/wolfboard/pendientes</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere <code>x-api-key</code> — correcto</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/api/pdf/generate</span></td>
+            <td><span class="pill p-warn">400 body req.</span></td>
+            <td class="note">Normal — requiere cotización</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/api/plan/interpret</span></td>
+            <td><span class="pill p-warn">400 body req.</span></td>
+            <td class="note">Normal — requiere archivo de plano</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/shopify/products</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere auth + shop instalado</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/api/ai-analytics/trends</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere analytics auth</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/webhooks/ml</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Acepta notificaciones ML · HMAC validado</td>
+          </tr>
+          <tr>
+            <td><span class="method m-post">POST</span></td>
+            <td><span class="path">/webhooks/whatsapp</span></td>
+            <td><span class="pill p-auth">401 auth</span></td>
+            <td class="note">Requiere verify token Meta</td>
+          </tr>
+          <tr>
+            <td><span class="method m-get">GET</span></td>
+            <td><span class="path">/ready</span></td>
+            <td><span class="pill p-ok">200 OK</span></td>
+            <td class="note">Legacy health check</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── ISSUES ─── -->
+  <div class="section">
+    <div class="section-title">Issues a resolver</div>
+    <div class="issues">
+
+      <div class="issue sev-high">
+        <div class="issue-icon">🔴</div>
+        <div class="issue-body">
+          <span class="sev-tag">CRITICO</span>
+          <h3>Dashboard Sheets — 6 endpoints en 503</h3>
+          <p>El error <code>"Unable to parse range: 'Master_Cotizaciones'"</code> indica que los tabs del spreadsheet <strong>BMC_SHEET_ID</strong> fueron renombrados o la service account perdió permiso. Los afectados son:</p>
+          <ul>
+            <li><code>Master_Cotizaciones</code> → /api/cotizaciones, /api/audit</li>
+            <li><code>Pagos_Pendientes</code> → /api/kpi-financiero, /api/pagos-pendientes</li>
+            <li><code>BMC_VENTAS_SHEET_ID</code> / <code>BMC_STOCK_SHEET_ID</code> → /api/ventas, /api/stock-kpi</li>
+          </ul>
+          <p style="margin-top:.5rem"><strong>Fix:</strong> abrir el spreadsheet en Google Sheets, verificar nombres de tabs, y re-compartir con la service account de <code>GOOGLE_APPLICATION_CREDENTIALS</code>.</p>
+        </div>
+      </div>
+
+      <div class="issue sev-med">
+        <div class="issue-icon">🟡</div>
+        <div class="issue-body">
+          <span class="sev-tag">MEDIO</span>
+          <h3>Transportista — DATABASE_URL no configurado</h3>
+          <p>El módulo de logística necesita PostgreSQL. <code>DATABASE_URL</code> no está en <code>.env</code> local. Los endpoints de trips, driver, y evidencias no funcionan en dev.</p>
+          <p style="margin-top:.5rem"><strong>Fix:</strong> agregar <code>DATABASE_URL=postgres://...</code> al <code>.env</code> apuntando a la BD de staging/prod (o una local con <code>docker run postgres</code>).</p>
+        </div>
+      </div>
+
+      <div class="issue sev-info">
+        <div class="issue-icon">🟢</div>
+        <div class="issue-body">
+          <span class="sev-tag">INFO</span>
+          <h3>Token ML expira en ~6 horas</h3>
+          <p>El token de MercadoLibre (userId <code>179969104</code>) vence aproximadamente en 6h. El refresh automático usa <code>offline_access</code> scope — si el servidor se reinicia antes, el token nuevo debería generarse al hacer el primer request autenticado.</p>
+          <p style="margin-top:.5rem"><strong>Monitorear:</strong> <code>GET /auth/ml/status</code> — si <code>ok: false</code>, re-autenticar con <code>/auth/ml/start</code>.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border);
+              display:flex; justify-content:space-between; flex-wrap:wrap; gap:.5rem;">
+    <span style="font-size:.75rem; color:var(--muted)">
+      BMC Uruguay / METALOG SAS · Calculadora BMC v3.1.5 · Cloud Run panelin-calc us-central1
+    </span>
+    <div class="legend">
+      <span><span class="pill p-ok" style="padding:.1rem .5rem">OK</span> Funcional</span>
+      <span><span class="pill p-err" style="padding:.1rem .5rem">503</span> Error del servidor</span>
+      <span><span class="pill p-warn" style="padding:.1rem .5rem">400</span> Falta body/params (normal)</span>
+      <span><span class="pill p-auth" style="padding:.1rem .5rem">401</span> Auth-gated (correcto)</span>
+      <span><span class="pill p-redir" style="padding:.1rem .5rem">302</span> Redirect OAuth</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

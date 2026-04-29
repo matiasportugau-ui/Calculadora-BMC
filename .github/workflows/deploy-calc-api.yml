@@ -68,6 +68,15 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc:${{ github.sha }}
           service_account: ${{ secrets.GCP_RUNTIME_SA_EMAIL }}
+          env_vars: |
+            BMC_SHEET_ID=${{ secrets.BMC_SHEET_ID }}
+            BMC_SHEET_SCHEMA=${{ secrets.BMC_SHEET_SCHEMA }}
+            BMC_PAGOS_SHEET_ID=${{ secrets.BMC_PAGOS_SHEET_ID }}
+            BMC_VENTAS_SHEET_ID=${{ secrets.BMC_VENTAS_SHEET_ID }}
+            BMC_STOCK_SHEET_ID=${{ secrets.BMC_STOCK_SHEET_ID }}
+            BMC_CALENDARIO_SHEET_ID=${{ secrets.BMC_CALENDARIO_SHEET_ID }}
+            PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}
+            GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/service-account.json
           flags: |
             --allow-unauthenticated
             --min-instances=0
@@ -75,6 +84,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest
 
       - name: Show service URL
         run: |

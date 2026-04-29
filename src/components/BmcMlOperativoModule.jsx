@@ -891,6 +891,14 @@ export default function BmcMlOperativoModule() {
                                   style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #d97706", background: "#fffbeb", cursor: "pointer", color: "#92400e" }}>
                                   Editar
                                 </button>
+                                <button type="button" onClick={async () => {
+                                  await fetch(`${getCalcApiBase()}/api/agent/feedback`, {
+                                    method: "POST", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ channel: "ml", question: parsed.consulta || "", generatedText: parsed.respuestaSugerida, rating: "good", rowId: String(row) }),
+                                  }).catch(() => {});
+                                }} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "1px solid #16a34a", background: "#f0fdf4", cursor: "pointer", color: "#166534" }}>
+                                  👍
+                                </button>
                               </div>
                             </div>
                           ) : (

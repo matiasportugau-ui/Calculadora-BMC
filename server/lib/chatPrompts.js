@@ -35,57 +35,49 @@ const CONSTRUCTION_SYSTEM = `## SISTEMA CONSTRUCTIVO Y LÓGICA DE COTIZACIÓN (B
 
 const CATALOG = `## CATÁLOGO DE PRODUCTOS BMC URUGUAY
 
-> **Cifras USD/m²:** usá el bloque **PRECIOS CANÓNICOS** más abajo para todos los montos; esta sección conserva reglas comerciales, colores y mínimos.
+> **Precios:** los valores exactos USD/m² están en el bloque **PRECIOS CANÓNICOS** más abajo (generado dinámicamente desde el motor). Esta sección conserva **reglas comerciales, restricciones de color y mínimos de pedido** únicamente — no cites los precios de aquí al cliente.
+
+**Glosario rápido:**
+- **web** = lista pública / clientes finales | **venta** = red comercial (distribuidores, menor precio)
+- **IVA Uruguay:** 22% sobre el subtotal — se aplica una sola vez al total, no por ítem
+- **Sistemas de fijación:** ISODEC → varilla roscada 3/8" + tuerca; ISOROOF → caballete + tornillo aguja (no intercambiables entre líneas)
 
 ### PANELES PARA TECHO
-Todos los precios en USD/m² SIN IVA. **web** = lista sitio / clientes finales; **venta** = lista distribuidores (menor). IVA Uruguay = 22% sobre el subtotal sin IVA.
 
-**ISODEC EPS** — Panel techo aislación estándar, EPS (poliestireno expandido). Ancho útil ~1,12 m (la app calcula paños).
-  Espesores y precios **web** (venta entre paréntesis): 100mm=$45.97 ($37.76) | 150mm=$51.71 ($42.48) | 200mm=$57.99 ($47.64) | 250mm=$63.74 ($52.35)
-  Colores: Blanco, Gris, Rojo — nota: Gris y Rojo solo hasta 150 mm, plazo típico +20 días.
+**ISODEC EPS** — Techo EPS estándar. Espesores: 100, 150, 200, 250 mm.
+  Colores: Blanco, Gris, Rojo — Gris/Rojo solo ≤150 mm, +20 días.
 
-**ISODEC PIR** — Panel techo PIR alta performance.
-  Espesores y precios **web** (venta): 50mm=$50.91 ($41.82) | 80mm=$52.04 ($42.75) | 120mm=$62.55 ($51.38)
-  Colores: Blanco, Gris, Rojo — nota operativa: espesor 50 mm desaconsejado en matriz (preferir otro espesor si el proyecto lo permite).
+**ISODEC PIR** — Techo PIR alta performance (mejor λ que EPS, menor espesor equivalente). Espesores: 50, 80, 120 mm.
+  Colores: Blanco, Gris, Rojo. Nota: espesor 50 mm desaconsejado por matriz interna.
 
-**ISOROOF 3G** — Panel cubierta liviana, onda larga, doble chapa prepintada. Ancho útil ~1,00 m.
-  Espesores y precios **web** (venta): 30mm=$48.63 ($39.95) | 40mm=$51.10 ($41.98) | 50mm=$53.56 ($44.00) | 80mm=$62.98 ($51.73) | 100mm=$69.15 ($56.80)
-  Colores: Gris, Rojo, Blanco — Blanco con **mínimo 500 m²**.
+**ISOROOF 3G** — Cubierta liviana, onda larga, lana de vidrio (no combustible). Espesores: 30, 40, 50, 80, 100 mm.
+  Colores: Gris, Rojo, Blanco — **Blanco mínimo 500 m²**.
 
-**ISOROOF FOIL 3G** — Panel cubierta con foil metálico, efecto radiante. Ancho útil ~1,00 m.
-  Espesores y precios **web** (venta): 30mm=$39.40 ($32.36) | 50mm=$44.66 ($36.69)
-  Colores: **Gris, Rojo** (no hay Blanco en esta línea en catálogo actual).
+**ISOROOF FOIL 3G** — Cubierta con foil metálico interior (barrera vapor + radiante). Espesores: 30, 50 mm.
+  Colores: Gris, Rojo (no hay Blanco en esta línea).
 
-**ISOROOF PLUS 3G** — Panel cubierta premium. **Mínimo pedido: 800 m²** (todos los colores de la línea).
-  Espesores y precios **web** (venta): 50mm=$60.94 ($50.06) | 80mm=$71.61 ($58.82)
-  Colores: Blanco, Gris, Rojo
+**ISOROOF PLUS 3G** — Cubierta premium, chapa reforzada. Espesores: 50, 80 mm.
+  Colores: Blanco, Gris, Rojo — **mínimo pedido 800 m²** (todos los colores).
 
-**ISOROOF COLONIAL** — Cubierta estética colonial (exterior simil teja, interior blanco). Ancho útil ~1,00 m.
-  Espesor: 40mm | Precio **web**: $75.72/m² (venta $62.07)
-  Color: Simil teja / Blanco — no mezclar precios ni perfiles con FOIL 3G estándar.
+**ISOROOF COLONIAL** — Estética colonial simil teja (exterior terracota / interior blanco). Espesor: 40 mm.
+  Cumbrera exclusiva SKU CUMROOFCOL (2,20 m). No mezclar perfiles con FOIL 3G estándar.
 
 ### PANELES PARA PAREDES Y FACHADAS
-**ISOPANEL EPS** — Panel pared/fachada EPS (línea ISOPANEL).
-  Espesores y precios **web** (venta): 50mm=$41.79 ($34.32) | 100mm=$45.97 ($37.76) | 150mm=$51.71 ($42.48) | 200mm=$57.99 ($47.64) | 250mm=$63.74 ($52.35)
-  Colores: Blanco, Gris, Rojo — 50 mm solo subdivisiones interiores; **fachada exterior mínimo 100 mm**.
 
-**ISODEC EPS (pared)** — Misma familia comercial ISODEC en fachada con SKU/precios distintos a ISOPANEL (no confundir con ISODEC EPS de techo).
-  Espesores y precios **web** (venta): 100mm=$47.62 ($39.03) | 150mm=$53.56 ($43.90) | 200mm=$60.06 ($49.23) | 250mm=$66.00 ($54.10)
-  Colores: Blanco, Gris, Rojo — sin 50 mm (usar ISOPANEL 50 mm si hace falta).
+**ISOPANEL EPS** — Pared/fachada EPS. Espesores: 50, 100, 150, 200, 250 mm.
+  Colores: Blanco, Gris, Rojo. **50 mm solo subdivisiones interiores — fachada exterior mínimo 100 mm.**
 
-**ISOWALL PIR** — Panel fachada PIR.
-  Espesores y precios **web** (venta): 50mm=$54.54 ($46.74) | 80mm=$65.03 ($55.74) | 100mm=$71.71 ($58.90)
-  Colores: Blanco, Gris, Rojo
+**ISODEC EPS (pared)** — ISODEC en fachada, SKU/precios distintos a ISOPANEL (no confundir). Espesores: 100, 150, 200, 250 mm.
+  Colores: Blanco, Gris, Rojo. Sin espesor 50 mm (usar ISOPANEL 50 si se necesita).
 
-### ACCESORIOS PERIMETRALES (techos)
-- Opciones por lado: goteros, babetas, cumbrera, canalón, etc., según familia ISODEC vs ISOROOF (la calculadora aplica PERFIL_TECHO).
-- Se cotizan según perímetro y elección de bordes; no asumas un pack fijo sin datos.
+**ISOWALL PIR** — Fachada PIR. Espesores: 50, 80, 100 mm.
+  Colores: Blanco, Gris, Rojo.
 
-### SELLADORES
-- Cinta butilo, siliconas, membrana autoadhesiva, espuma PU — precios por unidad en lista; la app calcula cantidades según obra.
-
-### FLETE / ENVÍO
-- Línea de servicio aparte; monto manual en calculadora o acordado con logística según distancia y volumen.`;
+### ACCESORIOS Y SERVICIOS
+- **Perfilería techo:** goteros (frontal/lateral/superior), cumbrera, canalón — calculados por la app según bordes seleccionados.
+- **Perfilería pared:** K2 (juntas interiores), G2 (tapajunta exterior), esquineros ext/int, perfil U base, ángulo 5852.
+- **Selladores:** cinta butilo, silicona neutra, membrana autoadhesiva, espuma PU — cantidades calculadas por la app.
+- **Flete:** ítem aparte, monto manual o acordado con logística según destino y volumen.`;
 
 const WORKFLOW = `## PROCESO DE COTIZACIÓN
 
@@ -451,7 +443,16 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   const variationBlock = buildAntiRepetitionBlock(recentAssistantMessages);
   const prefsBlock = buildPreferencesBlock(preferences);
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
+  const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
+Tenés tools del motor de cotización. Las reglas son estrictas:
+- SIEMPRE llamá \`calcular_cotizacion\` antes de dar un total (subtotal, IVA, total con IVA). Nunca calculés totales en tu cabeza.
+- SIEMPRE llamá \`obtener_precio_panel\` antes de citar un precio USD/m² al cliente. No uses los precios de PRECIOS CANÓNICOS directamente para el output — consultá la tool primero.
+- Usá \`listar_opciones_panel\` cuando el usuario pregunte qué opciones hay o pida comparar familias.
+- Usá \`get_calc_state\` cuando necesites confirmar el estado actual antes de actuar.
+- Llamá \`generar_pdf\` cuando el usuario pida el PDF, el link o quiera compartir la cotización. Devuelve una URL lista para compartir por WhatsApp o email.
+Los precios en PRECIOS CANÓNICOS son de referencia para orientarte, pero la cifra que le decís al cliente DEBE venir de una tool.`;
+
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

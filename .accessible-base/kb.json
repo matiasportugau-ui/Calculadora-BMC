@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-27T06:03:57.934Z",
-    "build_ms": 93,
+    "ts": "2026-04-29T08:06:59.637Z",
+    "build_ms": 52,
     "score": 85,
     "score_delta": 0,
     "sources": [
@@ -26,7 +26,7 @@
   },
   "state": {
     "branch": "main",
-    "last_change": "2026-04-27 (Dev+Ops — plan-import E2E, desnivel por segmento, fiscal tests, PDF templates):",
+    "last_change": "2026-04-27 (Ops+Fix — Sheets endpoints restaurados, Cloud Run hardening, ML tokens GCS, uuid vuln patch):",
     "deploy": {
       "vercel": "live",
       "cloud_run": "rev-00170-5jb",
@@ -60,33 +60,33 @@
     },
     {
       "label": "AI Chat (Panelin Chat / agentChat SSE)",
-      "q": 7,
-      "c": 8,
-      "status": "stats endpoint + dev panel + 8 KB entries; training-kb poblada"
+      "q": 9,
+      "c": 9,
+      "status": "KB unificada omnicanal; native tool_use (4 tools + generar_pdf); autolearn pipeline; KB score 100/100"
     },
     {
       "label": "CRM / Dashboard (WolfBoard / Sheets)",
       "q": 8,
-      "c": 7,
-      "status": "Wolfboard prod OK; `suggest-response` ✅ verde (claude, 2026-04-24); QA visual `/hub/canales` `/hub/admin` `/hub/ml` OK"
+      "c": 8,
+      "status": "Wolfboard prod OK; suggest-response via agentCore unificado; ML inline edit + AI context"
     },
     {
       "label": "MercadoLibre Integration",
       "q": 8,
-      "c": 7,
-      "status": "OAuth OK; ciclo publicación humana (cm-1) sigue como mejora continua"
+      "c": 8,
+      "status": "OAuth OK; BATMANN10 respondido; ML→KB diff capture implementado"
     },
     {
       "label": "WhatsApp / Meta (omnicanal)",
-      "q": 7,
-      "c": 6,
-      "status": "cm-0 documentado DONE en PROJECT-STATE; mantener verificación periódica"
+      "q": 8,
+      "c": 7,
+      "status": "Auto-trigger 5min ✅; WA→agentCore→KB autolearn activo"
     },
     {
       "label": "Email Ingest / Parse",
       "q": 7,
       "c": 7,
-      "status": "cm-2 prod verificado (crmRow=32); ver PROJECT-STATE"
+      "status": "cm-2 prod verificado (crmRow=32)"
     },
     {
       "label": "Google Sheets / Data",
@@ -96,39 +96,45 @@
     },
     {
       "label": "Deploy / CI/CD",
-      "q": 8,
-      "c": 8,
-      "status": "CI todos los jobs ✅ (2026-04-24); smoke job ya existía y cubre suggest-response; Cloud Run rev-00210"
+      "q": 9,
+      "c": 9,
+      "status": "CI verde; Cloud Run rev activa; GCS KB persistence"
     },
     {
       "label": "Tests (unit + API + contrato)",
-      "q": 8,
-      "c": 8,
-      "status": "**368 pass** (2026-04-24); 17 API route; Playwright wizard E2E 12/12 ✅"
+      "q": 9,
+      "c": 9,
+      "status": "**384 pass** (2026-04-27); fiscal contract assertions; roofVisual OK"
     },
     {
       "label": "Docs / Agents / Tooling",
       "q": 9,
-      "c": 8,
-      "status": "AUTOTRACE, dev-trace, 11 agentes, skills"
+      "c": 9,
+      "status": "AUTOTRACE; 11 agentes; Agent Admin 9 tabs"
     },
     {
       "label": "Panelin Internal RBAC",
       "q": 8,
       "c": 8,
-      "status": "En prod; 29 E2E API tests ✅ (2026-04-24 commit 9c89f74)"
+      "status": "En prod; 29 E2E API tests ✅"
     },
     {
       "label": "Hub Canales (WA+ML+Email)",
       "q": 8,
-      "c": 7,
-      "status": "`BmcCanalesUnificadosModule` en prod; QA visual ✅ filtros ML/WA/IG/FB"
+      "c": 8,
+      "status": "`BmcCanalesUnificadosModule` en prod; QA visual ✅"
     },
     {
       "label": "Fiscal / Compliance",
-      "q": 6,
+      "q": 7,
       "c": 7,
-      "status": "irae_prevision en /kpi-report; BPS doc; IVA en quotes OK"
+      "status": "irae_prevision + BPS + fiscal contract tests; IVA en quotes OK"
+    },
+    {
+      "label": "KB / Knowledge System",
+      "q": 9,
+      "c": 9,
+      "status": "GCS persist; channelRenderer; health panel; conflict detect; import dedup; ML overrides auto-gen"
     }
   ],
   "roadmap": [

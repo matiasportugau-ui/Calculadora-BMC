@@ -29,6 +29,7 @@ export async function sendWhatsAppText({ to, text, accessToken, phoneNumberId })
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

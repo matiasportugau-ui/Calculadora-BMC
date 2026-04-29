@@ -4,32 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `db62c95` feat: Enhance WhatsApp integration and add AUTOTRACE system
-- `d8455c0` feat: Enhance WhatsApp integration and add AUTOTRACE system
-- `fa2ba6a` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- `553941e` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- `57932df` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- `f3d6153` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- `5a907b8` feat: Enhance WhatsApp integration and update AUTOTRACE documentation
-- `efa9f65` feat: add Sketchfab integration and enhance documentation
-- `c7c660b` feat: add Sketchfab integration and enhance documentation
-- `f62400e` feat: log Sketchfab integration commit in worklog
-- `9a0dc85` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3) `[tests]`
-- `04f7b41` feat(roof): auto-default cumbrera on horizontal dos_aguas encounters (Fase 3)
-- `6d95be9` feat(roof): render encounter lines as clickable SVG elements
-- `fe55309` feat(roof): split border strips by exterior intervals on partial encounters
-- `773e0df` feat(catalog): add gotero_frontal to fondo side options for ISODEC/ISODEC_PIR
-- `5715776` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- `acaebad` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- `391c695` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- `742293c` feat(roof): enhance roof encounter functionality with auto-default cumbrera and SVG rendering
-- `2a3be46` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split `[tests]`
-- `cc153d7` feat: add CalcLogicInspector, FichasPreview, Kingspan comparison + fix fijaciones varilla substrate split
-- `0ad5d93` feat(wolfboard): add Admin 2.0 ↔ CRM operational module
-- `311891a` feat: add contribut and nxt workflow skills for Claude Code + Cursor
-- `b33cf43` feat(sheets): Accessible Base sync + expert workspace map
-- `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
-- `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 - `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
@@ -84,15 +58,35 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `0d80f5d` feat(ml-hub): inline edit for ML responses + auto-save to training KB
 - `8cdd219` feat(ml-hub): date/product column + previous-question context for AI
 - `ebeb68a` feat(agent-admin): add Agent Admin module for knowledge base management
+- `af27c62` feat(calculator): unify PDF export → handleClientePdf + simplify action bar
+- `df65ada` feat(pdf-layouts): add template system + E-soft-modern layout + dropdown selector
+- `eadf33e` feat(pdf-layouts): implement all 5 layout templates (A-E)
+- `0314525` feat(agent): native Anthropic tool_use for Panelin — 4 calculator tools
+- `eb98362` feat(agent): add TOOLS block to system prompt — forces tool use for pricing
+- `ffa578f` feat(agent): auto-evolutionary learning pipeline
+- `5b98ba4` feat(agent): auto-trigger autolearn after each production chat turn
+- `25b9083` feat(agent): add generar_pdf tool — agent produces shareable PDF URL
+- `0c29e5b` feat(kb): add 8 math entries to example KB seed
+- `bc6cd03` feat(roof): merge/reset encounter segments — unblock split-only workflow `[tests]`
+- `7465e2f` feat(pdf-layouts): add layout selector to mobile bottom sheet
+- `cdeef3c` feat(agent): unified KB brain for Chat, WA and ML channels
+- `861d168` feat(agent): panel specs in tools + ML answers auto-save to KB
+- `38269e1` feat(kb): retrieval tracking + freshness TTL + health stats
+- `f0ea719` feat(kb): channel renderer + ML/WA overrides + health badges in admin
+- `3c6fc50` feat(kb): auto-generate ML overrides for all gap entries
+- `c49b772` feat(kb): conflict detection — same question, different answer
+- `3e353f1` feat(kb): health panel + import with dedup (Week 4)
+- `46b47d7` feat(feedback): response review loop — Good/Correct/Comment across channels
+- `bd76a72` feat(pdf-layouts): add BMC PDF — Blueprint Técnico template `[tests]`
+- `48af0a2` feat(pdf): add BMC PDF — Blueprint Técnico template and fix standard headless args
+- `d8f0421` feat(agent-module): add Logs, Voz tabs + live provider status in Config
+- `00bafe7` feat(agent-module): update Logs and Voz tabs with live provider status
+- `f4dd6b2` feat(agent-module): enhance Logs and Voz tabs with live provider status
+- `34a36b0` feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
+- `36df0f5` feat(deploy): graceful Secret Manager migration for high-sensitivity keys
 
 ## Fixes
 
-- `680cf98` fix(docs): correct typo in Atlas Browser Go-Live manual steps prompt title
-- `bc5c1fc` fix(docs): update AUTOTRACE documentation to correct typo in Atlas Browser Go-Live manual steps prompt title
-- `0a5667b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
-- `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
-- `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
-- `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
 - `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
 - `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
@@ -155,6 +149,24 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `e85d190` fix(plan-import): update plan import handling and UI components
 - `4be9a18` fix(plan-import): update plan import handling and UI components
 - `6af2db3` fix(ml-oauth): add PKCE (S256) support to MercadoLibre OAuth flow
+- `6c85bdd` fix(vercel): proxy /api/* and /calc/* to Cloud Run
+- `2b4270b` fix(dashboard): restore 6 broken Sheets endpoints + harden config
+- `211c672` fix(deps): force uuid^14.0.0 via overrides to patch GHSA-w5hq-g745-h8pq
+- `2d4e1cb` fix(agent): remove stale hardcoded prices from CATALOG section
+- `fff3d23` fix(autolearn): dedup uses question-only token overlap, not permanentBonus
+- `812e9c8` fix(agent): normalize familia to UPPER_SNAKE in all tool handlers
+- `d12f8f1` fix(pdf): install Alpine Chromium + fix html2pdf Shadow DOM fallback `[regresión? · tests]`
+- `3a7b3bf` fix(docker): add system Chromium to Dockerfile.bmc-dashboard for PDF generation `[regresión? · tests]`
+- `55be547` fix(kb): persist training-kb.json to GCS on Cloud Run
+- `473aa6c` fix(pdf): add Cloud Run sandbox flags to puppeteer launch
+- `6cc7b08` fix(kb): await GCS init before KB reads — cold-start race condition `[regresión?]`
+- `9212008` fix(autolearn): 1x per conversation + docs: ROADMAP score 85→93
+- `eb48ea1` fix(kb): log GCS init error instead of silently swallowing
+- `702a669` fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set
+- `7b6ff61` fix(agent-module): correct LogsTab API paths /api → /calc
+- `1599cdd` fix(voice): surface real OpenAI error on session mint failure
+- `da4afca` fix(security): require API_AUTH_TOKEN on interaction-log + voice-session `[regresión? · tests]`
+- `63c85d0` fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
 
 ## Documentation
 
@@ -196,6 +208,32 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `1a43445` docs(pdf-designs): add E-soft-modern template + update INDEX
 - `cb653d5` docs: autotrace sync 2026-04-27 (1a43445)
 - `ea068c5` docs: sync PROJECT-STATE + autotrace post-session 2026-04-27
+- `a7b4a8a` docs: full session update 2026-04-27 — ML hub, agent-admin, PKCE, plan-import, desnivel
+- `8f27ed3` docs: autotrace sync + version bump 2026-04-27 (session end)
+- `8787ceb` docs: autotrace stray commit doc 80102b1
+- `5af4ae7` docs: autotrace final sync main 2026-04-27
+- `1c495db` docs: autotrace flush (hook chain end)
+- `d34d875` docs: session update 2026-04-27 — endpoint fixes, GCS token storage
+- `42fb631` docs: session sync 2026-04-27 — Sheets fix, GCS tokens, uuid patch
+- `74f2568` docs: autotrace sync autolearn commit
+- `90babd2` docs: autotrace sync autolearn trigger
+- `a3c33d6` docs: autotrace sync 2026-04-27 end-of-session
+- `36c7613` docs: autotrace sync autolearn dedup fix
+- `e96d9e8` docs: update AUTOTRACE documentation and sync changes
+- `e4361e6` docs: autotrace sync familia normalization fix
+- `0a79835` docs: autotrace sync unified agent brain
+- `d3afcfd` docs: autotrace sync specs+ml-kb
+- `0594c89` docs: autotrace sync KB GCS persistence
+- `3bf63c4` docs: autotrace sync kb health stats
+- `e4ec409` docs: autotrace sync channel renderer
+- `99b310a` docs: autotrace sync ML overrides batch
+- `51d7271` docs: autotrace sync conflict detection
+- `209c6e4` docs: autotrace sync health panel + import
+- `ae254de` docs: autotrace sync autolearn fix + roadmap
+- `dd92078` docs: autotrace sync feedback system
+- `a5aedaa` docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
+- `89ec748` docs: autotrace sync — trace commit a5aedaa (propagation loop close)
+- `75ae09a` docs: autotrace sync — trace commit 89ec748 (close propagation chain)
 
 ## Tests
 
@@ -272,6 +310,12 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `baef360` chore: regenerate quotation preview — resolve merge conflict
 - `c5750df` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `eb54831` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- `e0c6e18` chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp
+- `3f972eb` chore: update drive upload functionality and related tests `[tests]`
+- `52c66bc` chore: update kb.json timestamp and build_ms value
+- `a47cd9a` chore: update kb.json timestamp and build_ms value
+- `7090459` chore: update drive upload functionality and related tests
+- `bc82701` chore: update drive upload functionality and related tests
 
 ## Other
 

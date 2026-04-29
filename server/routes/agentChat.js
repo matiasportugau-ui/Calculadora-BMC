@@ -24,7 +24,8 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit } from "../lib/trainingKB.js";
+import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
   logConversationTurn,
@@ -35,8 +36,12 @@ import {
 import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET } from "../lib/tokenEstimator.js";
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
+import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 
 const router = Router();
+
+// Track which conversations have already run autolearn — prevents multi-call per session.
+const _autolearned = new Set();
 
 const SAFE_MODEL_ID = /^[a-zA-Z0-9._\-]{1,80}$/;
 /** @type {Record<string, Set<string>>} */
@@ -479,6 +484,9 @@ router.post("/agent/chat", async (req, res) => {
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
+  // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
+  await ensureGcsInit();
+
   // Always use KB — not just devMode
   const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
   if (devMode) {
@@ -594,7 +602,6 @@ router.post("/agent/chat", async (req, res) => {
         resolvedModel = model;
 
         const isOpus47 = model === "claude-opus-4-7";
-        // effort param supported on Opus 4.7, 4.6 and Sonnet 4.6; errors on Haiku 4.5 / Sonnet 4.5
         const supportsEffort = isOpus47
           || model === "claude-opus-4-6"
           || model === "claude-sonnet-4-6";
@@ -602,18 +609,17 @@ router.post("/agent/chat", async (req, res) => {
         const claudeOpts = {
           model,
           max_tokens: thinkingMode ? (isOpus47 ? 8192 : 4096) : CHAT_MAX_TOKENS,
-          // Wrap system prompt in a content block to enable prompt caching on the stable prefix
           system: [{ type: "text", text: effectiveSystemPrompt, cache_control: { type: "ephemeral" } }],
           messages: msgs,
+          tools: AGENT_TOOLS,
+          tool_choice: { type: "auto" },
         };
 
         if (thinkingMode) {
           if (isOpus47) {
-            // Opus 4.7: adaptive-only; display:"summarized" prevents blank pause before streaming
             claudeOpts.thinking = { type: "adaptive", display: "summarized" };
             claudeOpts.output_config = { effort: "xhigh" };
           } else {
-            // Older models: legacy extended thinking
             claudeOpts.thinking = { type: "enabled", budget_tokens: 2048 };
           }
           send({ type: "thinking_start" });
@@ -621,25 +627,58 @@ router.post("/agent/chat", async (req, res) => {
           claudeOpts.output_config = { effort: "high" };
         }
 
-        const stream = anthropic.messages.stream(claudeOpts);
         let cacheReadTokens = 0;
-        for await (const chunk of stream) {
-          if (chunk.type === "message_start" && chunk.message?.usage) {
-            cacheReadTokens = chunk.message.usage.cache_read_input_tokens ?? 0;
-            inputTokens = chunk.message.usage.input_tokens ?? 0;
+        // Tool-use loop: model may call tools up to 5 times before final response
+        const toolMsgs = [...msgs];
+        for (let toolRound = 0; toolRound < 5; toolRound++) {
+          const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
+          const toolCalls = [];
+          let roundText = "";
+
+          for await (const chunk of stream) {
+            if (chunk.type === "message_start" && chunk.message?.usage) {
+              cacheReadTokens = chunk.message.usage.cache_read_input_tokens ?? 0;
+              inputTokens += chunk.message.usage.input_tokens ?? 0;
+            }
+            if (chunk.type === "message_delta" && chunk.usage) {
+              outputTokens += chunk.usage.output_tokens ?? 0;
+            }
+            if (chunk.type === "content_block_start" && chunk.content_block?.type === "tool_use") {
+              toolCalls.push({ id: chunk.content_block.id, name: chunk.content_block.name, inputRaw: "" });
+            }
+            if (chunk.type === "content_block_delta") {
+              if (chunk.delta?.type === "input_json_delta" && toolCalls.length > 0) {
+                toolCalls[toolCalls.length - 1].inputRaw += chunk.delta.partial_json || "";
+              }
+              if (chunk.delta?.type === "text_delta" && chunk.delta.text) {
+                roundText += chunk.delta.text;
+                buf += chunk.delta.text;
+                buf = flushLines(buf);
+              }
+            }
           }
-          if (chunk.type === "message_delta" && chunk.usage) {
-            outputTokens = chunk.usage.output_tokens ?? 0;
+
+          const finalMsg = await stream.finalMessage();
+          const stopReason = finalMsg?.stop_reason;
+
+          if (toolCalls.length === 0 || stopReason !== "tool_use") break;
+
+          // Execute all tool calls for this round (sequential to preserve order)
+          const assistantContent = finalMsg.content || [];
+          const toolResults = [];
+          for (const tc of toolCalls) {
+            let toolInput = {};
+            try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
+            send({ type: "tool_call", tool: tc.name, input: toolInput });
+            const result = await executeTool(tc.name, toolInput, calcState);
+            req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
+            toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
           }
-          if (
-            chunk.type === "content_block_delta" &&
-            chunk.delta?.type === "text_delta" &&
-            chunk.delta.text
-          ) {
-            buf += chunk.delta.text;
-            buf = flushLines(buf);
-          }
+
+          toolMsgs.push({ role: "assistant", content: assistantContent });
+          toolMsgs.push({ role: "user", content: toolResults });
         }
+
         if (thinkingMode) send({ type: "thinking_done" });
         if (devMode && cacheReadTokens > 0) {
           req.log?.info({ cacheReadTokens, model }, "Claude prompt cache hit");
@@ -765,6 +804,48 @@ router.post("/agent/chat", async (req, res) => {
           });
         }
         send({ type: "done" });
+
+        // Fire-and-forget autolearn — runs ONCE per conversation (not per turn).
+        // Gate: production only, ≥4 turns (2 full exchanges), no prior autolearn for this convId.
+        const shouldAutolearn = (
+          !devMode &&
+          conversationId &&
+          allTurns.length >= 4 &&
+          !_autolearned.has(conversationId)
+        );
+        if (shouldAutolearn) {
+          _autolearned.add(conversationId);
+          // Prune set to avoid unbounded growth (keep last 500)
+          if (_autolearned.size > 500) {
+            const first = _autolearned.values().next().value;
+            _autolearned.delete(first);
+          }
+          const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
+          setImmediate(() => {
+            extractLearnablePairs(fullTurns)
+              .then((pairs) => {
+                for (const p of pairs) {
+                  addTrainingEntry({
+                    question: p.question,
+                    goodAnswer: p.goodAnswer,
+                    badAnswer: p.badAnswer || "",
+                    category: p.category || "conversational",
+                    context: p.rationale || "",
+                    source: "autolearned",
+                    status: p.confidence >= 0.92 ? "active" : "pending",
+                    confidence: p.confidence,
+                    convId: conversationId,
+                  });
+                }
+                if (pairs.length > 0) {
+                  req.log?.info({ conversationId, pairs: pairs.length }, "autolearn: extracted KB candidates");
+                }
+              })
+              .catch((err) => {
+                req.log?.warn({ err: err.message }, "autolearn extraction failed (non-blocking)");
+              });
+          });
+        }
       }
       clearInterval(heartbeat);
       res.end();

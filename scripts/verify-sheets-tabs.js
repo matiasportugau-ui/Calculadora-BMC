@@ -14,48 +14,73 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: 'v4', auth });
 
-const PAGOS_SHEET_ID = process.env.BMC_PAGOS_SHEET_ID;
-const VENTAS_SHEET_ID = process.env.BMC_VENTAS_SHEET_ID;
-
 async function verifySheetExists(spreadsheetId, sheetName) {
   try {
-    const res = await sheets.spreadsheets.get({
-      spreadsheetId,
-    });
+    const res = await sheets.spreadsheets.get({ spreadsheetId });
     const sheet = (res.data.sheets || []).find(s => s.properties?.title === sheetName);
     if (sheet) {
       console.log(`✅ VERIFICADO: El tab "${sheetName}" existe en el workbook ${spreadsheetId}.`);
       return true;
     } else {
-      console.error(`❌ ERROR: El tab "${sheetName}" NO existe en el workbook ${spreadsheetId}.`);
+      const tabs = (res.data.sheets || []).map(s => s.properties?.title);
+      console.error(`❌ ERROR: El tab "${sheetName}" NO existe en ${spreadsheetId}. Tabs actuales: ${JSON.stringify(tabs)}`);
       return false;
     }
   } catch (err) {
-    console.error(`Error al verificar el workbook ${spreadsheetId}:`, err.message);
+    console.error(`❌ ERROR al acceder al workbook ${spreadsheetId}: ${err.message}`);
+    return false;
+  }
+}
+
+async function checkAccessible(envName, id) {
+  if (!id) { console.log(`⚠️  SKIP: ${envName} no configurada`); return true; }
+  try {
+    const res = await sheets.spreadsheets.get({ spreadsheetId: id, fields: 'sheets.properties.title' });
+    const tabs = (res.data.sheets || []).map(s => s.properties?.title);
+    const preview = tabs.slice(0, 4).join(', ') + (tabs.length > 4 ? '...' : '');
+    console.log(`✅ ACCESIBLE: ${envName} — ${tabs.length} tabs (${preview})`);
+    return true;
+  } catch (err) {
+    console.error(`❌ ERROR: ${envName} (${id}) — ${err.message}`);
     return false;
   }
 }
 
 async function main() {
-  if (!PAGOS_SHEET_ID || !VENTAS_SHEET_ID) {
-    console.error('Asegúrate de que las variables de entorno BMC_PAGOS_SHEET_ID y BMC_VENTAS_SHEET_ID estén configuradas.');
+  const BMC_SHEET_ID = process.env.BMC_SHEET_ID;
+  const schema = process.env.BMC_SHEET_SCHEMA || 'Master_Cotizaciones';
+
+  if (!BMC_SHEET_ID) {
+    console.error('ERROR: BMC_SHEET_ID no está configurada.');
     process.exit(1);
   }
 
-  console.log('Iniciando verificación de tabs en Google Sheets...');
+  console.log('Iniciando verificación de tabs en Google Sheets...\n');
 
-  const results = await Promise.all([
-    verifySheetExists(PAGOS_SHEET_ID, 'CONTACTOS'),
-    verifySheetExists(VENTAS_SHEET_ID, 'Ventas_Consolidado'),
-  ]);
+  let allOk = true;
 
-  const allVerified = results.every(res => res);
+  // 1. Workbook principal: verificar tab primaria según schema
+  const primaryTab = schema === 'CRM_Operativo' ? 'CRM_Operativo' : 'Master_Cotizaciones';
+  console.log(`[BMC_SHEET_ID] Schema: ${schema} → buscando tab "${primaryTab}"`);
+  allOk = await verifySheetExists(BMC_SHEET_ID, primaryTab) && allOk;
 
-  if (allVerified) {
-    console.log('\nVerificación completada con éxito. Todos los tabs esperados existen.');
+  // 2. Workbooks opcionales: verificar acceso (tab dinámica con getFirstSheetName en prod)
+  console.log('');
+  for (const [envName, id] of [
+    ['BMC_PAGOS_SHEET_ID',     process.env.BMC_PAGOS_SHEET_ID],
+    ['BMC_VENTAS_SHEET_ID',    process.env.BMC_VENTAS_SHEET_ID],
+    ['BMC_STOCK_SHEET_ID',     process.env.BMC_STOCK_SHEET_ID],
+    ['BMC_CALENDARIO_SHEET_ID', process.env.BMC_CALENDARIO_SHEET_ID],
+  ]) {
+    allOk = await checkAccessible(envName, id) && allOk;
+  }
+
+  console.log('');
+  if (allOk) {
+    console.log('✅ Verificación completada. Todos los workbooks configurados son accesibles.');
     process.exit(0);
   } else {
-    console.error('\nFalló la verificación. Faltan uno o más tabs.');
+    console.error('❌ Verificación fallida. Revisar errores arriba.');
     process.exit(1);
   }
 }
