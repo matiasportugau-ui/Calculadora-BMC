@@ -10,7 +10,7 @@
  *   6. Expose transcript deltas via onTranscriptDelta callback
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const API_BASE = getCalcApiBase();
@@ -279,6 +279,9 @@ export function useVoiceSession({ onAction, onTranscriptDelta, onError, devMode 
     }
     setIsSpeaking(false);
   }, []);
+
+  // Stop and release all resources when the consuming component unmounts
+  useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { status, isSpeaking, isListening, vuLevel, start, stop, interrupt };
 }

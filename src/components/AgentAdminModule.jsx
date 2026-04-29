@@ -1661,7 +1661,7 @@ function LogsTab() {
 
   async function loadList() {
     setLoading(true);
-    const r = await apiFetch("/api/interaction-log/list");
+    const r = await apiFetch("/calc/interaction-log/list");
     setFiles(r.files || []);
     setLoading(false);
   }
@@ -1670,7 +1670,7 @@ function LogsTab() {
     if (selected === name) { setSelected(null); setFileData(null); return; }
     setSelected(name);
     setFileLoading(true);
-    const r = await apiFetch(`/api/interaction-log/file/${encodeURIComponent(name)}`);
+    const r = await apiFetch(`/calc/interaction-log/file/${encodeURIComponent(name)}`);
     setFileData(r.ok ? r.content : { error: r.error });
     setFileLoading(false);
   }

@@ -875,8 +875,8 @@ export default function PanelinChatPanel({
           </button>
         </div>
 
-        {/* ── Voice Mode ── */}
-        {voiceMode && (
+        {/* ── Voice Mode — always mounted so the WebRTC session survives mode toggles ── */}
+        <div style={{ display: voiceMode ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           <PanelinVoicePanel
             calcState={calcState}
             onAction={onChatAction}
@@ -885,7 +885,7 @@ export default function PanelinChatPanel({
             devMode={devMode}
             authHeader={authHeader}
           />
-        )}
+        </div>
 
         {/* ── Messages ── */}
         {!voiceMode && <div
