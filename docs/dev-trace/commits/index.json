@@ -10631,6 +10631,61 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "1599cdda68a6c0596c93a86ccaaad9c089f3a8aa",
+      "short_hash": "1599cdd",
+      "date": "2026-04-29",
+      "time": "03:03:31",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "voice",
+      "title": "surface real OpenAI error on session mint failure",
+      "subject": "fix(voice): surface real OpenAI error on session mint failure",
+      "files": [
+        "server/routes/agentVoice.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
+    },
+    {
+      "hash": "34a36b03212f08d0cd471d38cc444424196ddfd4",
+      "short_hash": "34a36b0",
+      "date": "2026-04-29",
+      "time": "03:06:55",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "config",
+      "title": "add driveQuoteFolderId + expand Cloud Run secrets sync script",
+      "subject": "feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script",
+      "files": [
+        "run_ml_cloud_run_setup.sh",
+        "server/config.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }

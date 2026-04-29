@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 08:04:51 — `97123b1` — feat(chat): structured request logging — latency, tokens, provider per turn
-- 2026-04-23 08:14:05 — `d221654` — feat(wizard): add Precio BMC / Web toggle above totals in solo_techo mode
 - 2026-04-23 08:18:00 — `3c93ff7` — feat: GCS quote storage + SuperAgent tool endpoint
 - 2026-04-23 08:45:33 — `db9b798` — fix(superAgent): log Anthropic errors to diagnose failure in production
 - 2026-04-23 08:47:35 — `aa6d84b` — feat(wolfboard): add local dev scripts + rebuild kb.json
@@ -222,3 +220,5 @@
 - 2026-04-29 02:01:03 — `00bafe7` — feat(agent-module): update Logs and Voz tabs with live provider status
 - 2026-04-29 02:22:26 — `7b6ff61` — fix(agent-module): correct LogsTab API paths /api → /calc
 - 2026-04-29 02:27:47 — `f4dd6b2` — feat(agent-module): enhance Logs and Voz tabs with live provider status
+- 2026-04-29 03:03:31 — `1599cdd` — fix(voice): surface real OpenAI error on session mint failure
+- 2026-04-29 03:06:55 — `34a36b0` — feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script

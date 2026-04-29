@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `7130acd` feat(nxt): wire ROADMAP.md as baseline source + add score history
 - `8a30cd2` feat(kb): Accessible Base compiler — AI-optimized KB auto-built on every commit
 - `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
 - `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
@@ -84,10 +83,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `d8f0421` feat(agent-module): add Logs, Voz tabs + live provider status in Config
 - `00bafe7` feat(agent-module): update Logs and Voz tabs with live provider status
 - `f4dd6b2` feat(agent-module): enhance Logs and Voz tabs with live provider status
+- `34a36b0` feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
 
 ## Fixes
 
-- `dec007b` fix: adjust positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `0f9ab57` fix: update positioning and dimensions in RoofPreview and RoofPlanDimensions components
 - `54a641f` fix(deps): npm audit fix — patch 7 vulns, remove 5 unused packages
 - `6b35de9` fix(deps): npm audit fix — upgrade anthropic SDK, nodemailer, googleapis, vite-plugin-pwa
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `eb48ea1` fix(kb): log GCS init error instead of silently swallowing
 - `702a669` fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set
 - `7b6ff61` fix(agent-module): correct LogsTab API paths /api → /calc
+- `1599cdd` fix(voice): surface real OpenAI error on session mint failure
 
 ## Documentation
 
