@@ -233,6 +233,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `dd92078` docs: autotrace sync feedback system
 - `a5aedaa` docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
 - `89ec748` docs: autotrace sync — trace commit a5aedaa (propagation loop close)
+- `75ae09a` docs: autotrace sync — trace commit 89ec748 (close propagation chain)
 
 ## Tests
 
