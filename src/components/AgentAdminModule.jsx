@@ -2033,17 +2033,86 @@ function ModelRoutingTab() {
     }
     const provider = primary.slice(0, slashIdx);
     const model = primary.slice(slashIdx + 1);
-    const r = await apiFetch("/api/agent/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        messages: [{ role: "user", content: "Test de routing: respondé 'ok' en una palabra." }],
-        aiProvider: provider,
-        aiModel: model,
-        calcState: {},
-      }),
-    });
-    setTestResults((r2) => ({ ...r2, [taskId]: r }));
-    setTesting((t) => ({ ...t, [taskId]: false }));
+    try {
+      const res = await fetch(`${apiBase()}/api/agent/chat`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Test de routing: respondé 'ok' en una palabra." }],
+          aiProvider: provider,
+          aiModel: model,
+          calcState: {},
+        }),
+      });
+
+      if (!res.ok) {
+        let errorText = `HTTP ${res.status}`;
+        try { errorText = (await res.text()) || errorText; } catch { /* keep default */ }
+        setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: errorText } }));
+        return;
+      }
+
+      if (!res.body) {
+        setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: "La respuesta SSE no contiene body" } }));
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let sawModelOutput = false;
+      let doneEvent = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+
+        for (const eventBlock of events) {
+          const dataLines = eventBlock
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim());
+
+          if (!dataLines.length) continue;
+          const dataText = dataLines.join("\n");
+          if (!dataText || dataText === "[DONE]") { doneEvent = true; continue; }
+
+          try {
+            const payload = JSON.parse(dataText);
+            if (payload?.type === "error") {
+              setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: payload.message || "Error del proveedor" } }));
+              reader.cancel();
+              return;
+            }
+            if (payload?.type === "done") doneEvent = true;
+            if (payload?.delta != null || payload?.content != null || payload?.type === "delta") sawModelOutput = true;
+          } catch {
+            if (dataText) sawModelOutput = true;
+          }
+
+          if (sawModelOutput || doneEvent) {
+            setTestResults((r) => ({ ...r, [taskId]: { ok: true, message: "Modelo respondió correctamente por SSE" } }));
+            reader.cancel();
+            return;
+          }
+        }
+      }
+
+      setTestResults((r) => ({
+        ...r,
+        [taskId]: doneEvent || sawModelOutput
+          ? { ok: true, message: "Modelo respondió correctamente por SSE" }
+          : { ok: false, error: "No se recibió ningún evento útil del stream SSE" },
+      }));
+    } catch (error) {
+      setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: error?.message || "Error al probar el modelo" } }));
+    } finally {
+      setTesting((t) => ({ ...t, [taskId]: false }));
+    }
   }
 
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(routing);
