@@ -2,8 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-23 06:43:32 — `38b4d45` — fix(docker): copy .npmrc before npm ci to resolve vite-plugin-pwa peer dep conflict
-- 2026-04-23 06:52:02 — `28ef700` — fix(docker): update .npmrc handling to resolve vite-plugin-pwa peer dependency conflict
 - 2026-04-23 06:53:14 — `8ccf8d8` — feat: add new JSON files for Admin Cotizaciones, CRM Operativo, KB, and Matriz Precios
 - 2026-04-23 07:12:28 — `db0c9ce` — feat: wire real calculator engine into quote-batch
 - 2026-04-23 07:20:09 — `28507ff` — fix(deps): patch HIGH vulns — vite-plugin-pwa@1.2.0 + serialize-javascript override
@@ -222,3 +220,5 @@
 - 2026-04-27 16:58:17 — `eb48ea1` — fix(kb): log GCS init error instead of silently swallowing
 - 2026-04-28 19:44:44 — `46b47d7` — feat(feedback): response review loop — Good/Correct/Comment across channels
 - 2026-04-28 19:44:51 — `dd92078` — docs: autotrace sync feedback system
+- 2026-04-28 23:53:04 — `bd76a72` — feat(pdf-layouts): add BMC PDF — Blueprint Técnico template
+- 2026-04-29 00:02:15 — `702a669` — fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set

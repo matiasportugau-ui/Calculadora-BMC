@@ -10284,6 +10284,76 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "bd76a72b89148ea77ba100aa3e4aca3104e02981",
+      "short_hash": "bd76a72",
+      "date": "2026-04-28",
+      "time": "23:53:04",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "pdf-layouts",
+      "title": "add BMC PDF — Blueprint Técnico template",
+      "subject": "feat(pdf-layouts): add BMC PDF — Blueprint Técnico template",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/dd92078.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-28.md",
+        "public/pdf-designs/F-custom-template.html",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/pdf-templates/bmc-pdf.js",
+        "src/pdf-templates/custom.js",
+        "src/pdf-templates/index.js",
+        "tests/pdf-quality.test.mjs"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": true,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "public",
+          "src",
+          "tests"
+        ]
+      }
+    },
+    {
+      "hash": "702a669b519a1abe5d91603cfec6ccdea16270ca",
+      "short_hash": "702a669",
+      "date": "2026-04-29",
+      "time": "00:02:15",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "pdf",
+      "title": "use standard headless args when CHROMIUM_EXECUTABLE_PATH is set",
+      "subject": "fix(pdf): use standard headless args when CHROMIUM_EXECUTABLE_PATH is set",
+      "files": [
+        "server/routes/pdf.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }
