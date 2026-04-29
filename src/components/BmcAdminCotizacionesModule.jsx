@@ -426,10 +426,6 @@ export default function BmcAdminCotizacionesModule() {
   // Canal pill colour helper
   const canalPill = (origen) => {
     if (!origen) return null;
-    const CANAL_COLORS = {
-      WA: ["#dcfce7", "#16a34a"], EM: ["#dbeafe", "#1d4ed8"],
-      CL: ["#fef9c3", "#854d0e"], LO: ["#f3e8ff", "#7c3aed"], LL: ["#ffe4e6", "#be123c"],
-    };
     const [bg, fg] = CANAL_COLORS[origen.toUpperCase()] || ["#f0f0f2", "#6e6e73"];
     return (
       <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 20, background: bg, color: fg, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
