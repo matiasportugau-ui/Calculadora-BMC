@@ -2204,7 +2204,13 @@ function AutoEvolutionTab() {
   const load = useCallback(async () => {
     setLoading(true);
     const r = await apiFetch("/api/agent/auto-evolution");
-    if (r.ok) { setDefs(r.defaults); setDraft({ ...r.config }); }
+    if (r.ok) {
+      setDefs(r.defaults);
+      setDraft({ ...r.config });
+      setMsg({ text: "", type: "success" });
+    } else {
+      setMsg({ text: r.error || "No se pudo cargar la configuración de auto-evolución.", type: "error" });
+    }
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
