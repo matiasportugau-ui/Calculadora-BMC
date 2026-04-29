@@ -3287,7 +3287,6 @@ export default function PanelinCalculadoraV3() {
 
   // ── Calculate results ──
   const results = useMemo(() => {
-    setListaPrecios(listaPrecios || "web"); // sync global LISTA_ACTIVA before any p() call
     const sc = scenario;
     try {
       if (sc === "presupuesto_libre") {
@@ -3479,7 +3478,7 @@ export default function PanelinCalculadoraV3() {
       results, panelLine, grandTotal,
       presupuestoLibre: scenarioDef_?.isLibre || false,
     });
-    navigator.clipboard.writeText(tsv).then(() => showToast("TSV copiado — pegá en Google Sheets"));
+    navigator.clipboard.writeText(tsv).then(() => showToast("TSV copiado — pegá en Google Sheets")).catch(() => showToast("No se pudo copiar. Copiá manualmente."));
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast]);
 
   const handlePdfEnriquecido = useCallback(async () => {
@@ -3624,7 +3623,7 @@ export default function PanelinCalculadoraV3() {
     } else if (isCompactLayout) {
       window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, "_blank");
     } else {
-      navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles"));
+      navigator.clipboard.writeText(txt).then(() => showToast("Copiado al portapapeles")).catch(() => showToast("No se pudo copiar. Copiá manualmente."));
     }
   };
 
