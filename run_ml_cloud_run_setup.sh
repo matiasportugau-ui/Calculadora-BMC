@@ -91,13 +91,33 @@ else
   PUBLIC_URL="${PUBLIC_BASE_URL:-$CLOUD_RUN_URL}"
 fi
 
-# ── Construir lista de env vars ──────────────────────────────────────────────
+# ── Construir lista de env vars y secret mounts ──────────────────────────────
+#
+# Las claves de alta sensibilidad migran a Google Secret Manager:
+#   - Si el secret existe en GSM → se monta vía --update-secrets (no aparece en
+#     env vars de Cloud Run, solo accesible vía secretmanager.secretAccessor).
+#   - Si el secret no existe → fallback a env var con warning. Provisioná los
+#     secrets una sola vez ejecutando ./scripts/provision-secrets.sh.
 
-# Usamos un array para evitar problemas con comas en valores
-declare -a PAIRS
+declare -a PAIRS         # KEY=VAL  para --update-env-vars
+declare -a SECRET_PAIRS  # KEY=secret-name:latest  para --update-secrets
 
+# Helper: si el secret existe en GSM lo agrega como mount; si no, fallback a env var.
+add_sensitive() {
+  local key="$1"
+  local val="$2"
+  [[ -z "$val" ]] && return 0
+  if gcloud secrets describe "$key" --project="$PROJECT_ID" >/dev/null 2>&1; then
+    SECRET_PAIRS+=("$key=$key:latest")
+    echo "🔒 $key → Secret Manager"
+  else
+    PAIRS+=("$key=$val")
+    echo "⚠️  $key → env var (no provisionado en GSM — corré ./scripts/provision-secrets.sh)"
+  fi
+}
+
+# ── Configuración pública / IDs (siempre como env vars) ──────────────────────
 PAIRS+=("ML_CLIENT_ID=$ML_CLIENT_ID")
-PAIRS+=("ML_CLIENT_SECRET=$ML_CLIENT_SECRET")
 PAIRS+=("PUBLIC_BASE_URL=$PUBLIC_URL")
 
 # ML_USE_PROD_REDIRECT only on the canonical prod service; staging/dev services
@@ -118,40 +138,31 @@ if [[ -n "$ML_TOKEN_GCS_BUCKET" ]]; then
   echo "→ GCS token store: bucket=$ML_TOKEN_GCS_BUCKET"
 fi
 
-# Encryption key (AES-256 para tokens GCS)
-if [[ -n "$TOKEN_ENCRYPTION_KEY" ]]; then
-  PAIRS+=("TOKEN_ENCRYPTION_KEY=$TOKEN_ENCRYPTION_KEY")
-  echo "→ TOKEN_ENCRYPTION_KEY: sincronizado (encriptación GCS)"
-fi
+# ── Secrets de alta sensibilidad ─────────────────────────────────────────────
+add_sensitive ML_CLIENT_SECRET "$ML_CLIENT_SECRET"
+add_sensitive TOKEN_ENCRYPTION_KEY "$TOKEN_ENCRYPTION_KEY"
+add_sensitive WEBHOOK_VERIFY_TOKEN "$WEBHOOK_VERIFY_TOKEN"
 
-# ML webhook
-if [[ -n "$WEBHOOK_VERIFY_TOKEN" ]]; then
-  PAIRS+=("WEBHOOK_VERIFY_TOKEN=$WEBHOOK_VERIFY_TOKEN")
-  echo "→ WEBHOOK_VERIFY_TOKEN: definido"
-fi
-
-# Auth
+# Auth (preferimos API_AUTH_TOKEN sobre API_KEY)
 if [[ -n "$API_AUTH_TOKEN" ]]; then
-  PAIRS+=("API_AUTH_TOKEN=$API_AUTH_TOKEN")
-  echo "→ API_AUTH_TOKEN: sincronizado"
+  add_sensitive API_AUTH_TOKEN "$API_AUTH_TOKEN"
 elif [[ -n "$API_KEY" ]]; then
-  PAIRS+=("API_KEY=$API_KEY")
-  echo "→ API_KEY: sincronizado"
+  add_sensitive API_KEY "$API_KEY"
 fi
 
-# AI providers
-[[ -n "$ANTHROPIC_API_KEY" ]] && { PAIRS+=("ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"); echo "→ ANTHROPIC_API_KEY: sincronizado"; }
-[[ -n "$OPENAI_API_KEY" ]]    && { PAIRS+=("OPENAI_API_KEY=$OPENAI_API_KEY"); echo "→ OPENAI_API_KEY: sincronizado"; }
+# AI providers (claves de proveedores LLM)
+add_sensitive ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+add_sensitive OPENAI_API_KEY "$OPENAI_API_KEY"
+add_sensitive GEMINI_API_KEY "$GEMINI_API_KEY"
+add_sensitive GROK_API_KEY "$GROK_API_KEY"
 [[ -n "$OPENAI_CHAT_MODEL" ]] && PAIRS+=("OPENAI_CHAT_MODEL=$OPENAI_CHAT_MODEL")
-[[ -n "$GEMINI_API_KEY" ]]    && { PAIRS+=("GEMINI_API_KEY=$GEMINI_API_KEY"); echo "→ GEMINI_API_KEY: sincronizado"; }
-[[ -n "$GROK_API_KEY" ]]      && { PAIRS+=("GROK_API_KEY=$GROK_API_KEY"); echo "→ GROK_API_KEY: sincronizado"; }
 
-# WhatsApp
+# WhatsApp (token de acceso es alta sensibilidad; verify/phone_id son IDs)
 if [[ -n "$WHATSAPP_VERIFY_TOKEN" ]]; then
-  PAIRS+=("WHATSAPP_VERIFY_TOKEN=$WHATSAPP_VERIFY_TOKEN")
-  PAIRS+=("WHATSAPP_ACCESS_TOKEN=$WHATSAPP_ACCESS_TOKEN")
+  add_sensitive WHATSAPP_VERIFY_TOKEN "$WHATSAPP_VERIFY_TOKEN"
+  add_sensitive WHATSAPP_ACCESS_TOKEN "$WHATSAPP_ACCESS_TOKEN"
   PAIRS+=("WHATSAPP_PHONE_NUMBER_ID=$WHATSAPP_PHONE_NUMBER_ID")
-  echo "→ WhatsApp (verify/access/phone_id): sincronizado"
+  echo "→ WhatsApp phone_id: env var"
 fi
 
 # Google Sheets
@@ -175,13 +186,17 @@ fi
 echo "→ Wolfboard CRM tabs: sincronizado"
 
 # ── Ejecutar update ──────────────────────────────────────────────────────────
-# Unir array con comas (gcloud requiere KEY=VAL,KEY=VAL)
+# Unir arrays con comas (gcloud requiere KEY=VAL,KEY=VAL)
 ENV_VARS=$(IFS=,; echo "${PAIRS[*]}")
+SECRETS=$(IFS=,; echo "${SECRET_PAIRS[*]}")
 
-gcloud run services update "$SERVICE_NAME" \
-  --region=us-central1 \
-  --update-env-vars="$ENV_VARS" \
-  --quiet
+declare -a UPDATE_ARGS
+UPDATE_ARGS+=(--region=us-central1)
+[[ -n "$ENV_VARS" ]] && UPDATE_ARGS+=(--update-env-vars="$ENV_VARS")
+[[ -n "$SECRETS" ]]  && UPDATE_ARGS+=(--update-secrets="$SECRETS")
+UPDATE_ARGS+=(--quiet)
+
+gcloud run services update "$SERVICE_NAME" "${UPDATE_ARGS[@]}"
 
 echo ""
 echo "[OK] Cloud Run actualizado — nueva revisión desplegando."
