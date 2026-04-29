@@ -1558,6 +1558,7 @@ function FeedbackTab() {
   const [loading, setLoading] = useState(true);
   const [chanFilter, setChanFilter] = useState("all");
   const [days, setDays] = useState(7);
+  const [reloadSeq, setReloadSeq] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -1573,7 +1574,7 @@ function FeedbackTab() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [days, chanFilter]);
+  }, [days, chanFilter, reloadSeq]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1606,7 +1607,7 @@ function FeedbackTab() {
           style={{ padding: "5px 10px", borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, color: C.text, background: C.white }}>
           {[7, 14, 30, 90].map((d) => <option key={d} value={d}>Últimos {d}d</option>)}
         </select>
-        <button onClick={load} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.white, fontSize: 12, cursor: "pointer" }}>↺</button>
+        <button onClick={() => setReloadSeq((v) => v + 1)} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.white, fontSize: 12, cursor: "pointer" }}>↺</button>
       </div>
 
       {/* Feed */}
