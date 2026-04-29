@@ -95,6 +95,41 @@ router.post("/interaction-log", (req, res) => {
   }
 });
 
+router.get("/interaction-log/list", (req, res) => {
+  try {
+    const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
+    if (!fs.existsSync(logsDir)) return res.json({ ok: true, files: [] });
+    const files = fs.readdirSync(logsDir)
+      .filter((f) => f.endsWith(".json"))
+      .sort()
+      .reverse()
+      .slice(0, 50)
+      .map((name) => {
+        const stat = fs.statSync(path.join(logsDir, name));
+        return { name, size: stat.size, mtime: stat.mtimeMs };
+      });
+    return res.json({ ok: true, files });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.get("/interaction-log/file/:name", (req, res) => {
+  try {
+    const name = path.basename(req.params.name);
+    if (!name.endsWith(".json") || !name.startsWith("interaction-")) {
+      return res.status(400).json({ ok: false, error: "Invalid filename" });
+    }
+    const logsDir = path.resolve(__dirname, "../../docs/team/calculator-logs");
+    const filePath = path.join(logsDir, name);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ ok: false, error: "Not found" });
+    const content = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return res.json({ ok: true, name, content });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ── PDF store (in-memory, TTL-based) ─────────────────────────────────────────
 
 const PDF_TTL_MS = 24 * 60 * 60 * 1000;

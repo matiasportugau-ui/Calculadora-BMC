@@ -1135,14 +1135,19 @@ function ConfigTab() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "success" });
+  const [providers, setProviders] = useState(null);
 
   async function load() {
     setLoading(true);
-    const r = await apiFetch("/api/agent/training-kb/score-config");
-    if (r.ok) {
-      setDefaults(r.defaults);
-      setDraft({ ...r.config });
+    const [scoreRes, provRes] = await Promise.all([
+      apiFetch("/api/agent/training-kb/score-config"),
+      apiFetch("/api/agent/ai-options"),
+    ]);
+    if (scoreRes.ok) {
+      setDefaults(scoreRes.defaults);
+      setDraft({ ...scoreRes.config });
     }
+    setProviders(provRes.providers || []);
     setLoading(false);
   }
 
@@ -1206,6 +1211,31 @@ function ConfigTab() {
       <div style={{ display: "flex", gap: 8 }}>
         <Btn onClick={reset}>Restaurar defaults</Btn>
         <Btn onClick={save} disabled={saving} variant="primary">{saving ? "Guardando…" : "Guardar"}</Btn>
+      </div>
+
+      {/* Providers */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 8 }}>Proveedores IA activos</div>
+        {providers === null ? (
+          <div style={{ fontSize: 12, color: C.sub }}>Cargando…</div>
+        ) : providers.length === 0 ? (
+          <div style={{ fontSize: 12, color: C.sub }}>Ningún proveedor configurado con API key.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {providers.map((p) => (
+              <div key={p.id} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🟢</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", fontFamily: C.ff }}>{p.label}</div>
+                  <div style={{ fontSize: 11, color: "#166534", fontFamily: "monospace" }}>
+                    default: {p.defaultModel}
+                    {p.models?.length > 1 && ` · ${p.models.length} modelos`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1621,6 +1651,184 @@ function FeedbackTab() {
   );
 }
 
+// ── LOGS TAB ─────────────────────────────────────────────────────────────────
+function LogsTab() {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [fileData, setFileData] = useState(null);
+  const [fileLoading, setFileLoading] = useState(false);
+
+  async function loadList() {
+    setLoading(true);
+    const r = await apiFetch("/api/interaction-log/list");
+    setFiles(r.files || []);
+    setLoading(false);
+  }
+
+  async function loadFile(name) {
+    if (selected === name) { setSelected(null); setFileData(null); return; }
+    setSelected(name);
+    setFileLoading(true);
+    const r = await apiFetch(`/api/interaction-log/file/${encodeURIComponent(name)}`);
+    setFileData(r.ok ? r.content : { error: r.error });
+    setFileLoading(false);
+  }
+
+  useEffect(() => { loadList(); }, []);
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return `${bytes}B`;
+    return `${(bytes / 1024).toFixed(1)}KB`;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, flex: 1 }}>
+          Logs de interacción guardados desde la calculadora (últimos 50).
+        </div>
+        <button onClick={loadList} style={{ padding: "5px 12px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, fontSize: 12, cursor: "pointer" }}>↺ Recargar</button>
+      </div>
+
+      {loading ? (
+        <div style={{ color: C.sub, fontSize: 13, padding: 16 }}>Cargando…</div>
+      ) : files.length === 0 ? (
+        <div style={{ padding: "40px 0", textAlign: "center", color: C.sub, fontSize: 13 }}>
+          Sin logs guardados.<br />
+          <span style={{ fontSize: 11 }}>Interactuá con la calculadora y usá el panel &quot;Log interacción&quot; para guardar.</span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {files.map((f) => (
+            <div key={f.name} style={{ border: `1px solid ${selected === f.name ? C.primary : C.border}`, borderRadius: 10, overflow: "hidden", background: C.surface }}>
+              <div
+                onClick={() => loadFile(f.name)}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", background: selected === f.name ? `${C.primary}0a` : "transparent" }}
+              >
+                <span style={{ fontSize: 16 }}>📄</span>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.ff }}>{f.name}</span>
+                <span style={{ fontSize: 11, color: C.sub }}>{fmtSize(f.size)}</span>
+                <span style={{ fontSize: 11, color: C.sub }}>{new Date(f.mtime).toLocaleString("es-UY")}</span>
+                <span style={{ fontSize: 12, color: selected === f.name ? C.primary : C.sub }}>{selected === f.name ? "▲" : "▼"}</span>
+              </div>
+              {selected === f.name && (
+                <div style={{ borderTop: `1px solid ${C.border}`, padding: 12 }}>
+                  {fileLoading ? (
+                    <div style={{ color: C.sub, fontSize: 12 }}>Cargando…</div>
+                  ) : (
+                    <pre style={{ margin: 0, fontSize: 11, color: C.text, overflowX: "auto", maxHeight: 320, fontFamily: "monospace", lineHeight: 1.5 }}>
+                      {JSON.stringify(fileData, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── VOICE TAB ─────────────────────────────────────────────────────────────────
+const VOICE_ACTIONS = [
+  "setScenario", "setLP", "setTecho", "setPared",
+  "setCamara", "setFlete", "setProyecto", "setWizardStep",
+  "setTechoZonas", "advanceWizard", "buildQuote",
+];
+
+function VoiceTab() {
+  const [providers, setProviders] = useState(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
+  async function loadProviders() {
+    const r = await apiFetch("/api/agent/ai-options");
+    setProviders(r.providers || []);
+  }
+
+  async function testSession() {
+    setTesting(true);
+    setTestResult(null);
+    const r = await apiFetch("/api/agent/voice/session", {
+      method: "POST",
+      body: JSON.stringify({ calcState: {}, devMode: false }),
+    });
+    setTestResult(r);
+    setTesting(false);
+  }
+
+  useEffect(() => { loadProviders(); }, []);
+
+  const voiceAvailable = providers?.some((p) => p.id === "openai");
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 600 }}>
+      {/* Status */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 10 }}>Estado del módulo de voz</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: 20 }}>{voiceAvailable ? "🟢" : "🔴"}</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: C.ff }}>
+              OpenAI Realtime
+            </div>
+            <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff }}>
+              {voiceAvailable
+                ? "OPENAI_API_KEY configurada — sesiones de voz disponibles"
+                : "OPENAI_API_KEY no configurada — voz no disponible"}
+            </div>
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, lineHeight: 1.6 }}>
+          Modelo: <code>gpt-4o-realtime-preview</code> · WebRTC peer-to-peer · Token efímero por sesión<br />
+          Rate limit: 3 sesiones/min por IP · 120 acciones/min por IP
+        </div>
+      </div>
+
+      {/* Available actions */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 10 }}>Acciones disponibles</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {VOICE_ACTIONS.map((a) => (
+            <span key={a} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: `${C.primary}18`, color: C.primary, fontFamily: "monospace", fontWeight: 600 }}>{a}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Test session */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.ff, marginBottom: 6 }}>Test de sesión</div>
+        <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, marginBottom: 12, lineHeight: 1.5 }}>
+          Mintea un token efímero de OpenAI Realtime. Requiere OPENAI_API_KEY en el servidor.
+        </div>
+        <Btn onClick={testSession} disabled={testing || !voiceAvailable} variant="primary">
+          {testing ? "Minteando…" : "Testear sesión de voz"}
+        </Btn>
+        {testResult && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: testResult.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${testResult.ok ? "#bbf7d0" : "#fecaca"}` }}>
+            {testResult.ok ? (
+              <div style={{ fontSize: 12, color: "#166534", fontFamily: C.ff }}>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Sesión creada correctamente</div>
+                <div>session_id: <code>{testResult.session_id}</code></div>
+                <div>model: <code>{testResult.model}</code></div>
+                {testResult.expires_at && (
+                  <div>expira: {new Date(testResult.expires_at * 1000).toLocaleString("es-UY")}</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: "#991b1b", fontFamily: C.ff }}>
+                <span style={{ fontWeight: 700 }}>Error: </span>{testResult.error}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN MODULE ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: "kb", label: "Base de conocimiento", icon: "📚" },
@@ -1632,6 +1840,8 @@ const TABS = [
   { id: "health", label: "Salud KB", icon: "🩺" },
   { id: "autolearn", label: "Cola IA", icon: "🧠" },
   { id: "conflicts", label: "Conflictos", icon: "⚡" },
+  { id: "logs", label: "Logs", icon: "📋" },
+  { id: "voice", label: "Voz", icon: "🎙️" },
   { id: "config", label: "Configuración", icon: "⚙️" },
 ];
 
@@ -1716,6 +1926,8 @@ export default function AgentAdminModule() {
           {tab === "health" && <HealthTab />}
           {tab === "autolearn" && <AutoLearnTab />}
           {tab === "conflicts" && <ConflictsTab />}
+          {tab === "logs" && <LogsTab />}
+          {tab === "voice" && <VoiceTab />}
           {tab === "config" && <ConfigTab />}
         </main>
       </div>
