@@ -106,6 +106,8 @@ export const config = {
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
+  /** Drive folder for uploaded quote HTML files (server/lib/driveUpload.js) */
+  driveQuoteFolderId: process.env.DRIVE_QUOTE_FOLDER_ID || "",
   /** Allowed CORS origins — comma-separated. Defaults to Vercel prod + local dev. */
   corsOrigins: (
     process.env.CORS_ORIGIN
