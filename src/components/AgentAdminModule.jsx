@@ -1778,12 +1778,17 @@ function VoiceTab() {
   async function testSession() {
     setTesting(true);
     setTestResult(null);
-    const r = await apiFetch("/api/agent/voice/session", {
-      method: "POST",
-      body: JSON.stringify({ calcState: {}, devMode: false }),
-    });
-    setTestResult(r);
-    setTesting(false);
+    try {
+      const r = await apiFetch("/api/agent/voice/session", {
+        method: "POST",
+        body: JSON.stringify({ calcState: {}, devMode: false }),
+      });
+      setTestResult(r);
+    } catch (err) {
+      setTestResult({ ok: false, error: err?.message || "Network error" });
+    } finally {
+      setTesting(false);
+    }
     loadErrors();
   }
 

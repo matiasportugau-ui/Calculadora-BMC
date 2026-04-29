@@ -44,10 +44,14 @@ done
 
 # AI providers
 load_env_key ANTHROPIC_API_KEY
+load_env_key ANTHROPIC_CHAT_MODEL
 load_env_key OPENAI_API_KEY
 load_env_key OPENAI_CHAT_MODEL
+load_env_key OPENAI_REALTIME_MODEL
 load_env_key GEMINI_API_KEY
+load_env_key GEMINI_CHAT_MODEL
 load_env_key GROK_API_KEY
+load_env_key GROK_CHAT_MODEL
 
 # Auth / Webhooks
 load_env_key WEBHOOK_VERIFY_TOKEN
@@ -66,14 +70,33 @@ load_env_key BMC_PAGOS_SHEET_ID
 load_env_key BMC_CALENDARIO_SHEET_ID
 load_env_key BMC_VENTAS_SHEET_ID
 load_env_key BMC_STOCK_SHEET_ID
+load_env_key BMC_MATRIZ_SHEET_ID
 
-# Drive
+# Drive / GCS
 load_env_key DRIVE_QUOTE_FOLDER_ID
+load_env_key GCS_QUOTES_BUCKET
+load_env_key TRANSPORTISTA_GCS_BUCKET
 
 # Wolfboard
 load_env_key WOLFB_ADMIN_SHEET_ID
 load_env_key WOLFB_CRM_ENVIADOS_TAB
 load_env_key WOLFB_CRM_MAIN_TAB
+
+# Shopify
+load_env_key SHOPIFY_CLIENT_ID
+load_env_key SHOPIFY_CLIENT_SECRET
+load_env_key SHOPIFY_WEBHOOK_SECRET
+load_env_key SHOPIFY_SCOPES
+load_env_key SHOPIFY_QUESTIONS_SHEET_TAB
+
+# Postgres / CORS / cockpit / RBAC / analytics / followup / PDF
+load_env_key DATABASE_URL
+load_env_key CORS_ORIGIN
+load_env_key COCKPIT_TOKEN_ALLOWED_ORIGINS
+load_env_key PANELIN_SERVICE_DEFAULT_ROLE
+load_env_key AI_KNOWLEDGE_EVENTS_LOG
+load_env_key FOLLOWUP_STORE_PATH
+load_env_key CHROMIUM_EXECUTABLE_PATH
 
 if [[ -z "$ML_CLIENT_ID" || -z "$ML_CLIENT_SECRET" ]]; then
   echo "Error: .env debe tener ML_CLIENT_ID y ML_CLIENT_SECRET"
@@ -155,7 +178,11 @@ add_sensitive ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
 add_sensitive OPENAI_API_KEY "$OPENAI_API_KEY"
 add_sensitive GEMINI_API_KEY "$GEMINI_API_KEY"
 add_sensitive GROK_API_KEY "$GROK_API_KEY"
-[[ -n "$OPENAI_CHAT_MODEL" ]] && PAIRS+=("OPENAI_CHAT_MODEL=$OPENAI_CHAT_MODEL")
+[[ -n "$OPENAI_CHAT_MODEL" ]]     && PAIRS+=("OPENAI_CHAT_MODEL=$OPENAI_CHAT_MODEL")
+[[ -n "$OPENAI_REALTIME_MODEL" ]] && PAIRS+=("OPENAI_REALTIME_MODEL=$OPENAI_REALTIME_MODEL")
+[[ -n "$ANTHROPIC_CHAT_MODEL" ]]  && PAIRS+=("ANTHROPIC_CHAT_MODEL=$ANTHROPIC_CHAT_MODEL")
+[[ -n "$GEMINI_CHAT_MODEL" ]]     && PAIRS+=("GEMINI_CHAT_MODEL=$GEMINI_CHAT_MODEL")
+[[ -n "$GROK_CHAT_MODEL" ]]       && PAIRS+=("GROK_CHAT_MODEL=$GROK_CHAT_MODEL")
 
 # WhatsApp (token de acceso es alta sensibilidad; verify/phone_id son IDs)
 if [[ -n "$WHATSAPP_VERIFY_TOKEN" ]]; then
@@ -176,14 +203,35 @@ if [[ -n "$BMC_SHEET_ID" ]]; then
   echo "→ Google Sheets (5 workbooks): sincronizado"
 fi
 
-# Drive
-[[ -n "$DRIVE_QUOTE_FOLDER_ID" ]] && { PAIRS+=("DRIVE_QUOTE_FOLDER_ID=$DRIVE_QUOTE_FOLDER_ID"); echo "→ DRIVE_QUOTE_FOLDER_ID: sincronizado"; }
+# Drive / GCS / MATRIZ
+[[ -n "$DRIVE_QUOTE_FOLDER_ID" ]]    && { PAIRS+=("DRIVE_QUOTE_FOLDER_ID=$DRIVE_QUOTE_FOLDER_ID"); echo "→ DRIVE_QUOTE_FOLDER_ID: sincronizado"; }
+[[ -n "$GCS_QUOTES_BUCKET" ]]        && PAIRS+=("GCS_QUOTES_BUCKET=$GCS_QUOTES_BUCKET")
+[[ -n "$TRANSPORTISTA_GCS_BUCKET" ]] && PAIRS+=("TRANSPORTISTA_GCS_BUCKET=$TRANSPORTISTA_GCS_BUCKET")
+[[ -n "$BMC_MATRIZ_SHEET_ID" ]]      && PAIRS+=("BMC_MATRIZ_SHEET_ID=$BMC_MATRIZ_SHEET_ID")
 
 # Wolfboard
 [[ -n "$WOLFB_ADMIN_SHEET_ID" ]]   && PAIRS+=("WOLFB_ADMIN_SHEET_ID=$WOLFB_ADMIN_SHEET_ID")
 [[ -n "$WOLFB_CRM_ENVIADOS_TAB" ]] && PAIRS+=("WOLFB_CRM_ENVIADOS_TAB=$WOLFB_CRM_ENVIADOS_TAB")
 [[ -n "$WOLFB_CRM_MAIN_TAB" ]]     && PAIRS+=("WOLFB_CRM_MAIN_TAB=$WOLFB_CRM_MAIN_TAB")
 echo "→ Wolfboard CRM tabs: sincronizado"
+
+# Shopify (CLIENT_ID + SCOPES + sheet tab → env vars; secrets → GSM/env)
+[[ -n "$SHOPIFY_CLIENT_ID" ]]            && PAIRS+=("SHOPIFY_CLIENT_ID=$SHOPIFY_CLIENT_ID")
+[[ -n "$SHOPIFY_SCOPES" ]]               && PAIRS+=("SHOPIFY_SCOPES=$SHOPIFY_SCOPES")
+[[ -n "$SHOPIFY_QUESTIONS_SHEET_TAB" ]]  && PAIRS+=("SHOPIFY_QUESTIONS_SHEET_TAB=$SHOPIFY_QUESTIONS_SHEET_TAB")
+add_sensitive SHOPIFY_CLIENT_SECRET   "$SHOPIFY_CLIENT_SECRET"
+add_sensitive SHOPIFY_WEBHOOK_SECRET  "$SHOPIFY_WEBHOOK_SECRET"
+
+# Postgres (Modo Transportista) — DATABASE_URL contains creds → sensitive
+add_sensitive DATABASE_URL "$DATABASE_URL"
+
+# CORS / cockpit origins / RBAC / analytics / followup / PDF
+[[ -n "$CORS_ORIGIN" ]]                  && PAIRS+=("CORS_ORIGIN=$CORS_ORIGIN")
+[[ -n "$COCKPIT_TOKEN_ALLOWED_ORIGINS" ]] && PAIRS+=("COCKPIT_TOKEN_ALLOWED_ORIGINS=$COCKPIT_TOKEN_ALLOWED_ORIGINS")
+[[ -n "$PANELIN_SERVICE_DEFAULT_ROLE" ]] && PAIRS+=("PANELIN_SERVICE_DEFAULT_ROLE=$PANELIN_SERVICE_DEFAULT_ROLE")
+[[ -n "$AI_KNOWLEDGE_EVENTS_LOG" ]]      && PAIRS+=("AI_KNOWLEDGE_EVENTS_LOG=$AI_KNOWLEDGE_EVENTS_LOG")
+[[ -n "$FOLLOWUP_STORE_PATH" ]]          && PAIRS+=("FOLLOWUP_STORE_PATH=$FOLLOWUP_STORE_PATH")
+[[ -n "$CHROMIUM_EXECUTABLE_PATH" ]]     && PAIRS+=("CHROMIUM_EXECUTABLE_PATH=$CHROMIUM_EXECUTABLE_PATH")
 
 # ── Ejecutar update ──────────────────────────────────────────────────────────
 # Unir arrays con comas (gcloud requiere KEY=VAL,KEY=VAL)

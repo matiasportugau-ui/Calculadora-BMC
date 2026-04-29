@@ -10,6 +10,7 @@ import { config } from "./config.js";
 import { buildAgentCapabilitiesManifest } from "./agentCapabilitiesManifest.js";
 import { syncUnansweredQuestions as syncMLCRM } from "./ml-crm-sync.js";
 import { autoAnswerPipeline } from "./lib/mlAutoAnswer.js";
+import { getGoogleAuthClient } from "./lib/googleAuthCache.js";
 import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
@@ -155,10 +156,8 @@ app.get("/health", asyncHandler(async (req, res) => {
     try {
       const diagResult = await Promise.race([
         (async () => {
-          const auth = new google.auth.GoogleAuth({
-            scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-          });
-          const client = google.sheets({ version: "v4", auth });
+          const authClient = await getGoogleAuthClient("https://www.googleapis.com/auth/spreadsheets.readonly");
+          const client = google.sheets({ version: "v4", auth: authClient });
           const meta = await client.spreadsheets.get({
             spreadsheetId: config.bmcSheetId,
             fields: "sheets.properties.title",

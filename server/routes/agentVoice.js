@@ -170,6 +170,7 @@ router.post("/agent/voice/session", sessionLimiter, requireAuth, async (req, res
         tool_choice: "auto",
         modalities: ["text", "audio"],
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {
@@ -177,7 +178,9 @@ router.post("/agent/voice/session", sessionLimiter, requireAuth, async (req, res
       req.log?.warn({ status: response.status, body: errText }, "OpenAI Realtime session mint failed");
       let detail = "";
       try { detail = JSON.parse(errText)?.error?.message || errText; } catch { detail = errText; }
-      // Redact reflected system prompt so the error log never persists internal instructions
+      // Best-effort redaction of any reflected system prompt before persisting.
+      // Note: the regex doesn't handle escaped quotes (\") inside the value — this is a
+      // defensive measure for the common case (OpenAI rarely reflects values verbatim).
       const safeDetail = (detail || errText || "")
         .replace(/"instructions"\s*:\s*"[^"]*"/g, '"instructions":"[redacted]"');
       recordVoiceError({

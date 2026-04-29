@@ -25,6 +25,7 @@ import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 import { addTrainingEntry } from "../lib/trainingKB.js";
+import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -268,8 +269,7 @@ function mapCrmRowToBmc(row) {
 }
 
 async function getFirstSheetName(sheetId) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_READ);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const meta = await withSheetsReadRetry("spreadsheets.get", () =>
     sheets.spreadsheets.get({ spreadsheetId: sheetId })
@@ -285,8 +285,7 @@ async function getSheetNames(sheetId) {
     const hit = sheetsCacheGet(cacheKey);
     if (hit) return [...hit];
   }
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_READ);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const meta = await withSheetsReadRetry("spreadsheets.get", () =>
     sheets.spreadsheets.get({ spreadsheetId: sheetId })
@@ -433,10 +432,7 @@ function mapStockEcommerceToCanonical(row) {
 
 async function getSheetData(sheetId, sheetName, useWrite = false, options = {}) {
   const { schema, headerRowOffset = 0 } = options;
-  const auth = new google.auth.GoogleAuth({
-    scopes: [useWrite ? SCOPE_WRITE : SCOPE_READ],
-  });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(useWrite ? SCOPE_WRITE : SCOPE_READ);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const range =
     headerRowOffset > 0
@@ -498,8 +494,7 @@ async function getProximasEntregas(sheetId, schema) {
 async function handleMarcarEntregado(sheetId, body) {
   const { cotizacionId, comentarios = "" } = body || {};
   if (!cotizacionId) throw new Error("cotizacionId required");
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const { rows: masterRows } = await getSheetData(sheetId, "Master_Cotizaciones");
@@ -646,8 +641,7 @@ function ventasTabRangeA1(tabName) {
  */
 async function fetchVentasRowsAllTabsBatched(sheetId, tabNames) {
   if (!tabNames.length) return [];
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_READ);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const CHUNK = 40;
@@ -763,8 +757,7 @@ async function appendAuditLog(sheets, sheetId, action, rowId, oldVal, newVal, sh
 }
 
 async function handleCreateCotizacion(sheetId, body) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const newId = "COT-" + Date.now();
@@ -811,8 +804,7 @@ async function handleCreateCotizacion(sheetId, body) {
 }
 
 async function handleUpdateCotizacion(sheetId, id, body) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   // Headers start at row 3 (headerRowOffset: 2)
@@ -866,8 +858,7 @@ async function handleUpdateCotizacion(sheetId, id, body) {
 }
 
 async function handleCreatePago(pagoSheetId, mainSheetId, body) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const tabName = await getFirstSheetName(pagoSheetId);
@@ -922,8 +913,7 @@ async function handleCreatePago(pagoSheetId, mainSheetId, body) {
 }
 
 async function handleUpdatePago(pagoSheetId, mainSheetId, id, body) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const tabName = await getFirstSheetName(pagoSheetId);
@@ -975,8 +965,7 @@ async function handleUpdatePago(pagoSheetId, mainSheetId, id, body) {
 }
 
 async function handleCreateVenta(ventasSheetId, body) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const tabNames = await getSheetNames(ventasSheetId);
@@ -1046,8 +1035,7 @@ function formatIsoDateToDdMmYyyy(iso) {
 }
 
 async function getSheetTabTitleByGid(spreadsheetId, gid) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const meta = await withSheetsReadRetry("spreadsheets.get", () =>
     sheets.spreadsheets.get({ spreadsheetId })
@@ -1075,8 +1063,7 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
       ? ""
       : formatIsoDateToDdMmYyyy(fechaEntrega);
 
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
   const safeTab = String(tabTitle).replace(/'/g, "''");
   const range = `'${safeTab}'!G${row1Based}`;
@@ -1093,8 +1080,7 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
 }
 
 async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_WRITE] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const sheetName = await getFirstSheetName(stockSheetId);
@@ -1192,8 +1178,7 @@ const MATRIZ_TAB_COLUMNS = {
 
 async function buildPlanillaDesdeMatriz(matrizSheetId) {
   const { getPathForMatrizSku } = await import("../../src/data/matrizPreciosMapping.js");
-  const auth = new google.auth.GoogleAuth({ scopes: [SCOPE_READ] });
-  const authClient = await auth.getClient();
+  const authClient = await getGoogleAuthClient(SCOPE_READ);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
   const approvedTabs = Object.keys(MATRIZ_TAB_COLUMNS);
@@ -2047,7 +2032,7 @@ export default function createBmcDashboardRouter(config) {
     }
   });
 
-  router.patch("/stock/:codigo", async (req, res) => {
+  router.patch("/stock/:codigo", requireCrmCockpitAuth, async (req, res) => {
     if (!checkStockAvailable(config)) return noConfig(res);
     try {
       const result = await handleUpdateStock(config.bmcStockSheetId, sheetId, req.params.codigo, req.body || {});
@@ -2894,7 +2879,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           valueInputOption: "USER_ENTERED",
           requestBody: { values: [[sentAt]] },
         });
-        return res.json({ ok: true, channel: "whatsapp", sentAt, wa });
+        return res.json({ ok: true, channel: "whatsapp", questionId: null, sentAt, wa });
       }
 
       return res.status(400).json({
@@ -2903,6 +2888,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         origen,
       });
     } catch (e) {
+      req.log?.error({ err: e }, "crm/cockpit/send-approved failed");
       return res.status(500).json({ ok: false, error: e.message });
     }
   }
@@ -2933,6 +2919,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
       return res.json({ ok: true, items });
     } catch (e) {
+      req.log?.error({ err: e }, "crm/cockpit/ml-queue failed");
       return res.status(500).json({ ok: false, error: e.message });
     }
   });
@@ -2958,6 +2945,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       }
       return res.json({ ok: true, items });
     } catch (e) {
+      req.log?.error({ err: e }, "crm/cockpit/wa-queue failed");
       return res.status(500).json({ ok: false, error: e.message });
     }
   });

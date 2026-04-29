@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 00:03:07 — `c811945` — docs(team): align ROADMAP smoke with PROJECT-STATE Run 2.1 (suggest-only 503)
 - 2026-04-24 00:03:26 — `d33a49c` — chore(dev-trace): record AUTOTRACE for docs ROADMAP smoke alignment (c811945)
 - 2026-04-24 00:03:32 — `c7cd9a3` — chore(dev-trace): record AUTOTRACE for dev-trace commit d33a49c
 - 2026-04-24 00:07:13 — `47957df` — feat(panelin-internal): RBAC + invoke + tool catalog + orchestrator runbook
@@ -222,3 +221,4 @@
 - 2026-04-29 04:06:00 — `a47cd9a` — chore: update kb.json timestamp and build_ms value
 - 2026-04-29 04:07:22 — `63c85d0` — fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
 - 2026-04-29 04:24:30 — `36df0f5` — feat(deploy): graceful Secret Manager migration for high-sensitivity keys
+- 2026-04-29 04:39:09 — `7090459` — chore: update drive upload functionality and related tests

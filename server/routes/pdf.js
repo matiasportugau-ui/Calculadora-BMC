@@ -25,7 +25,7 @@ export function createPdfRouter() {
     const { html, filename = "cotizacion.pdf" } = req.body || {};
 
     if (!html || typeof html !== "string") {
-      return res.status(400).json({ error: "body.html (string) is required" });
+      return res.status(400).json({ ok: false, error: "body.html (string) is required" });
     }
 
     let browser;
@@ -43,7 +43,7 @@ export function createPdfRouter() {
       console.info("[pdf] chromium.args:", JSON.stringify(chromium.args));
 
       if (!existsSync(executablePath)) {
-        return res.status(503).json({ error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
+        return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable", detail: `binary not found at ${executablePath}` });
       }
 
       // Ensure executable — @sparticuz decompresses but may not chmod in all envs
@@ -124,7 +124,7 @@ export function createPdfRouter() {
 
     } catch (err) {
       console.error("[pdf/generate] error:", err.code, err.message?.slice(0, 200));
-      return res.status(503).json({ error: "pdf_renderer_unavailable", detail: err.message?.slice(0, 120) });
+      return res.status(503).json({ ok: false, error: "pdf_renderer_unavailable", detail: err.message?.slice(0, 120) });
     } finally {
       await browser?.close().catch(() => {});
     }

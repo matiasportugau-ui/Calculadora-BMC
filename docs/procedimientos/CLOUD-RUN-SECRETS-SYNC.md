@@ -25,12 +25,15 @@ El script lee directamente de `.env` y publica como `--update-env-vars`. Grupos 
 | Grupo | Variables | Notas |
 |-------|-----------|-------|
 | MercadoLibre | `ML_*` (incluye `ML_TOKEN_GCS_BUCKET`), `PUBLIC_BASE_URL` | OAuth + token persistido en GCS |
-| AI providers | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL`, `GEMINI_API_KEY`, `GROK_API_KEY` | Chat + voz Realtime |
+| AI providers | `ANTHROPIC_API_KEY`, `ANTHROPIC_CHAT_MODEL`, `OPENAI_API_KEY`, `OPENAI_CHAT_MODEL`, `OPENAI_REALTIME_MODEL`, `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GROK_API_KEY`, `GROK_CHAT_MODEL` | Chat + voz Realtime |
 | Auth / webhooks | `API_AUTH_TOKEN`, `API_KEY`, `WEBHOOK_VERIFY_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | Bridge WhatsApp + bearer interno |
-| Sheets | `BMC_SHEET_ID`, `BMC_SHEET_SCHEMA`, `BMC_PAGOS_SHEET_ID`, `BMC_CALENDARIO_SHEET_ID`, `BMC_VENTAS_SHEET_ID`, `BMC_STOCK_SHEET_ID`, `WOLFB_*` | CRM operativo + Wolfboard |
-| Drive | `DRIVE_QUOTE_FOLDER_ID` | Mirror de cotizaciones HTML (commit 34a36b0) |
+| Sheets | `BMC_SHEET_ID`, `BMC_SHEET_SCHEMA`, `BMC_PAGOS_SHEET_ID`, `BMC_CALENDARIO_SHEET_ID`, `BMC_VENTAS_SHEET_ID`, `BMC_STOCK_SHEET_ID`, `BMC_MATRIZ_SHEET_ID`, `WOLFB_*` | CRM operativo + MATRIZ + Wolfboard |
+| Drive / GCS | `DRIVE_QUOTE_FOLDER_ID`, `GCS_QUOTES_BUCKET`, `TRANSPORTISTA_GCS_BUCKET` | Mirror Drive + cotizaciones HTML + evidencias firmadas |
+| Shopify | `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` (GSM), `SHOPIFY_WEBHOOK_SECRET` (GSM), `SHOPIFY_SCOPES`, `SHOPIFY_QUESTIONS_SHEET_TAB` | OAuth + webhook |
+| Postgres | `DATABASE_URL` (GSM) | Modo Transportista (viajes/eventos/outbox) |
+| Operación | `CORS_ORIGIN`, `COCKPIT_TOKEN_ALLOWED_ORIGINS`, `PANELIN_SERVICE_DEFAULT_ROLE`, `AI_KNOWLEDGE_EVENTS_LOG`, `FOLLOWUP_STORE_PATH`, `CHROMIUM_EXECUTABLE_PATH` | CORS, RBAC, analytics, followup store, PDF runtime |
 
-Para ver la lista exacta de claves cargadas, mirar las líneas `load_env_key …` del script. Las claves `GCS_QUOTES_BUCKET`, `TRANSPORTISTA_GCS_BUCKET`, `DATABASE_URL` **no están en este script** — sincronizarlas con `gcloud run services update` manualmente o ampliar el script si se vuelven recurrentes.
+Para ver la lista exacta de claves cargadas, mirar las líneas `load_env_key …` del script. `WHATSAPP_APP_SECRET` se mantiene fuera del script y debe provisionarse vía `scripts/provision-secrets.sh` + `--update-secrets`.
 
 ## Cómo ejecutarlo
 

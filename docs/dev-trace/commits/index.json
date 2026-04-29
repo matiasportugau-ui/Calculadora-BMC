@@ -10898,6 +10898,56 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "709045941c75b1a5c35c2e2386bd1bf3e612f4d9",
+      "short_hash": "7090459",
+      "date": "2026-04-29",
+      "time": "04:39:09",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update drive upload functionality and related tests",
+      "subject": "chore: update drive upload functionality and related tests",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/36df0f5.md",
+        "docs/dev-trace/commits/2026/04/3f972eb.md",
+        "docs/dev-trace/commits/2026/04/52c66bc.md",
+        "docs/dev-trace/commits/2026/04/63c85d0.md",
+        "docs/dev-trace/commits/2026/04/a47cd9a.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "docs/procedimientos/CLOUD-RUN-SECRETS-SYNC.md",
+        "docs/team/ML-CM1-VERIFICATION-CHECKLIST.md",
+        "server/lib/driveUpload.js",
+        "server/lib/voiceErrorLog.js",
+        "server/routes/agentVoice.js",
+        "server/routes/calc.js",
+        "server/routes/superAgent.js",
+        "server/routes/wolfboard.js",
+        "src/components/AgentAdminModule.jsx",
+        "src/hooks/useVoiceSession.js"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }
