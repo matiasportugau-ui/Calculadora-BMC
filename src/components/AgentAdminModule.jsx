@@ -1933,6 +1933,69 @@ function FallbackChain({ slots }) {
   );
 }
 
+/**
+ * Reads the first meaningful SSE event from a ReadableStream reader obtained
+ * from an `application/x-ndjson` or `text/event-stream` fetch response.
+ *
+ * Handles all recognised event types (`delta`, `content`, `done`, `error`) and
+ * correctly flushes any partial data that remains in the internal buffer when
+ * the stream ends (i.e. when `reader.read()` returns `{ done: true }`).
+ *
+ * @param {ReadableStreamDefaultReader<Uint8Array>} reader
+ * @returns {Promise<{ ok: boolean, message?: string, error?: string }>}
+ */
+async function readFirstSSEEvent(reader) {
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let sawModelOutput = false;
+  let doneEvent = false;
+
+  function parseEventBlock(block) {
+    const dataLines = block
+      .split("\n")
+      .filter((l) => l.startsWith("data:"))
+      .map((l) => l.slice(5).trim());
+    if (!dataLines.length) return null;
+    const dataText = dataLines.join("\n");
+    if (!dataText || dataText === "[DONE]") return { type: "done" };
+    try {
+      const payload = JSON.parse(dataText);
+      if (payload?.type === "error") return { type: "error", message: payload.message || "Error del proveedor" };
+      if (payload?.type === "done") return { type: "done" };
+      if (payload?.delta != null || payload?.content != null || payload?.type === "delta") return { type: "output" };
+    } catch {
+      return { type: "output" };
+    }
+    return null;
+  }
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      // When done, flush any bytes still held by the decoder; otherwise stream normally.
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+      const parts = buffer.split("\n\n");
+      // When done, process ALL splits (including the last partial block that lacks a
+      // trailing "\n\n"). When not done, keep the last partial chunk in buffer.
+      buffer = done ? "" : (parts.pop() ?? "");
+      for (const block of parts) {
+        const result = parseEventBlock(block);
+        if (result?.type === "error") return { ok: false, error: result.message };
+        if (result?.type === "done") doneEvent = true;
+        if (result?.type === "output") sawModelOutput = true;
+        if (sawModelOutput || doneEvent) return { ok: true, message: "Modelo respondió correctamente por SSE" };
+      }
+      if (done) break;
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+
+  return doneEvent || sawModelOutput
+    ? { ok: true, message: "Modelo respondió correctamente por SSE" }
+    : { ok: false, error: "No se recibió ningún evento útil del stream SSE" };
+}
+
 function ModelRoutingTab() {
   const [routing, setRouting]         = useState({});
   const [catalog, setCatalog]         = useState([]);
@@ -2057,57 +2120,8 @@ function ModelRoutingTab() {
         return;
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let sawModelOutput = false;
-      let doneEvent = false;
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split("\n\n");
-        buffer = events.pop() || "";
-
-        for (const eventBlock of events) {
-          const dataLines = eventBlock
-            .split("\n")
-            .filter((line) => line.startsWith("data:"))
-            .map((line) => line.slice(5).trim());
-
-          if (!dataLines.length) continue;
-          const dataText = dataLines.join("\n");
-          if (!dataText || dataText === "[DONE]") { doneEvent = true; continue; }
-
-          try {
-            const payload = JSON.parse(dataText);
-            if (payload?.type === "error") {
-              setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: payload.message || "Error del proveedor" } }));
-              reader.cancel();
-              return;
-            }
-            if (payload?.type === "done") doneEvent = true;
-            if (payload?.delta != null || payload?.content != null || payload?.type === "delta") sawModelOutput = true;
-          } catch {
-            if (dataText) sawModelOutput = true;
-          }
-
-          if (sawModelOutput || doneEvent) {
-            setTestResults((r) => ({ ...r, [taskId]: { ok: true, message: "Modelo respondió correctamente por SSE" } }));
-            reader.cancel();
-            return;
-          }
-        }
-      }
-
-      setTestResults((r) => ({
-        ...r,
-        [taskId]: doneEvent || sawModelOutput
-          ? { ok: true, message: "Modelo respondió correctamente por SSE" }
-          : { ok: false, error: "No se recibió ningún evento útil del stream SSE" },
-      }));
+      const result = await readFirstSSEEvent(res.body.getReader());
+      setTestResults((r) => ({ ...r, [taskId]: result }));
     } catch (error) {
       setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: error?.message || "Error al probar el modelo" } }));
     } finally {
