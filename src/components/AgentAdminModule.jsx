@@ -2036,7 +2036,7 @@ function ModelRoutingTab() {
     try {
       const res = await fetch(`${apiBase()}/api/agent/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream", ...authHeaders() },
+        headers: { ...authHeaders(), "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Test de routing: respondé 'ok' en una palabra." }],
           aiProvider: provider,
@@ -2083,6 +2083,11 @@ function ModelRoutingTab() {
 
           try {
             const payload = JSON.parse(dataText);
+            if (payload?.type === "error") {
+              setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: payload.message || "Error del proveedor" } }));
+              reader.cancel();
+              return;
+            }
             if (payload?.type === "done") doneEvent = true;
             if (payload?.delta != null || payload?.content != null || payload?.type === "delta") sawModelOutput = true;
           } catch {
