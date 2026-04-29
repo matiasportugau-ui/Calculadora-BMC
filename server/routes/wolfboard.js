@@ -17,6 +17,7 @@
  */
 import { Router } from "express";
 import { google } from "googleapis";
+import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
@@ -25,6 +26,15 @@ import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
+
+/** Admin-only rate limiter — authenticated routes that hit the Sheets API. */
+const adminLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Too many requests — retry after 1 minute" },
+});
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -286,7 +296,7 @@ export function createWolfboardRouter(config) {
   });
 
   // ── GET /sheet-headers ────────────────────────────────────────────────────
-  router.get("/sheet-headers", async (req, res) => {
+  router.get("/sheet-headers", adminLimiter, async (req, res) => {
     if (!requireAuth(config, req, res)) return;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
@@ -318,7 +328,7 @@ export function createWolfboardRouter(config) {
   });
 
   // ── POST /cell ────────────────────────────────────────────────────────────
-  router.post("/cell", async (req, res) => {
+  router.post("/cell", adminLimiter, async (req, res) => {
     if (!requireAuth(config, req, res)) return;
     const { adminRow, col, value } = req.body || {};
     if (!adminRow || !col) {
@@ -329,13 +339,18 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
 
-    // Validate col is a letter (A–Z or AA–ZZ)
+    // Validate col: only A-Z letters, max 2 chars (columns A..ZZ = 0..701)
     const colUpper = String(col).trim().toUpperCase().replace(/[^A-Z]/g, "");
-    if (!colUpper) return res.status(400).json({ ok: false, error: "col inválido" });
-    // Guard against out-of-range (beyond Z for single-letter; allow up to ZZ)
+    if (!colUpper || colUpper.length > 2) {
+      return res.status(400).json({ ok: false, error: "col inválido — usar letra(s) A–Z o AA–ZZ" });
+    }
     let colIndex;
     try { colIndex = colLetterToIndex(colUpper); }
     catch { return res.status(400).json({ ok: false, error: "col inválido" }); }
+    // Extra guard: limit to column ZZ (index 701)
+    if (colIndex > 701) {
+      return res.status(400).json({ ok: false, error: "col fuera de rango — máximo ZZ" });
+    }
 
     const dryRun = config.wolfbDryRun;
 

@@ -1901,20 +1901,447 @@ function VoiceTab() {
   );
 }
 
+// ── MODEL ROUTING TAB ────────────────────────────────────────────────────────
+
+const CHANNEL_BADGE_COLORS = {
+  chat:  ["#dbeafe", "#1d4ed8"],
+  ml:    ["#fef9c3", "#854d0e"],
+  wa:    ["#dcfce7", "#16a34a"],
+  crm:   ["#f3e8ff", "#7c3aed"],
+  kb:    ["#fce7f3", "#9d174d"],
+  admin: ["#e0f2fe", "#0369a1"],
+  train: ["#f0fdf4", "#166534"],
+};
+
+function ChannelBadge({ channel }) {
+  const [bg, fg] = CHANNEL_BADGE_COLORS[channel] || ["#f0f0f2", "#374151"];
+  return (
+    <span style={{ display: "inline-block", padding: "1px 7px", borderRadius: 10, background: bg, color: fg, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
+      {channel}
+    </span>
+  );
+}
+
+function FallbackChain({ slots }) {
+  const depth = [slots?.a, slots?.b, slots?.c].filter(Boolean).length;
+  if (depth === 0) return <span style={{ fontSize: 10, color: "#dc2626" }}>Sin modelo</span>;
+  if (depth === 1) return <span style={{ fontSize: 10, color: "#6b7280" }}>Sin fallback</span>;
+  return (
+    <span style={{ fontSize: 10, color: "#16a34a", fontWeight: 600 }}>
+      {depth === 2 ? "Fallback 1 nivel" : "Fallback 2 niveles"}
+    </span>
+  );
+}
+
+function ModelRoutingTab() {
+  const [routing, setRouting]         = useState({});
+  const [catalog, setCatalog]         = useState([]);
+  const [providers, setProviders]     = useState([]);
+  const [draft, setDraft]             = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [saving, setSaving]           = useState(false);
+  const [msg, setMsg]                 = useState({ text: "", type: "success" });
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [testResults, setTestResults] = useState({});
+  const [testing, setTesting]         = useState({});
+
+  async function load() {
+    setLoading(true);
+    const [routeRes, aiRes] = await Promise.all([
+      apiFetch("/api/agent/model-routing"),
+      apiFetch("/api/agent/ai-options"),
+    ]);
+    if (routeRes.ok) {
+      setRouting(routeRes.routing || {});
+      setCatalog(routeRes.taskCatalog || []);
+      setDraft({ ...routeRes.routing });
+    }
+    if (aiRes.providers) setProviders(aiRes.providers);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  // Build flat list of "provider/model" options for selects
+  const modelOptions = [
+    { value: "", label: "— ninguno —" },
+    ...providers.flatMap((p) =>
+      (p.models || [p.defaultModel]).filter(Boolean).map((m) => ({
+        value: `${p.id}/${m}`,
+        label: `${p.label} · ${m}`,
+        provider: p.id,
+      }))
+    ),
+  ];
+
+  function setSlot(taskId, slot, value) {
+    setDraft((prev) => ({
+      ...prev,
+      [taskId]: { ...(prev[taskId] || {}), [slot]: value || null },
+    }));
+  }
+
+  async function save() {
+    setSaving(true);
+    setMsg({ text: "", type: "success" });
+    const r = await apiFetch("/api/agent/model-routing", {
+      method: "POST",
+      body: JSON.stringify({ routing: draft }),
+    });
+    setSaving(false);
+    if (r.ok) {
+      setRouting(r.routing);
+      setMsg({ text: "Routing guardado correctamente.", type: "success" });
+    } else {
+      setMsg({ text: r.error || "Error al guardar", type: "error" });
+    }
+    setTimeout(() => setMsg({ text: "", type: "success" }), 3500);
+  }
+
+  async function resetToDefaults() {
+    const r = await apiFetch("/api/agent/model-routing/defaults");
+    if (r.ok) {
+      setDraft({ ...r.defaults });
+      setResetConfirm(false);
+      setMsg({ text: "Draft restaurado a defaults — guardá para confirmar.", type: "success" });
+      setTimeout(() => setMsg({ text: "", type: "success" }), 3500);
+    }
+  }
+
+  async function testTask(taskId) {
+    setTesting((t) => ({ ...t, [taskId]: true }));
+    setTestResults((r) => ({ ...r, [taskId]: null }));
+    const slots = draft[taskId] || {};
+    const primary = slots.a;
+    if (!primary) {
+      setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: "Sin modelo primario asignado" } }));
+      setTesting((t) => ({ ...t, [taskId]: false }));
+      return;
+    }
+    const slashIdx = primary.indexOf("/");
+    if (slashIdx < 1) {
+      setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: `Formato de modelo inválido: "${primary}" — se espera "provider/model"` } }));
+      setTesting((t) => ({ ...t, [taskId]: false }));
+      return;
+    }
+    const provider = primary.slice(0, slashIdx);
+    const model = primary.slice(slashIdx + 1);
+    const r = await apiFetch("/api/agent/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "Test de routing: respondé 'ok' en una palabra." }],
+        aiProvider: provider,
+        aiModel: model,
+        calcState: {},
+      }),
+    });
+    setTestResults((r2) => ({ ...r2, [taskId]: r }));
+    setTesting((t) => ({ ...t, [taskId]: false }));
+  }
+
+  const hasChanges = JSON.stringify(draft) !== JSON.stringify(routing);
+
+  if (loading) return <div style={{ padding: 32, color: C.sub, fontFamily: C.ff }}>Cargando configuración de routing…</div>;
+
+  const slotColors = { a: { bg: "#e8f0ff", border: "#b0c8ff", label: "#1a3a5c", tag: "PRIMARIO" }, b: { bg: "#fefce8", border: "#fde68a", label: "#92400e", tag: "FALLBACK B" }, c: { bg: "#fdf2f8", border: "#f9a8d4", label: "#831843", tag: "FALLBACK C" } };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* Header / save bar */}
+      <div style={{ position: "sticky", top: 0, zIndex: 10, background: C.bg, padding: "0 0 12px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, fontFamily: C.ff }}>Asignación de modelos por tarea</div>
+          <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, marginTop: 2 }}>
+            Definí qué modelo/proveedor maneja cada tipo de tarea con hasta 3 niveles de fallback (A → B → C). Los cambios no-guardados se muestran en azul.
+          </div>
+        </div>
+        {msg.text && (
+          <div style={{ fontSize: 12, fontWeight: 600, color: msg.type === "success" ? "#16a34a" : "#dc2626", padding: "6px 12px", background: msg.type === "success" ? "#f0fdf4" : "#fef2f2", borderRadius: 8, border: `1px solid ${msg.type === "success" ? "#bbf7d0" : "#fecaca"}` }}>
+            {msg.text}
+          </div>
+        )}
+        {!resetConfirm ? (
+          <button onClick={() => setResetConfirm(true)} style={{ padding: "7px 14px", borderRadius: 8, border: "1.5px solid #e5e5ea", background: "#fff", color: C.sub, fontSize: 12, cursor: "pointer", fontFamily: C.ff }}>
+            Restaurar defaults
+          </button>
+        ) : (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#dc2626", fontFamily: C.ff }}>¿Confirmar reset?</span>
+            <button onClick={resetToDefaults} style={{ padding: "6px 12px", borderRadius: 7, border: "none", background: "#dc2626", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 700 }}>Sí, resetear</button>
+            <button onClick={() => setResetConfirm(false)} style={{ padding: "6px 12px", borderRadius: 7, border: "1.5px solid #e5e5ea", background: "#fff", color: C.sub, fontSize: 12, cursor: "pointer" }}>Cancelar</button>
+          </div>
+        )}
+        <button
+          onClick={save}
+          disabled={saving || !hasChanges}
+          style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: hasChanges ? C.primary : "#c7d2fe", color: "#fff", fontSize: 13, fontWeight: 700, cursor: hasChanges ? "pointer" : "not-allowed", fontFamily: C.ff, transition: "background 0.15s" }}
+        >
+          {saving ? "Guardando…" : "Guardar routing"}
+        </button>
+      </div>
+
+      {/* Available providers banner */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {providers.length === 0 ? (
+          <div style={{ fontSize: 11, color: "#dc2626", fontFamily: C.ff, padding: "4px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+            ⚠ Sin proveedores activos — configurá API keys para habilitar modelos
+          </div>
+        ) : providers.map((p) => (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", background: "#f0fdf4", borderRadius: 6, border: "1px solid #bbf7d0" }}>
+            <span style={{ fontSize: 12 }}>🟢</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#166534", fontFamily: C.ff }}>{p.label}</span>
+            <span style={{ fontSize: 10, color: "#166534", fontFamily: "monospace" }}>{p.defaultModel}</span>
+            {p.models?.length > 1 && <span style={{ fontSize: 10, color: "#166534" }}>+{p.models.length - 1} más</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* Slot legend */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {Object.entries(slotColors).map(([slot, c]) => (
+          <div key={slot} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 10px", background: c.bg, borderRadius: 6, border: `1px solid ${c.border}` }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: c.label, fontFamily: C.ff }}>{c.tag}</span>
+            <span style={{ fontSize: 10, color: c.label, fontFamily: C.ff }}>= {slot === "a" ? "Modelo principal" : slot === "b" ? "Plan B si A falla" : "Plan C si A y B fallan"}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Task cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {catalog.map((task) => {
+          const slots = draft[task.id] || { a: null, b: null, c: null };
+          const original = routing[task.id] || { a: null, b: null, c: null };
+          const changed = JSON.stringify(slots) !== JSON.stringify(original);
+          const testR = testResults[task.id];
+          const isTesting = !!testing[task.id];
+
+          return (
+            <div key={task.id} style={{ background: C.surface, borderRadius: 12, border: `1.5px solid ${changed ? C.primary : C.border}`, padding: 16, transition: "border-color 0.15s" }}>
+              {/* Task header */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.navy, fontFamily: C.ff }}>{task.label}</span>
+                    <ChannelBadge channel={task.channel} />
+                    {changed && <span style={{ fontSize: 10, color: C.primary, fontWeight: 700, fontFamily: C.ff }}>● editado</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, lineHeight: 1.5 }}>{task.description}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
+                  <FallbackChain slots={slots} />
+                  <button
+                    onClick={() => testTask(task.id)}
+                    disabled={isTesting || !slots.a}
+                    style={{ padding: "5px 12px", borderRadius: 7, border: "1.5px solid #e5e5ea", background: "#fff", color: C.sub, fontSize: 11, cursor: slots.a ? "pointer" : "not-allowed", fontFamily: C.ff, fontWeight: 600 }}
+                    title="Probar modelo primario con prompt minimal"
+                  >
+                    {isTesting ? "…" : "Test A"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Slot selects */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+                {(["a", "b", "c"]).map((slot) => {
+                  const sc = slotColors[slot];
+                  const val = slots[slot] || "";
+                  return (
+                    <div key={slot} style={{ background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: sc.label, fontFamily: C.ff, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.6 }}>
+                        {sc.tag}
+                      </div>
+                      <select
+                        value={val}
+                        onChange={(e) => setSlot(task.id, slot, e.target.value)}
+                        style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${sc.border}`, background: "#fff", fontSize: 11, fontFamily: C.ff, cursor: "pointer" }}
+                      >
+                        {/* Slot A requires a model — no "ninguno" option. Slots B and C are optional. */}
+                        {slot !== "a" && <option value="">— ninguno —</option>}
+                        {modelOptions
+                          .filter((o) => slot === "a" ? o.value !== "" : true)
+                          .map((o) => (
+                            <option key={o.value} value={o.value}>{o.label || o.value}</option>
+                          ))
+                        }
+                      </select>
+                      {val && (
+                        <div style={{ fontSize: 10, color: sc.label, fontFamily: "monospace", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {val}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Test result */}
+              {testR && (
+                <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 7, background: testR.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${testR.ok ? "#bbf7d0" : "#fecaca"}`, fontSize: 11, fontFamily: C.ff, color: testR.ok ? "#166534" : "#991b1b" }}>
+                  {testR.ok
+                    ? `✓ Modelo respondió (${testR.provider || "?"} / ${testR.model || "?"})`
+                    : `✗ Error: ${testR.error || "fallo desconocido"}`}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── AUTO-EVOLUTION TAB ───────────────────────────────────────────────────────
+
+function AutoEvolutionTab() {
+  const [cfg, setCfg]         = useState(null);
+  const [defaults, setDefs]   = useState(null);
+  const [draft, setDraft]     = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving]   = useState(false);
+  const [msg, setMsg]         = useState({ text: "", type: "success" });
+
+  async function load() {
+    setLoading(true);
+    const r = await apiFetch("/api/agent/auto-evolution");
+    if (r.ok) { setCfg(r.config); setDefs(r.defaults); setDraft({ ...r.config }); }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function save() {
+    setSaving(true);
+    const r = await apiFetch("/api/agent/auto-evolution", { method: "POST", body: JSON.stringify(draft) });
+    setSaving(false);
+    if (r.ok) { setCfg(r.config); setMsg({ text: "Configuración guardada.", type: "success" }); }
+    else setMsg({ text: r.error || "Error", type: "error" });
+    setTimeout(() => setMsg({ text: "", type: "success" }), 3000);
+  }
+
+  function reset() { if (defaults) setDraft({ ...defaults }); }
+  function setF(k, v) { setDraft((p) => ({ ...p, [k]: v })); }
+
+  if (loading) return <div style={{ padding: 32, color: C.muted }}>Cargando…</div>;
+
+  const numFields = [
+    { key: "autoApproveThreshold", label: "Auto-aprobar si confianza ≥", help: "Entradas con score ≥ este valor se aprueban automáticamente en la cola IA.", min: 0, max: 1, step: 0.01, unit: "" },
+    { key: "staleEntryDays", label: "Días hasta entrada vencida", help: "Después de este período sin revisión, la entrada aparece en 'Salud KB'.", min: 7, max: 365, step: 1, unit: "días" },
+    { key: "maxEntriesPerCategory", label: "Máximo entradas por categoría", help: "Límite de entradas por categoría para evitar saturación de la KB.", min: 50, max: 2000, step: 10, unit: "" },
+    { key: "deduplicateThreshold", label: "Umbral de deduplicación", help: "Similitud mínima para marcar dos entradas como conflicto.", min: 0.5, max: 1, step: 0.01, unit: "" },
+    { key: "trainingLogRetention", label: "Retención de logs de entrenamiento", help: "Días que se conservan los eventos de entrenamiento.", min: 7, max: 365, step: 1, unit: "días" },
+  ];
+  const boolFields = [
+    { key: "crossChannelLearning",  label: "Aprendizaje cruzado de canales",  help: "Las interacciones de ML/WA/Chat se procesan juntas para mejorar el conocimiento global." },
+    { key: "feedbackLoopEnabled",   label: "Loop de feedback activo",          help: "El feedback 👍/👎 impacta directamente en el ranking de entradas KB." },
+    { key: "kbHealthAutoFix",       label: "Auto-reparar salud KB",            help: "Al detectar gaps en el canal ML, genera overrides automáticamente sin aprobación manual." },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.navy, fontFamily: C.ff, marginBottom: 4 }}>Auto-evolución del agente</div>
+        <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, lineHeight: 1.6 }}>
+          Controlá cómo el agente aprende y evoluciona automáticamente a partir de las conversaciones e interacciones. Los cambios son inmediatos y afectan a todos los canales.
+        </div>
+      </div>
+
+      <Alert msg={msg.text} type={msg.type} />
+
+      {/* Toggles */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, fontFamily: C.ff, marginBottom: 12 }}>Módulos de aprendizaje</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {boolFields.map(({ key, label, help }) => (
+            <label key={key} style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
+              <div style={{ position: "relative", marginTop: 2 }}>
+                <input
+                  type="checkbox"
+                  checked={!!draft[key]}
+                  onChange={(e) => setF(key, e.target.checked)}
+                  style={{ width: 18, height: 18, cursor: "pointer", accentColor: C.primary }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: C.ff }}>{label}</div>
+                <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, marginTop: 2, lineHeight: 1.5 }}>{help}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Numeric thresholds */}
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, fontFamily: C.ff, marginBottom: 12 }}>Umbrales y límites</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {numFields.map(({ key, label, help, min, max, step, unit }) => (
+            <div key={key}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: C.text, fontFamily: C.ff }}>{label}</label>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.primary, fontFamily: "monospace" }}>
+                    {draft[key] ?? "—"} {unit}
+                  </span>
+                  {defaults && draft[key] !== defaults[key] && (
+                    <button onClick={() => setF(key, defaults[key])} style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, border: "1px solid #e5e5ea", background: "#fff", color: C.sub, cursor: "pointer" }}>
+                      reset ({defaults[key]})
+                    </button>
+                  )}
+                </div>
+              </div>
+              <input
+                type="range"
+                min={min} max={max} step={step}
+                value={draft[key] ?? defaults?.[key] ?? min}
+                onChange={(e) => setF(key, Number(e.target.value))}
+                style={{ width: "100%", accentColor: C.primary }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.muted, fontFamily: C.ff }}>
+                <span>{min}{unit}</span>
+                <span style={{ fontSize: 11, color: C.sub }}>{help}</span>
+                <span>{max}{unit}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Deep learning / ML note */}
+      <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 12, padding: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", fontFamily: C.ff, marginBottom: 6 }}>ℹ Sobre entrenamiento profundo</div>
+        <div style={{ fontSize: 11, color: "#78350f", fontFamily: C.ff, lineHeight: 1.65 }}>
+          El motor usa <strong>Retrieval-Augmented Generation (RAG)</strong> sobre la Knowledge Base + feedback loop como mecanismo de auto-mejora continua. Para cada conversación:<br /><br />
+          1. <strong>Extracción</strong>: el AutoLearn extrae pares Q&A de valor con confianza ≥ umbral configurado.<br />
+          2. <strong>Aprobación</strong>: pasan por la cola IA (humana o automática según el umbral).<br />
+          3. <strong>Indexado</strong>: ingresan a la KB con scoring, disponibles en el próximo ciclo de retrieval.<br />
+          4. <strong>Feedback cruzado</strong>: los 👍/👎 rebotan como señal de relevancia al scorer.<br /><br />
+          Para entrenamiento fine-tuning nativo (model-level), conectar el exportador de corpus (<code>npm run ml:corpus-export</code>) con la plataforma del proveedor correspondiente.
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <Btn onClick={reset}>Restaurar defaults</Btn>
+        <Btn onClick={save} disabled={saving} variant="primary">{saving ? "Guardando…" : "Guardar configuración"}</Btn>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN MODULE ─────────────────────────────────────────────────────────────
 const TABS = [
-  { id: "kb", label: "Base de conocimiento", icon: "📚" },
-  { id: "prompt", label: "System prompt", icon: "✏️" },
-  { id: "conversations", label: "Conversaciones", icon: "💬" },
-  { id: "stats", label: "Estadísticas", icon: "📊" },
-  { id: "analytics", label: "Analytics IA", icon: "🔍" },
-  { id: "feedback", label: "Feedback", icon: "💬" },
-  { id: "health", label: "Salud KB", icon: "🩺" },
-  { id: "autolearn", label: "Cola IA", icon: "🧠" },
-  { id: "conflicts", label: "Conflictos", icon: "⚡" },
-  { id: "logs", label: "Logs", icon: "📋" },
-  { id: "voice", label: "Voz", icon: "🎙️" },
-  { id: "config", label: "Configuración", icon: "⚙️" },
+  { id: "kb",           label: "Base de conocimiento",  icon: "📚", group: "Conocimiento" },
+  { id: "prompt",       label: "System prompt",          icon: "✏️",  group: "Conocimiento" },
+  { id: "routing",      label: "Routing de modelos",    icon: "🔀",  group: "Modelos" },
+  { id: "evolution",    label: "Auto-evolución",        icon: "🧬",  group: "Modelos" },
+  { id: "config",       label: "Scoring KB",            icon: "⚙️",  group: "Modelos" },
+  { id: "conversations",label: "Conversaciones",        icon: "💬",  group: "Datos" },
+  { id: "analytics",   label: "Analytics IA",           icon: "🔍",  group: "Datos" },
+  { id: "feedback",    label: "Feedback",               icon: "⭐",  group: "Datos" },
+  { id: "stats",        label: "Estadísticas",          icon: "📊",  group: "Datos" },
+  { id: "health",       label: "Salud KB",              icon: "🩺",  group: "Calidad" },
+  { id: "autolearn",   label: "Cola IA",                icon: "🧠",  group: "Calidad" },
+  { id: "conflicts",   label: "Conflictos",             icon: "⚡",  group: "Calidad" },
+  { id: "logs",         label: "Logs",                  icon: "📋",  group: "Sistema" },
+  { id: "voice",        label: "Voz",                   icon: "🎙️",  group: "Sistema" },
 ];
 
 export default function AgentAdminModule() {
@@ -1923,51 +2350,63 @@ export default function AgentAdminModule() {
     ? !!(import.meta.env?.VITE_API_AUTH_TOKEN || "")
     : false;
 
+  // Build grouped sidebar items
+  const groups = TABS.reduce((acc, t) => {
+    if (!acc[t.group]) acc[t.group] = [];
+    acc[t.group].push(t);
+    return acc;
+  }, {});
+  const groupOrder = ["Conocimiento", "Modelos", "Datos", "Calidad", "Sistema"];
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg, fontFamily: C.ff }}>
       <BmcModuleNav />
       <div style={{ flex: 1, display: "flex", maxWidth: 1300, margin: "0 auto", width: "100%", padding: "0 0 40px" }}>
         {/* Sidebar */}
-        <aside style={{ width: 220, flexShrink: 0, background: C.sidebar, display: "flex", flexDirection: "column", paddingTop: 20 }}>
-          <div style={{ padding: "0 16px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 4 }}>
+        <aside style={{ width: 230, flexShrink: 0, background: C.sidebar, display: "flex", flexDirection: "column", paddingTop: 20 }}>
+          <div style={{ padding: "0 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 3 }}>
               Agente Panelin
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Admin &amp; KB</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>Centro de control IA</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Admin · KB · Modelos · Evolución</div>
           </div>
-          <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-            {TABS.map(({ id, label, icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "9px 10px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: tab === id ? C.sidebarActive : "transparent",
-                  color: tab === id ? "#fff" : C.sidebarText,
-                  fontSize: 13,
-                  fontWeight: tab === id ? 600 : 400,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  width: "100%",
-                  fontFamily: C.ff,
-                  transition: "background 0.1s",
-                }}
-              >
-                <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
-                {label}
-              </button>
-            ))}
+          <nav style={{ flex: 1, padding: "10px 8px", display: "flex", flexDirection: "column", gap: 0, overflowY: "auto" }}>
+            {groupOrder.map((group) => {
+              const items = groups[group] || [];
+              if (!items.length) return null;
+              return (
+                <div key={group}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: 1.2, textTransform: "uppercase", padding: "8px 10px 4px", marginTop: 4 }}>
+                    {group}
+                  </div>
+                  {items.map(({ id, label, icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setTab(id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 9,
+                        padding: "8px 10px", borderRadius: 7, border: "none",
+                        background: tab === id ? C.sidebarActive : "transparent",
+                        color: tab === id ? "#fff" : C.sidebarText,
+                        fontSize: 12, fontWeight: tab === id ? 600 : 400,
+                        cursor: "pointer", textAlign: "left", width: "100%",
+                        fontFamily: C.ff, transition: "background 0.1s",
+                      }}
+                    >
+                      <span style={{ fontSize: 14, lineHeight: 1 }}>{icon}</span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </nav>
           <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
             <Link
               to="/hub"
-              style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", textDecoration: "none", fontFamily: C.ff }}
+              style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", textDecoration: "none", fontFamily: C.ff }}
             >
               ← Wolfboard
             </Link>
@@ -1991,6 +2430,8 @@ export default function AgentAdminModule() {
 
           {tab === "kb" && <KBTab />}
           {tab === "prompt" && <PromptTab />}
+          {tab === "routing" && <ModelRoutingTab />}
+          {tab === "evolution" && <AutoEvolutionTab />}
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}
           {tab === "analytics" && <AnalyticsTab />}

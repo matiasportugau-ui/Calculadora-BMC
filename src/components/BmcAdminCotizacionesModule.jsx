@@ -9,6 +9,24 @@ const VIS_COLS_KEY = "bmc_admin_visible_cols";
 
 const FF = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
 
+/**
+ * Admin 2.0 sheet column indices (0-based, A=0).
+ * These match the mapAdminSheetRow mapping in server/routes/wolfboard.js.
+ */
+const COL = {
+  ID:        0,  // A
+  FECHA:     1,  // B
+  TELEFONO:  3,  // D
+  CLIENTE:   4,  // E
+  CANAL:     5,  // F — used for the canal pill display
+  ZONA:      7,  // H
+  CONSULTA:  8,  // I
+  RESPUESTA: 9,  // J — highlighted if starts with ⚠
+  LINK:      10, // K — rendered as a link
+  ESTADO:    11, // L
+  REPLAY:    12, // M
+};
+
 const wrap = {
   minHeight: "100vh",
   display: "flex",
@@ -225,11 +243,7 @@ export default function BmcAdminCotizacionesModule() {
     setHeadersLoading(false);
     if (!ok || !Array.isArray(data.headers)) return;
     setHeaders(data.headers);
-    // If no visible-cols preference stored yet, default to show all
-    setVisibleCols(prev => {
-      if (prev !== null) return prev;
-      return null; // keep "show all"
-    });
+    // visibleCols === null means "show all" — no action needed here
   }, [token]);
 
   const loadPendientes = useCallback(async () => {
@@ -291,8 +305,8 @@ export default function BmcAdminCotizacionesModule() {
   );
 
   // ── Inline cell edit ──────────────────────────────────────────────────────
-  const startEdit = (rowNum, colLetter, colIndex, currentValue) => {
-    setEditCell({ rowNum, col: colLetter, colIndex, value: currentValue });
+  const startEdit = (rowNum, col, colIndex, currentValue) => {
+    setEditCell({ rowNum, col, colIndex, value: currentValue });
     setTimeout(() => editInputRef.current?.focus(), 30);
   };
 
@@ -602,11 +616,10 @@ export default function BmcAdminCotizacionesModule() {
                           const cellValue = (row.rawCells || [])[h.index] ?? "";
                           const isEditing = editCell?.rowNum === row.rowNum && editCell?.col === h.col;
 
-                          // Special display for canal column (index 5 = F)
-                          const isCanal = h.index === 5;
-                          // Highlight respuesta errors
-                          const isResp = h.index === 9;
-                          const isLink = h.index === 10 && cellValue.startsWith("http");
+                          // Special display based on Admin 2.0 schema column roles
+                          const isCanal = h.index === COL.CANAL;
+                          const isResp  = h.index === COL.RESPUESTA;  // highlight ⚠ prefix
+                          const isLink  = h.index === COL.LINK && cellValue.startsWith("http");
 
                           return (
                             <td
