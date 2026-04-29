@@ -10722,6 +10722,33 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "e0c6e18062fc01c4ec0b77cb3dea45493d7c1ea7",
+      "short_hash": "e0c6e18",
+      "date": "2026-04-29",
+      "time": "04:01:50",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp",
+      "subject": "chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp",
+      "files": [
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }

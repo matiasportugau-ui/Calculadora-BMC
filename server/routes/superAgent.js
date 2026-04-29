@@ -21,6 +21,7 @@ import {
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
+import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 
 const HAIKU = "claude-haiku-4-5-20251001";
 const MIN_LEN = 15;
@@ -148,6 +149,7 @@ export function createSuperAgentRouter(config) {
     let method = "text";
     let responseText = "";
     let pdfUrl = null;
+    let driveUrl = null;
     let bomSummary = null;
     let totalUsd = null;
 
@@ -206,6 +208,11 @@ export function createSuperAgentRouter(config) {
           });
           const filename = `SA-${Date.now().toString(36)}-${new Date().toISOString().slice(0, 10)}.html`;
           pdfUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
+          if (config.driveQuoteFolderId) {
+            try {
+              driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
+            } catch { /* non-critical — Drive mirror is optional */ }
+          }
         } catch { /* non-critical */ }
       }
     } else {
@@ -228,6 +235,7 @@ export function createSuperAgentRouter(config) {
       method,
       response_text: responseText,
       pdf_url: pdfUrl,
+      drive_url: driveUrl,
       bom_summary: bomSummary,
       missing_params: extracted?.faltan || [],
       total_usd: totalUsd,

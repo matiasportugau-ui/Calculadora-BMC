@@ -35,6 +35,7 @@ import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
+import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
@@ -549,13 +550,21 @@ router.post("/cotizar/pdf", async (req, res) => {
 
     // Upload to GCS for a permanent URL (best-effort; falls back to in-memory link)
     let gcsUrl = null;
+    let driveUrl = null;
+    const code = clientInfo.quote_code || pdfId.slice(0, 8);
+    const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
     if (config.gcsQuotesBucket) {
       try {
-        const code = clientInfo.quote_code || pdfId.slice(0, 8);
-        const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
         gcsUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
       } catch {
         // non-critical
+      }
+    }
+    if (config.driveQuoteFolderId) {
+      try {
+        driveUrl = await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
+      } catch {
+        // non-critical — Drive mirror is optional
       }
     }
 
@@ -574,6 +583,7 @@ router.post("/cotizar/pdf", async (req, res) => {
       pdf_id: pdfId,
       pdf_url: gcsUrl || pdfUrl,
       gcs_url: gcsUrl || null,
+      drive_url: driveUrl || null,
       expires_in_hours: gcsUrl ? null : 24,
       instrucciones: gcsUrl
         ? "Link permanente en GCS. Compartilo con el cliente — se abre en el navegador y se puede imprimir como PDF."

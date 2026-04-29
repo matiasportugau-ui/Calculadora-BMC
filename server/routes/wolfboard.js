@@ -22,6 +22,7 @@ import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResul
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
 import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
+import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -750,6 +751,13 @@ export function createWolfboardRouter(config) {
           const gcsUrl = await uploadQuoteToGcs(html, filename, config.gcsQuotesBucket);
           if (gcsUrl) {
             valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[gcsUrl]] });
+          }
+          if (config.driveQuoteFolderId) {
+            try {
+              await uploadQuoteToDrive(html, filename, config.driveQuoteFolderId);
+            } catch {
+              // Drive mirror is non-critical
+            }
           }
         } catch {
           // GCS upload is non-critical; proceed without link

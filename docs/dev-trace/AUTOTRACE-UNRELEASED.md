@@ -310,6 +310,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `baef360` chore: regenerate quotation preview — resolve merge conflict
 - `c5750df` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
 - `eb54831` chore(dev-trace): AUTOTRACE sync 2026-04-25 [SKIP_AUTOTRACE]
+- `e0c6e18` chore: update CALCULATOR_DATA_VERSION_DATE to reflect new timestamp
 
 ## Other
 
