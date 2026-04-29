@@ -1934,17 +1934,17 @@ function FallbackChain({ slots }) {
 }
 
 /**
- * Reads the first meaningful SSE event from a ReadableStream reader obtained
- * from an `application/x-ndjson` or `text/event-stream` fetch response.
+ * Reads an SSE stream and resolves as soon as a meaningful event is received
+ * (`delta`, `content`, `done`, or `error`). Continues reading until it finds
+ * such an event or the stream ends.
  *
- * Handles all recognised event types (`delta`, `content`, `done`, `error`) and
- * correctly flushes any partial data that remains in the internal buffer when
+ * Correctly flushes any partial data that remains in the internal buffer when
  * the stream ends (i.e. when `reader.read()` returns `{ done: true }`).
  *
  * @param {ReadableStreamDefaultReader<Uint8Array>} reader
  * @returns {Promise<{ ok: boolean, message?: string, error?: string }>}
  */
-async function readFirstSSEEvent(reader) {
+async function waitForSSEResponse(reader) {
   const decoder = new TextDecoder();
   let buffer = "";
   let sawModelOutput = false;
@@ -2120,7 +2120,7 @@ function ModelRoutingTab() {
         return;
       }
 
-      const result = await readFirstSSEEvent(res.body.getReader());
+      const result = await waitForSSEResponse(res.body.getReader());
       setTestResults((r) => ({ ...r, [taskId]: result }));
     } catch (error) {
       setTestResults((r) => ({ ...r, [taskId]: { ok: false, error: error?.message || "Error al probar el modelo" } }));
