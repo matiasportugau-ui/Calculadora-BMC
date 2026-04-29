@@ -10948,6 +10948,54 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "bc82701ba2d25ace51116cb001074b70bfa584ae",
+      "short_hash": "bc82701",
+      "date": "2026-04-29",
+      "time": "05:06:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "",
+      "title": "update drive upload functionality and related tests",
+      "subject": "chore: update drive upload functionality and related tests",
+      "files": [
+        ".accessible-base/kb.json",
+        ".env.example",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/04/7090459.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/04/2026-04-29.md",
+        "docs/procedimientos/CLOUD-RUN-SECRETS-SYNC.md",
+        "run_ml_cloud_run_setup.sh",
+        "server/index.js",
+        "server/lib/googleAuthCache.js",
+        "server/lib/transportistaDb.js",
+        "server/lib/whatsappOutbound.js",
+        "server/routes/agentVoice.js",
+        "server/routes/bmcDashboard.js",
+        "server/routes/followups.js",
+        "server/routes/pdf.js",
+        "src/components/AgentAdminModule.jsx"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }
