@@ -189,7 +189,12 @@ router.post("/agent/voice/session", sessionLimiter, async (req, res) => {
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
       req.log?.warn({ status: response.status, body: errText }, "OpenAI Realtime session mint failed");
-      return res.status(502).json({ ok: false, error: "No se pudo iniciar sesión de voz" });
+      let detail = "";
+      try { detail = JSON.parse(errText)?.error?.message || errText; } catch { detail = errText; }
+      return res.status(502).json({
+        ok: false,
+        error: `OpenAI ${response.status}: ${detail || "No se pudo iniciar sesión de voz"}`,
+      });
     }
 
     sessionData = await response.json();
