@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/utils/scenarioOrchestrator.js — Generic scenario calculation executor
 //
-// Replaces the if/else chain in PanelinCalculadoraV3_backup.jsx.
+// Replaces the if/else chain in PanelinCalculadoraV3.jsx.
 // Adding a new scenario = add 1 entry to SCENARIOS_DEF (no changes here).
 // ═══════════════════════════════════════════════════════════════════════════
 

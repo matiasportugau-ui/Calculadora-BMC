@@ -16,7 +16,7 @@ model: sonnet
 
 | File | Role |
 |------|------|
-| `src/components/PanelinCalculadoraV3_backup.jsx` | Main component (canonical) |
+| `src/components/PanelinCalculadoraV3.jsx` | Main component (canonical) |
 | `src/utils/calculations.js` | calcTechoCompleto, calcParedCompleto, etc. |
 | `src/utils/helpers.js` | bomToGroups, applyOverrides, createLineId |
 | `src/data/constants.js` | PANELS_TECHO, PANELS_PARED, IVA, prices |

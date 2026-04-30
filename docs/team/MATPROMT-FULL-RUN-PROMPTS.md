@@ -219,7 +219,7 @@
 - **Implementación (Reporter/Coding):** [`docs/team/reports/REPORT-SOLUTION-CODING-2026-03-20-full-team-implement.md`](./reports/REPORT-SOLUTION-CODING-2026-03-20-full-team-implement.md)
 
 ### DELTA — (run23)
-- **Disparador opcional:** Acotar listado tornillería a `PRESUPUESTO_LIBRE_IDS` / portar UI a `PanelinCalculadoraV3_backup`.
+- **Disparador opcional:** Acotar listado tornillería a `PRESUPUESTO_LIBRE_IDS` / portar UI a `PanelinCalculadoraV3`.
 - **Roles:** Calc, Mapping (MATRIZ), Reporter (PROJECT-STATE).
 
 ---

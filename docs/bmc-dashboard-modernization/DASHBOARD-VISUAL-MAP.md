@@ -130,12 +130,12 @@ flowchart TB
 
 ## 5. Componentes React (Vite 5173)
 
-Canonical Calculadora: **PanelinCalculadoraV3_backup** (App.jsx). PanelinCalculadoraV3.jsx = alternate single-file build. Ver [IA.md](./IA.md).
+Canonical Calculadora: **PanelinCalculadoraV3** (App.jsx). PanelinCalculadoraV3.jsx = alternate single-file build. Ver [IA.md](./IA.md).
 
 ```mermaid
 flowchart TB
     App[App.jsx]
-    Calc[PanelinCalculadoraV3_backup]
+    Calc[PanelinCalculadoraV3]
     Drive[GoogleDrivePanel]
     Log[Budget Log Panel]
     PDF[PDFPreviewModal]
@@ -234,6 +234,6 @@ flowchart LR
 | `server/config.js` | bmcSheetSchema, env vars |
 | `docs/bmc-dashboard-modernization/dashboard/` | HTML/CSS/JS del dashboard |
 | `docs/bmc-dashboard-modernization/service-account.json` | Credenciales GCP |
-| `src/components/PanelinCalculadoraV3_backup.jsx` | Calculadora + Drive + Log |
+| `src/components/PanelinCalculadoraV3.jsx` | Calculadora + Drive + Log |
 | `src/components/GoogleDrivePanel.jsx` | Panel Drive |
 | `.env` | BMC_SHEET_ID, BMC_SHEET_SCHEMA, GOOGLE_APPLICATION_CREDENTIALS |

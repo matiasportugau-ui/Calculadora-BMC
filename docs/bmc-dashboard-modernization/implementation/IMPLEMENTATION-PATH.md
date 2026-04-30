@@ -91,7 +91,7 @@
 |-------|--------|
 | **ID** | E |
 | **Title** | Align component naming; clarify KPI under Finanzas in docs |
-| **Touchpoints** | IA.md: add canonical Calculadora component (PanelinCalculadoraV3_backup). DASHBOARD-VISUAL-MAP.md §5: same. App.jsx: one-line comment. Verify IA “KPI = sub-area of Finanzas.” |
+| **Touchpoints** | IA.md: add canonical Calculadora component (PanelinCalculadoraV3). DASHBOARD-VISUAL-MAP.md §5: same. App.jsx: one-line comment. Verify IA “KPI = sub-area of Finanzas.” |
 | **Acceptance** | Single canonical name in docs; KPI under Finanzas stated. |
 | **Owner** | Cotizaciones, Finanzas, Shell |
 | **Effort** | S |

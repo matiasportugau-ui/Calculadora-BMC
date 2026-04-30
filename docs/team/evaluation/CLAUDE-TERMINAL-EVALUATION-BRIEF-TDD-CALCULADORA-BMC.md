@@ -25,7 +25,7 @@ No ejecutes cambios en el código salvo que el usuario te lo pida aparte; esta t
 | Motor de cotización | `src/utils/calculations.js` (muchas exportaciones; comentarios de dominio en código) |
 | Precios / lista | `src/data/constants.js`: `LISTA_ACTIVA`, `setListaPrecios`, `p()` |
 | IVA en totales | `calcTotalesSinIVA` usa `getIVA()` desde `src/utils/calculatorConfig.js` (default 0.22; persistencia vía `localStorage` en browser) |
-| UI principal | `src/PanelinCalculadoraV3.jsx` reexporta `src/components/PanelinCalculadoraV3_backup.jsx` |
+| UI principal | `src/PanelinCalculadoraV3.jsx` reexporta `src/components/PanelinCalculadoraV3.jsx` |
 | Tests actuales | `npm test` ejecuta **dos** scripts: `node tests/validation.js` y `node tests/roofVisualQuoteConsistency.js` |
 | CI (GitHub Actions) | Job `validate` corre `node tests/validation.js` + `npm run build`; **no** ejecuta `roofVisualQuoteConsistency.js` en ese job (posible desalineación con `npm test` local) |
 | Playwright | Presente en `devDependencies` |

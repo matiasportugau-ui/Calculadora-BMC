@@ -1,8 +1,8 @@
 # Calculadora BMC — Comparativo V3 vs backup, evolución y plan de unificación
 
-**Objetivo:** una sola calculadora en producción, sin perder capacidades de `PanelinCalculadoraV3.jsx` ni de `PanelinCalculadoraV3_backup.jsx`.
+**Objetivo:** una sola calculadora en producción, sin perder capacidades de `PanelinCalculadoraV3.jsx` ni de `PanelinCalculadoraV3.jsx`.
 
-**Entrada canónica actual:** `src/App.jsx` importa **`PanelinCalculadoraV3_backup.jsx`** (no el archivo `PanelinCalculadoraV3.jsx`).
+**Entrada canónica actual:** `src/App.jsx` importa **`PanelinCalculadoraV3.jsx`** (no el archivo `PanelinCalculadoraV3.jsx`).
 
 **Última actualización de este documento:** 2026-03-26 (contenido de inventario según análisis de repo).
 
@@ -10,7 +10,7 @@
 
 ## 1. Resumen ejecutivo
 
-| Métrica | `PanelinCalculadoraV3.jsx` | `PanelinCalculadoraV3_backup.jsx` |
+| Métrica | `PanelinCalculadoraV3.jsx` | `PanelinCalculadoraV3.jsx` |
 |--------|----------------------------|-----------------------------------|
 | Líneas totales (`wc -l`) | **2 314** | **2 846** |
 | Líneas no vacías (aprox.) | ~2 167 | ~2 666 |
@@ -25,7 +25,7 @@
 
 Leyenda: **Sí** = presente de forma clara en código; **Parcial** = existe con alcance distinto; **No** = no localizado en ese archivo.
 
-| Capacidad | `PanelinCalculadoraV3.jsx` | `PanelinCalculadoraV3_backup.jsx` |
+| Capacidad | `PanelinCalculadoraV3.jsx` | `PanelinCalculadoraV3.jsx` |
 |-----------|----------------------------|-------------------------------------|
 | Precios MATRIZ / overrides (`getPricing`) | **No** (catálogo inline) | **Sí** |
 | Motor único `calculations.js` (alineado a tests) | **No** (`calcTechoCompleto` inline) | **Sí** |
@@ -60,7 +60,7 @@ Leyenda: **Sí** = presente de forma clara en código; **Parcial** = existe con 
 - **Duplica** lógica de techo/BOM frente a `calculations.js`.
 - **No** usa `getPricing()` → riesgo de desalineación con MATRIZ y con mejoras futuras del motor probado por tests.
 
-### 3.2 `PanelinCalculadoraV3_backup.jsx` (producto “plataforma”)
+### 3.2 `PanelinCalculadoraV3.jsx` (producto “plataforma”)
 
 **Fortalezas**
 
@@ -157,7 +157,7 @@ Orden sugerido (cada uno: `npm test` + prueba manual corta):
 
 - `src/App.jsx` — componente montado.
 - `src/components/PanelinCalculadoraV3.jsx` — línea inline / salidas recientes.
-- `src/components/PanelinCalculadoraV3_backup.jsx` — línea plataforma.
+- `src/components/PanelinCalculadoraV3.jsx` — línea plataforma.
 - `src/utils/calculations.js` — motor de BOM.
 - `src/data/pricing.js` — `getPricing()` y overrides.
 - `src/utils/bomCosting.js` — costeo interno.

@@ -83,7 +83,7 @@ The Full Improvement Plan prompt **does not require implementation**; implementa
 | 1.4 | Task B | server/index.js root/favicon verified; favicon link added in dashboard/index.html. |
 | 2.1, 2.2, 2.3 | Task C | dashboard/index.html: shell-nav with 6 links (Inicio, Cotizaciones→5173, Operaciones, Finanzas, Ventas, Invoque Panelin); section ids #operaciones, #finanzas, #ventas, #invoque; styles in styles.css. |
 | 3.1 | Task D | USER-FLOW.md created. |
-| 3.2, 3.3 | Task E | IA.md and DASHBOARD-VISUAL-MAP.md: canonical component (PanelinCalculadoraV3_backup); App.jsx comment; KPI under Finanzas. |
+| 3.2, 3.3 | Task E | IA.md and DASHBOARD-VISUAL-MAP.md: canonical component (PanelinCalculadoraV3); App.jsx comment; KPI under Finanzas. |
 | 4.1 | Part of Task C | Invoque Panelin in nav and placeholder section (#invoque); hybrid in IA. |
 | 4.2 | Task F | 05-universe-invoque-panelin.md: Transversal entry points spec; IA References link. |
 | 5.1, 5.2, 5.3 | Task G | app.js verified (stateBanner, Retry, lastRefresh, renderLoadingShell); /health hasSheets/hasTokens verified; ML-OAUTH-SETUP.md §8 + BMC vars; IA.md “3849 vs 3001/finanzas.” |
@@ -100,7 +100,7 @@ The Full Improvement Plan prompt **does not require implementation**; implementa
 - States “KPI = sub-area of **Finanzas**.”
 - Defines “BMC Dashboard” as the whole product; “Finanzas,” “Operaciones,” “Cotizaciones” as sections.
 - Contains “Primary entry URL”: localhost:3001, root → /finanzas; favicon and root behavior.
-- Contains “Calculadora component (canonical): PanelinCalculadoraV3_backup.”
+- Contains “Calculadora component (canonical): PanelinCalculadoraV3.”
 - Contains section “3849 vs 3001/finanzas” (canonical 3001/finanzas; 3849 standalone; prefer 3001).
 - References USER-FLOW.md, FULL-IMPROVEMENT-PLAN.md, 02-investigation-and-discussion.md, context-briefs/, and 05-universe-invoque-panelin.md for transversal spec.
 

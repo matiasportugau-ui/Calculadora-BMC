@@ -132,7 +132,7 @@ http://localhost:3849
 ```
 http://localhost:5173
          │
-         └── React SPA ──────────► PanelinCalculadoraV3_backup
+         └── React SPA ──────────► PanelinCalculadoraV3
                     │
                     ├── Calculadora de cotización (paneles, BOM, PDF)
                     ├── GoogleDrivePanel (guardar/cargar en Drive)

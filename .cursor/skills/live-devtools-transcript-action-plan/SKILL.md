@@ -24,7 +24,7 @@ metadata:
 1. **Tabla narrativa** `U-01…` con columnas: orden, **ACTION** (hecho), **EXPECT** (intención), notas de audio (p. ej. “paralim” → término UI corregido).
 2. **Tabla evidencia** `E-01…`: tool MCP (`list_console_messages`, `list_network_requests`, `take_snapshot`, etc.) + hallazgo **sin inventar** (solo output real).
 3. **Cruce** `User ID → Evidence IDs` + columna “¿coincide?”.
-4. **Plan de acción** por fases: investigación → cambio de datos (`quoteVisorMedia`, `roofPanelCatalogMapUrls`, UI `QuoteVisualVisor`, tarjetas familia en `PanelinCalculadoraV3_backup`) → verificación (MCP otra pasada + `npm run lint` / `npm test`).
+4. **Plan de acción** por fases: investigación → cambio de datos (`quoteVisorMedia`, `roofPanelCatalogMapUrls`, UI `QuoteVisualVisor`, tarjetas familia en `PanelinCalculadoraV3`) → verificación (MCP otra pasada + `npm run lint` / `npm test`).
 5. **Informe** en `docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-YYYY-MM-DD-<slug>.md`.
 6. Si hubo trabajo sustantivo: línea en `docs/team/PROJECT-STATE.md` → **Cambios recientes**.
 
@@ -32,7 +32,7 @@ metadata:
 
 1. Normalizar transcripción a **beats ordenados**; corregir homófonos (“paralim” → pretil/Panelin según contexto; “sabas” → aguas).
 2. Ejecutar MCP **chrome-devtools** en la URL acordada: navegar, **consola** (error > warn > issue), **red** (4xx/5xx), **snapshot** en pasos clave si el usuario no detalló IDs de DOM.
-3. Mapear beats a **archivos probables** del repo (sin adivinar precios ni IDs de Sheets): buscar strings (`rg`) en `src/components/QuoteVisualVisor.jsx`, `src/data/quoteVisorMedia.js`, `src/data/roofPanelCatalogMapUrls.js`, `PanelinCalculadoraV3_backup.jsx`.
+3. Mapear beats a **archivos probables** del repo (sin adivinar precios ni IDs de Sheets): buscar strings (`rg`) en `src/components/QuoteVisualVisor.jsx`, `src/data/quoteVisorMedia.js`, `src/data/roofPanelCatalogMapUrls.js`, `PanelinCalculadoraV3.jsx`.
 4. **Implementar** solo lo acordado por la transcripción + plan; assets en `public/images/`; URLs Shopify solo si el usuario pidió explícitamente CDN.
 5. Cerrar con **checklist de verificación** y próxima corrida MCP (mismo flujo usuario).
 

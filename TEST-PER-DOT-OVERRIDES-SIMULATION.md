@@ -56,7 +56,7 @@ The 2D plan shows:
    - Main component: New props + callbacks for dot interactions
    - Handlers: `handleDotCycleMaterial` + `handleDotToggleEnabled`
 
-3. **`src/components/PanelinCalculadoraV3_backup.jsx`**
+3. **`src/components/PanelinCalculadoraV3.jsx`**
    - State management: `fijDotOverridesByGi` + `handleFijDotOverridesSync`
    - Two RoofPreview instances wired (visor + wizard)
 

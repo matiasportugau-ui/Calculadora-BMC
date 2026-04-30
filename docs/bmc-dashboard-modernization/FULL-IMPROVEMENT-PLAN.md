@@ -100,7 +100,7 @@
 ### Step 3.2 — Align component naming (PanelinCalculadoraV3)
 
 - **Owner:** Cotizaciones
-- **Description:** Decide canonical name: PanelinCalculadoraV3 or PanelinCalculadoraV3_backup. Update App.jsx and any imports to use one name; rename file if needed. Update DASHBOARD-VISUAL-MAP and IA to reference the chosen name.
+- **Description:** Decide canonical name: PanelinCalculadoraV3 or PanelinCalculadoraV3. Update App.jsx and any imports to use one name; rename file if needed. Update DASHBOARD-VISUAL-MAP and IA to reference the chosen name.
 - **Depends on:** —
 - **Acceptance:** Single canonical component name in code and docs; no _backup ambiguity.
 - **Impact:** L | **Complexity:** L

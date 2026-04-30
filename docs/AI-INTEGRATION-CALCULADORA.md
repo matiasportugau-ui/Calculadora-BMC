@@ -11,7 +11,7 @@ Documento consolidado (sesión de trabajo y código vigente en el repo) para **c
 | Área | Descripción |
 |------|-------------|
 | **Chat calculadora** | Streaming SSE desde la API Node (`POST /api/agent/chat`), estado y opciones de IA en el hook `useChat`. |
-| **Selector en cabecera** | Lista desplegable junto al **video circular del agente** y al botón **Panelin** en `PanelinCalculadoraV3_backup.jsx`. |
+| **Selector en cabecera** | Lista desplegable junto al **video circular del agente** y al botón **Panelin** en `PanelinCalculadoraV3.jsx`. |
 | **Otro uso de IA** | CRM sugiere respuestas con proveedor configurable (`POST /api/crm/suggest-response`, comentado en `.env.example`); no es el mismo flujo que el chat del agente. |
 | **Descubrimiento** | `GET /api/agent/ai-options` no está hoy en `GET /capabilities` / `agentCapabilitiesManifest.js`; rutas canónicas del agente están documentadas aquí y en `server/routes/agentChat.js`. |
 
@@ -22,7 +22,7 @@ Documento consolidado (sesión de trabajo y código vigente en el repo) para **c
 ```mermaid
 flowchart LR
   subgraph browser [Navegador Vite 5173]
-    Calc[PanelinCalculadoraV3_backup]
+    Calc[PanelinCalculadoraV3]
     Hook[useChat]
     Drawer[PanelinChatPanel]
     Calc --> Hook
@@ -50,7 +50,7 @@ Archivos clave:
 - `server/routes/agentChat.js` — rutas `/api/agent/chat`, `/api/agent/ai-options`, allowlist de modelos, cadena de proveedores.
 - `server/config.js` — lectura de API keys y modelos por defecto.
 - `src/hooks/useChat.js` — fetch de opciones, persistencia de selección, envío SSE.
-- `src/components/PanelinCalculadoraV3_backup.jsx` — UI `panelinHeaderAiSelect` (video + `<select>` + botón chat).
+- `src/components/PanelinCalculadoraV3.jsx` — UI `panelinHeaderAiSelect` (video + `<select>` + botón chat).
 - `src/components/PanelinChatPanel.jsx` — drawer del chat; recibe `{...chat}` (props del hook) además de handlers explícitos.
 - `src/utils/calcApiBase.js` — resolución de base URL.
 - `src/utils/panelinAgentVideoSrc.js` — URL del MP4 del avatar (`public/video/panelin-lista-loop.mp4` vía `BASE_URL`).
@@ -126,7 +126,7 @@ Los ids de proveedor expuestos al cliente son: `claude`, `openai`, `grok`, `gemi
 
 ## 7. Frontend: selector junto al avatar
 
-En `PanelinCalculadoraV3_backup.jsx`, el bloque de cabecera incluye (orden):
+En `PanelinCalculadoraV3.jsx`, el bloque de cabecera incluye (orden):
 
 1. `<video>` con `PANELIN_AGENT_VIDEO_SRC` (avatar animado).
 2. **`panelinHeaderAiSelect`** — un `<select>` con:

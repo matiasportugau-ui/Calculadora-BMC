@@ -5,7 +5,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 
 export default [
-  { ignores: ["dist", "src/components/PanelinCalculadoraV3_backup.jsx"] },
+  { ignores: ["dist", "src/components/PanelinCalculadoraV3.jsx"] },
   {
     files: ["**/*.{js,jsx}"],
     languageOptions: {

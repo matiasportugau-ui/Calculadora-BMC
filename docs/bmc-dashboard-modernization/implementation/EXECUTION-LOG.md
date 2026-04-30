@@ -79,7 +79,7 @@ No server code changed; root and favicon were already correct.
 
 | Done | Detail |
 |------|--------|
-| ✅ | IA.md: added "Calculadora component (canonical): PanelinCalculadoraV3_backup (App.jsx); PanelinCalculadoraV3.jsx = alternate." |
+| ✅ | IA.md: added "Calculadora component (canonical): PanelinCalculadoraV3 (App.jsx); PanelinCalculadoraV3.jsx = alternate." |
 | ✅ | DASHBOARD-VISUAL-MAP.md §5: added same canonical name note and link to IA. |
 | ✅ | App.jsx: added one-line comment referencing IA. |
 | ✅ | KPI already stated as sub-area of Finanzas in IA and in dashboard section kicker (Task C). |

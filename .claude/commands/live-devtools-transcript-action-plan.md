@@ -36,7 +36,7 @@ Buscar strings con `Grep` en:
 - `src/components/QuoteVisualVisor.jsx`
 - `src/data/quoteVisorMedia.js`
 - `src/data/roofPanelCatalogMapUrls.js`
-- `src/components/PanelinCalculadoraV3_backup.jsx`
+- `src/components/PanelinCalculadoraV3.jsx`
 
 No adivinar precios ni IDs de Sheets sin evidencia.
 
@@ -54,7 +54,7 @@ Solo lo acordado por transcripción + plan; assets en `public/images/`; URLs Sho
 3. **Cruce** `User ID → Evidence IDs` + columna "¿coincide?"
 4. **Plan de acción** por fases:
    - Investigación
-   - Cambio de datos (`quoteVisorMedia`, `roofPanelCatalogMapUrls`, UI `QuoteVisualVisor`, tarjetas familia en `PanelinCalculadoraV3_backup`)
+   - Cambio de datos (`quoteVisorMedia`, `roofPanelCatalogMapUrls`, UI `QuoteVisualVisor`, tarjetas familia en `PanelinCalculadoraV3`)
    - Verificación (MCP otra pasada + lint/test)
 5. **Informe:** `docs/team/ux-feedback/LIVE-DEVTOOLS-NARRATIVE-REPORT-YYYY-MM-DD-<slug>.md`  
    Plantilla: `docs/team/ux-feedback/TEMPLATE-LIVE-DEVTOOLS-NARRATIVE-REPORT.md`

@@ -22,8 +22,8 @@
 
 | Field | Content |
 |-------|--------|
-| **Issue** | PanelinCalculadoraV3.jsx and PanelinCalculadoraV3_backup.jsx both exist; App.jsx uses _backup; DASHBOARD-VISUAL-MAP inconsistent. (Context: 01-universe-cotizaciones.) |
-| **Solution** | Decide canonical name and document: “Canonical Calculadora component in use: PanelinCalculadoraV3_backup (Drive + Budget Log). PanelinCalculadoraV3.jsx = alternate single-file build.” Update IA and map; add comment in App.jsx. No file rename this pass to avoid breakage. |
+| **Issue** | PanelinCalculadoraV3.jsx and PanelinCalculadoraV3.jsx both exist; App.jsx uses _backup; DASHBOARD-VISUAL-MAP inconsistent. (Context: 01-universe-cotizaciones.) |
+| **Solution** | Decide canonical name and document: “Canonical Calculadora component in use: PanelinCalculadoraV3 (Drive + Budget Log). PanelinCalculadoraV3.jsx = alternate single-file build.” Update IA and map; add comment in App.jsx. No file rename this pass to avoid breakage. |
 | **Touchpoints** | **Edit:** `docs/bmc-dashboard-modernization/IA.md` (add “Calculadora component” line). **Edit:** `DASHBOARD-VISUAL-MAP.md` §5 (component name). **Edit:** `src/App.jsx` (one-line comment). |
 | **Risks** | Low; doc-only. File rename deferred. |
 | **Acceptance** | Single canonical name documented; no _backup ambiguity in docs. |

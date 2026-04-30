@@ -32,7 +32,7 @@
 
 | Componente | Rol |
 |------------|-----|
-| PanelinCalculadoraV3_backup.jsx | Componente canónico |
+| PanelinCalculadoraV3.jsx | Componente canónico |
 | GoogleDrivePanel | Guardar/cargar en Drive |
 | Budget Log Panel | Historial presupuestos |
 | PDFPreviewModal | Vista previa PDF |

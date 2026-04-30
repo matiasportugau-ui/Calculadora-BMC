@@ -27,11 +27,11 @@
 
 ### UI — Wizard dimensiones / vista previa techo (2026-03-20)
 - **`RoofPreview.jsx`:** Etiquetas **largo × ancho** en el SVG alineadas al rectángulo dibujado (en **dos aguas**, ancho = **faldón**); nota aclaratoria bajo instrucciones de arrastre; en el desglose **Por zona**, segunda línea con medidas en planta y fila **Suma zonas** que coincide con el total.
-- **`PanelinCalculadoraV3_backup.jsx`:** Botón **Siguiente** con mejor contraste en estado deshabilitado; helper **`wizardPrimaryActionStyle(enabled)`** para reutilizar en futuros wizards (techo+fachada, etc.). **Anterior** con `type="button"`.
+- **`PanelinCalculadoraV3.jsx`:** Botón **Siguiente** con mejor contraste en estado deshabilitado; helper **`wizardPrimaryActionStyle(enabled)`** para reutilizar en futuros wizards (techo+fachada, etc.). **Anterior** con `type="button"`.
 
 ### Presupuesto libre — backup + API (2026-03-19)
 - **Módulo:** `src/utils/presupuestoLibreCatalogo.js` — catálogo acordeón (paneles m², perfiles, tornillería/herrajes, selladores, flete, extraordinarios).
-- **UI canónica:** `PanelinCalculadoraV3_backup.jsx` — escenario `presupuesto_libre`, `groups` sin duplicar flete; categorías BOM (`EXTRAORDINARIOS`, `TORNILLERÍA` vía `FIJACIONES`); snapshots / Drive / `projectFile`.
+- **UI canónica:** `PanelinCalculadoraV3.jsx` — escenario `presupuesto_libre`, `groups` sin duplicar flete; categorías BOM (`EXTRAORDINARIOS`, `TORNILLERÍA` vía `FIJACIONES`); snapshots / Drive / `projectFile`.
 - **V3 standalone:** `PanelinCalculadoraV3.jsx` — llama al mismo motor con catálogo inline.
 - **API:** `POST /calc/cotizar/presupuesto-libre`; `buildGptResponse` evita segundo flete si `presupuestoLibre`; `docs/openapi-calc.yaml` + `GPT_ACTIONS`.
 - **Tests:** suite 16b en `tests/validation.js` (**119 passed**).

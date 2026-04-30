@@ -39,7 +39,7 @@ The BMC dashboard today is documented as a multi-entry system (Vite :5173, Finan
   - Config-driven via BMC_SHEET_SCHEMA.
 
 - **React components (DASHBOARD-VISUAL-MAP.md §5, .html §5)**  
-  - App → PanelinCalculadoraV3 (or PanelinCalculadoraV3_backup in .md) → GoogleDrivePanel, Budget Log, and in .md PDFPreviewModal.  
+  - App → PanelinCalculadoraV3 (or PanelinCalculadoraV3 in .md) → GoogleDrivePanel, Budget Log, and in .md PDFPreviewModal.  
   - These are the **Calculadora** (Vite) app, not the Finanzas dashboard UI.
 
 - **Endpoints (DASHBOARD-VISUAL-MAP.md §6)**  
@@ -75,7 +75,7 @@ The BMC dashboard today is documented as a multi-entry system (Vite :5173, Finan
 | **No explicit IA or nav model** | Observed | Docs describe ports, flows, and API; no diagram or list of user-facing sections, menu, or hierarchy. |
 | **KPI vs Finanzas overlap** | Inferred | Finanzas UI already includes “KPIs financieros”. “KPI” as a planned section may duplicate or conflict with “Finanzas” unless one subsumes the other or scope is defined. |
 | **Multiple entry points, no single front door** | Observed | 5173 (Calculadora), 3001/finanzas (Finanzas), 3849 (standalone). User goal “main frontend” implies one primary URL and a nav that reaches modules. |
-| **Component naming drift** | Observed | .html: “PanelinCalculadoraV3”; .md: “PanelinCalculadoraV3_backup”. Suggests two components; unclear which is canonical. |
+| **Component naming drift** | Observed | .html: “PanelinCalculadoraV3”; .md: “PanelinCalculadoraV3”. Suggests two components; unclear which is canonical. |
 | **Invoque Panelin not in docs** | Observed | Not mentioned in DASHBOARD-VISUAL-MAP or DASHBOARD-EVALUATION-REPORT. Role and placement are undefined in the repo. |
 | **Weak grouping of capabilities** | Inferred | Entregas, logística, KPI, audit are listed as separate UI blocks; no documented grouping (e.g. “Operaciones”, “Finanzas”) for scalability. |
 | **Unclear transition Calculadora ↔ Finanzas** | Inferred | No documented link or route from one to the other; user flow between “quote building” and “financial/operational” views is unclear. |

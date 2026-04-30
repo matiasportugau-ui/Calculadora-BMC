@@ -30,7 +30,7 @@ Especialista en la **Calculadora Panelin** (puerto 5173): cotizador de paneles, 
 
 ### Componentes
 
-- **PanelinCalculadoraV3_backup** — Componente canónico (App.jsx)
+- **PanelinCalculadoraV3** — Componente canónico (App.jsx)
 - **PanelinCalculadoraV3** — Build alternativo single-file
 - **GoogleDrivePanel** — Guardar/cargar en Drive
 - **Budget Log Panel** — Historial de presupuestos
@@ -40,7 +40,7 @@ Especialista en la **Calculadora Panelin** (puerto 5173): cotizador de paneles, 
 
 | Archivo | Rol |
 |---------|-----|
-| `src/components/PanelinCalculadoraV3_backup.jsx` | Componente principal |
+| `src/components/PanelinCalculadoraV3.jsx` | Componente principal |
 | `src/utils/calculations.js` | calcTechoCompleto, calcParedCompleto, etc. |
 | `src/utils/helpers.js` | bomToGroups, applyOverrides, createLineId |
 | `src/utils/googleDrive.js` | Save/Load Drive |

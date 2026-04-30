@@ -156,4 +156,4 @@ Sustituir `BASE` por la URL sin barra final. Esperado: `200` y JSON `{"ok":true,
 
 ---
 
-*Documento alineado a `docs/calculadora/README.md`. Actualizar ambos si se agregan flujos nuevos en `PanelinCalculadoraV3_backup.jsx`.*
+*Documento alineado a `docs/calculadora/README.md`. Actualizar ambos si se agregan flujos nuevos en `PanelinCalculadoraV3.jsx`.*

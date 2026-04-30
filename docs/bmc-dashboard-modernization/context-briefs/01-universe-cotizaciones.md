@@ -7,7 +7,7 @@
 ## Scope
 
 - **From docs/code:** Build and manage quotes: (1) **Quote builder (Calculadora)** — panel configurator (techo/pared, familias, espesores, zonas), BOM, PDF, save/load to Google Drive; (2) **Quote list/admin** — data comes from Master_Cotizaciones or CRM_Operativo via `/api/cotizaciones` (consumed by Operaciones/Finanzas UI, not by the Vite app today). The “Administrador de Cotizaciones 2.0” is a product concept; in repo, the builder lives in Vite and the list lives in the Finanzas dashboard.
-- **Directly observed:** Vite app at 5173 is the Calculadora (PanelinCalculadoraV3_backup per App.jsx; DASHBOARD-VISUAL-MAP.md names PanelinCalculadoraV3_backup). legacyQuote router serves product catalog and legacy quote endpoints; calc router serves `/calc/cotizar`, `/calc/catalogo`.
+- **Directly observed:** Vite app at 5173 is the Calculadora (PanelinCalculadoraV3 per App.jsx; DASHBOARD-VISUAL-MAP.md names PanelinCalculadoraV3). legacyQuote router serves product catalog and legacy quote endpoints; calc router serves `/calc/cotizar`, `/calc/catalogo`.
 
 ## Data
 
@@ -19,8 +19,8 @@
 ## Tech
 
 - **Entry:** http://localhost:5173 (Vite dev); production build could be served from same host as API or 3849.
-- **Stack:** React (Vite), PanelinCalculadoraV3_backup, GoogleDrivePanel, Budget Log, PDFPreviewModal; constants.js (PANELS_TECHO, PANELS_PARED), calculations.js, helpers.js, googleDrive.js.
-- **Key files:** `src/App.jsx`, `src/components/PanelinCalculadoraV3_backup.jsx`, `src/components/GoogleDrivePanel.jsx`, `server/routes/calc.js`, `server/routes/legacyQuote.js`.
+- **Stack:** React (Vite), PanelinCalculadoraV3, GoogleDrivePanel, Budget Log, PDFPreviewModal; constants.js (PANELS_TECHO, PANELS_PARED), calculations.js, helpers.js, googleDrive.js.
+- **Key files:** `src/App.jsx`, `src/components/PanelinCalculadoraV3.jsx`, `src/components/GoogleDrivePanel.jsx`, `server/routes/calc.js`, `server/routes/legacyQuote.js`.
 
 ## Users / personas
 
