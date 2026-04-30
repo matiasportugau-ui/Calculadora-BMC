@@ -13,6 +13,18 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
 import { config } from "../config.js";
+import { appendQuoteToCrm } from "./crmAppend.js";
+
+function apiBase() {
+  return config.publicBaseUrl.replace(/\/$/, "");
+}
+
+async function fetchJson(pathSuffix, init = {}) {
+  const url = `${apiBase()}${pathSuffix}`;
+  const resp = await fetch(url, init);
+  const txt = await resp.text();
+  try { return JSON.parse(txt); } catch { return { ok: false, error: `Respuesta no-JSON desde ${pathSuffix}: ${txt.slice(0, 200)}` }; }
+}
 
 // ─── Tool definitions (Anthropic input_schema format) ────────────────────────
 
@@ -224,6 +236,203 @@ export const AGENT_TOOLS = [
       required: ["scenario"],
     },
   },
+
+  {
+    name: "obtener_escenarios",
+    description:
+      "Devuelve la lista canónica de escenarios de cotización con sus campos REQUERIDOS y OPCIONALES. " +
+      "Usar al inicio de cada cotización para saber exactamente qué datos pedirle al usuario sin re-preguntar lo que ya está en calcState. " +
+      "Es la fuente de verdad para slot-filling: si un campo no está en `campos_requeridos`, no lo pidas como obligatorio.",
+    input_schema: { type: "object", properties: {} },
+  },
+
+  {
+    name: "obtener_catalogo",
+    description:
+      "Devuelve el catálogo completo de paneles (techo + pared) con familias, espesores válidos, colores permitidos, " +
+      "ancho útil, sistemas de fijación y bordes disponibles. Usar antes de aplicar setTecho/setPared para validar " +
+      "que la combinación familia+espesor+color que el usuario pidió existe en la lista activa.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lista: { type: "string", enum: ["web", "venta"], description: "Lista de precios. Default: web" },
+      },
+    },
+  },
+
+  {
+    name: "obtener_informe_completo",
+    description:
+      "Dump completo de pricing + reglas de asesoría + fórmulas de cálculo + endpoints. Más pesado que catalogo, " +
+      "pero útil cuando el usuario pregunta cosas tipo \"¿cuánto vale el flete a Salto?\", \"¿qué autoportancia necesito para 6m?\", " +
+      "\"¿cuál es la regla para Blanco en ISOROOF 3G?\". No llamarla en cotizaciones rutinarias — preferí catalogo.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lista: { type: "string", enum: ["web", "venta"] },
+      },
+    },
+  },
+
+  {
+    name: "presupuesto_libre",
+    description:
+      "Genera una cotización en formato BOM libre (líneas manuales): el usuario describe paneles + perfilería + fijaciones + selladores " +
+      "uno por uno, sin pasar por el wizard de escenario. Usar cuando el usuario diga 'presupuesto libre', 'BOM manual', " +
+      "'cotización a medida', o cuando lo que pide no encaja en solo_techo / solo_fachada / techo_fachada / camara_frig.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lista: { type: "string", enum: ["web", "venta"] },
+        librePanelLines: {
+          type: "array",
+          description: "Líneas de panel manuales: cada línea es { familia, espesor, color, m2, largo? }",
+          items: { type: "object" },
+        },
+        librePerfilQty: { type: "object", description: "Mapa { perfilId: cantidad }" },
+        libreFijQty:    { type: "object", description: "Mapa { fijacionId: cantidad }" },
+        libreSellQty:   { type: "object", description: "Mapa { selladorId: cantidad }" },
+        libreExtra:     { type: "object", description: "Items extra { label, pu, cant }" },
+        flete:          { type: "number", description: "Flete USD" },
+      },
+    },
+  },
+
+  {
+    name: "listar_cotizaciones_recientes",
+    description:
+      "Lista las cotizaciones generadas recientemente en esta instancia (últimas 24h). " +
+      "Cada entrada incluye id, code, cliente, escenario, total, lista y la URL del PDF. " +
+      "Usar cuando el usuario diga 'mandale otra vez la cotización a Juan', 'pasame el link del último presupuesto', " +
+      "'¿qué cotizaciones hice hoy?'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente: { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
+        limite:  { type: "number", description: "Máx resultados a devolver. Default 10" },
+      },
+    },
+  },
+
+  {
+    name: "obtener_cotizacion_por_id",
+    description:
+      "Recupera el resumen + URL del PDF de una cotización por su pdf_id (UUID). " +
+      "Usar cuando el usuario referencia un id específico o cuando listar_cotizaciones_recientes devolvió varios y necesitás el detalle de uno.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdf_id: { type: "string", description: "UUID de la cotización" },
+      },
+      required: ["pdf_id"],
+    },
+  },
+
+  {
+    name: "aplicar_estado_calc",
+    description:
+      "Aplica datos extraídos de la conversación al estado live de la calculadora (auto-rellena el formulario). " +
+      "Emite las ACTION_JSON correspondientes en una sola llamada: setScenario, setLP, setTecho, setTechoZonas, setPared, setCamara, setFlete, setProyecto. " +
+      "Pasá SOLO los campos que el usuario confirmó explícitamente. Llamala en cuanto tengas datos suficientes para un campo — no esperes a tener todo. " +
+      "Tras llamarla, calculá con calcular_cotizacion para mostrar el total parcial al usuario.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario:     { type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig", "presupuesto_libre"] },
+        listaPrecios: { type: "string", enum: ["web", "venta"] },
+        techo: {
+          type: "object",
+          description: "Campos de techo. Las zonas se aplican vía setTechoZonas si están presentes.",
+          properties: {
+            familia:    { type: "string" },
+            espesor:    { type: ["string", "number"] },
+            color:      { type: "string" },
+            tipoAguas:  { type: "string", enum: ["una_agua", "dos_aguas"] },
+            pendiente:  { type: "number" },
+            tipoEst:    { type: "string", enum: ["metal", "hormigon", "madera", "combinada"] },
+            borders:    { type: "object" },
+            zonas:      { type: "array", items: { type: "object" } },
+          },
+        },
+        pared: {
+          type: "object",
+          properties: {
+            familia: { type: "string" }, espesor: { type: ["string", "number"] }, color: { type: "string" },
+            alto: { type: "number" }, perimetro: { type: "number" },
+            numEsqExt: { type: "number" }, numEsqInt: { type: "number" },
+          },
+        },
+        camara: {
+          type: "object",
+          properties: {
+            largo_int: { type: "number" }, ancho_int: { type: "number" }, alto_int: { type: "number" },
+          },
+        },
+        flete:    { type: "number", description: "Flete USD" },
+        proyecto: {
+          type: "object",
+          properties: {
+            nombre: { type: "string" }, rut: { type: "string" }, telefono: { type: "string" },
+            direccion: { type: "string" }, descripcion: { type: "string" },
+            tipoCliente: { type: "string", enum: ["empresa", "particular"] },
+          },
+        },
+      },
+    },
+  },
+
+  {
+    name: "formatear_resumen_crm",
+    description:
+      "Formatea un bloque copy-pasteable listo para pegar en el CRM con los datos clave de la cotización: " +
+      "código, cliente, escenario, total USD, link PDF (GCS) y link Drive. " +
+      "Llamarla DESPUÉS de generar_pdf, antes de mostrarle el resumen final al usuario. " +
+      "El bloque se muestra al humano para que lo pegue manualmente en su sheet/CRM.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente:   { type: "string" },
+        scenario:  { type: "string" },
+        total:     { type: "number" },
+        lista:     { type: "string" },
+        pdf_url:   { type: "string" },
+        drive_url: { type: "string" },
+        pdf_id:    { type: "string" },
+        code:      { type: "string" },
+      },
+      required: ["pdf_url"],
+    },
+  },
+
+  {
+    name: "guardar_en_crm",
+    description:
+      "Guarda la cotización en la planilla CRM_Operativo de BMC (Google Sheets). Crea una fila nueva con cliente, " +
+      "teléfono, total, escenario, link al PDF (col AH = LINK_PRESUPUESTO) y observaciones. " +
+      "REGLA OBLIGATORIA: SOLO llamar esta tool cuando el usuario confirma EXPLÍCITAMENTE que quiere guardarla " +
+      "(\"guardalo en CRM\", \"pegalo al CRM\", \"sumalo al CRM\", \"agregalo a la planilla\"). " +
+      "Nunca la llames automáticamente después de generar_pdf — primero formatear_resumen_crm y esperar la confirmación. " +
+      "La fila se crea con AI/AK = \"No\" (gate humano), el operador aprueba manualmente desde la planilla.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente:               { type: "string" },
+        telefono:              { type: "string" },
+        ubicacion:             { type: "string" },
+        scenario:              { type: "string" },
+        lista:                 { type: "string", enum: ["web", "venta"] },
+        total:                 { type: "number", description: "USD con IVA" },
+        pdf_url:               { type: "string" },
+        drive_url:             { type: "string" },
+        vendedor:              { type: "string" },
+        tipo_cliente:          { type: "string" },
+        urgencia:              { type: "string" },
+        probabilidad_cierre:   { type: "string" },
+        observaciones:         { type: "string" },
+      },
+      required: ["pdf_url"],
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -313,14 +522,63 @@ function summarizeResult(result, scenario) {
   return base;
 }
 
+// Allow-listed action types — must match VALID_ACTION_TYPES in agentChat.js.
+const APLICAR_ALLOWED_ACTIONS = new Set([
+  "setScenario", "setLP", "setTecho", "setTechoZonas",
+  "setPared", "setCamara", "setFlete", "setProyecto",
+]);
+
+function buildAplicarActions(input = {}) {
+  const actions = [];
+  if (input.scenario) actions.push({ type: "setScenario", payload: String(input.scenario) });
+  if (input.listaPrecios) actions.push({ type: "setLP", payload: String(input.listaPrecios) });
+  if (input.techo && typeof input.techo === "object") {
+    const { zonas, ...rest } = input.techo;
+    const techoFields = { ...rest };
+    if (techoFields.familia) techoFields.familia = normalizeFamilia(techoFields.familia);
+    if (techoFields.espesor != null) techoFields.espesor = String(techoFields.espesor);
+    if (Object.keys(techoFields).length > 0) actions.push({ type: "setTecho", payload: techoFields });
+    if (Array.isArray(zonas) && zonas.length > 0) {
+      const safeZonas = zonas
+        .map((z) => ({ largo: Number(z.largo), ancho: Number(z.ancho) }))
+        .filter((z) => Number.isFinite(z.largo) && Number.isFinite(z.ancho));
+      if (safeZonas.length > 0) actions.push({ type: "setTechoZonas", payload: safeZonas });
+    }
+  }
+  if (input.pared && typeof input.pared === "object") {
+    const paredFields = { ...input.pared };
+    if (paredFields.familia) paredFields.familia = normalizeFamilia(paredFields.familia);
+    if (paredFields.espesor != null) paredFields.espesor = String(paredFields.espesor);
+    if (Object.keys(paredFields).length > 0) actions.push({ type: "setPared", payload: paredFields });
+  }
+  if (input.camara && typeof input.camara === "object") {
+    const c = input.camara;
+    if (c.largo_int != null && c.ancho_int != null && c.alto_int != null) {
+      actions.push({ type: "setCamara", payload: {
+        largo_int: Number(c.largo_int), ancho_int: Number(c.ancho_int), alto_int: Number(c.alto_int),
+      }});
+    }
+  }
+  if (input.flete != null && Number.isFinite(Number(input.flete))) {
+    actions.push({ type: "setFlete", payload: Number(input.flete) });
+  }
+  if (input.proyecto && typeof input.proyecto === "object" && Object.keys(input.proyecto).length > 0) {
+    actions.push({ type: "setProyecto", payload: input.proyecto });
+  }
+  return actions.filter((a) => APLICAR_ALLOWED_ACTIONS.has(a.type));
+}
+
 /**
  * Execute a tool call and return the result string.
  * @param {string} name - Tool name
  * @param {object} input - Tool input
  * @param {object} calcState - Current calculator state from frontend
+ * @param {object} [opts]
+ * @param {(action:object)=>void} [opts.emitAction] - Callback to emit ACTION_JSON live to the SSE stream
  * @returns {Promise<string>} JSON-stringified result
  */
-export async function executeTool(name, input, calcState = {}) {
+export async function executeTool(name, input, calcState = {}, opts = {}) {
+  const { emitAction } = opts;
   try {
     if (name === "get_calc_state") {
       const liveResult = (() => {
@@ -489,12 +747,176 @@ export async function executeTool(name, input, calcState = {}) {
 
       return JSON.stringify({
         ok: true,
+        pdf_id: data.pdf_id,
         pdf_url: data.pdf_url,
         gcs_url: data.gcs_url || null,
+        drive_url: data.drive_url || null,
         expires_in_hours: data.expires_in_hours || null,
         resumen: data.resumen,
         instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
       });
+    }
+
+    if (name === "obtener_escenarios") {
+      const data = await fetchJson("/calc/escenarios");
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al obtener escenarios" });
+      return JSON.stringify({ ok: true, escenarios: data.escenarios });
+    }
+
+    if (name === "obtener_catalogo") {
+      const lista = input?.lista === "venta" ? "venta" : "web";
+      const data = await fetchJson(`/calc/catalogo?lista=${lista}`);
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al obtener catálogo" });
+      return JSON.stringify({
+        ok: true,
+        lista: data.lista,
+        paneles_techo: data.paneles_techo,
+        paneles_pared: data.paneles_pared,
+        bordes_techo: data.bordes_techo,
+        tipos_estructura: data.tipos_estructura,
+        escenarios: data.escenarios,
+      });
+    }
+
+    if (name === "obtener_informe_completo") {
+      const lista = input?.lista === "venta" ? "venta" : "web";
+      const data = await fetchJson(`/calc/informe?lista=${lista}`);
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al obtener informe" });
+      return JSON.stringify({
+        ok: true,
+        lista: data.meta?.lista,
+        paneles_techo: data.paneles_techo,
+        paneles_pared: data.paneles_pared,
+        fijaciones: data.fijaciones,
+        selladores: data.selladores,
+        servicios: data.servicios,
+        matriz_precios: data.matriz_precios,
+        bordes_techo: data.bordes_techo,
+        reglas_asesoria: data.reglas_asesoria,
+        formulas_calculo: data.formulas_calculo,
+      });
+    }
+
+    if (name === "presupuesto_libre") {
+      const body = {
+        lista: input?.lista === "venta" ? "venta" : "web",
+        librePanelLines: Array.isArray(input?.librePanelLines) ? input.librePanelLines : [],
+        librePerfilQty: input?.librePerfilQty || {},
+        libreFijQty: input?.libreFijQty || {},
+        libreSellQty: input?.libreSellQty || {},
+        flete: Number(input?.flete || 0),
+        libreExtra: input?.libreExtra || {},
+      };
+      const data = await fetchJson("/calc/cotizar/presupuesto-libre", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error en presupuesto libre" });
+      return JSON.stringify({
+        ok: true,
+        resumen: data.resumen,
+        bom: data.bom,
+        advertencias: data.advertencias || [],
+        texto_resumen: data.texto_resumen,
+      });
+    }
+
+    if (name === "listar_cotizaciones_recientes") {
+      const data = await fetchJson("/calc/cotizaciones");
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al listar cotizaciones" });
+      const filtroCliente = String(input?.cliente || "").trim().toLowerCase();
+      const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+      let entries = data.cotizaciones || [];
+      if (filtroCliente) {
+        entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(filtroCliente));
+      }
+      entries = entries.slice(0, limite);
+      return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
+    }
+
+    if (name === "obtener_cotizacion_por_id") {
+      const id = String(input?.pdf_id || "").trim();
+      if (!id) return JSON.stringify({ error: "pdf_id requerido" });
+      const list = await fetchJson("/calc/cotizaciones");
+      if (!list.ok) return JSON.stringify({ error: list.error || "No se pudo consultar el registro" });
+      const entry = (list.cotizaciones || []).find((e) => e.id === id);
+      if (!entry) return JSON.stringify({ error: `Cotización ${id} no encontrada o expirada (24h TTL)` });
+      return JSON.stringify({
+        ok: true,
+        id: entry.id,
+        code: entry.code,
+        client: entry.client,
+        scenario: entry.scenario,
+        total: entry.total,
+        lista: entry.lista,
+        pdf_url: entry.pdfUrl,
+        viewer_url: `${apiBase()}/calc/pdf/${id}`,
+        timestamp: entry.timestamp,
+      });
+    }
+
+    if (name === "aplicar_estado_calc") {
+      const actions = buildAplicarActions(input || {});
+      if (actions.length === 0) {
+        return JSON.stringify({ ok: false, error: "Sin campos válidos para aplicar — pasá scenario, listaPrecios, techo, pared, camara, flete o proyecto." });
+      }
+      if (typeof emitAction === "function") {
+        for (const a of actions) {
+          try { emitAction(a); } catch { /* swallow individual emit errors */ }
+        }
+      }
+      return JSON.stringify({
+        ok: true,
+        applied: actions.map((a) => a.type),
+        count: actions.length,
+        nota: "Acciones emitidas al frontend. Usá calcular_cotizacion ahora si los datos requeridos están completos.",
+      });
+    }
+
+    if (name === "formatear_resumen_crm") {
+      const cliente = String(input?.cliente || "—");
+      const scenario = String(input?.scenario || "");
+      const total = Number(input?.total || 0);
+      const lista = String(input?.lista || "");
+      const pdfUrl = String(input?.pdf_url || "");
+      const driveUrl = String(input?.drive_url || "");
+      const code = String(input?.code || input?.pdf_id || "").slice(0, 8);
+      const fecha = new Date().toISOString().slice(0, 10);
+      const lines = [
+        `📋 Cotización ${code ? `${code} ` : ""}— ${fecha}`,
+        `Cliente: ${cliente}`,
+        scenario ? `Escenario: ${scenario}` : null,
+        lista ? `Lista: ${lista}` : null,
+        Number.isFinite(total) && total > 0 ? `Total: USD ${total.toFixed(2)} c/IVA` : null,
+        pdfUrl ? `PDF: ${pdfUrl}` : null,
+        driveUrl ? `Drive: ${driveUrl}` : null,
+      ].filter(Boolean);
+      const crmText = lines.join("\n");
+      return JSON.stringify({
+        ok: true,
+        crm_text: crmText,
+        instrucciones: "Mostrale el bloque al usuario para que lo pegue en el CRM. Si pide guardarlo automáticamente, llamá guardar_en_crm.",
+      });
+    }
+
+    if (name === "guardar_en_crm") {
+      const result = await appendQuoteToCrm({
+        cliente: input?.cliente,
+        telefono: input?.telefono,
+        ubicacion: input?.ubicacion,
+        scenario: input?.scenario,
+        lista: input?.lista,
+        total: input?.total,
+        pdf_url: input?.pdf_url,
+        drive_url: input?.drive_url,
+        vendedor: input?.vendedor,
+        tipo_cliente: input?.tipo_cliente,
+        urgencia: input?.urgencia,
+        probabilidad_cierre: input?.probabilidad_cierre,
+        observaciones: input?.observaciones,
+      });
+      return JSON.stringify(result);
     }
 
     return JSON.stringify({ error: `Tool "${name}" no implementada` });

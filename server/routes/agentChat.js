@@ -628,9 +628,10 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         let cacheReadTokens = 0;
-        // Tool-use loop: model may call tools up to 5 times before final response
+        // Tool-use loop: model may call tools up to 8 times before final response.
+        // Higher cap accommodates the slot-fill → calc → pdf → crm-format → crm-save chain.
         const toolMsgs = [...msgs];
-        for (let toolRound = 0; toolRound < 5; toolRound++) {
+        for (let toolRound = 0; toolRound < 8; toolRound++) {
           const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
           const toolCalls = [];
           let roundText = "";
@@ -670,7 +671,7 @@ router.post("/agent/chat", async (req, res) => {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState);
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
           }
