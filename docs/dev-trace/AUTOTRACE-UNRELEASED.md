@@ -236,6 +236,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `75ae09a` docs: autotrace sync — trace commit 89ec748 (close propagation chain)
 - `888f9cc` docs(v1.3): Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001
 - `84705e7` docs(dev-trace): autotrace 7e639cc
+- `4cfc594` docs(dev-trace): autotrace 84705e7
 
 ## Tests
 
