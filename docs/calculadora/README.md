@@ -23,7 +23,7 @@ Documentación orientada a **usuarios comerciales** y a **QA / deploy**. Para cr
 ## 2. Componente en código (importante para soporte)
 
 - **`src/App.jsx`** importa **`src/components/PanelinCalculadoraV3.jsx`** — es la **calculadora canónica** en prod (Drive, historial, Config, Hoja Cliente / Costeo, PDF enriquecido, etc.). Hasta el refactor del 2026-04-30 este archivo se llamaba `PanelinCalculadoraV3_backup.jsx`; el sufijo `_backup` era histórico y se renombró a su nombre canónico.
-- El monolito original (~2351 líneas) se conservaba como `PanelinCalculadoraV3_legacy_inline.jsx` por seguridad; **fue eliminado en el refactor del 2026-04-30** porque ya no tenía importadores ni dependencias.
+- El monolito original (~2351 líneas) se conservaba como `PanelinCalculadoraV3_legacy_inline.jsx` por seguridad; **fue retirado de `src/` en el refactor del 2026-04-30** y archivado en [`docs/archive/PanelinCalculadoraV3_legacy_inline.jsx`](../archive/PanelinCalculadoraV3_legacy_inline.jsx) (no se importa desde código activo; queda como referencia histórica).
 - El shim `src/PanelinCalculadoraV3.jsx` (re-export al canónico) **fue eliminado en el mismo refactor** por no tener importadores.
 
 ---

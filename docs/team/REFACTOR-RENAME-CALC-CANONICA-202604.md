@@ -43,7 +43,7 @@ Justificación de la exclusión: estos archivos describen el repo en una fecha p
 
 ## Manejo de refs a `_legacy_inline` en docs vivos
 
-3 docs activos mencionaban `PanelinCalculadoraV3_legacy_inline.jsx` con markdown links que ahora apuntan a archivo inexistente. Estrategia: reemplazar el link por texto plano con anotación `(eliminado 2026-04-30)`, preservando la narrativa.
+3 docs activos mencionaban `PanelinCalculadoraV3_legacy_inline.jsx` con markdown links que ahora apuntan a archivo inexistente. Estrategia: reemplazar el link por texto plano con anotación `(archivado en `docs/archive/`)`, preservando la narrativa.
 
 Aplicado a:
 - `docs/calculadora/README.md`: rewrite manual del bullet de arquitectura (línea 26) explicando ambas eliminaciones (`_legacy_inline` + shim)
@@ -98,6 +98,27 @@ git revert <commit-sha>          # rollback en main
 # o
 git push origin :claude/rename-calc-canonical-bmzvF  # eliminar la branch remota
 ```
+
+## Adendum 2026-04-30 — preservación de `_legacy_inline.jsx` (post feedback usuario)
+
+Tras el push del commit `6b16313`, el usuario pidió no perder el archivo legacy "por las dudas". Verificación previa:
+
+- El canónico (renombrado desde `_backup`) era efectivamente el archivo activo (4 commits de desarrollo, único importador `App.jsx:17`, 6685 líneas).
+- `_legacy_inline.jsx` no tenía importadores (`grep -rn` en `src/`, `tests/`, `server/`, `scripts/` → 0).
+- Las funciones (`calcParedCompleto`, `calcFijacionesVarilla`, etc.) viven en `src/utils/calculations.js`; constantes (`BORDER_OPTIONS`, `GFFPIR*`, `GLLPIR*`) viven en `src/data/constants.js`. Tanto el canónico como el legacy las importaban — el legacy no contenía lógica única.
+- Git history preserva el archivo en `2161818:src/components/PanelinCalculadoraV3_legacy_inline.jsx` indefinidamente.
+
+**Acción tomada (commit follow-up sobre la misma branch):**
+
+1. Restaurado físicamente desde el commit `2161818` a `docs/archive/PanelinCalculadoraV3_legacy_inline.jsx` (idéntico al original, 2351 líneas).
+2. Creado `docs/archive/README.md` documentando reglas (no importar desde código activo) e inventario.
+3. Revertidas las anotaciones `(eliminado 2026-04-30)` en docs vivos a `(archivado en docs/archive/)`:
+   - `docs/team/PROJECT-STATE.md` (5 ocurrencias)
+   - `docs/calculadora/README.md`
+   - `docs/google-sheets-module/MATRIZ-SKU-GAP-Y-PLAN.md`
+   - `docs/bmc-dashboard-modernization/IA.md` (bullet canonical)
+
+**Sin cambios funcionales:** el archivado no toca `src/`, `eslint.config.js`, tests, ni el bundle. Build/lint/test deben seguir idénticos al baseline.
 
 ## Próximos pasos sugeridos (fuera de scope)
 

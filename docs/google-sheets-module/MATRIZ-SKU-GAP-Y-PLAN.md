@@ -93,7 +93,7 @@ En `constants.js`, el **mismo SKU** aparece en **varios paths** (mismo precio ho
    - **GFFPIR50**, **GFFPIR80**, **GFFPIR120** → `gotero_frontal.ISODEC_PIR.{50,80,120}`
    - **GLLPIR50**, **GLLPIR80**, **GLLPIR120** → `gotero_lateral.ISODEC_PIR.{50,80,120}`
 
-2. **Hecho en repo (2026-04-05):** el campo `sku` en `constants.js` y en `PanelinCalculadoraV3_legacy_inline.jsx` (eliminado el 2026-04-30) usaba **GFFPIR***/**GLLPIR*** (trazabilidad UI/PDF alineada al import CSV).
+2. **Hecho en repo (2026-04-05):** el campo `sku` en `constants.js` y en `PanelinCalculadoraV3_legacy_inline.jsx` (archivado en `docs/archive/` el 2026-04-30) usaba **GFFPIR***/**GLLPIR*** (trazabilidad UI/PDF alineada al import CSV).
 
 3. Mantener **GF80DC**, **GF120DC**, **GL80DC**, **GL120DC** en el mapping como **aliases** hacia un path único (retrocompatibilidad con filas antiguas de planilla).
 
