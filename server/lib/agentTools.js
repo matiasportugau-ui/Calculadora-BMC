@@ -433,6 +433,28 @@ export const AGENT_TOOLS = [
       required: ["pdf_url"],
     },
   },
+
+  {
+    name: "comparar_listas",
+    description:
+      "Calcula la MISMA cotización en lista web y lista venta y devuelve el delta (diferencia USD y %). " +
+      "Usar cuando el usuario pregunta \"¿cuánto baja con lista venta?\", \"¿cuál es el descuento?\", " +
+      "\"¿cuánto cambia si soy distribuidor?\", o cuando el vendedor evalúa precio para un cliente con red comercial. " +
+      "Internamente llama calcular_cotizacion dos veces — pasá los mismos campos que pasarías a calcular_cotizacion (sin listaPrecios).",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario: {
+          type: "string",
+          enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"],
+        },
+        techo:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        pared:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        camara: { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+      },
+      required: ["scenario"],
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -897,6 +919,36 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
         ok: true,
         crm_text: crmText,
         instrucciones: "Mostrale el bloque al usuario para que lo pegue en el CRM. Si pide guardarlo automáticamente, llamá guardar_en_crm.",
+      });
+    }
+
+    if (name === "comparar_listas") {
+      const { scenario, techo, pared, camara } = input || {};
+      if (!scenario) return JSON.stringify({ error: "scenario requerido" });
+      const baseInput = { scenario, techo, pared, camara };
+      const [webRaw, ventaRaw] = await Promise.all([
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "venta" }, calcState),
+      ]);
+      const web = JSON.parse(webRaw);
+      const venta = JSON.parse(ventaRaw);
+      if (web.error) return JSON.stringify({ error: `Lista web: ${web.error}` });
+      if (venta.error) return JSON.stringify({ error: `Lista venta: ${venta.error}` });
+      const totalWeb = Number(web.totalConIVA || 0);
+      const totalVenta = Number(venta.totalConIVA || 0);
+      const deltaUsd = +(totalWeb - totalVenta).toFixed(2);
+      const deltaPct = totalWeb > 0 ? +((deltaUsd / totalWeb) * 100).toFixed(2) : 0;
+      return JSON.stringify({
+        ok: true,
+        scenario,
+        web:   { subtotalSinIVA: web.subtotalSinIVA,   totalConIVA: totalWeb },
+        venta: { subtotalSinIVA: venta.subtotalSinIVA, totalConIVA: totalVenta },
+        delta_usd: deltaUsd,
+        delta_pct: deltaPct,
+        ahorro_lista_venta_usd: deltaUsd,
+        nota: deltaUsd > 0
+          ? `Lista venta es USD ${deltaUsd} (${deltaPct}%) más barata que web.`
+          : "No hay diferencia entre listas para esta combinación.",
       });
     }
 

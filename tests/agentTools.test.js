@@ -81,6 +81,7 @@ group("AGENT_TOOLS surface", () => {
     "aplicar_estado_calc",
     "formatear_resumen_crm",
     "guardar_en_crm",
+    "comparar_listas",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -308,6 +309,25 @@ await group("generar_pdf — propagates urls", async () => {
   assert(parsed.ok === true, "ok true");
   assert(parsed.pdf_id === "xyz-1", "pdf_id present");
   assert(parsed.gcs_url && parsed.drive_url, "both gcs_url and drive_url present");
+});
+
+await group("comparar_listas", async () => {
+  const { parsed } = await run("comparar_listas", {
+    scenario: "solo_techo",
+    techo: { familia: "ISODEC_EPS", espesor: 100, zonas: [{ largo: 10, ancho: 5 }] },
+  });
+  assert(parsed.ok === true, "ok true");
+  assert(typeof parsed.web?.totalConIVA === "number" && parsed.web.totalConIVA > 0, "web total present and positive");
+  assert(typeof parsed.venta?.totalConIVA === "number" && parsed.venta.totalConIVA > 0, "venta total present and positive");
+  assert(typeof parsed.delta_usd === "number", "delta_usd is a number");
+  assert(typeof parsed.delta_pct === "number", "delta_pct is a number");
+  assert(typeof parsed.nota === "string", "nota is a string");
+
+  const { parsed: bad } = await run("comparar_listas", {});
+  assert(bad.error === "scenario requerido", "missing scenario → error");
+
+  const { parsed: badSc } = await run("comparar_listas", { scenario: "no_existe" });
+  assert(typeof badSc.error === "string" && badSc.error.startsWith("Lista web:"), "unknown scenario surfaces upstream error");
 });
 
 await group("guardar_en_crm — no sheet configured", async () => {

@@ -470,6 +470,9 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 **Presupuesto libre:**
 - \`presupuesto_libre\` — cuando el usuario pide BOM manual ("presupuesto libre", "BOM a medida", "líneas sueltas").
 
+**Comparación de listas:**
+- `comparar_listas` — "¿cuánto baja con lista venta?", "¿cuál es el descuento de distribuidor?". Devuelve total web, total venta, delta_usd y delta_pct en una sola llamada (no llames calcular_cotizacion dos veces a mano).
+
 Los precios en PRECIOS CANÓNICOS son de referencia para vos; la cifra que le decís al cliente DEBE venir de una tool.`;
 
   const extractionProtocol = `## PROTOCOLO DE EXTRACCIÓN CONVERSACIONAL (OBLIGATORIO)

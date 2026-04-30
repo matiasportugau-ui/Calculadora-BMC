@@ -35,7 +35,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 | `server/routes/agentTraining.js` | POST /agent/train, GET /agent/training-kb |
 | `server/lib/trainingKB.js` | KB CRUD, findRelevantExamples() |
 | `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220), `EXTRACTION_PROTOCOL` block |
-| `server/lib/agentTools.js` | 14 Anthropic tools (calc + catalog + state + PDF + CRM); `executeTool(name,input,calcState,{emitAction})` |
+| `server/lib/agentTools.js` | 15 Anthropic tools (calc + catalog + state + PDF + CRM + price-list compare); `executeTool(name,input,calcState,{emitAction})` |
 | `server/lib/crmAppend.js` | `appendQuoteToCrm()` — Sheets writer for CRM_Operativo (col AH = quote URL, AI/AK gates default "No") |
 
 ## Tool surface (Claude tool-use loop, max 8 rounds)
@@ -45,6 +45,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 **Live UI write:** `aplicar_estado_calc` — emits `setScenario / setLP / setTecho / setTechoZonas / setPared / setCamara / setFlete / setProyecto` ACTION_JSON events through the SSE stream via the `emitAction` callback threaded into `executeTool`.
 **PDF + share:** `generar_pdf` (POST `/calc/cotizar/pdf`), `listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`
 **CRM:** `formatear_resumen_crm` (pure, returns `{crm_text}`), `guardar_en_crm` (writes Sheets row — **only after explicit user save intent**)
+**Price-list compare:** `comparar_listas` — runs the same quote on `web` and `venta`, returns `{web, venta, delta_usd, delta_pct, nota}`. Use when the seller asks "¿cuánto baja con lista venta?".
 
 The conversational extraction flow (slot-filling protocol) lives in `chatPrompts.js`'s `EXTRACTION_PROTOCOL` block. Source of truth for required fields is `obtener_escenarios` (i.e. `/calc/escenarios`), not the static WORKFLOW text.
 
