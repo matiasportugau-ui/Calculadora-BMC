@@ -44,6 +44,7 @@ export default function GoogleDrivePanel({
   onLoad,
   onDelete,
   isAuthenticated,
+  configured = true,
   onSignIn,
   onSignOut,
   quotations,
@@ -96,7 +97,18 @@ export default function GoogleDrivePanel({
 
         {/* Auth section */}
         <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
-          {isAuthenticated ? (
+          {!configured ? (
+            <div style={{
+              padding: "12px 14px", borderRadius: 10,
+              background: C.warningSoft, color: "#7A4A00", fontSize: 12, lineHeight: 1.5,
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <AlertTriangle size={14} /> Drive no configurado
+              </div>
+              Falta <code style={{ background: "#fff", padding: "1px 5px", borderRadius: 4 }}>VITE_GOOGLE_CLIENT_ID</code>.
+              {" "}Pedile al admin que ejecute <code style={{ background: "#fff", padding: "1px 5px", borderRadius: 4 }}>npm run drive:configure</code> (dev) o sincronice la variable en Vercel y redeploy.
+            </div>
+          ) : isAuthenticated ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, color: C.ts }}>Sesión activa en Google</span>
               <button onClick={onSignOut} style={{

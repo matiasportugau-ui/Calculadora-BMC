@@ -13,25 +13,39 @@ const PDF_MIME = "application/pdf";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
 let _tokenClient = null;
+let _tokenClientId = null;
 let _accessToken = null;
 let _tokenExpiry = 0;
 let _onAuthChange = null;
 let _gsiLoadPromise = null;
+let _hasConsented = false;
+let _pendingErrorHandler = null;
 
 /**
  * Load GIS script on demand — removed from index.html <head> to avoid
  * blocking the critical render path on mobile.
+ *
+ * A failed load must NOT poison the cached promise: a transient network error
+ * would otherwise permanently disable Drive until the page reloads.
  */
 export function loadGsiScript() {
   if (isGisLoaded()) return Promise.resolve();
   if (_gsiLoadPromise) return _gsiLoadPromise;
   _gsiLoadPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.async = true;
-    s.onload = resolve;
-    s.onerror = () => reject(new Error('Failed to load Google Identity Services'));
-    document.head.appendChild(s);
+    const existing = document.querySelector('script[data-gis-client="1"]');
+    const s = existing || document.createElement('script');
+    if (!existing) {
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.defer = true;
+      s.dataset.gisClient = '1';
+    }
+    s.addEventListener('load', () => resolve(), { once: true });
+    s.addEventListener('error', () => {
+      _gsiLoadPromise = null;
+      reject(new Error('No se pudo cargar Google Identity Services. Verificá tu conexión o un bloqueador de scripts.'));
+    }, { once: true });
+    if (!existing) document.head.appendChild(s);
   });
   return _gsiLoadPromise;
 }
@@ -63,84 +77,164 @@ function notifyAuth() {
 }
 
 /**
+ * Returns true if the Drive integration is configured at runtime
+ * (i.e. a Google OAuth Client ID is present).
+ */
+export function isDriveConfigured() {
+  return !!getClientId();
+}
+
+/**
  * Initialize the Google Identity Services token client.
  * Must be called after the GIS script loads.
+ *
+ * Throws a descriptive Error so callers can surface a clear message
+ * to the user instead of a silent boolean false.
  */
 export function initGoogleAuth() {
   const clientId = getClientId();
   if (!clientId) {
-    console.warn("[GDrive] No VITE_GOOGLE_CLIENT_ID configured");
-    return false;
+    throw new Error(
+      "Google Drive no está configurado: falta VITE_GOOGLE_CLIENT_ID. Pedile al admin que ejecute `npm run drive:configure` (dev) o sincronice la variable en Vercel y redeploy."
+    );
   }
   if (!isGisLoaded()) {
-    console.warn("[GDrive] Google Identity Services not loaded");
-    return false;
+    throw new Error("Google Identity Services no está cargado todavía.");
   }
+
+  // Reuse the existing token client if it was created for the same Client ID.
+  if (_tokenClient && _tokenClientId === clientId) return true;
 
   _tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) {
-        console.error("[GDrive] Auth error:", resp.error);
-        _accessToken = null;
-        notifyAuth();
-        return;
+    callback: () => {
+      // Default no-op: signIn() rebinds this callback per request so it can
+      // resolve/reject the pending promise. Left here so GIS doesn't error
+      // if a token response arrives without an explicit caller.
+    },
+    error_callback: (err) => {
+      // GIS routes popup_failed_to_open / popup_closed / etc. here instead
+      // of through the success callback. Fan out to the in-flight signIn().
+      if (_pendingErrorHandler) {
+        const handler = _pendingErrorHandler;
+        _pendingErrorHandler = null;
+        handler(err);
+      } else {
+        console.warn("[GDrive] OAuth error (no pending caller):", err);
       }
-      _accessToken = resp.access_token;
-      _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
-      notifyAuth();
     },
   });
+  _tokenClientId = clientId;
 
   return true;
 }
 
+function describeOAuthError(resp) {
+  const code = resp?.error || resp?.type || "oauth_error";
+  const subtype = resp?.error_subtype || "";
+  const desc = resp?.error_description || resp?.message || "";
+  const map = {
+    popup_failed_to_open:
+      "El navegador bloqueó la ventana de Google. Permití pop-ups para este sitio y volvé a intentar.",
+    popup_closed:
+      "Cerraste la ventana de Google antes de completar el ingreso.",
+    popup_closed_by_user:
+      "Cerraste la ventana de Google antes de completar el ingreso.",
+    access_denied:
+      "Rechazaste el permiso para acceder a Google Drive.",
+    invalid_client:
+      "El Client ID de Google no es válido o no existe en este proyecto. Verificá VITE_GOOGLE_CLIENT_ID.",
+    redirect_uri_mismatch:
+      "El origen actual no está autorizado en el cliente OAuth (Authorized JavaScript origins).",
+    idpiframe_initialization_failed:
+      "Tu navegador o terceros bloquean cookies de Google. Habilitá cookies de terceros para accounts.google.com.",
+  };
+  const friendly = map[code] || desc || code;
+  return new Error(friendly + (subtype ? ` (${subtype})` : ""));
+}
+
 /**
  * Request an access token (triggers Google sign-in popup if needed).
+ *
+ * Self-heals when the token client wasn't initialized (e.g. signIn() called
+ * before the panel opened) by lazily loading GIS + initing the client.
+ * Uses prompt="consent" the first time so users actually see the consent
+ * screen — empty prompt can silently fail in some browser/cookie contexts.
  */
-export function signIn() {
+export async function signIn() {
+  if (!_tokenClient) {
+    await loadGsiScript();
+    initGoogleAuth(); // throws with descriptive message if mis-configured
+  }
+
   return new Promise((resolve, reject) => {
     if (!_tokenClient) {
-      reject(new Error("Google Auth not initialized. Call initGoogleAuth() first."));
+      reject(new Error("No se pudo inicializar Google Identity Services."));
       return;
     }
-
-    _tokenClient.callback = (resp) => {
-      if (resp.error) {
-        _accessToken = null;
-        notifyAuth();
-        reject(new Error(resp.error));
-        return;
-      }
-      _accessToken = resp.access_token;
-      _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
-      notifyAuth();
-      resolve(resp.access_token);
-    };
 
     if (isAuthenticated()) {
       resolve(_accessToken);
       return;
     }
 
-    _tokenClient.requestAccessToken({ prompt: "" });
+    _tokenClient.callback = (resp) => {
+      _pendingErrorHandler = null;
+      if (resp?.error) {
+        _accessToken = null;
+        notifyAuth();
+        reject(describeOAuthError(resp));
+        return;
+      }
+      if (!resp?.access_token) {
+        reject(new Error("Google no devolvió un access_token."));
+        return;
+      }
+      _accessToken = resp.access_token;
+      _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
+      _hasConsented = true;
+      notifyAuth();
+      resolve(resp.access_token);
+    };
+
+    _pendingErrorHandler = (err) => reject(describeOAuthError(err));
+
+    try {
+      _tokenClient.requestAccessToken({
+        prompt: _hasConsented ? "" : "consent",
+      });
+    } catch (err) {
+      _pendingErrorHandler = null;
+      reject(err instanceof Error ? err : new Error(String(err)));
+    }
   });
 }
 
 export function signOut() {
-  if (_accessToken) {
-    google.accounts.oauth2.revoke(_accessToken, () => {});
+  if (_accessToken && typeof google !== "undefined" && google.accounts?.oauth2?.revoke) {
+    try { google.accounts.oauth2.revoke(_accessToken, () => {}); } catch { /* ignore */ }
   }
   _accessToken = null;
   _tokenExpiry = 0;
+  _hasConsented = false;
   notifyAuth();
 }
 
 async function authFetch(url, opts = {}) {
   if (!isAuthenticated()) await signIn();
   const headers = { Authorization: `Bearer ${_accessToken}`, ...(opts.headers || {}) };
-  const resp = await fetch(url, { ...opts, headers });
+  let resp = await fetch(url, { ...opts, headers });
+  // Token may have been revoked or expired between the local check and the
+  // actual request — retry once after a fresh signIn.
+  if (resp.status === 401) {
+    _accessToken = null;
+    _tokenExpiry = 0;
+    notifyAuth();
+    await signIn();
+    const retryHeaders = { Authorization: `Bearer ${_accessToken}`, ...(opts.headers || {}) };
+    resp = await fetch(url, { ...opts, headers: retryHeaders });
+  }
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
     throw new Error(`Drive API ${resp.status}: ${body}`);
