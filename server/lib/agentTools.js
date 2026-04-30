@@ -14,6 +14,8 @@ import {
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
 import { config } from "../config.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
+import { searchCrmClients } from "./crmSearch.js";
+import { sendWhatsAppText } from "./whatsappOutbound.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -411,7 +413,9 @@ export const AGENT_TOOLS = [
       "teléfono, total, escenario, link al PDF (col AH = LINK_PRESUPUESTO) y observaciones. " +
       "REGLA OBLIGATORIA: SOLO llamar esta tool cuando el usuario confirma EXPLÍCITAMENTE que quiere guardarla " +
       "(\"guardalo en CRM\", \"pegalo al CRM\", \"sumalo al CRM\", \"agregalo a la planilla\"). " +
+      "REQUIERE el flag user_confirmed=true en el input — el server rechaza la escritura si falta. " +
       "Nunca la llames automáticamente después de generar_pdf — primero formatear_resumen_crm y esperar la confirmación. " +
+      "ANTES de llamar esta tool, llamá buscar_cliente_crm para evitar filas duplicadas. " +
       "La fila se crea con AI/AK = \"No\" (gate humano), el operador aprueba manualmente desde la planilla.",
     input_schema: {
       type: "object",
@@ -429,8 +433,9 @@ export const AGENT_TOOLS = [
         urgencia:              { type: "string" },
         probabilidad_cierre:   { type: "string" },
         observaciones:         { type: "string" },
+        user_confirmed:        { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó la escritura explícitamente." },
       },
-      required: ["pdf_url"],
+      required: ["pdf_url", "user_confirmed"],
     },
   },
 
@@ -453,6 +458,68 @@ export const AGENT_TOOLS = [
         camara: { type: "object", description: "Mismo shape que en calcular_cotizacion" },
       },
       required: ["scenario"],
+    },
+  },
+
+  {
+    name: "buscar_cliente_crm",
+    description:
+      "Busca filas existentes en CRM_Operativo por nombre, teléfono o RUT antes de crear una nueva fila. " +
+      "Usar SIEMPRE antes de guardar_en_crm cuando el usuario pide guardar una cotización — así evitamos duplicados. " +
+      "También útil cuando el usuario pregunta \"¿ya cotizamos a Juan Pérez?\" o \"¿qué tenemos del cliente X?\". " +
+      "Devuelve hasta `limite` matches con fila, cliente, teléfono, link al último presupuesto y timestamp.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query:  { type: "string", description: "Nombre del cliente, teléfono (con o sin dígitos no numéricos), o RUT" },
+        limite: { type: "number", description: "Máx matches a devolver. Default 10, max 50." },
+      },
+      required: ["query"],
+    },
+  },
+
+  {
+    name: "enviar_whatsapp_link",
+    description:
+      "Envía un mensaje de texto con el link de la cotización al WhatsApp del cliente vía WhatsApp Business Cloud API. " +
+      "REGLA OBLIGATORIA: SOLO llamar cuando el usuario confirma EXPLÍCITAMENTE el envío " +
+      "(\"mandale por WhatsApp\", \"envialo al cliente\", \"mandale el link\"). " +
+      "REQUIERE el flag user_confirmed=true en el input — el server rechaza el envío si falta. " +
+      "El mensaje default es un texto corto profesional con el link; podés override con el campo `text`. " +
+      "El destinatario `to` debe ser el teléfono del CLIENTE (no del operador), en formato E.164 sin '+' o solo dígitos.",
+    input_schema: {
+      type: "object",
+      properties: {
+        to:             { type: "string", description: "Teléfono del cliente (dígitos, formato E.164 sin '+')" },
+        pdf_url:        { type: "string", description: "URL pública de la cotización (GCS preferido)" },
+        cliente:        { type: "string", description: "Nombre del cliente (para personalizar el saludo)" },
+        total:          { type: "number", description: "Total USD c/IVA (para incluir en el mensaje)" },
+        scenario:       { type: "string", description: "Escenario de la cotización" },
+        text:           { type: "string", description: "Texto override completo. Si está, ignora pdf_url/cliente/total para componer." },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó el envío explícitamente." },
+      },
+      required: ["to", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "comparar_escenarios",
+    description:
+      "Calcula DOS escenarios distintos sobre el mismo proyecto y devuelve el delta. " +
+      "Usar cuando el usuario pregunta \"¿cuánto extra si le sumo la fachada?\" (solo_techo vs techo_fachada), " +
+      "\"¿cuánto baja si solo cotizo techo?\" (techo_fachada vs solo_techo), o cualquier comparación entre escenarios. " +
+      "Mantiene listaPrecios fija en ambos cálculos (default web). Si necesitás comparar listas, usá comparar_listas.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario_a:   { type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"] },
+        scenario_b:   { type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"] },
+        listaPrecios: { type: "string", enum: ["web", "venta"], description: "Default: web" },
+        techo:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        pared:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        camara: { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+      },
+      required: ["scenario_a", "scenario_b"],
     },
   },
 ];
@@ -953,6 +1020,9 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "guardar_en_crm") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
       const result = await appendQuoteToCrm({
         cliente: input?.cliente,
         telefono: input?.telefono,
@@ -969,6 +1039,84 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
         observaciones: input?.observaciones,
       });
       return JSON.stringify(result);
+    }
+
+    if (name === "buscar_cliente_crm") {
+      const result = await searchCrmClients({
+        query: input?.query,
+        limite: input?.limite,
+      });
+      return JSON.stringify(result);
+    }
+
+    if (name === "enviar_whatsapp_link") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const to = String(input?.to || "").trim();
+      if (!to) return JSON.stringify({ ok: false, error: "to (teléfono del cliente) es requerido" });
+      if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
+        return JSON.stringify({ ok: false, error: "WhatsApp no configurado (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)" });
+      }
+      // Compose default message if `text` not provided
+      let text = String(input?.text || "").trim();
+      if (!text) {
+        const cliente = String(input?.cliente || "").trim();
+        const total = Number(input?.total || 0);
+        const pdfUrl = String(input?.pdf_url || "").trim();
+        if (!pdfUrl) return JSON.stringify({ ok: false, error: "pdf_url requerido cuando no se pasa text override" });
+        const greeting = cliente ? `Hola ${cliente}, ` : "Hola, ";
+        const totalLine = Number.isFinite(total) && total > 0 ? `\nTotal: USD ${total.toFixed(2)} c/IVA.` : "";
+        text = `${greeting}te paso la cotización de BMC Uruguay:${totalLine}\n${pdfUrl}\n\nAbrila en el navegador y se imprime como PDF desde Archivo → Imprimir. Saludos, BMC Uruguay.`;
+      }
+      try {
+        const data = await sendWhatsAppText({
+          to,
+          text,
+          accessToken: config.whatsappAccessToken,
+          phoneNumberId: config.whatsappPhoneNumberId,
+        });
+        const messageId = data?.messages?.[0]?.id || null;
+        return JSON.stringify({
+          ok: true,
+          to: String(to).replace(/\D/g, ""),
+          message_id: messageId,
+          text_preview: text.slice(0, 120),
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "Error al enviar WhatsApp" });
+      }
+    }
+
+    if (name === "comparar_escenarios") {
+      const { scenario_a, scenario_b, listaPrecios = "web", techo, pared, camara } = input || {};
+      if (!scenario_a || !scenario_b) return JSON.stringify({ error: "scenario_a y scenario_b requeridos" });
+      const baseInput = { listaPrecios, techo, pared, camara };
+      const [aRaw, bRaw] = await Promise.all([
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_a }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_b }, calcState),
+      ]);
+      const a = JSON.parse(aRaw);
+      const b = JSON.parse(bRaw);
+      if (a.error) return JSON.stringify({ error: `${scenario_a}: ${a.error}` });
+      if (b.error) return JSON.stringify({ error: `${scenario_b}: ${b.error}` });
+      const totalA = Number(a.totalConIVA || 0);
+      const totalB = Number(b.totalConIVA || 0);
+      const deltaUsd = +(totalB - totalA).toFixed(2);
+      const deltaPct = totalA > 0 ? +((deltaUsd / totalA) * 100).toFixed(2) : 0;
+      return JSON.stringify({
+        ok: true,
+        listaPrecios,
+        a: { scenario: scenario_a, subtotalSinIVA: a.subtotalSinIVA, totalConIVA: totalA },
+        b: { scenario: scenario_b, subtotalSinIVA: b.subtotalSinIVA, totalConIVA: totalB },
+        delta_usd: deltaUsd,
+        delta_pct: deltaPct,
+        nota: deltaUsd > 0
+          ? `${scenario_b} es USD ${deltaUsd} (${deltaPct}%) más caro que ${scenario_a}.`
+          : deltaUsd < 0
+            ? `${scenario_b} es USD ${Math.abs(deltaUsd)} (${Math.abs(deltaPct)}%) más barato que ${scenario_a}.`
+            : `${scenario_a} y ${scenario_b} cuestan lo mismo en esta combinación.`,
+      });
     }
 
     return JSON.stringify({ error: `Tool "${name}" no implementada` });

@@ -473,6 +473,15 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 **Comparación de listas:**
 - `comparar_listas` — "¿cuánto baja con lista venta?", "¿cuál es el descuento de distribuidor?". Devuelve total web, total venta, delta_usd y delta_pct en una sola llamada (no llames calcular_cotizacion dos veces a mano).
 
+**Comparación de escenarios (what-if):**
+- `comparar_escenarios` — "¿cuánto extra si le sumo la fachada?", "¿cuánto baja si solo cotizo techo?". Pasa scenario_a + scenario_b + datos del proyecto y devuelve delta_usd / delta_pct. Mantiene listaPrecios fija; si el usuario pregunta por descuentos por lista usá comparar_listas.
+
+**Recall + duplicate-prevention:**
+- `buscar_cliente_crm` — SIEMPRE antes de `guardar_en_crm`, y también cuando el usuario pregunta "¿ya cotizamos a Juan?" o "¿qué tenemos del cliente X?". Si encuentra match, surfaceá la fila al usuario y preguntá si querés actualizar/duplicar antes de guardar.
+
+**Cliente outreach:**
+- `enviar_whatsapp_link` — para mandarle el link de la cotización al cliente directamente por WhatsApp. SOLO con confirmación explícita ("mandale por WA", "envialo al cliente"). Requiere `user_confirmed=true` y el teléfono del CLIENTE (no del operador). Si la app no tiene WHATSAPP_ACCESS_TOKEN configurado, devuelve error sin error en silencio.
+
 Los precios en PRECIOS CANÓNICOS son de referencia para vos; la cifra que le decís al cliente DEBE venir de una tool.`;
 
   const extractionProtocol = `## PROTOCOLO DE EXTRACCIÓN CONVERSACIONAL (OBLIGATORIO)
@@ -498,6 +507,10 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 9. **Después del PDF:** llamá \`formatear_resumen_crm\` y mostrale al usuario el bloque resultante. Cerrá con: "Te lo dejo listo para pegar en el CRM. ¿Querés que lo guarde directo en la planilla?".
 
 10. **Save final.** Solo si el usuario responde con intención clara de guardar ("guardalo", "sí pegalo", "metelo al CRM"), llamá \`guardar_en_crm\` con los mismos datos del PDF. Si el usuario dice "no" / "después" / "yo lo paso" → terminá ahí.
+
+11. **Pre-save dedupe.** Antes de llamar guardar_en_crm, llamá buscar_cliente_crm con el nombre o teléfono. Si hay match, mostrale al usuario la fila existente y preguntá: "Ya tenemos a {cliente} en la fila {N}. ¿Sobreescribo, duplico o cancelo?". Solo seguí con guardar_en_crm si el usuario confirma "duplicá" / "metela igual" / "nueva fila". guardar_en_crm requiere user_confirmed=true en el input (sin ese flag el server rechaza la escritura).
+
+12. **Cliente outreach (opcional).** Si el usuario pide enviar el link al cliente ("mandale por WhatsApp", "envialo al cliente"), llamá enviar_whatsapp_link con user_confirmed=true, el teléfono del **cliente** (no del operador) y el pdf_url del PDF generado. Confirmá con el usuario el número antes de llamar la tool. Si WHATSAPP_ACCESS_TOKEN no está configurado, devuelve error sin enviar.
 
 **Anti-patrones a evitar:**
 - ❌ "Necesito que me digas: familia, espesor, color, dimensiones, tipo de aguas, estructura..." → MAL.

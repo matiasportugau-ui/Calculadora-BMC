@@ -82,6 +82,9 @@ group("AGENT_TOOLS surface", () => {
     "formatear_resumen_crm",
     "guardar_en_crm",
     "comparar_listas",
+    "buscar_cliente_crm",
+    "enviar_whatsapp_link",
+    "comparar_escenarios",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -330,8 +333,7 @@ await group("comparar_listas", async () => {
   assert(typeof badSc.error === "string" && badSc.error.startsWith("Lista web:"), "unknown scenario surfaces upstream error");
 });
 
-await group("guardar_en_crm — no sheet configured", async () => {
-  // BMC_SHEET_ID is "" so this hits the guard in appendQuoteToCrm.
+await group("guardar_en_crm — requires user_confirmed", async () => {
   const { parsed } = await run("guardar_en_crm", {
     cliente: "Juan",
     pdf_url: "https://x/p.html",
@@ -339,8 +341,82 @@ await group("guardar_en_crm — no sheet configured", async () => {
     scenario: "solo_techo",
     lista: "web",
   });
+  assert(parsed.ok === false, "ok false without user_confirmed");
+  assert(typeof parsed.error === "string" && parsed.error.includes("user_confirmed"), "error mentions user_confirmed");
+});
+
+await group("guardar_en_crm — no sheet configured (with user_confirmed)", async () => {
+  // BMC_SHEET_ID is "" so this hits the guard in appendQuoteToCrm.
+  const { parsed } = await run("guardar_en_crm", {
+    cliente: "Juan",
+    pdf_url: "https://x/p.html",
+    total: 100,
+    scenario: "solo_techo",
+    lista: "web",
+    user_confirmed: true,
+  });
   assert(parsed.ok === false, "ok false when BMC_SHEET_ID unset");
   assert(typeof parsed.error === "string" && parsed.error.includes("BMC_SHEET_ID"), "error mentions BMC_SHEET_ID");
+});
+
+await group("buscar_cliente_crm — no sheet configured", async () => {
+  const { parsed } = await run("buscar_cliente_crm", { query: "Juan" });
+  assert(parsed.ok === false, "ok false when BMC_SHEET_ID unset");
+  assert(typeof parsed.error === "string" && parsed.error.includes("BMC_SHEET_ID"), "error mentions BMC_SHEET_ID");
+});
+
+await group("buscar_cliente_crm — empty query", async () => {
+  // BMC_SHEET_ID guard fires first, but with that unset we just verify the tool runs.
+  // Empty query path is exercised when BMC_SHEET_ID is set; here we assert the tool doesn't throw.
+  const { parsed } = await run("buscar_cliente_crm", {});
+  assert(parsed.ok === false, "missing query → ok false");
+});
+
+await group("enviar_whatsapp_link — requires user_confirmed", async () => {
+  const { parsed } = await run("enviar_whatsapp_link", {
+    to: "59899123456",
+    pdf_url: "https://x/p.html",
+  });
+  assert(parsed.ok === false, "ok false without user_confirmed");
+  assert(typeof parsed.error === "string" && parsed.error.includes("user_confirmed"), "error mentions user_confirmed");
+});
+
+await group("enviar_whatsapp_link — no whatsapp configured", async () => {
+  // WHATSAPP_ACCESS_TOKEN/PHONE_NUMBER_ID are unset in test env.
+  const { parsed } = await run("enviar_whatsapp_link", {
+    to: "59899123456",
+    pdf_url: "https://x/p.html",
+    cliente: "Juan",
+    total: 100,
+    user_confirmed: true,
+  });
+  assert(parsed.ok === false, "ok false when WhatsApp creds unset");
+  assert(typeof parsed.error === "string" && parsed.error.includes("WhatsApp no configurado"), "error mentions WhatsApp not configured");
+});
+
+await group("enviar_whatsapp_link — missing to", async () => {
+  const { parsed } = await run("enviar_whatsapp_link", { user_confirmed: true });
+  assert(parsed.ok === false, "missing to → ok false");
+  assert(typeof parsed.error === "string" && parsed.error.includes("to"), "error mentions to");
+});
+
+await group("comparar_escenarios — happy path", async () => {
+  const { parsed } = await run("comparar_escenarios", {
+    scenario_a: "solo_techo",
+    scenario_b: "solo_techo", // same on both sides → delta should be 0
+    listaPrecios: "web",
+    techo: { familia: "ISODEC_EPS", espesor: 100, zonas: [{ largo: 10, ancho: 5 }] },
+  });
+  assert(parsed.ok === true, "ok true");
+  assert(typeof parsed.a?.totalConIVA === "number" && parsed.a.totalConIVA > 0, "a total present");
+  assert(typeof parsed.b?.totalConIVA === "number" && parsed.b.totalConIVA > 0, "b total present");
+  assert(parsed.delta_usd === 0, "same scenario on both sides → delta_usd 0");
+  assert(typeof parsed.nota === "string", "nota is a string");
+});
+
+await group("comparar_escenarios — missing scenario", async () => {
+  const { parsed } = await run("comparar_escenarios", { scenario_a: "solo_techo" });
+  assert(parsed.error === "scenario_a y scenario_b requeridos", "missing scenario_b → error");
 });
 
 // ── 4. Unknown tool name ─────────────────────────────────────────────────────
