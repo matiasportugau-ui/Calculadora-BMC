@@ -234,6 +234,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `a5aedaa` docs: autotrace sync 2026-04-29 + trace commit 48af0a2 PDF Blueprint Técnico
 - `89ec748` docs: autotrace sync — trace commit a5aedaa (propagation loop close)
 - `75ae09a` docs: autotrace sync — trace commit 89ec748 (close propagation chain)
+- `888f9cc` docs(v1.3): Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001
 
 ## Tests
 

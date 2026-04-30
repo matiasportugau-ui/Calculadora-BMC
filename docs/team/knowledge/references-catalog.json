@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-04-27T13:00:15.237Z",
+  "updatedAt": "2026-04-29T13:11:48.162Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -7661,6 +7661,544 @@
       "rankHint": "tier-2",
       "eventIds": [
         "evt_4314e447d5f41e34"
+      ]
+    },
+    {
+      "id": "ref_0fd2b2e46157eb97",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Cybersecurity in the Intelligence Age]]>",
+      "url": "https://openai.com/index/cybersecurity-in-the-intelligence-age",
+      "summary": "",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.496Z",
+      "lastSeenAt": "2026-04-29T13:11:45.496Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f9e11e95dd2445b9"
+      ]
+    },
+    {
+      "id": "ref_e504573bd5892620",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Our commitment to community safety]]>",
+      "url": "https://openai.com/index/our-commitment-to-community-safety",
+      "summary": "",
+      "publishedAt": "2026-04-28T00:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.496Z",
+      "lastSeenAt": "2026-04-29T13:11:45.496Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_dcf39f63aa4a93ae"
+      ]
+    },
+    {
+      "id": "ref_920a0c9e73bafa3f",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[OpenAI models, Codex, and Managed Agents come to AWS]]>",
+      "url": "https://openai.com/index/openai-on-aws",
+      "summary": "",
+      "publishedAt": "2026-04-28T00:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.496Z",
+      "lastSeenAt": "2026-04-29T13:11:45.496Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_24baba5c091384f2"
+      ]
+    },
+    {
+      "id": "ref_f66afa7d108a253c",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[OpenAI available at FedRAMP Moderate]]>",
+      "url": "https://openai.com/index/openai-available-at-fedramp-moderate",
+      "summary": "",
+      "publishedAt": "2026-04-27T14:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.496Z",
+      "lastSeenAt": "2026-04-29T13:11:45.496Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_534da50005cce2fd"
+      ]
+    },
+    {
+      "id": "ref_7d961f2fa645cc80",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[The next phase of the Microsoft OpenAI partnership]]>",
+      "url": "https://openai.com/index/next-phase-of-microsoft-partnership",
+      "summary": "",
+      "publishedAt": "2026-04-27T06:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.497Z",
+      "lastSeenAt": "2026-04-29T13:11:45.497Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_6e87bbec54ac6369"
+      ]
+    },
+    {
+      "id": "ref_9ed7fb63cfdf9824",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[An open-source spec for orchestration: Symphony]]>",
+      "url": "https://openai.com/index/open-source-codex-orchestration-symphony",
+      "summary": "",
+      "publishedAt": "2026-04-27T00:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.497Z",
+      "lastSeenAt": "2026-04-29T13:11:45.497Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_008a3843d73cadf2"
+      ]
+    },
+    {
+      "id": "ref_7601cc9934a0c40a",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Choco automates food distribution with AI agents]]>",
+      "url": "https://openai.com/index/choco",
+      "summary": "",
+      "publishedAt": "2026-04-27T00:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:45.497Z",
+      "lastSeenAt": "2026-04-29T13:11:45.497Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1387d7f5e3629cfd"
+      ]
+    },
+    {
+      "id": "ref_375b4e3c7e69ec81",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "An Intelligent Fault Diagnosis Method for General Aviation Aircraft Based on Multi-Fidelity Digital Twin and FMEA Knowledge Enhancement",
+      "url": "https://arxiv.org/abs/2604.22777",
+      "summary": "arXiv:2604.22777v1 Announce Type: new Abstract: Fault diagnosis of general aviation aircraft faces challenges including scarce real fault data, diverse fault types, and weak fault signatures. This paper proposes an intelligent fault diagnosis framework based on multi-fidelity digital twin, integrating four modules: high-fidelity flight dynamics simulation, FMEA-driven fault injection, multi-fidelity residual feature extraction, and large language model (LLM)-enhanced interpretable report generation. A digital twin is constructed using the JSBSim six-degree-of-freedom (6-DoF) flight dynamics engine, generating 23-channel engine health monitoring data via semi-empirical sensor synthesis equations. A three-layer fault injection engine based on failure mode and effects analysis (FMEA) models the physical causal propagation of 19 engine fault types. A multi-fidelity residual computation framework comprising paired-mirror residuals and GRU surrogate prediction residuals is proposed: the high-fidelity path obtains clean fault deviation signals using nominal mirror trajectories with identical initial conditions, while the low-fidelity path achieves online real-time residual computation through a multi-step prediction GRU surrogate model. A 1D-CNN classifier performs end-to-end diagnosis of 20 fault classes. An LLM diagnostic report engine enhanced with FMEA knowledge fuses classification results, residual evidence, and domain causal knowledge to generate interpretable natural language reports. Experiments show the paired-mirror residual scheme achieves a Macro-F1 of 96.2% on the 20-class task, while the GRU surrogate scheme achieves 4.3x inference acceleration at only 0.6% performance cost. Comparison across 24 schemes reveals that residual feature quality contributes approximately 5x more to diagnostic performance than classifier architecture, establishing the \"residual quality first\" design principle.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_32fcd8f1f0fdedc8"
+      ]
+    },
+    {
+      "id": "ref_8d437e1641743d26",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "PExA: Parallel Exploration Agent for Complex Text-to-SQL",
+      "url": "https://arxiv.org/abs/2604.22934",
+      "summary": "arXiv:2604.22934v1 Announce Type: new Abstract: LLM-based agents for text-to-SQL often struggle with latency-performance trade-off, where performance improvements come at the cost of latency or vice versa. We reformulate text-to-SQL generation within the lens of software test coverage where the original query is prepared with a suite of test cases with simpler, atomic SQLs that are executed in parallel and together ensure semantic coverage of the original query. After iterating on test case coverage, the final SQL is generated only when enough information is gathered, leveraging the explored test case SQLs to ground the final generation. We validated our framework on a state-of-the-art benchmark for text-to-SQL, Spider 2.0, achieving a new state-of-the-art with 70.2% execution accuracy.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_8ea10b8810184855"
+      ]
+    },
+    {
+      "id": "ref_b62a574465298a03",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "The Power of Power Law: Asymmetry Enables Compositional Reasoning",
+      "url": "https://arxiv.org/abs/2604.22951",
+      "summary": "arXiv:2604.22951v1 Announce Type: new Abstract: Natural language data follows a power-law distribution, with most knowledge and skills appearing at very low frequency. While a common intuition suggests that reweighting or curating data towards a uniform distribution may help models better learn these long-tail skills, we find a counterintuitive result: across a wide range of compositional reasoning tasks, such as state tracking and multi-step arithmetic, training under power-law distributions consistently outperforms training under uniform distributions. To understand this advantage, we introduce a minimalist skill-composition task and show that learning under a power-law distribution provably requires significantly less training data. Our theoretical analysis reveals that power law sampling induces a beneficial asymmetry that improves the pathological loss landscape, which enables models to first acquire high-frequency skill compositions with low data complexity, which in turn serves as a stepping stone to efficiently learn rare long-tailed skills. Our results offer an alternative perspective on what constitutes an effective data distribution for training models.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c3406684362da661"
+      ]
+    },
+    {
+      "id": "ref_4bd20eb13fa4f33e",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "On the Existence of an Inverse Solution for Preference-Based Reductions in Argumentation",
+      "url": "https://arxiv.org/abs/2604.22958",
+      "summary": "arXiv:2604.22958v1 Announce Type: new Abstract: Preference-based argumentation frameworks (PAFs) extend Dung's approach to abstract argumentation (AAFs) by encoding preferences over arguments. Such preferences control the transformation of attacks into defeats, and different approaches to doing so result in different reductions from a PAF to an AAF. In this paper we consider a PAF inverse problem which takes an argumentation graph, a labelling and a semantics as an input, and outputs a ``yes\" or ``no\" as to whether there is a preference relation between the arguments which can yield the desired labelling. This inverse problem has applications in areas including preference elicitation and explainability. We consider this problem in the context of the four most widely-used preference based reductions under the complete semantics. We show that in most cases, the problem can be answered in polynomial time.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_a3b03b275f8a21df"
+      ]
+    },
+    {
+      "id": "ref_61309f2edf1028ab",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Towards Causally Interpretable Wi-Fi CSI-Based Human Activity Recognition with Discrete Latent Compression and LTL Rule Extraction",
+      "url": "https://arxiv.org/abs/2604.22979",
+      "summary": "arXiv:2604.22979v1 Announce Type: new Abstract: We address Human Activity Recognition (HAR) utilizing Wi-Fi Channel State Information (CSI) under the joint requirements of causal interpretability, symbolic controllability, and direct operation on high-dimensional raw signals. Deep neural models achieve strong predictive performance on CSI-based HAR (CHAR), yet rely on continuous latent representations that are opaque and difficult to modify; purely symbolic approaches, in contrast, cannot process raw CSI streams. We propose a fully automatic and strictly decoupled pipeline in which CSI magnitude windows are compressed by a categorical variational autoencoder with Gumbel-Softmax latent variables under a capacity-controlled objective, yielding a compact discrete representation. The encoder is then frozen and used as a deterministic mapping to one-hot latent trajectories. Causal discovery is performed on these trajectories to estimate class-conditional temporal dependency graphs. Statistically supported lagged dependencies are translated into Linear Temporal Logic (LTL) rules, producing a fully symbolic and deterministic classifier based solely on rule evaluation and aggregation, without any learned discriminative head. Because rules are defined over discrete latent variables, antenna-specific rule sets can in principle be combined at the symbolic level, enabling structured multi-antenna fusion without retraining the encoder. Results from CHAR Latent Temporal Rule Extraction (CHARL-TRE) indicate competitive performance while preserving explicit temporal and causal structure, showing that deterministic symbolic classification grounded in unsupervised discrete latent representations constitutes a viable alternative to end-to-end black-box models for wireless HAR.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_da9a81760e584797"
+      ]
+    },
+    {
+      "id": "ref_17252723120cee1e",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "FormalScience: Scalable Human-in-the-Loop Autoformalisation of Science with Agentic Code Generation in Lean",
+      "url": "https://arxiv.org/abs/2604.23002",
+      "summary": "arXiv:2604.23002v1 Announce Type: new Abstract: Formalising informal mathematical reasoning into formally verifiable code is a significant challenge for large language models. In scientific fields such as physics, domain-specific machinery (\\textit{e.g.} Dirac notation, vector calculus) imposes additional formalisation challenges that modern LLMs and agentic approaches have yet to tackle. To aid autoformalisation in scientific domains, we present FormalScience; a domain-agnostic human-in-the-loop agentic pipeline that enables a single domain expert (without deep formal language experience) to produce \\textit{syntactically correct} and \\textit{semantically aligned} formal proofs of informal reasoning for low economic cost. Applying FormalScience to physics, we construct FormalPhysics, a dataset of 200 university-level (LaTeX) physics problems and solutions (primarily quantum mechanics and electromagnetism), along with their Lean4 formal representations. Compared to existing formal math benchmarks, FormalPhysics achieves perfect formal validity and exhibits greater statement complexity. We evaluate open-source models and proprietary systems on a statement autoformalisation task on our dataset via zero-shot prompting, self-refinement with error feedback, and a novel multi-stage agentic approach, and explore autoformalisation limitations in modern LLM-based approaches. We provide the first systematic characterisation of semantic drift in physics autoformalisation in terms of concepts such as notational collapse and abstraction elevation which reveals what formal language verifies when full semantic preservation is unattainable. We release the codebase together with an interactive UI-based FormalScience system which facilitates autoformalisation and theorem proving in scientific domains beyond physics.https://github.com/jmeadows17/formal-science",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b93ea0731372ba4f"
+      ]
+    },
+    {
+      "id": "ref_fe1568b2e8d59002",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "A Systematic Approach for Large Language Models Debugging",
+      "url": "https://arxiv.org/abs/2604.23027",
+      "summary": "arXiv:2604.23027v1 Announce Type: new Abstract: Large language models (LLMs) have become central to modern AI workflows, powering applications from open-ended text generation to complex agent-based reasoning. However, debugging these models remains a persistent challenge due to their opaque and probabilistic nature and the difficulty of diagnosing errors across diverse tasks and settings. This paper introduces a systematic approach for LLM debugging that treats models as observable systems, providing structured, model-agnostic methods from issue detection to model refinement. By unifying evaluation, interpretability, and error-analysis practices, our approach enables practitioners to iteratively diagnose model weaknesses, refine prompts and model parameters, and adapt data for fine-tuning or assessment, while remaining effective in contexts where standardized benchmarks and evaluation criteria are lacking. We argue that such a structured methodology not only accelerates troubleshooting but also fosters reproducibility, transparency, and scalability in the deployment of LLM-based systems.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b23adedb31d84f39"
+      ]
+    },
+    {
+      "id": "ref_9124a797802e99a4",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "A Decoupled Human-in-the-Loop System for Controlled Autonomy in Agentic Workflows",
+      "url": "https://arxiv.org/abs/2604.23049",
+      "summary": "arXiv:2604.23049v1 Announce Type: new Abstract: AI agents are increasingly deployed to execute tasks and make decisions within agentic workflows, introducing new requirements for safe and controlled autonomy. Prior work has established the importance of human oversight for ensuring transparency, accountability, and trustworthiness in such systems. However, existing implementations of Human-in-the-Loop (HITL) mechanisms are typically embedded within application logic, limiting reuse, consistency, and scalability across multi-agent environments. This paper presents a decoupled HITL system architecture that treats human oversight as an independent system component within the agent operating environment. The proposed design separates human interaction management from application workflows through explicit interfaces and a structured execution model. In addition, a design framework is introduced to formalize HITL integration along four dimensions: intervention conditions, role resolution, interaction semantics, and communication channel. This framework enables selective and context-aware human involvement while maintaining system-level consistency. The approach supports alignment with emerging agent communication protocols, allowing HITL to be implemented as a protocol-level concern. By externalizing HITL and structuring its integration, the system provides a foundation for scalable governance and progressive autonomy in agentic workflows.",
+      "publishedAt": "2026-04-29T04:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:46.665Z",
+      "lastSeenAt": "2026-04-29T13:11:46.665Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_e1615b4d698a23e5"
+      ]
+    },
+    {
+      "id": "ref_e533652950f4240a",
+      "sourceId": "openai-node-releases",
+      "title": "v6.35.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.35.0",
+      "summary": "## 6.35.0 (2026-04-28) Full Changelog: [v6.34.0...v6.35.0](https://github.com/openai/openai-node/compare/v6.34.0...v6.35.0) ### Features * **api:** Add detail to InputFileContent ([910ec5d](https://github.com/openai/openai-node/commit/910ec5d3b7c551eee367f0b10e84856b9eb171eb)) * **api:** add OAuthErrorCode type ([f84bd1f](https://github.com/openai/openai-node/commit/f84bd1ff47b61e7a5c9b7130f1b6dfd062178501)) * **api:** add prompt_cache_retention parameter to responses compact ([c486d1f](https://github.com/openai/openai-node/commit/c486d1f05558e4b082e18dd0ddc7b0685def8c84)) * **api:** add web_search_call.results to ResponseIncludable ([72449a1](https://github.com/openai/openai-node/commit/72449a193fb32dcfd32993f4a01024eed946dc09)) * **api:** manual updates ([b742f1f](https://github.com/openai/openai-node/commit/b742f1fbd5c03dda8ba20d1ecca35dbc95bf53d8)) * **client:** add support for binary messages ([c498cc3](https://github.com/openai/openai-node/commit/c498cc344f49a6ae0382197a6bcc3c22a2af61ff)) * **client:** add support for path parameters in websockets clients ([e0aba70](https://github.com/openai/openai-node/commit/e0aba7070fa35065aa0093bda02198bd87e7ef9e)) * **client:** add support for queuing messages when waiting for a connection ([fd8868c](https://github.com/openai/openai-node/commit/fd8868ce76cbc601bd6198f43f5ff47ff0118e67)) * **client:** add support for WebSockets in the browser when using simple auth ([27bda6a](https://github.com/openai/openai-node/commit/27bda6a4f3fc63469d0b9acd2ef08aa0bf6b8fa8)) * **client:** support automatic reconnection for websockets ([189410b](https://github.com/openai/openai-node/commit/189410b4765111d8174e815142057ac0e48e8f7e)) * **typescript:** expose underlying WebSocket type ([7e96939](https://github.com/openai/openai-node/commit/7e96939f5732f658751792038aae1b13a9f21d72)) ### Bug Fixes * **client:** allow single messages greater than the size of the websockets queue ([ad19ab2](https://github.com/openai/openai-node/commit/ad19ab2495194eb3a9d81d4390ec3a0e6c0c4395)) * **internal:** gitignore generated `oidc` dir ([cf860f6](https://github.com/openai/openai-node/commit/cf860f62c0fcc3c1fcbcb95505fec4301b6481ea)) * **types:** correct prompt_cache_retention enum value in chat/completions and responses ([5a81e1a](https://github.com/openai/openai-node/commit/5a81e1a66eb5450de50da4a49d977bd1daab4552)) * **types:** preserve emitted ts-ignore comments ([1cde375](https://github.com/openai/openai-node/commit/1cde375c4faecc6e1cde7be782919fa243b1a141)) ### Chores * **ci:** remove release-doctor workflow ([e5ab4d1](https://github.com/openai/openai-node/commit/e5ab4d1a056f2223c0756b332f9635476c644c3f)) * **format:** apply prettier output ([80fa23d](https://github.com/openai/openai-node/commit/80fa23d5ccfd39e51e090e0044d91866a418d212)) * **format:** ignore release-updated jsr config ([f606e8b](https://github.com/openai/openai-node/commit/f606e8b43d0e3d5a3ad31cf7dab1bded0bac4d37)) * **formatter:** run prettier and eslint separately ([68a988e](https://github.com/openai/openai-node/commit/68a988e3919c2e8da7949fe75ae143790025964d)) * **internal:** codegen related update ([7673137](https://github.com/openai/openai-node/commit/7673137d3004226dc0e8daa96f85e8a5c459b7e3)) * **internal:** fix package.json duplicate keys ([5f075a8](https://github.com/openai/openai-node/commit/5f075a80dc0a4c7ed4550cf718a576e638a7bc9f)) * **internal:** more robust bootstrap script ([252e70a](https://github.com/openai/openai-node/commit/252e70a2f5e78f9162a99f9ac5adfc581e47e290)) * **internal:** version bump ([34c84ee](https://github.com/openai/openai-node/commit/34c84eec2f9110746008628b90429c8fd5111157)) * **tests:** bump steady to v0.22.1 ([316bdba](https://github.com/openai/openai-node/commit/316bdbaeb77a8d2a56c5b13a7b576163e2515951)) ### Documentation * improve examples ([6400d19](https://github.com/openai/openai-node/commit/6400d19ee8f44abb862f0c3d2d15d91e51f0741b))",
+      "publishedAt": "2026-04-28T14:04:01Z",
+      "firstSeenAt": "2026-04-29T13:11:47.030Z",
+      "lastSeenAt": "2026-04-29T13:11:47.030Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_4413b802f1cbbc11"
+      ]
+    },
+    {
+      "id": "ref_0471bc823abcc1f9",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.169",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.169",
+      "summary": "### Patch Changes - 2662bb5: skip validation for tool parts in terminal states when tool schema is no longer registered - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [a7f3c72] - Updated dependencies [4368079] - Updated dependencies [c71ad14] - @ai-sdk/gateway@3.0.105 - @ai-sdk/provider@3.0.9 - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:45:24Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d802b74be2051ca8"
+      ]
+    },
+    {
+      "id": "ref_1cda6629f823f769",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.180",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.180",
+      "summary": "### Patch Changes - 0a00b9b: trigger release for all packages after provenance setup - Updated dependencies [0a00b9b] - Updated dependencies [c30c710] - Updated dependencies [11c7bdd] - @ai-sdk/gateway@2.0.83 - @ai-sdk/provider@2.0.2 - @ai-sdk/provider-utils@3.0.24",
+      "publishedAt": "2026-04-29T04:19:07Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8e76b08cc02ed9f8"
+      ]
+    },
+    {
+      "id": "ref_4a2a5bc79ff3aaf5",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@3.0.84",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%403.0.84",
+      "summary": "### Patch Changes - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [a7f3c72] - Updated dependencies [408a2ad] - @ai-sdk/openai-compatible@2.0.42 - @ai-sdk/provider@3.0.9 - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:48:03Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1e651488f759c85c"
+      ]
+    },
+    {
+      "id": "ref_fba1ecf81a909050",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.169",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.169",
+      "summary": "### Patch Changes - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [2662bb5] - Updated dependencies [a7f3c72] - ai@6.0.169 - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:48:00Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_4cea7db0d4902167"
+      ]
+    },
+    {
+      "id": "ref_3f0476afd8de6805",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/voyage@1.0.1",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/voyage%401.0.1",
+      "summary": "### Patch Changes - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [a7f3c72] - @ai-sdk/provider@3.0.9 - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:47:57Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_b39575ebd9b0adf1"
+      ]
+    },
+    {
+      "id": "ref_b33d887c6948a8e8",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vercel@2.0.44",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vercel%402.0.44",
+      "summary": "### Patch Changes - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [a7f3c72] - Updated dependencies [408a2ad] - @ai-sdk/openai-compatible@2.0.42 - @ai-sdk/provider@3.0.9 - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:47:54Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_2a83da61abf5c043"
+      ]
+    },
+    {
+      "id": "ref_61e80ec688aefbee",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/valibot@2.0.25",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/valibot%402.0.25",
+      "summary": "### Patch Changes - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [a7f3c72] - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:47:51Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_81b079bf8b4902a0"
+      ]
+    },
+    {
+      "id": "ref_fdc25a0c97370249",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/togetherai@2.0.46",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/togetherai%402.0.46",
+      "summary": "### Patch Changes - a7f3c72: trigger release for all packages after provenance setup - Updated dependencies [a7f3c72] - Updated dependencies [408a2ad] - @ai-sdk/openai-compatible@2.0.42 - @ai-sdk/provider@3.0.9 - @ai-sdk/provider-utils@4.0.24",
+      "publishedAt": "2026-04-29T03:47:48Z",
+      "firstSeenAt": "2026-04-29T13:11:47.472Z",
+      "lastSeenAt": "2026-04-29T13:11:47.472Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8c896d1b5e3dbcc4"
+      ]
+    },
+    {
+      "id": "ref_45cc18ea1b81de3f",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Introducing NVIDIA Nemotron 3 Nano Omni: Long-Context Multimodal Intelligence for Documents, Audio and Video Agents",
+      "url": "https://huggingface.co/blog/nvidia/nemotron-3-nano-omni-multimodal-intelligence",
+      "summary": "",
+      "publishedAt": "2026-04-28T15:58:57.000Z",
+      "firstSeenAt": "2026-04-29T13:11:48.160Z",
+      "lastSeenAt": "2026-04-29T13:11:48.160Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_b11ee5330a6f75aa"
+      ]
+    },
+    {
+      "id": "ref_e7da2090a8d39264",
+      "sourceId": "huggingface-blog-rss",
+      "title": "How to build scalable web apps with OpenAI&apos;s Privacy Filter",
+      "url": "https://huggingface.co/blog/openai-privacy-filter-web-apps",
+      "summary": "",
+      "publishedAt": "2026-04-27T00:00:00.000Z",
+      "firstSeenAt": "2026-04-29T13:11:48.161Z",
+      "lastSeenAt": "2026-04-29T13:11:48.161Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_8d0a4bfbb42eeb29"
       ]
     }
   ]

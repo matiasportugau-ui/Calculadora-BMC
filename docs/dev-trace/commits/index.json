@@ -10996,6 +10996,38 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "888f9cca3fbf2b033a50e98838b8abe60c2d4b5c",
+      "short_hash": "888f9cc",
+      "date": "2026-04-29",
+      "time": "07:33:05",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "docs",
+      "scope": "v1.3",
+      "title": "Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001",
+      "subject": "docs(v1.3): Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001",
+      "files": [
+        "docs/adr/0001-source-of-truth-post-supabase.md",
+        "docs/procedimientos/OAUTH-CHECKLIST.md",
+        "docs/team/AUDIT-AREA-4.md",
+        "run_ml_cloud_run_setup.sh",
+        "scripts/provision-secrets.sh"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          "docs",
+          "scripts"
+        ]
+      }
     }
   ]
 }
