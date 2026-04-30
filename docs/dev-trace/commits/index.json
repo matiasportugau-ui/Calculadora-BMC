@@ -11194,6 +11194,33 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "7749588251ed790593ee55744e517c3c9cec8a9b",
+      "short_hash": "7749588",
+      "date": "2026-04-30",
+      "time": "02:09:16",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "ci",
+      "scope": "",
+      "title": "smoke against just-deployed Cloud Run revision in deploy-calc-api",
+      "subject": "ci: smoke against just-deployed Cloud Run revision in deploy-calc-api",
+      "files": [
+        ".github/workflows/deploy-calc-api.yml"
+      ],
+      "risk": "Amarillo",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".github"
+        ]
+      }
     }
   ]
 }

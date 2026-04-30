@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 00:07:52 — `5a52c84` — chore(dev-trace): AUTOTRACE post-batch 2026-04-24
 - 2026-04-24 00:07:57 — `5df16b5` — chore(dev-trace): final AUTOTRACE cleanup 2026-04-24
 - 2026-04-24 00:08:01 — `088bbb3` — chore(dev-trace): AUTOTRACE 5df16b5
 - 2026-04-24 00:08:09 — `904af8c` — chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]
@@ -222,3 +221,4 @@
 - 2026-04-30 01:57:29 — `7e639cc` — Update knowledge base and documentation for Fase 0 deliverables
 - 2026-04-30 02:01:18 — `84705e7` — docs(dev-trace): autotrace 7e639cc
 - 2026-04-30 02:01:25 — `4cfc594` — docs(dev-trace): autotrace 84705e7
+- 2026-04-30 02:09:16 — `7749588` — ci: smoke against just-deployed Cloud Run revision in deploy-calc-api

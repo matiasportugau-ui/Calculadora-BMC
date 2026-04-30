@@ -320,6 +320,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `7090459` chore: update drive upload functionality and related tests
 - `bc82701` chore: update drive upload functionality and related tests
 
+## CI
+
+- `7749588` ci: smoke against just-deployed Cloud Run revision in deploy-calc-api
+
 ## Other
 
 - `fd9c93a` other: Update documentation and tests for AUTOTRACE and add new reference materials `[tests]`
