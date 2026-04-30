@@ -25,7 +25,7 @@ flowchart LR
   subgraph code [Repo]
     M[matrizPreciosMapping.js]
     C[constants.js + getPricing]
-    UI[PanelinCalculadoraV3_backup]
+    UI[PanelinCalculadoraV3]
   end
   API[GET /api/actualizar-precios-calculadora]
   CSV[CSV path descripcion precios...]
@@ -54,7 +54,7 @@ flowchart LR
 | `server/routes/bmcDashboard.js` | `MATRIZ_TAB_COLUMNS`, `buildPlanillaDesdeMatriz`, `GET /api/actualizar-precios-calculadora`, `pushMatrizPricingOverrides`. |
 | `src/data/constants.js` | Familias y objetos `PANELS_TECHO` / `PANELS_PARED` — estructura de la UI; **no** reemplaza el mapping SKU. |
 | `scripts/reconcile-matriz-csv.mjs` | Comprobar **paths duplicados** en CSV (`npm run matriz:reconcile`). |
-| `src/App.jsx` | Monta **`PanelinCalculadoraV3_backup.jsx`** (calculadora canónica). |
+| `src/App.jsx` | Monta **`PanelinCalculadoraV3.jsx`** (calculadora canónica). |
 
 **No buscar** literales `PANELS_PARED.ISOPANEL_EPS` en `server/` como prueba del flujo: el CSV **genera** esos paths vía mapping, no como strings fijos en `calc.js`.
 

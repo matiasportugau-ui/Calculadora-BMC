@@ -18,7 +18,7 @@
 | **Operaciones vs Finanzas same URL** | 02, 03 | Single app at /finanzas contains both Operaciones blocks (entregas, logística, audit) and Finanzas blocks (KPI, pagos, metas). No URL or nav distinction. |
 | **Ventas: no UI** | 04 | “Ventas 2.0” is placeholder; only backend (Ventas realizadas sheet, ML/Shopify). No Ventas route or view. |
 | **Invoque Panelin: no implementation** | 05 | No route, no component, no doc in map. Only IA recommendation (hybrid). |
-| **Component naming** | 01 | PanelinCalculadoraV3 vs PanelinCalculadoraV3_backup; App.jsx uses _backup; map inconsistent. |
+| **Component naming** | 01 | PanelinCalculadoraV3 vs PanelinCalculadoraV3; App.jsx uses _backup; map inconsistent. |
 | **3849 vs 3001/finanzas** | 06, 02 | Two “dashboard” servers: main Express serves /finanzas; bmc-dashboard script runs sheets-api-server.js on 3849. Relationship (same app? different?) unclear. |
 
 ### 1.2 Dependencies

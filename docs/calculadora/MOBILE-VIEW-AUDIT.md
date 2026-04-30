@@ -41,7 +41,7 @@ Los umbrales en píxeles están **documentados en código** para evitar divergen
 
 **Componentes tocados por ancho:**
 
-- [src/components/PanelinCalculadoraV3_backup.jsx](../../src/components/PanelinCalculadoraV3_backup.jsx): rejillas (`twoCol`, `threeCol`, …), `PDFPreviewModal` (compact = mismo umbral que CSS PDF).
+- [src/components/PanelinCalculadoraV3.jsx](../../src/components/PanelinCalculadoraV3.jsx): rejillas (`twoCol`, `threeCol`, …), `PDFPreviewModal` (compact = mismo umbral que CSS PDF).
 - [src/components/RoofPreview.jsx](../../src/components/RoofPreview.jsx): `innerWidth` para geometría 2D/3D (revisar rendimiento en móvil real).
 - [src/components/PanelinChatPanel.jsx](../../src/components/PanelinChatPanel.jsx): pointer/touch, `window.innerWidth` para tamaño del panel.
 

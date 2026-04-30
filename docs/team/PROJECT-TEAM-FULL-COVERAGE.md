@@ -28,7 +28,7 @@
 |------|-----------|------------------|
 | **Sheets / Planillas** | Tabs, columnas, schemas, CRM_Operativo, Master_Cotizaciones, Pagos_Pendientes, Metas_Ventas, AUDIT_LOG | **Hub:** [google-sheets-module/README.md](../google-sheets-module/README.md) — [MAPPER-PRECISO-PLANILLAS-CODIGO.md](../google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md) (código), [SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md](../google-sheets-module/SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md) (dashboard/API/GPT/OmniCRM), [VARIABLES-Y-MAPEO-UNO-A-UNO.md](../google-sheets-module/VARIABLES-Y-MAPEO-UNO-A-UNO.md); planilla-inventory.md, planilla-map.md; `server/routes/bmcDashboard.js` |
 | **Dashboard UI** | Finanzas, Operaciones, KPIs, entregas, metas, audit, Ventas 2.0, Invoque Panelin | dashboard/index.html, app.js, styles.css, DASHBOARD-INTERFACE-MAP |
-| **Calculadora / Cotizaciones** | Cotizador React, Drive, Budget Log, PDF | PanelinCalculadoraV3_backup.jsx, 5173 |
+| **Calculadora / Cotizaciones** | Cotizador React, Drive, Budget Log, PDF | PanelinCalculadoraV3.jsx, 5173 |
 | **Infraestructura** | Hosting, VPS, Netuy, Cloud Run, ngrok, puertos 3001/3849/5173 | HOSTING-EN-MI-SERVIDOR.md, .env, server/index.js |
 | **Integraciones** | MercadoLibre, Shopify, Google Drive, Sheets API | server/routes/, tokenStore, shopifyStore |
 | **GPT / Invoque Panelin** | OpenAPI, GPT Actions, Cloud Run calc | docs/openapi-calc.yaml, GPT Builder |

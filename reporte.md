@@ -2530,7 +2530,7 @@ A  .cursor/skills/super-agente-bmc-dashboard/scripts/run_audit.sh
 ?? scripts/
 ?? server/routes/bmcDashboard.js
 ?? server/routes/legacyQuote.js
-?? src/components/PanelinCalculadoraV3_backup.jsx
+?? src/components/PanelinCalculadoraV3.jsx
 
 Branches:
   archive/pre-consolidation-2026-03-11

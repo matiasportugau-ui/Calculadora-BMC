@@ -21,7 +21,7 @@ Lista de trabajo para **cerrar o validar** antes de declarar el release **v1 ofi
 - [ ] **Barra inferior móvil:** Accesos WA/PDF operativos.
 - [ ] **Modales (PDF preview):** Botones y iframe usables en pantalla pequeña.
 
-**Código de referencia:** [`src/components/PanelinCalculadoraV3_backup.jsx`](../../src/components/PanelinCalculadoraV3_backup.jsx) (responsive + `MobileBottomBar` + `PDFPreviewModal`).
+**Código de referencia:** [`src/components/PanelinCalculadoraV3.jsx`](../../src/components/PanelinCalculadoraV3.jsx) (responsive + `MobileBottomBar` + `PDFPreviewModal`).
 
 ---
 

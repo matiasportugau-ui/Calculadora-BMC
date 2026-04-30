@@ -17,7 +17,7 @@ The "Panelin Developer Training Mode" plan was implemented and evaluated. Report
 ```
 src/components/PanelinChatPanel.jsx      # Chat drawer — renders messages at line ~340, DEV button at ~238-253, mounts PanelinDevPanel at ~481-496
 src/components/PanelinDevPanel.jsx       # Dev panel — Train/KB/Prompt tabs
-src/components/PanelinCalculadoraV3_backup.jsx  # Main app — devMode state at ~2153, toggleDevMode at ~2270, DEV toolbar button at ~3532-3547, PanelinChatPanel mount at ~4821-4838
+src/components/PanelinCalculadoraV3.jsx  # Main app — devMode state at ~2153, toggleDevMode at ~2270, DEV toolbar button at ~3532-3547, PanelinChatPanel mount at ~4821-4838
 src/hooks/useChat.js                     # Chat hook — devMode flag at ~43, saveCorrection/reloadTrainingKB/etc
 server/routes/agentTraining.js           # Training REST API — POST /agent/train, GET /agent/training-kb, etc
 server/routes/agentChat.js               # Chat SSE — devMode branch at ~167, kb_match at ~231, calc_validation at ~289-300
@@ -33,7 +33,7 @@ The plan specified dev mode should be **invisible** to end users. Today the DEV 
 
 **What to do:**
 
-1. In `PanelinCalculadoraV3_backup.jsx` (~line 3532-3547): wrap the DEV toolbar button so it only renders when `devMode` is already active. The shortcut `Ctrl/Cmd+Shift+D` at ~line 2290-2298 stays — that's how Matias activates it without visible chrome.
+1. In `PanelinCalculadoraV3.jsx` (~line 3532-3547): wrap the DEV toolbar button so it only renders when `devMode` is already active. The shortcut `Ctrl/Cmd+Shift+D` at ~line 2290-2298 stays — that's how Matias activates it without visible chrome.
 
 2. In `PanelinChatPanel.jsx` (~line 238-253): same — only show the chat header DEV button when `devMode` prop is `true`. The condition `{onToggleDevMode && (` should become `{devMode && onToggleDevMode && (`.
 

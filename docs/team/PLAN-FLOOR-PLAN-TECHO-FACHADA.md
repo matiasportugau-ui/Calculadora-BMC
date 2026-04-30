@@ -99,7 +99,7 @@ plano: {
 | Archivo | Acción |
 |---------|--------|
 | `src/components/FloorPlanEditor.jsx` | Crear — editor de plano |
-| `src/components/PanelinCalculadoraV3_backup.jsx` | Modificar — integrar FloorPlanEditor cuando techo_fachada |
+| `src/components/PanelinCalculadoraV3.jsx` | Modificar — integrar FloorPlanEditor cuando techo_fachada |
 | `src/data/constants.js` | Añadir estructura `plano` si se usa en projectFile |
 | `src/utils/projectFile.js` | Incluir `plano` en serialize/deserialize |
 

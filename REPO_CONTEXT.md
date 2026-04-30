@@ -62,7 +62,7 @@
 │   ├── App.jsx                     # Router raíz
 │   ├── PanelinCalculadoraV3.jsx    # (alias; el activo es _backup)
 │   ├── components/
-│   │   ├── PanelinCalculadoraV3_backup.jsx   # Componente principal activo
+│   │   ├── PanelinCalculadoraV3.jsx   # Componente principal activo
 │   │   ├── PanelinChatPanel.jsx              # Chat IA Panelin
 │   │   ├── PanelinDevPanel.jsx               # Developer Training Mode (Ctrl+Shift+D)
 │   │   ├── BmcLogisticaApp.jsx               # Módulo logística
@@ -206,7 +206,7 @@ Entry point React. Carga `App.jsx` de forma dinámica (lazy import), envuelto en
 </BrowserRouter>
 ```
 
-`PanelinCalculadora` resuelve a `src/components/PanelinCalculadoraV3_backup.jsx` (lazy).
+`PanelinCalculadora` resuelve a `src/components/PanelinCalculadoraV3.jsx` (lazy).
 
 ### `server/index.js` — Entry point Express API (puerto 3001)
 
@@ -396,8 +396,8 @@ Rutas para viajes, conductores, evidencias y outbox WhatsApp. Endpoints principa
 
 | Ruta | Componente |
 |------|------------|
-| `/` | `PanelinCalculadoraV3_backup` |
-| `/calculadora` | `PanelinCalculadoraV3_backup` |
+| `/` | `PanelinCalculadoraV3` |
+| `/calculadora` | `PanelinCalculadoraV3` |
 | `/logistica` | `BmcLogisticaApp` |
 | `/conductor` | `DriverTransportistaApp` |
 | `/hub` | `BmcWolfboardHub` |

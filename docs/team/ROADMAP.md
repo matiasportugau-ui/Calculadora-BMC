@@ -138,7 +138,7 @@ Un deploy es **100% limpio** cuando:
 ### ⚠️ SIN SPEC | 9. Wizard: toggle largo global/local sobre `techo.zonas`
 
 - **Situación:** El doc de referencia `PROTOTIPO-V32-HTML-VS-CALCULADORA-BMC.md` no existe en el repo. Cada zona ya tiene su propio `largo` independiente (`techo.zonas[].largo`). No está claro si hace falta un toggle de sincronización global — requiere clarificación del usuario antes de implementar.
-- **Área:** `src/components/PanelinCalculadoraV3_backup.jsx`
+- **Área:** `src/components/PanelinCalculadoraV3.jsx`
 - **Acción "get it live":** Confirmar con Matías si el comportamiento actual (cada zona con largo propio) es suficiente o si se necesita un "sync global" explícito.
 - **Impacto:** Bloqueado por falta de spec.
 

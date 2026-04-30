@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-03-19  
 **Ámbito:** Calculadora BMC (React) — paso de dimensiones / zonas de techo.  
-**Referencia de código actual:** `RoofPreview` y lógica de zonas en `src/components/PanelinCalculadoraV3_backup.jsx` (rectángulos sólidos, etiquetas `largo×ancho` en m); cálculos y modo metros/paneles en `src/utils/calculations.js` (`normalizarMedida`, `calcPanelesTecho`; `panel.au` = ancho útil del panel).
+**Referencia de código actual:** `RoofPreview` y lógica de zonas en `src/components/PanelinCalculadoraV3.jsx` (rectángulos sólidos, etiquetas `largo×ancho` en m); cálculos y modo metros/paneles en `src/utils/calculations.js` (`normalizarMedida`, `calcPanelesTecho`; `panel.au` = ancho útil del panel).
 
 ---
 

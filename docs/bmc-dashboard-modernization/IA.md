@@ -11,7 +11,7 @@ Single source of truth for the **BMC Dashboard** (the product) and its sections.
 - **Operaciones** = section (same app as Finanzas): próximas entregas, coordinación logística, audit log.
 - **Cotizaciones** = section: quote builder (Calculadora) + list/admin of quotes. Not “data only” (Master_Cotizaciones is the data source; “Cotizaciones” in nav = section).
 - **KPI** = sub-area of **Finanzas** (no separate top-level section).
-- **Calculadora component (canonical):** In repo, the component in use is `PanelinCalculadoraV3_backup` (Drive + Budget Log); `App.jsx` imports it. `PanelinCalculadoraV3.jsx` is an alternate single-file build. Docs and map reference the canonical name where needed.
+- **Calculadora component (canonical):** In repo, the component in use is `src/components/PanelinCalculadoraV3.jsx` (Drive + Budget Log); `App.jsx` imports it directly. The previous `_backup` filename was renamed to its canonical name and the unused `_legacy_inline` monolith was removed in the 2026-04-30 refactor. Docs and map reference the canonical name where needed.
 
 ---
 

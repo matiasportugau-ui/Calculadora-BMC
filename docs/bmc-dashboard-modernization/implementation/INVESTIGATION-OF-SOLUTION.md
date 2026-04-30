@@ -57,7 +57,7 @@ The prompt defines a **Coding and Developing** team that must:
 | B | 1.4 | Root/favicon verified in server; favicon added to dashboard index.html (inline SVG). |
 | C | 2.1, 2.2, 2.3 | Shell nav in dashboard/index.html; section ids (#operaciones, #finanzas, #ventas, #invoque); placeholder sections; styles; Cotizaciones link to 5173. |
 | D | 3.1 | USER-FLOW.md created (flow builder → Sheets → Operaciones/Finanzas; marcar entregado → Ventas realizadas). |
-| E | 3.2, 3.3 | IA and DASHBOARD-VISUAL-MAP: canonical component (PanelinCalculadoraV3_backup); App.jsx comment; KPI under Finanzas confirmed. |
+| E | 3.2, 3.3 | IA and DASHBOARD-VISUAL-MAP: canonical component (PanelinCalculadoraV3); App.jsx comment; KPI under Finanzas confirmed. |
 | F | 4.2 | Transversal entry points spec in 05-universe-invoque-panelin.md; IA References link to it. |
 | G | 5.1, 5.2, 5.3 | Error/loading verified in app.js; /health hasSheets/hasTokens verified; ML-OAUTH-SETUP §8 updated with BMC vars; 3849 vs 3001 documented in IA. |
 
@@ -101,7 +101,7 @@ The prompt defines a **Coding and Developing** team that must:
 
 ### 6.1 Intentional deviations (documented)
 
-- **Component naming (3.2):** Plan said “rename file if needed.” Solution chose **doc-only**: canonical name documented (PanelinCalculadoraV3_backup), no file rename, to avoid breakage. Noted in issues-and-solutions and execution log.
+- **Component naming (3.2):** Plan said “rename file if needed.” Solution chose **doc-only**: canonical name documented (PanelinCalculadoraV3), no file rename, to avoid breakage. Noted in issues-and-solutions and execution log.
 - **Transversal spec location:** Prompt suggested “IA or Invoque Panelin brief.” Solution put the full spec in `05-universe-invoque-panelin.md` and linked from IA References (single source in the brief, discoverable from IA).
 
 ### 6.2 Gaps (not implemented by design or out of scope)

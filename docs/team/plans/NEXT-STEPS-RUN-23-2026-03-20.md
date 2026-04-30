@@ -8,7 +8,7 @@
 
 | Paso | Acción | Resultado |
 |------|--------|-----------|
-| A1 | `npm run lint` | **0 errores**, 10 warnings (hooks en `PanelinCalculadoraV3_backup.jsx`, `calculatorConfig.js` `_` no usado). |
+| A1 | `npm run lint` | **0 errores**, 10 warnings (hooks en `PanelinCalculadoraV3.jsx`, `calculatorConfig.js` `_` no usado). |
 | A2 | `npm test` (`tests/validation.js`) | **115 passed**, 0 failed. |
 | A3 | `npm audit fix` (sin `--force`) | Ajustó dependencias transitivas (**4 packages** cambiados). **Quedan 7 vulnerabilidades** (5 low, 2 moderate); el resto requiere `npm audit fix --force` (vite@8, @google-cloud/storage — **breaking**, aprobación Matias). |
 | A4 | `npm test` post–audit fix | **115 passed** (regresión no detectada). |

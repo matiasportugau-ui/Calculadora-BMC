@@ -10,7 +10,7 @@
 
 El escenario **Presupuesto libre** está implementado en dos componentes:
 
-- **`PanelinCalculadoraV3_backup.jsx`** — App canónica: acordeones completos, estado libre persistido (snapshot, Drive, projectFile), categorías BOM (incl. TORNILLERÍA, EXTRAORDINARIOS), mismo motor que V3.
+- **`PanelinCalculadoraV3.jsx`** — App canónica: acordeones completos, estado libre persistido (snapshot, Drive, projectFile), categorías BOM (incl. TORNILLERÍA, EXTRAORDINARIOS), mismo motor que V3.
 - **`PanelinCalculadoraV3.jsx`** — Versión standalone: usa el mismo motor (`presupuestoLibreCatalogo.js`) con catálogo de precios **inline** (archivo autónomo, sin depender de Config/cargar MATRIZ).
 
 Ambos comparten: `src/utils/presupuestoLibreCatalogo.js`, `server/routes/calc.js` (`POST /calc/cotizar/presupuesto-libre`), OpenAPI y constants (CATEGORIAS_BOM, FIJACIONES).
@@ -19,7 +19,7 @@ Ambos comparten: `src/utils/presupuestoLibreCatalogo.js`, `server/routes/calc.js
 
 ## Decisión
 
-- **App canónica para Presupuesto libre:** se considera **`PanelinCalculadoraV3_backup.jsx`**. Es la UI de referencia con flujo completo (persistencia, Drive, categorías, acordeones).
+- **App canónica para Presupuesto libre:** se considera **`PanelinCalculadoraV3.jsx`**. Es la UI de referencia con flujo completo (persistencia, Drive, categorías, acordeones).
 - **V3 standalone:** se mantiene como variante con datos inline; no se exige paridad total de UI (acordeones/toggles) con backup. Paridad funcional del **motor** y de la **API** ya está garantizada.
 - **PRESUPUESTO_LIBRE_IDS:** opcional a futuro para acotar tornillería/herrajes en el catálogo libre; no bloqueante para este run. Si se implementa, documentar en constants o en este ADR.
 

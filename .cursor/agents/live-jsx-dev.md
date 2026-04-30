@@ -36,9 +36,9 @@ Verify the source file exists before proceeding. If it does not exist, ask the u
 
 ### Step 2: Safety backup
 
-Check if `src/components/PanelinCalculadoraV3_backup.jsx` already exists.
+Check if `src/components/PanelinCalculadoraV3.jsx` already exists.
 
-- If it does NOT exist, copy the current `src/components/PanelinCalculadoraV3.jsx` to `src/components/PanelinCalculadoraV3_backup.jsx`.
+- If it does NOT exist, copy the current `src/components/PanelinCalculadoraV3.jsx` to `src/components/PanelinCalculadoraV3.jsx`.
 - If it already exists, skip this step (previous backup is preserved).
 
 Important: The current repo component (v3.0) is MODULAR -- it imports from `../data/constants.js` and `../utils/calculations.js`. The Dropbox version (v3.1) is SELF-CONTAINED. Warn the user about this difference.
@@ -86,7 +86,7 @@ Tell the user:
 
 When the user asks to restore the original component, go back to the modular v3.0:
 
-1. Check that `src/components/PanelinCalculadoraV3_backup.jsx` exists.
+1. Check that `src/components/PanelinCalculadoraV3.jsx` exists.
 2. Copy it back to `src/components/PanelinCalculadoraV3.jsx`.
 3. Confirm the restore was successful.
 4. Vite HMR will automatically pick up the change.

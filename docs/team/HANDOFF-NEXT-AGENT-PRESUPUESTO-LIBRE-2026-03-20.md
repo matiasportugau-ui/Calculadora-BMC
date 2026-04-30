@@ -13,7 +13,7 @@ Este documento condensa **contexto**, **estado esperado del repo** y un **prompt
   - `flattenPerfilesLibre(perfilTecho, perfilPared)`  
   - `computePresupuestoLibreCatalogo(input)` con `catalog` opcional (p. ej. salida de `getPricing()` para overrides en UI).
 
-- **UI canónica (App usa backup):** `src/components/PanelinCalculadoraV3_backup.jsx`  
+- **UI canónica (App usa backup):** `src/components/PanelinCalculadoraV3.jsx`  
   - Escenario `presupuesto_libre` (`SCENARIOS_DEF` / `VIS` ya lo tenían).  
   - Acordeones: paneles, perfilería, tornillería/herrajes, selladores, servicios/flete, extraordinarios.  
   - `groups`: si `results.presupuestoLibre`, usa `libreGroups` y **no** duplica línea de flete.  
@@ -43,7 +43,7 @@ Documentación ya tocada: `docs/CHANGELOG.md`, `docs/team/PROJECT-STATE.md` (ent
 | Archivo | Rol |
 |--------|-----|
 | `src/utils/presupuestoLibreCatalogo.js` | Motor catálogo presupuesto libre |
-| `src/components/PanelinCalculadoraV3_backup.jsx` | UI + estado + `groups` |
+| `src/components/PanelinCalculadoraV3.jsx` | UI + estado + `groups` |
 | `server/routes/calc.js` | Ruta API, `buildGptResponse`, GPT discovery |
 | `docs/openapi-calc.yaml` | Contrato GPT / clientes |
 | `src/data/constants.js` | `CATEGORIAS_BOM` / `CATEGORIA_TO_GROUPS` |

@@ -12,7 +12,7 @@
    - ✅ Dot interaction handlers: `handleDotCycleMaterial` + `handleDotToggleEnabled`
    - ✅ ESLint: CLEAN
    
-3. **`src/components/PanelinCalculadoraV3_backup.jsx`**
+3. **`src/components/PanelinCalculadoraV3.jsx`**
    - ✅ State management wired for both RoofPreview instances
    - ✅ Visor + Wizard props synchronized
    - ✅ Cleanup also clears fijDotOverrides on stepper change

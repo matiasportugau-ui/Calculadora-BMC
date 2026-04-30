@@ -231,7 +231,7 @@ Confirmar que el precio en la respuesta ML ≤ precio MATRIZ (umbral = 0).
 
 **Acción:** preguntar al usuario: *"¿El comportamiento actual (cada zona con largo propio) es suficiente, o querés un toggle que sincronice todas las zonas al mismo largo?"*
 
-**Archivo potencial:** `src/components/PanelinCalculadoraV3_backup.jsx`
+**Archivo potencial:** `src/components/PanelinCalculadoraV3.jsx`
 
 ---
 

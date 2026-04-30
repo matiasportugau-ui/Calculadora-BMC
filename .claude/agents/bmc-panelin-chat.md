@@ -15,7 +15,7 @@ model: sonnet
 ```
 Frontend                          Backend
 ─────────────────                 ──────────────────────────────
-PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
+PanelinCalculadoraV3.jsx   server/routes/agentChat.js   ← SSE endpoint
   └─ PanelinChatPanel.jsx            └─ server/lib/chatPrompts.js
        └─ PanelinDevPanel.jsx              └─ buildSystemPrompt()
   └─ src/hooks/useChat.js                       └─ trainingExamples injected
@@ -29,7 +29,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 |------|------|
 | `src/components/PanelinChatPanel.jsx` | Chat drawer UI, messages, dev buttons |
 | `src/components/PanelinDevPanel.jsx` | Train/KB/Prompt tabs (dev mode panel) |
-| `src/components/PanelinCalculadoraV3_backup.jsx` | devMode state (~2153), toggleDevMode (~227), keyboard shortcut Ctrl+Shift+D (~2290) |
+| `src/components/PanelinCalculadoraV3.jsx` | devMode state (~2153), toggleDevMode (~227), keyboard shortcut Ctrl+Shift+D (~2290) |
 | `src/hooks/useChat.js` | Chat state, devMode flag, saveCorrection, reloadTrainingKB |
 | `server/routes/agentChat.js` | SSE stream, devMode branch (~167), kb_match (~231) |
 | `server/routes/agentTraining.js` | POST /agent/train, GET /agent/training-kb |
@@ -39,7 +39,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 ## Dev mode rules
 
 - **Entry point:** `Ctrl/Cmd+Shift+D` only — no visible button for regular users
-- DEV button in toolbar only renders when `devMode === true` (PanelinCalculadoraV3_backup.jsx)
+- DEV button in toolbar only renders when `devMode === true` (PanelinCalculadoraV3.jsx)
 - DEV button in chat header only renders when `devMode && onToggleDevMode` (PanelinChatPanel.jsx)
 - Per-message Good/Correct buttons: only when `devMode && !isUser && msg.content`
 

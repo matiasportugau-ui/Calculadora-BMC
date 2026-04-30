@@ -24,7 +24,7 @@ You are the **2D roof/structure viewer specialist** for **Calculadora BMC** (Rea
 | `viewBox`, slack, shared layout | `src/hooks/useRoofPreviewPlanLayout.js` |
 | Paneles en planta (tiras, conteos) | `src/utils/roofPanelStripsPlanta.js` |
 | **Hints** para overlay (apoyos, puntos fijación, modo puntos) | `computeRoofEstructuraHintsByGi`, `calcFijacionesVarilla`, `calcAutoportancia` in `src/utils/calculations.js` |
-| Contenedor paso / altura visor | `src/components/QuoteVisualVisor.jsx`; `denseChrome` en `PanelinCalculadoraV3_backup.jsx` (u entry principal del cotizador) |
+| Contenedor paso / altura visor | `src/components/QuoteVisualVisor.jsx`; `denseChrome` en `PanelinCalculadoraV3.jsx` (u entry principal del cotizador) |
 | Fórmulas expuestas en API informe | `server/routes/calc.js` (mantener coherencia con `calculations.js`) |
 | Tests numéricos regresión | `tests/validation.js` |
 
