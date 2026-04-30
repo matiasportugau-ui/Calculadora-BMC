@@ -87,12 +87,29 @@ jobs:
             --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest
 
       - name: Show service URL
+        id: service_url
         run: |
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region=${{ env.REGION }} \
             --format='value(status.url)')
           echo "Calculator API deployed to: $SERVICE_URL"
+          echo "url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
           echo "Endpoints:"
           echo "  POST $SERVICE_URL/calc/cotizar"
           echo "  GET  $SERVICE_URL/calc/catalogo"
           echo "  GET  $SERVICE_URL/calc/escenarios"
+
+      - name: Setup Node.js (for smoke)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (smoke only)
+        run: npm ci --include=dev --ignore-scripts
+
+      - name: Smoke against just-deployed revision
+        env:
+          BMC_API_BASE: ${{ steps.service_url.outputs.url }}
+          SMOKE_SKIP_SUGGEST: '1'
+        run: npm run smoke:prod
