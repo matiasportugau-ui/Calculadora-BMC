@@ -40,7 +40,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "demo:combinada-fijacion": "node scripts/demo-combinada-fijacion-planta.mjs",
-    "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js && node tests/cockpitTokenOrigin.js",
+    "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js && node tests/cockpitTokenOrigin.js && node tests/agentTools.test.js",
     "test:playwright:roof-bordes-local": "node scripts/playwright-roof-bordes-local.mjs",
     "test:playwright:hub-canales": "node scripts/playwright-hub-canales-smoke.mjs",
     "test:playwright:wizard": "node scripts/playwright-wizard-happy-path.mjs",
