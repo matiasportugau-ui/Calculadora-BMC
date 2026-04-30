@@ -322,3 +322,4 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 - `fd9c93a` other: Update documentation and tests for AUTOTRACE and add new reference materials `[tests]`
 - `386507c` other: Merge branch 'main' of https://github.com/matiasportugau-ui/Calculadora-BMC
+- `d446776` other: Update knowledge base and documentation for Fase 0 deliverables
