@@ -249,13 +249,17 @@ add_sensitive DATABASE_URL "$DATABASE_URL"
 [[ -n "$CHROMIUM_EXECUTABLE_PATH" ]]     && PAIRS+=("CHROMIUM_EXECUTABLE_PATH=$CHROMIUM_EXECUTABLE_PATH")
 
 # ── Ejecutar update ──────────────────────────────────────────────────────────
-# Unir arrays con comas (gcloud requiere KEY=VAL,KEY=VAL)
-ENV_VARS=$(IFS=,; echo "${PAIRS[*]}")
+# Algunos valores contienen comas (SHOPIFY_SCOPES, CORS_ORIGIN,
+# COCKPIT_TOKEN_ALLOWED_ORIGINS), así que usamos el escape ^|^ de gcloud para
+# elegir | como separador de pares KEY=VAL en --update-env-vars.
+# Ref: gcloud topic escaping → "If the first character of the value is '^',
+# the next character is taken as the delimiter."
+ENV_VARS=$(IFS='|'; echo "${PAIRS[*]}")
 SECRETS=$(IFS=,; echo "${SECRET_PAIRS[*]}")
 
 declare -a UPDATE_ARGS
 UPDATE_ARGS+=(--region=us-central1)
-[[ -n "$ENV_VARS" ]] && UPDATE_ARGS+=(--update-env-vars="$ENV_VARS")
+[[ -n "$ENV_VARS" ]] && UPDATE_ARGS+=(--update-env-vars="^|^$ENV_VARS")
 [[ -n "$SECRETS" ]]  && UPDATE_ARGS+=(--update-secrets="$SECRETS")
 UPDATE_ARGS+=(--quiet)
 
