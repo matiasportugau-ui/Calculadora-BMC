@@ -14,13 +14,13 @@ La implementación propuesta se apoya en **Supabase Auth + Postgres (RLS)**, man
 
 ## 1) Objetivos de negocio y seguridad
 
-## Objetivos de negocio
+### Objetivos de negocio
 1. Compartir la calculadora con clientes sin riesgo de fuga de información interna.
 2. Delegar cotización a ventas/administración con permisos diferenciados.
 3. Asignar listas de precio por usuario/cliente para canales y acuerdos comerciales.
 4. Reducir fricción operativa (alta/baja de usuarios, auditoría, trazabilidad).
 
-## Objetivos de seguridad
+### Objetivos de seguridad
 1. Cero exposición de `costos`, `margen`, `markups internos`, `observaciones internas` a rol `cliente`.
 2. Autorización obligatoria en backend para todo endpoint sensible.
 3. Menor privilegio por defecto (“deny by default”).
@@ -30,7 +30,7 @@ La implementación propuesta se apoya en **Supabase Auth + Postgres (RLS)**, man
 
 ## 2) Alcance funcional (v1)
 
-## Incluye
+### Incluye
 - Login/logout, recuperación de contraseña.
 - Gestión de usuarios por `admin`.
 - Roles base: `admin`, `ventas`, `administracion`, `cliente`.
@@ -38,7 +38,7 @@ La implementación propuesta se apoya en **Supabase Auth + Postgres (RLS)**, man
 - Restricción de rutas `/hub/*` y endpoints internos según rol.
 - Guardado de cotizaciones con ownership (clientes ven solo las suyas).
 
-## No incluye (v1)
+### No incluye (v1)
 - SSO corporativo (SAML/OIDC enterprise).
 - ABAC avanzado por atributos complejos.
 - Multi-tenant completo con aislamiento por organización en todo el dominio (se deja preparado).
@@ -47,13 +47,13 @@ La implementación propuesta se apoya en **Supabase Auth + Postgres (RLS)**, man
 
 ## 3) Modelo de roles y permisos
 
-## Roles
+### Roles
 - **admin**: control total, IAM interno, listas, auditoría.
 - **ventas**: cotización avanzada, CRM comercial, sin cambios de IAM.
 - **administracion**: vista administrativa/financiera definida por negocio (ver decisión abierta A1).
 - **cliente**: cotiza en modo restringido, sin datos internos.
 
-## Matriz RBAC v1 (base)
+### Matriz RBAC v1 (base)
 
 | Recurso/Acción | admin | ventas | administracion | cliente |
 |---|---:|---:|---:|---:|
@@ -64,7 +64,7 @@ La implementación propuesta se apoya en **Supabase Auth + Postgres (RLS)**, man
 | Crear cotización | ✅ | ✅ | ✅ | ✅ (propias) |
 | Ver cotizaciones ajenas | ✅ | ✅ | ⚠️ política | ❌ |
 | Exportes internos | ✅ | ✅ | ✅ | ❌ |
-| Endpoints `/api/internal/*` | ✅ | según policy | según policy | ❌ |
+| Endpoints internos calculadora (**TBC**, p. ej. bajo `/api/internal/*`; distinto de `GET /api/internal/panelin/*` existente) | ✅ | según policy | según policy | ❌ |
 | Módulos `/hub/*` internos | ✅ | según módulo | según módulo | ❌ |
 
 > ⚠️ A1: cerrar definición de alcance exacto para `administracion` antes de pasar a Fase 2.
@@ -73,30 +73,32 @@ La implementación propuesta se apoya en **Supabase Auth + Postgres (RLS)**, man
 
 ## 4) Arquitectura propuesta
 
-## 4.1 Identity
+> **Artefactos de código y rutas:** las referencias a archivos nuevos (`server/lib/rbac.js`, middleware, prefijo `/api/internal/*` para calculadora pública, etc.) son **planificadas — to be created/updated**; no implican que ya existan en el repo actual salvo donde se cite explícitamente código existente.
+
+### 4.1 Identity
 - **Supabase Auth** para sesión, recuperación de contraseña y emisión de JWT.
 - Frontend (Vercel) mantiene sesión con SDK oficial y refresh automático.
 - Backend valida JWT de Supabase en middleware dedicado.
 
-## 4.2 Perfil y autorización
+### 4.2 Perfil y autorización
 - Tabla `profiles` (1:1 con `auth.users`) con `role`, `status`, `org_id` (nullable v1), metadata mínima.
-- Biblioteca RBAC en servidor (`server/lib/rbac.js`) con:
+- Biblioteca RBAC en servidor (**to be created:** `server/lib/rbac.js`) con:
   - `roleHierarchy`
   - `policyMap`
   - `assertPermission(user, action, resource)`
 
-## 4.3 Datos de precio
+### 4.3 Datos de precio
 - Tabla `price_lists`.
 - Tabla `user_price_list_assignments` (histórico opcional con vigencia).
 - Resolución de lista activa por usuario para cálculo/cotización.
 
-## 4.4 Protección de datos sensibles
+### 4.4 Protección de datos sensibles
 - DTO por rol en capa de respuesta:
   - `internalQuoteDTO` (interno)
   - `clientQuoteDTO` (sin costos/márgenes/campos internos)
 - Verificación de “campo prohibido” en tests de contrato por rol.
 
-## 4.5 Trazabilidad
+### 4.5 Trazabilidad
 - Tabla `audit_events` para:
   - login relevante,
   - cambios de rol,
@@ -151,7 +153,7 @@ create table if not exists public.audit_events (
 );
 ```
 
-## RLS (línea base)
+### RLS (línea base)
 - `profiles`: cada usuario ve su perfil; `admin` gestiona todo vía service role en backend.
 - cotizaciones: `cliente` solo own records (`owner_user_id = auth.uid()`).
 - asignaciones de listas: lectura limitada por owner o rol interno.
@@ -160,7 +162,7 @@ create table if not exists public.audit_events (
 
 ## 6) Cambios técnicos por capa
 
-## 6.1 Frontend (`src/`)
+### 6.1 Frontend (`src/`)
 1. `AuthProvider` global (sesión + perfil + rol + permisos efectivos).
 2. `ProtectedRoute` por rol/permisos para `/hub/*`.
 3. UI de login/recovery.
@@ -169,16 +171,16 @@ create table if not exists public.audit_events (
    - bloquear acciones internas.
 5. Panel admin para alta usuario + asignación rol/lista.
 
-## 6.2 Backend (`server/`)
-1. Middleware `requireAuth` (JWT Supabase).
-2. Middleware `requireRole` / `requirePermission`.
+### 6.2 Backend (`server/`)
+1. Middleware `requireAuth` (JWT Supabase) — **to be created/updated**.
+2. Middleware `requireRole` / `requirePermission` — **to be created/updated**.
 3. Adaptación de rutas sensibles:
-   - `server/routes/bmcDashboard.js`
-   - rutas internas `/api/internal/*`
+   - **to be updated:** `server/routes/bmcDashboard.js`
+   - **to be created (o alinear con rutas existentes):** prefijo `/api/internal/*` para superficie interna de la calculadora pública (no confundir con `GET /api/internal/panelin/*` del Panelin interno ya existente)
 4. Sanitización respuesta por rol (DTO).
 5. Logging/auditoría con `pino` + `audit_events`.
 
-## 6.3 Infra (Vercel / Cloud Run)
+### 6.3 Infra (Vercel / Cloud Run)
 1. Variables nuevas:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
@@ -191,35 +193,35 @@ create table if not exists public.audit_events (
 
 ## 7) Plan de entrega por fases
 
-## Fase 0 — Descubrimiento y contrato (2–4 días)
+### Fase 0 — Descubrimiento y contrato (2–4 días)
 - Cerrar decisión A1 (alcance `administracion`).
 - Inventario de endpoints/rutas que exponen campos sensibles.
 - Definir contrato público `cliente` (JSON schema).
 
 **Salida:** Documento de contrato + matriz final aprobada por negocio.
 
-## Fase 1 — Auth + RBAC mínimo (4–7 días)
+### Fase 1 — Auth + RBAC mínimo (4–7 días)
 - Integrar login/logout/recovery.
 - Implementar `profiles` + middleware auth/role.
 - Proteger rutas internas y módulos `/hub/*`.
 
 **DoD:** ningún usuario anónimo accede a rutas protegidas; `cliente` bloqueado en módulos internos.
 
-## Fase 2 — Precio segmentado + ownership (4–8 días)
+### Fase 2 — Precio segmentado + ownership (4–8 días)
 - `price_lists` + `user_price_list_assignments`.
 - Resolver lista en cálculo.
 - Ownership de cotizaciones para clientes.
 
 **DoD:** cliente solo ve cotizaciones propias y precios de su lista.
 
-## Fase 3 — Hardening + auditoría (3–6 días)
+### Fase 3 — Hardening + auditoría (3–6 días)
 - `audit_events` + eventos críticos.
 - Tests de no-fuga de datos sensibles.
 - Alertas básicas ante intentos 403 repetidos.
 
 **DoD:** evidencia auditable + suite de seguridad verde.
 
-## Fase 4 — Rollout controlado (2–5 días)
+### Fase 4 — Rollout controlado (2–5 días)
 - Feature flag por cohortes (interno → clientes piloto → general).
 - Monitoreo de errores auth y tasa de 403.
 
@@ -229,23 +231,23 @@ create table if not exists public.audit_events (
 
 ## 8) Estrategia de testing
 
-## Unit
+### Unit
 - RBAC engine (`allow/deny` por rol/acción/recurso).
 - Sanitizadores DTO por rol.
 
-## Integración
+### Integración
 - Endpoints con JWT válido/inválido/expirado.
 - Verificación `403` en acciones prohibidas.
 
-## Contrato API
+### Contrato API
 - Snapshot de respuesta `cliente` sin campos restringidos.
 - Casos `admin/ventas/cliente` para endpoint críticos de cotización.
 
-## E2E
+### E2E
 - Flujo login cliente → cotizar → guardar → ver solo propias.
 - Flujo admin → crear usuario cliente → asignar lista → validar efecto.
 
-## Seguridad
+### Seguridad
 - Intento de IDOR (acceso a cotización ajena) debe devolver `403/404` según política.
 - Regression test de campos sensibles (`cost`, `margin`, `internalNotes`) ausentes en rol cliente.
 

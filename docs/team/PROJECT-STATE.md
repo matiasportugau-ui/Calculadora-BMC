@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-29
+**Última actualización:** 2026-04-30
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -12,7 +12,9 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
-**2026-04-29 (Plan profundo — implementación control de acceso Vercel):** Se reemplaza/expande el plan inicial por una versión de implementación profunda en [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): objetivos de negocio/seguridad, arquitectura Supabase Auth + RBAC + segmentación de listas de precios, diseño de datos SQL (profiles/price_lists/assignments/audit_events), cambios por capa (`src/`, `server/`, infra), fases con DoD, estrategia de testing (unit/integración/contrato/e2e/seguridad), backlog técnico (`AUTH-*`, `RBAC-*`, `PRICE-*`, `TEST-*`) y criterios de aceptación globales. **Affects:** bmc-security, bmc-calc-specialist, bmc-project-team-sync, bmc-deployment.
+**2026-04-30 (Docs — roadmap ACCESS-CONTROL, TOC + claridad código):** En [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): jerarquía Markdown alineada a TOC GitHub (secciones numeradas `##`, subtítulos `###`); aviso **to be created/updated** en artefactos planificados (`server/lib/rbac.js`, middleware, rutas internas de calculadora vs `GET /api/internal/panelin/*` ya existente). **Affects:** bmc-docs-sync, bmc-project-team-sync.
+
+**2026-04-29 (Plan — control de acceso Calculadora Vercel, documento único):** La propuesta inicial (auth por niveles, interno vs cliente, costos ocultos, listas por usuario) queda **consolidada y ampliada** en un solo plan de implementación en [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): objetivos de negocio/seguridad, RBAC (`admin`, `ventas`, `administracion`, `cliente`), matriz de permisos v1, arquitectura Supabase Auth + Postgres/RLS, diseño SQL (profiles/price_lists/assignments/audit_events), cambios por capa (`src/`, `server/`, infra), fases con DoD, testing (unit/integración/contrato/e2e/seguridad), backlog (`AUTH-*`, `RBAC-*`, `PRICE-*`, `TEST-*`), riesgos y decisiones abiertas. **Affects:** bmc-security, bmc-calc-specialist, bmc-project-team-sync, bmc-deployment.
 
 **2026-04-29 (Roadmap BMC Platform Fase 0 — docs ejecutables):** Entrega **ADR + inventario Área 4 + checklist OAuth Supabase + placeholders `.env`** (sin crear proyecto Supabase aún ni migraciones). **`docs/team/roadmap/README.md`** — índice. **`docs/team/roadmap/ADR-001-data-ownership-supabase.md`** — propiedad de datos (cotización canónica en Postgres Supabase vs Sheets hasta migración dual-write explícita; KB/pgvector mismo proyecto; persistencia logs fuera disco Cloud Run pendiente implementación). **`docs/team/roadmap/AREA4-INVENTORY-FASE0.md`** — mapa `agentChat.js`, `trainingKB.js`, `conversationLog.js`, rutas relacionadas. **`docs/team/OAUTH-SUPABASE-CHECKLIST.md`** — pasos Google/Meta/Supabase para evitar `redirect_uri_mismatch` / `origin_mismatch`. **`.env.example`** — `VITE_SUPABASE_*`, `SUPABASE_*` comentados. Próximo paso humano: crear proyecto Supabase y completar checklist OAuth; luego Fase 1 (auth + numeración). **Affects:** bmc-project-team-sync, bmc-deployment (env Vercel/Run futuros), docs-sync.
 
