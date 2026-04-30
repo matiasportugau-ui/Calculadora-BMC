@@ -1,8 +1,8 @@
 {
   "_meta": {
     "v": "2.0.0",
-    "ts": "2026-04-30T05:09:17.092Z",
-    "build_ms": 51,
+    "ts": "2026-04-30T05:22:10.159Z",
+    "build_ms": 156,
     "score": 85,
     "score_delta": 0,
     "sources": [
@@ -139,34 +139,29 @@
   ],
   "roadmap": [
     {
-      "priority": "🔴 CRÍTICO",
-      "title": "cm-0 WhatsApp E2E",
-      "action": "Send real WA msg → verify CRM row → mark done"
+      "priority": "🟡 MEDIO",
+      "title": "Git tag `v3.1.6` (verificado en `origin`; siguiente semver al bump)",
+      "action": "En releases futuras: `git tag vX.Y.Z -m \"...\"` → `git push origin vX.Y.Z` → confirmar workflow en GitHub Actions."
     },
     {
       "priority": "🟠 ALTO",
-      "title": "QA WolfBoard prod",
-      "action": "Open Vercel URL → verify Admin 2.0 loads CRM data"
-    },
-    {
-      "priority": "🟠 ALTO",
-      "title": "cm-1 ML publish",
-      "action": "ml:pending-workup → answer ML questions with MATRIZ price"
-    },
-    {
-      "priority": "🟠 ALTO",
-      "title": "cm-2 email ingest prod",
-      "action": "email:ingest-snapshot --limit 1 (no --dry-run)"
+      "title": "Completar y verificar cm-1 (MercadoLibre OAuth full cycle)",
+      "action": "1. `npm run ml:pending-workup` — ver preguntas pendientes"
     },
     {
       "priority": "🟡 MEDIO",
-      "title": "Smoke post-deploy CI",
-      "action": "Add smoke job to .github/workflows/ci.yml"
+      "title": "Regresión canales (cm-0 / cm-2) — verificación periódica",
+      "action": "Checklist corto + evidencia en PROJECT-STATE si algo cambia en Meta o credenciales."
     },
     {
-      "priority": "🟡 MEDIO",
-      "title": "UI encuentros multizona",
-      "action": "Complete segment UI in RoofPreview.jsx"
+      "priority": "🔵 BAJO",
+      "title": "Instalar LaunchAgent del stack local",
+      "action": "`npm run local:stack:launchd:install` → verificar con `curl localhost:3001/health`"
+    },
+    {
+      "priority": "🔵 BAJO",
+      "title": "Instalar digest diario por email",
+      "action": "Configurar SMTP en `.env` → `npm run magazine:schedule:install`"
     }
   ],
   "rules": [

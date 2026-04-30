@@ -66,7 +66,7 @@ if (areaTableMatch) {
 
 // Roadmap items — extract numbered steps with priority labels
 const roadmapItems = [];
-const stepRe = /###\s+(🔴 CRÍTICO|🟠 ALTO|🟡 MEDIO|🔵 BAJO)\s*\|\s*\d+\.\s*(.+)\n[\s\S]*?- \*\*Acción[^:]*\*\*:\s*([^\n]+)/g;
+const stepRe = /###\s+(🔴 CRÍTICO|🟠 ALTO|🟡 MEDIO|🔵 BAJO)\s*\|\s*\d+\.\s*(.+)\n[\s\S]*?- \*\*Acción.*?\*\*:?\s*([^\n]+)/g;
 let m;
 while ((m = stepRe.exec(roadmapRaw)) !== null) {
   roadmapItems.push({ priority: m[1], title: m[2].trim(), action: m[3].trim() });
