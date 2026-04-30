@@ -11221,6 +11221,35 @@
           ".github"
         ]
       }
+    },
+    {
+      "hash": "ec6a9669b4a7c4786b7bdb40c501dcfa0b4c33b8",
+      "short_hash": "ec6a966",
+      "date": "2026-04-30",
+      "time": "02:22:37",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "fix",
+      "scope": "kb",
+      "title": "roadmap regex matches \"Acción …:**\" with colon inside bold",
+      "subject": "fix(kb): roadmap regex matches \"Acción …:**\" with colon inside bold",
+      "files": [
+        ".accessible-base/kb.json",
+        "scripts/build-accessible-base.mjs"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "scripts"
+        ]
+      }
     }
   ]
 }
