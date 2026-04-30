@@ -151,7 +151,7 @@ create table if not exists public.audit_events (
 );
 ```
 
-### RLS (línea base)
+## RLS (línea base)
 - `profiles`: cada usuario ve su perfil; `admin` gestiona todo vía service role en backend.
 - cotizaciones: `cliente` solo own records (`owner_user_id = auth.uid()`).
 - asignaciones de listas: lectura limitada por owner o rol interno.
