@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 00:07:32 — `f7e8016` — chore(tooling): bmc-dev-verify, playwright smoke, accessible-base sync, config + gcsUpload
 - 2026-04-24 00:07:41 — `e332a5f` — docs(team+agents): PROJECT-STATE, ROADMAP, dashboard modernization, bmc-team-liaison
 - 2026-04-24 00:07:46 — `4eccf4b` — chore(kb): rebuild accessible-base kb.json post-commit batch
 - 2026-04-24 00:07:52 — `5a52c84` — chore(dev-trace): AUTOTRACE post-batch 2026-04-24
@@ -222,3 +221,4 @@
 - 2026-04-29 07:33:05 — `888f9cc` — docs(v1.3): Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001
 - 2026-04-30 00:25:09 — `d446776` — Update knowledge base and documentation for Fase 0 deliverables
 - 2026-04-30 01:53:26 — `8a45c87` — Update knowledge base and documentation for Fase 0 deliverables
+- 2026-04-30 01:57:29 — `7e639cc` — Update knowledge base and documentation for Fase 0 deliverables

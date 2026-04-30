@@ -324,3 +324,4 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `386507c` other: Merge branch 'main' of https://github.com/matiasportugau-ui/Calculadora-BMC
 - `d446776` other: Update knowledge base and documentation for Fase 0 deliverables
 - `8a45c87` other: Update knowledge base and documentation for Fase 0 deliverables
+- `7e639cc` other: Update knowledge base and documentation for Fase 0 deliverables
