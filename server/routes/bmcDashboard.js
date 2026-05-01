@@ -26,6 +26,7 @@ import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 import { addTrainingEntry } from "../lib/trainingKB.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
+import { buildTaskProviderChain } from "../lib/modelRouter.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -2090,8 +2091,19 @@ export default function createBmcDashboardRouter(config) {
     //          2-OpenAI gpt-4o-mini (reliable, good Spanish)
     //          3-Grok grok-3-mini  (proven working, fast)
     //          4-Gemini 2.0-flash  (fallback)
-    const RANKING = CRM_AI_PROVIDER_RANKING;
-    const chain = provider ? [provider] : RANKING;
+    // When no specific provider requested, use model-routing config for crm_suggest task.
+    const available = new Set(
+      [
+        config.anthropicApiKey && "claude",
+        config.openaiApiKey    && "openai",
+        config.grokApiKey      && "grok",
+        config.geminiApiKey    && "gemini",
+      ].filter(Boolean)
+    );
+    const defaultRanking = CRM_AI_PROVIDER_RANKING.filter((p) => available.has(p));
+    const { chain: routedChain, modelOverrides: crmModelOverrides } =
+      buildTaskProviderChain("crm_suggest", available, defaultRanking);
+    const chain = provider ? [provider] : routedChain;
 
     const apiKeys = {
       claude: config.anthropicApiKey,
@@ -2161,7 +2173,7 @@ export default function createBmcDashboardRouter(config) {
           const { default: Anthropic } = await import("@anthropic-ai/sdk");
           const anthropic = new Anthropic({ apiKey });
           const msg = await anthropic.messages.create({
-            model: "claude-haiku-4-5-20251001",
+            model: crmModelOverrides?.claude || "claude-haiku-4-5-20251001",
             max_tokens: 300,
             system: systemPrompt,
             messages: [{ role: "user", content: userMsg }],
@@ -2172,7 +2184,7 @@ export default function createBmcDashboardRouter(config) {
           const { default: OpenAI } = await import("openai");
           const openai = new OpenAI({ apiKey });
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: crmModelOverrides?.openai || "gpt-4o-mini",
             max_tokens: 300,
             messages: [
               { role: "system", content: systemPrompt },

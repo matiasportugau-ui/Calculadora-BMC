@@ -31,6 +31,16 @@ import { clearKnowledgeCache } from "../lib/knowledgeLoader.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import { loadConversationById } from "../lib/conversationLog.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
+import {
+  DEFAULT_MODEL_ROUTING,
+  DEFAULT_AUTO_EVOLUTION,
+  MODEL_ROUTING_TASK_CATALOG,
+  getRoutingStore,
+  setRoutingStore,
+  getAutoEvolutionConfig,
+  setAutoEvolutionConfig,
+  resolveTaskModel,
+} from "../lib/modelRouter.js";
 
 const router = Router();
 
@@ -386,11 +396,16 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const client = new Anthropic({ apiKey });
 
+  // Use kb_generate routing to select the model, fall back to haiku
+  const available = new Set(["claude"]);
+  const routingHit = resolveTaskModel("kb_generate", available);
+  const kbModel = routingHit?.model || "claude-haiku-4-5-20251001";
+
   const results = [];
   for (const entry of targets) {
     try {
       const msg = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
+        model: kbModel,
         max_tokens: 100,
         messages: [{
           role: "user",
@@ -410,7 +425,71 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
   }
 
   const done = results.filter((r) => r.ok).length;
-  res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results });
+  res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results, model: kbModel });
+});
+
+// ── MODEL ROUTING ──────────────────────────────────────────────────────────
+// Store lives in server/lib/modelRouter.js — imported above.
+
+router.get("/agent/model-routing", requireDevModeAuth, (req, res) => {
+  res.json({
+    ok: true,
+    routing: getRoutingStore(),
+    defaults: DEFAULT_MODEL_ROUTING,
+    taskCatalog: MODEL_ROUTING_TASK_CATALOG,
+  });
+});
+
+router.post("/agent/model-routing", requireDevModeAuth, (req, res) => {
+  const { routing } = req.body || {};
+  if (!routing || typeof routing !== "object") {
+    return res.status(400).json({ ok: false, error: "routing object required" });
+  }
+  const validTaskIds = new Set(MODEL_ROUTING_TASK_CATALOG.map((t) => t.id));
+  const normalizeSlot = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const updated = {};
+  const ignored = [];
+  for (const [taskId, slots] of Object.entries(routing)) {
+    if (!validTaskIds.has(taskId)) { ignored.push(taskId); continue; }
+    updated[taskId] = {
+      a: normalizeSlot(slots?.a),
+      b: normalizeSlot(slots?.b),
+      c: normalizeSlot(slots?.c),
+    };
+  }
+  setRoutingStore({ ...getRoutingStore(), ...updated });
+  const response = { ok: true, routing: getRoutingStore() };
+  if (ignored.length) response.warnings = ignored.map((id) => `Unknown taskId ignored: ${id}`);
+  return res.json(response);
+});
+
+router.get("/agent/model-routing/defaults", requireDevModeAuth, (req, res) => {
+  res.json({ ok: true, defaults: DEFAULT_MODEL_ROUTING, taskCatalog: MODEL_ROUTING_TASK_CATALOG });
+});
+
+// ── AUTO-EVOLUTION CONFIG ─────────────────────────────────────────────────
+// Store lives in server/lib/modelRouter.js — imported above.
+
+router.get("/agent/auto-evolution", requireDevModeAuth, (req, res) => {
+  res.json({ ok: true, config: getAutoEvolutionConfig(), defaults: DEFAULT_AUTO_EVOLUTION });
+});
+
+router.post("/agent/auto-evolution", requireDevModeAuth, (req, res) => {
+  const body = req.body || {};
+  const numFields = ["autoApproveThreshold", "staleEntryDays", "maxEntriesPerCategory", "deduplicateThreshold", "trainingLogRetention"];
+  const boolFields = ["crossChannelLearning", "feedbackLoopEnabled", "kbHealthAutoFix"];
+  const patch = {};
+  for (const k of numFields) {
+    if (body[k] !== undefined) {
+      const v = Number(body[k]);
+      if (Number.isFinite(v)) patch[k] = v;
+    }
+  }
+  for (const k of boolFields) {
+    if (body[k] !== undefined) patch[k] = !!body[k];
+  }
+  setAutoEvolutionConfig({ ...getAutoEvolutionConfig(), ...patch });
+  res.json({ ok: true, config: getAutoEvolutionConfig() });
 });
 
 export default router;

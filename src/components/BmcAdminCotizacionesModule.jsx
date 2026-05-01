@@ -1,10 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import BmcFiscalCard from "./BmcFiscalCard.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
+const VIS_COLS_KEY = "bmc_admin_visible_cols";
+
+const FF = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif";
+
+/**
+ * Admin 2.0 sheet column indices (0-based, A=0).
+ * These match the mapAdminSheetRow mapping in server/routes/wolfboard.js.
+ */
+const COL = {
+  ID:        0,  // A
+  FECHA:     1,  // B
+  TELEFONO:  3,  // D
+  CLIENTE:   4,  // E
+  CANAL:     5,  // F — used for the canal pill display
+  ZONA:      7,  // H
+  CONSULTA:  8,  // I
+  RESPUESTA: 9,  // J — highlighted if starts with ⚠
+  LINK:      10, // K — rendered as a link
+  ESTADO:    11, // L
+  REPLAY:    12, // M
+};
 
 const wrap = {
   minHeight: "100vh",
@@ -127,12 +148,6 @@ const CANAL_COLORS = {
   LL:     ["#ffe4e6", "#be123c"],
 };
 
-function canalPill(origen) {
-  if (!origen) return null;
-  const [bg, fg] = CANAL_COLORS[origen.toUpperCase()] || ["#f0f0f2", "#6e6e73"];
-  return <span style={pill(bg, fg)}>{origen}</span>;
-}
-
 function getStoredToken() {
   try { return localStorage.getItem(STORAGE_KEY) || ""; } catch { return ""; }
 }
@@ -167,6 +182,24 @@ export default function BmcAdminCotizacionesModule() {
   const [error, setError]       = useState("");
   const [toast, setToast]       = useState("");
 
+  // Column headers from sheet row 1
+  const [headers, setHeaders]         = useState([]); // [{ index, col, name }]
+  const [headersLoading, setHeadersLoading] = useState(false);
+  const [colSelectorOpen, setColSelectorOpen] = useState(false);
+  // Visible cols: Set of column letters. null = show all.
+  const [visibleCols, setVisibleCols] = useState(() => {
+    try {
+      const stored = localStorage.getItem(VIS_COLS_KEY);
+      if (stored) return new Set(JSON.parse(stored));
+    } catch { /* */ }
+    return null; // null = show all
+  });
+
+  // Inline cell editing
+  const [editCell, setEditCell]   = useState(null); // { rowNum, col, colIndex, value }
+  const [savingCell, setSavingCell] = useState(false);
+  const editInputRef = useRef(null);
+
   const [detail, setDetail]     = useState(null); // { row }
   const [dRespuesta, setDRespuesta] = useState("");
   const [dLink, setDLink]       = useState("");
@@ -196,6 +229,17 @@ export default function BmcAdminCotizacionesModule() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
 
+  // Load sheet headers
+  const loadHeaders = useCallback(async () => {
+    if (!token) return;
+    setHeadersLoading(true);
+    const { ok, data } = await apiFetch(token, "/api/wolfboard/sheet-headers");
+    setHeadersLoading(false);
+    if (!ok || !Array.isArray(data.headers)) return;
+    setHeaders(data.headers);
+    // visibleCols === null means "show all" — no action needed here
+  }, [token]);
+
   const loadPendientes = useCallback(async () => {
     if (!token) { setError("Guardá el token para cargar consultas."); return; }
     setLoading(true);
@@ -210,8 +254,9 @@ export default function BmcAdminCotizacionesModule() {
 
   useEffect(() => {
     if (!token) { setRows([]); return; }
+    loadHeaders();
     loadPendientes();
-  }, [token, loadPendientes]);
+  }, [token, loadHeaders, loadPendientes]);
 
   const saveToken = () => {
     const t = tokenInput.trim();
@@ -221,6 +266,73 @@ export default function BmcAdminCotizacionesModule() {
     showToast(t ? "Token guardado." : "Token borrado.");
   };
 
+  // Persist visible cols whenever it changes
+  useEffect(() => {
+    try {
+      if (visibleCols === null) {
+        localStorage.removeItem(VIS_COLS_KEY);
+      } else {
+        localStorage.setItem(VIS_COLS_KEY, JSON.stringify([...visibleCols]));
+      }
+    } catch { /* */ }
+  }, [visibleCols]);
+
+  const toggleCol = (colLetter) => {
+    setVisibleCols(prev => {
+      // null = show all — when toggling we need to materialise
+      const base = prev !== null ? new Set(prev) : new Set(headers.map(h => h.col));
+      if (base.has(colLetter)) {
+        base.delete(colLetter);
+      } else {
+        base.add(colLetter);
+      }
+      return base;
+    });
+  };
+
+  const showAllCols  = () => setVisibleCols(null);
+  const hideAllCols  = () => setVisibleCols(new Set());
+
+  // Columns to render (ordered by index)
+  const visibleHeaders = headers.filter(h =>
+    visibleCols === null ? true : visibleCols.has(h.col)
+  );
+
+  // ── Inline cell edit ──────────────────────────────────────────────────────
+  const startEdit = (rowNum, col, colIndex, currentValue) => {
+    setEditCell({ rowNum, col, colIndex, value: currentValue });
+    setTimeout(() => editInputRef.current?.focus(), 30);
+  };
+
+  const cancelEdit = () => setEditCell(null);
+
+  const commitEdit = async () => {
+    if (!editCell || !token) return;
+    setSavingCell(true);
+    try {
+      const { ok, data } = await apiFetch(token, "/api/wolfboard/cell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminRow: editCell.rowNum, col: editCell.col, value: editCell.value }),
+      });
+      if (!ok) { showToast(data?.error || "Error al guardar celda"); return; }
+      const dry = data.dryRun ? " [dry-run]" : "";
+      showToast(`${editCell.col}${editCell.rowNum} guardado${dry}`);
+      setEditCell(null);
+      await loadPendientes();
+    } catch {
+      showToast("Error al guardar celda");
+    } finally {
+      setSavingCell(false);
+    }
+  };
+
+  const handleCellKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEdit(); }
+    if (e.key === "Escape") cancelEdit();
+  };
+
+  // ── Actions ───────────────────────────────────────────────────────────────
   const runSync = async () => {
     if (!token) return;
     setSyncing(true);
@@ -311,20 +423,30 @@ export default function BmcAdminCotizacionesModule() {
     await loadPendientes();
   };
 
+  // Canal pill colour helper
+  const canalPill = (origen) => {
+    if (!origen) return null;
+    const [bg, fg] = CANAL_COLORS[origen.toUpperCase()] || ["#f0f0f2", "#6e6e73"];
+    return (
+      <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 20, background: bg, color: fg, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+        {origen}
+      </span>
+    );
+  };
+
   return (
     <div style={wrap}>
       <div style={main}>
         {/* Back */}
         <p style={{ margin: "0 0 8px" }}>
-          <Link to="/hub" style={{ fontSize: 13, color: "#0071e3", textDecoration: "none", fontFamily: h1.fontFamily, fontWeight: 600 }}>
+          <Link to="/hub" style={{ fontSize: 13, color: "#0071e3", textDecoration: "none", fontFamily: FF, fontWeight: 600 }}>
             ← Wolfboard
           </Link>
         </p>
 
         <h1 style={h1}>Admin · Consultas y Cotizaciones</h1>
         <p style={sub}>
-          Cotizaciones / consultas del tab <strong>Admin 2.0</strong> (planilla configurada en el servidor). Podés listar solo la cola con consulta (I) o
-          <strong> todas las filas con datos</strong> en A–M. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.
+          Vista completa de la planilla <strong>Admin 2.0</strong>. Todas las columnas visibles y editables en vivo. Seleccioná qué columnas mostrar, hacé clic en cualquier celda para editarla y guardala directo en la planilla.
         </p>
 
         {/* Fiscal BPS/IRAE tracking card */}
@@ -349,30 +471,22 @@ export default function BmcAdminCotizacionesModule() {
         {token && (
           <div style={{ ...card, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginRight: 4 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#6e6e73" }}>Vista</span>
-              <button
-                type="button"
-                style={listScope === "consulta" ? btnPrimary : btnGhost}
-                onClick={() => setListScope("consulta")}
-              >
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#6e6e73", fontFamily: FF }}>Vista</span>
+              <button type="button" style={listScope === "consulta" ? btnPrimary : btnGhost} onClick={() => setListScope("consulta")}>
                 Con consulta (I)
               </button>
-              <button
-                type="button"
-                style={listScope === "admin" ? btnPrimary : btnGhost}
-                onClick={() => setListScope("admin")}
-              >
-                Todas las filas (Admin)
+              <button type="button" style={listScope === "admin" ? btnPrimary : btnGhost} onClick={() => setListScope("admin")}>
+                Todas las filas
               </button>
             </div>
             <button type="button" style={btnGhost} onClick={runSync} disabled={syncing}>
               {syncing ? "Sincronizando…" : "↕ Sincronizar"}
             </button>
             <button type="button" style={btnGreen} onClick={() => runBatch(false)} disabled={batching}>
-              {batching ? "Generando…" : "✦ Generar cotizaciones IA"}
+              {batching ? "Generando…" : "✦ Generar IA"}
             </button>
             <button type="button" style={{ ...btnOrange, fontSize: 12 }} onClick={() => runBatch(true)} disabled={batching}>
-              {batching ? "…" : "Re-procesar errores (force)"}
+              {batching ? "…" : "Re-procesar errores"}
             </button>
             <button type="button" style={{ ...btnGhost, fontSize: 12 }} onClick={loadPendientes} disabled={loading}>
               {loading ? "Cargando…" : "↺ Recargar"}
@@ -382,117 +496,228 @@ export default function BmcAdminCotizacionesModule() {
               style={{ ...btnGhost, fontSize: 12, textDecoration: "none", display: "inline-block" }}
               target="_blank" rel="noopener noreferrer"
             >
-              ↓ Export CSV
+              ↓ CSV
             </a>
             {(rows.length > 0 || sheetRowCount != null) && (
-              <span style={{ fontSize: 12, color: "#6e6e73", marginLeft: "auto" }}>
-                {listScope === "consulta" ? (
-                  <>
-                    {rows.length} con consulta (I)
-                    {sheetRowCount != null ? ` · ${sheetRowCount} filas leídas en Admin` : ""}
-                  </>
-                ) : (
-                  <>
-                    {rows.length} fila{rows.length !== 1 ? "s" : ""} con datos (A–M)
-                    {sheetRowCount != null && sheetRowCount !== rows.length
-                      ? ` · ${sheetRowCount} filas devueltas por Sheets`
-                      : ""}
-                  </>
-                )}
+              <span style={{ fontSize: 12, color: "#6e6e73", marginLeft: "auto", fontFamily: FF }}>
+                {rows.length} fila{rows.length !== 1 ? "s" : ""}{sheetRowCount != null ? ` · ${sheetRowCount} leídas` : ""}
               </span>
             )}
           </div>
         )}
 
-        {error && <p style={{ color: "#c00", fontSize: 13, margin: "0 0 12px" }}>{error}</p>}
+        {/* ── Column selector ─────────────────────────────────────────────── */}
+        {token && headers.length > 0 && (
+          <div style={{ ...card, padding: "10px 14px" }}>
+            <button
+              type="button"
+              style={{ ...btnGhost, fontSize: 12, padding: "4px 10px", display: "flex", alignItems: "center", gap: 6 }}
+              onClick={() => setColSelectorOpen(o => !o)}
+            >
+              <span>{colSelectorOpen ? "▲" : "▼"}</span>
+              <span>Columnas ({visibleHeaders.length}/{headers.length} visibles)</span>
+              {headersLoading && <span style={{ fontSize: 10, color: "#6e6e73" }}>cargando…</span>}
+            </button>
 
-        {/* Table */}
+            {colSelectorOpen && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                  <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "3px 8px" }} onClick={showAllCols}>
+                    Mostrar todas
+                  </button>
+                  <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "3px 8px" }} onClick={hideAllCols}>
+                    Ocultar todas
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {headers.map(h => {
+                    const isVisible = visibleCols === null || visibleCols.has(h.col);
+                    return (
+                      <label
+                        key={h.col}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 4, cursor: "pointer",
+                          padding: "4px 8px", borderRadius: 6,
+                          background: isVisible ? "#e8f0ff" : "#f0f0f2",
+                          border: `1px solid ${isVisible ? "#b0c8ff" : "#e5e5ea"}`,
+                          fontSize: 11, fontFamily: FF, userSelect: "none",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isVisible}
+                          onChange={() => toggleCol(h.col)}
+                          style={{ margin: 0 }}
+                        />
+                        <span style={{ fontWeight: 700, color: "#1a3a5c" }}>{h.col}</span>
+                        <span style={{ color: "#374151" }}>{h.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {error && <p style={{ color: "#c00", fontSize: 13, margin: "0 0 12px", fontFamily: FF }}>{error}</p>}
+
+        {/* ── Full-grid table ─────────────────────────────────────────────── */}
         {token && (
           <div style={{ ...card, padding: 0, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: visibleHeaders.length * 100 }}>
                 <thead>
-                  <tr>
-                    {["#", "Fecha", "Cliente", "Canal", "Estado", "Consulta (I)", "Respuesta IA (J)", "Link", "Replay", "Acciones"].map((h) => (
-                      <th key={h} style={th}>{h}</th>
+                  <tr style={{ background: "#f5f7fa" }}>
+                    {/* Fixed first col: row number + link */}
+                    <th style={{ ...th, position: "sticky", left: 0, background: "#f5f7fa", zIndex: 2, width: 52, minWidth: 52 }}>#</th>
+                    {visibleHeaders.map(h => (
+                      <th key={h.col} style={{ ...th, minWidth: 80 }}>
+                        <span style={{ color: "#1a3a5c", fontWeight: 800 }}>{h.col}</span>
+                        <span style={{ color: "#6e6e73", fontWeight: 400, marginLeft: 3 }}>{h.name}</span>
+                      </th>
                     ))}
+                    <th style={{ ...th, width: 110, minWidth: 110 }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
-                    <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>Cargando…</td></tr>
+                    <tr><td colSpan={visibleHeaders.length + 2} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>Cargando…</td></tr>
                   )}
                   {!loading && rows.length === 0 && (
-                    <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>
-                      {listScope === "admin" ? "Sin filas con datos en el rango leído." : "Sin filas con consulta (columna I). Probá «Todas las filas (Admin)»."}
+                    <tr><td colSpan={visibleHeaders.length + 2} style={{ ...td, textAlign: "center", color: "#6e6e73" }}>
+                      {listScope === "admin" ? "Sin filas con datos en el rango leído." : "Sin filas con consulta (columna I). Probá «Todas las filas»."}
                     </td></tr>
                   )}
-                  {rows.map((row) => (
-                    <tr key={row.rowNum} style={{ background: detail?.rowNum === row.rowNum ? "#f0f7ff" : undefined }}>
-                      <td style={{ ...td, width: 48 }}>
-                        <a
-                          href={row.sheetUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ fontSize: 11, color: "#0071e3", textDecoration: "none", fontWeight: 600 }}
-                        >
-                          {row.rowNum} ↗
-                        </a>
-                      </td>
-                      <td style={{ ...td, width: 88, fontSize: 11, color: "#6e6e73" }}>
-                        {(row.fecha || "").slice(0, 10)}
-                      </td>
-                      <td style={{ ...td, maxWidth: 100, fontSize: 11 }}>
-                        {(row.cliente || "").slice(0, 36)}{row.cliente?.length > 36 ? "…" : ""}
-                      </td>
-                      <td style={{ ...td, width: 60 }}>{canalPill(row.origen)}</td>
-                      <td style={{ ...td, maxWidth: 72, fontSize: 11, color: "#6e6e73" }}>
-                        {(row.estado || "—").slice(0, 14)}
-                      </td>
-                      <td style={{ ...td, maxWidth: 220 }}>
-                        {(row.consulta || "").slice(0, 90)}{row.consulta?.length > 90 ? "…" : ""}
-                      </td>
-                      <td style={{ ...td, maxWidth: 200 }}>
-                        {row.respuesta
-                          ? <span style={{ color: row.respuesta.startsWith("⚠") ? "#c86000" : "#1d1d1f" }}>
-                              {row.respuesta.slice(0, 70)}{row.respuesta.length > 70 ? "…" : ""}
-                            </span>
-                          : <span style={{ color: "#aaa" }}>—</span>
-                        }
-                      </td>
-                      <td style={{ ...td, width: 60 }}>
-                        {row.link
-                          ? <a href={row.link} target="_blank" rel="noopener noreferrer" style={{ color: "#0071e3", fontSize: 11 }}>Ver</a>
-                          : <span style={{ color: "#aaa" }}>—</span>
-                        }
-                      </td>
-                      <td style={{ ...td, width: 52 }}>
-                        {row.replaySnapshotUrl
-                          ? <a href={row.replaySnapshotUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0071e3", fontSize: 11 }} title="JSON replay">JSON</a>
-                          : <span style={{ color: "#aaa" }}>—</span>
-                        }
-                      </td>
-                      <td style={{ ...td, width: 120 }}>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
-                            onClick={() => openDetail(row)}>
-                            Editar
-                          </button>
-                          <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px", color: "#c86000" }}
-                            onClick={() => markEnviado(row.rowNum)}>
-                            Enviado
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.map((row) => {
+                    const isActiveDetail = detail?.rowNum === row.rowNum;
+                    return (
+                      <tr key={row.rowNum} style={{ background: isActiveDetail ? "#f0f7ff" : "transparent" }}>
+                        {/* Row number + sheet link */}
+                        <td style={{ ...td, width: 52, position: "sticky", left: 0, background: isActiveDetail ? "#f0f7ff" : "#fff", zIndex: 1, borderRight: "1px solid #e5e5ea" }}>
+                          <a
+                            href={row.sheetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 11, color: "#0071e3", textDecoration: "none", fontWeight: 600 }}
+                            title="Abrir en Sheets"
+                          >
+                            {row.rowNum} ↗
+                          </a>
+                        </td>
+
+                        {/* Dynamic columns */}
+                        {visibleHeaders.map(h => {
+                          const cellValue = (row.rawCells || [])[h.index] ?? "";
+                          const isEditing = editCell?.rowNum === row.rowNum && editCell?.col === h.col;
+
+                          // Special display based on Admin 2.0 schema column roles
+                          const isCanal = h.index === COL.CANAL;
+                          const isResp  = h.index === COL.RESPUESTA;  // highlight ⚠ prefix
+                          const isLink  = h.index === COL.LINK && cellValue.startsWith("http");
+
+                          return (
+                            <td
+                              key={h.col}
+                              style={{ ...td, maxWidth: 200 }}
+                              title={`${h.col}${row.rowNum}: ${cellValue}`}
+                            >
+                              {isEditing ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  {cellValue.length > 60 || (editCell?.value || "").includes("\n") ? (
+                                    <textarea
+                                      ref={editInputRef}
+                                      value={editCell.value}
+                                      onChange={e => setEditCell(s => ({ ...s, value: e.target.value }))}
+                                      onKeyDown={handleCellKeyDown}
+                                      rows={4}
+                                      style={{ ...textarea, minHeight: 60, width: "100%", fontSize: 11 }}
+                                    />
+                                  ) : (
+                                    <input
+                                      ref={editInputRef}
+                                      type="text"
+                                      value={editCell.value}
+                                      onChange={e => setEditCell(s => ({ ...s, value: e.target.value }))}
+                                      onKeyDown={handleCellKeyDown}
+                                      style={{ ...input, fontSize: 11, padding: "4px 7px" }}
+                                    />
+                                  )}
+                                  <div style={{ display: "flex", gap: 4 }}>
+                                    <button
+                                      type="button"
+                                      onClick={commitEdit}
+                                      disabled={savingCell}
+                                      style={{ ...btnPrimary, fontSize: 10, padding: "3px 8px", flex: 1 }}
+                                    >
+                                      {savingCell ? "…" : "✓ Guardar"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelEdit}
+                                      style={{ ...btnGhost, fontSize: 10, padding: "3px 8px" }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() => startEdit(row.rowNum, h.col, h.index, cellValue)}
+                                  style={{
+                                    cursor: "text",
+                                    minHeight: 20,
+                                    borderRadius: 4,
+                                    padding: "1px 3px",
+                                    transition: "background 0.1s",
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = "#f0f4ff"; e.currentTarget.style.outline = "1px solid #b0c8ff"; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.outline = ""; }}
+                                  title={`Clic para editar ${h.col}${row.rowNum}`}
+                                >
+                                  {isCanal && cellValue ? canalPill(cellValue)
+                                    : isLink ? (
+                                      <a href={cellValue} target="_blank" rel="noopener noreferrer" style={{ color: "#0071e3", fontSize: 11 }} onClick={e => e.stopPropagation()}>Ver</a>
+                                    ) : (
+                                      <span style={{
+                                        color: isResp && cellValue.startsWith("⚠") ? "#c86000" : cellValue ? "#1d1d1f" : "#bbb",
+                                        fontStyle: cellValue ? "normal" : "italic",
+                                      }}>
+                                        {cellValue
+                                          ? cellValue.length > 80 ? cellValue.slice(0, 78) + "…" : cellValue
+                                          : "—"}
+                                      </span>
+                                    )
+                                  }
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+
+                        {/* Actions */}
+                        <td style={{ ...td, width: 110 }}>
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                            <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
+                              onClick={() => openDetail(row)}>
+                              Editar
+                            </button>
+                            <button type="button" style={{ ...btnGhost, fontSize: 11, padding: "4px 8px", color: "#c86000" }}
+                              onClick={() => markEnviado(row.rowNum)}>
+                              Enviado
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* Detail panel */}
+        {/* Detail panel (bulk-edit J/K/M + approve) */}
         {detail && (
           <div style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 100,
@@ -503,7 +728,7 @@ export default function BmcAdminCotizacionesModule() {
             <div style={{
               background: "#fff", borderRadius: "16px 16px 0 0", padding: "24px 20px 32px",
               width: "100%", maxWidth: 680, maxHeight: "85vh", overflowY: "auto",
-              fontFamily: h1.fontFamily,
+              fontFamily: FF,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#1a3a5c" }}>
@@ -513,14 +738,14 @@ export default function BmcAdminCotizacionesModule() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Consulta del cliente (I)</p>
-                <p style={{ margin: 0, fontSize: 13, color: "#1d1d1f", background: "#f5f5f7", borderRadius: 8, padding: "10px 12px", lineHeight: 1.55 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", fontFamily: FF }}>Consulta del cliente (I)</p>
+                <p style={{ margin: 0, fontSize: 13, color: "#1d1d1f", background: "#f5f5f7", borderRadius: 8, padding: "10px 12px", lineHeight: 1.55, fontFamily: FF }}>
                   {detail.consulta || "(sin texto)"}
                 </p>
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Respuesta IA (J) — editable</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", fontFamily: FF }}>Respuesta IA (J) — editable</p>
                 <textarea
                   value={dRespuesta}
                   onChange={(e) => setDRespuesta(e.target.value)}
@@ -531,7 +756,7 @@ export default function BmcAdminCotizacionesModule() {
               </div>
 
               <div style={{ marginBottom: 20 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Link presupuesto Drive (K)</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", fontFamily: FF }}>Link presupuesto Drive (K)</p>
                 <input
                   type="url"
                   value={dLink}
@@ -542,7 +767,7 @@ export default function BmcAdminCotizacionesModule() {
               </div>
 
               <div style={{ marginBottom: 20 }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase" }}>Replay JSON (M) — GCS o URL pública</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#6e6e73", textTransform: "uppercase", fontFamily: FF }}>Replay JSON (M) — GCS o URL pública</p>
                 <input
                   type="url"
                   value={dReplay}
@@ -550,7 +775,7 @@ export default function BmcAdminCotizacionesModule() {
                   style={{ ...input, maxWidth: "100%" }}
                   placeholder="https://storage.googleapis.com/…/quotes/…json"
                 />
-                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#86868b", lineHeight: 1.4 }}>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#86868b", lineHeight: 1.4, fontFamily: FF }}>
                   Lo llena el batch IA (cotización por cálculo) si hay bucket GCS; podés pegar un export de la calculadora para comparar humano vs sistema.
                 </p>
               </div>
@@ -577,7 +802,7 @@ export default function BmcAdminCotizacionesModule() {
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           background: "#1d1d1f", color: "#fff", borderRadius: 12,
-          padding: "10px 18px", fontSize: 13, fontFamily: h1.fontFamily,
+          padding: "10px 18px", fontSize: 13, fontFamily: FF,
           zIndex: 200, boxShadow: "0 4px 20px rgba(0,0,0,.18)", whiteSpace: "nowrap",
         }}>
           {toast}

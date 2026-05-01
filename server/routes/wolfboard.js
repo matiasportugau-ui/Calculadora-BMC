@@ -17,6 +17,7 @@
  */
 import { Router } from "express";
 import { google } from "googleapis";
+import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
@@ -24,6 +25,16 @@ import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helper
 import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
+import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
+
+/** Admin-only rate limiter — authenticated routes that hit the Sheets API. */
+const adminLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "Too many requests — retry after 1 minute" },
+});
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -191,7 +202,7 @@ function requireAuth(config, req, res) {
   return true;
 }
 
-/** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
+/** Mapa de fila Admin 2.0 (A2:Z) → objeto unificado (índices según comentario de cabecera). */
 function mapAdminSheetRow(row, idx, adminSheetId) {
   const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
   return {
@@ -209,6 +220,8 @@ function mapAdminSheetRow(row, idx, adminSheetId) {
     estado: String(row[11] ?? "").trim(),
     replaySnapshotUrl: String(row[12] ?? "").trim(),
     sheetUrl: sheetBase,
+    // Raw cell values indexed by column letter (A, B, C…) for full-grid view
+    rawCells: row.map((v) => String(v ?? "")),
   };
 }
 
@@ -262,7 +275,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M`,
+        range: `'${adminTab}'!A2:Z`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
@@ -280,6 +293,96 @@ export function createWolfboardRouter(config) {
       count: data.length,
       data,
     });
+  });
+
+  // ── GET /sheet-headers ────────────────────────────────────────────────────
+  router.get("/sheet-headers", adminLimiter, async (req, res) => {
+    if (!requireAuth(config, req, res)) return;
+    const adminSheetId = config.wolfbAdminSheetId;
+    const adminTab = config.wolfbAdminTab;
+    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+
+    let sheets;
+    try { sheets = await getSheetsClient(); }
+    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+
+    let headerRow;
+    try {
+      const resp = await sheets.spreadsheets.values.get({
+        spreadsheetId: adminSheetId,
+        range: `'${adminTab}'!A1:Z1`,
+        valueRenderOption: "FORMATTED_VALUE",
+      });
+      headerRow = resp.data.values?.[0] || [];
+    } catch (e) {
+      return res.status(503).json({ ok: false, error: "Error al leer cabecera: " + e.message });
+    }
+
+    // Always return 26 headers (A–Z) so the frontend can show/edit all columns
+    // even if the sheet's header row has trailing empty cells.
+    const headers = Array.from({ length: 26 }, (_, index) => {
+      const name = headerRow[index] ?? "";
+      return {
+        index,
+        col: colIndexToLetter(index),
+        name: String(name).trim() || colIndexToLetter(index),
+      };
+    });
+
+    return res.json({ ok: true, headers });
+  });
+
+  // ── POST /cell ────────────────────────────────────────────────────────────
+  router.post("/cell", adminLimiter, async (req, res) => {
+    if (!requireAuth(config, req, res)) return;
+    const { adminRow: rawAdminRow, col, value } = req.body || {};
+    if (!rawAdminRow || !col) {
+      return res.status(400).json({ ok: false, error: "adminRow y col requeridos" });
+    }
+
+    // Validate adminRow is an integer >= 2 (row 1 is the header)
+    const adminRow = Number(rawAdminRow);
+    if (!Number.isInteger(adminRow) || adminRow < 2) {
+      return res.status(400).json({ ok: false, error: "adminRow debe ser un entero >= 2 (fila 1 es cabecera)" });
+    }
+
+    const adminSheetId = config.wolfbAdminSheetId;
+    const adminTab = config.wolfbAdminTab;
+    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+
+    // Validate col: only A-Z letters, max 2 chars (columns A..ZZ = 0..701)
+    const colUpper = String(col).trim().toUpperCase().replace(/[^A-Z]/g, "");
+    if (!colUpper || colUpper.length > 2) {
+      return res.status(400).json({ ok: false, error: "col inválido — usar letra(s) A–Z o AA–ZZ" });
+    }
+    let colIndex;
+    try { colIndex = colLetterToIndex(colUpper); }
+    catch { return res.status(400).json({ ok: false, error: "col inválido" }); }
+    // Extra guard: limit to column ZZ (index 701)
+    if (colIndex > 701) {
+      return res.status(400).json({ ok: false, error: "col fuera de rango — máximo ZZ" });
+    }
+
+    const dryRun = config.wolfbDryRun;
+
+    let sheets;
+    try { sheets = await getSheetsClient(); }
+    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+
+    if (!dryRun) {
+      try {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: adminSheetId,
+          range: `'${adminTab}'!${colUpper}${adminRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[value ?? ""]] },
+        });
+      } catch (e) {
+        return res.status(503).json({ ok: false, error: "Error al escribir celda: " + e.message });
+      }
+    }
+
+    return res.json({ ok: true, adminRow, col: colUpper, colIndex, dryRun });
   });
 
   // ── POST /sync ────────────────────────────────────────────────────────────
@@ -530,7 +633,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M`,
+        range: `'${adminTab}'!A2:Z`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
