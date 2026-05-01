@@ -44,6 +44,7 @@ export default function GoogleDrivePanel({
   onLoad,
   onDelete,
   isAuthenticated,
+  currentUser,
   onSignIn,
   onSignOut,
   quotations,
@@ -96,7 +97,39 @@ export default function GoogleDrivePanel({
 
         {/* Auth section */}
         <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
-          {isAuthenticated ? (
+          {isAuthenticated && currentUser ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                {currentUser.picture && (
+                  <img
+                    src={currentUser.picture}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0 }}
+                  />
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.tp, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    Hola, {currentUser.name || currentUser.email}
+                  </div>
+                  {currentUser.name && currentUser.email && (
+                    <div style={{ fontSize: 11, color: C.ts, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {currentUser.email}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button onClick={onSignOut} style={{
+                flexShrink: 0,
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "6px 14px", borderRadius: 8, fontSize: 12,
+                border: `1px solid ${C.border}`, background: C.surface,
+                color: C.ts, cursor: "pointer", transition: TR,
+              }}>
+                <LogOut size={13} /> Cerrar sesión
+              </button>
+            </div>
+          ) : isAuthenticated ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, color: C.ts }}>Sesión activa en Google</span>
               <button onClick={onSignOut} style={{
@@ -151,7 +184,7 @@ export default function GoogleDrivePanel({
         )}
 
         {/* Save button */}
-        {isAuthenticated && (
+        {currentUser && (
           <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
             <button onClick={onSave} disabled={saving} style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -176,7 +209,7 @@ export default function GoogleDrivePanel({
         )}
 
         {/* Quotation list */}
-        {isAuthenticated && (
+        {currentUser && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",

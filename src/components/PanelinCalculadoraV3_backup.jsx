@@ -87,7 +87,7 @@ import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
-  isAuthenticated as gdriveIsAuth, setAuthChangeCallback,
+  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
@@ -4095,7 +4095,8 @@ export default function PanelinCalculadoraV3() {
   // ── Google Drive state ──
   const [showDrivePanel, setShowDrivePanel] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [driveAuth, setDriveAuth] = useState(false);
+  const [driveAuth, setDriveAuth] = useState(() => gdriveIsAuth());
+  const [driveUser, setDriveUser] = useState(() => getCachedUser());
   const [driveQuotations, setDriveQuotations] = useState([]);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveSaving, setDriveSaving] = useState(false);
@@ -4147,18 +4148,21 @@ export default function PanelinCalculadoraV3() {
 
   const handleDriveSignIn = useCallback(async () => {
     try {
-      await ensureDriveGsi();
-      await gdriveSignIn();
+      // gdriveSignIn() is self-healing: it loads GIS + initializes the token
+      // client internally, so no need to await ensureDriveGsi() first.
+      const result = await gdriveSignIn();
       setDriveAuth(true);
+      setDriveUser(result?.user || null);
       handleDriveRefresh();
     } catch (err) {
       setDriveError(err.message || "Error al iniciar sesión");
     }
-  }, [ensureDriveGsi, handleDriveRefresh]);
+  }, [handleDriveRefresh]);
 
   const handleDriveSignOut = useCallback(() => {
     gdriveSignOut();
     setDriveAuth(false);
+    setDriveUser(null);
     setDriveQuotations([]);
   }, []);
 
@@ -6569,6 +6573,7 @@ export default function PanelinCalculadoraV3() {
         onLoad={handleDriveLoad}
         onDelete={handleDriveDelete}
         isAuthenticated={driveAuth}
+        currentUser={driveUser}
         onSignIn={handleDriveSignIn}
         onSignOut={handleDriveSignOut}
         quotations={driveQuotations}
