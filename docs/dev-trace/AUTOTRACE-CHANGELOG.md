@@ -2,13 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 00:08:01 — `088bbb3` — chore(dev-trace): AUTOTRACE 5df16b5
-- 2026-04-24 00:08:09 — `904af8c` — chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]
-- 2026-04-24 02:14:19 — `4589d3b` — fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
-- 2026-04-24 02:14:31 — `732d9a1` — feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
-- 2026-04-24 02:14:37 — `425f2c9` — chore(scripts): accessible-base sync + build tooling updates
-- 2026-04-24 02:14:54 — `95f4d8d` — chore(dev-trace): rebuild kb + autotrace post-commit batch
-- 2026-04-24 02:22:00 — `5551486` — chore(dev-trace): autotrace + kb rebuild post-session
 - 2026-04-24 02:29:54 — `59f0f13` — chore(dev-trace): cleanup post-session + kb state [SKIP_AUTOTRACE]
 - 2026-04-24 02:43:28 — `f50973e` — docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
 - 2026-04-24 02:43:35 — `6ca6d7e` — chore(dev-trace): AUTOTRACE post-docs-sync [SKIP_AUTOTRACE]
@@ -222,3 +215,10 @@
 - 2026-04-30 02:01:25 — `4cfc594` — docs(dev-trace): autotrace 84705e7
 - 2026-04-30 02:09:16 — `7749588` — ci: smoke against just-deployed Cloud Run revision in deploy-calc-api
 - 2026-04-30 02:22:37 — `ec6a966` — fix(kb): roadmap regex matches "Acción …:**" with colon inside bold
+- 2026-05-01 20:17:14 — `8c92065` — feat(auth): implement Google authentication route and user info retrieval
+- 2026-05-02 03:50:23 — `842fa07` — feat(ml): ML search route + price-monitor ETL + Supabase schema
+- 2026-05-02 03:54:43 — `253ed7b` — fix(ml): stricter id validation in /api/ml/etl-run/:id
+- 2026-05-02 03:56:09 — `fda0bd0` — fix(ml): update id validation in /api/ml/etl-run/:id
+- 2026-05-02 05:57:53 — `1b61b7e` — fix(ml): update id validation in /api/ml/etl-run/:id
+- 2026-05-02 05:58:54 — `7db880d` — fix(ml): update id validation in /api/ml/etl-run/:id
+- 2026-05-02 07:10:59 — `2f11614` — docs: AUTOTRACE snapshot 7db880d, KB sync, calculator data version

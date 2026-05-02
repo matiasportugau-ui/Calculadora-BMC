@@ -4,8 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `e782464` feat(wolfboard): show origen field in detail panel + AUTOTRACE sync
-- `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
 - `e918bef` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - `759d82e` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
@@ -84,13 +82,11 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `f4dd6b2` feat(agent-module): enhance Logs and Voz tabs with live provider status
 - `34a36b0` feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
 - `36df0f5` feat(deploy): graceful Secret Manager migration for high-sensitivity keys
+- `8c92065` feat(auth): implement Google authentication route and user info retrieval
+- `842fa07` feat(ml): ML search route + price-monitor ETL + Supabase schema `[tests]`
 
 ## Fixes
 
-- `1966b38` fix(lint): resolve all ESLint warnings in new and existing components
-- `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
-- `27804a0` fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
-- `845bb68` fix(wolfboard): wire origenEl in detail panel + correct table header labels
 - `5d5363c` fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - `11d1f8c` fix(ml-ui): persist ML token in localStorage instead of sessionStorage
 - `7f1c805` fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
@@ -167,6 +163,10 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `da4afca` fix(security): require API_AUTH_TOKEN on interaction-log + voice-session `[regresión? · tests]`
 - `63c85d0` fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
 - `ec6a966` fix(kb): roadmap regex matches "Acción …:**" with colon inside bold
+- `253ed7b` fix(ml): stricter id validation in /api/ml/etl-run/:id
+- `fda0bd0` fix(ml): update id validation in /api/ml/etl-run/:id
+- `1b61b7e` fix(ml): update id validation in /api/ml/etl-run/:id
+- `7db880d` fix(ml): update id validation in /api/ml/etl-run/:id
 
 ## Documentation
 
@@ -237,6 +237,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `888f9cc` docs(v1.3): Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001
 - `84705e7` docs(dev-trace): autotrace 7e639cc
 - `4cfc594` docs(dev-trace): autotrace 84705e7
+- `2f11614` docs: AUTOTRACE snapshot 7db880d, KB sync, calculator data version
 
 ## Tests
 

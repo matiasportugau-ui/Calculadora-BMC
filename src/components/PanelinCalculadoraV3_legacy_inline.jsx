@@ -1774,7 +1774,10 @@ export default function PanelinCalculadoraV3() {
     try {
       const snapshotImages = await captureForPdf();
       const html = generatePrintHTML({ ...buildQuotationPrintPayload(), snapshotImages });
-      const name = pdfFileName((proyecto.refInterna || "").trim() || "BMC", proyecto.nombre);
+      const resolvedCode =
+        (proyecto.refInterna || "").trim() ||
+        `BMC-${new Date().getFullYear()}-TEMP`;
+      const name = pdfFileName(resolvedCode, proyecto);
       await downloadPdf(html, name);
       showToast("PDF descargado");
     } catch {
