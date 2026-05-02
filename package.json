@@ -167,7 +167,7 @@
     "credentials:registry:decrypt": "node scripts/credentials-master-registry.mjs --decrypt"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@google-cloud/storage": "^5.18.3",
     "@google/generative-ai": "^0.24.1",
     "@react-three/drei": "^9.114.3",
