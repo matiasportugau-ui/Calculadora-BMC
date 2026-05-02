@@ -11250,6 +11250,42 @@
           "scripts"
         ]
       }
+    },
+    {
+      "hash": "8c92065f0a499f4456c433c16d69d10c34cbdf59",
+      "short_hash": "8c92065",
+      "date": "2026-05-01",
+      "time": "20:17:14",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "feat",
+      "scope": "auth",
+      "title": "implement Google authentication route and user info retrieval",
+      "subject": "feat(auth): implement Google authentication route and user info retrieval",
+      "files": [
+        "docs/team/knowledge/events-log.jsonl",
+        "docs/team/knowledge/sources-registry.json",
+        "server/index.js",
+        "server/routes/authGoogle.js",
+        "src/components/GoogleDrivePanel.jsx",
+        "src/components/PanelinCalculadoraV3_backup.jsx",
+        "src/data/calculatorDataVersion.js",
+        "src/utils/googleDrive.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "docs",
+          "server",
+          "src"
+        ]
+      }
     }
   ]
 }

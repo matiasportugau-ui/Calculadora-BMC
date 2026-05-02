@@ -24,6 +24,8 @@ import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import { createFollowupsRouter } from "./routes/followups.js";
 import createShopifyRouter from "./routes/shopify.js";
+import createMlSearchRouter from "./routes/mlSearch.js";
+import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
@@ -801,6 +803,10 @@ app.use("/api/wolfboard", createWolfboardRouter(config));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", planInterpretRouter);
+// ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
+app.use(createMlSearchRouter({ ml, config, logger }));
+// Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
+app.use(createMlEtlRunRouter({ config, logger }));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
