@@ -37,6 +37,7 @@ import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { getToolStats } from "../lib/toolStats.js";
 
 const router = Router();
 
@@ -132,6 +133,17 @@ router.get("/agent/ai-options", (_req, res) => {
     autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
     providers,
   });
+});
+
+/**
+ * GET /api/agent/tool-stats — per-tool aggregates (count, p50/p95 latency,
+ * error rate, error buckets) over the last `windowMinutes` minutes (default 1440 = 24h).
+ * Used by the dev panel "Tool Stats" tab. No secrets; safe to expose without auth.
+ */
+router.get("/agent/tool-stats", (req, res) => {
+  const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
+  const stats = getToolStats({ windowMs: minutes * 60 * 1000 });
+  res.json({ ok: true, ...stats });
 });
 
 // 0.4 — Allowed origins (CSRF guard)

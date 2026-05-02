@@ -23,6 +23,7 @@ import {
   parseDueInput,
   parseDays,
 } from "./followUpStore.js";
+import { recordToolCall, classifyError } from "./toolStats.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -738,15 +739,60 @@ function buildAplicarActions(input = {}) {
 }
 
 /**
- * Execute a tool call and return the result string.
- * @param {string} name - Tool name
- * @param {object} input - Tool input
- * @param {object} calcState - Current calculator state from frontend
+ * Execute a tool call and return the result string. Public entry point —
+ * wraps the impl with telemetry (latency, ok/error, error class) so the
+ * dev panel can surface per-tool health without log scraping.
+ * @param {string} name
+ * @param {object} input
+ * @param {object} calcState
  * @param {object} [opts]
- * @param {(action:object)=>void} [opts.emitAction] - Callback to emit ACTION_JSON live to the SSE stream
+ * @param {(action:object)=>void} [opts.emitAction]
  * @returns {Promise<string>} JSON-stringified result
  */
 export async function executeTool(name, input, calcState = {}, opts = {}) {
+  const t0 = Date.now();
+  let raw = "";
+  let parsed = null;
+  let ok = false;
+  let errorClass = null;
+
+  try {
+    raw = await executeToolImpl(name, input, calcState, opts);
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+    if (parsed && typeof parsed === "object") {
+      // Tools return either { ok: true, ... } or { error: "..." } / { ok: false, error: "..." }.
+      if (parsed.ok === true) ok = true;
+      else if (parsed.ok === false) {
+        ok = false;
+        errorClass = classifyError(parsed.error);
+      } else if (parsed.error) {
+        ok = false;
+        errorClass = classifyError(parsed.error);
+      } else {
+        // No explicit ok/error → treat as success (e.g. read tools that return data only).
+        ok = true;
+      }
+    } else {
+      ok = false;
+      errorClass = "internal:non_json";
+    }
+  } catch (err) {
+    ok = false;
+    errorClass = "internal:throw";
+    raw = JSON.stringify({ error: err?.message || "Error desconocido" });
+  } finally {
+    const latencyMs = Date.now() - t0;
+    recordToolCall({ tool: name, ok, latencyMs, errorClass });
+  }
+
+  return raw;
+}
+
+/**
+ * Internal impl. Keep separate from executeTool so the public wrapper
+ * can attach telemetry without polluting every branch.
+ */
+async function executeToolImpl(name, input, calcState = {}, opts = {}) {
   const { emitAction } = opts;
   try {
     if (name === "get_calc_state") {

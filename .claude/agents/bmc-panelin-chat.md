@@ -37,6 +37,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 | `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220), `EXTRACTION_PROTOCOL` block |
 | `server/lib/agentTools.js` | 22 Anthropic tools (calc + catalog + state + PDF + CRM + price-list/scenario compare + CRM-search + WhatsApp send + quote-cancel + raw-HTML + follow-up + client-history); `executeTool(name,input,calcState,{emitAction})` |
 | `server/lib/quoteRegistry.js` | GCS-backed persistent registry. One JSON per quote at `gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`. Survives Cloud Run cold-starts; falls back to 24h in-memory cache when bucket unset. |
+| `server/lib/toolStats.js` | Per-tool telemetry: in-process ring buffer (1k records). Wraps `executeTool` to capture latency, ok/error, and a small set of error classes (`guard:user_confirmed`, `config:missing_env`, etc.). Exposed via `GET /api/agent/tool-stats`; surfaced in `PanelinDevPanel.jsx` Tools tab (auto-refresh 30s, 24h window default). |
 | `server/lib/crmAppend.js` | `appendQuoteToCrm()` — Sheets writer for CRM_Operativo (col AH = quote URL, AI/AK gates default "No") |
 
 ## Tool surface (Claude tool-use loop, max 8 rounds)
