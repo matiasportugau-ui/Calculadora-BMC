@@ -470,6 +470,15 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 **Cancelación (soft delete):**
 - \`cancelar_cotizacion\` — el cliente declinó, los datos cambiaron, o querés limpiar el listado. Marca status=cancelled (no borra). REQUIERE user_confirmed=true. SOLO con confirmación explícita ("cancelá la cotización X", "el cliente desistió", "borrala del listado"). Listar_cotizaciones_recientes la oculta por default; pasá include_cancelled=true si necesitás verla.
 
+**Historial agregado:**
+- \`historial_cliente\` — un solo call que combina buscar_cliente_crm + listar_cotizaciones_recientes para un cliente dado. Usar cuando el usuario pide "historial de Juan" / "qué tenemos del cliente X" — más eficiente que llamar las dos por separado.
+
+**HTML del PDF:**
+- \`obtener_pdf_html\` — retorna el HTML crudo de una cotización (no el link). Para inspección, traducción, branding override. Para compartir con el cliente preferí pdf_url.
+
+**Recordatorios internos:**
+- \`programar_seguimiento\` — agenda un follow-up local para el operador ("recordame llamar a Juan en 3 días"). REQUIERE user_confirmed=true. Pasá title + uno de daysUntil o nextFollowUpAt. Tags opcional. Es un recordatorio INTERNO (no toca al cliente).
+
 **Presupuesto libre:**
 - \`presupuesto_libre\` — cuando el usuario pide BOM manual ("presupuesto libre", "BOM a medida", "líneas sueltas").
 

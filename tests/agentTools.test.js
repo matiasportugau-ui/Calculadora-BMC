@@ -86,6 +86,9 @@ group("AGENT_TOOLS surface", () => {
     "enviar_whatsapp_link",
     "comparar_escenarios",
     "cancelar_cotizacion",
+    "obtener_pdf_html",
+    "programar_seguimiento",
+    "historial_cliente",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -459,6 +462,101 @@ await group("cancelar_cotizacion — happy path", async () => {
 });
 
 // ── 4. Unknown tool name ─────────────────────────────────────────────────────
+
+await group("obtener_pdf_html — happy path", async () => {
+  // The stubbed fetch returns the body via .text() which JSON.stringifies the body.
+  // For HTML retrieval the executor calls resp.text() and we want the HTML string back,
+  // so the stub returns a string body via the special branch.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => ({
+    ok: true,
+    status: 200,
+    text: async () => "<html><body>Test PDF</body></html>",
+    json: async () => ({}),
+  });
+  const { parsed } = await run("obtener_pdf_html", { pdf_id: "abc-123" });
+  globalThis.fetch = realFetch;
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.html === "<html><body>Test PDF</body></html>", "html body returned");
+  assert(parsed.viewer_url.includes("/calc/pdf/abc-123"), "viewer_url built from id");
+});
+
+await group("obtener_pdf_html — 404", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 404,
+    text: async () => "not found",
+    json: async () => ({}),
+  });
+  const { parsed } = await run("obtener_pdf_html", { pdf_id: "missing" });
+  globalThis.fetch = realFetch;
+  assert(parsed.ok === false, "ok false on 404");
+  assert(typeof parsed.error === "string" && parsed.error.includes("no encontrada"), "error mentions not found");
+});
+
+await group("obtener_pdf_html — missing pdf_id", async () => {
+  const { parsed } = await run("obtener_pdf_html", {});
+  assert(parsed.ok === false, "ok false");
+  assert(parsed.error === "pdf_id requerido", "error mentions pdf_id");
+});
+
+await group("programar_seguimiento — requires user_confirmed", async () => {
+  const { parsed } = await run("programar_seguimiento", { title: "Llamar a Juan", daysUntil: 3 });
+  assert(parsed.ok === false, "ok false without user_confirmed");
+  assert(typeof parsed.error === "string" && parsed.error.includes("user_confirmed"), "error mentions user_confirmed");
+});
+
+await group("programar_seguimiento — missing title", async () => {
+  const { parsed } = await run("programar_seguimiento", { user_confirmed: true });
+  assert(parsed.ok === false, "ok false");
+  assert(parsed.error === "title requerido", "error mentions title");
+});
+
+await group("programar_seguimiento — happy path", async () => {
+  const { parsed } = await run("programar_seguimiento", {
+    title: "Llamar a Juan Pérez",
+    detail: "Cotización ABC123 vence en 3 días",
+    daysUntil: 3,
+    tags: ["cotizacion", "cliente-juan"],
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true");
+  assert(typeof parsed.id === "string" && parsed.id.length > 0, "id present");
+  assert(parsed.title === "Llamar a Juan Pérez", "title carried");
+  assert(parsed.status === "open", "status defaults to open");
+  assert(Array.isArray(parsed.tags) && parsed.tags.includes("cotizacion"), "tags carried");
+});
+
+await group("historial_cliente — composes both sources", async () => {
+  // Stub returns CRM no-config + listar_cotizaciones_recientes match.
+  setFetch(async (url) => {
+    if (url.endsWith("/calc/cotizaciones")) {
+      return {
+        ok: true,
+        cotizaciones: [
+          { id: "q1", client: "Juan Pérez", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p1" },
+        ],
+      };
+    }
+    return { ok: false, error: "unexpected url" };
+  });
+  const { parsed } = await run("historial_cliente", { cliente: "Juan Pérez" });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.cliente === "Juan Pérez", "cliente echoed");
+  // CRM read fails (no BMC_SHEET_ID in test env) — historial reports it as unavailable
+  assert(parsed.crm.available === false, "crm marked unavailable");
+  // Quotes branch returned via stub
+  assert(parsed.cotizaciones.available === true, "cotizaciones available");
+  assert(parsed.cotizaciones.count === 1, "1 quote returned");
+  assert(parsed.cotizaciones.items[0].id === "q1", "quote id carried");
+});
+
+await group("historial_cliente — missing cliente", async () => {
+  const { parsed } = await run("historial_cliente", {});
+  assert(parsed.ok === false, "ok false");
+  assert(parsed.error === "cliente requerido", "error mentions cliente");
+});
 
 await group("unknown tool", async () => {
   const { parsed } = await run("does_not_exist", {});

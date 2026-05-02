@@ -35,7 +35,7 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 | `server/routes/agentTraining.js` | POST /agent/train, GET /agent/training-kb |
 | `server/lib/trainingKB.js` | KB CRUD, findRelevantExamples() |
 | `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220), `EXTRACTION_PROTOCOL` block |
-| `server/lib/agentTools.js` | 19 Anthropic tools (calc + catalog + state + PDF + CRM + price-list/scenario compare + CRM-search + WhatsApp send + quote-cancel); `executeTool(name,input,calcState,{emitAction})` |
+| `server/lib/agentTools.js` | 22 Anthropic tools (calc + catalog + state + PDF + CRM + price-list/scenario compare + CRM-search + WhatsApp send + quote-cancel + raw-HTML + follow-up + client-history); `executeTool(name,input,calcState,{emitAction})` |
 | `server/lib/quoteRegistry.js` | GCS-backed persistent registry. One JSON per quote at `gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`. Survives Cloud Run cold-starts; falls back to 24h in-memory cache when bucket unset. |
 | `server/lib/crmAppend.js` | `appendQuoteToCrm()` — Sheets writer for CRM_Operativo (col AH = quote URL, AI/AK gates default "No") |
 
@@ -51,8 +51,11 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 **CRM dedupe (read):** `buscar_cliente_crm` — searches `CRM_Operativo!B4:AH500` by name / phone / RUT. Required pre-step before `guardar_en_crm` (prompt enforces it).
 **Customer outreach:** `enviar_whatsapp_link` — sends quote URL to customer via WhatsApp Cloud API (`server/lib/whatsappOutbound.js`). **Requires `user_confirmed: true`** in input.
 **Quote cancel (soft delete):** `cancelar_cotizacion` — flips a quote's `status` to `cancelled` in the GCS registry (no hard delete). **Requires `user_confirmed: true`**. Filtered out of `listar_cotizaciones_recientes` unless `?include_cancelled=true`.
+**Raw HTML access:** `obtener_pdf_html` — returns the HTML body of a stored quote (not the link), for inspection / translation / branding overrides.
+**Internal follow-ups:** `programar_seguimiento` — wraps `server/lib/followUpStore.js` to add a local reminder for the operator. **Requires `user_confirmed: true`**. Local-only (operator-facing); does not touch the customer.
+**Client history (composite):** `historial_cliente` — composes `buscar_cliente_crm` + `listar_cotizaciones_recientes`, returns merged `{crm, cotizaciones}` for a single client name. One tool call instead of two.
 
-**Confirmation guard (transversal):** `guardar_en_crm`, `enviar_whatsapp_link`, and `cancelar_cotizacion` all reject server-side if `input.user_confirmed !== true`. Prompt-level gating + server-level guard = no silent misfires from a model hallucination.
+**Confirmation guard (transversal):** `guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, and `programar_seguimiento` all reject server-side if `input.user_confirmed !== true`. Prompt-level gating + server-level guard = no silent misfires from a model hallucination.
 
 The conversational extraction flow (slot-filling protocol) lives in `chatPrompts.js`'s `EXTRACTION_PROTOCOL` block. Source of truth for required fields is `obtener_escenarios` (i.e. `/calc/escenarios`), not the static WORKFLOW text.
 

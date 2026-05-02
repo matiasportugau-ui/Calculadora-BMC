@@ -16,6 +16,13 @@ import { config } from "../config.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
 import { searchCrmClients } from "./crmSearch.js";
 import { sendWhatsAppText } from "./whatsappOutbound.js";
+import {
+  loadStore as loadFollowupStore,
+  saveStore as saveFollowupStore,
+  addItem as addFollowupItem,
+  parseDueInput,
+  parseDays,
+} from "./followUpStore.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -540,6 +547,59 @@ export const AGENT_TOOLS = [
         user_confirmed: { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó la cancelación." },
       },
       required: ["pdf_id", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "obtener_pdf_html",
+    description:
+      "Devuelve el HTML crudo de una cotización por su pdf_id (no el link, sino el contenido). " +
+      "Útil cuando el agente necesita inspeccionar / modificar / traducir el PDF, o cuando otra tool " +
+      "consume el HTML directamente. Para compartir con el cliente preferí pdf_url (de obtener_cotizacion_por_id) — es más liviano.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdf_id: { type: "string", description: "UUID de la cotización" },
+      },
+      required: ["pdf_id"],
+    },
+  },
+
+  {
+    name: "programar_seguimiento",
+    description:
+      "Programa un follow-up interno para el operador (recordatorio): \"recordame en 3 días llamar a Juan\", " +
+      "\"agendá seguimiento para el lunes\", \"avisame cuando expire la cotización X\". " +
+      "REQUIERE user_confirmed=true — el server rechaza si falta. " +
+      "Pasá title (qué) + uno de daysUntil (días desde hoy) o nextFollowUpAt (ISO date / 'YYYY-MM-DD'). Tags opcional.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title:           { type: "string", description: "Qué hay que hacer (ej: 'Llamar a Juan Pérez por cotización ABC123')" },
+        detail:          { type: "string", description: "Detalles opcionales / contexto" },
+        daysUntil:       { type: "number", description: "Días desde hoy hasta el follow-up. Mutuamente exclusivo con nextFollowUpAt." },
+        nextFollowUpAt:  { type: "string", description: "Fecha ISO o 'YYYY-MM-DD'. Mutuamente exclusivo con daysUntil." },
+        tags:            { type: "array", items: { type: "string" }, description: "Tags libres (ej: ['cotizacion', 'cliente-juan'])" },
+        user_confirmed:  { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó programar el recordatorio." },
+      },
+      required: ["title", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "historial_cliente",
+    description:
+      "Devuelve el historial completo de un cliente: filas en CRM_Operativo + cotizaciones del registry, " +
+      "agrupadas y ordenadas por fecha desc. Usar cuando el usuario pregunta " +
+      "\"¿qué tenemos del cliente X?\", \"mostrame todo lo de Juan Pérez\", \"historial de María\". " +
+      "Compone buscar_cliente_crm + listar_cotizaciones_recientes — más útil que llamar las dos por separado.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente: { type: "string", description: "Nombre o teléfono del cliente" },
+        limite:  { type: "number", description: "Máx filas/cotizaciones por sección. Default 10." },
+      },
+      required: ["cliente"],
     },
   },
 ];
@@ -1160,6 +1220,105 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
         cancelledAt: entry.cancelledAt,
         cancelReason: entry.cancelReason,
         alreadyCancelled: !!data.alreadyCancelled,
+      });
+    }
+
+    if (name === "obtener_pdf_html") {
+      const id = String(input?.pdf_id || "").trim();
+      if (!id) return JSON.stringify({ ok: false, error: "pdf_id requerido" });
+      try {
+        const resp = await fetch(`${apiBase()}/calc/pdf/${encodeURIComponent(id)}`);
+        if (resp.status === 404) {
+          return JSON.stringify({ ok: false, error: `Cotización ${id} no encontrada o expirada` });
+        }
+        if (!resp.ok) {
+          return JSON.stringify({ ok: false, error: `HTTP ${resp.status} al recuperar el HTML` });
+        }
+        const html = await resp.text();
+        return JSON.stringify({
+          ok: true,
+          pdf_id: id,
+          html,
+          length: html.length,
+          viewer_url: `${apiBase()}/calc/pdf/${id}`,
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "Error al recuperar HTML" });
+      }
+    }
+
+    if (name === "programar_seguimiento") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const title = String(input?.title || "").trim();
+      if (!title) return JSON.stringify({ ok: false, error: "title requerido" });
+
+      let due = null;
+      if (input?.nextFollowUpAt) {
+        try { due = parseDueInput(String(input.nextFollowUpAt)); } catch { /* ignore */ }
+      }
+      if (!due && input?.daysUntil != null) {
+        try { due = parseDays(Number(input.daysUntil)); } catch { /* ignore */ }
+      }
+
+      const tags = Array.isArray(input?.tags) ? input.tags.filter((t) => typeof t === "string") : [];
+
+      try {
+        const store = loadFollowupStore();
+        const item = addFollowupItem(store, {
+          title,
+          detail: input?.detail ? String(input.detail) : "",
+          tags,
+          nextFollowUpAt: due,
+        });
+        saveFollowupStore(store);
+        return JSON.stringify({
+          ok: true,
+          id: item.id,
+          title: item.title,
+          nextFollowUpAt: item.nextFollowUpAt,
+          tags: item.tags,
+          status: item.status,
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "Error al programar seguimiento" });
+      }
+    }
+
+    if (name === "historial_cliente") {
+      const cliente = String(input?.cliente || "").trim();
+      if (!cliente) return JSON.stringify({ ok: false, error: "cliente requerido" });
+      const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+
+      const [crmRaw, quotesRaw] = await Promise.all([
+        executeTool("buscar_cliente_crm", { query: cliente, limite }, calcState),
+        executeTool("listar_cotizaciones_recientes", { cliente, limite }, calcState),
+      ]);
+      const crm = JSON.parse(crmRaw);
+      const quotes = JSON.parse(quotesRaw);
+
+      const crmRows = crm.ok ? (crm.matches || []) : [];
+      const quoteRows = quotes.ok ? (quotes.cotizaciones || []) : [];
+
+      return JSON.stringify({
+        ok: true,
+        cliente,
+        crm: {
+          available: crm.ok,
+          error: crm.ok ? null : crm.error || null,
+          count: crmRows.length,
+          rows: crmRows,
+        },
+        cotizaciones: {
+          available: quotes.ok,
+          error: quotes.ok ? null : quotes.error || null,
+          count: quoteRows.length,
+          items: quoteRows,
+        },
+        nota: !crm.ok && !quotes.ok
+          ? "No hay datos disponibles para este cliente (CRM/registry no configurados o sin matches)."
+          : null,
       });
     }
 
