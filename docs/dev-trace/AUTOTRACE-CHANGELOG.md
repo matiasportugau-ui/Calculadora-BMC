@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 00:08:09 — `904af8c` — chore(dev-trace): AUTOTRACE final batch [SKIP_AUTOTRACE]
 - 2026-04-24 02:14:19 — `4589d3b` — fix(dashboard): promote Claude to #1 AI provider; add /consultations command-center endpoints
 - 2026-04-24 02:14:31 — `732d9a1` — feat(roof-plan): panel pick/inspection (T-xx IDs), edge strips outside rect, perimeter lite restore
 - 2026-04-24 02:14:37 — `425f2c9` — chore(scripts): accessible-base sync + build tooling updates
@@ -222,3 +221,4 @@
 - 2026-04-30 02:09:16 — `7749588` — ci: smoke against just-deployed Cloud Run revision in deploy-calc-api
 - 2026-04-30 02:22:37 — `ec6a966` — fix(kb): roadmap regex matches "Acción …:**" with colon inside bold
 - 2026-05-01 20:17:14 — `8c92065` — feat(auth): implement Google authentication route and user info retrieval
+- 2026-05-02 03:50:23 — `842fa07` — feat(ml): ML search route + price-monitor ETL + Supabase schema

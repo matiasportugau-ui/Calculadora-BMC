@@ -4,7 +4,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Features
 
-- `5884c90` feat(ci): add dedicated smoke job for prod API health on main push
 - `be2c7ed` feat(wolfboard): origen from CRM column F — enrich pendientes with canal via CRM join
 - `e918bef` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
 - `759d82e` feat(wolfboard): POST /api/wolfboard/quote-batch — AI batch quoting via Claude Haiku
@@ -84,6 +83,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `34a36b0` feat(config): add driveQuoteFolderId + expand Cloud Run secrets sync script
 - `36df0f5` feat(deploy): graceful Secret Manager migration for high-sensitivity keys
 - `8c92065` feat(auth): implement Google authentication route and user info retrieval
+- `842fa07` feat(ml): ML search route + price-monitor ETL + Supabase schema `[tests]`
 
 ## Fixes
 
