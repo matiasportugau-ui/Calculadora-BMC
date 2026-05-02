@@ -12,6 +12,26 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-04-30 (Security — GSM secrets migration completed):** Cierra el
+arco de seguridad de 2 días iniciado en `888f9cc` (Fase 0 deliverables) +
+`a2f309e` (ACCESS-CONTROL plan). Cloud Run `panelin-calc` revisión
+`<TBD-revision>` ahora monta 9 claves de alta sensibilidad
+(`ML_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `API_AUTH_TOKEN`,
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY`,
+`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`) vía
+`--update-secrets` desde Google Secret Manager — ya no aparecen en
+`spec.containers[0].env[]`. Bug fix colateral: `run_ml_cloud_run_setup.sh`
+usa escape `^|^` para `--update-env-vars` (commit `bf849ba`) porque
+`SHOPIFY_SCOPES`, `CORS_ORIGIN` y `COCKPIT_TOKEN_ALLOWED_ORIGINS`
+contienen comas y rompían el dict-parser de gcloud. Auth gates siguen
+activos (`/calc/interaction-log/list` 401 sin token, 200 con token;
+`/health` `ok:true,hasTokens:true,mlTokenStoreOk:true,hasSheets:true`).
+Pendientes de provisión: `WEBHOOK_VERIFY_TOKEN` (vacío en `.env`),
+`WHATSAPP_APP_SECRET` ([`WHATSAPP-HMAC-GAP.md`](../procedimientos/WHATSAPP-HMAC-GAP.md)),
+`SHOPIFY_*_SECRET`. Detalle: [`SECRETS-MIGRATION.md` §"Migración completada"](../procedimientos/SECRETS-MIGRATION.md#migración-completada--2026-04-30).
+**Affects:** bmc-security (cierre Fase 0), bmc-deployment (revisión
+nueva), bmc-docs-sync.
+
 **2026-04-30 (Docs — roadmap ACCESS-CONTROL, TOC + claridad código):** En [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): jerarquía Markdown alineada a TOC GitHub (secciones numeradas `##`, subtítulos `###`); aviso **to be created/updated** en artefactos planificados (`server/lib/rbac.js`, middleware, rutas internas de calculadora vs `GET /api/internal/panelin/*` ya existente). **Affects:** bmc-docs-sync, bmc-project-team-sync.
 
 **2026-04-29 (Plan — control de acceso Calculadora Vercel, documento único):** La propuesta inicial (auth por niveles, interno vs cliente, costos ocultos, listas por usuario) queda **consolidada y ampliada** en un solo plan de implementación en [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): objetivos de negocio/seguridad, RBAC (`admin`, `ventas`, `administracion`, `cliente`), matriz de permisos v1, arquitectura Supabase Auth + Postgres/RLS, diseño SQL (profiles/price_lists/assignments/audit_events), cambios por capa (`src/`, `server/`, infra), fases con DoD, testing (unit/integración/contrato/e2e/seguridad), backlog (`AUTH-*`, `RBAC-*`, `PRICE-*`, `TEST-*`), riesgos y decisiones abiertas. **Affects:** bmc-security, bmc-calc-specialist, bmc-project-team-sync, bmc-deployment.

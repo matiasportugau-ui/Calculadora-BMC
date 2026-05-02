@@ -126,3 +126,31 @@ gcloud secrets delete OPENAI_API_KEY --quiet
   migración.
 - Rotación automática (Secret Manager rotation policies) — fuera de alcance,
   evaluar caso por caso.
+
+## Migración completada — 2026-04-30
+
+- Revisión Cloud Run resultante: `panelin-calc-<TBD-revision>` (reemplazar
+  con el output de
+  `gcloud run services describe panelin-calc --region=us-central1 --format='value(status.latestReadyRevisionName)'`
+  tras el redeploy).
+- Claves migradas a Secret Manager (montadas vía `--update-secrets`):
+  `ML_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `API_AUTH_TOKEN`,
+  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`,
+  `GROK_API_KEY`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`.
+- Verificación: `gcloud run revisions describe <NEW_REV>
+  --format='value(spec.containers[0].env[].name)' | tr ';' '\n'` ya no
+  lista esas claves.
+- Pendientes de provisión (no bloqueantes):
+  - `WEBHOOK_VERIFY_TOKEN`: vacío en `.env` — regenerar con
+    `openssl rand -hex 32` y pegar en consola ML Notificaciones.
+  - `WHATSAPP_APP_SECRET`: tracking en `WHATSAPP-HMAC-GAP.md`.
+  - `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_WEBHOOK_SECRET`: agregar a `.env`
+    cuando se active integración Shopify.
+- Auth gate verificado pre-migración: `/calc/interaction-log/list`
+  devuelve 401 sin `x-api-key`, 200 con token; `/health` devuelve
+  `ok:true,hasTokens:true,mlTokenStoreOk:true,hasSheets:true`.
+- Bug colateral resuelto: `run_ml_cloud_run_setup.sh` ahora usa el
+  escape `^|^` de gcloud para `--update-env-vars` porque varios valores
+  contienen comas (`SHOPIFY_SCOPES`, `CORS_ORIGIN`,
+  `COCKPIT_TOKEN_ALLOWED_ORIGINS`). Sin ese escape, gcloud abortaba con
+  `Bad syntax for dict arg`.
