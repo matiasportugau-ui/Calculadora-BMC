@@ -87,7 +87,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Fixes
 
-- `845bb68` fix(wolfboard): wire origenEl in detail panel + correct table header labels
 - `5d5363c` fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
 - `11d1f8c` fix(ml-ui): persist ML token in localStorage instead of sessionStorage
 - `7f1c805` fix(kb): score parser — avoid emoji Unicode mismatch in ROADMAP regex
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `253ed7b` fix(ml): stricter id validation in /api/ml/etl-run/:id
 - `fda0bd0` fix(ml): update id validation in /api/ml/etl-run/:id
 - `1b61b7e` fix(ml): update id validation in /api/ml/etl-run/:id
+- `7db880d` fix(ml): update id validation in /api/ml/etl-run/:id
 
 ## Documentation
 
