@@ -35,7 +35,8 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 | `server/routes/agentTraining.js` | POST /agent/train, GET /agent/training-kb |
 | `server/lib/trainingKB.js` | KB CRUD, findRelevantExamples() |
 | `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220), `EXTRACTION_PROTOCOL` block |
-| `server/lib/agentTools.js` | 18 Anthropic tools (calc + catalog + state + PDF + CRM + price-list compare + scenario-compare + CRM-search + WhatsApp send); `executeTool(name,input,calcState,{emitAction})` |
+| `server/lib/agentTools.js` | 19 Anthropic tools (calc + catalog + state + PDF + CRM + price-list/scenario compare + CRM-search + WhatsApp send + quote-cancel); `executeTool(name,input,calcState,{emitAction})` |
+| `server/lib/quoteRegistry.js` | GCS-backed persistent registry. One JSON per quote at `gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`. Survives Cloud Run cold-starts; falls back to 24h in-memory cache when bucket unset. |
 | `server/lib/crmAppend.js` | `appendQuoteToCrm()` — Sheets writer for CRM_Operativo (col AH = quote URL, AI/AK gates default "No") |
 
 ## Tool surface (Claude tool-use loop, max 8 rounds)
@@ -49,8 +50,9 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 **Scenario compare:** `comparar_escenarios` — same shape but compares two scenarios (`solo_techo` vs `techo_fachada`, etc.). Single listaPrecios; use for "¿cuánto extra si le sumo la fachada?".
 **CRM dedupe (read):** `buscar_cliente_crm` — searches `CRM_Operativo!B4:AH500` by name / phone / RUT. Required pre-step before `guardar_en_crm` (prompt enforces it).
 **Customer outreach:** `enviar_whatsapp_link` — sends quote URL to customer via WhatsApp Cloud API (`server/lib/whatsappOutbound.js`). **Requires `user_confirmed: true`** in input.
+**Quote cancel (soft delete):** `cancelar_cotizacion` — flips a quote's `status` to `cancelled` in the GCS registry (no hard delete). **Requires `user_confirmed: true`**. Filtered out of `listar_cotizaciones_recientes` unless `?include_cancelled=true`.
 
-**Confirmation guard (transversal):** `guardar_en_crm` and `enviar_whatsapp_link` both reject server-side if `input.user_confirmed !== true`. Prompt-level gating + server-level guard = no silent misfires from a model hallucination.
+**Confirmation guard (transversal):** `guardar_en_crm`, `enviar_whatsapp_link`, and `cancelar_cotizacion` all reject server-side if `input.user_confirmed !== true`. Prompt-level gating + server-level guard = no silent misfires from a model hallucination.
 
 The conversational extraction flow (slot-filling protocol) lives in `chatPrompts.js`'s `EXTRACTION_PROTOCOL` block. Source of truth for required fields is `obtener_escenarios` (i.e. `/calc/escenarios`), not the static WORKFLOW text.
 

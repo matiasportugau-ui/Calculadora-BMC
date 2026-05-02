@@ -522,6 +522,26 @@ export const AGENT_TOOLS = [
       required: ["scenario_a", "scenario_b"],
     },
   },
+
+  {
+    name: "cancelar_cotizacion",
+    description:
+      "Marca una cotización como cancelada en el registry persistente (no la borra). " +
+      "Usar cuando el cliente declina, los datos cambiaron, o el operador quiere limpiar la cotización del listado activo. " +
+      "REGLA OBLIGATORIA: SOLO con confirmación explícita del usuario " +
+      "(\"cancelá la cotización X\", \"borrá la cotización Y\", \"el cliente desistió\"). " +
+      "REQUIERE user_confirmed=true en el input — el server rechaza si falta. " +
+      "La cotización sigue accesible vía obtener_cotizacion_por_id pero no aparece en listar_cotizaciones_recientes salvo include_cancelled=true.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdf_id:         { type: "string", description: "UUID de la cotización a cancelar" },
+        motivo:         { type: "string", description: "Motivo de la cancelación (ej: 'cliente declinó', 'datos incorrectos')" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó la cancelación." },
+      },
+      required: ["pdf_id", "user_confirmed"],
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -1116,6 +1136,30 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
           : deltaUsd < 0
             ? `${scenario_b} es USD ${Math.abs(deltaUsd)} (${Math.abs(deltaPct)}%) más barato que ${scenario_a}.`
             : `${scenario_a} y ${scenario_b} cuestan lo mismo en esta combinación.`,
+      });
+    }
+
+    if (name === "cancelar_cotizacion") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const pdfId = String(input?.pdf_id || "").trim();
+      if (!pdfId) return JSON.stringify({ ok: false, error: "pdf_id requerido" });
+      const motivo = String(input?.motivo || "").trim();
+      const data = await fetchJson(`/calc/cotizaciones/${encodeURIComponent(pdfId)}/cancelar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo, by: "panelin-chat" }),
+      });
+      if (!data.ok) return JSON.stringify({ ok: false, error: data.error || "Error al cancelar cotización" });
+      const entry = data.entry || {};
+      return JSON.stringify({
+        ok: true,
+        id: entry.id,
+        status: entry.status,
+        cancelledAt: entry.cancelledAt,
+        cancelReason: entry.cancelReason,
+        alreadyCancelled: !!data.alreadyCancelled,
       });
     }
 

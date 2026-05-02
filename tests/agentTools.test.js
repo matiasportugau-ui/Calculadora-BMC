@@ -85,6 +85,7 @@ group("AGENT_TOOLS surface", () => {
     "buscar_cliente_crm",
     "enviar_whatsapp_link",
     "comparar_escenarios",
+    "cancelar_cotizacion",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -417,6 +418,44 @@ await group("comparar_escenarios — happy path", async () => {
 await group("comparar_escenarios — missing scenario", async () => {
   const { parsed } = await run("comparar_escenarios", { scenario_a: "solo_techo" });
   assert(parsed.error === "scenario_a y scenario_b requeridos", "missing scenario_b → error");
+});
+
+await group("cancelar_cotizacion — requires user_confirmed", async () => {
+  const { parsed } = await run("cancelar_cotizacion", { pdf_id: "abc-123" });
+  assert(parsed.ok === false, "ok false without user_confirmed");
+  assert(typeof parsed.error === "string" && parsed.error.includes("user_confirmed"), "error mentions user_confirmed");
+});
+
+await group("cancelar_cotizacion — missing pdf_id", async () => {
+  const { parsed } = await run("cancelar_cotizacion", { user_confirmed: true });
+  assert(parsed.ok === false, "ok false when pdf_id missing");
+  assert(typeof parsed.error === "string" && parsed.error.includes("pdf_id"), "error mentions pdf_id");
+});
+
+await group("cancelar_cotizacion — happy path", async () => {
+  setFetch(async (url, init) => {
+    assert(url.endsWith("/calc/cotizaciones/abc-123/cancelar"), "hits cancelar endpoint with id");
+    assert(init.method === "POST", "uses POST");
+    const body = JSON.parse(init.body || "{}");
+    assert(body.motivo === "cliente declinó", "motivo passed through");
+    return {
+      ok: true,
+      entry: {
+        id: "abc-123",
+        status: "cancelled",
+        cancelledAt: "2026-05-02T12:00:00Z",
+        cancelReason: "cliente declinó",
+      },
+    };
+  });
+  const { parsed } = await run("cancelar_cotizacion", {
+    pdf_id: "abc-123",
+    motivo: "cliente declinó",
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true on cancel");
+  assert(parsed.status === "cancelled", "status=cancelled");
+  assert(parsed.cancelReason === "cliente declinó", "cancelReason carried over");
 });
 
 // ── 4. Unknown tool name ─────────────────────────────────────────────────────
