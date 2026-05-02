@@ -11507,6 +11507,33 @@
           "src"
         ]
       }
+    },
+    {
+      "hash": "ce081de99ac988eb21756999f1769fe2acc2831c",
+      "short_hash": "ce081de",
+      "date": "2026-05-02",
+      "time": "08:15:28",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "main",
+      "type": "chore",
+      "scope": "data",
+      "title": "refresh calculator data version after build",
+      "subject": "chore(data): refresh calculator data version after build",
+      "files": [
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          "src"
+        ]
+      }
     }
   ]
 }
