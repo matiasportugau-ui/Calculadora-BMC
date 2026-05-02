@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-30
+**Última actualización:** 2026-05-02
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-02 (Ops+Docs — holistic project health skill + snapshot):** Nueva skill [`.cursor/skills/bmc-holistic-project-health/SKILL.md`](../../.cursor/skills/bmc-holistic-project-health/SKILL.md) + regla [`.cursor/rules/bmc-holistic-project-health.mdc`](../../.cursor/rules/bmc-holistic-project-health.mdc); índice en [`docs/AGENTS.md`](../AGENTS.md) y [`docs/team/AGENTS.md`](./AGENTS.md). Primer informe trazado: [`docs/team/reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md`](./reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md). Checks esta corrida: `npm run smoke:prod` **OK** (incl. MATRIZ CSV + `suggest-response` claude); `npm run gate:local` y `gate:local:full` **OK** (384 tests; build Vite OK; **2 warnings** ESLint sin errores). **Affects:** bmc-project-team-sync, bmc-docs-sync (descubrimiento skill), cualquier agente de status ejecutivo.
 
 **2026-04-30 (Docs — roadmap ACCESS-CONTROL, TOC + claridad código):** En [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): jerarquía Markdown alineada a TOC GitHub (secciones numeradas `##`, subtítulos `###`); aviso **to be created/updated** en artefactos planificados (`server/lib/rbac.js`, middleware, rutas internas de calculadora vs `GET /api/internal/panelin/*` ya existente). **Affects:** bmc-docs-sync, bmc-project-team-sync.
 

@@ -54,6 +54,7 @@ export default function GoogleDrivePanel({
   onRefresh,
   currentQuotationCode,
   lastSaveResult,
+  provisionalQuotationCode,
 }) {
   const listRef = useRef(null);
 
@@ -152,6 +153,26 @@ export default function GoogleDrivePanel({
             </button>
           )}
         </div>
+
+        {provisionalQuotationCode && (
+          <div style={{
+            margin: "10px 20px 0",
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: C.warningSoft,
+            color: "#8B5A00",
+            fontSize: 12,
+            lineHeight: 1.35,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+          }}>
+            <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <strong>Código provisional.</strong> Esta cotización usará <code style={{ fontSize: 11 }}>…-TEMP</code> hasta que se asigne un número oficial (por ejemplo al guardar el presupuesto o desde CRM). Conviene volver a guardar en Drive tras el código definitivo.
+            </div>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

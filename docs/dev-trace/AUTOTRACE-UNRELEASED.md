@@ -237,6 +237,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `888f9cc` docs(v1.3): Fase 0 deliverables — OAuth checklist, Área 4 audit, ADR-0001
 - `84705e7` docs(dev-trace): autotrace 7e639cc
 - `4cfc594` docs(dev-trace): autotrace 84705e7
+- `2f11614` docs: AUTOTRACE snapshot 7db880d, KB sync, calculator data version
 
 ## Tests
 

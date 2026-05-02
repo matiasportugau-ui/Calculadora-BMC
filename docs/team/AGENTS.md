@@ -121,6 +121,28 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## BMC Holistic Project Health
+
+**Skill:** `.cursor/skills/bmc-holistic-project-health/`
+
+**Rol:** Snapshot ejecutivo **con evidencia**: lee `PROJECT-STATE`, lista áreas de arquitectura, corre o prescribe `smoke:prod` / `gate:local*`, asigna **readiness %** con leyenda fija, resume **Cambios recientes** con fechas, riesgos solo demostrables, y **next steps** por fila del mapa.
+
+**Cuándo usar:**
+
+- project health, holistic status, readiness report, architecture map + %, full status snapshot
+- antes de reunión de stakeholders o tras merge grande (solo lectura + checks opcionales)
+
+**Referencias:**
+
+- [SKILL.md](../.cursor/skills/bmc-holistic-project-health/SKILL.md)
+- [PROJECT-STATE.md](./PROJECT-STATE.md)
+- [../AGENTS.md](../AGENTS.md)
+- Informes ejemplo: [reports/](./reports/) (`PROJECT-HEALTH-SNAPSHOT-*.md`)
+
+**Cursor Rule:** `.cursor/rules/bmc-holistic-project-health.mdc`
+
+---
+
 ## Google Sheets — documentación canónica
 
 Ver [../google-sheets-module/README.md](../google-sheets-module/README.md) (mapper código, sync full team, variables 1:1). El informe de capacidades del equipo enlaza al mapa de acceso en ese módulo.

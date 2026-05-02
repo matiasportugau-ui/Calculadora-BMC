@@ -4,6 +4,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 /* global google */
 
+import {
+  buildDriveClientFolderName,
+  buildDriveQuotationFolderName,
+  montevideoYmd,
+  clientFileSlug,
+  isLegacyFlatQuotationFolder,
+} from "./quotationNaming.js";
+
 const SCOPES = "openid email profile https://www.googleapis.com/auth/drive.file";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
@@ -265,13 +273,17 @@ async function findOrCreateFolder(name, parentId = null) {
 }
 
 /**
- * Ensure the app root folder and a per-quotation subfolder exist.
+ * Raíz BMC → carpeta cliente (RUT+nombre / nombre) → carpeta código de cotización.
  */
-async function ensureQuotationFolder(quotationCode, clientName) {
+async function ensureQuotationFolderPath(quotationCode, proyecto) {
   const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
-  const subName = `${quotationCode} — ${(clientName || "proyecto").slice(0, 40)}`;
-  const subId = await findOrCreateFolder(subName, rootId);
-  return { rootId, subId, subName };
+  const clientSegment = proyecto && typeof proyecto === "object"
+    ? buildDriveClientFolderName(proyecto)
+    : buildDriveClientFolderName({ nombre: proyecto || "", razonSocial: "", rut: "" });
+  const clientFolderId = await findOrCreateFolder(clientSegment, rootId);
+  const quoteName = buildDriveQuotationFolderName(quotationCode);
+  const subId = await findOrCreateFolder(quoteName, clientFolderId);
+  return { rootId, subId, subName: quoteName };
 }
 
 // ── File upload ──────────────────────────────────────────────────────────────
@@ -320,7 +332,9 @@ async function findFileInFolder(folderId, fileName) {
  *
  * @param {Object} params
  * @param {string}  params.quotationCode — e.g. "BMC-2026-0042"
- * @param {string}  params.clientName    — client name for folder/file naming
+ * @param {string}  params.quotationCode — e.g. "BMC-2026-0042"
+ * @param {string}  [params.clientName] — fallback si no hay `proyecto`
+ * @param {Object}  [params.proyecto] — datos cliente (rut, razonSocial, nombre)
  * @param {Blob}    params.pdfBlob       — the generated PDF
  * @param {Object}  params.projectData   — the serialized project state
  * @param {string}  [params.pdfFileName] — override PDF file name
@@ -330,16 +344,28 @@ async function findFileInFolder(folderId, fileName) {
 export async function saveQuotation({
   quotationCode,
   clientName,
+  proyecto,
   pdfBlob,
   projectData,
   pdfFileName: pdfName,
   jsonFileName: jsonName,
 }) {
-  const { subId } = await ensureQuotationFolder(quotationCode, clientName);
+  const { subId } = await ensureQuotationFolderPath(
+    quotationCode,
+    proyecto && typeof proyecto === "object"
+      ? proyecto
+      : { nombre: clientName || "", razonSocial: "", rut: "" },
+  );
 
-  const safeName = (clientName || "cotización").replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ _-]/g, "").trim().slice(0, 40);
-  const finalPdfName = pdfName || `Cotización ${quotationCode} — ${safeName}.pdf`;
-  const finalJsonName = jsonName || `${quotationCode}.bmc.json`;
+  const slug = proyecto && typeof proyecto === "object"
+    ? clientFileSlug(proyecto)
+    : clientFileSlug(clientName);
+
+  const ymd = montevideoYmd();
+  const qCode = quotationCode || "BMC";
+
+  const finalPdfName = pdfName || `${qCode}_${ymd}_${slug}.pdf`;
+  const finalJsonName = jsonName || `${qCode}.bmc.json`;
 
   const existingPdf = await findFileInFolder(subId, finalPdfName);
   const existingJson = await findFileInFolder(subId, finalJsonName);
@@ -365,17 +391,47 @@ export async function saveQuotation({
 }
 
 /**
- * List all quotation folders inside the app root folder.
- * Returns folder metadata sorted by most recent.
+ * Lista carpetas de cotización: formato nuevo (root → cliente → código) + legajo plano bajo raíz.
  */
 export async function listQuotations() {
   const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
-  const q = [`'${rootId}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
-  const resp = await authFetch(
-    `${DRIVE_API}/files?q=${encodeURIComponent(q.join(" and "))}&fields=files(id,name,createdTime,modifiedTime)&orderBy=modifiedTime desc&pageSize=50&spaces=drive`,
+  const rootQ = [`'${rootId}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
+  const rootResp = await authFetch(
+    `${DRIVE_API}/files?q=${encodeURIComponent(rootQ.join(" and "))}&fields=files(id,name,modifiedTime)&pageSize=100&spaces=drive`,
   );
-  const { files } = await resp.json();
-  return files || [];
+  const { files: rootChildren } = await rootResp.json();
+
+  /** @type {{ id:string, name:string, modifiedTime?:string }[]} */
+  const aggregate = [];
+
+  for (const f of rootChildren || []) {
+    if (isLegacyFlatQuotationFolder(f.name)) {
+      aggregate.push({
+        id: f.id,
+        name: String(f.name),
+        modifiedTime: f.modifiedTime,
+      });
+      continue;
+    }
+
+    const subQ = [`'${f.id}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
+    const subResp = await authFetch(
+      `${DRIVE_API}/files?q=${encodeURIComponent(subQ.join(" and "))}&fields=files(id,name,modifiedTime)&spaces=drive`,
+    );
+    const { files: subFolders } = await subResp.json();
+    for (const sub of subFolders || []) {
+      aggregate.push({
+        id: sub.id,
+        name: `${f.name} / ${sub.name}`,
+        modifiedTime: sub.modifiedTime,
+      });
+    }
+  }
+
+  aggregate.sort((a, b) =>
+    String(b.modifiedTime || "").localeCompare(String(a.modifiedTime || "")));
+
+  return aggregate.slice(0, 50);
 }
 
 /**

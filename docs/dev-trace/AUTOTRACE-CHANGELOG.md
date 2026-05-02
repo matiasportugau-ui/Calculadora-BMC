@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 02:22:00 — `5551486` — chore(dev-trace): autotrace + kb rebuild post-session
 - 2026-04-24 02:29:54 — `59f0f13` — chore(dev-trace): cleanup post-session + kb state [SKIP_AUTOTRACE]
 - 2026-04-24 02:43:28 — `f50973e` — docs: sync PROJECT-STATE + kb — suggest-response verde, rev-00210, 370 tests
 - 2026-04-24 02:43:35 — `6ca6d7e` — chore(dev-trace): AUTOTRACE post-docs-sync [SKIP_AUTOTRACE]
@@ -222,3 +221,4 @@
 - 2026-05-02 03:56:09 — `fda0bd0` — fix(ml): update id validation in /api/ml/etl-run/:id
 - 2026-05-02 05:57:53 — `1b61b7e` — fix(ml): update id validation in /api/ml/etl-run/:id
 - 2026-05-02 05:58:54 — `7db880d` — fix(ml): update id validation in /api/ml/etl-run/:id
+- 2026-05-02 07:10:59 — `2f11614` — docs: AUTOTRACE snapshot 7db880d, KB sync, calculator data version

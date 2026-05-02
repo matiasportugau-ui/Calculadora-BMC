@@ -11471,6 +11471,42 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "2f11614755df5619f64713ee155daced654d2e4d",
+      "short_hash": "2f11614",
+      "date": "2026-05-02",
+      "time": "07:10:59",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feat/ml-search-and-price-monitor-schema",
+      "type": "docs",
+      "scope": "",
+      "title": "AUTOTRACE snapshot 7db880d, KB sync, calculator data version",
+      "subject": "docs: AUTOTRACE snapshot 7db880d, KB sync, calculator data version",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/05/7db880d.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/05/2026-05-02.md",
+        "src/data/calculatorDataVersion.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": true,
+        "areas": [
+          ".accessible-base",
+          "docs",
+          "src"
+        ]
+      }
     }
   ]
 }

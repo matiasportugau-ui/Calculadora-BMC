@@ -3516,16 +3516,17 @@ export default function PanelinCalculadoraV3() {
       });
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const fname = pdfFileName(
-        (proyecto.refInterna || "").trim() || "BMC",
-        proyecto.nombre
-      );
+      const resolvedCode =
+        currentBudgetCode ||
+        (proyecto.refInterna || "").trim() ||
+        `BMC-${new Date().getFullYear()}-TEMP`;
+      const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage, currentBudgetCode]);
 
   const handlePdfEnriquecidoPrint = useCallback(async () => {
     if (!groups.length) return;
@@ -3601,16 +3602,17 @@ export default function PanelinCalculadoraV3() {
       }
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const fname = pdfFileName(
-        (proyecto.refInterna || "").trim() || "BMC",
-        proyecto.nombre,
-      );
+      const resolvedCode =
+        currentBudgetCode ||
+        (proyecto.refInterna || "").trim() ||
+        `BMC-${new Date().getFullYear()}-TEMP`;
+      const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout, currentBudgetCode]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -4198,7 +4200,7 @@ export default function PanelinCalculadoraV3() {
       const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
       const result = await saveQuotation({
         quotationCode: code,
-        clientName: proyecto.nombre,
+        proyecto,
         pdfBlob,
         projectData,
       });
@@ -6583,6 +6585,10 @@ export default function PanelinCalculadoraV3() {
         onRefresh={handleDriveRefresh}
         currentQuotationCode={currentBudgetCode}
         lastSaveResult={driveLastSave}
+        provisionalQuotationCode={
+          !currentBudgetCode ||
+          String(currentBudgetCode || "").includes("-TEMP")
+        }
       />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}
