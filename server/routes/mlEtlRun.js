@@ -176,11 +176,13 @@ export default function createMlEtlRunRouter({ config, logger }) {
     requireAuth,
     asyncHandler(async (req, res) => {
       const id = Number(req.params.id);
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ ok: false, error: "id must be numeric" });
+      if (!Number.isInteger(id) || id < 1) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "id must be a positive integer" });
       }
       const rows = await sbGet(
-        `bmc_price_monitor.etl_runs?select=*&id=eq.${id}&limit=1`,
+        `bmc_price_monitor.etl_runs?select=*&id=eq.${encodeURIComponent(id)}&limit=1`,
       );
       const run = Array.isArray(rows) && rows[0] ? rows[0] : null;
       if (!run) return res.status(404).json({ ok: false, error: "run not found" });
