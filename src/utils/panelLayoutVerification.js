@@ -46,6 +46,9 @@ export function verifyPanelLayout(layout, bomResult, largo) {
 /**
  * Agrega resultados de verificación por zona para mostrar un estado global en multi-zona.
  *
+ * `allOk` es verdadero cuando no hay fallas ni zonas pendientes (incluyendo el caso vacío,
+ * en el que es vacuamente verdadero: total=0 ⇒ allOk=true, hasFailures=false).
+ *
  * @param {Record<number, ReturnType<verifyPanelLayout>>|null} verificationsByGi
  * @param {number} [expectedZones=0]
  * @returns {{total:number, ok:number, failed:number, pending:number, allOk:boolean, hasFailures:boolean}}
@@ -57,7 +60,7 @@ export function aggregatePanelLayoutVerifications(verificationsByGi, expectedZon
   const ok = known.filter((v) => v?.ok === true).length;
   const failed = known.filter((v) => v?.ok === false).length;
   const pending = Math.max(0, total - ok - failed);
-  const allOk = total > 0 && failed === 0 && pending === 0;
+  const allOk = failed === 0 && pending === 0;
   const hasFailures = failed > 0;
   return { total, ok, failed, pending, allOk, hasFailures };
 }
