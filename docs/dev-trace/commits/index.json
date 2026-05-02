@@ -11401,6 +11401,40 @@
           "docs"
         ]
       }
+    },
+    {
+      "hash": "1b61b7edb2323d14478cede3619b34ecc49e5945",
+      "short_hash": "1b61b7e",
+      "date": "2026-05-02",
+      "time": "05:57:53",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feat/ml-search-and-price-monitor-schema",
+      "type": "fix",
+      "scope": "ml",
+      "title": "update id validation in /api/ml/etl-run/:id",
+      "subject": "fix(ml): update id validation in /api/ml/etl-run/:id",
+      "files": [
+        ".accessible-base/kb.json",
+        "docs/dev-trace/AUTOTRACE-CHANGELOG.md",
+        "docs/dev-trace/AUTOTRACE-STATUS.md",
+        "docs/dev-trace/AUTOTRACE-UNRELEASED.md",
+        "docs/dev-trace/commits/2026/05/fda0bd0.md",
+        "docs/dev-trace/commits/index.json",
+        "docs/dev-trace/worklog/2026/05/2026-05-02.md"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "low",
+        "src_touched": false,
+        "areas": [
+          ".accessible-base",
+          "docs"
+        ]
+      }
     }
   ]
 }

@@ -2,7 +2,6 @@
 
 Últimos commits registrados en `docs/dev-trace/commits/index.json`.
 
-- 2026-04-24 02:14:37 — `425f2c9` — chore(scripts): accessible-base sync + build tooling updates
 - 2026-04-24 02:14:54 — `95f4d8d` — chore(dev-trace): rebuild kb + autotrace post-commit batch
 - 2026-04-24 02:22:00 — `5551486` — chore(dev-trace): autotrace + kb rebuild post-session
 - 2026-04-24 02:29:54 — `59f0f13` — chore(dev-trace): cleanup post-session + kb state [SKIP_AUTOTRACE]
@@ -222,3 +221,4 @@
 - 2026-05-02 03:50:23 — `842fa07` — feat(ml): ML search route + price-monitor ETL + Supabase schema
 - 2026-05-02 03:54:43 — `253ed7b` — fix(ml): stricter id validation in /api/ml/etl-run/:id
 - 2026-05-02 03:56:09 — `fda0bd0` — fix(ml): update id validation in /api/ml/etl-run/:id
+- 2026-05-02 05:57:53 — `1b61b7e` — fix(ml): update id validation in /api/ml/etl-run/:id
