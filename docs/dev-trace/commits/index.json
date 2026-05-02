@@ -11340,6 +11340,33 @@
           "tests"
         ]
       }
+    },
+    {
+      "hash": "253ed7b826e2ec38da7aae64cf0fffba9302d09c",
+      "short_hash": "253ed7b",
+      "date": "2026-05-02",
+      "time": "03:54:43",
+      "author": "matiasportugau-ui",
+      "email": "matias.portugau@gmail.com",
+      "branch": "feat/ml-search-and-price-monitor-schema",
+      "type": "fix",
+      "scope": "ml",
+      "title": "stricter id validation in /api/ml/etl-run/:id",
+      "subject": "fix(ml): stricter id validation in /api/ml/etl-run/:id",
+      "files": [
+        "server/routes/mlEtlRun.js"
+      ],
+      "risk": "Verde",
+      "signals": {
+        "possible_regression": false,
+        "tests_touched": false,
+        "breaking_mentioned": false,
+        "release_impact": "med",
+        "src_touched": true,
+        "areas": [
+          "server"
+        ]
+      }
     }
   ]
 }
