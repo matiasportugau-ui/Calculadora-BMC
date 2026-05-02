@@ -32,9 +32,9 @@ Segunda capa: `WEBHOOK_VERIFY_TOKEN` sigue activo como defensa en profundidad.
 
 ### Gap #3 — `WEBHOOK_VERIFY_TOKEN` generado ✅
 
-Token generado: `6d9541623d8c79552b4f1a988ba503f4aec172f8d109871d4d3679cbb2955671`
-Agregado a `.env` local. **Pendiente de acción humana:**
-1. Agregar a GSM (comando abajo)
+Token generado y almacenado en `.env` local (ver `.env` — no commitear el valor).
+**Pendiente de acción humana:**
+1. Agregar a GSM (comando abajo — leer el valor actual de `.env`)
 2. Registrar en ML Developers → tu app → Notificaciones → campo "Verify Token"
 
 ### Gap #4 — OAuth state (parche temporal) ✅
@@ -86,10 +86,9 @@ gcloud run services describe panelin-calc --region=us-central1 \
   --format='value(status.latestReadyRevisionName)'
 # → panelin-calc-00331-2sr (guardar este valor)
 
-# 1. Crear WEBHOOK_VERIFY_TOKEN en GSM
-echo -n "6d9541623d8c79552b4f1a988ba503f4aec172f8d109871d4d3679cbb2955671" | \
-  gcloud secrets create WEBHOOK_VERIFY_TOKEN \
-  --data-file=- --project=chatbot-bmc-live
+# 1. Crear WEBHOOK_VERIFY_TOKEN en GSM (leer valor de .env local, no hardcodear aquí)
+grep '^WEBHOOK_VERIFY_TOKEN=' .env | cut -d= -f2- | \
+  gcloud secrets create WEBHOOK_VERIFY_TOKEN --data-file=- --project=chatbot-bmc-live
 # Si ya existe: reemplazar 'create' con 'versions add WEBHOOK_VERIFY_TOKEN'
 
 # 2. Deploy: migrar secrets de plain env vars a --update-secrets + session affinity
@@ -107,6 +106,9 @@ gcloud run services update panelin-calc \
   --update-secrets=WHATSAPP_APP_SECRET=WHATSAPP_APP_SECRET:latest \
   --update-secrets=WEBHOOK_VERIFY_TOKEN=WEBHOOK_VERIFY_TOKEN:latest \
   --remove-env-vars=API_AUTH_TOKEN,ANTHROPIC_API_KEY,OPENAI_API_KEY,GEMINI_API_KEY,ML_CLIENT_SECRET \
+  # WHATSAPP_* and TOKEN_ENCRYPTION_KEY are NOT in --remove-env-vars because they
+  # were not set as plain env vars in the current revision (panelin-calc-00331-2sr);
+  # --update-secrets is sufficient to add them.
   --session-affinity
 
 # 3. Verificar nueva revisión activa

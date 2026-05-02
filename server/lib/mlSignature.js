@@ -12,6 +12,7 @@ const REPLAY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
  * Header format: "ts=UNIX_MS,v1=HEX_HASH"
  *
  * @param {{ clientSecret: string, signatureHeader: string | undefined, dataId: string | number | undefined, requestId: string | undefined, nowMs?: number }} opts
+ *   nowMs — override current time in ms; **test-only**, do not pass in production.
  * @returns {{ ok: boolean, skipped?: boolean, reason?: string }}
  */
 export function verifyMLSignature({ clientSecret, signatureHeader, dataId, requestId, nowMs }) {
@@ -51,8 +52,8 @@ export function verifyMLSignature({ clientSecret, signatureHeader, dataId, reque
   const a = Buffer.from(expected, "utf8");
   const b = Buffer.from(receivedHash, "utf8");
 
-  if (a.length !== b.length) return { ok: false, reason: "length" };
-
+  // SHA-256 hex is always 64 chars so lengths match by construction;
+  // drop the explicit check and let timingSafeEqual throw on mismatch.
   try {
     return { ok: crypto.timingSafeEqual(a, b) };
   } catch {
