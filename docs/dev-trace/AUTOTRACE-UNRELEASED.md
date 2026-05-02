@@ -87,7 +87,6 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 
 ## Fixes
 
-- `0437665` fix(wolfboard): Admin 2.0 data starts row 2 (not 3) — confirmed by operator
 - `27804a0` fix(wolfboard): correct Admin 2.0 column layout I/J/K/L + setup-admin endpoint
 - `845bb68` fix(wolfboard): wire origenEl in detail panel + correct table header labels
 - `5d5363c` fix(ci): add .npmrc legacy-peer-deps to unblock vite-plugin-pwa@0.21.2 on vite@7
@@ -167,6 +166,7 @@ Vista incremental desde el índice de commits documentados (no reemplaza `docs/C
 - `63c85d0` fix(deploy): conditional ML_USE_PROD_REDIRECT based on SERVICE_NAME
 - `ec6a966` fix(kb): roadmap regex matches "Acción …:**" with colon inside bold
 - `253ed7b` fix(ml): stricter id validation in /api/ml/etl-run/:id
+- `fda0bd0` fix(ml): update id validation in /api/ml/etl-run/:id
 
 ## Documentation
 
