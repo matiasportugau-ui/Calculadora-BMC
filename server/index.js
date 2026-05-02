@@ -36,6 +36,7 @@ import authGoogleRouter from "./routes/authGoogle.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+import { verifyMLSignature } from "./lib/mlSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -440,6 +441,23 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
 }));
 
 app.post("/webhooks/ml", asyncHandler(async (req, res) => {
+  // Layer 1: HMAC signature verification (Gap #1 fix)
+  // ML signs: "id:{data.id};request-id:{x-request-id};ts:{ts}" with ML_CLIENT_SECRET
+  const mlSigVerified = verifyMLSignature({
+    clientSecret: config.mlClientSecret,
+    signatureHeader: req.headers["x-signature"],
+    dataId: req.query.id ?? req.body?.id,
+    requestId: req.headers["x-request-id"],
+  });
+  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
+    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
+    return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
+  }
+  if (mlSigVerified.skipped && config.appEnv !== "test") {
+    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
+  }
+
+  // Layer 2: verify token (second layer — kept for defence in depth)
   if (config.webhookVerifyToken) {
     const received =
       req.query.verify_token ||
