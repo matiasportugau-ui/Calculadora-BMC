@@ -37,6 +37,7 @@ import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { getToolStats } from "../lib/toolStats.js";
 
 const router = Router();
 
@@ -132,6 +133,17 @@ router.get("/agent/ai-options", (_req, res) => {
     autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
     providers,
   });
+});
+
+/**
+ * GET /api/agent/tool-stats — per-tool aggregates (count, p50/p95 latency,
+ * error rate, error buckets) over the last `windowMinutes` minutes (default 1440 = 24h).
+ * Used by the dev panel "Tool Stats" tab. No secrets; safe to expose without auth.
+ */
+router.get("/agent/tool-stats", (req, res) => {
+  const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
+  const stats = getToolStats({ windowMs: minutes * 60 * 1000 });
+  res.json({ ok: true, ...stats });
 });
 
 // 0.4 — Allowed origins (CSRF guard)
@@ -628,9 +640,10 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         let cacheReadTokens = 0;
-        // Tool-use loop: model may call tools up to 5 times before final response
+        // Tool-use loop: model may call tools up to 8 times before final response.
+        // Higher cap accommodates the slot-fill → calc → pdf → crm-format → crm-save chain.
         const toolMsgs = [...msgs];
-        for (let toolRound = 0; toolRound < 5; toolRound++) {
+        for (let toolRound = 0; toolRound < 8; toolRound++) {
           const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
           const toolCalls = [];
           let roundText = "";
@@ -670,7 +683,7 @@ router.post("/agent/chat", async (req, res) => {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState);
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
           }

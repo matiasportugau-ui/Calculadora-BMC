@@ -13,6 +13,28 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
 import { config } from "../config.js";
+import { appendQuoteToCrm } from "./crmAppend.js";
+import { searchCrmClients } from "./crmSearch.js";
+import { sendWhatsAppText } from "./whatsappOutbound.js";
+import {
+  loadStore as loadFollowupStore,
+  saveStore as saveFollowupStore,
+  addItem as addFollowupItem,
+  parseDueInput,
+  parseDays,
+} from "./followUpStore.js";
+import { recordToolCall, classifyError } from "./toolStats.js";
+
+function apiBase() {
+  return config.publicBaseUrl.replace(/\/$/, "");
+}
+
+async function fetchJson(pathSuffix, init = {}) {
+  const url = `${apiBase()}${pathSuffix}`;
+  const resp = await fetch(url, init);
+  const txt = await resp.text();
+  try { return JSON.parse(txt); } catch { return { ok: false, error: `Respuesta no-JSON desde ${pathSuffix}: ${txt.slice(0, 200)}` }; }
+}
 
 // ─── Tool definitions (Anthropic input_schema format) ────────────────────────
 
@@ -224,6 +246,363 @@ export const AGENT_TOOLS = [
       required: ["scenario"],
     },
   },
+
+  {
+    name: "obtener_escenarios",
+    description:
+      "Devuelve la lista canónica de escenarios de cotización con sus campos REQUERIDOS y OPCIONALES. " +
+      "Usar al inicio de cada cotización para saber exactamente qué datos pedirle al usuario sin re-preguntar lo que ya está en calcState. " +
+      "Es la fuente de verdad para slot-filling: si un campo no está en `campos_requeridos`, no lo pidas como obligatorio.",
+    input_schema: { type: "object", properties: {} },
+  },
+
+  {
+    name: "obtener_catalogo",
+    description:
+      "Devuelve el catálogo completo de paneles (techo + pared) con familias, espesores válidos, colores permitidos, " +
+      "ancho útil, sistemas de fijación y bordes disponibles. Usar antes de aplicar setTecho/setPared para validar " +
+      "que la combinación familia+espesor+color que el usuario pidió existe en la lista activa.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lista: { type: "string", enum: ["web", "venta"], description: "Lista de precios. Default: web" },
+      },
+    },
+  },
+
+  {
+    name: "obtener_informe_completo",
+    description:
+      "Dump completo de pricing + reglas de asesoría + fórmulas de cálculo + endpoints. Más pesado que catalogo, " +
+      "pero útil cuando el usuario pregunta cosas tipo \"¿cuánto vale el flete a Salto?\", \"¿qué autoportancia necesito para 6m?\", " +
+      "\"¿cuál es la regla para Blanco en ISOROOF 3G?\". No llamarla en cotizaciones rutinarias — preferí catalogo.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lista: { type: "string", enum: ["web", "venta"] },
+      },
+    },
+  },
+
+  {
+    name: "presupuesto_libre",
+    description:
+      "Genera una cotización en formato BOM libre (líneas manuales): el usuario describe paneles + perfilería + fijaciones + selladores " +
+      "uno por uno, sin pasar por el wizard de escenario. Usar cuando el usuario diga 'presupuesto libre', 'BOM manual', " +
+      "'cotización a medida', o cuando lo que pide no encaja en solo_techo / solo_fachada / techo_fachada / camara_frig.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lista: { type: "string", enum: ["web", "venta"] },
+        librePanelLines: {
+          type: "array",
+          description: "Líneas de panel manuales: cada línea es { familia, espesor, color, m2, largo? }",
+          items: { type: "object" },
+        },
+        librePerfilQty: { type: "object", description: "Mapa { perfilId: cantidad }" },
+        libreFijQty:    { type: "object", description: "Mapa { fijacionId: cantidad }" },
+        libreSellQty:   { type: "object", description: "Mapa { selladorId: cantidad }" },
+        libreExtra:     { type: "object", description: "Items extra { label, pu, cant }" },
+        flete:          { type: "number", description: "Flete USD" },
+      },
+    },
+  },
+
+  {
+    name: "listar_cotizaciones_recientes",
+    description:
+      "Lista las cotizaciones generadas recientemente en esta instancia (últimas 24h). " +
+      "Cada entrada incluye id, code, cliente, escenario, total, lista y la URL del PDF. " +
+      "Usar cuando el usuario diga 'mandale otra vez la cotización a Juan', 'pasame el link del último presupuesto', " +
+      "'¿qué cotizaciones hice hoy?'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente: { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
+        limite:  { type: "number", description: "Máx resultados a devolver. Default 10" },
+      },
+    },
+  },
+
+  {
+    name: "obtener_cotizacion_por_id",
+    description:
+      "Recupera el resumen + URL del PDF de una cotización por su pdf_id (UUID). " +
+      "Usar cuando el usuario referencia un id específico o cuando listar_cotizaciones_recientes devolvió varios y necesitás el detalle de uno.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdf_id: { type: "string", description: "UUID de la cotización" },
+      },
+      required: ["pdf_id"],
+    },
+  },
+
+  {
+    name: "aplicar_estado_calc",
+    description:
+      "Aplica datos extraídos de la conversación al estado live de la calculadora (auto-rellena el formulario). " +
+      "Emite las ACTION_JSON correspondientes en una sola llamada: setScenario, setLP, setTecho, setTechoZonas, setPared, setCamara, setFlete, setProyecto. " +
+      "Pasá SOLO los campos que el usuario confirmó explícitamente. Llamala en cuanto tengas datos suficientes para un campo — no esperes a tener todo. " +
+      "Tras llamarla, calculá con calcular_cotizacion para mostrar el total parcial al usuario.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario:     { type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig", "presupuesto_libre"] },
+        listaPrecios: { type: "string", enum: ["web", "venta"] },
+        techo: {
+          type: "object",
+          description: "Campos de techo. Las zonas se aplican vía setTechoZonas si están presentes.",
+          properties: {
+            familia:    { type: "string" },
+            espesor:    { type: ["string", "number"] },
+            color:      { type: "string" },
+            tipoAguas:  { type: "string", enum: ["una_agua", "dos_aguas"] },
+            pendiente:  { type: "number" },
+            tipoEst:    { type: "string", enum: ["metal", "hormigon", "madera", "combinada"] },
+            borders:    { type: "object" },
+            zonas:      { type: "array", items: { type: "object" } },
+          },
+        },
+        pared: {
+          type: "object",
+          properties: {
+            familia: { type: "string" }, espesor: { type: ["string", "number"] }, color: { type: "string" },
+            alto: { type: "number" }, perimetro: { type: "number" },
+            numEsqExt: { type: "number" }, numEsqInt: { type: "number" },
+          },
+        },
+        camara: {
+          type: "object",
+          properties: {
+            largo_int: { type: "number" }, ancho_int: { type: "number" }, alto_int: { type: "number" },
+          },
+        },
+        flete:    { type: "number", description: "Flete USD" },
+        proyecto: {
+          type: "object",
+          properties: {
+            nombre: { type: "string" }, rut: { type: "string" }, telefono: { type: "string" },
+            direccion: { type: "string" }, descripcion: { type: "string" },
+            tipoCliente: { type: "string", enum: ["empresa", "particular"] },
+          },
+        },
+      },
+    },
+  },
+
+  {
+    name: "formatear_resumen_crm",
+    description:
+      "Formatea un bloque copy-pasteable listo para pegar en el CRM con los datos clave de la cotización: " +
+      "código, cliente, escenario, total USD, link PDF (GCS) y link Drive. " +
+      "Llamarla DESPUÉS de generar_pdf, antes de mostrarle el resumen final al usuario. " +
+      "El bloque se muestra al humano para que lo pegue manualmente en su sheet/CRM.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente:   { type: "string" },
+        scenario:  { type: "string" },
+        total:     { type: "number" },
+        lista:     { type: "string" },
+        pdf_url:   { type: "string" },
+        drive_url: { type: "string" },
+        pdf_id:    { type: "string" },
+        code:      { type: "string" },
+      },
+      required: ["pdf_url"],
+    },
+  },
+
+  {
+    name: "guardar_en_crm",
+    description:
+      "Guarda la cotización en la planilla CRM_Operativo de BMC (Google Sheets). Crea una fila nueva con cliente, " +
+      "teléfono, total, escenario, link al PDF (col AH = LINK_PRESUPUESTO) y observaciones. " +
+      "REGLA OBLIGATORIA: SOLO llamar esta tool cuando el usuario confirma EXPLÍCITAMENTE que quiere guardarla " +
+      "(\"guardalo en CRM\", \"pegalo al CRM\", \"sumalo al CRM\", \"agregalo a la planilla\"). " +
+      "REQUIERE el flag user_confirmed=true en el input — el server rechaza la escritura si falta. " +
+      "Nunca la llames automáticamente después de generar_pdf — primero formatear_resumen_crm y esperar la confirmación. " +
+      "ANTES de llamar esta tool, llamá buscar_cliente_crm para evitar filas duplicadas. " +
+      "La fila se crea con AI/AK = \"No\" (gate humano), el operador aprueba manualmente desde la planilla.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente:               { type: "string" },
+        telefono:              { type: "string" },
+        ubicacion:             { type: "string" },
+        scenario:              { type: "string" },
+        lista:                 { type: "string", enum: ["web", "venta"] },
+        total:                 { type: "number", description: "USD con IVA" },
+        pdf_url:               { type: "string" },
+        drive_url:             { type: "string" },
+        vendedor:              { type: "string" },
+        tipo_cliente:          { type: "string" },
+        urgencia:              { type: "string" },
+        probabilidad_cierre:   { type: "string" },
+        observaciones:         { type: "string" },
+        user_confirmed:        { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó la escritura explícitamente." },
+      },
+      required: ["pdf_url", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "comparar_listas",
+    description:
+      "Calcula la MISMA cotización en lista web y lista venta y devuelve el delta (diferencia USD y %). " +
+      "Usar cuando el usuario pregunta \"¿cuánto baja con lista venta?\", \"¿cuál es el descuento?\", " +
+      "\"¿cuánto cambia si soy distribuidor?\", o cuando el vendedor evalúa precio para un cliente con red comercial. " +
+      "Internamente llama calcular_cotizacion dos veces — pasá los mismos campos que pasarías a calcular_cotizacion (sin listaPrecios).",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario: {
+          type: "string",
+          enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"],
+        },
+        techo:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        pared:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        camara: { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+      },
+      required: ["scenario"],
+    },
+  },
+
+  {
+    name: "buscar_cliente_crm",
+    description:
+      "Busca filas existentes en CRM_Operativo por nombre, teléfono o RUT antes de crear una nueva fila. " +
+      "Usar SIEMPRE antes de guardar_en_crm cuando el usuario pide guardar una cotización — así evitamos duplicados. " +
+      "También útil cuando el usuario pregunta \"¿ya cotizamos a Juan Pérez?\" o \"¿qué tenemos del cliente X?\". " +
+      "Devuelve hasta `limite` matches con fila, cliente, teléfono, link al último presupuesto y timestamp.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query:  { type: "string", description: "Nombre del cliente, teléfono (con o sin dígitos no numéricos), o RUT" },
+        limite: { type: "number", description: "Máx matches a devolver. Default 10, max 50." },
+      },
+      required: ["query"],
+    },
+  },
+
+  {
+    name: "enviar_whatsapp_link",
+    description:
+      "Envía un mensaje de texto con el link de la cotización al WhatsApp del cliente vía WhatsApp Business Cloud API. " +
+      "REGLA OBLIGATORIA: SOLO llamar cuando el usuario confirma EXPLÍCITAMENTE el envío " +
+      "(\"mandale por WhatsApp\", \"envialo al cliente\", \"mandale el link\"). " +
+      "REQUIERE el flag user_confirmed=true en el input — el server rechaza el envío si falta. " +
+      "El mensaje default es un texto corto profesional con el link; podés override con el campo `text`. " +
+      "El destinatario `to` debe ser el teléfono del CLIENTE (no del operador), en formato E.164 sin '+' o solo dígitos.",
+    input_schema: {
+      type: "object",
+      properties: {
+        to:             { type: "string", description: "Teléfono del cliente (dígitos, formato E.164 sin '+')" },
+        pdf_url:        { type: "string", description: "URL pública de la cotización (GCS preferido)" },
+        cliente:        { type: "string", description: "Nombre del cliente (para personalizar el saludo)" },
+        total:          { type: "number", description: "Total USD c/IVA (para incluir en el mensaje)" },
+        scenario:       { type: "string", description: "Escenario de la cotización" },
+        text:           { type: "string", description: "Texto override completo. Si está, ignora pdf_url/cliente/total para componer." },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó el envío explícitamente." },
+      },
+      required: ["to", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "comparar_escenarios",
+    description:
+      "Calcula DOS escenarios distintos sobre el mismo proyecto y devuelve el delta. " +
+      "Usar cuando el usuario pregunta \"¿cuánto extra si le sumo la fachada?\" (solo_techo vs techo_fachada), " +
+      "\"¿cuánto baja si solo cotizo techo?\" (techo_fachada vs solo_techo), o cualquier comparación entre escenarios. " +
+      "Mantiene listaPrecios fija en ambos cálculos (default web). Si necesitás comparar listas, usá comparar_listas.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario_a:   { type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"] },
+        scenario_b:   { type: "string", enum: ["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"] },
+        listaPrecios: { type: "string", enum: ["web", "venta"], description: "Default: web" },
+        techo:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        pared:  { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+        camara: { type: "object", description: "Mismo shape que en calcular_cotizacion" },
+      },
+      required: ["scenario_a", "scenario_b"],
+    },
+  },
+
+  {
+    name: "cancelar_cotizacion",
+    description:
+      "Marca una cotización como cancelada en el registry persistente (no la borra). " +
+      "Usar cuando el cliente declina, los datos cambiaron, o el operador quiere limpiar la cotización del listado activo. " +
+      "REGLA OBLIGATORIA: SOLO con confirmación explícita del usuario " +
+      "(\"cancelá la cotización X\", \"borrá la cotización Y\", \"el cliente desistió\"). " +
+      "REQUIERE user_confirmed=true en el input — el server rechaza si falta. " +
+      "La cotización sigue accesible vía obtener_cotizacion_por_id pero no aparece en listar_cotizaciones_recientes salvo include_cancelled=true.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdf_id:         { type: "string", description: "UUID de la cotización a cancelar" },
+        motivo:         { type: "string", description: "Motivo de la cancelación (ej: 'cliente declinó', 'datos incorrectos')" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó la cancelación." },
+      },
+      required: ["pdf_id", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "obtener_pdf_html",
+    description:
+      "Devuelve el HTML crudo de una cotización por su pdf_id (no el link, sino el contenido). " +
+      "Útil cuando el agente necesita inspeccionar / modificar / traducir el PDF, o cuando otra tool " +
+      "consume el HTML directamente. Para compartir con el cliente preferí pdf_url (de obtener_cotizacion_por_id) — es más liviano.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pdf_id: { type: "string", description: "UUID de la cotización" },
+      },
+      required: ["pdf_id"],
+    },
+  },
+
+  {
+    name: "programar_seguimiento",
+    description:
+      "Programa un follow-up interno para el operador (recordatorio): \"recordame en 3 días llamar a Juan\", " +
+      "\"agendá seguimiento para el lunes\", \"avisame cuando expire la cotización X\". " +
+      "REQUIERE user_confirmed=true — el server rechaza si falta. " +
+      "Pasá title (qué) + uno de daysUntil (días desde hoy) o nextFollowUpAt (ISO date / 'YYYY-MM-DD'). Tags opcional.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title:           { type: "string", description: "Qué hay que hacer (ej: 'Llamar a Juan Pérez por cotización ABC123')" },
+        detail:          { type: "string", description: "Detalles opcionales / contexto" },
+        daysUntil:       { type: "number", description: "Días desde hoy hasta el follow-up. Mutuamente exclusivo con nextFollowUpAt." },
+        nextFollowUpAt:  { type: "string", description: "Fecha ISO o 'YYYY-MM-DD'. Mutuamente exclusivo con daysUntil." },
+        tags:            { type: "array", items: { type: "string" }, description: "Tags libres (ej: ['cotizacion', 'cliente-juan'])" },
+        user_confirmed:  { type: "boolean", description: "OBLIGATORIO=true. Confirma que el usuario aprobó programar el recordatorio." },
+      },
+      required: ["title", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "historial_cliente",
+    description:
+      "Devuelve el historial completo de un cliente: filas en CRM_Operativo + cotizaciones del registry, " +
+      "agrupadas y ordenadas por fecha desc. Usar cuando el usuario pregunta " +
+      "\"¿qué tenemos del cliente X?\", \"mostrame todo lo de Juan Pérez\", \"historial de María\". " +
+      "Compone buscar_cliente_crm + listar_cotizaciones_recientes — más útil que llamar las dos por separado.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente: { type: "string", description: "Nombre o teléfono del cliente" },
+        limite:  { type: "number", description: "Máx filas/cotizaciones por sección. Default 10." },
+      },
+      required: ["cliente"],
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -313,14 +692,108 @@ function summarizeResult(result, scenario) {
   return base;
 }
 
+// Allow-listed action types — must match VALID_ACTION_TYPES in agentChat.js.
+const APLICAR_ALLOWED_ACTIONS = new Set([
+  "setScenario", "setLP", "setTecho", "setTechoZonas",
+  "setPared", "setCamara", "setFlete", "setProyecto",
+]);
+
+function buildAplicarActions(input = {}) {
+  const actions = [];
+  if (input.scenario) actions.push({ type: "setScenario", payload: String(input.scenario) });
+  if (input.listaPrecios) actions.push({ type: "setLP", payload: String(input.listaPrecios) });
+  if (input.techo && typeof input.techo === "object") {
+    const { zonas, ...rest } = input.techo;
+    const techoFields = { ...rest };
+    if (techoFields.familia) techoFields.familia = normalizeFamilia(techoFields.familia);
+    if (techoFields.espesor != null) techoFields.espesor = String(techoFields.espesor);
+    if (Object.keys(techoFields).length > 0) actions.push({ type: "setTecho", payload: techoFields });
+    if (Array.isArray(zonas) && zonas.length > 0) {
+      const safeZonas = zonas
+        .map((z) => ({ largo: Number(z.largo), ancho: Number(z.ancho) }))
+        .filter((z) => Number.isFinite(z.largo) && Number.isFinite(z.ancho));
+      if (safeZonas.length > 0) actions.push({ type: "setTechoZonas", payload: safeZonas });
+    }
+  }
+  if (input.pared && typeof input.pared === "object") {
+    const paredFields = { ...input.pared };
+    if (paredFields.familia) paredFields.familia = normalizeFamilia(paredFields.familia);
+    if (paredFields.espesor != null) paredFields.espesor = String(paredFields.espesor);
+    if (Object.keys(paredFields).length > 0) actions.push({ type: "setPared", payload: paredFields });
+  }
+  if (input.camara && typeof input.camara === "object") {
+    const c = input.camara;
+    if (c.largo_int != null && c.ancho_int != null && c.alto_int != null) {
+      actions.push({ type: "setCamara", payload: {
+        largo_int: Number(c.largo_int), ancho_int: Number(c.ancho_int), alto_int: Number(c.alto_int),
+      }});
+    }
+  }
+  if (input.flete != null && Number.isFinite(Number(input.flete))) {
+    actions.push({ type: "setFlete", payload: Number(input.flete) });
+  }
+  if (input.proyecto && typeof input.proyecto === "object" && Object.keys(input.proyecto).length > 0) {
+    actions.push({ type: "setProyecto", payload: input.proyecto });
+  }
+  return actions.filter((a) => APLICAR_ALLOWED_ACTIONS.has(a.type));
+}
+
 /**
- * Execute a tool call and return the result string.
- * @param {string} name - Tool name
- * @param {object} input - Tool input
- * @param {object} calcState - Current calculator state from frontend
+ * Execute a tool call and return the result string. Public entry point —
+ * wraps the impl with telemetry (latency, ok/error, error class) so the
+ * dev panel can surface per-tool health without log scraping.
+ * @param {string} name
+ * @param {object} input
+ * @param {object} calcState
+ * @param {object} [opts]
+ * @param {(action:object)=>void} [opts.emitAction]
  * @returns {Promise<string>} JSON-stringified result
  */
-export async function executeTool(name, input, calcState = {}) {
+export async function executeTool(name, input, calcState = {}, opts = {}) {
+  const t0 = Date.now();
+  let raw = "";
+  let parsed = null;
+  let ok = false;
+  let errorClass = null;
+
+  try {
+    raw = await executeToolImpl(name, input, calcState, opts);
+    try { parsed = JSON.parse(raw); } catch { parsed = null; }
+    if (parsed && typeof parsed === "object") {
+      // Tools return either { ok: true, ... } or { error: "..." } / { ok: false, error: "..." }.
+      if (parsed.ok === true) ok = true;
+      else if (parsed.ok === false) {
+        ok = false;
+        errorClass = classifyError(parsed.error);
+      } else if (parsed.error) {
+        ok = false;
+        errorClass = classifyError(parsed.error);
+      } else {
+        // No explicit ok/error → treat as success (e.g. read tools that return data only).
+        ok = true;
+      }
+    } else {
+      ok = false;
+      errorClass = "internal:non_json";
+    }
+  } catch (err) {
+    ok = false;
+    errorClass = "internal:throw";
+    raw = JSON.stringify({ error: err?.message || "Error desconocido" });
+  } finally {
+    const latencyMs = Date.now() - t0;
+    recordToolCall({ tool: name, ok, latencyMs, errorClass });
+  }
+
+  return raw;
+}
+
+/**
+ * Internal impl. Keep separate from executeTool so the public wrapper
+ * can attach telemetry without polluting every branch.
+ */
+async function executeToolImpl(name, input, calcState = {}, opts = {}) {
+  const { emitAction } = opts;
   try {
     if (name === "get_calc_state") {
       const liveResult = (() => {
@@ -489,11 +962,409 @@ export async function executeTool(name, input, calcState = {}) {
 
       return JSON.stringify({
         ok: true,
+        pdf_id: data.pdf_id,
         pdf_url: data.pdf_url,
         gcs_url: data.gcs_url || null,
+        drive_url: data.drive_url || null,
         expires_in_hours: data.expires_in_hours || null,
         resumen: data.resumen,
         instrucciones: "Compartí este link con el cliente. Se abre en el navegador y se puede imprimir como PDF desde Archivo → Imprimir.",
+      });
+    }
+
+    if (name === "obtener_escenarios") {
+      const data = await fetchJson("/calc/escenarios");
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al obtener escenarios" });
+      return JSON.stringify({ ok: true, escenarios: data.escenarios });
+    }
+
+    if (name === "obtener_catalogo") {
+      const lista = input?.lista === "venta" ? "venta" : "web";
+      const data = await fetchJson(`/calc/catalogo?lista=${lista}`);
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al obtener catálogo" });
+      return JSON.stringify({
+        ok: true,
+        lista: data.lista,
+        paneles_techo: data.paneles_techo,
+        paneles_pared: data.paneles_pared,
+        bordes_techo: data.bordes_techo,
+        tipos_estructura: data.tipos_estructura,
+        escenarios: data.escenarios,
+      });
+    }
+
+    if (name === "obtener_informe_completo") {
+      const lista = input?.lista === "venta" ? "venta" : "web";
+      const data = await fetchJson(`/calc/informe?lista=${lista}`);
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al obtener informe" });
+      return JSON.stringify({
+        ok: true,
+        lista: data.meta?.lista,
+        paneles_techo: data.paneles_techo,
+        paneles_pared: data.paneles_pared,
+        fijaciones: data.fijaciones,
+        selladores: data.selladores,
+        servicios: data.servicios,
+        matriz_precios: data.matriz_precios,
+        bordes_techo: data.bordes_techo,
+        reglas_asesoria: data.reglas_asesoria,
+        formulas_calculo: data.formulas_calculo,
+      });
+    }
+
+    if (name === "presupuesto_libre") {
+      const body = {
+        lista: input?.lista === "venta" ? "venta" : "web",
+        librePanelLines: Array.isArray(input?.librePanelLines) ? input.librePanelLines : [],
+        librePerfilQty: input?.librePerfilQty || {},
+        libreFijQty: input?.libreFijQty || {},
+        libreSellQty: input?.libreSellQty || {},
+        flete: Number(input?.flete || 0),
+        libreExtra: input?.libreExtra || {},
+      };
+      const data = await fetchJson("/calc/cotizar/presupuesto-libre", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error en presupuesto libre" });
+      return JSON.stringify({
+        ok: true,
+        resumen: data.resumen,
+        bom: data.bom,
+        advertencias: data.advertencias || [],
+        texto_resumen: data.texto_resumen,
+      });
+    }
+
+    if (name === "listar_cotizaciones_recientes") {
+      const data = await fetchJson("/calc/cotizaciones");
+      if (!data.ok) return JSON.stringify({ error: data.error || "Error al listar cotizaciones" });
+      const filtroCliente = String(input?.cliente || "").trim().toLowerCase();
+      const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+      let entries = data.cotizaciones || [];
+      if (filtroCliente) {
+        entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(filtroCliente));
+      }
+      entries = entries.slice(0, limite);
+      return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
+    }
+
+    if (name === "obtener_cotizacion_por_id") {
+      const id = String(input?.pdf_id || "").trim();
+      if (!id) return JSON.stringify({ error: "pdf_id requerido" });
+      const list = await fetchJson("/calc/cotizaciones");
+      if (!list.ok) return JSON.stringify({ error: list.error || "No se pudo consultar el registro" });
+      const entry = (list.cotizaciones || []).find((e) => e.id === id);
+      if (!entry) return JSON.stringify({ error: `Cotización ${id} no encontrada o expirada (24h TTL)` });
+      return JSON.stringify({
+        ok: true,
+        id: entry.id,
+        code: entry.code,
+        client: entry.client,
+        scenario: entry.scenario,
+        total: entry.total,
+        lista: entry.lista,
+        pdf_url: entry.pdfUrl,
+        viewer_url: `${apiBase()}/calc/pdf/${id}`,
+        timestamp: entry.timestamp,
+      });
+    }
+
+    if (name === "aplicar_estado_calc") {
+      const actions = buildAplicarActions(input || {});
+      if (actions.length === 0) {
+        return JSON.stringify({ ok: false, error: "Sin campos válidos para aplicar — pasá scenario, listaPrecios, techo, pared, camara, flete o proyecto." });
+      }
+      if (typeof emitAction === "function") {
+        for (const a of actions) {
+          try { emitAction(a); } catch { /* swallow individual emit errors */ }
+        }
+      }
+      return JSON.stringify({
+        ok: true,
+        applied: actions.map((a) => a.type),
+        count: actions.length,
+        nota: "Acciones emitidas al frontend. Usá calcular_cotizacion ahora si los datos requeridos están completos.",
+      });
+    }
+
+    if (name === "formatear_resumen_crm") {
+      const cliente = String(input?.cliente || "—");
+      const scenario = String(input?.scenario || "");
+      const total = Number(input?.total || 0);
+      const lista = String(input?.lista || "");
+      const pdfUrl = String(input?.pdf_url || "");
+      const driveUrl = String(input?.drive_url || "");
+      const code = String(input?.code || input?.pdf_id || "").slice(0, 8);
+      const fecha = new Date().toISOString().slice(0, 10);
+      const lines = [
+        `📋 Cotización ${code ? `${code} ` : ""}— ${fecha}`,
+        `Cliente: ${cliente}`,
+        scenario ? `Escenario: ${scenario}` : null,
+        lista ? `Lista: ${lista}` : null,
+        Number.isFinite(total) && total > 0 ? `Total: USD ${total.toFixed(2)} c/IVA` : null,
+        pdfUrl ? `PDF: ${pdfUrl}` : null,
+        driveUrl ? `Drive: ${driveUrl}` : null,
+      ].filter(Boolean);
+      const crmText = lines.join("\n");
+      return JSON.stringify({
+        ok: true,
+        crm_text: crmText,
+        instrucciones: "Mostrale el bloque al usuario para que lo pegue en el CRM. Si pide guardarlo automáticamente, llamá guardar_en_crm.",
+      });
+    }
+
+    if (name === "comparar_listas") {
+      const { scenario, techo, pared, camara } = input || {};
+      if (!scenario) return JSON.stringify({ error: "scenario requerido" });
+      const baseInput = { scenario, techo, pared, camara };
+      const [webRaw, ventaRaw] = await Promise.all([
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "venta" }, calcState),
+      ]);
+      const web = JSON.parse(webRaw);
+      const venta = JSON.parse(ventaRaw);
+      if (web.error) return JSON.stringify({ error: `Lista web: ${web.error}` });
+      if (venta.error) return JSON.stringify({ error: `Lista venta: ${venta.error}` });
+      const totalWeb = Number(web.totalConIVA || 0);
+      const totalVenta = Number(venta.totalConIVA || 0);
+      const deltaUsd = +(totalWeb - totalVenta).toFixed(2);
+      const deltaPct = totalWeb > 0 ? +((deltaUsd / totalWeb) * 100).toFixed(2) : 0;
+      return JSON.stringify({
+        ok: true,
+        scenario,
+        web:   { subtotalSinIVA: web.subtotalSinIVA,   totalConIVA: totalWeb },
+        venta: { subtotalSinIVA: venta.subtotalSinIVA, totalConIVA: totalVenta },
+        delta_usd: deltaUsd,
+        delta_pct: deltaPct,
+        ahorro_lista_venta_usd: deltaUsd,
+        nota: deltaUsd > 0
+          ? `Lista venta es USD ${deltaUsd} (${deltaPct}%) más barata que web.`
+          : "No hay diferencia entre listas para esta combinación.",
+      });
+    }
+
+    if (name === "guardar_en_crm") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const result = await appendQuoteToCrm({
+        cliente: input?.cliente,
+        telefono: input?.telefono,
+        ubicacion: input?.ubicacion,
+        scenario: input?.scenario,
+        lista: input?.lista,
+        total: input?.total,
+        pdf_url: input?.pdf_url,
+        drive_url: input?.drive_url,
+        vendedor: input?.vendedor,
+        tipo_cliente: input?.tipo_cliente,
+        urgencia: input?.urgencia,
+        probabilidad_cierre: input?.probabilidad_cierre,
+        observaciones: input?.observaciones,
+      });
+      return JSON.stringify(result);
+    }
+
+    if (name === "buscar_cliente_crm") {
+      const result = await searchCrmClients({
+        query: input?.query,
+        limite: input?.limite,
+      });
+      return JSON.stringify(result);
+    }
+
+    if (name === "enviar_whatsapp_link") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const to = String(input?.to || "").trim();
+      if (!to) return JSON.stringify({ ok: false, error: "to (teléfono del cliente) es requerido" });
+      if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
+        return JSON.stringify({ ok: false, error: "WhatsApp no configurado (WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID)" });
+      }
+      // Compose default message if `text` not provided
+      let text = String(input?.text || "").trim();
+      if (!text) {
+        const cliente = String(input?.cliente || "").trim();
+        const total = Number(input?.total || 0);
+        const pdfUrl = String(input?.pdf_url || "").trim();
+        if (!pdfUrl) return JSON.stringify({ ok: false, error: "pdf_url requerido cuando no se pasa text override" });
+        const greeting = cliente ? `Hola ${cliente}, ` : "Hola, ";
+        const totalLine = Number.isFinite(total) && total > 0 ? `\nTotal: USD ${total.toFixed(2)} c/IVA.` : "";
+        text = `${greeting}te paso la cotización de BMC Uruguay:${totalLine}\n${pdfUrl}\n\nAbrila en el navegador y se imprime como PDF desde Archivo → Imprimir. Saludos, BMC Uruguay.`;
+      }
+      try {
+        const data = await sendWhatsAppText({
+          to,
+          text,
+          accessToken: config.whatsappAccessToken,
+          phoneNumberId: config.whatsappPhoneNumberId,
+        });
+        const messageId = data?.messages?.[0]?.id || null;
+        return JSON.stringify({
+          ok: true,
+          to: String(to).replace(/\D/g, ""),
+          message_id: messageId,
+          text_preview: text.slice(0, 120),
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "Error al enviar WhatsApp" });
+      }
+    }
+
+    if (name === "comparar_escenarios") {
+      const { scenario_a, scenario_b, listaPrecios = "web", techo, pared, camara } = input || {};
+      if (!scenario_a || !scenario_b) return JSON.stringify({ error: "scenario_a y scenario_b requeridos" });
+      const baseInput = { listaPrecios, techo, pared, camara };
+      const [aRaw, bRaw] = await Promise.all([
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_a }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_b }, calcState),
+      ]);
+      const a = JSON.parse(aRaw);
+      const b = JSON.parse(bRaw);
+      if (a.error) return JSON.stringify({ error: `${scenario_a}: ${a.error}` });
+      if (b.error) return JSON.stringify({ error: `${scenario_b}: ${b.error}` });
+      const totalA = Number(a.totalConIVA || 0);
+      const totalB = Number(b.totalConIVA || 0);
+      const deltaUsd = +(totalB - totalA).toFixed(2);
+      const deltaPct = totalA > 0 ? +((deltaUsd / totalA) * 100).toFixed(2) : 0;
+      return JSON.stringify({
+        ok: true,
+        listaPrecios,
+        a: { scenario: scenario_a, subtotalSinIVA: a.subtotalSinIVA, totalConIVA: totalA },
+        b: { scenario: scenario_b, subtotalSinIVA: b.subtotalSinIVA, totalConIVA: totalB },
+        delta_usd: deltaUsd,
+        delta_pct: deltaPct,
+        nota: deltaUsd > 0
+          ? `${scenario_b} es USD ${deltaUsd} (${deltaPct}%) más caro que ${scenario_a}.`
+          : deltaUsd < 0
+            ? `${scenario_b} es USD ${Math.abs(deltaUsd)} (${Math.abs(deltaPct)}%) más barato que ${scenario_a}.`
+            : `${scenario_a} y ${scenario_b} cuestan lo mismo en esta combinación.`,
+      });
+    }
+
+    if (name === "cancelar_cotizacion") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const pdfId = String(input?.pdf_id || "").trim();
+      if (!pdfId) return JSON.stringify({ ok: false, error: "pdf_id requerido" });
+      const motivo = String(input?.motivo || "").trim();
+      const data = await fetchJson(`/calc/cotizaciones/${encodeURIComponent(pdfId)}/cancelar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo, by: "panelin-chat" }),
+      });
+      if (!data.ok) return JSON.stringify({ ok: false, error: data.error || "Error al cancelar cotización" });
+      const entry = data.entry || {};
+      return JSON.stringify({
+        ok: true,
+        id: entry.id,
+        status: entry.status,
+        cancelledAt: entry.cancelledAt,
+        cancelReason: entry.cancelReason,
+        alreadyCancelled: !!data.alreadyCancelled,
+      });
+    }
+
+    if (name === "obtener_pdf_html") {
+      const id = String(input?.pdf_id || "").trim();
+      if (!id) return JSON.stringify({ ok: false, error: "pdf_id requerido" });
+      try {
+        const resp = await fetch(`${apiBase()}/calc/pdf/${encodeURIComponent(id)}`);
+        if (resp.status === 404) {
+          return JSON.stringify({ ok: false, error: `Cotización ${id} no encontrada o expirada` });
+        }
+        if (!resp.ok) {
+          return JSON.stringify({ ok: false, error: `HTTP ${resp.status} al recuperar el HTML` });
+        }
+        const html = await resp.text();
+        return JSON.stringify({
+          ok: true,
+          pdf_id: id,
+          html,
+          length: html.length,
+          viewer_url: `${apiBase()}/calc/pdf/${id}`,
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "Error al recuperar HTML" });
+      }
+    }
+
+    if (name === "programar_seguimiento") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const title = String(input?.title || "").trim();
+      if (!title) return JSON.stringify({ ok: false, error: "title requerido" });
+
+      let due = null;
+      if (input?.nextFollowUpAt) {
+        try { due = parseDueInput(String(input.nextFollowUpAt)); } catch { /* ignore */ }
+      }
+      if (!due && input?.daysUntil != null) {
+        try { due = parseDays(Number(input.daysUntil)); } catch { /* ignore */ }
+      }
+
+      const tags = Array.isArray(input?.tags) ? input.tags.filter((t) => typeof t === "string") : [];
+
+      try {
+        const store = loadFollowupStore();
+        const item = addFollowupItem(store, {
+          title,
+          detail: input?.detail ? String(input.detail) : "",
+          tags,
+          nextFollowUpAt: due,
+        });
+        saveFollowupStore(store);
+        return JSON.stringify({
+          ok: true,
+          id: item.id,
+          title: item.title,
+          nextFollowUpAt: item.nextFollowUpAt,
+          tags: item.tags,
+          status: item.status,
+        });
+      } catch (err) {
+        return JSON.stringify({ ok: false, error: err.message || "Error al programar seguimiento" });
+      }
+    }
+
+    if (name === "historial_cliente") {
+      const cliente = String(input?.cliente || "").trim();
+      if (!cliente) return JSON.stringify({ ok: false, error: "cliente requerido" });
+      const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+
+      const [crmRaw, quotesRaw] = await Promise.all([
+        executeTool("buscar_cliente_crm", { query: cliente, limite }, calcState),
+        executeTool("listar_cotizaciones_recientes", { cliente, limite }, calcState),
+      ]);
+      const crm = JSON.parse(crmRaw);
+      const quotes = JSON.parse(quotesRaw);
+
+      const crmRows = crm.ok ? (crm.matches || []) : [];
+      const quoteRows = quotes.ok ? (quotes.cotizaciones || []) : [];
+
+      return JSON.stringify({
+        ok: true,
+        cliente,
+        crm: {
+          available: crm.ok,
+          error: crm.ok ? null : crm.error || null,
+          count: crmRows.length,
+          rows: crmRows,
+        },
+        cotizaciones: {
+          available: quotes.ok,
+          error: quotes.ok ? null : quotes.error || null,
+          count: quoteRows.length,
+          items: quoteRows,
+        },
+        nota: !crm.ok && !quotes.ok
+          ? "No hay datos disponibles para este cliente (CRM/registry no configurados o sin matches)."
+          : null,
       });
     }
 

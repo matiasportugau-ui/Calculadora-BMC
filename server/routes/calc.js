@@ -37,6 +37,12 @@ import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import {
+  registerQuotation as registerQuotationStore,
+  getQuotation,
+  listQuotations,
+  cancelQuotation,
+} from "../lib/quoteRegistry.js";
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -158,27 +164,21 @@ setInterval(() => {
   for (const [id, entry] of pdfStore) {
     if (now - entry.createdAt > PDF_TTL_MS) pdfStore.delete(id);
   }
-  for (const [id, entry] of quotationRegistry) {
-    if (now - entry.createdAt > PDF_TTL_MS) quotationRegistry.delete(id);
-  }
+  // Quotation registry is now persisted to GCS via server/lib/quoteRegistry.js;
+  // no in-process TTL needed — quotes are kept indefinitely.
 }, 60 * 60 * 1000);
 
 // ── Quotation registry (tracks GPT-generated quotations) ────────────────────
+// Implementation moved to server/lib/quoteRegistry.js — it writes one JSON
+// per quote to GCS (`registry/{pdfId}.json`) so recall survives Cloud Run
+// cold-starts. Helper below preserves the existing call signature.
 
-const quotationRegistry = new Map();
-
-function registerQuotation({ pdfId, pdfUrl, code, client, scenario, total, lista }) {
-  quotationRegistry.set(pdfId, {
-    id: pdfId,
-    code: code || null,
-    client: client || "—",
-    scenario: scenario || "",
-    total: total || 0,
-    lista: lista || "web",
-    pdfUrl,
-    createdAt: Date.now(),
-    timestamp: new Date().toISOString(),
-  });
+async function registerQuotation(input) {
+  try {
+    await registerQuotationStore(input);
+  } catch (err) {
+    console.warn(`[calc] registerQuotation failed: ${err.message}`);
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -562,7 +562,7 @@ router.post("/cotizar/pdf", async (req, res) => {
     const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
-    registerQuotation({
+    await registerQuotation({
       pdfId,
       pdfUrl: gcsUrl || pdfUrl,
       code: clientInfo.quote_code || null,
@@ -603,10 +603,45 @@ router.get("/pdf/:id", (req, res) => {
 
 // ── GET /cotizaciones ────────────────────────────────────────────────────────
 
-router.get("/cotizaciones", (req, res) => {
-  const entries = Array.from(quotationRegistry.values())
-    .sort((a, b) => b.createdAt - a.createdAt);
-  res.json({ ok: true, count: entries.length, cotizaciones: entries });
+router.get("/cotizaciones", async (req, res) => {
+  try {
+    const includeCancelled = String(req.query?.include_cancelled || "").toLowerCase() === "true";
+    const limit = Math.max(1, Math.min(500, Number(req.query?.limit || 50)));
+    const entries = await listQuotations({ limit, includeCancelled });
+    res.json({ ok: true, count: entries.length, cotizaciones: entries });
+  } catch (err) {
+    req.log?.error({ err }, "calc/cotizaciones failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /cotizaciones/:id ───────────────────────────────────────────────────
+
+router.get("/cotizaciones/:id", async (req, res) => {
+  try {
+    const entry = await getQuotation(String(req.params.id || ""));
+    if (!entry) return res.status(404).json({ ok: false, error: "Cotización no encontrada" });
+    res.json({ ok: true, cotizacion: entry });
+  } catch (err) {
+    req.log?.error({ err }, "calc/cotizaciones/:id failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /cotizaciones/:id/cancelar ─────────────────────────────────────────
+
+router.post("/cotizaciones/:id/cancelar", async (req, res) => {
+  try {
+    const result = await cancelQuotation(String(req.params.id || ""), {
+      reason: req.body?.motivo || req.body?.reason,
+      by: req.body?.by || "agent",
+    });
+    if (!result.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    req.log?.error({ err }, "calc/cotizaciones/:id/cancelar failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ── GET /catalogo ────────────────────────────────────────────────────────────
