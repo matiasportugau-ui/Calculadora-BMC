@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# post-commit — no-op. (AUTOTRACE / Python / KB hooks removed 2026-05-03.)
 set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 cd "$ROOT_DIR"
@@ -11,25 +12,4 @@ if git rev-parse -q --verify REBASE_HEAD >/dev/null 2>&1; then
   exit 0
 fi
 
-if [ "${SKIP_AUTOTRACE:-}" = "1" ]; then
-  exit 0
-fi
-
-# ── Skip self-loop: do not autotrace dev-trace commits ───────────────────────
-COMMIT_MSG=$(git log -1 --pretty=%B HEAD 2>/dev/null || true)
-COMMIT_FIRST_LINE=$(printf '%s\n' "$COMMIT_MSG" | head -n1)
-if [[ "$COMMIT_FIRST_LINE" == *"dev-trace"* ]] || [[ "$COMMIT_FIRST_LINE" == *"autotrace"* ]] || [[ "$COMMIT_FIRST_LINE" == "autolog:"* ]]; then
-  exit 0
-fi
-
-if command -v python3 >/dev/null 2>&1; then
-  python3 tools/release-traceability/scripts/generate_commit_doc.py || true
-  python3 tools/release-traceability/scripts/rebuild_changelog.py || true
-else
-  echo "[WARN] python3 no disponible; se omite AUTOTRACE"
-fi
-
-# ── Accessible Base KB — compile project knowledge for AI context ─────────────
-if command -v node >/dev/null 2>&1; then
-  node scripts/build-accessible-base.mjs --quiet || true
-fi
+exit 0

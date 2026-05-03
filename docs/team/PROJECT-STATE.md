@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-02
+**Última actualización:** 2026-05-03
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-03 (Dev — AUTOTRACE retirado del flujo Git/CI):** Hooks `.githooks/post-commit` y `post-merge` pasan a **no-op** (ya no ejecutan Python `generate_commit_doc` / `rebuild_changelog` ni `build-accessible-base` al commitear). Eliminados scripts npm `dev-trace:install-hooks`, `dev-trace:rebuild`, `dev-trace:release` de `package.json`. Eliminado workflow GitHub Actions [`.github/workflows/dev-trace.yml`](../../.github/workflows/dev-trace.yml). Los scripts en [`tools/release-traceability/scripts/`](../../tools/release-traceability/scripts/) siguen en el repo por si alguien quiere ejecutarlos **a mano** (`python3 tools/release-traceability/scripts/rebuild_changelog.py`, etc.). `bash tools/release-traceability/bootstrap/install_hooks.sh` solo fija `core.hooksPath=.githooks`. **Affects:** equipo local (sin árbol sucio tras commit), `bmc-docs-sync`; histórico bajo [`docs/dev-trace/`](../../docs/dev-trace/) se mantiene como archivo.
 
 **2026-05-02 (Ops+Docs — holistic project health skill + snapshot):** Nueva skill [`.cursor/skills/bmc-holistic-project-health/SKILL.md`](../../.cursor/skills/bmc-holistic-project-health/SKILL.md) + regla [`.cursor/rules/bmc-holistic-project-health.mdc`](../../.cursor/rules/bmc-holistic-project-health.mdc); índice en [`docs/AGENTS.md`](../AGENTS.md) y [`docs/team/AGENTS.md`](./AGENTS.md). Primer informe trazado: [`docs/team/reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md`](./reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md). Checks esta corrida: `npm run smoke:prod` **OK** (incl. MATRIZ CSV + `suggest-response` claude); `npm run gate:local` y `gate:local:full` **OK** (384 tests; build Vite OK; **2 warnings** ESLint sin errores). **Affects:** bmc-project-team-sync, bmc-docs-sync (descubrimiento skill), cualquier agente de status ejecutivo.
 

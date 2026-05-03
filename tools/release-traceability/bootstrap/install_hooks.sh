@@ -14,5 +14,5 @@ chmod +x .githooks/post-merge
 
 git config core.hooksPath .githooks
 
-echo "[OK] AUTOTRACE: hooks en .githooks"
+echo "[OK] Git hooks: .githooks (post-commit/post-merge no-op; sin AUTOTRACE)."
 echo "[OK] core.hooksPath=.githooks"
