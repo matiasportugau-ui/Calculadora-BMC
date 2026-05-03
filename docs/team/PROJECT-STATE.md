@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-03 (Tests — cobertura regresión ML ETL run):** Automatización de cobertura agrega suite [`tests/ml-etl-run-routes.test.js`](../../tests/ml-etl-run-routes.test.js) para `/api/ml/etl-run`: auth 401, `x-api-key`, lectura latest/:id vía Supabase REST stubbeado, 404 sin fila y validación estricta de IDs sin llamar a Supabase. Se ajusta [`server/routes/mlEtlRun.js`](../../server/routes/mlEtlRun.js) para aceptar solo enteros decimales positivos (`/^[1-9]\d*$/`), evitando coerciones tipo `1e2` que `Number()` trataba como válidas. `npm run test:api` incluye la nueva suite. **Affects:** bmc-api-contract, bmc-security, bmc-deployment, PANELSIM/ML operativo.
+
 **2026-05-02 (Ops+Docs — holistic project health skill + snapshot):** Nueva skill [`.cursor/skills/bmc-holistic-project-health/SKILL.md`](../../.cursor/skills/bmc-holistic-project-health/SKILL.md) + regla [`.cursor/rules/bmc-holistic-project-health.mdc`](../../.cursor/rules/bmc-holistic-project-health.mdc); índice en [`docs/AGENTS.md`](../AGENTS.md) y [`docs/team/AGENTS.md`](./AGENTS.md). Primer informe trazado: [`docs/team/reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md`](./reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md). Checks esta corrida: `npm run smoke:prod` **OK** (incl. MATRIZ CSV + `suggest-response` claude); `npm run gate:local` y `gate:local:full` **OK** (384 tests; build Vite OK; **2 warnings** ESLint sin errores). **Affects:** bmc-project-team-sync, bmc-docs-sync (descubrimiento skill), cualquier agente de status ejecutivo.
 
 **2026-04-30 (Security — GSM secrets migration completed):** Cierra el
