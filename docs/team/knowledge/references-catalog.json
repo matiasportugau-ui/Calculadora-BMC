@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-05-01T13:55:56.931Z",
+  "updatedAt": "2026-05-02T13:00:13.358Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -9212,6 +9212,216 @@
       "rankHint": "tier-1",
       "eventIds": [
         "evt_7edfaed4d9ff03be"
+      ]
+    },
+    {
+      "id": "ref_cd7a4ffd2a9a5e65",
+      "sourceId": "vercel-releases",
+      "title": "vercel@53.1.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4053.1.0",
+      "summary": "### Minor Changes - 5cf1179: Use services orchestrator for single web services in local dev. ### Patch Changes - 3aa821e: Allow adding Development Environment Variables on teams that enforce sensitive Environment Variables.",
+      "publishedAt": "2026-05-01T22:29:30Z",
+      "firstSeenAt": "2026-05-02T13:00:10.846Z",
+      "lastSeenAt": "2026-05-02T13:00:10.846Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_0090a62ea133c318"
+      ]
+    },
+    {
+      "id": "ref_76f86f00b583eb13",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python-workers@0.0.21",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python-workers%400.0.21",
+      "summary": "### Patch Changes - 6935baa: Refactor Python queue sdk into `_queue/` - 574c9f1: [vercel-workers] Replaces retention_seconds and delay_seconds with retention and delay which support timedelta, e.g retention=timedelta(hours=6)",
+      "publishedAt": "2026-05-01T22:29:33Z",
+      "firstSeenAt": "2026-05-02T13:00:10.846Z",
+      "lastSeenAt": "2026-05-02T13:00:10.846Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_6172229634d29c50"
+      ]
+    },
+    {
+      "id": "ref_04fe409968f0ce9f",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.174",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.174",
+      "summary": "### Patch Changes - Updated dependencies [49f6d44] - @ai-sdk/gateway@3.0.109",
+      "publishedAt": "2026-05-01T19:37:08Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5de8ce515dce1d11"
+      ]
+    },
+    {
+      "id": "ref_f4d927da8ffd7efa",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.173",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.173",
+      "summary": "### Patch Changes - 7beadf0: feat(mcp): propagate the server name through dynamic tool parts - Updated dependencies [7beadf0] - @ai-sdk/provider-utils@4.0.26 - @ai-sdk/gateway@3.0.108",
+      "publishedAt": "2026-05-01T15:30:30Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_76c074667bc2f739"
+      ]
+    },
+    {
+      "id": "ref_7f2fe11b74075ac7",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.183",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.183",
+      "summary": "### Patch Changes - Updated dependencies [8dd759d] - @ai-sdk/gateway@2.0.86",
+      "publishedAt": "2026-05-01T18:53:05Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e7f2c57158f41b04"
+      ]
+    },
+    {
+      "id": "ref_0ecba43d16690237",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@3.0.87",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%403.0.87",
+      "summary": "### Patch Changes - Updated dependencies [6043d24] - @ai-sdk/openai-compatible@2.0.45",
+      "publishedAt": "2026-05-01T18:18:49Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9837cbfa31180ffd"
+      ]
+    },
+    {
+      "id": "ref_a9db4f22bb9abf97",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@3.0.86",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%403.0.86",
+      "summary": "### Patch Changes - Updated dependencies [7beadf0] - @ai-sdk/provider-utils@4.0.26 - @ai-sdk/openai-compatible@2.0.44",
+      "publishedAt": "2026-05-01T15:32:57Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_69bb3c3fcd942d19"
+      ]
+    },
+    {
+      "id": "ref_c2bda0ac36fb9e5a",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@2.0.72",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%402.0.72",
+      "summary": "### Patch Changes - Updated dependencies [cb61408] - @ai-sdk/openai-compatible@1.0.39",
+      "publishedAt": "2026-05-01T18:54:05Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1892fdc93853bab7"
+      ]
+    },
+    {
+      "id": "ref_8ca096d2c1237544",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.174",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.174",
+      "summary": "### Patch Changes - ai@6.0.174",
+      "publishedAt": "2026-05-01T19:37:41Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f161412109280904"
+      ]
+    },
+    {
+      "id": "ref_638a844e069137d0",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.173",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.173",
+      "summary": "### Patch Changes - Updated dependencies [7beadf0] - @ai-sdk/provider-utils@4.0.26 - ai@6.0.173",
+      "publishedAt": "2026-05-01T15:32:54Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_3300a522cddc4354"
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-05-01T13:55:56.948Z",
+  "updatedAt": "2026-05-02T13:00:13.382Z",
   "projectProfile": {
     "name": "BMC/Panelin",
     "focusAreas": [
@@ -43,14 +43,14 @@
         "agent"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-05-01T13:55:53.038Z",
+      "lastCheckedAt": "2026-05-02T13:00:09.622Z",
       "stats": {
         "eventsSeen": 65,
         "acceptedEvents": 58,
         "rejectedEvents": 7,
         "avgEventScore": 0.5678
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.9236
     },
     {
@@ -70,14 +70,14 @@
         "safety"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-05-01T13:55:54.200Z",
+      "lastCheckedAt": "2026-05-02T13:00:10.678Z",
       "stats": {
         "eventsSeen": 37,
         "acceptedEvents": 24,
         "rejectedEvents": 13,
         "avgEventScore": 0.4561
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.8554
     },
     {
@@ -97,15 +97,15 @@
         "ci-cd"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-05-01T13:55:54.313Z",
+      "lastCheckedAt": "2026-05-02T13:00:10.807Z",
       "stats": {
-        "eventsSeen": 99,
-        "acceptedEvents": 89,
+        "eventsSeen": 101,
+        "acceptedEvents": 91,
         "rejectedEvents": 10,
-        "avgEventScore": 0.5893
+        "avgEventScore": 0.5913
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
-      "rankScore": 0.8878
+      "updatedAt": "2026-05-02T13:00:13.382Z",
+      "rankScore": 0.8883
     },
     {
       "id": "supabase-releases",
@@ -124,14 +124,14 @@
         "auth"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-05-01T13:55:54.356Z",
+      "lastCheckedAt": "2026-05-02T13:00:10.847Z",
       "stats": {
         "eventsSeen": 20,
         "acceptedEvents": 9,
         "rejectedEvents": 11,
         "avgEventScore": 0.3081
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.7703
     },
     {
@@ -149,14 +149,14 @@
         "benchmarks"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-05-01T13:55:54.746Z",
+      "lastCheckedAt": "2026-05-02T13:00:11.278Z",
       "stats": {
         "eventsSeen": 113,
         "acceptedEvents": 112,
         "rejectedEvents": 1,
         "avgEventScore": 0.6561
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.8493
     },
     {
@@ -176,14 +176,14 @@
         "typescript"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-05-01T13:55:55.080Z",
+      "lastCheckedAt": "2026-05-02T13:00:11.821Z",
       "stats": {
         "eventsSeen": 21,
         "acceptedEvents": 4,
         "rejectedEvents": 17,
         "avgEventScore": 0.2551
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.7801
     },
     {
@@ -203,15 +203,15 @@
         "tooling"
       ],
       "trustTier": "tier-1",
-      "lastCheckedAt": "2026-05-01T13:55:55.411Z",
+      "lastCheckedAt": "2026-05-02T13:00:12.176Z",
       "stats": {
-        "eventsSeen": 104,
-        "acceptedEvents": 93,
+        "eventsSeen": 112,
+        "acceptedEvents": 101,
         "rejectedEvents": 11,
-        "avgEventScore": 0.5287
+        "avgEventScore": 0.5344
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
-      "rankScore": 0.8835
+      "updatedAt": "2026-05-02T13:00:13.382Z",
+      "rankScore": 0.8852
     },
     {
       "id": "mcp-ts-sdk-releases",
@@ -230,14 +230,14 @@
         "tools"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-05-01T13:55:55.742Z",
+      "lastCheckedAt": "2026-05-02T13:00:12.578Z",
       "stats": {
         "eventsSeen": 19,
         "acceptedEvents": 8,
         "rejectedEvents": 11,
         "avgEventScore": 0.2674
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.7849
     },
     {
@@ -256,14 +256,14 @@
         "tools"
       ],
       "trustTier": "tier-2",
-      "lastCheckedAt": "2026-05-01T13:55:56.073Z",
+      "lastCheckedAt": "2026-05-02T13:00:13.042Z",
       "stats": {
         "eventsSeen": 32,
         "acceptedEvents": 27,
         "rejectedEvents": 5,
         "avgEventScore": 0.53
       },
-      "updatedAt": "2026-05-01T13:55:56.948Z",
+      "updatedAt": "2026-05-02T13:00:13.382Z",
       "rankScore": 0.8441
     }
   ],
