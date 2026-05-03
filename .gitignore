@@ -46,6 +46,9 @@ yarn-error.log*
 # Expert dev traceability — snapshots locales (regenerar con npm run expert:checkpoint)
 .cursor/dev-checkpoints/
 
+# Claude local worktrees can be registered as gitlinks and break CI checkout.
+.claude/worktrees/
+
 # Runtime exports (MATRIZ CSV pull, logs locales)
 .runtime/
 
