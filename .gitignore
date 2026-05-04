@@ -46,6 +46,10 @@ yarn-error.log*
 # Expert dev traceability — snapshots locales (regenerar con npm run expert:checkpoint)
 .cursor/dev-checkpoints/
 
+# Claude/Cursor local worktrees are nested Git repositories; committing them
+# creates broken submodule gitlinks unless they are intentionally declared.
+.claude/worktrees/
+
 # Runtime exports (MATRIZ CSV pull, logs locales)
 .runtime/
 
