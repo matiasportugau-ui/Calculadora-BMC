@@ -59,6 +59,9 @@ yarn-error.log*
 Calculadora-BMC/
 OmniCRM-Sync/
 
+# Claude Code ephemeral worktrees (never commit — these are local editor state)
+.claude/worktrees/
+
 # Mercado Libre — exportaciones de corpus (pueden contener datos de terceros; regenerar con npm run ml:corpus-export)
 docs/team/panelsim/reports/ml-corpus/exports/
 
