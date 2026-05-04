@@ -46,6 +46,10 @@ yarn-error.log*
 # Expert dev traceability — snapshots locales (regenerar con npm run expert:checkpoint)
 .cursor/dev-checkpoints/
 
+# Claude/Cursor local worktrees are machine-specific; committing them creates
+# gitlinks without .gitmodules and breaks CI checkout with submodules enabled.
+.claude/worktrees/
+
 # Runtime exports (MATRIZ CSV pull, logs locales)
 .runtime/
 

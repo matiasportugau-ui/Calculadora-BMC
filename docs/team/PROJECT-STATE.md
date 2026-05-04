@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-03
+**Última actualización:** 2026-05-04
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-04 (CI — checkout build fix):** Eliminado del índice el gitlink accidental `.claude/worktrees/sad-sanderson-90b0a3` que no tenía entrada en `.gitmodules` y hacía fallar `actions/checkout` con `submodules: recursive` (`fatal: No url found for submodule path ...`). `.gitignore` ahora excluye `.claude/worktrees/` para evitar reintroducir worktrees locales como submódulos. **Affects:** CI/build, bmc-docs-sync, tooling de agentes.
 
 **2026-05-03 (Ops — Vercel prod deploy + verificación):** `vercel --prod` desde repo (proyecto `matprompts-projects/calculadora-bmc`): producción **lista** en alias `https://calculadora-bmc.vercel.app` (deployment `dpl_Hnytq4rL3tUsXvriX2No5YrGgL4S`). Build remoto con `VITE_API_URL`/`VITE_BASE` del CLI alineados a Cloud Run canónico. Previa: `npm run gate:local:full` OK; `npm run smoke:prod` OK. `npm run pre-deploy` con `BMC_API_BASE` prod: contrato **17/18** — falla esperada/datos **`GET /api/crm/cockpit/row/2`** (400 vs expectativa `linkPresupuesto` URL/null en fila de prueba); **`/api/transportista/health`** 503 documentado como skip Sheets. **Affects:** bmc-deployment, bmc-api-contract (revisar fila cockpit o contrato si se usa row/2 como fixture).
 
