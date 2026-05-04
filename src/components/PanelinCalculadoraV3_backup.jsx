@@ -3430,6 +3430,11 @@ export default function PanelinCalculadoraV3() {
   // ── Helpers ──
   const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
 
+  // Budget code state (declared early — referenced by PDF/print useCallback deps below
+  // before the budget-log block; keeping the original declaration at ~L4075 caused a
+  // TDZ ReferenceError "Cannot access 'currentBudgetCode' before initialization").
+  const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+
   const fleteCostoNum = useMemo(() => {
     const t = String(fleteCosto ?? "").trim().replace(",", ".");
     const n = parseFloat(t);
@@ -4072,7 +4077,7 @@ export default function PanelinCalculadoraV3() {
   // ── Budget log state ──
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [logEntries, setLogEntries] = useState(() => getAllLogs());
-  const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+  // currentBudgetCode moved above to fix TDZ — see L3433 area
   const autoSaveTimer = useRef(null);
   const lastSavedHash = useRef("");
 
