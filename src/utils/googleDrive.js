@@ -36,6 +36,7 @@ export function loadGsiScript() {
   _gsiLoadPromise = new Promise((resolve, reject) => {
     let existing = document.querySelector(GIS_SCRIPT_SELECTOR);
     if (existing?.dataset.gisLoadState === "error") {
+      _gsiLoadPromise = null;
       existing.remove();
       existing = null;
     }
