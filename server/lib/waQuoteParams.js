@@ -2,9 +2,52 @@
  * WA Cockpit — extracción heurística de parámetros de cotización desde texto
  * libre del cliente. Devuelve un objeto con confianza por campo.
  *
- * Lógica intencionalmente conservadora: si el campo no se detecta limpio,
- * lo deja `null` y la UI/AI lo pide explícitamente.
+ * Reglas configurables vía waConfig.js → config.quote.{minM2, defaultWallHeightM, requireFamilyOrThickness}.
+ * Si waConfig no está disponible (offline test), usa defaults seguros.
  */
+
+let _quoteCfgGetter = null;
+function getQuoteConfig() {
+  // Lazy-load para no romper en tests offline.
+  if (_quoteCfgGetter === null) {
+    _quoteCfgGetter = (async () => {
+      try {
+        const mod = await import("./waConfig.js");
+        return mod.getConfig?.()?.quote;
+      } catch {
+        return null;
+      }
+    });
+  }
+  // Best-effort sync: waConfig.getConfig() es síncrono una vez primed.
+  // Si todavía no está primed, usamos defaults inline.
+  try {
+
+    return _quoteCfgSync();
+  } catch {
+    return { minM2: 5, defaultWallHeightM: 3, requireFamilyOrThickness: true };
+  }
+}
+
+// Para no usar dynamic import sync, mantenemos un require-style accessor.
+// Este se inicializa al primer llamado tras que waConfig esté primed.
+let _waConfigMod = null;
+function _quoteCfgSync() {
+  if (!_waConfigMod) {
+    // Intento sincrónico: import.meta.resolve no funciona en CJS, así que
+    // cacheamos el módulo cuando se importa por primera vez asíncronamente
+    // arriba en la app (waConfig se importa al arrancar server/index.js).
+    // Si aún no está cacheado, devolvemos defaults.
+    return { minM2: 5, defaultWallHeightM: 3, requireFamilyOrThickness: true };
+  }
+  const cfg = _waConfigMod.getConfig?.()?.quote;
+  return cfg || { minM2: 5, defaultWallHeightM: 3, requireFamilyOrThickness: true };
+}
+
+/** Bootstrap: llamado por server/index.js tras primeWaConfig. */
+export function setWaConfigModuleForQuoteParams(mod) {
+  _waConfigMod = mod;
+}
 
 const FAM_TECHO = ["isodec_eps", "isodec_pir", "isoroof_3g", "isoroof_foil_3g", "isoroof_plus_3g", "isoroof_colonial"];
 const FAM_PARED = ["isopanel_eps", "isodec_eps_pared", "isowall_pir"];
@@ -69,9 +112,16 @@ export function extractQuoteParams(text) {
   if (/lista\s+venta|distribuidor/i.test(s)) lista = "venta";
   else if (/lista\s+web|cliente\s+final/i.test(s)) lista = "web";
 
-  // Confianza compuesta (0..1) — necesitamos al menos m² + (espesor o familia) para ser útil.
+  // Reglas configurables desde waConfig (config.quote):
+  //   - minM2: mínimo m² para considerar quote
+  //   - requireFamilyOrThickness: bool — si false, basta m² + scope
+  const qcfg = getQuoteConfig();
   const fields = { metros, espesor, familia, scope, color, lista };
-  const minimal = metros != null && (espesor != null || familia != null) && scope != null;
+  const meetsArea = metros != null && metros >= (qcfg.minM2 || 5);
+  const meetsFamilyOrThickness = qcfg.requireFamilyOrThickness !== false
+    ? (espesor != null || familia != null)
+    : true;
+  const minimal = meetsArea && meetsFamilyOrThickness && scope != null;
   if (!minimal) return { ...fields, confidence: 0, ready: false };
 
   const known = [metros, espesor, familia, scope, color].filter((v) => v != null).length;
@@ -106,13 +156,14 @@ export function paramsToCalcBody(params) {
       zonas: [zona],
     };
   } else if (scope === "pared") {
+    const qcfg = getQuoteConfig();
     body.escenario = "solo_fachada";
     body.pared = {
       familia: familia || null,
       espesor: espesor || null,
       color: color || "Blanco",
       perimetro_m: Math.round(4 * lado * 10) / 10,
-      altura_m: 3,
+      altura_m: qcfg.defaultWallHeightM || 3,
     };
   } else {
     return null;

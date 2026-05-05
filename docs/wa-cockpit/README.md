@@ -103,9 +103,11 @@ DATABASE_URL=postgres://… npm run wa:migrate
 
 | Comando | Descripción |
 |--------|-------------|
-| `npm run wa:migrate` | Aplica migraciones SQL (`wa-package/migrations/*.sql`). |
-| `npm test` | Incluye `tests/wa-ingest-contract.js` (validación pura, sin servidor). |
-| `npm run smoke:prod` | Incluye `GET /api/wa/health` (200 ok / 503 sin DB en entornos sin Postgres). |
+| `npm run wa:migrate` | Aplica migraciones SQL (`wa-package/migrations/*.sql`), incluye 010-016 (settings/flags/operators/audit/webhooks/rules/sla). |
+| `npm run wa:admin -- <args>` | **Pro Settings Admin CLI** — bootstrap del primer Owner, CRUD de operadores/flags/settings, test de webhook, `sla check` (ver tabla detallada en [`AGENTS.md`](../../AGENTS.md)). |
+| `npm test` | Incluye `tests/wa-ingest-contract.js` y `wa-enricher.test.js` (sin DB). |
+| `npm run test:wa-pro` | Integration tests del módulo Pro Settings (config + operator-auth + rules + webhooks + sla). Requiere `DATABASE_URL` alcanzable; cada test skipea limpio si la DB no responde. |
+| `npm run smoke:prod` | Incluye `GET /api/wa/health` (200 ok / 503 sin DB). |
 | `npm run gate:local:full` | Lint + tests + build. Debe quedar verde antes de cada PR. |
 
 ---
@@ -114,7 +116,19 @@ DATABASE_URL=postgres://… npm run wa:migrate
 
 Repo aparte: **calculadora-bmc-wa-extension** (MV3, WXT + TypeScript). Ver [EXTENSION-INSTALL.md](EXTENSION-INSTALL.md) para carga descomprimida en Chrome y futura publicación en Chrome Web Store.
 
-Token cockpit se pega en el popup; queda guardado en `chrome.storage.local` (NO en el DOM de WhatsApp Web).
+### Login del operador (magic link, F-B5)
+
+Desde el popup de la extensión:
+
+1. Configurar **API base URL** (única vez por entorno).
+2. **Iniciar sesión**: ingresar email del operador → "Enviar magic link". El operador debe existir previamente en `wa_operators` (creado vía `npm run wa:admin -- operator add ...` o invitación desde el panel UI).
+3. El operador recibe un mail con un link `https://api.../api/wa/auth/verify?token=<hex>` (válido 15 minutos, uso único).
+4. **Pegar la URL recibida** (o sólo el token hex) en el popup → "Validar y entrar". El popup persiste en `chrome.storage.local` el par **`operatorJwt` (15 min)** + **`refreshToken` (30 días)** + email/role.
+5. La sección "Sesión activa" muestra email, role y expiración. Botones para **refrescar JWT** o **cerrar sesión**.
+
+Mientras la migración multi-operador esté en curso, el popup conserva una sección **"Token compartido (legacy)"** colapsable como fallback. Cuando todos los operadores estén logueados con magic link, esa sección puede removerse.
+
+El `background.ts` y `postIngest` priorizan el JWT operador y refrescan automáticamente en `401`. Ningún token se inyecta en el DOM de WhatsApp Web.
 
 ---
 

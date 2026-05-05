@@ -56,6 +56,7 @@
     "test:browser:full:local": "node scripts/browser-test-suite.mjs --local",
     "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js && node tests/auth-routes.test.js && node tests/ml-search-routes.test.js",
     "test:wa-integration": "node tests/wa-enricher-integration.test.js",
+    "test:wa-pro": "node tests/wa-config.test.js && node tests/wa-operator-auth.test.js && node tests/wa-rules.test.js && node tests/wa-webhooks.test.js && node tests/wa-sla.test.js",
     "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
     "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
@@ -74,6 +75,7 @@
     "gate:local": "npm run lint && npm test",
     "dev:check:all": "bash scripts/bmc-dev-check-all.sh",
     "gate:local:full": "npm run lint && npm test && npm run build",
+    "check:env-drift": "node scripts/check-env-drift.mjs",
     "check": "npm run gate:local",
     "lint": "eslint src/",
     "team:hub": "npx --yes serve docs -l 4710",
@@ -126,6 +128,7 @@
     "session:archive:schedule:tick": "bash scripts/session-artifact-scheduler.sh",
     "transportista:migrate": "node scripts/run-transportista-migrations.mjs",
     "wa:migrate": "node scripts/run-wa-migrations.mjs",
+    "wa:admin": "node scripts/wa-admin.mjs",
     "wa:reconcile": "node scripts/wa-reconcile-sheet.mjs",
     "wa:purge-old": "node scripts/wa-purge-old.mjs",
     "wa:ext:load": "bash scripts/wa-extension-load.sh",
@@ -188,6 +191,7 @@
     "express-rate-limit": "^7.5.1",
     "googleapis": "^171.4.0",
     "html2pdf.js": "^0.14.0",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.263.1",
     "multer": "^2.1.1",
     "openai": "^6.32.0",
@@ -200,7 +204,8 @@
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.3",
     "three": "^0.169.0",
-    "web-vitals": "^5.2.0"
+    "web-vitals": "^5.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
