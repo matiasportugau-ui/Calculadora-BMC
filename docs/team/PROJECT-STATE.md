@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Security fix — WA magic-link token leakage):** Corrige fuga crítica introducida por el flujo browser de magic link WA: `/api/wa/auth/verify` ya no redirige `access_token` / `refresh_token` en query string, sino en fragment (`#...`) para evitar envío al servidor en navegaciones posteriores. Además `pino-http` redácta parámetros sensibles (`token`, `access_token`, `refresh_token`, `key`, `code`, `api_key`, `x-api-key`) antes de escribir URLs en logs. Test nuevo [`tests/http-log-redaction.test.js`](../../tests/http-log-redaction.test.js). **Affects:** bmc-security, bmc-deployment, WA Cockpit.
+
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 
 - **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
