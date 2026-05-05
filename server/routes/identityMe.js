@@ -19,6 +19,11 @@ import {
   upsertQuote,
   claimAnonymousQuotes,
 } from "../lib/quoteStore.js";
+import {
+  syncQuote as sheetSyncQuote,
+  reconcile as sheetReconcile,
+  isSheetSyncEnabled,
+} from "../lib/clientQuotesSheetSync.js";
 
 const router = express.Router();
 
@@ -304,6 +309,39 @@ router.post("/api/me/quotes/claim", requireUser(), async (req, res) => {
     const ids = req.body?.clientQuoteIds || [];
     const r = await claimAnonymousQuotes({ userId: req.user.id, clientQuoteIds: ids });
     res.json({ ok: true, claimed: r.claimed });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+// ─── Admin: Sheets sync «Base de datos cotis de clientes» ──────────────
+
+router.get("/api/admin/sheets/clientes/status", requireUser({ role: "admin" }), async (_req, res) => {
+  res.json({
+    ok: true,
+    enabled: isSheetSyncEnabled(),
+    spreadsheet_id: config.bmcSheetId || null,
+    tab: config.sheetsClientQuotesTab,
+  });
+});
+
+router.post("/api/admin/sheets/clientes/reconcile", requireUser({ role: "admin" }), async (req, res) => {
+  try {
+    const result = await sheetReconcile({ actorUserId: req.user.id, limit: Number(req.body?.limit) || 200 });
+    res.json(result);
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post("/api/admin/sheets/clientes/sync/:quote_id", requireUser({ role: "admin" }), async (req, res) => {
+  try {
+    const result = await sheetSyncQuote({
+      quoteId: req.params.quote_id,
+      batchId: `manual-${Date.now().toString(36)}`,
+      actorUserId: req.user.id,
+    });
+    res.json(result);
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }
