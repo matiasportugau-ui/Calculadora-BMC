@@ -94,6 +94,7 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
             text,
             accessToken: config.whatsappAccessToken,
             phoneNumberId: config.whatsappPhoneNumberId,
+            signal: ac.signal,
           });
           const messageId = wa?.messages?.[0]?.id || null;
           await client.query(
@@ -115,6 +116,14 @@ export function startTransportistaOutboxWorker({ config, logger, pool }) {
           sent++;
         } catch (err) {
           await client.query("rollback to savepoint tx_row");
+
+          // Si el fallo es por shutdown abort, no penalizamos el row con un
+          // intento extra ni programamos backoff: dejamos pending para que la
+          // próxima instancia lo recoja inmediatamente.
+          if (ac.signal.aborted && (err?.name === "AbortError" || /aborted/i.test(err?.message || ""))) {
+            await client.query("release savepoint tx_row").catch(() => {});
+            break;
+          }
 
           await client.query("savepoint tx_row_fail");
           try {

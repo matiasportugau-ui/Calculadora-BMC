@@ -65,9 +65,10 @@ function buildShareLink({ params }) {
  * @param {string|null} [opts.triggerMsgId]
  * @param {boolean} [opts.generatedByAi=true]
  * @param {string} [opts.forceParams] — JSON string con params overridden (modo manual)
+ * @param {AbortSignal} [opts.signal] — cancelable desde el worker en SIGTERM
  * @returns {Promise<{ok: boolean, quote?: object, reason?: string}>}
  */
-export async function runWaQuote({ pool, chatId, text, triggerMsgId, generatedByAi = true, forceParams = null }) {
+export async function runWaQuote({ pool, chatId, text, triggerMsgId, generatedByAi = true, forceParams = null, signal = null }) {
   if (!pool) return { ok: false, reason: "no_pool" };
   if (!chatId) return { ok: false, reason: "no_chat_id" };
 
@@ -91,7 +92,7 @@ export async function runWaQuote({ pool, chatId, text, triggerMsgId, generatedBy
 
   let calcResult;
   try {
-    calcResult = await callLocalCotizar(body);
+    calcResult = await callLocalCotizar(body, { signal });
   } catch (e) {
     return { ok: false, reason: "calc_call_failed", error: e instanceof Error ? e.message : String(e) };
   }

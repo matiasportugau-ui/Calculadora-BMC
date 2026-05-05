@@ -167,6 +167,7 @@ export function startWaEnricherWorker({ config, logger, pool }) {
                   text: msg.text,
                   triggerMsgId: msg.msg_id,
                   generatedByAi: true,
+                  signal: ac.signal,
                 });
                 if (!quoteResp.ok) {
                   log.warn(
