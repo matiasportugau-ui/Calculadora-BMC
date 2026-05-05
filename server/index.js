@@ -45,6 +45,7 @@ import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
+import identityMeRouter from "./routes/identityMe.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
@@ -816,6 +817,7 @@ app.use("/calc", calcRouter);
 // Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
 app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
+app.use(identityMeRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);

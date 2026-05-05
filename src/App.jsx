@@ -10,6 +10,7 @@ import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
 import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
+import RequireGrant from "./components/auth/RequireGrant.jsx";
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -95,9 +96,11 @@ export default function App() {
           path="/hub/wa"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcWaModuleWithTabs />
-              </Suspense>
+              <RequireGrant module="wa" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcWaModuleWithTabs />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
@@ -115,9 +118,11 @@ export default function App() {
           path="/hub/admin"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcAdminCotizacionesModule />
-              </Suspense>
+              <RequireGrant role="admin">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcAdminCotizacionesModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
