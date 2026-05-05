@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Fix — critical WA/CI regression):** Corrección de inspección crítica post-CI: se elimina el gitlink accidental `.claude/worktrees/sad-sanderson-90b0a3` (sin `.gitmodules`) que rompía `actions/checkout`/build/smoke, se ignoran worktrees locales `.claude/worktrees/`, `BmcWaCockpit` declara `activeChat` antes del hook CRM que lo consume (evita `ReferenceError` al montar `/wa`), y `POST /webhooks/whatsapp` pasa a fallar cerrado sin `WHATSAPP_APP_SECRET` para evitar payloads forjados en `wa_messages`. Tests offline agregan guards para orden de `activeChat` y fail-closed HMAC. **Affects:** bmc-deployment (CI checkout), bmc-security (WA HMAC requerido), bmc-api-contract/WA Cockpit (ruta `/wa` usable).
+
 **2026-05-04 (Dev — WA Cockpit F1-F5 implementado end-to-end):** Plan canónico [`.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md`](../../.cursor/plans/) ejecutado. Nuevo cockpit operativo de WhatsApp Web sobre el stack actual:
 
 - **Repo separado** [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) (sibling a este repo) — Chrome MV3 + WXT + TypeScript: IDB scrape histórico, WS hook (MAIN world), MutationObserver UI, paste-back desde SPA, heartbeat 60s, crash reporter local.
