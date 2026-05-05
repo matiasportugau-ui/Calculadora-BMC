@@ -710,11 +710,8 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
     rawBodyBuffer: raw,
     signatureHeader: sig,
   });
-  if (!verified.skipped && !verified.ok) {
+  if (!verified.ok) {
     return res.status(401).json({ ok: false, error: "invalid webhook signature" });
-  }
-  if (verified.skipped && config.appEnv !== "test") {
-    logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");
   }
 
   let body = {};

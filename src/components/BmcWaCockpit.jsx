@@ -487,6 +487,11 @@ export default function BmcWaCockpit() {
   const [savingCrm, setSavingCrm] = useState(false);
   const [crmStatus, setCrmStatus] = useState("");
 
+  const activeChat = useMemo(
+    () => conversations.find((c) => c.chat_id === activeChatId) || null,
+    [conversations, activeChatId],
+  );
+
   useEffect(() => {
     if (!activeChat) return;
     setCrmRow(activeChat.lead_sheet_row != null ? String(activeChat.lead_sheet_row) : "");
@@ -578,11 +583,6 @@ export default function BmcWaCockpit() {
   useEffect(() => {
     if (activeChatId) fetchThread(activeChatId);
   }, [activeChatId, fetchThread]);
-
-  const activeChat = useMemo(
-    () => conversations.find((c) => c.chat_id === activeChatId) || null,
-    [conversations, activeChatId],
-  );
 
   // ── render ────────────────────────────────────────────────────────────
   if (!token) {

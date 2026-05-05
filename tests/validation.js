@@ -142,6 +142,7 @@ import { buildZoneLayoutsForRoof3d } from "../src/utils/roofZoneLayouts3d.js";
 import { buildLateralStepInfillGeometries } from "../src/utils/roof3dLateralStepInfill.js";
 import { getRoofPanelMapUrl, pickBestMapUrlFromSlides } from "../src/data/roofPanelMapUrl.js";
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import { generateOpaqueToken, sha256Hex } from "../server/lib/driverToken.js";
 import { verifyWhatsAppSignature } from "../server/lib/whatsappSignature.js";
 import { isAllowedDriverEventType } from "../server/lib/transportistaFsm.js";
@@ -175,6 +176,23 @@ function assert(name, condition, actual, expected) {
 }
 
 function approx(a, b, tol = 0.02) { return Math.abs(a - b) <= tol; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEST SUITE 0: UI regression guards
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 0: UI regression guards ═══");
+
+const waCockpitSource = readFileSync(new URL("../src/components/BmcWaCockpit.jsx", import.meta.url), "utf8");
+const activeChatDeclarationIndex = waCockpitSource.indexOf("const activeChat = useMemo");
+const activeChatCrmConsumerIndex = waCockpitSource.indexOf("setCrmRow(activeChat.lead_sheet_row");
+assert(
+  "BmcWaCockpit declares activeChat before CRM hook consumes it",
+  activeChatDeclarationIndex >= 0 &&
+    activeChatCrmConsumerIndex >= 0 &&
+    activeChatDeclarationIndex < activeChatCrmConsumerIndex,
+  `${activeChatDeclarationIndex}<${activeChatCrmConsumerIndex}`,
+  "declaration before consumer",
+);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 1: Pricing Engine
@@ -2078,10 +2096,10 @@ const waSkip = verifyWhatsAppSignature({
   signatureHeader: "ignored",
 });
 assert(
-  "verifyWhatsAppSignature skipped without secret",
-  waSkip.skipped === true && waSkip.ok === true,
-  `${waSkip.skipped}/${waSkip.ok}`,
-  "true/true",
+  "verifyWhatsAppSignature fails closed without secret by default",
+  waSkip.ok === false && waSkip.reason === "missing_app_secret",
+  `${waSkip.ok}/${waSkip.reason}`,
+  "false/missing_app_secret",
 );
 
 assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
