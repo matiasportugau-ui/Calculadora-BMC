@@ -75,8 +75,13 @@
   .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
   .bmc-mobile-bar { display: flex !important; }
 
-  /* Touch-action: eliminate 300ms tap delay on form areas */
-  .bmc-left-panel { touch-action: manipulation; }
+  /* Touch-action: eliminate 300ms tap delay on form areas + all wizard buttons.
+     `manipulation` allows pan/pinch but disables double-tap-to-zoom which is what
+     causes the 300ms delay before click fires. Critical for SegmentedControl,
+     scenario cards, panel family pickers, and the 2D plan band/dot taps. */
+  .bmc-left-panel,
+  .bmc-main-grid button,
+  .bmc-main-grid [role="button"] { touch-action: manipulation; }
 
   /* Fluid typography for small screens — caps at 18px (desktop unaffected) */
   .bmc-left-panel, .bmc-right-panel {
