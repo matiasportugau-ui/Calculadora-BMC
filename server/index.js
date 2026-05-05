@@ -32,6 +32,8 @@ import createWaRouter from "./routes/wa.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
+import { initIdentityAuth } from "./lib/identityAuth.js";
+import cookieParser from "cookie-parser";
 import { setWaConfigModuleForQuoteParams } from "./lib/waQuoteParams.js";
 import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
@@ -95,6 +97,7 @@ app.use((req, res, next) => {
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
+app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,
@@ -987,6 +990,8 @@ const server = app.listen(config.port, async () => {
     try {
       await primeWaConfig({ pool: waPool, logger });
       initWaOperatorAuth({ pool: waPool, logger });
+      // Comprador identity reuses the same Postgres pool.
+      initIdentityAuth({ pool: waPool, logger });
       initWaWebhooks({ pool: waPool, logger });
       setWaConfigModuleForQuoteParams(waConfigModule);
     } catch (e) {

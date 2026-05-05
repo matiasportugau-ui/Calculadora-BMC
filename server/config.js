@@ -122,6 +122,20 @@ export const config = {
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
       : ["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]
   ),
+  /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
+  identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",
+  identityCookieDomain: process.env.IDENTITY_COOKIE_DOMAIN || "",
+  identityCookieName: process.env.IDENTITY_COOKIE_NAME || "bmc_sess",
+  googleOauthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID || "",
+  /** Sheets sync — opt-in admin sync to «Base de datos cotis de clientes» */
+  sheetsClientQuotesEnabled: bool(process.env.SHEETS_CLIENT_QUOTES_ENABLED, false),
+  sheetsClientQuotesTab: process.env.SHEETS_CLIENT_QUOTES_TAB || "Base de datos cotis de clientes",
+  /** Comma-separated emails seeded as superadmin on first login (Phase G). */
+  internalSuperadminEmails: (
+    process.env.INTERNAL_SUPERADMIN_EMAILS
+      ? process.env.INTERNAL_SUPERADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : []
+  ),
 };
 
 export const redirectUri = () => {
