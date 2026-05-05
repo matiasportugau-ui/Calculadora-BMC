@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Fix — WA Admin SLA manual check no muta config):** `npm run wa:admin -- sla check` ahora ejecuta un tick SLA directo vía `runWaSlaTickOnce()` en lugar de intentar persistir `sla.workerIntervalMs=100`. Esa escritura chocaba con el mínimo del schema (`10000`) y podía bloquear el chequeo manual; además evitamos cualquier riesgo de clobber de configuración operativa persistente. Tests WA SLA actualizados para cubrir ticks manuales sin intervalos inválidos.
+
+**Affects:** WA Cockpit, bmc-security (operación admin sin mutación accidental de config), bmc-api-contract (sin cambio de contrato HTTP), bmc-docs-sync (esta entrada).
+
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 
 - **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
