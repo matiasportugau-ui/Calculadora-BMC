@@ -383,16 +383,12 @@ async function handleSla(cmd, _rest, flags) {
             count(*) filter (where resolved_at is not null)::int as resolved
        from wa_sla_breaches`,
   );
-  const { startWaSlaWorker } = await import("../server/lib/waSlaWorker.js");
-  // Forzamos un intervalo corto y un solo tick: arrancamos, esperamos un tick,
-  // detenemos. El worker ya respeta el flag slaTracking.enabled internamente.
-  await setSetting("sla.workerIntervalMs", 100, { actor: "cli-admin" });
-  const stop = startWaSlaWorker({
+  const { runWaSlaTickOnce } = await import("../server/lib/waSlaWorker.js");
+  // Manual check: run exactly one tick without changing persisted worker config.
+  await runWaSlaTickOnce({
     pool,
     logger: verbose ? console : { info() {}, warn() {}, error() {} },
   });
-  await new Promise((r) => setTimeout(r, 350)); // ~3 ticks de margen
-  stop();
   const after = await pool.query(
     `select count(*) filter (where resolved_at is null)::int as open,
             count(*) filter (where resolved_at is not null)::int as resolved

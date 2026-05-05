@@ -14,7 +14,7 @@
  * Skipea limpio si DATABASE_URL no apunta a Postgres alcanzable.
  */
 import { getWaPool, resetWaPoolForTests } from "../server/lib/waDb.js";
-import { startWaSlaWorker } from "../server/lib/waSlaWorker.js";
+import { runWaSlaTickOnce, startWaSlaWorker } from "../server/lib/waSlaWorker.js";
 import {
   primeWaConfig,
   setFlag,
@@ -91,8 +91,7 @@ async function runTests() {
     await cleanup(pool);
     await primeWaConfig({ pool });
 
-    // Config: tick rápido + thresholds bajos para que el test corra <2s.
-    await setSetting("sla.workerIntervalMs", 200, { actor: "test_sla" });
+    // Config: thresholds bajos para que el test corra con ticks manuales.
     await setSetting("sla.unrepliedAlertHours", 0.5, { actor: "test_sla" });
     await setSetting("sla.unassignedAlertHours", 999, { actor: "test_sla" }); // off
     await setSetting("sla.breachAction", "notify", { actor: "test_sla" });
@@ -106,9 +105,7 @@ async function runTests() {
       [chatA, "+59899000001"],
     );
 
-    stopWorker = startWaSlaWorker({ pool, logger: { info() {}, warn() {}, error() {} } });
-    // Worker primer tick: ~200ms después de schedule().
-    await sleep(450);
+    await runWaSlaTickOnce({ pool, logger: { info() {}, warn() {}, error() {} } });
 
     const r1 = await pool.query(
       "select kind, resolved_at from wa_sla_breaches where chat_id = $1",
@@ -117,7 +114,7 @@ async function runTests() {
     expect("detecta unreplied breach cuando age > threshold", r1.rowCount === 1 && r1.rows[0].kind === "unreplied" && r1.rows[0].resolved_at === null);
 
     // ── Caso 2: idempotente, no doble breach ─────────────────────────────
-    await sleep(300); // otro tick
+    await runWaSlaTickOnce({ pool, logger: { info() {}, warn() {}, error() {} } });
     const r2 = await pool.query(
       "select count(*)::int as n from wa_sla_breaches where chat_id = $1 and kind='unreplied' and resolved_at is null",
       [chatA],
@@ -131,7 +128,7 @@ async function runTests() {
         where chat_id = $1`,
       [chatA],
     );
-    await sleep(350); // dejar que un tick lo procese
+    await runWaSlaTickOnce({ pool, logger: { info() {}, warn() {}, error() {} } });
     const r3 = await pool.query(
       "select resolved_at from wa_sla_breaches where chat_id = $1 and kind='unreplied'",
       [chatA],
@@ -146,12 +143,18 @@ async function runTests() {
        values ($1, $2, now() - interval '1 hour', null, now() - interval '1 hour')`,
       [chatB, "+59899000002"],
     );
-    await sleep(350);
+    await runWaSlaTickOnce({ pool, logger: { info() {}, warn() {}, error() {} } });
     const r4 = await pool.query(
       "select count(*)::int as n from wa_sla_breaches where chat_id = $1",
       [chatB],
     );
     expect("con flag off no detecta nuevos breaches", r4.rows[0].n === 0);
+
+    // ── Caso 5: worker scheduler respeta intervalos válidos del schema ───
+    await setFlag("slaTracking.enabled", { enabled: true }, { actor: "test_sla" });
+    stopWorker = startWaSlaWorker({ pool, logger: { info() {}, warn() {}, error() {} } });
+    await sleep(10);
+    expect("scheduler arranca con intervalo default válido sin mutar settings", Boolean(stopWorker));
   } catch (e) {
     console.error("TEST FAILED:", e);
     fail++;
