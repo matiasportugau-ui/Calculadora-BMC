@@ -64,13 +64,24 @@ function scanProvidedFromYaml() {
       if (m) provided.add(m[1]);
     }
   }
-  // --set-secrets=/path=secret-name:version  OR  --set-secrets=KEY=secret-name:version
-  for (const m of txt.matchAll(/--set-secrets=([^\s]+)/g)) {
+  // --update-secrets=/path=secret-name:version  OR  --update-secrets=KEY=secret-name:version
+  // Historical deploys used --set-secrets, but that replaces the whole secret
+  // mapping set in Cloud Run and can wipe console-managed API tokens.
+  for (const m of txt.matchAll(/--(?:update|set)-secrets=([^\s]+)/g)) {
     const left = m[1].split("=")[0];
     const key = left.replace(/^.*\//, "");
     if (/^[A-Z][A-Z0-9_]+$/.test(key)) provided.add(key);
   }
   return provided;
+}
+
+function scanDestructiveSecretFlags() {
+  if (!fs.existsSync(DEPLOY_YAML)) return [];
+  const txt = fs.readFileSync(DEPLOY_YAML, "utf8");
+  return txt
+    .split("\n")
+    .map((line, i) => ({ line: i + 1, text: line.trim() }))
+    .filter((entry) => entry.text.includes("--set-secrets="));
 }
 
 function scanDocumented() {
@@ -99,6 +110,7 @@ function main() {
   const provided = scanProvidedFromYaml();
   const documented = scanDocumented();
   const allowed = scanAllowlist();
+  const destructiveSecretFlags = scanDestructiveSecretFlags();
 
   const covered = new Set([...provided, ...documented, ...allowed]);
   const drift = [...referenced].filter((v) => !covered.has(v)).sort();
@@ -121,6 +133,7 @@ function main() {
     documented: documented.size,
     allowed: allowed.size,
     drift,
+    destructiveSecretFlags,
   };
 
   if (asJson) {
@@ -143,9 +156,19 @@ function main() {
       console.log("");
       for (const v of drift) console.log(`  - ${v}`);
     }
+    if (destructiveSecretFlags.length > 0) {
+      console.log("");
+      console.log("❌ Destructive Cloud Run secret flag(s) found.");
+      console.log("Use `--update-secrets` instead of `--set-secrets` so existing");
+      console.log("Secret Manager env mappings are preserved across deploys.");
+      console.log("");
+      for (const entry of destructiveSecretFlags) {
+        console.log(`  - ${path.relative(REPO_ROOT, DEPLOY_YAML)}:${entry.line}: ${entry.text}`);
+      }
+    }
   }
 
-  process.exit(drift.length === 0 ? 0 : 1);
+  process.exit(drift.length === 0 && destructiveSecretFlags.length === 0 ? 0 : 1);
 }
 
 try {

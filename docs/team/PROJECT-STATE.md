@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Fix CI/CD — preservar secretos Cloud Run en deploy):** Auditoría crítica del PR `chore/cicd-hardening` detectó que el workflow [`deploy-calc-api.yml`](../../.github/workflows/deploy-calc-api.yml) mantenía `--set-secrets=/run/secrets/service-account.json=...`. En `gcloud run services update` / deploy Cloud Run, `--set-secrets` reemplaza el set de secretos del servicio; el próximo deploy API podía borrar los mappings Secret Manager restaurados para claves IA/API y reintroducir la falla de voz/suggest-response que se acababa de corregir. Se cambió a `--update-secrets` y se agregó guard en [`scripts/check-env-drift.mjs`](../../scripts/check-env-drift.mjs) para fallar CI si vuelve a aparecer `--set-secrets` en workflows de deploy. También se documentaron vars WA auth/SMTP faltantes en [`.env.example`](../../.env.example). **Affects:** bmc-deployment, bmc-security, bmc-panelin-chat, bmc-api-contract.
+
 **2026-05-05 (Ops — rotación OPENAI_API_KEY + tooling de auditoría/rotación):** Clave de OpenAI activa rotada después de detectar 401 `invalid_api_key` en producción. La clave anterior `sk-proj-…A9IA` se reemplazó por `sk-proj-…AoEA` (token-fingerprint, no se publica el valor) y simultáneamente se restauró el mount vía Secret Manager (regresión de la migración del 2026-04-30: `panelin-calc` venía sirviendo `OPENAI_API_KEY` como env var inline; ahora vuelve a `--set-secrets OPENAI_API_KEY=openai-api-key:latest`). Nueva revisión Cloud Run **`panelin-calc-00352-vxk`**, secreto `openai-api-key` versión 3.
 
 Tooling agregado para que la próxima rotación sea de un comando:
