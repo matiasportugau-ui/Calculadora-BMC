@@ -4,7 +4,30 @@ Repo aparte: **calculadora-bmc-wa-extension** (no es parte de este monorepo).
 
 ---
 
-## Instalación dev (carga descomprimida)
+## Atajo: `npm run wa:ext:load` (recomendado)
+
+Desde el repo `Calculadora-BMC/`:
+
+```bash
+npm run wa:ext:load              # build si falta + Chrome con perfil dedicado
+npm run wa:ext:rebuild           # rebuild forzado (cuando tocaste código de la ext)
+npm run wa:ext:watch             # wxt dev en background (HMR del bundle)
+```
+
+Qué hace [`scripts/wa-extension-load.sh`](../../scripts/wa-extension-load.sh):
+
+1. Valida que `../calculadora-bmc-wa-extension/.output/chrome-mv3/manifest.json` exista. Si falta, corre `npm install` + `npm run build`.
+2. Lanza Google Chrome con un **perfil aislado** en `.runtime/chrome-wa-profile/` (no toca tu Chrome personal).
+3. Pasa `--load-extension=…/.output/chrome-mv3` para cargar la unpacked.
+4. Abre 2 pestañas: `http://localhost:5173/hub/wa` y `https://web.whatsapp.com/`.
+
+La sesión WA Web y el `chrome.storage.local` de la extensión **persisten** entre runs (mientras no borres `.runtime/chrome-wa-profile/`). Es decir: el QR de WA Web se escanea una sola vez, y el `API_AUTH_TOKEN` de la extensión queda guardado.
+
+Para empezar limpio: `rm -rf .runtime/chrome-wa-profile`.
+
+---
+
+## Instalación dev manual (sin script)
 
 1. Cloná y construí la extensión:
 
