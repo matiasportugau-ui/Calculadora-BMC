@@ -18,6 +18,7 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
   calcTotalesSinIVA,
 } from "../src/utils/calculations.js";
+import { readFileSync } from "node:fs";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
@@ -2750,6 +2751,23 @@ console.log("\n═══ SUITE: fiscal contract shapes ═══");
     /^\d{4}-\d{2}-\d{2}\/\d{4}-\d{2}-\d{2}$/.test(mockBps.periodo),
     mockBps.periodo,
     "YYYY-MM-DD/YYYY-MM-DD",
+  );
+}
+
+console.log("\n═══ SUITE 68: Cloud Run secret rotation safety ═══");
+{
+  const rotateScript = readFileSync("scripts/openai-key-rotate.sh", "utf8");
+  assert(
+    "OpenAI rotation merges Cloud Run secrets",
+    rotateScript.includes("--update-secrets=OPENAI_API_KEY="),
+    rotateScript.match(/--(?:update|set)-secrets=OPENAI_API_KEY=/)?.[0] || "missing",
+    "--update-secrets=OPENAI_API_KEY=",
+  );
+  assert(
+    "OpenAI rotation must not replace existing Cloud Run secret mounts",
+    !rotateScript.includes("--set-secrets=OPENAI_API_KEY="),
+    rotateScript.includes("--set-secrets=OPENAI_API_KEY=") ? "destructive --set-secrets" : "merge-safe",
+    "merge-safe",
   );
 }
 
