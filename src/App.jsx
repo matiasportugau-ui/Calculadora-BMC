@@ -28,6 +28,7 @@ const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUni
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
+const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 
 const suspenseFallback = (
   <div
@@ -127,6 +128,7 @@ export default function App() {
           }
         />
         <Route path="/hub/plan-import" element={<Suspense fallback={suspenseFallback}><BmcPlanImportModule /></Suspense>} />
+        <Route path="/mi-espacio" element={<Shell><Suspense fallback={suspenseFallback}><MySpacePage /></Suspense></Shell>} />
         <Route path="/hub/agent-admin" element={<Suspense fallback={suspenseFallback}><AgentAdminModule /></Suspense>} />
         <Route
           path="/"

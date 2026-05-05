@@ -12,6 +12,13 @@ import express from "express";
 import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
+import {
+  listMyQuotes,
+  getMyQuote,
+  softDeleteQuote,
+  upsertQuote,
+  claimAnonymousQuotes,
+} from "../lib/quoteStore.js";
 
 const router = express.Router();
 
@@ -235,6 +242,68 @@ router.get("/api/me/special-quote-requests", requireUser(), async (req, res) => 
       [req.user.id],
     );
     res.json({ ok: true, items: rows });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+// ─── Per-user quotes ───────────────────────────────────────────────────
+
+router.get("/api/me/quotes", requireUser(), async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const items = await listMyQuotes({ userId: req.user.id, limit });
+    res.json({ ok: true, items });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get("/api/me/quotes/:id", requireUser(), async (req, res) => {
+  try {
+    const q = await getMyQuote({ userId: req.user.id, quoteId: req.params.id });
+    if (!q) return res.status(404).json({ ok: false, error: "not_found" });
+    res.json({ ok: true, quote: q });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post("/api/me/quotes", requireUser(), async (req, res) => {
+  try {
+    const { clientQuoteId, payload, status, wizardStep, pdfId, pdfUrl, gcsUri, driveFileId } = req.body || {};
+    if (!payload || typeof payload !== "object") {
+      return res.status(400).json({ ok: false, error: "missing_payload" });
+    }
+    const q = await upsertQuote({
+      userId: req.user.id,
+      clientQuoteId,
+      payload,
+      pdfId, pdfUrl, gcsUri, driveFileId,
+      status: status || "draft",
+      wizardStep,
+    });
+    res.json({ ok: true, quote: q });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.delete("/api/me/quotes/:id", requireUser(), async (req, res) => {
+  try {
+    const q = await softDeleteQuote({ userId: req.user.id, quoteId: req.params.id });
+    if (!q) return res.status(404).json({ ok: false, error: "not_found" });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post("/api/me/quotes/claim", requireUser(), async (req, res) => {
+  try {
+    const ids = req.body?.clientQuoteIds || [];
+    const r = await claimAnonymousQuotes({ userId: req.user.id, clientQuoteIds: ids });
+    res.json({ ok: true, claimed: r.claimed });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }
