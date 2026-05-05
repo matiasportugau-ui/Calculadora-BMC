@@ -44,6 +44,7 @@ export default function GoogleDrivePanel({
   onLoad,
   onDelete,
   isAuthenticated,
+  configured = true,
   currentUser,
   onSignIn,
   onSignOut,
@@ -98,7 +99,18 @@ export default function GoogleDrivePanel({
 
         {/* Auth section */}
         <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
-          {isAuthenticated && currentUser ? (
+          {!configured ? (
+            <div style={{
+              padding: "12px 14px", borderRadius: 10,
+              background: C.warningSoft, color: "#7A4A00", fontSize: 12, lineHeight: 1.5,
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <AlertTriangle size={14} /> Drive no configurado
+              </div>
+              Falta <code style={{ background: "#fff", padding: "1px 5px", borderRadius: 4 }}>VITE_GOOGLE_CLIENT_ID</code>.
+              {" "}Pedile al admin que ejecute <code style={{ background: "#fff", padding: "1px 5px", borderRadius: 4 }}>npm run drive:configure</code> (dev) o sincronice la variable en Vercel y redeploy.
+            </div>
+          ) : isAuthenticated && currentUser ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 {currentUser.picture && (
@@ -205,7 +217,7 @@ export default function GoogleDrivePanel({
         )}
 
         {/* Save button */}
-        {currentUser && (
+        {isAuthenticated && (
           <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}` }}>
             <button onClick={onSave} disabled={saving} style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -230,7 +242,7 @@ export default function GoogleDrivePanel({
         )}
 
         {/* Quotation list */}
-        {currentUser && (
+        {isAuthenticated && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
