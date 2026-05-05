@@ -10,13 +10,33 @@
 #   - Vercel project env (vercel CLI, optional; existence only)
 #
 # Usage:
-#   bash scripts/openai-key-audit.sh
+#   bash scripts/openai-key-audit.sh                     # full report, exit 0
+#   bash scripts/openai-key-audit.sh --strict            # exit 1 if any source returns 401 (INACTIVE)
+#   bash scripts/openai-key-audit.sh --source=local      # only scan local .env files
+#   bash scripts/openai-key-audit.sh --source=local,cloudrun --strict
 #   CLOUD_RUN_SERVICE=panelin-calc CLOUD_RUN_REGION=us-central1 bash scripts/openai-key-audit.sh
 
 set -u
 
 CLOUD_RUN_SERVICE="${CLOUD_RUN_SERVICE:-panelin-calc}"
 CLOUD_RUN_REGION="${CLOUD_RUN_REGION:-us-central1}"
+
+STRICT=0
+SOURCES_FILTER="local,shell,cloudrun,vercel"
+for arg in "$@"; do
+  case "$arg" in
+    --strict) STRICT=1 ;;
+    --source=*) SOURCES_FILTER="${arg#--source=}" ;;
+    -h|--help)
+      sed -n '2,15p' "$0"; exit 0 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+src_enabled() {
+  case ",$SOURCES_FILTER," in *",$1,"*) return 0 ;; esac
+  return 1
+}
+INACTIVE_COUNT=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -60,7 +80,7 @@ probe_key() {
   local label
   case "$code" in
     200) label="$(grn ACTIVE)" ;;
-    401) label="$(red INACTIVE)" ;;
+    401) label="$(red INACTIVE)"; INACTIVE_COUNT=$((INACTIVE_COUNT + 1)) ;;
     429) label="$(ylw RATE-LIMITED)" ;;
     000) label="$(ylw NETWORK-ERROR)" ;;
     *)   label="$(ylw "HTTP $code")" ;;
@@ -89,22 +109,28 @@ echo
 
 # 1) Local .env* files (repo root + nested Calculadora-BMC if any)
 # Use a while-read loop so this works on macOS bash 3.2 (no mapfile).
-bold "1. Local files"
-while IFS= read -r f; do
-  [ -z "$f" ] && continue
-  val=$(read_env_key "$f" || true)
-  probe_key "$f" "${val:-}"
-done < <(find . -maxdepth 4 \
-  -not -path "*/node_modules/*" -not -path "*/.git/*" \
-  -not -path "*/dist/*" -not -path "*/build/*" -not -path "*/.next/*" \
-  \( -name ".env" -o -name ".env.*" \) -type f 2>/dev/null | sort -u)
+if src_enabled local; then
+  bold "1. Local files"
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    val=$(read_env_key "$f" || true)
+    probe_key "$f" "${val:-}"
+  done < <(find . -maxdepth 4 \
+    -not -path "*/node_modules/*" -not -path "*/.git/*" \
+    -not -path "*/dist/*" -not -path "*/build/*" -not -path "*/.next/*" \
+    \( -name ".env" -o -name ".env.*" \) ! -name ".env.bak.*" \
+    -type f 2>/dev/null | sort -u)
+  echo
+fi
 
-echo
-bold "2. Current shell env"
-probe_key "process.env.OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
+if src_enabled shell; then
+  bold "2. Current shell env"
+  probe_key "process.env.OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
+  echo
+fi
 
 # 3) Cloud Run service env (optional)
-echo
+if src_enabled cloudrun; then
 bold "3. Cloud Run service ($CLOUD_RUN_SERVICE @ $CLOUD_RUN_REGION)"
 if ! command -v gcloud >/dev/null 2>&1; then
   dim "gcloud CLI not on PATH — skipping."
@@ -132,9 +158,11 @@ else
     fi
   fi
 fi
+echo
+fi  # src_enabled cloudrun
 
 # 4) Vercel project env (existence only — values cannot be fetched without pulling)
-echo
+if src_enabled vercel; then
 bold "4. Vercel project env"
 if ! command -v vercel >/dev/null 2>&1; then
   dim "vercel CLI not on PATH — skipping."
@@ -151,7 +179,14 @@ else
     fi
   fi
 fi
-
 echo
+fi  # src_enabled vercel
+
 bold "Done."
 dim "Tip: GET /api/agent/voice/health (admin auth) returns the live key status from the running server."
+
+if [ "$STRICT" = "1" ] && [ "$INACTIVE_COUNT" -gt 0 ]; then
+  red "STRICT MODE: $INACTIVE_COUNT INACTIVE source(s) detected — exit 1"
+  echo
+  exit 1
+fi
