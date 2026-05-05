@@ -318,6 +318,11 @@ export default function BmcWaCockpit() {
   const [threadError, setThreadError] = useState("");
   const [activeTab, setActiveTab] = useState("ai");
 
+  const activeChat = useMemo(
+    () => conversations.find((c) => c.chat_id === activeChatId) || null,
+    [conversations, activeChatId],
+  );
+
   // ── F2 suggestions ───────────────────────────────────────────────────
   const [suggestions, setSuggestions] = useState([]);
   const [loadingSugg, setLoadingSugg] = useState(false);
@@ -579,11 +584,6 @@ export default function BmcWaCockpit() {
   useEffect(() => {
     if (activeChatId) fetchThread(activeChatId);
   }, [activeChatId, fetchThread]);
-
-  const activeChat = useMemo(
-    () => conversations.find((c) => c.chat_id === activeChatId) || null,
-    [conversations, activeChatId],
-  );
 
   // ── render ────────────────────────────────────────────────────────────
   if (!token) {

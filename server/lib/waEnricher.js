@@ -38,6 +38,12 @@ const ALLOWED_TONES = new Set(["corta", "tecnica", "cierre"]);
 /**
  * Parsea (defensivamente) el JSON que produce el LLM en modo cockpit.
  * Devuelve { intent, confidence, options } sane o null si no se pudo.
+ *
+ * Estrategia (en orden):
+ *   1) JSON limpio entre `{` y `}`.
+ *   2) Si falla, intenta extraer un bloque ```json ... ``` aunque tenga texto antes/después.
+ *   3) Si falla, intenta detectar 3 opciones desde texto natural (formato "1." / "2." / "3." o
+ *      bullets con etiquetas "corta:", "técnica:", "cierre:") como fallback amable.
  */
 export function parseSuggestionJson(raw) {
   if (typeof raw !== "string" || !raw.trim()) return null;
@@ -46,18 +52,36 @@ export function parseSuggestionJson(raw) {
   // Strip code-fence accidental
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
-  // Toma sólo desde la primera { hasta la última }
+  // Estrategia 1: primer `{` hasta el último `}`
   const first = text.indexOf("{");
   const last = text.lastIndexOf("}");
-  if (first < 0 || last < first) return null;
-  const json = text.slice(first, last + 1);
-
-  let obj;
-  try {
-    obj = JSON.parse(json);
-  } catch {
-    return null;
+  let obj = null;
+  if (first >= 0 && last > first) {
+    try {
+      obj = JSON.parse(text.slice(first, last + 1));
+    } catch {
+      obj = null;
+    }
   }
+
+  // Estrategia 2: cualquier bloque ```json ... ``` enterrado en prosa
+  if (!obj) {
+    const m = text.match(/```json\s*([\s\S]*?)```/i);
+    if (m) {
+      try {
+        obj = JSON.parse(m[1].trim());
+      } catch {
+        obj = null;
+      }
+    }
+  }
+
+  // Estrategia 3: fallback texto natural (heurístico)
+  if (!obj) {
+    const fallback = parseNaturalLanguageFallback(raw);
+    if (fallback) obj = fallback;
+  }
+
   if (!obj || typeof obj !== "object") return null;
 
   const intent = ALLOWED_INTENTS.has(obj.intent) ? obj.intent : null;
@@ -78,6 +102,42 @@ export function parseSuggestionJson(raw) {
   }
 
   return { intent, confidence, options: cleanOptions };
+}
+
+/**
+ * Si el LLM devolvió texto natural en vez de JSON, intentamos extraer 3
+ * opciones detectando patrones tipo numerados o etiquetas por tono.
+ * Este parser es deliberadamente conservador: si no encuentra estructura
+ * clara, devuelve null y el caller marca `error: "parse_failed"`.
+ */
+function parseNaturalLanguageFallback(raw) {
+  const text = String(raw || "").replace(/\r/g, "");
+  const blocks = [];
+
+  // Patrón A: "1. ...", "2. ...", "3. ..."
+  const numbered = [...text.matchAll(/(?:^|\n)\s*(\d)[.)]\s*([^\n]+(?:\n(?!\s*\d[.)])[^\n]+)*)/g)];
+  if (numbered.length >= 3) {
+    for (let i = 0; i < Math.min(3, numbered.length); i++) {
+      const tone = i === 0 ? "corta" : i === 1 ? "tecnica" : "cierre";
+      blocks.push({ tone, text: numbered[i][2].trim().slice(0, 600) });
+    }
+  }
+
+  // Patrón B: "Corta: ...", "Técnica: ...", "Cierre: ..."
+  if (blocks.length === 0) {
+    const labels = [
+      { tone: "corta", re: /(?:^|\n)\s*(?:opci[oó]n\s+)?corta\s*[:\-—]\s*([^\n]+(?:\n(?!\s*(?:opci[oó]n\s+)?(?:corta|t[eé]cnica|cierre)\s*[:\-—])[^\n]+)*)/i },
+      { tone: "tecnica", re: /(?:^|\n)\s*(?:opci[oó]n\s+)?t[eé]cnica\s*[:\-—]\s*([^\n]+(?:\n(?!\s*(?:opci[oó]n\s+)?(?:corta|t[eé]cnica|cierre)\s*[:\-—])[^\n]+)*)/i },
+      { tone: "cierre", re: /(?:^|\n)\s*(?:opci[oó]n\s+)?cierre\s*[:\-—]\s*([^\n]+(?:\n(?!\s*(?:opci[oó]n\s+)?(?:corta|t[eé]cnica|cierre)\s*[:\-—])[^\n]+)*)/i },
+    ];
+    for (const { tone, re } of labels) {
+      const m = text.match(re);
+      if (m) blocks.push({ tone, text: m[1].trim().slice(0, 600) });
+    }
+  }
+
+  if (blocks.length === 0) return null;
+  return { intent: null, confidence: null, options: blocks };
 }
 
 /**
@@ -108,24 +168,30 @@ export async function generateSuggestions({ history, intentHint }) {
     return { intent: null, confidence: null, options: [], provider: null, latency_ms: 0, error: "no_history" };
   }
 
-  // Inyectamos el bloque de modo cockpit como mensaje "user" final-meta. Mantiene compatibilidad
-  // con callAgentOnce sin modificar su firma — el bloque pide formato JSON estricto.
+  // Inyectamos el bloque de modo cockpit como un mensaje "user" final muy explícito.
+  // Usamos `channel: "chat"` (no "wa") para evitar el conflicto con la regla "Cerrar con
+  // ¡Saludos! BMC Uruguay" — acá NO queremos un mensaje conversacional, queremos JSON.
   const block = buildWaCockpitSuggestionsBlock();
+  const cockpitInstruction =
+    `[CRITICAL OUTPUT FORMAT OVERRIDE — IGNORE all previous channel formatting rules]\n` +
+    `${block}\n\n` +
+    `Intent heurístico detectado: ${intentHint || "n/a"}.\n\n` +
+    `RESPUESTA: Devuelve EXCLUSIVAMENTE el JSON descrito arriba. Nada antes, nada después. ` +
+    `No incluyas saludos, despedidas, ni texto de relleno. La primera carácter de tu respuesta debe ser \`{\` y el último \`}\`.`;
+
   const lastUser = messages[messages.length - 1];
   if (lastUser?.role === "user") {
-    lastUser.content = `${lastUser.content}\n\n[INSTRUCCIÓN INTERNA — NO RESPONDER AL CLIENTE]:\n${block}\n\nIntent detectado heurístico: ${intentHint || "n/a"}.`;
+    lastUser.content = `${lastUser.content}\n\n${cockpitInstruction}`;
   } else {
-    messages.push({
-      role: "user",
-      content: `[INSTRUCCIÓN INTERNA — generar 3 opciones de respuesta para el último mensaje del cliente]:\n${block}`,
-    });
+    messages.push({ role: "user", content: cockpitInstruction });
   }
 
   const t0 = Date.now();
   let text = "";
   let provider = null;
   try {
-    const r = await callAgentOnce(messages, { channel: "wa" });
+    // chat channel = más tokens (1200) y sin "Saludos" forzado en el cierre.
+    const r = await callAgentOnce(messages, { channel: "chat" });
     text = String(r?.text || "");
     provider = r?.provider || null;
   } catch (e) {

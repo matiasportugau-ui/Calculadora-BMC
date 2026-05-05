@@ -35,14 +35,14 @@ export function startWaEnricherWorker({ config, logger, pool }) {
 
     const client = await pool.connect();
     try {
-      // Pull unenriched inbound messages, recent first
+      // Pull unenriched inbound messages, oldest first (FIFO)
       const { rows: pendingMsgs } = await client.query(
         `select msg_id, chat_id, ts, text
          from wa_messages
          where enriched_at is null
            and direction = 'in'
            and text is not null
-         order by ts desc
+         order by ts asc
          limit $1`,
         [batchSize],
       );
