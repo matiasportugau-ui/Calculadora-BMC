@@ -40,7 +40,16 @@ import {
   _resetWaConfigForTests,
 } from "../server/lib/waConfig.js";
 
-const pool = getWaPool();
+const databaseUrl = process.env.DATABASE_URL || process.env.WA_DATABASE_URL;
+if (!databaseUrl) {
+  console.error("Error: DATABASE_URL not set in environment. Configure it in .env first.");
+  process.exit(1);
+}
+const pool = getWaPool(databaseUrl);
+if (!pool) {
+  console.error("Error: failed to initialize Postgres pool from DATABASE_URL.");
+  process.exit(1);
+}
 
 function parseArgs(argv) {
   const out = { _: [], flags: {} };
