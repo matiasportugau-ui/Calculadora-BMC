@@ -11,7 +11,7 @@
 #        - creates secret `openai-api-key` if it does not exist
 #        - adds the new key as a fresh version
 #        - on the service: --remove-env-vars OPENAI_API_KEY
-#                          --set-secrets   OPENAI_API_KEY=openai-api-key:latest
+#                          --update-secrets OPENAI_API_KEY=openai-api-key:latest
 #   5. Re-runs scripts/openai-key-audit.sh.
 #
 # Aborts at any failure — your old (dead) key is left in place if anything goes wrong.
@@ -161,12 +161,13 @@ else
           || ylw "Could not bind IAM (may already be bound or you lack permission)."
       fi
 
-      # 4d. Switch the service from inline env → Secret Manager
+      # 4d. Switch the service from inline env → Secret Manager without removing
+      # existing secret mounts (for example the Sheets service-account JSON).
       dim "Updating Cloud Run service to use $GCP_SECRET_NAME:latest…"
       gcloud run services update "$CLOUD_RUN_SERVICE" \
         --region="$CLOUD_RUN_REGION" \
         --remove-env-vars=OPENAI_API_KEY \
-        --set-secrets=OPENAI_API_KEY="${GCP_SECRET_NAME}:latest" \
+        --update-secrets=OPENAI_API_KEY="${GCP_SECRET_NAME}:latest" \
         || die "gcloud run services update failed."
       grn "Cloud Run rotated."
     fi
