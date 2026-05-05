@@ -2082,7 +2082,7 @@ export default function createBmcDashboardRouter(config) {
     }
   });
 
-  router.post("/crm/suggest-response", async (req, res) => {
+  router.post("/crm/suggest-response", requireCrmCockpitAuth, async (req, res) => {
     const { consulta, origen, cliente, producto, observaciones, provider, itemId } = req.body || {};
     if (!consulta) return res.status(400).json({ ok: false, error: "Missing consulta" });
 

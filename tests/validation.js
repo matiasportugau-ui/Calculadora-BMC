@@ -2084,6 +2084,19 @@ assert(
   "true/true",
 );
 
+const waMissingRequiredSecret = verifyWhatsAppSignature({
+  appSecret: "",
+  rawBodyBuffer: waRaw,
+  signatureHeader: "ignored",
+  requireSignature: true,
+});
+assert(
+  "verifyWhatsAppSignature rejects missing required secret",
+  waMissingRequiredSecret.ok === false && waMissingRequiredSecret.reason === "missing_app_secret",
+  `${waMissingRequiredSecret.ok}/${waMissingRequiredSecret.reason}`,
+  "false/missing_app_secret",
+);
+
 assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
 assert("isAllowedDriverEventType rejects unknown", !isAllowedDriverEventType("not_an_event"), true, true);
 

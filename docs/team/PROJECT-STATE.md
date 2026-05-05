@@ -12,6 +12,15 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Security — hardening webhooks + CRM IA pública):** Corrida de inspección crítica tras CI fallido (`smoke:prod` / `channels:automated`). Fix mínimo en API:
+
+- **WhatsApp webhook** (`server/index.js`, `server/lib/whatsappSignature.js`): en `APP_ENV` distinto de `development`/`test`, `POST /webhooks/whatsapp` exige HMAC válido y devuelve 503 si falta `WHATSAPP_APP_SECRET`, evitando que tráfico público sin firma escriba/active flujo WA.
+- **CRM IA** (`server/routes/bmcDashboard.js`): `POST /api/crm/suggest-response` ahora requiere `API_AUTH_TOKEN` como el resto del cockpit; la UI operativa ya llama con Bearer.
+- **Smoke prod** (`scripts/smoke-prod-api.mjs`): envía Bearer si `API_AUTH_TOKEN`/`API_KEY` existe; si no, acepta `401` como prueba de que `suggest-response` quedó protegido.
+- **Test unitario** (`tests/validation.js`): cubre rechazo de secreto WA faltante cuando la firma es requerida.
+
+**Affects:** bmc-security, bmc-deployment (Cloud Run debe mantener `WHATSAPP_APP_SECRET` y `API_AUTH_TOKEN`), bmc-api-contract/smoke prod.
+
 **2026-05-04 (Dev — WA Cockpit F1-F5 implementado end-to-end):** Plan canónico [`.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md`](../../.cursor/plans/) ejecutado. Nuevo cockpit operativo de WhatsApp Web sobre el stack actual:
 
 - **Repo separado** [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) (sibling a este repo) — Chrome MV3 + WXT + TypeScript: IDB scrape histórico, WS hook (MAIN world), MutationObserver UI, paste-back desde SPA, heartbeat 60s, crash reporter local.
