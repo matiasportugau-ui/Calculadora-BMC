@@ -11,6 +11,7 @@ const APP_FOLDER_NAME = "Panelin BMC Cotizaciones";
 const BMC_MIME = "application/json";
 const PDF_MIME = "application/pdf";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
+const GIS_SCRIPT_SELECTOR = 'script[data-gis-client="1"]';
 
 let _tokenClient = null;
 let _tokenClientId = null;
@@ -20,6 +21,7 @@ let _onAuthChange = null;
 let _gsiLoadPromise = null;
 let _hasConsented = false;
 let _pendingErrorHandler = null;
+let _signInPromise = null;
 
 /**
  * Load GIS script on demand — removed from index.html <head> to avoid
@@ -32,17 +34,27 @@ export function loadGsiScript() {
   if (isGisLoaded()) return Promise.resolve();
   if (_gsiLoadPromise) return _gsiLoadPromise;
   _gsiLoadPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-gis-client="1"]');
+    let existing = document.querySelector(GIS_SCRIPT_SELECTOR);
+    if (existing?.dataset.gisLoadState === "error") {
+      existing.remove();
+      existing = null;
+    }
     const s = existing || document.createElement('script');
     if (!existing) {
       s.src = 'https://accounts.google.com/gsi/client';
       s.async = true;
       s.defer = true;
       s.dataset.gisClient = '1';
+      s.dataset.gisLoadState = "loading";
     }
-    s.addEventListener('load', () => resolve(), { once: true });
+    s.addEventListener('load', () => {
+      s.dataset.gisLoadState = "loaded";
+      resolve();
+    }, { once: true });
     s.addEventListener('error', () => {
+      s.dataset.gisLoadState = "error";
       _gsiLoadPromise = null;
+      s.remove();
       reject(new Error('No se pudo cargar Google Identity Services. Verificá tu conexión o un bloqueador de scripts.'));
     }, { once: true });
     if (!existing) document.head.appendChild(s);
@@ -53,11 +65,11 @@ export function loadGsiScript() {
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 function getClientId() {
-  return (
+  return ((
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_GOOGLE_CLIENT_ID) ||
     window.__BMC_GOOGLE_CLIENT_ID ||
     ""
-  );
+  )).trim();
 }
 
 function isGisLoaded() {
@@ -163,52 +175,66 @@ function describeOAuthError(resp) {
  * screen — empty prompt can silently fail in some browser/cookie contexts.
  */
 export async function signIn() {
-  if (!_tokenClient) {
-    await loadGsiScript();
-    initGoogleAuth(); // throws with descriptive message if mis-configured
-  }
+  if (_signInPromise) return _signInPromise;
 
-  return new Promise((resolve, reject) => {
+  _signInPromise = (async () => {
     if (!_tokenClient) {
-      reject(new Error("No se pudo inicializar Google Identity Services."));
-      return;
+      await loadGsiScript();
+      initGoogleAuth(); // throws with descriptive message if mis-configured
     }
 
-    if (isAuthenticated()) {
-      resolve(_accessToken);
-      return;
-    }
+    return new Promise((resolve, reject) => {
+      if (!_tokenClient) {
+        reject(new Error("No se pudo inicializar Google Identity Services."));
+        return;
+      }
 
-    _tokenClient.callback = (resp) => {
-      _pendingErrorHandler = null;
-      if (resp?.error) {
+      if (isAuthenticated()) {
+        resolve(_accessToken);
+        return;
+      }
+
+      _tokenClient.callback = (resp) => {
+        _pendingErrorHandler = null;
+        if (resp?.error) {
+          _accessToken = null;
+          notifyAuth();
+          reject(describeOAuthError(resp));
+          return;
+        }
+        if (!resp?.access_token) {
+          reject(new Error("Google no devolvió un access_token."));
+          return;
+        }
+        _accessToken = resp.access_token;
+        _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
+        _hasConsented = true;
+        notifyAuth();
+        resolve(resp.access_token);
+      };
+
+      _pendingErrorHandler = (err) => {
         _accessToken = null;
         notifyAuth();
-        reject(describeOAuthError(resp));
-        return;
-      }
-      if (!resp?.access_token) {
-        reject(new Error("Google no devolvió un access_token."));
-        return;
-      }
-      _accessToken = resp.access_token;
-      _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
-      _hasConsented = true;
-      notifyAuth();
-      resolve(resp.access_token);
-    };
+        reject(describeOAuthError(err));
+      };
 
-    _pendingErrorHandler = (err) => reject(describeOAuthError(err));
+      try {
+        _tokenClient.requestAccessToken({
+          prompt: _hasConsented ? "" : "consent",
+        });
+      } catch (err) {
+        _pendingErrorHandler = null;
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    });
+  })();
 
-    try {
-      _tokenClient.requestAccessToken({
-        prompt: _hasConsented ? "" : "consent",
-      });
-    } catch (err) {
-      _pendingErrorHandler = null;
-      reject(err instanceof Error ? err : new Error(String(err)));
-    }
-  });
+  try {
+    return await _signInPromise;
+  } finally {
+    _signInPromise = null;
+  }
 }
 
 export function signOut() {
