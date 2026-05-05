@@ -949,7 +949,12 @@ app.use((error, req, res, _next) => {
 
 const transportistaPool = getTransportistaPool(config.databaseUrl);
 
-app.listen(config.port, () => {
+// Cleanups capturados en el listen callback. Inicializados a noop para que
+// el shutdown handler sea seguro aunque la señal llegue antes del listen.
+let stopTransportista = () => {};
+let stopWaEnricher = () => {};
+
+const server = app.listen(config.port, () => {
   logger.info(
     {
       port: config.port,
@@ -959,12 +964,40 @@ app.listen(config.port, () => {
     "MercadoLibre connector server started"
   );
   if (transportistaPool) {
-    startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+    stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
   }
   // WA Cockpit enricher (F2) — opt-in con WA_ENRICHER_ENABLED=true
   const waPool = getWaPool(config.databaseUrl);
   if (waPool && config.waEnricherEnabled) {
-    startWaEnricherWorker({ config, logger, pool: waPool });
+    stopWaEnricher = startWaEnricherWorker({ config, logger, pool: waPool });
     logger.info({ intervalMs: config.waEnricherIntervalMs, batchSize: config.waEnricherBatchSize }, "WA enricher worker started");
   }
 });
+
+// ── Graceful shutdown ──
+// Cloud Run otorga ~10s entre SIGTERM y SIGKILL. Disparamos los cleanups de
+// los workers (que abortan batches in-flight) y cerramos el HTTP server. Si
+// algo se cuelga, el setTimeout fuerza el exit a los 8s para no perder el
+// grace period.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, "shutdown signal received");
+
+  try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
+  try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
+
+  server.close((err) => {
+    if (err) logger.error({ err: err?.message }, "server.close error");
+    logger.info("HTTP server closed, exiting");
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    logger.warn("forced exit after 8s grace");
+    process.exit(0);
+  }, 8000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
