@@ -86,10 +86,23 @@ export function startWaEnricherWorker({ config, logger, pool }) {
 
           const result = await generateSuggestions({ history, intentHint });
 
+          // Idempotente vía índice parcial wa_suggestions_trigger_unique
+          // (migración 008_wa_idempotency.sql). Predicado del ON CONFLICT debe
+          // matchear el del índice — no tocar uno sin tocar el otro.
           await client.query(
             `insert into wa_suggestions
                (chat_id, trigger_msg_id, intent, options, provider, latency_ms, error, meta)
-             values ($1, $2, $3, $4::jsonb, $5, $6, $7, $8::jsonb)`,
+             values ($1, $2, $3, $4::jsonb, $5, $6, $7, $8::jsonb)
+             on conflict (trigger_msg_id) where trigger_msg_id is not null
+             do update set
+               chat_id = excluded.chat_id,
+               intent = excluded.intent,
+               options = excluded.options,
+               provider = excluded.provider,
+               latency_ms = excluded.latency_ms,
+               error = excluded.error,
+               meta = excluded.meta,
+               generated_at = now()`,
             [
               msg.chat_id,
               msg.msg_id,
@@ -164,9 +177,18 @@ export function startWaEnricherWorker({ config, logger, pool }) {
           // no aborta el batch entero, solo este mensaje queda sin marcar.
           await client.query("savepoint wa_msg_fail");
           try {
+            // Mismo índice idempotente: si ya hay una suggestion previa para este
+            // msg, la sobreescribimos con el error en lugar de duplicar.
             await client.query(
               `insert into wa_suggestions (chat_id, trigger_msg_id, intent, options, error)
-               values ($1, $2, $3, '[]'::jsonb, $4)`,
+               values ($1, $2, $3, '[]'::jsonb, $4)
+               on conflict (trigger_msg_id) where trigger_msg_id is not null
+               do update set
+                 chat_id = excluded.chat_id,
+                 intent = excluded.intent,
+                 options = excluded.options,
+                 error = excluded.error,
+                 generated_at = now()`,
               [msg.chat_id, msg.msg_id, intentHint, err instanceof Error ? err.message : String(err)],
             );
             await client.query(

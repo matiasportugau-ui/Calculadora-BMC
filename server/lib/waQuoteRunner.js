@@ -116,10 +116,17 @@ export async function runWaQuote({ pool, chatId, text, triggerMsgId, generatedBy
 
   const link = buildShareLink({ params });
 
+  // Idempotencia: una sola auto-cotización por trigger_msg_id (índice parcial
+  // wa_quotes_trigger_ai_unique en migración 008_wa_idempotency.sql).
+  // Las cotizaciones manuales (generated_by_ai=false) quedan fuera del índice,
+  // por lo que el operador puede re-cotizar el mismo chat sin restricción.
+  // Predicado del ON CONFLICT debe matchear el del índice exactamente.
   const ins = await pool.query(
     `insert into wa_quotes
        (chat_id, trigger_msg_id, generated_by_ai, params, total_usd, total_iva_usd, bom_summary, link, status, meta)
      values ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8, 'draft', $9::jsonb)
+     on conflict (trigger_msg_id) where trigger_msg_id is not null and generated_by_ai = true
+     do nothing
      returning quote_id, chat_id, link, total_usd, total_iva_usd, generated_at, status`,
     [
       chatId,
@@ -133,6 +140,22 @@ export async function runWaQuote({ pool, chatId, text, triggerMsgId, generatedBy
       JSON.stringify({ calc_response_keys: Object.keys(calcResult.body || {}).slice(0, 20) }),
     ],
   );
+
+  // ON CONFLICT DO NOTHING devuelve 0 filas en colisión → recuperar la fila existente.
+  if (ins.rows.length === 0 && triggerMsgId && generatedByAi) {
+    const existing = await pool.query(
+      `select quote_id, chat_id, link, total_usd, total_iva_usd, generated_at, status
+       from wa_quotes
+       where trigger_msg_id = $1 and generated_by_ai = true
+       limit 1`,
+      [triggerMsgId],
+    );
+    if (existing.rows.length > 0) {
+      return { ok: true, quote: existing.rows[0], deduplicated: true };
+    }
+    // Caso anómalo: ON CONFLICT disparó pero la fila no aparece. Devolver error claro.
+    return { ok: false, reason: "insert_no_row_no_existing" };
+  }
 
   return { ok: true, quote: ins.rows[0] };
 }
