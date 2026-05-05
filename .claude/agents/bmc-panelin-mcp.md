@@ -5,7 +5,7 @@ description: External agent surface for the Panelin BMC calculator. Exposes 22 t
 
 # bmc-panelin-mcp
 
-External MCP-based access to the BMC Panelin calculator. Wraps every `AGENT_TOOLS` entry from `server/lib/agentTools.js` so a subagent or external client can natively quote, recall, save to CRM, send WhatsApp, and inspect telemetry without touching the in-app chat.
+External MCP-based access to the BMC Panelin calculator + Wolfboard hub. Wraps every `AGENT_TOOLS` entry from `server/lib/agentTools.js` (28 tools) so a subagent or external client can natively quote, recall, save to CRM, send WhatsApp, manage admin pendientes, run batch AI quoting, and inspect telemetry without touching the in-app chat.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ server/routes/agentChat.js
    server/lib/agentTools.js  executeTool(name, input, calcState)
 ```
 
-## Tool surface (22)
+## Tool surface (28)
 
 Same set as `bmc-panelin-chat`, surfaced unchanged. Loose Zod input (`z.record(z.unknown())`); the actual JSON Schema is included in each tool's MCP description so downstream models can render the contract.
 
@@ -35,12 +35,22 @@ Same set as `bmc-panelin-chat`, surfaced unchanged. Loose Zod input (`z.record(z
 - Compose: `formatear_resumen_crm`, `generar_pdf`
 
 **Auth-gated (require `BMC_API_TOKEN` env):**
+
+Customer-touching writes:
 - `guardar_en_crm` — appends to `CRM_Operativo` Sheet
 - `enviar_whatsapp_link` — sends WhatsApp Cloud message
 - `cancelar_cotizacion` — soft-deletes a quote
 - `programar_seguimiento` — adds local follow-up reminder
 
-The four write tools also enforce a **`user_confirmed: true`** flag in the input — server returns `requiere confirmación explícita del usuario` if missing, regardless of auth status. Two-layer gate.
+Wolfboard hub (admin):
+- `wolfboard_pendientes` — list Admin 2.0 pending rows
+- `wolfboard_export` — CSV of the same listing
+- `wolfboard_sync` — propagate Admin.J → CRM.AF (batch)
+- `wolfboard_actualizar_fila` — edit a single Admin row
+- `wolfboard_marcar_enviado` — move row to Enviados tab
+- `wolfboard_quote_batch` — Claude Haiku batch quoting
+
+The four customer-write tools and the four Wolfboard write tools enforce a **`user_confirmed: true`** flag in the input on top of the Bearer gate — server returns `requiere confirmación explícita del usuario` if missing, regardless of auth status. Two-layer gate. Wolfboard reads (`pendientes`, `export`) are auth-gated only (no `user_confirmed` needed; pure read).
 
 ## How to add to a Claude Code session
 

@@ -603,6 +603,102 @@ export const AGENT_TOOLS = [
       required: ["cliente"],
     },
   },
+
+  // ─── Wolfboard Hub (admin cotizaciones management) ─────────────────────────
+
+  {
+    name: "wolfboard_pendientes",
+    description:
+      "Lista filas pendientes del Wolfboard hub (Admin 2.0). " +
+      "scope=consulta (default) → solo filas con consulta del cliente; scope=admin → todas las filas. " +
+      "Cada fila trae: rowNum, fecha, cliente, telefono, origen (WA/EM/CL/LO/LL), zona, consulta, respuestaAI, linkDrive, estado, replaySnapshotUrl. " +
+      "Usar para listar lo que está pendiente de respuesta o aprobación.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scope: { type: "string", enum: ["consulta", "admin"], description: "Default: consulta" },
+      },
+    },
+  },
+
+  {
+    name: "wolfboard_export",
+    description:
+      "Exporta el listado del Wolfboard hub como CSV (mismo criterio que wolfboard_pendientes). " +
+      "Usar cuando el operador pide \"bajame el CSV de pendientes\" / \"exportá la lista para Excel\".",
+    input_schema: {
+      type: "object",
+      properties: {
+        scope: { type: "string", enum: ["consulta", "admin"], description: "Default: consulta" },
+      },
+    },
+  },
+
+  {
+    name: "wolfboard_sync",
+    description:
+      "Propaga las respuestas del Admin Wolfboard (col J) hacia CRM_Operativo (col AF), " +
+      "matcheando por consulta original. Operación batch: actualiza todas las filas del Admin que tienen respuesta válida. " +
+      "REQUIERE user_confirmed=true. SOLO con confirmación explícita (\"sincronizá Wolfboard\", \"propagá las respuestas al CRM\").",
+    input_schema: {
+      type: "object",
+      properties: {
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true." },
+      },
+      required: ["user_confirmed"],
+    },
+  },
+
+  {
+    name: "wolfboard_actualizar_fila",
+    description:
+      "Actualiza una fila específica del Admin Wolfboard. Permite escribir respuestaAI (col J), " +
+      "linkDrive (col K), estado (col L), o replaySnapshotUrl (col M). " +
+      "REQUIERE user_confirmed=true. Usar cuando el operador edita una respuesta antes de enviarla al cliente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        rowNum:             { type: "number", description: "Número de fila (1-based, fila 2 = primer registro)" },
+        respuesta:          { type: "string", description: "Texto de respuesta para col J" },
+        linkDrive:          { type: "string", description: "URL al PDF / Drive para col K" },
+        estado:             { type: "string", description: "Estado para col L (ej: 'Aprobado', 'En revisión')" },
+        replaySnapshotUrl:  { type: "string", description: "URL al snapshot JSON para col M" },
+        user_confirmed:     { type: "boolean", description: "OBLIGATORIO=true." },
+      },
+      required: ["rowNum", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "wolfboard_marcar_enviado",
+    description:
+      "Marca una fila Admin como enviada al cliente: la mueve al tab 'Enviados' y la borra del Admin. " +
+      "REQUIERE user_confirmed=true. SOLO después de que el operador confirma el envío al cliente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        rowNum:         { type: "number", description: "Número de fila a mover" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true." },
+      },
+      required: ["rowNum", "user_confirmed"],
+    },
+  },
+
+  {
+    name: "wolfboard_quote_batch",
+    description:
+      "Genera respuestas comerciales con IA (Claude Haiku) para todas las filas pendientes del Admin que tienen consulta válida (≥20 chars). " +
+      "Escribe la respuesta en col J. Operación batch — puede afectar muchas filas. " +
+      "REQUIERE user_confirmed=true. Pasá force=true para regenerar respuestas existentes.",
+    input_schema: {
+      type: "object",
+      properties: {
+        force:          { type: "boolean", description: "Si true, regenera respuestas que ya estaban completadas. Default false." },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true." },
+      },
+      required: ["user_confirmed"],
+    },
+  },
 ];
 
 // ─── Tool handlers ────────────────────────────────────────────────────────────
@@ -1368,8 +1464,109 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       });
     }
 
+    if (name === "wolfboard_pendientes" || name === "wolfboard_export") {
+      const scope = (input?.scope === "admin") ? "admin" : "consulta";
+      const path = name === "wolfboard_export"
+        ? `/api/wolfboard/export?scope=${scope}`
+        : `/api/wolfboard/pendientes?scope=${scope}`;
+      return await wolfboardForward(path, { method: "GET" }, name);
+    }
+
+    if (name === "wolfboard_sync") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      return await wolfboardForward("/api/wolfboard/sync", { method: "POST", body: {} }, name);
+    }
+
+    if (name === "wolfboard_actualizar_fila") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const rowNum = Number(input?.rowNum);
+      if (!Number.isFinite(rowNum) || rowNum < 2) {
+        return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
+      }
+      const body = { rowNum };
+      if (input?.respuesta != null) body.respuesta = String(input.respuesta);
+      if (input?.linkDrive != null) body.linkDrive = String(input.linkDrive);
+      if (input?.estado != null) body.estado = String(input.estado);
+      if (input?.replaySnapshotUrl != null) body.replaySnapshotUrl = String(input.replaySnapshotUrl);
+      return await wolfboardForward("/api/wolfboard/row", { method: "POST", body }, name);
+    }
+
+    if (name === "wolfboard_marcar_enviado") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const rowNum = Number(input?.rowNum);
+      if (!Number.isFinite(rowNum) || rowNum < 2) {
+        return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
+      }
+      return await wolfboardForward("/api/wolfboard/enviados", { method: "POST", body: { rowNum } }, name);
+    }
+
+    if (name === "wolfboard_quote_batch") {
+      if (input?.user_confirmed !== true) {
+        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+      }
+      const body = { force: !!input?.force };
+      return await wolfboardForward("/api/wolfboard/quote-batch", { method: "POST", body }, name);
+    }
+
     return JSON.stringify({ error: `Tool "${name}" no implementada` });
   } catch (err) {
     return JSON.stringify({ error: err.message });
   }
+}
+
+/**
+ * Forward a request to the Wolfboard router (mounted at /api/wolfboard).
+ * The router enforces requireAuth(config, ...) on every route, so we
+ * include the in-process API_AUTH_TOKEN as Bearer. If unset, return a
+ * helpful config error instead of going through the round-trip.
+ *
+ * @param {string} path
+ * @param {{ method:"GET"|"POST", body?:object }} opts
+ * @param {string} toolName  — for error context only
+ * @returns {Promise<string>} JSON-stringified result
+ */
+async function wolfboardForward(path, { method = "GET", body } = {}, toolName = "wolfboard_*") {
+  if (!config.apiAuthToken) {
+    return JSON.stringify({
+      ok: false,
+      error: "API_AUTH_TOKEN no configurado — el Wolfboard hub requiere autenticación. Configurá API_AUTH_TOKEN o API_KEY en el server.",
+      tool: toolName,
+    });
+  }
+  const headers = {
+    Authorization: `Bearer ${config.apiAuthToken}`,
+  };
+  const init = { method, headers };
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body || {});
+  }
+  const url = `${apiBase()}${path}`;
+  const resp = await fetch(url, init);
+  const ct = resp.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return JSON.stringify({ ok: false, status: resp.status, error: data?.error || `HTTP ${resp.status}`, tool: toolName });
+    }
+    return JSON.stringify({ ok: true, ...data });
+  }
+  // CSV / text response (wolfboard_export)
+  const text = await resp.text();
+  if (!resp.ok) {
+    return JSON.stringify({ ok: false, status: resp.status, error: text.slice(0, 500), tool: toolName });
+  }
+  return JSON.stringify({
+    ok: true,
+    contentType: ct || "text/plain",
+    body: text.length > 100_000 ? `${text.slice(0, 100_000)}\n\n[truncated to 100KB]` : text,
+    length: text.length,
+    tool: toolName,
+  });
 }

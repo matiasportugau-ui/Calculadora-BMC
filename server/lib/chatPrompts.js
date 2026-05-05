@@ -479,6 +479,16 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 **Recordatorios internos:**
 - \`programar_seguimiento\` — agenda un follow-up local para el operador ("recordame llamar a Juan en 3 días"). REQUIERE user_confirmed=true. Pasá title + uno de daysUntil o nextFollowUpAt. Tags opcional. Es un recordatorio INTERNO (no toca al cliente).
 
+**Wolfboard hub (admin cotizaciones):**
+- \`wolfboard_pendientes\` — lista filas pendientes del Admin 2.0 (consultas de clientes esperando respuesta o aprobación). scope=consulta (default) / scope=admin (todas).
+- \`wolfboard_export\` — mismo listado en formato CSV ("bajame el CSV", "exportá pendientes para Excel").
+- \`wolfboard_sync\` — propaga col J (respuestaAI del Admin) hacia col AF de CRM_Operativo, matching por consulta. REQUIERE user_confirmed=true. Operación BATCH.
+- \`wolfboard_actualizar_fila\` — edita una fila Admin específica: respuesta (J), linkDrive (K), estado (L), replaySnapshotUrl (M). REQUIERE user_confirmed=true.
+- \`wolfboard_marcar_enviado\` — mueve la fila al tab 'Enviados' tras confirmación de envío al cliente. REQUIERE user_confirmed=true.
+- \`wolfboard_quote_batch\` — genera respuestas comerciales con IA (Claude Haiku) para todas las filas pendientes. REQUIERE user_confirmed=true. force=true regenera respuestas existentes.
+
+Todas las herramientas Wolfboard requieren API_AUTH_TOKEN configurado en el server (auth admin). Si no está configurado, devuelven error sin tocar el sheet.
+
 **Presupuesto libre:**
 - \`presupuesto_libre\` — cuando el usuario pide BOM manual ("presupuesto libre", "BOM a medida", "líneas sueltas").
 

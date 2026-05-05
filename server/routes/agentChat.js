@@ -177,6 +177,15 @@ const TOOLS_REQUIRING_AUTH = new Set([
   "enviar_whatsapp_link",
   "cancelar_cotizacion",
   "programar_seguimiento",
+  // Wolfboard hub — all routes are admin-only and the underlying router
+  // already enforces requireAuth. We mirror that gate at the MCP entry
+  // so external clients can't poll pendientes / export without the token.
+  "wolfboard_pendientes",
+  "wolfboard_export",
+  "wolfboard_sync",
+  "wolfboard_actualizar_fila",
+  "wolfboard_marcar_enviado",
+  "wolfboard_quote_batch",
 ]);
 
 router.post("/agent/exec-tool", async (req, res) => {

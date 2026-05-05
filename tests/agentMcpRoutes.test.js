@@ -67,7 +67,7 @@ await group("GET /api/agent/tools-manifest", async () => {
   const { status, body } = await get("/api/agent/tools-manifest");
   assert(status === 200, "200 OK");
   assert(body?.ok === true, "ok true");
-  assert(typeof body.count === "number" && body.count >= 22, `count >= 22 (got ${body?.count})`);
+  assert(typeof body.count === "number" && body.count >= 28, `count >= 28 (got ${body?.count})`);
   assert(Array.isArray(body.tools) && body.tools.length === body.count, "tools array length matches count");
   const calc = body.tools.find((t) => t.name === "calcular_cotizacion");
   assert(calc, "calcular_cotizacion present");

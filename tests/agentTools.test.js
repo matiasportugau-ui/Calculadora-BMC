@@ -53,6 +53,9 @@ globalThis.fetch = async (url, init) => {
   fetchHistory.push({ url: String(url), init });
   const body = await fetchHandler(String(url), init || {});
   return {
+    ok: true,
+    status: 200,
+    headers: { get: (k) => (k.toLowerCase() === "content-type" ? "application/json; charset=utf-8" : null) },
     text: async () => JSON.stringify(body),
     json: async () => body,
   };
@@ -89,6 +92,12 @@ group("AGENT_TOOLS surface", () => {
     "obtener_pdf_html",
     "programar_seguimiento",
     "historial_cliente",
+    "wolfboard_pendientes",
+    "wolfboard_export",
+    "wolfboard_sync",
+    "wolfboard_actualizar_fila",
+    "wolfboard_marcar_enviado",
+    "wolfboard_quote_batch",
   ];
   for (const name of expected) {
     const tool = AGENT_TOOLS.find((t) => t.name === name);
@@ -556,6 +565,106 @@ await group("historial_cliente — missing cliente", async () => {
   const { parsed } = await run("historial_cliente", {});
   assert(parsed.ok === false, "ok false");
   assert(parsed.error === "cliente requerido", "error mentions cliente");
+});
+
+// ── Wolfboard hub tools ──────────────────────────────────────────────────────
+
+await group("wolfboard_pendientes — no auth token configured", async () => {
+  // API_AUTH_TOKEN unset in this test env → wolfboardForward short-circuits.
+  const { parsed } = await run("wolfboard_pendientes", { scope: "consulta" });
+  assert(parsed.ok === false, "ok false when API_AUTH_TOKEN unset");
+  assert(typeof parsed.error === "string" && parsed.error.includes("API_AUTH_TOKEN"), "error mentions API_AUTH_TOKEN");
+});
+
+await group("wolfboard_pendientes — happy path with auth", async () => {
+  process.env.API_AUTH_TOKEN = "test-wolfb-token";
+  // Reload config so the new token is picked up.
+  // Using setFetch to stub the upstream wolfboard router.
+  const { config } = await import("../server/config.js");
+  // Manually inject the token since config is cached by import.
+  config.apiAuthToken = "test-wolfb-token";
+  setFetch(async (url, init) => {
+    assert(url.includes("/api/wolfboard/pendientes"), "hits pendientes endpoint");
+    assert(init?.headers?.Authorization === "Bearer test-wolfb-token", "Bearer auth forwarded");
+    return { ok: true, scope: "consulta", count: 2, data: [{ rowNum: 2 }, { rowNum: 3 }] };
+  });
+  const { parsed } = await run("wolfboard_pendientes", { scope: "consulta" });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.count === 2, "count carried");
+});
+
+await group("wolfboard_sync — requires user_confirmed", async () => {
+  const { parsed } = await run("wolfboard_sync", {});
+  assert(parsed.ok === false, "ok false without user_confirmed");
+  assert(typeof parsed.error === "string" && parsed.error.includes("user_confirmed"), "error mentions user_confirmed");
+});
+
+await group("wolfboard_actualizar_fila — happy path", async () => {
+  setFetch(async (url, init) => {
+    assert(url.endsWith("/api/wolfboard/row"), "hits row endpoint");
+    assert(init.method === "POST", "POST");
+    const body = JSON.parse(init.body);
+    assert(body.rowNum === 5 && body.respuesta === "Texto OK", "rowNum + respuesta in body");
+    return { ok: true, rowNum: 5 };
+  });
+  const { parsed } = await run("wolfboard_actualizar_fila", {
+    rowNum: 5,
+    respuesta: "Texto OK",
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true");
+});
+
+await group("wolfboard_actualizar_fila — invalid rowNum", async () => {
+  const { parsed } = await run("wolfboard_actualizar_fila", { rowNum: 1, user_confirmed: true });
+  assert(parsed.ok === false, "ok false with rowNum<2");
+  assert(typeof parsed.error === "string" && parsed.error.includes("rowNum"), "error mentions rowNum");
+});
+
+await group("wolfboard_marcar_enviado — happy path", async () => {
+  setFetch(async (url, init) => {
+    assert(url.endsWith("/api/wolfboard/enviados"), "hits enviados endpoint");
+    const body = JSON.parse(init.body);
+    assert(body.rowNum === 7, "rowNum in body");
+    return { ok: true, movedRow: 7 };
+  });
+  const { parsed } = await run("wolfboard_marcar_enviado", { rowNum: 7, user_confirmed: true });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.movedRow === 7, "movedRow carried");
+});
+
+await group("wolfboard_quote_batch — requires user_confirmed", async () => {
+  const { parsed } = await run("wolfboard_quote_batch", { force: true });
+  assert(parsed.ok === false, "ok false without user_confirmed");
+});
+
+await group("wolfboard_quote_batch — happy path", async () => {
+  setFetch(async (url, init) => {
+    assert(url.endsWith("/api/wolfboard/quote-batch"), "hits quote-batch endpoint");
+    const body = JSON.parse(init.body);
+    assert(body.force === false, "force defaults to false");
+    return { ok: true, processed: 5, succeeded: 4, failed: 1 };
+  });
+  const { parsed } = await run("wolfboard_quote_batch", { user_confirmed: true });
+  assert(parsed.ok === true, "ok true");
+  assert(parsed.processed === 5 && parsed.succeeded === 4, "batch results carried");
+});
+
+await group("wolfboard_export — CSV via text branch", async () => {
+  // Stub fetch to return CSV (text/csv content-type).
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: (k) => (k.toLowerCase() === "content-type" ? "text/csv; charset=utf-8" : null) },
+    json: async () => null,
+    text: async () => "rowNum,cliente,consulta\n2,Juan,techo 100m2\n",
+  });
+  const { parsed } = await run("wolfboard_export", { scope: "consulta" });
+  globalThis.fetch = realFetch;
+  assert(parsed.ok === true, "ok true");
+  assert(typeof parsed.body === "string" && parsed.body.includes("rowNum,cliente"), "CSV body present");
+  assert(parsed.contentType.includes("text/csv"), "contentType is CSV");
 });
 
 await group("unknown tool", async () => {
