@@ -81,6 +81,8 @@
     "workspace:start": "npm install && npm run env:ensure && node -e \"console.log('\\n=== Calculadora BMC workspace ===\\nProd:  https://calculadora-bmc.vercel.app\\nLocal:  npm run dev:full  o  ./run_full_stack.sh  (API :3001, Vite :5173)\\nSheets/MATRIZ check (opcional): npm run panelsim:env\\nSmoke prod (opcional): npm run smoke:prod\\n')\"",
     "workspace:autostart": "bash scripts/workspace-folder-open.sh",
     "env:ensure": "bash scripts/ensure-env.sh",
+    "keys:audit": "bash scripts/openai-key-audit.sh",
+    "keys:rotate": "bash scripts/openai-key-rotate.sh",
     "verify:google-drive-oauth": "node scripts/verify-google-drive-oauth-env.mjs",
     "verify:google-drive-dist": "node scripts/verify-vite-google-client-in-dist.mjs",
     "drive:bootstrap": "bash scripts/drive-oauth-bootstrap.sh",
