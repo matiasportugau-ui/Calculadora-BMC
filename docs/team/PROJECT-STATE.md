@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-04
+**Última actualización:** 2026-05-05
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,21 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-05 (Ops — rotación OPENAI_API_KEY + tooling de auditoría/rotación):** Clave de OpenAI activa rotada después de detectar 401 `invalid_api_key` en producción. La clave anterior `sk-proj-…A9IA` se reemplazó por `sk-proj-…AoEA` (token-fingerprint, no se publica el valor) y simultáneamente se restauró el mount vía Secret Manager (regresión de la migración del 2026-04-30: `panelin-calc` venía sirviendo `OPENAI_API_KEY` como env var inline; ahora vuelve a `--set-secrets OPENAI_API_KEY=openai-api-key:latest`). Nueva revisión Cloud Run **`panelin-calc-00352-vxk`**, secreto `openai-api-key` versión 3.
+
+Tooling agregado para que la próxima rotación sea de un comando:
+
+- **`scripts/openai-key-audit.sh`** ([`scripts`](../../scripts/openai-key-audit.sh)) — escanea `.env*` locales, shell, Cloud Run inline + Secret Manager y Vercel; muestra fingerprint (prefix…suffix) + label ACTIVE/INACTIVE; nunca imprime claves completas. CLI: `npm run keys:audit`.
+- **`scripts/openai-key-rotate.sh`** ([`scripts`](../../scripts/openai-key-rotate.sh)) — input oculto, valida contra `api.openai.com/v1/models` antes de tocar nada; backup `.env.bak.<ts>`; opcional `gcloud secrets versions add openai-api-key` + IAM al runtime SA + `gcloud run services update --remove-env-vars OPENAI_API_KEY --set-secrets OPENAI_API_KEY=openai-api-key:latest`. CLI: `npm run keys:rotate`. Override: `SKIP_CLOUD_RUN=1`, `CLOUD_RUN_SERVICE`, `CLOUD_RUN_REGION`, `GCP_SECRET_NAME`.
+- **`GET /api/agent/voice/health`** ([`server/routes/agentVoice.js`](../../server/routes/agentVoice.js)) — admin-auth; pinguea `/v1/models`; devuelve `{ok, status, latencyMs, configured, keyPrefix, keySuffix, keyLength, model, error?}`. Nunca incluye la clave completa.
+- **Botón "Verificar clave"** en VoiceTab ([`src/components/AgentAdminModule.jsx`](../../src/components/AgentAdminModule.jsx)) — llama al endpoint y muestra fingerprint + status + latencia inline.
+
+Verificación end-to-end (browser MCP, prod, 2026-05-05): `/api/agent/voice/health` 200 (617 ms), `/api/agent/voice/session` 200 con `client_secret` válido. Evidencia: [`scripts/_evidence/voice-rotation-verified.png`](../../scripts/_evidence/voice-rotation-verified.png).
+
+**Affects:** bmc-security (Secret Manager re-mount cierra drift de la migración 2026-04-30), bmc-deployment (rev 00352 nueva, comando one-shot `npm run keys:rotate` para futuras rotaciones), bmc-api-contract (endpoint nuevo `/api/agent/voice/health`), bmc-panelin-chat (voz operativa otra vez), bmc-docs-sync (esta entrada).
+
+**Pendientes específicos**: agregar `npm run keys:audit` al checklist de smoke prod / pre-deploy si se considera oportuno; eliminar el archivo `.env.bak.20260505-031820` cuando se confirme estabilidad (contiene clave revocada — sin riesgo activo, pero higiene).
 
 **2026-05-04 (Dev — WA Cockpit F1-F5 implementado end-to-end):** Plan canónico [`.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md`](../../.cursor/plans/) ejecutado. Nuevo cockpit operativo de WhatsApp Web sobre el stack actual:
 
