@@ -12,6 +12,20 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Dev — Comprador Identity — Phases A→J):** Master plan completo aterrizado en una sola PR de feature branch [`claude/user-identity-master-plan-hYGmq`](https://github.com/matiasportugau-ui/calculadora-bmc/pull/137). Implementa identidad de Comprador con OAuth Google, RBAC por módulo, persistencia de cotizaciones por usuario, sync opcional a Sheets y export admin multi-formato:
+- **Phase A** — `supabase/migrations/20260601000001_identity_init.sql` con 13 tablas bajo schema `identity` (users, sessions, role_grants, module_grants, modules, access_requests, quotes, quote_events, special_quote_requests, notifications, crm_personal_*, audit_log).
+- **Phase B** — [`server/lib/identityAuth.js`](../../server/lib/identityAuth.js) espeja a `waOperatorAuth.js`: `verifyGoogleAndUpsert`, `refreshTokens` con rotación + reuse detection, `requireUser({role,module,minLevel})` middleware. 11 tests unitarios passing.
+- **Phase C** — [`server/routes/authGoogle.js`](../../server/routes/authGoogle.js) ahora emite cookie httpOnly `bmc_sess` + access JWT y agrega `/auth/refresh`, `/auth/logout`, `/auth/me`, `/auth/me/grants`. 8 tests de integración passing.
+- **Phase D** — Frontend: `BmcAuthProvider` + `AuthGateModal` listening a `bmc-auth-gate-required`; wizard `advanceWizardStep` bloquea anonymous users en step 5 (Pendiente → Estructura).
+- **Phase E** — RBAC server (`requireUser`) + `RequireGrant` route guard + `POST /api/access-requests` con notificación a superadmins.
+- **Phase F** — Per-user quote persistence ([`server/lib/quoteStore.js`](../../server/lib/quoteStore.js)) con anonymous→user merge; `/api/me/quotes`, `/api/me/notifications`, `/api/me/special-quote-requests` (>USD 8500); página `/mi-espacio`.
+- **Phase G** — `requireServiceOrUser` shim acepta API_AUTH_TOKEN o JWT; `requireAuth.js` rebaja a re-export para zero-breaking-change. Migración 20260601000002 siembra superadmins.
+- **Phase H** — [`server/routes/quoteExport.js`](../../server/routes/quoteExport.js): `POST /api/admin/export` (CSV/JSON/HTML, multi-entity, ZIP) + per-user `/api/me/quotes/:id/export.{csv,json,pdf}`.
+- **Phase I** — [`server/lib/clientQuotesSheetSync.js`](../../server/lib/clientQuotesSheetSync.js): upsert idempotente por `quote_id` (col A) en tab «Base de datos cotis de clientes»; debounced 60s + admin reconcile + retry. Doc en [`docs/sheets-mapper-clientes.md`](../sheets-mapper-clientes.md).
+- **Phase J** — `.env.example` actualizado, [`docs/identity-auth.md`](../identity-auth.md) con flow + deprecación de API_AUTH_TOKEN, env-drift verde, lint clean (0 errores), 19 tests identity-auth + identity-routes verdes.
+
+**Pendientes humanos (GOLIVE)**: aplicar migrations a Supabase, inyectar `IDENTITY_JWT_SECRET` + `GOOGLE_OAUTH_CLIENT_ID` + `IDENTITY_COOKIE_DOMAIN` en Cloud Run secrets, crear manualmente la tab «Base de datos cotis de clientes» en BMC_SHEET_ID, deploy + UAT browser. Detalle: [`docs/master-plans/user-identity-GOLIVE.md`](../master-plans/user-identity-GOLIVE.md).
+
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 
 - **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
