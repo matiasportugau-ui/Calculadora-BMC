@@ -38,6 +38,11 @@ export function startWaEnricherWorker({ config, logger, pool }) {
     if (running) return;
     running = true;
 
+    const t0 = Date.now();
+    let claimed = 0;
+    let failed = 0;
+    let chatter = 0;
+
     const client = await pool.connect();
     let inTx = false;
     try {
@@ -57,6 +62,7 @@ export function startWaEnricherWorker({ config, logger, pool }) {
          for update skip locked`,
         [batchSize],
       );
+      claimed = pendingMsgs.length;
 
       for (const msg of pendingMsgs) {
         const intentHint = classifyIntent(msg.text);
@@ -70,6 +76,7 @@ export function startWaEnricherWorker({ config, logger, pool }) {
               [msg.msg_id],
             );
             await client.query("release savepoint wa_msg");
+            chatter++;
             continue;
           }
 
@@ -171,6 +178,7 @@ export function startWaEnricherWorker({ config, logger, pool }) {
         } catch (err) {
           // Rollback solo este mensaje, mantiene el resto del batch.
           await client.query("rollback to savepoint wa_msg");
+          failed++;
           logger.warn?.({ err: err?.message, msg_id: msg.msg_id }, "[waEnricher] msg failed");
 
           // Sub-savepoint para registrar el fallo: si esto también falla,
@@ -214,6 +222,17 @@ export function startWaEnricherWorker({ config, logger, pool }) {
     } finally {
       client.release();
       running = false;
+      // Métrica de batch — solo cuando hubo trabajo, evita ruido en cola vacía.
+      // Permite detectar si la tx larga (LLM dentro de tx) se acerca a
+      // idle_in_transaction_session_timeout en Postgres.
+      if (claimed > 0) {
+        const durationMs = Date.now() - t0;
+        const ok = claimed - failed - chatter;
+        logger.info?.(
+          { claimed, ok, chatter, failed, duration_ms: durationMs },
+          "[waEnricher] batch done",
+        );
+      }
     }
   }
 
