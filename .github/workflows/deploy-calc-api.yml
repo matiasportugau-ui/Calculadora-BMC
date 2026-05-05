@@ -141,7 +141,6 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc:${{ steps.sha.outputs.sha }}
-          service_account: ${{ secrets.GCP_RUNTIME_SA_EMAIL }}
           env_vars: |
             BMC_SHEET_ID=${{ secrets.BMC_SHEET_ID }}
             BMC_SHEET_SCHEMA=${{ secrets.BMC_SHEET_SCHEMA }}
@@ -159,6 +158,7 @@ jobs:
             WA_AUTH_EMAIL_FROM=${{ secrets.WA_AUTH_EMAIL_FROM }}
             WA_JWT_SECRET=${{ secrets.WA_JWT_SECRET }}
           flags: |
+            --service-account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
             --allow-unauthenticated
             --min-instances=0
             --max-instances=10
