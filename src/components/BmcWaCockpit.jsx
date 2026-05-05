@@ -429,6 +429,64 @@ export default function BmcWaCockpit() {
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
+  // ── F2 SPA-bridge: detect extensión + autoconfig ───────────────────
+  const [extPresent, setExtPresent] = useState(false);
+  const [extVersion, setExtVersion] = useState("");
+  const [extConfigStatus, setExtConfigStatus] = useState("");
+  const [operatorId, setOperatorId] = useState(() => {
+    try {
+      return localStorage.getItem("bmc_wa_operator_id") || "matias";
+    } catch {
+      return "matias";
+    }
+  });
+
+  useEffect(() => {
+    const onPresence = (ev) => {
+      if (!ev?.data || typeof ev.data !== "object") return;
+      if (ev.data.kind === "wa_cockpit/extensionPresent") {
+        setExtPresent(true);
+        if (ev.data.version) setExtVersion(String(ev.data.version));
+      }
+      if (ev.data.kind === "wa_cockpit/configureExtensionResult") {
+        if (ev.data.ok) {
+          setExtConfigStatus("✓ extensión configurada");
+        } else {
+          setExtConfigStatus(`error: ${ev.data.error || "?"}`);
+        }
+        setTimeout(() => setExtConfigStatus(""), 4000);
+      }
+    };
+    window.addEventListener("message", onPresence);
+    return () => window.removeEventListener("message", onPresence);
+  }, []);
+
+  const configureExtension = useCallback(() => {
+    if (!token) {
+      setExtConfigStatus("error: token no disponible aún");
+      return;
+    }
+    const cleanOp = (operatorId || "matias").trim() || "matias";
+    try {
+      localStorage.setItem("bmc_wa_operator_id", cleanOp);
+    } catch {
+      /* ignore */
+    }
+    // En dev (Vite proxy) apuntamos al API en :3001 directamente, no al :5173.
+    const baseForExt = apiBase || "http://localhost:3001";
+    setExtConfigStatus("configurando…");
+    window.postMessage(
+      {
+        kind: "wa_cockpit/configureExtension",
+        apiBaseUrl: baseForExt,
+        apiAuthToken: token,
+        operatorId: cleanOp,
+        syncEnabled: true,
+      },
+      window.location.origin,
+    );
+  }, [token, operatorId, apiBase]);
+
   // ── F3 quotes per chat ───────────────────────────────────────────────
   const [quotes, setQuotes] = useState([]);
   const [quoteForm, setQuoteForm] = useState({ metros: "", espesor: "", familia: "", scope: "techo", color: "Blanco", lista: "web" });
@@ -647,7 +705,50 @@ export default function BmcWaCockpit() {
             </span>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {extPresent ? (
+            <>
+              <input
+                type="text"
+                value={operatorId}
+                onChange={(e) => setOperatorId(e.target.value)}
+                placeholder="operator_id"
+                title={`Extensión v${extVersion} detectada — ¿quién opera este browser?`}
+                style={{ ...inputStyle, width: 110, padding: "6px 8px", fontSize: 12 }}
+              />
+              <button
+                type="button"
+                onClick={configureExtension}
+                style={{ ...btnPrimary, background: "#2a7a2a" }}
+                title="Envía token + URL + operator_id a la extensión vía postMessage"
+              >
+                Configurar extensión
+              </button>
+            </>
+          ) : (
+            <span
+              style={{
+                fontSize: 11,
+                color: "#8a8a8e",
+                padding: "2px 8px",
+                border: "1px dashed #e5e5ea",
+                borderRadius: 999,
+              }}
+              title="La extensión no anunció presencia. Cargala (npm run wa:ext:load) y recargá esta página."
+            >
+              ext no detectada
+            </span>
+          )}
+          {extConfigStatus && (
+            <span
+              style={{
+                fontSize: 11,
+                color: extConfigStatus.startsWith("✓") ? "#2a7a2a" : extConfigStatus.startsWith("error") ? "#a4262c" : "#6e6e73",
+              }}
+            >
+              {extConfigStatus}
+            </span>
+          )}
           <button type="button" onClick={fetchConversations} style={btnGhost} disabled={loadingList}>
             {loadingList ? "…" : "Refresh"}
           </button>

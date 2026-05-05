@@ -81,18 +81,38 @@ if [[ "$WATCH" = "true" ]]; then
   sleep 2
 fi
 
-# 3) Localizar Chrome
+# 3) Localizar Chrome.
+# IMPORTANTE: Chrome 147+ stable bloquea --load-extension (warning silencioso
+# "--load-extension is not allowed in Google Chrome, ignoring."). Por eso
+# preferimos Beta/Dev/Canary/Chromium/Brave/Edge donde la flag aún funciona,
+# y dejamos Chrome stable solo como último fallback.
 CHROME=""
-for path in \
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-  "/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome Beta" \
-  "/Applications/Google Chrome Dev.app/Contents/MacOS/Google Chrome Dev" \
-  "/Applications/Chromium.app/Contents/MacOS/Chromium"; do
-  if [[ -x "$path" ]]; then CHROME="$path"; break; fi
+CHROME_KIND=""
+for entry in \
+  "beta:/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome Beta" \
+  "dev:/Applications/Google Chrome Dev.app/Contents/MacOS/Google Chrome Dev" \
+  "canary:/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" \
+  "chromium:/Applications/Chromium.app/Contents/MacOS/Chromium" \
+  "brave:/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" \
+  "edge:/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
+  "stable:/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"; do
+  kind="${entry%%:*}"
+  path="${entry#*:}"
+  if [[ -x "$path" ]]; then
+    CHROME="$path"
+    CHROME_KIND="$kind"
+    break
+  fi
 done
 if [[ -z "$CHROME" ]]; then
-  echo "ERROR: Chrome/Chromium no encontrado en /Applications" >&2
+  echo "ERROR: ningún Chrome/Chromium/Brave/Edge encontrado en /Applications" >&2
   exit 1
+fi
+if [[ "$CHROME_KIND" = "stable" ]]; then
+  echo "⚠️  Chrome stable detectado pero --load-extension está bloqueado en 147+." >&2
+  echo "   La extensión NO se cargará automáticamente." >&2
+  echo "   Instalá Chrome Beta:  brew install --cask google-chrome-beta" >&2
+  echo "   (o cargala manual en chrome://extensions/ con Modo desarrollador ON.)" >&2
 fi
 
 mkdir -p "$PROFILE_DIR"
