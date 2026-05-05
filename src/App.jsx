@@ -7,7 +7,7 @@ import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import BmcWolfboardHub from "./components/BmcWolfboardHub.jsx";
 import BmcMlOperativoModule from "./components/BmcMlOperativoModule.jsx";
-import BmcWaOperativoModule from "./components/BmcWaOperativoModule.jsx";
+import BmcWaModuleWithTabs from "./components/BmcWaModuleWithTabs.jsx";
 import BmcCanalesUnificadosModule from "./components/BmcCanalesUnificadosModule.jsx";
 import BmcAdminCotizacionesModule from "./components/BmcAdminCotizacionesModule.jsx";
 import BmcPlanImportModule from "./components/BmcPlanImportModule.jsx";
@@ -21,7 +21,6 @@ const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSand
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
 const CalcLogicInspector = lazy(() => import("./components/CalcLogicInspector.jsx"));
 const FichasPreview = lazy(() => import("./components/FichasPreview.jsx"));
-const BmcWaCockpit = lazy(() => import("./components/BmcWaCockpit.jsx"));
 
 const suspenseFallback = (
   <div
@@ -86,7 +85,7 @@ export default function App() {
           path="/hub/wa"
           element={
             <Shell>
-              <BmcWaOperativoModule />
+              <BmcWaModuleWithTabs />
             </Shell>
           }
         />
@@ -186,16 +185,7 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route
-          path="/wa"
-          element={
-            <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcWaCockpit />
-              </Suspense>
-            </Shell>
-          }
-        />
+        <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

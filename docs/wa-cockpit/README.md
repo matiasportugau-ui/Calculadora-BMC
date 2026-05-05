@@ -1,6 +1,6 @@
 # WA Cockpit — hub de documentación
 
-Cockpit operativo de WhatsApp Web para Calculadora BMC. Capturamos conversaciones desde la sesión Chrome del operador (extensión MV3 en repo separado), las normalizamos en Postgres, y desde el SPA `/wa` listamos chats, generamos sugerencias AI, cotizamos en USD y sincronizamos con CRM_Operativo.
+Cockpit operativo de WhatsApp Web para Calculadora BMC. Capturamos conversaciones desde la sesión Chrome del operador (extensión MV3 en repo separado), las normalizamos en Postgres, y desde el módulo WhatsApp del Wolfboard (`/hub/wa`, tab **Cockpit**) listamos chats, generamos sugerencias AI, cotizamos en USD y sincronizamos con CRM_Operativo. La tab **Sheet legacy** queda como fallback histórico que lee CRM_Operativo por `origen=WA`. `/wa` redirige a `/hub/wa`.
 
 > **Plan canónico**: `.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md` (5 fases). Esta página es el hub vivo.
 
