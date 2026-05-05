@@ -146,6 +146,70 @@ router.get("/agent/tool-stats", (req, res) => {
   res.json({ ok: true, ...stats });
 });
 
+/**
+ * GET /api/agent/tools-manifest — list of all AGENT_TOOLS for external clients
+ * (e.g. the Panelin MCP server). Returns the same Anthropic input_schema format
+ * that the in-process tool-use loop receives.
+ */
+router.get("/agent/tools-manifest", (_req, res) => {
+  res.json({
+    ok: true,
+    count: AGENT_TOOLS.length,
+    tools: AGENT_TOOLS.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.input_schema,
+      requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
+    })),
+  });
+});
+
+/**
+ * POST /api/agent/exec-tool — execute a single tool by name. Auth-gated for
+ * write tools (those that mutate Sheets / WhatsApp / followups / quote registry).
+ * Used by the MCP server to surface every tool to external agents.
+ *
+ * Body: { name: string, input: object, calcState?: object }
+ * Auth: write tools require Authorization: Bearer ${API_AUTH_TOKEN}; reads are open.
+ */
+const TOOLS_REQUIRING_AUTH = new Set([
+  "guardar_en_crm",
+  "enviar_whatsapp_link",
+  "cancelar_cotizacion",
+  "programar_seguimiento",
+]);
+
+router.post("/agent/exec-tool", async (req, res) => {
+  try {
+    const { name, input, calcState = {} } = req.body || {};
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ ok: false, error: "name (string) requerido" });
+    }
+    const tool = AGENT_TOOLS.find((t) => t.name === name);
+    if (!tool) {
+      return res.status(404).json({ ok: false, error: `Tool "${name}" no existe en AGENT_TOOLS` });
+    }
+    if (TOOLS_REQUIRING_AUTH.has(name)) {
+      const auth = String(req.headers.authorization || "");
+      const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      const xKey = String(req.headers["x-api-key"] || "");
+      if (!config.apiAuthToken) {
+        return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN no configurado en el server" });
+      }
+      if (bearer !== config.apiAuthToken && xKey !== config.apiAuthToken) {
+        return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
+      }
+    }
+    const raw = await executeTool(name, input || {}, calcState || {});
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+    res.json({ ok: true, name, result: parsed });
+  } catch (err) {
+    req.log?.error({ err }, "agent/exec-tool failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // 0.4 — Allowed origins (CSRF guard)
 const ALLOWED_ORIGINS = new Set([
   "https://calculadora-bmc.vercel.app",
