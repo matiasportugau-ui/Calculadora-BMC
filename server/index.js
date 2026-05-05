@@ -61,6 +61,8 @@ app.use(
     origin: (origin, cb) => {
       // Allow non-browser requests (curl, Cloud Run health checks, server-to-server)
       if (!origin) return cb(null, true);
+      // Allow chrome-extension://* (BMC WA Cockpit extension and any sibling)
+      if (origin.startsWith("chrome-extension://")) return cb(null, true);
       if (config.corsOrigins.includes(origin)) return cb(null, true);
       cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
     },
@@ -934,7 +936,8 @@ app.use((req, res) => {
 
 app.use((error, req, res, _next) => {
   const status = Number(error.status || 500);
-  req.log.error(
+  const logger = req.log || console;
+  logger.error(
     {
       err: error,
       path: error.path,

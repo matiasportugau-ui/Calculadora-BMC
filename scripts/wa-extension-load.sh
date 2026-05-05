@@ -113,6 +113,10 @@ if [[ "$CHROME_KIND" = "stable" ]]; then
   echo "   La extensión NO se cargará automáticamente." >&2
   echo "   Instalá Chrome Beta:  brew install --cask google-chrome-beta" >&2
   echo "   (o cargala manual en chrome://extensions/ con Modo desarrollador ON.)" >&2
+  if [[ "${WA_EXT_FORCE_STABLE:-0}" != "1" ]]; then
+    echo "   Abortando. Si querés lanzar stable igual (sin extensión), exportá WA_EXT_FORCE_STABLE=1." >&2
+    exit 1
+  fi
 fi
 
 mkdir -p "$PROFILE_DIR"

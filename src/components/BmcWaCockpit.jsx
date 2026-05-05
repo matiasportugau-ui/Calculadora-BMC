@@ -422,6 +422,7 @@ export default function BmcWaCockpit() {
   // Listen for paste-back result from extension
   useEffect(() => {
     const onMsg = (ev) => {
+      if (ev.origin !== window.location.origin) return;
       if (!ev?.data || ev.data.kind !== "wa_cockpit/pasteResult") return;
       // could surface a toast; for now we leave the optimistic "ok" set above
     };
@@ -443,6 +444,7 @@ export default function BmcWaCockpit() {
 
   useEffect(() => {
     const onPresence = (ev) => {
+      if (ev.origin !== window.location.origin) return;
       if (!ev?.data || typeof ev.data !== "object") return;
       if (ev.data.kind === "wa_cockpit/extensionPresent") {
         setExtPresent(true);
@@ -451,10 +453,17 @@ export default function BmcWaCockpit() {
       if (ev.data.kind === "wa_cockpit/configureExtensionResult") {
         if (ev.data.ok) {
           setExtConfigStatus("✓ extensión configurada");
+          setTimeout(() => setExtConfigStatus(""), 4000);
         } else {
-          setExtConfigStatus(`error: ${ev.data.error || "?"}`);
+          const errMsg = String(ev.data.error || "?");
+          const isCtxInvalid = /context invalidated/i.test(errMsg);
+          setExtConfigStatus(
+            isCtxInvalid
+              ? "error: extensión recargada — recargá esta pestaña (Cmd+R) y volvé a intentar"
+              : `error: ${errMsg}`,
+          );
+          setTimeout(() => setExtConfigStatus(""), isCtxInvalid ? 12000 : 4000);
         }
-        setTimeout(() => setExtConfigStatus(""), 4000);
       }
     };
     window.addEventListener("message", onPresence);
@@ -464,6 +473,7 @@ export default function BmcWaCockpit() {
   const configureExtension = useCallback(() => {
     if (!token) {
       setExtConfigStatus("error: token no disponible aún");
+      setTimeout(() => setExtConfigStatus(""), 4000);
       return;
     }
     const cleanOp = (operatorId || "matias").trim() || "matias";
