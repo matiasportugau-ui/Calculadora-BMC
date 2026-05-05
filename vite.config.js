@@ -24,6 +24,16 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Force the new SW to skip waiting and immediately claim all open tabs,
+        // so users on long-lived sessions (PWA installed, tab kept open) pick up
+        // hotfixes without manual cache clear. Pairs with registerType:'autoUpdate'.
+        skipWaiting: true,
+        clientsClaim: true,
+        // Always go to network for navigations — prevents serving a stale shell
+        // while a deploy is in flight (also avoids the "TDZ-y" surprise of an
+        // old index.html pointing to assets that no longer exist on edge).
+        navigateFallback: '/index.html',
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdn\.shopify\.com\/.*/i,
