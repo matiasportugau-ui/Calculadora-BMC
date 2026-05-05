@@ -145,17 +145,29 @@ export default function createWaRouter(config, logger) {
           // fallthrough to legacy
         }
       }
-      // 2) Probar como token compartido (legacy)
+      // 2) Probar como token compartido (legacy). It remains valid for
+      // extension/ingest compatibility, but admin writes require operator RBAC.
       if (tokenStr && tokenStr === config.apiAuthToken) {
+        if (requireWrite) {
+          return res.status(403).json({
+            ok: false,
+            error: "operator_jwt_required",
+            message: "WA admin writes require an Owner/Admin operator session",
+          });
+        }
         const opId = String(req.headers["x-operator-id"] || "").slice(0, 64).trim();
         req.waOperatorId = opId || null;
-        // Legacy token: read-only en endpoints write a menos que esté
-        // explicitamente whitelisted. Para el rollout gradual, permitimos
-        // escritura igual — en producción toggle requireWrite.
         return next();
       }
       const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
       if (xKey && xKey === config.apiAuthToken) {
+        if (requireWrite) {
+          return res.status(403).json({
+            ok: false,
+            error: "operator_jwt_required",
+            message: "WA admin writes require an Owner/Admin operator session",
+          });
+        }
         req.waOperatorId = null;
         return next();
       }

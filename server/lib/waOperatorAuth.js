@@ -327,7 +327,7 @@ export async function inviteOperator({
      values ($1, $2, $3, $4, 'invited', $5)
      on conflict (email) do update
         set name = coalesce(wa_operators.name, excluded.name),
-            role = excluded.role
+            role = wa_operators.role
      returning operator_id, email, name, role, status`,
     [operatorId, normalizedEmail, name || null, role, invitedBy || null],
   );

@@ -12,6 +12,13 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Security Fix — WA admin RBAC hardening):** Inspección crítica detectó dos regresiones en WA Module Pro antes de consolidar producción:
+
+- `requireWaAccess({ requireWrite: true })` aceptaba el token legacy compartido (`API_AUTH_TOKEN` / `x-api-key`) para escrituras administrativas (`/wa/settings`, `/wa/flags`, `/wa/operators/invite`, revocaciones y test webhooks), saltando roles `Owner/Admin`. Ahora esas escrituras devuelven `403 operator_jwt_required` salvo JWT de operador con rol suficiente; el token compartido queda para lecturas/ingest compat.
+- `inviteOperator` preserva el rol existente en `ON CONFLICT (email)` para evitar degradar accidentalmente un `owner/admin` al re-invitarlo como `member`; el test `wa-operator-auth` cubre la no-degradación.
+
+**Affects:** bmc-security (cierre bypass RBAC), bmc-api-contract (semántica 403 en writes legacy), bmc-docs-sync.
+
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 
 - **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).

@@ -37,6 +37,18 @@ async function runTests() {
     });
     console.log("✓ Invite OK");
 
+    const reinvite = await inviteOperator({
+      email: testEmail,
+      name: "Test User Reinvite",
+      role: "member",
+      invitedBy: "admin_tester",
+      sendInviteMail: false,
+    });
+    if (reinvite.operator.role !== "admin") {
+      throw new Error(`Existing operator role was downgraded to ${reinvite.operator.role}`);
+    }
+    console.log("✓ Reinvite preserves existing role");
+
     // 2. Magic Link
     await requestMagicLink({ email: testEmail, baseUrl: "http://localhost:3001" });
     if (!sentMails[0]) throw new Error("No mail sent");
