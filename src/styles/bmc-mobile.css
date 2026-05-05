@@ -62,6 +62,16 @@
 /* ── Compact layout (< 1024px — phone + tablet) ──────────────────────── */
 @media (max-width: 1023px) {
   .bmc-main-grid { height: auto !important; overflow: visible !important; }
+  /* react-resizable-panels inlines `flex: <size> 1 0px; overflow: hidden` on each
+     Panel. With the parent's height:auto on mobile, that collapses panels to 0px
+     (wizard + visor invisible). Force content-driven sizing on mobile and unhide
+     overflow. The resize handle is meaningless when panels grow with content. */
+  .bmc-main-grid > [data-panel] {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .bmc-main-grid > [data-resize-handle] { display: none !important; }
   .bmc-left-panel, .bmc-right-panel { overflow: visible !important; padding: 0 16px !important; }
   .bmc-mobile-bar { display: flex !important; }
 

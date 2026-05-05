@@ -56,6 +56,13 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // Hidden sourcemaps: emitted to dist/ but no //# sourceMappingURL pointer in JS,
+    // so they are NOT served by Vercel rewrites. Lets us map prod stacks offline
+    // without exposing source publicly. Trade-off: dist/ ~+8 MB.
+    sourcemap: 'hidden',
+    // vendor-pdf (~975 KB) and vendor-three (~870 KB) are intentionally large,
+    // pre-split, and lazy-loaded. Silence false-positive warning at 500 KB default.
+    chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
         manualChunks: {
