@@ -52,6 +52,7 @@ import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
 import { addTrainingEntry } from "./lib/trainingKB.js";
+import { redactSensitiveUrl } from "./lib/httpLogRedaction.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -99,6 +100,18 @@ app.use(
   pinoHttp({
     logger,
     genReqId: () => crypto.randomUUID(),
+    serializers: {
+      req(req) {
+        return {
+          id: req.id,
+          method: req.method,
+          url: redactSensitiveUrl(req.url),
+          params: req.params,
+          remoteAddress: req.remoteAddress,
+          remotePort: req.remotePort,
+        };
+      },
+    },
   })
 );
 

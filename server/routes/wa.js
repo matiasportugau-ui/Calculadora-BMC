@@ -391,9 +391,10 @@ export default function createWaRouter(config, logger) {
       const token = String(req.query?.token || "").trim();
       try {
         const r = await verifyMagicLink({ token, ip: req.ip, userAgent: req.get?.("user-agent") });
-        // Browser flow: redirige al cockpit con tokens en query.
+        // Browser flow: fragment keeps issued tokens out of HTTP logs and
+        // intermediary request URLs while preserving client-side parsing.
         if (req.accepts(["html", "json"]) === "html") {
-          const back = `/hub/wa?access_token=${encodeURIComponent(r.accessToken)}&refresh_token=${encodeURIComponent(r.refreshToken)}`;
+          const back = `/hub/wa#access_token=${encodeURIComponent(r.accessToken)}&refresh_token=${encodeURIComponent(r.refreshToken)}`;
           return res.redirect(back);
         }
         return res.json(r);
