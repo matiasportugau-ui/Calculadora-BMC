@@ -19,18 +19,29 @@ import { runWaQuote } from "./waQuoteRunner.js";
 import { extractQuoteParams } from "./waQuoteParams.js";
 
 export function startWaEnricherWorker({ config, logger, pool }) {
+  // Normaliza el logger para evitar `logger?.warn?.()` por todos lados.
+  // Inyectar pino o cualquier estructurado funciona; sin logger usa noop.
+  const log = logger || { info() {}, warn() {}, error() {} };
+
   if (!pool) {
-    logger.warn?.("[waEnricher] no pool, worker not started");
+    log.warn("[waEnricher] no pool, worker not started");
     return () => {};
   }
   if (!config.waEnricherEnabled) {
-    logger.info?.("[waEnricher] disabled (WA_ENRICHER_ENABLED=false)");
+    log.info("[waEnricher] disabled (WA_ENRICHER_ENABLED=false)");
     return () => {};
   }
 
   const intervalMs = Number(config.waEnricherIntervalMs || 8000);
   const batchSize = Number(config.waEnricherBatchSize || 5);
 
+  // Shutdown coordinado: el cleanup retornado dispara `ac.abort()` para que
+  // el batch in-flight termine de procesar el mensaje actual (no se interrumpe
+  // mid-message — eso podría dejar estado parcial) y rompa el loop antes del
+  // siguiente. El COMMIT de la tx se ejecuta normal con el progreso parcial.
+  // Las llamadas LLM en curso NO reciben el abort (requiere propagar signal a
+  // fetch en waEnricher.js + waQuoteRunner.js — fuera de scope de Fase 4.1).
+  const ac = new AbortController();
   let timer = null;
   let running = false;
 
@@ -65,6 +76,11 @@ export function startWaEnricherWorker({ config, logger, pool }) {
       claimed = pendingMsgs.length;
 
       for (const msg of pendingMsgs) {
+        // Shutdown signal: salir antes de empezar otro mensaje. El COMMIT de
+        // abajo persiste lo procesado hasta acá; los msgs no procesados quedan
+        // sin lockear (rollback liberaría sus locks; commit los desbloquea
+        // igual al cerrar la tx). En la próxima ejecución se re-claman.
+        if (ac.signal.aborted) break;
         const intentHint = classifyIntent(msg.text);
         // Aislamos cada mensaje: si su procesamiento falla, hacemos ROLLBACK TO SAVEPOINT
         // y el resto del batch continúa dentro de la misma tx.
@@ -150,13 +166,13 @@ export function startWaEnricherWorker({ config, logger, pool }) {
                   generatedByAi: true,
                 });
                 if (!quoteResp.ok) {
-                  logger.warn?.(
+                  log.warn(
                     { chat_id: msg.chat_id, reason: quoteResp.reason },
                     "[waEnricher] auto-quote skipped",
                   );
                 }
               } catch (qe) {
-                logger.warn?.({ err: qe?.message, chat_id: msg.chat_id }, "[waEnricher] auto-quote failed");
+                log.warn({ err: qe?.message, chat_id: msg.chat_id }, "[waEnricher] auto-quote failed");
               }
             }
           }
@@ -179,7 +195,7 @@ export function startWaEnricherWorker({ config, logger, pool }) {
           // Rollback solo este mensaje, mantiene el resto del batch.
           await client.query("rollback to savepoint wa_msg");
           failed++;
-          logger.warn?.({ err: err?.message, msg_id: msg.msg_id }, "[waEnricher] msg failed");
+          log.warn({ err: err?.message, msg_id: msg.msg_id }, "[waEnricher] msg failed");
 
           // Sub-savepoint para registrar el fallo: si esto también falla,
           // no aborta el batch entero, solo este mensaje queda sin marcar.
@@ -206,7 +222,7 @@ export function startWaEnricherWorker({ config, logger, pool }) {
             await client.query("release savepoint wa_msg_fail");
           } catch (e2) {
             await client.query("rollback to savepoint wa_msg_fail").catch(() => {});
-            logger.error?.({ err: e2?.message, msg_id: msg.msg_id }, "[waEnricher] failed to record failure");
+            log.error({ err: e2?.message, msg_id: msg.msg_id }, "[waEnricher] failed to record failure");
           }
           await client.query("release savepoint wa_msg").catch(() => {});
         }
@@ -228,8 +244,8 @@ export function startWaEnricherWorker({ config, logger, pool }) {
       if (claimed > 0) {
         const durationMs = Date.now() - t0;
         const ok = claimed - failed - chatter;
-        logger.info?.(
-          { claimed, ok, chatter, failed, duration_ms: durationMs },
+        log.info(
+          { claimed, ok, chatter, failed, duration_ms: durationMs, aborted: ac.signal.aborted },
           "[waEnricher] batch done",
         );
       }
@@ -237,16 +253,18 @@ export function startWaEnricherWorker({ config, logger, pool }) {
   }
 
   timer = setInterval(() => {
-    processBatch().catch((e) => logger.error?.({ err: e?.message }, "[waEnricher] batch failed"));
+    if (ac.signal.aborted) return;
+    processBatch().catch((e) => log.error({ err: e?.message }, "[waEnricher] batch failed"));
   }, intervalMs);
 
   if (typeof timer.unref === "function") timer.unref();
 
   // Initial run
-  processBatch().catch((e) => logger.error?.({ err: e?.message }, "[waEnricher] initial batch failed"));
+  processBatch().catch((e) => log.error({ err: e?.message }, "[waEnricher] initial batch failed"));
 
   return () => {
     if (timer) clearInterval(timer);
     timer = null;
+    ac.abort();
   };
 }
