@@ -13,6 +13,7 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
 import { config } from "../config.js";
+import { runCalculation, buildGptResponse } from "../routes/calc.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
 import { searchCrmClients } from "./crmSearch.js";
 import { sendWhatsAppText } from "./whatsappOutbound.js";
@@ -707,6 +708,22 @@ function fmt2(n) {
   return typeof n === "number" ? +n.toFixed(2) : n;
 }
 
+/**
+ * Return a JSON-stringified `{ ok:false, error }` if any of `names` is
+ * missing/empty in `input`, otherwise null. Lets executors short-circuit
+ * with `const err = requireField(input, "pdf_id"); if (err) return err;`
+ * instead of the same hand-written conditional everywhere.
+ */
+function requireField(input, ...names) {
+  for (const n of names) {
+    const v = input?.[n];
+    if (v == null || v === "") {
+      return JSON.stringify({ ok: false, error: `${n} requerido` });
+    }
+  }
+  return null;
+}
+
 function normalizeFamilia(f) {
   return f ? String(f).toUpperCase().replace(/-/g, "_") : f;
 }
@@ -964,60 +981,40 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
     if (name === "calcular_cotizacion") {
       const { scenario, listaPrecios = "web", techo, pared, camara } = input;
-      setListaPrecios(listaPrecios === "venta" ? "venta" : "web");
 
-      if (scenario === "solo_techo") {
-        if (!techo) return JSON.stringify({ error: "Se requieren datos de techo" });
-        const r = runTecho(techo, listaPrecios);
-        return JSON.stringify({ scenario, listaPrecios, ...summarizeResult(r, "solo_techo") });
+      // Delegate to the same runCalculation + buildGptResponse used by
+      // POST /calc/cotizar — single source of truth, no drift between
+      // the agent path and the HTTP path.
+      const techoNorm = techo ? { ...techo, familia: normalizeFamilia(techo.familia) } : undefined;
+      const paredNorm = pared ? { ...pared, familia: normalizeFamilia(pared.familia) } : undefined;
+
+      const r = runCalculation({
+        escenario: scenario,
+        lista: listaPrecios,
+        techo: techoNorm,
+        pared: paredNorm,
+        camara,
+      });
+      if (r.error && !r.allItems) return JSON.stringify({ error: r.error });
+
+      const gpt = buildGptResponse(scenario, listaPrecios, r, 0);
+      if (!gpt.ok) return JSON.stringify({ error: gpt.error || "Error al construir respuesta de cotización" });
+
+      const out = {
+        scenario,
+        listaPrecios,
+        subtotalSinIVA: gpt.resumen.subtotal_usd,
+        totalConIVA: gpt.resumen.total_usd,
+        iva22: gpt.resumen.iva_usd,
+        area_m2: gpt.resumen.area_m2,
+        cant_paneles: gpt.resumen.cant_paneles,
+        autoportancia: gpt.autoportancia || null,
+        warnings: gpt.advertencias || [],
+      };
+      if (scenario === "camara_frig" && camara) {
+        out.camara_dims = `${camara.largo_int}×${camara.ancho_int}×${camara.alto_int}m`;
       }
-
-      if (scenario === "solo_fachada") {
-        if (!pared) return JSON.stringify({ error: "Se requieren datos de pared" });
-        const r = runPared(pared, listaPrecios);
-        return JSON.stringify({ scenario, listaPrecios, ...summarizeResult(r, "solo_fachada") });
-      }
-
-      if (scenario === "techo_fachada") {
-        const rT = techo ? runTecho(techo, listaPrecios) : null;
-        const rP = pared ? runPared(pared, listaPrecios) : null;
-        const allItems = [...(rT?.allItems || []), ...(rP?.allItems || [])];
-        if (allItems.length === 0) return JSON.stringify({ error: "Datos insuficientes para calcular techo+fachada" });
-        const totales = calcTotalesSinIVA(allItems);
-        const combined = { allItems, totales, paredResult: rP, ...(rT || {}) };
-        return JSON.stringify({ scenario, listaPrecios, ...summarizeResult(combined, "techo_fachada") });
-      }
-
-      if (scenario === "camara_frig") {
-        if (!pared || !camara) return JSON.stringify({ error: "Se requieren datos de pared y cámara" });
-        const perim = 2 * (Number(camara.largo_int) + Number(camara.ancho_int));
-        const rP = runPared({ ...pared, perimetro: perim, alto: Number(camara.alto_int), numEsqExt: 4, numEsqInt: 0 }, listaPrecios);
-        const techoFam = techo?.familia || pared.familia;
-        const techoEsp = techo?.espesor || pared.espesor;
-        const rT = calcTechoCompleto({
-          familia: techoFam,
-          espesor: Number(techoEsp),
-          largo: Number(camara.largo_int),
-          ancho: Number(camara.ancho_int),
-          tipoEst: "metal",
-          borders: { frente: "none", fondo: "none", latIzq: "none", latDer: "none" },
-          opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
-          color: pared.color || "Blanco",
-        });
-        const allItems = [...(rP?.allItems || []), ...(rT?.allItems || [])];
-        const totales = calcTotalesSinIVA(allItems);
-        return JSON.stringify({
-          scenario, listaPrecios,
-          subtotalSinIVA: fmt2(totales.subtotalSinIVA),
-          totalConIVA: fmt2(totales.totalFinal),
-          iva22: fmt2(totales.iva),
-          pared: { cantPaneles: rP?.cantPaneles, areaBruta: fmt2(rP?.areaBruta) },
-          techo: { cantPaneles: rT?.cantPaneles, areaTotal: fmt2(rT?.areaTotal) },
-          camara_dims: `${camara.largo_int}×${camara.ancho_int}×${camara.alto_int}m`,
-        });
-      }
-
-      return JSON.stringify({ error: `Escenario "${scenario}" no soportado` });
+      return JSON.stringify(out);
     }
 
     if (name === "generar_pdf") {
@@ -1147,8 +1144,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "obtener_cotizacion_por_id") {
-      const id = String(input?.pdf_id || "").trim();
-      if (!id) return JSON.stringify({ error: "pdf_id requerido" });
+      const missing = requireField(input, "pdf_id");
+      if (missing) return missing;
+      const id = String(input.pdf_id).trim();
       const list = await fetchJson("/calc/cotizaciones");
       if (!list.ok) return JSON.stringify({ error: list.error || "No se pudo consultar el registro" });
       const entry = (list.cotizaciones || []).find((e) => e.id === id);
@@ -1212,8 +1210,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "comparar_listas") {
+      const missing = requireField(input, "scenario");
+      if (missing) return missing;
       const { scenario, techo, pared, camara } = input || {};
-      if (!scenario) return JSON.stringify({ error: "scenario requerido" });
       const baseInput = { scenario, techo, pared, camara };
       const [webRaw, ventaRaw] = await Promise.all([
         executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState),
@@ -1345,8 +1344,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (input?.user_confirmed !== true) {
         return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
       }
-      const pdfId = String(input?.pdf_id || "").trim();
-      if (!pdfId) return JSON.stringify({ ok: false, error: "pdf_id requerido" });
+      const missing = requireField(input, "pdf_id");
+      if (missing) return missing;
+      const pdfId = String(input.pdf_id).trim();
       const motivo = String(input?.motivo || "").trim();
       const data = await fetchJson(`/calc/cotizaciones/${encodeURIComponent(pdfId)}/cancelar`, {
         method: "POST",
@@ -1366,8 +1366,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "obtener_pdf_html") {
-      const id = String(input?.pdf_id || "").trim();
-      if (!id) return JSON.stringify({ ok: false, error: "pdf_id requerido" });
+      const missing = requireField(input, "pdf_id");
+      if (missing) return missing;
+      const id = String(input.pdf_id).trim();
       try {
         const resp = await fetch(`${apiBase()}/calc/pdf/${encodeURIComponent(id)}`);
         if (resp.status === 404) {
@@ -1393,8 +1394,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (input?.user_confirmed !== true) {
         return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
       }
-      const title = String(input?.title || "").trim();
-      if (!title) return JSON.stringify({ ok: false, error: "title requerido" });
+      const missing = requireField(input, "title");
+      if (missing) return missing;
+      const title = String(input.title).trim();
 
       let due = null;
       if (input?.nextFollowUpAt) {
@@ -1429,8 +1431,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "historial_cliente") {
-      const cliente = String(input?.cliente || "").trim();
-      if (!cliente) return JSON.stringify({ ok: false, error: "cliente requerido" });
+      const missing = requireField(input, "cliente");
+      if (missing) return missing;
+      const cliente = String(input.cliente).trim();
       const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
 
       const [crmRaw, quotesRaw] = await Promise.all([

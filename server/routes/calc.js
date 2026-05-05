@@ -159,6 +159,9 @@ function getPdf(id) {
   return entry.html;
 }
 
+// .unref() so the timer doesn't keep the process alive in test contexts
+// where calc.js is imported as a module (e.g. tests/agentTools.test.js
+// pulling in runCalculation directly).
 setInterval(() => {
   const now = Date.now();
   for (const [id, entry] of pdfStore) {
@@ -166,7 +169,7 @@ setInterval(() => {
   }
   // Quotation registry is now persisted to GCS via server/lib/quoteRegistry.js;
   // no in-process TTL needed — quotes are kept indefinitely.
-}, 60 * 60 * 1000);
+}, 60 * 60 * 1000).unref();
 
 // ── Quotation registry (tracks GPT-generated quotations) ────────────────────
 // Implementation moved to server/lib/quoteRegistry.js — it writes one JSON

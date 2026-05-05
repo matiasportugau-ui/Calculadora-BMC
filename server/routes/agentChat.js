@@ -188,7 +188,20 @@ const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_quote_batch",
 ]);
 
-router.post("/agent/exec-tool", async (req, res) => {
+// Bound the MCP / external write surface. The chat endpoint already has
+// 10/min public + 30/min dev rate limits; exec-tool inherits nothing
+// without this. 60/min is generous for legitimate MCP clients while
+// preventing runaway loops or abuse.
+const execToolLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitClientKey,
+  message: { ok: false, error: "Demasiadas invocaciones de tool. Esperá un momento." },
+});
+
+router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
   try {
     const { name, input, calcState = {} } = req.body || {};
     if (!name || typeof name !== "string") {
