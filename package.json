@@ -74,6 +74,7 @@
     "gate:local": "npm run lint && npm test",
     "dev:check:all": "bash scripts/bmc-dev-check-all.sh",
     "gate:local:full": "npm run lint && npm test && npm run build",
+    "check:env-drift": "node scripts/check-env-drift.mjs",
     "check": "npm run gate:local",
     "lint": "eslint src/",
     "team:hub": "npx --yes serve docs -l 4710",
