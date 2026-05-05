@@ -24,6 +24,16 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Force the new SW to skip waiting and immediately claim all open tabs,
+        // so users on long-lived sessions (PWA installed, tab kept open) pick up
+        // hotfixes without manual cache clear. Pairs with registerType:'autoUpdate'.
+        skipWaiting: true,
+        clientsClaim: true,
+        // Always go to network for navigations — prevents serving a stale shell
+        // while a deploy is in flight (also avoids the "TDZ-y" surprise of an
+        // old index.html pointing to assets that no longer exist on edge).
+        navigateFallback: '/index.html',
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cdn\.shopify\.com\/.*/i,
@@ -56,6 +66,13 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // Hidden sourcemaps: emitted to dist/ but no //# sourceMappingURL pointer in JS,
+    // so they are NOT served by Vercel rewrites. Lets us map prod stacks offline
+    // without exposing source publicly. Trade-off: dist/ ~+8 MB.
+    sourcemap: 'hidden',
+    // vendor-pdf (~975 KB) and vendor-three (~870 KB) are intentionally large,
+    // pre-split, and lazy-loaded. Silence false-positive warning at 500 KB default.
+    chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
         manualChunks: {

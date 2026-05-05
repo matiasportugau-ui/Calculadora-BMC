@@ -33,6 +33,17 @@ const DASHBOARD_ROUTES = [
   { method: "GET", path: "/api/internal/panelin/tools", summary: "Panelin interno: catálogo HTTP tools para orquestador" },
   { method: "GET", path: "/api/internal/panelin/policies", summary: "Panelin interno: matriz mínima método+path → rol" },
   { method: "POST", path: "/api/internal/panelin/invoke", summary: "Panelin interno: ejecutar tool por tool_id (RBAC; proxy localhost)" },
+  // WA Cockpit (F1-F5) — capturas de WhatsApp Web ingested por extensión
+  { method: "GET", path: "/api/wa/health", summary: "WA Cockpit: liveness + counters (count_chats, count_msgs_24h)" },
+  { method: "POST", path: "/api/wa/ingest", summary: "WA Cockpit: ingest batch idempotente (max 500 msgs, dedupe por msg_id)" },
+  { method: "GET", path: "/api/wa/conversations", summary: "WA Cockpit: list conversations (filtros status, q, paginación)" },
+  { method: "GET", path: "/api/wa/messages", summary: "WA Cockpit: hilo de mensajes por chat_id (keyset pagination)" },
+  { method: "GET", path: "/api/wa/suggestions", summary: "WA Cockpit (F2): sugerencias AI por chat (3 opciones: corta/técnica/cierre)" },
+  { method: "POST", path: "/api/wa/suggestions/run", summary: "WA Cockpit (F2): generar sugerencias on-demand para un chat" },
+  { method: "POST", path: "/api/wa/suggestions/:id/chosen", summary: "WA Cockpit (F2): marcar opción elegida por el operador" },
+  { method: "GET", path: "/api/wa/quotes", summary: "WA Cockpit (F3): cotizaciones generadas por chat" },
+  { method: "POST", path: "/api/wa/quotes/run", summary: "WA Cockpit (F3): generar cotización on-demand desde texto o params" },
+  { method: "POST", path: "/api/wa/conversations/:chat_id/upsert-lead", summary: "WA Cockpit (F3): asociar conversation con fila CRM_Operativo (lead_sheet_row, owner_op)" },
 ];
 
 /**

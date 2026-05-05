@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-04-30
+**Última actualización:** 2026-05-05
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,99 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
+
+- **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
+- **Auth Híbrida (Auth.js v5 pattern)**: Nuevo [`server/lib/waOperatorAuth.js`](../../server/lib/waOperatorAuth.js) con Magic Link (vía SMTP) → Access JWT (15min) + Refresh Token (30d) con rotación obligatoria y detección de reuso (revocación automática). Soporta roles canónicos: `Owner`, `Admin`, `Member`. Mantiene compatibilidad con token compartido para `/ingest`.
+- **Workers Operacionales**:
+  - **SLA Worker** ([`server/lib/waSlaWorker.js`](../../server/lib/waSlaWorker.js)): Detecta breaches de respuesta (`unreplied`) y asignación (`unassigned`) respetando business hours configurables. Popula `wa_sla_breaches`.
+  - **Routing Rules** ([`server/lib/waRoutingRules.js`](../../server/lib/waRoutingRules.js)): Motor de reglas estilo Missive (condition/action JSON) para auto-asignación, etiquetado y alertas en `/ingest`.
+  - **Webhooks Salientes** ([`server/lib/waWebhooks.js`](../../server/lib/waWebhooks.js)): HMAC SHA256 firmados, fire-and-forget con reintentos exponenciales y dead-letter queue. Eventos: `message.in/out`, `quote.created`, `sla.breach`.
+- **AI per-task**: `agentCore.callAgentOnce` extendido para soportar overrides de provider/model/temp/maxTokens por tarea (`classify`, `suggestions`, `quoteParse`, `followupText`) desde la configuración persistente.
+- **Migraciones**: 010-016 aplicadas (settings, flags, operators, audit_log, webhooks, rules, sla_breaches).
+- **Tests de Integración**: 4 nuevas suites verdes ([`tests/wa-config.test.js`](../../tests/wa-config.test.js), `wa-operator-auth.test.js`, `wa-webhooks.test.js`, `wa-rules.test.js`).
+- **Docs**: [`docs/wa-cockpit/CONFIG-REFERENCE.md`](../wa-cockpit/CONFIG-REFERENCE.md) (auto-gen) y [`docs/wa-cockpit/OPERATOR-GUIDE.md`](../wa-cockpit/OPERATOR-GUIDE.md).
+
+**Affects:** bmc-security (JWT multi-operador + audit log + HMAC webhooks), bmc-api-contract (nuevas rutas de config/auth), bmc-panelin-chat (AI per-task), bmc-judge (nuevas métricas de SLA y reglas), bmc-docs-sync (esta entrada + docs auto-gen).
+
+**Pendientes específicos**: Fase D (UI de Configuración) y Fase E1 (CLI de Admin) en construcción por subagente copilot.
+
+**Update 2026-05-05 (cierre de fases B5/E1/E5):**
+
+- **Extensión Chrome — magic-link login (fb5)**: popup en repo hermano [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) ahora soporta el flujo **email → "Enviar magic link" → pegar URL recibida → JWT + refresh** persistidos en `chrome.storage.local`. `lib/storage.ts` extendido con `operatorJwt`, `refreshToken`, `operatorEmail`, `operatorRole`, `accessTokenExpiresAt`. `lib/api.ts` añade `requestMagicLinkApi`, `verifyMagicLinkApi`, `refreshAccessTokenApi`, `logoutApi`, `extractMagicToken` y un wrapper `authenticatedFetch` que **refresca on 401** una vez antes de propagar. `background.ts` y `postIngest` priorizan JWT operador, fallback al token compartido para retrocompat. Token legacy queda colapsable en `<details>` del popup mientras dure la migración.
+- **CLI `wa-admin.mjs` (fe1) ampliado**: ahora cubre `operator add` con detección de **bootstrap del primer Owner** sin magic link, `operator list/revoke`, `config get/set/dump --out/import [--dry-run]` (validación zod, diff visible), `flags list/get/toggle`, **`webhook list/test --id`** (usa `testWebhook`), y **`sla check [--verbose]`** que dispara un tick real del worker e imprime el delta de breaches abiertos/resueltos.
+- **Tests integration (fe5)**: nuevo [`tests/wa-sla.test.js`](../../tests/wa-sla.test.js) cubre detect → no-doble-breach → resolve → flag-off; skipea limpio si `DATABASE_URL` no es alcanzable. Nuevo target `npm run test:wa-pro` (config + operator-auth + rules + webhooks + sla en serie).
+- **`.plan.md` sync**: 6 todos pasados a `completed` (plan estaba desfasado del repo): `fa2-config-loader`, `fb2-sla-worker`, `fb2-routing-rules`, `fd1-settings-tab`, `fd1-followups-tab`, `fd2-config-routes`, más `fb5-extension-config`, `fe1-cli`.
+- **Pendiente residual**: `fe3-metrics` (3 campos `sla_breach_count_24h`, `rule_hits`, `flag_changes_24h` aún no agregados a `/wa/metrics`); UI polish opcional (botón Preview en `RoutingSection`, tz selector en `SlaSection`).
+
+**Affects update:** bmc-security (refresh rotation + JWT-on-extension cierra surface de token compartido), bmc-api-contract (sin cambios — endpoints ya estaban), bmc-deployment (CI puede correr `npm run test:wa-pro` cuando haya DB de test), bmc-docs-sync (esta sub-entrada + AGENTS.md fila nueva).
+
+
+**2026-05-05 (Ops — rotación OPENAI_API_KEY + tooling de auditoría/rotación):** Clave de OpenAI activa rotada después de detectar 401 `invalid_api_key` en producción. La clave anterior `sk-proj-…A9IA` se reemplazó por `sk-proj-…AoEA` (token-fingerprint, no se publica el valor) y simultáneamente se restauró el mount vía Secret Manager (regresión de la migración del 2026-04-30: `panelin-calc` venía sirviendo `OPENAI_API_KEY` como env var inline; ahora vuelve a `--set-secrets OPENAI_API_KEY=openai-api-key:latest`). Nueva revisión Cloud Run **`panelin-calc-00352-vxk`**, secreto `openai-api-key` versión 3.
+
+Tooling agregado para que la próxima rotación sea de un comando:
+
+- **`scripts/openai-key-audit.sh`** ([`scripts`](../../scripts/openai-key-audit.sh)) — escanea `.env*` locales, shell, Cloud Run inline + Secret Manager y Vercel; muestra fingerprint (prefix…suffix) + label ACTIVE/INACTIVE; nunca imprime claves completas. CLI: `npm run keys:audit`.
+- **`scripts/openai-key-rotate.sh`** ([`scripts`](../../scripts/openai-key-rotate.sh)) — input oculto, valida contra `api.openai.com/v1/models` antes de tocar nada; backup `.env.bak.<ts>`; opcional `gcloud secrets versions add openai-api-key` + IAM al runtime SA + `gcloud run services update --remove-env-vars OPENAI_API_KEY --set-secrets OPENAI_API_KEY=openai-api-key:latest`. CLI: `npm run keys:rotate`. Override: `SKIP_CLOUD_RUN=1`, `CLOUD_RUN_SERVICE`, `CLOUD_RUN_REGION`, `GCP_SECRET_NAME`.
+- **`GET /api/agent/voice/health`** ([`server/routes/agentVoice.js`](../../server/routes/agentVoice.js)) — admin-auth; pinguea `/v1/models`; devuelve `{ok, status, latencyMs, configured, keyPrefix, keySuffix, keyLength, model, error?}`. Nunca incluye la clave completa.
+- **Botón "Verificar clave"** en VoiceTab ([`src/components/AgentAdminModule.jsx`](../../src/components/AgentAdminModule.jsx)) — llama al endpoint y muestra fingerprint + status + latencia inline.
+
+Verificación end-to-end (browser MCP, prod, 2026-05-05): `/api/agent/voice/health` 200 (617 ms), `/api/agent/voice/session` 200 con `client_secret` válido. Evidencia: [`scripts/_evidence/voice-rotation-verified.png`](../../scripts/_evidence/voice-rotation-verified.png).
+
+**Affects:** bmc-security (Secret Manager re-mount cierra drift de la migración 2026-04-30), bmc-deployment (rev 00352 nueva, comando one-shot `npm run keys:rotate` para futuras rotaciones), bmc-api-contract (endpoint nuevo `/api/agent/voice/health`), bmc-panelin-chat (voz operativa otra vez), bmc-docs-sync (esta entrada).
+
+**Pendientes específicos**: agregar `npm run keys:audit` al checklist de smoke prod / pre-deploy si se considera oportuno; eliminar el archivo `.env.bak.20260505-031820` cuando se confirme estabilidad (contiene clave revocada — sin riesgo activo, pero higiene).
+
+**2026-05-04 (Dev — WA Cockpit F1-F5 implementado end-to-end):** Plan canónico [`.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md`](../../.cursor/plans/) ejecutado. Nuevo cockpit operativo de WhatsApp Web sobre el stack actual:
+
+- **Repo separado** [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) (sibling a este repo) — Chrome MV3 + WXT + TypeScript: IDB scrape histórico, WS hook (MAIN world), MutationObserver UI, paste-back desde SPA, heartbeat 60s, crash reporter local.
+- **Postgres `wa_*`** (mismo `DATABASE_URL` Transportista): 7 migraciones en [`wa-package/migrations/`](../../wa-package/migrations/) (`wa_conversations`, `wa_messages`, `wa_suggestions`, `wa_quotes`, `wa_followups`, `wa_consent`, `wa_operator`, `wa_heartbeats`). Runner: `npm run wa:migrate` ([`scripts/run-wa-migrations.mjs`](../../scripts/run-wa-migrations.mjs)).
+- **API `/api/wa/*`** ([`server/routes/wa.js`](../../server/routes/wa.js), montada en [`server/index.js`](../../server/index.js)): `health`, `ingest` (idempotente, max 500 msgs/batch), `conversations`, `messages`, `suggestions{,/run,/:id/chosen}`, `quotes{,/run}`, `conversations/:id/{upsert-lead,consent}`, `outbound{,/:msg_id/confirm}`, `followups{,/:id}`, `heartbeat`, `operators`, `metrics`. Auth Bearer cockpit + header `X-Operator-Id`. Rate-limit por chat en outbound (`WA_OUTBOUND_RATE_LIMIT`).
+- **Enricher worker** ([`server/lib/waEnricherWorker.js`](../../server/lib/waEnricherWorker.js), flag `WA_ENRICHER_ENABLED`): patrón outbox Transportista, classifyIntent + 3 sugerencias AI vía `agentCore.callAgentOnce(channel="wa")` + auto-cotización si intent=cotización con m² detectados + auto-followup 24h.
+- **System prompt WA Cockpit** ([`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — `buildWaCockpitSuggestionsBlock`): formato JSON estricto con 3 opciones (corta / técnica / cierre).
+- **SPA `/hub/wa`** ([`src/components/BmcWaModuleWithTabs.jsx`](../../src/components/BmcWaModuleWithTabs.jsx)): wrapper integrado en el módulo WhatsApp del Wolfboard con dos tabs — **Cockpit** (default; [`BmcWaCockpit.jsx`](../../src/components/BmcWaCockpit.jsx) con 3 columnas Lista/Hilo/Acción) y **Sheet legacy** (fallback `BmcWaOperativoModule`). Reusa `CockpitTokenPanel`. `/wa` redirige a `/hub/wa`.
+- **Webhook `/webhooks/whatsapp`**: extendido para espejar inbound Cloud API en `wa_messages` con `source=cloud_api` (HMAC ya validado).
+- **Reconciliador nocturno** [`scripts/wa-reconcile-sheet.mjs`](../../scripts/wa-reconcile-sheet.mjs) — cruza `wa_quotes.link` vs col AH del Sheet CRM_Operativo. `npm run wa:reconcile`.
+- **Purge TTL** [`scripts/wa-purge-old.mjs`](../../scripts/wa-purge-old.mjs) — `WA_TTL_DAYS` (default 180): borra `text` y `raw` manteniendo metadata. `npm run wa:purge-old`.
+- **Magazine diario** ([`scripts/magazine-daily-digest.mjs`](../../scripts/magazine-daily-digest.mjs)): bloque "WhatsApp Cockpit" con counters 24h (chats, mensajes, AI adoption, cotizaciones, follow-ups vencidos).
+- **Capabilities manifest** ([`server/agentCapabilitiesManifest.js`](../../server/agentCapabilitiesManifest.js)): 13 nuevas rutas WA expuestas para GPT/MCP. Snapshot regenerado: `npm run capabilities:snapshot`.
+- **Smoke prod** ([`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs)) y validador de contratos ([`scripts/validate-api-contracts.js`](../../scripts/validate-api-contracts.js)): incluyen `GET /api/wa/health` (200/503).
+- **Tests offline**: 26 + 23 + 22 = **71 nuevos asserts** en [`tests/wa-ingest-contract.js`](../../tests/wa-ingest-contract.js), [`tests/wa-enricher.test.js`](../../tests/wa-enricher.test.js), [`tests/wa-quote-params.test.js`](../../tests/wa-quote-params.test.js). `npm run gate:local` verde (`lint` + `test`).
+- **Docs nuevas**: [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md) (hub), [`docs/wa-cockpit/EXTENSION-INSTALL.md`](../wa-cockpit/EXTENSION-INSTALL.md), [`docs/wa-cockpit/API-REFERENCE.md`](../wa-cockpit/API-REFERENCE.md).
+- **Vars nuevas en `.env`**: `WA_ENRICHER_ENABLED`, `WA_ENRICHER_INTERVAL_MS`, `WA_ENRICHER_BATCH_SIZE`, `WA_OUTBOUND_RATE_LIMIT`, `WA_TTL_DAYS` ([`server/config.js`](../../server/config.js)).
+
+**Affects:** bmc-deployment (env vars + nuevas rutas para smoke/contract), bmc-api-contract (13 nuevos endpoints), bmc-security (Bearer + rate-limit por chat + consent gate Cloud API), bmc-docs-sync (nuevo hub `docs/wa-cockpit/`), bmc-panelin-chat (reusa `agentCore` con `channel="wa"`), bmc-sheets-mapping (sync col AH vía `/api/crm/cockpit/quote-link` existente — sin schema change), bmc-judge (criterios "WA Cockpit operator" pendientes en `JUDGE-CRITERIA-POR-AGENTE.md`), networks-development-agent (Postgres `wa_*` + extensión Chrome separada).
+
+**Pendientes específicos**: F4 cuando se publique con tráfico real → validar reconciliador AH vs `wa_quotes.link`; F5 evaluar migración a `pg-boss` si superan 100 jobs/min; criterios judge para rol WA Cockpit; opt-in formal Meta Cloud API para outbound automatizado a contactos opt-in.
+
+**2026-05-03 (Ops — Vercel prod deploy + verificación):** `vercel --prod` desde repo (proyecto `matprompts-projects/calculadora-bmc`): producción **lista** en alias `https://calculadora-bmc.vercel.app` (deployment `dpl_Hnytq4rL3tUsXvriX2No5YrGgL4S`). Build remoto con `VITE_API_URL`/`VITE_BASE` del CLI alineados a Cloud Run canónico. Previa: `npm run gate:local:full` OK; `npm run smoke:prod` OK. `npm run pre-deploy` con `BMC_API_BASE` prod: contrato **17/18** — falla esperada/datos **`GET /api/crm/cockpit/row/2`** (400 vs expectativa `linkPresupuesto` URL/null en fila de prueba); **`/api/transportista/health`** 503 documentado como skip Sheets. **Affects:** bmc-deployment, bmc-api-contract (revisar fila cockpit o contrato si se usa row/2 como fixture).
+
+**2026-05-03 (Ops — smoke prod reverificado; ROADMAP + KB alineados):** `npm run smoke:prod` → **OK** (`https://panelin-calc-q74zutv7dq-uc.a.run.app`): `/health`, `/capabilities`, `public_base_url`, MATRIZ CSV, WhatsApp webhook 403 esperado, `POST /api/crm/suggest-response` provider **claude**. [`docs/team/ROADMAP.md`](./ROADMAP.md) actualizado (smoke **2026-05-03**, fila Docs/Tooling sin referencia a workflow eliminado, score global **92**/100); `npm run kb:build` → [`.accessible-base/kb.json`](../../.accessible-base/kb.json). **Affects:** bmc-deployment, bmc-cross-sync-propagation, bmc-docs-sync.
+
+**2026-05-03 (Dev — AUTOTRACE retirado del flujo Git/CI):** Hooks `.githooks/post-commit` y `post-merge` pasan a **no-op** (ya no ejecutan Python `generate_commit_doc` / `rebuild_changelog` ni `build-accessible-base` al commitear). Eliminados scripts npm `dev-trace:install-hooks`, `dev-trace:rebuild`, `dev-trace:release` de `package.json`. Eliminado workflow GitHub Actions [`.github/workflows/dev-trace.yml`](../../.github/workflows/dev-trace.yml). Los scripts en [`tools/release-traceability/scripts/`](../../tools/release-traceability/scripts/) siguen en el repo por si alguien quiere ejecutarlos **a mano** (`python3 tools/release-traceability/scripts/rebuild_changelog.py`, etc.). `bash tools/release-traceability/bootstrap/install_hooks.sh` solo fija `core.hooksPath=.githooks`. **Affects:** equipo local (sin árbol sucio tras commit), `bmc-docs-sync`; histórico bajo [`docs/dev-trace/`](../../docs/dev-trace/) se mantiene como archivo.
+
+**2026-05-02 (Ops+Docs — holistic project health skill + snapshot):** Nueva skill [`.cursor/skills/bmc-holistic-project-health/SKILL.md`](../../.cursor/skills/bmc-holistic-project-health/SKILL.md) + regla [`.cursor/rules/bmc-holistic-project-health.mdc`](../../.cursor/rules/bmc-holistic-project-health.mdc); índice en [`docs/AGENTS.md`](../AGENTS.md) y [`docs/team/AGENTS.md`](./AGENTS.md). Primer informe trazado: [`docs/team/reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md`](./reports/PROJECT-HEALTH-SNAPSHOT-2026-05-02.md). Checks esta corrida: `npm run smoke:prod` **OK** (incl. MATRIZ CSV + `suggest-response` claude); `npm run gate:local` y `gate:local:full` **OK** (384 tests; build Vite OK; **2 warnings** ESLint sin errores). **Affects:** bmc-project-team-sync, bmc-docs-sync (descubrimiento skill), cualquier agente de status ejecutivo.
+
+**2026-04-30 (Security — GSM secrets migration completed):** Cierra el
+arco de seguridad de 2 días iniciado en `888f9cc` (Fase 0 deliverables) +
+`a2f309e` (ACCESS-CONTROL plan). Cloud Run `panelin-calc` revisión
+`<TBD-revision>` ahora monta 9 claves de alta sensibilidad
+(`ML_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `API_AUTH_TOKEN`,
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROK_API_KEY`,
+`WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_ACCESS_TOKEN`) vía
+`--update-secrets` desde Google Secret Manager — ya no aparecen en
+`spec.containers[0].env[]`. Bug fix colateral: `run_ml_cloud_run_setup.sh`
+usa escape `^|^` para `--update-env-vars` (commit `bf849ba`) porque
+`SHOPIFY_SCOPES`, `CORS_ORIGIN` y `COCKPIT_TOKEN_ALLOWED_ORIGINS`
+contienen comas y rompían el dict-parser de gcloud. Auth gates siguen
+activos (`/calc/interaction-log/list` 401 sin token, 200 con token;
+`/health` `ok:true,hasTokens:true,mlTokenStoreOk:true,hasSheets:true`).
+Pendientes de provisión: `WEBHOOK_VERIFY_TOKEN` (vacío en `.env`),
+`WHATSAPP_APP_SECRET` ([`WHATSAPP-HMAC-GAP.md`](../procedimientos/WHATSAPP-HMAC-GAP.md)),
+`SHOPIFY_*_SECRET`. Detalle: [`SECRETS-MIGRATION.md` §"Migración completada"](../procedimientos/SECRETS-MIGRATION.md#migración-completada--2026-04-30).
+**Affects:** bmc-security (cierre Fase 0), bmc-deployment (revisión
+nueva), bmc-docs-sync.
 
 **2026-04-30 (Docs — roadmap ACCESS-CONTROL, TOC + claridad código):** En [`docs/team/roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md`](./roadmap/ACCESS-CONTROL-PLAN-VERCEL-CALCULADORA.md): jerarquía Markdown alineada a TOC GitHub (secciones numeradas `##`, subtítulos `###`); aviso **to be created/updated** en artefactos planificados (`server/lib/rbac.js`, middleware, rutas internas de calculadora vs `GET /api/internal/panelin/*` ya existente). **Affects:** bmc-docs-sync, bmc-project-team-sync.
 

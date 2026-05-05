@@ -1,6 +1,6 @@
 # Calculadora BMC — Roadmap & Estado del Proyecto
 
-**Generado:** 2026-04-27 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica)*
+**Generado:** 2026-05-03 | **Versión:** 3.1.5 | **Branch activo:** `main` *(baseline canónica)*
 **Fuente:** git log, PROJECT-STATE.md, CEO-RUN-LOG.md, AGENTS.md, CLAUDE.md, estructura del repo.
 
 ---
@@ -17,7 +17,7 @@
 
 Un deploy es **100% limpio** cuando:
 - [ ] `npm run gate:local:full` → 0 errores, 0 warnings nuevos
-- [x] `npm run smoke:prod` → **todos** los checks verdes. **2026-04-24 ✅:** `/health`, `/capabilities`, `public_base_url`, MATRIZ CSV, `POST /api/crm/suggest-response` (provider: claude). CI jobs: validate ✅ lint ✅ smoke ✅ channels_pipeline ✅ knowledge_antenna ✅.
+- [x] `npm run smoke:prod` → **todos** los checks verdes. **2026-05-03 ✅** (re-verificación): `/health`, `/capabilities`, `public_base_url`, MATRIZ CSV, `POST /api/crm/suggest-response` (provider: claude); **2026-04-24 ✅** histórico mismo contrato. CI jobs: validate ✅ lint ✅ smoke ✅ channels_pipeline ✅ knowledge_antenna ✅.
 - [ ] `npm run test:contracts` → contrato API sin drift
 - [ ] Vercel producción sirve la versión correcta del chunk (semver en badge)
 - [ ] Cloud Run responde `hasSheets: true`, `hasTokens: true` en `/health`
@@ -40,13 +40,13 @@ Un deploy es **100% limpio** cuando:
 | Google Sheets / Data | 🟢 8/10 | 🟢 8/10 | Estable, credenciales via Secret Manager |
 | Deploy / CI/CD | 🟢 9/10 | 🟢 9/10 | CI verde; Cloud Run rev activa; GCS KB persistence |
 | Tests (unit + API + contrato) | 🟢 9/10 | 🟢 9/10 | **384 pass** (2026-04-27); fiscal contract assertions; roofVisual OK |
-| Docs / Agents / Tooling | 🟢 9/10 | 🟢 9/10 | AUTOTRACE; 11 agentes; Agent Admin 9 tabs |
+| Docs / Agents / Tooling | 🟢 9/10 | 🟢 9/10 | Hooks Git no-op (sin AUTOTRACE en CI/hooks); scripts manuales en `tools/release-traceability/scripts/`; 11 agentes; Agent Admin 9 tabs |
 | Panelin Internal RBAC | 🟢 8/10 | 🟢 8/10 | En prod; 29 E2E API tests ✅ |
 | Hub Canales (WA+ML+Email) | 🟢 8/10 | 🟢 8/10 | `BmcCanalesUnificadosModule` en prod; QA visual ✅ |
 | Fiscal / Compliance | 🟡 7/10 | 🟡 7/10 | irae_prevision + BPS + fiscal contract tests; IVA en quotes OK |
 | KB / Knowledge System | 🟢 9/10 | 🟢 9/10 | GCS persist; channelRenderer; health panel; conflict detect; import dedup; ML overrides auto-gen |
 
-**Score global estimado:** 🟢 **93 / 100** *(2026-04-27)*
+**Score global estimado:** 🟢 **92 / 100** *(2026-05-03 — smoke prod OK; roadmap/kb alineados post-retiro AUTOTRACE)*
 
 **Historial de scores:**
 | Fecha | Score | Evento |
@@ -55,6 +55,7 @@ Un deploy es **100% limpio** cuando:
 | 2026-04-23 | 68/100 | smoke ámbar (suggest 503); gates cm-0/1/2 DONE |
 | 2026-04-24 | 85/100 | AI Chat c:5→8; Fiscal c:5→7; tests 368; RBAC; Sheets fixes |
 | 2026-04-27 | 93/100 | KB unificada omnicanal; native tool_use; autolearn+GCS; channelRenderer; health panel; 384 tests |
+| 2026-05-03 | 92/100 | Smoke prod reverificado; AUTOTRACE fuera de hooks/CI; drift docs cerrado |
 
 ---
 
@@ -70,9 +71,9 @@ Un deploy es **100% limpio** cuando:
 
 ### 🟡 MEDIO | 2. Git tag `v3.1.6` (verificado en `origin`; siguiente semver al bump)
 
-- **Situación (2026-04-23):** `git ls-remote --tags origin 'v3.1.*'` confirma **`refs/tags/v3.1.6`** en remoto — ancla AUTOTRACE/CI **OK** para esta versión. Tras el próximo bump de `package.json`, repetir tag semver + push.
-- **Área:** git, [`tools/release-traceability/`](../../tools/release-traceability/), [`.github/workflows/dev-trace.yml`](../../.github/workflows/dev-trace.yml)
-- **Acción "get it live":** En releases futuras: `git tag vX.Y.Z -m "..."` → `git push origin vX.Y.Z` → confirmar workflow en GitHub Actions.
+- **Situación (2026-04-23):** `git ls-remote --tags origin 'v3.1.*'` confirma **`refs/tags/v3.1.6`** en remoto. Tras el próximo bump de `package.json`, repetir tag semver + push.
+- **Área:** git, [`tools/release-traceability/`](../../tools/release-traceability/) (scripts Python opcionales para notas de release), [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (CI principal).
+- **Acción "get it live":** En releases futuras: `git tag vX.Y.Z -m "..."` → `git push origin vX.Y.Z` → verificar jobs en GitHub Actions (`ci.yml`).
 - **Impacto:** Rollbacks y comunicación de versión a clientes/soporte.
 
 ---

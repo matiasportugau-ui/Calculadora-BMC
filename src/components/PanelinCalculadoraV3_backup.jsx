@@ -87,7 +87,7 @@ import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
-  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, isDriveConfigured,
+  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
@@ -3430,6 +3430,11 @@ export default function PanelinCalculadoraV3() {
   // ── Helpers ──
   const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 2000); }, []);
 
+  // Budget code state (declared early — referenced by PDF/print useCallback deps below
+  // before the budget-log block; keeping the original declaration at ~L4075 caused a
+  // TDZ ReferenceError "Cannot access 'currentBudgetCode' before initialization").
+  const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+
   const fleteCostoNum = useMemo(() => {
     const t = String(fleteCosto ?? "").trim().replace(",", ".");
     const n = parseFloat(t);
@@ -3516,16 +3521,17 @@ export default function PanelinCalculadoraV3() {
       });
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const fname = pdfFileName(
-        (proyecto.refInterna || "").trim() || "BMC",
-        proyecto.nombre
-      );
+      const resolvedCode =
+        currentBudgetCode ||
+        (proyecto.refInterna || "").trim() ||
+        `BMC-${new Date().getFullYear()}-TEMP`;
+      const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, listaPrecios, showToast, pdfPlantaResumenPage, currentBudgetCode]);
 
   const handlePdfEnriquecidoPrint = useCallback(async () => {
     if (!groups.length) return;
@@ -3601,16 +3607,17 @@ export default function PanelinCalculadoraV3() {
       }
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
-      const fname = pdfFileName(
-        (proyecto.refInterna || "").trim() || "BMC",
-        proyecto.nombre,
-      );
+      const resolvedCode =
+        currentBudgetCode ||
+        (proyecto.refInterna || "").trim() ||
+        `BMC-${new Date().getFullYear()}-TEMP`;
+      const fname = pdfFileName(resolvedCode, proyecto);
       downloadPdfBlob(pdfBlob, fname);
       showToast("PDF descargado");
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout]);
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout, currentBudgetCode]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -4070,7 +4077,7 @@ export default function PanelinCalculadoraV3() {
   // ── Budget log state ──
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [logEntries, setLogEntries] = useState(() => getAllLogs());
-  const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+  // currentBudgetCode moved above to fix TDZ — see L3433 area
   const autoSaveTimer = useRef(null);
   const lastSavedHash = useRef("");
 
@@ -4095,7 +4102,8 @@ export default function PanelinCalculadoraV3() {
   // ── Google Drive state ──
   const [showDrivePanel, setShowDrivePanel] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const [driveAuth, setDriveAuth] = useState(false);
+  const [driveAuth, setDriveAuth] = useState(() => gdriveIsAuth());
+  const [driveUser, setDriveUser] = useState(() => getCachedUser());
   const [driveQuotations, setDriveQuotations] = useState([]);
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveSaving, setDriveSaving] = useState(false);
@@ -4151,18 +4159,21 @@ export default function PanelinCalculadoraV3() {
   const handleDriveSignIn = useCallback(async () => {
     setDriveError(null);
     try {
-      await ensureDriveGsi();
-      await gdriveSignIn();
+      // gdriveSignIn() is self-healing: it loads GIS + initializes the token
+      // client internally, so no need to await ensureDriveGsi() first.
+      const result = await gdriveSignIn();
       setDriveAuth(true);
+      setDriveUser(result?.user || null);
       handleDriveRefresh();
     } catch (err) {
       setDriveError(err?.message || "Error al iniciar sesión");
     }
-  }, [ensureDriveGsi, handleDriveRefresh]);
+  }, [handleDriveRefresh]);
 
   const handleDriveSignOut = useCallback(() => {
     gdriveSignOut();
     setDriveAuth(false);
+    setDriveUser(null);
     setDriveQuotations([]);
   }, []);
 
@@ -4198,7 +4209,7 @@ export default function PanelinCalculadoraV3() {
       const code = currentBudgetCode || `BMC-${new Date().getFullYear()}-TEMP`;
       const result = await saveQuotation({
         quotationCode: code,
-        clientName: proyecto.nombre,
+        proyecto,
         pdfBlob,
         projectData,
       });
@@ -6574,6 +6585,7 @@ export default function PanelinCalculadoraV3() {
         onDelete={handleDriveDelete}
         isAuthenticated={driveAuth}
         configured={isDriveConfigured()}
+        currentUser={driveUser}
         onSignIn={handleDriveSignIn}
         onSignOut={handleDriveSignOut}
         quotations={driveQuotations}
@@ -6583,6 +6595,10 @@ export default function PanelinCalculadoraV3() {
         onRefresh={handleDriveRefresh}
         currentQuotationCode={currentBudgetCode}
         lastSaveResult={driveLastSave}
+        provisionalQuotationCode={
+          !currentBudgetCode ||
+          String(currentBudgetCode || "").includes("-TEMP")
+        }
       />
 
       {/* ── Budget Log Panel (slide-over drawer) ── */}

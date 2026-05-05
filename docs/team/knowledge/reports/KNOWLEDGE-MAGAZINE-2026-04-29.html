@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panelin Signal · 2026-04-29</title>
+  <meta name="description" content="Internal research magazine — BMC Panelin Knowledge Antenna" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --paper: #faf8f5;
+      --card: #ffffff;
+      --rule: #e2e8f0;
+      --accent: #1a3a5c;
+      --accent-hot: #0071e3;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.55;
+      font-size: 1rem;
+    }
+    a { color: var(--accent-hot); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    .masthead {
+      border-bottom: 3px double var(--ink);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .masthead h1 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0 0 0.25rem;
+      color: var(--accent);
+    }
+    .masthead .tagline {
+      font-size: 0.95rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .issue-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+    }
+    .run-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 1rem 1.1rem;
+      text-align: center;
+    }
+    .stat .num { font-family: var(--serif); font-size: 1.75rem; color: var(--accent); }
+    .stat .lbl { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    section { margin-bottom: 2.5rem; }
+    h2.section-title {
+      font-family: var(--serif);
+      font-size: 1.35rem;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 0.35rem;
+      margin-bottom: 1rem;
+    }
+    .lead .kicker {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-hot);
+      margin: 0 0 0.35rem;
+    }
+    .lead h2 { font-family: var(--serif); font-size: 1.5rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .lead .meta { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; }
+    .lead .deck { font-size: 1.05rem; margin: 0; }
+    .radar-grid { display: grid; gap: 0.65rem; }
+    .radar-card {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 0.75rem 1rem;
+    }
+    .radar-rank {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      color: var(--muted);
+      min-width: 1.5rem;
+    }
+    .radar-score { font-size: 0.8rem; color: var(--muted); margin: 0.15rem 0 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--rule);
+      padding: 0.15rem 0.45rem;
+      margin-left: 0.35rem;
+      border-radius: 2px;
+    }
+    ul.dispatch { list-style: none; padding: 0; margin: 0; }
+    .dispatch-item { padding: 0.85rem 0; border-bottom: 1px solid var(--rule); }
+    .dispatch-title { font-weight: 600; display: block; margin-bottom: 0.2rem; }
+    .dispatch-meta { font-size: 0.8rem; color: var(--muted); }
+    .dispatch-sum { font-size: 0.9rem; color: var(--muted); margin: 0.35rem 0 0; }
+    .impact-card {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .impact-high { border-left: 4px solid #b45309; }
+    .impact-medium { border-left: 4px solid var(--accent-hot); }
+    .impact-domain { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.35rem; }
+    .impact-targets { font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0; font-family: ui-monospace, monospace; }
+    .muted { color: var(--muted); }
+    footer.mag-footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--rule);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    footer.mag-footer code { font-size: 0.75rem; background: var(--rule); padding: 0.1rem 0.35rem; }
+    @media print {
+      body { background: #fff; }
+      .run-strip { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <p class="tagline">BMC Uruguay · Panelin</p>
+      <h1>Panelin Signal</h1>
+      <p class="muted" style="margin:0;font-size:1rem;">Revista interna de investigación y ecosistema (Knowledge Antenna)</p>
+      <div class="issue-line">
+        <span><strong>Issue</strong> 2026-04-29</span>
+        <span><strong>Generated</strong> 2026-04-29T13:11:48.207Z</span>
+        <span><strong>Impact map</strong> 2026-04-29</span>
+        <span><strong>Registry</strong> 2026-04-29</span>
+      </div>
+    </header>
+
+    
+    <div class="run-strip">
+      <span>Last scan · 2026-04-29</span>
+      <span>Sources 9</span>
+      <span>New refs +26</span>
+      <span>Accepted 26</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num">395</div><div class="lbl">References</div></div>
+      <div class="stat"><div class="num">244</div><div class="lbl">Impact mappings</div></div>
+      <div class="stat"><div class="num">13</div><div class="lbl">High priority</div></div>
+      <div class="stat"><div class="num">9</div><div class="lbl">Active sources</div></div>
+    </div>
+
+    <section aria-labelledby="lead">
+      <h2 id="lead" class="section-title">Portada</h2>
+      
+    <article class="lead">
+      <p class="kicker">Lead reference</p>
+      <h2><a href="https://huggingface.co/blog/openai-privacy-filter-web-apps" target="_blank" rel="noopener noreferrer">How to build scalable web apps with OpenAI&amp;apos;s Privacy Filter</a></h2>
+      <p class="meta">huggingface-blog-rss · 2026-04-27</p>
+      <p class="deck"></p>
+    </article>
+    </section>
+
+    <section aria-labelledby="radar">
+      <h2 id="radar" class="section-title">Radar de fuentes</h2>
+      <p class="muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Orden por ranking compuesto del agente. Actualiza al regenerar el magazine.</p>
+      <div class="radar-grid">
+    <div class="radar-card">
+      <span class="radar-rank">1</span>
+      <div>
+        <strong>OpenAI News</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.923</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">2</span>
+      <div>
+        <strong>Vercel Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.884</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">3</span>
+      <div>
+        <strong>Vercel AI SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.881</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">4</span>
+      <div>
+        <strong>Anthropic SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.851</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">5</span>
+      <div>
+        <strong>arXiv cs.AI</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.849</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">6</span>
+      <div>
+        <strong>Hugging Face Blog</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.841</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">7</span>
+      <div>
+        <strong>MCP TypeScript SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.785</p>
+      </div>
+    </div>
+    <div class="radar-card">
+      <span class="radar-rank">8</span>
+      <div>
+        <strong>OpenAI Node SDK Releases</strong>
+        <span class="badge">active</span>
+        <p class="radar-score">Rank 0.780</p>
+      </div>
+    </div></div>
+    </section>
+
+    <section aria-labelledby="dispatch">
+      <h2 id="dispatch" class="section-title">Despacho</h2>
+      <p class="muted" style="margin-top:-0.5rem;margin-bottom:1rem;">
+        Novedades aceptadas en el último escaneo.
+      </p>
+      <ul class="dispatch">
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/cybersecurity-in-the-intelligence-age" target="_blank" rel="noopener noreferrer">&lt;![CDATA[Cybersecurity in the Intelligence Age]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.593</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/our-commitment-to-community-safety" target="_blank" rel="noopener noreferrer">&lt;![CDATA[Our commitment to community safety]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.543</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/openai-on-aws" target="_blank" rel="noopener noreferrer">&lt;![CDATA[OpenAI models, Codex, and Managed Agents come to AWS]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.623</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/openai-available-at-fedramp-moderate" target="_blank" rel="noopener noreferrer">&lt;![CDATA[OpenAI available at FedRAMP Moderate]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.623</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/next-phase-of-microsoft-partnership" target="_blank" rel="noopener noreferrer">&lt;![CDATA[The next phase of the Microsoft OpenAI partnership]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.623</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/open-source-codex-orchestration-symphony" target="_blank" rel="noopener noreferrer">&lt;![CDATA[An open-source spec for orchestration: Symphony]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.543</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://openai.com/index/choco" target="_blank" rel="noopener noreferrer">&lt;![CDATA[Choco automates food distribution with AI agents]]&gt;</a>
+        <span class="dispatch-meta">OpenAI News · score 0.623</span>
+        
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://arxiv.org/abs/2604.22777" target="_blank" rel="noopener noreferrer">An Intelligent Fault Diagnosis Method for General Aviation Aircraft Based on Multi-Fidelity Digital Twin and FMEA Knowledge Enhancement</a>
+        <span class="dispatch-meta">arXiv cs.AI · score 0.617</span>
+        <p class="dispatch-sum">arXiv:2604.22777v1 Announce Type: new Abstract: Fault diagnosis of general aviation aircraft faces challenges including scarce real fault data, diverse fault t…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://arxiv.org/abs/2604.22934" target="_blank" rel="noopener noreferrer">PExA: Parallel Exploration Agent for Complex Text-to-SQL</a>
+        <span class="dispatch-meta">arXiv cs.AI · score 0.617</span>
+        <p class="dispatch-sum">arXiv:2604.22934v1 Announce Type: new Abstract: LLM-based agents for text-to-SQL often struggle with latency-performance trade-off, where performance improveme…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://arxiv.org/abs/2604.22951" target="_blank" rel="noopener noreferrer">The Power of Power Law: Asymmetry Enables Compositional Reasoning</a>
+        <span class="dispatch-meta">arXiv cs.AI · score 0.617</span>
+        <p class="dispatch-sum">arXiv:2604.22951v1 Announce Type: new Abstract: Natural language data follows a power-law distribution, with most knowledge and skills appearing at very low fr…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://arxiv.org/abs/2604.22958" target="_blank" rel="noopener noreferrer">On the Existence of an Inverse Solution for Preference-Based Reductions in Argumentation</a>
+        <span class="dispatch-meta">arXiv cs.AI · score 0.537</span>
+        <p class="dispatch-sum">arXiv:2604.22958v1 Announce Type: new Abstract: Preference-based argumentation frameworks (PAFs) extend Dung's approach to abstract argumentation (AAFs) by enc…</p>
+      </li>
+      <li class="dispatch-item">
+        <a class="dispatch-title" href="https://arxiv.org/abs/2604.22979" target="_blank" rel="noopener noreferrer">Towards Causally Interpretable Wi-Fi CSI-Based Human Activity Recognition with Discrete Latent Compression and LTL Rule Extraction</a>
+        <span class="dispatch-meta">arXiv cs.AI · score 0.617</span>
+        <p class="dispatch-sum">arXiv:2604.22979v1 Announce Type: new Abstract: We address Human Activity Recognition (HAR) utilizing Wi-Fi Channel State Information (CSI) under the joint req…</p>
+      </li></ul>
+    </section>
+
+    <section aria-labelledby="impact">
+      <h2 id="impact" class="section-title">Impacto en el repo</h2>
+      <p class="muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Muestra prioridad alta y una muestra media (60 medias en total, 171 bajas).</p>
+      
+    <div class="impact-card impact-high">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+      <p class="impact-targets">scripts/deploy-vercel.sh · scripts/deploy-cloud-run.sh · scripts/smoke-prod-api.mjs · vercel.json</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+      <p class="impact-targets">server/gptActions.js · server/index.js · docs/openapi-email-gpt.yaml · scripts/capabilities-snapshot.mjs</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+      <p class="impact-targets">server/gptActions.js · server/index.js · docs/openapi-email-gpt.yaml · scripts/capabilities-snapshot.mjs</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">workflow-automation</p>
+      <p>Map new automation capabilities into team runbooks and scripts.</p>
+      <p class="impact-targets">scripts/project-compass.mjs · scripts/channels-automated-pipeline.mjs · docs/team/PROJECT-STATE.md · docs/team/SESSION-WORKSPACE-CRM.md</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+      <p class="impact-targets">scripts/deploy-vercel.sh · scripts/deploy-cloud-run.sh · scripts/smoke-prod-api.mjs · vercel.json</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+      <p class="impact-targets">server/gptActions.js · server/index.js · docs/openapi-email-gpt.yaml · scripts/capabilities-snapshot.mjs</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">workflow-automation</p>
+      <p>Map new automation capabilities into team runbooks and scripts.</p>
+      <p class="impact-targets">scripts/project-compass.mjs · scripts/channels-automated-pipeline.mjs · docs/team/PROJECT-STATE.md · docs/team/SESSION-WORKSPACE-CRM.md</p>
+    </div>
+    <div class="impact-card impact-high">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+      <p class="impact-targets">scripts/deploy-vercel.sh · scripts/deploy-cloud-run.sh · scripts/smoke-prod-api.mjs · vercel.json</p>
+    </div>
+      
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">workflow-automation</p>
+      <p>Map new automation capabilities into team runbooks and scripts.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">llm-platforms</p>
+      <p>Review prompt/actions contracts and capability manifests.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+    </div>
+    <div class="impact-card impact-medium">
+      <p class="impact-domain">deployment-stack</p>
+      <p>Validate deploy pipeline and production smoke checks.</p>
+    </div>
+    </section>
+
+    <footer class="mag-footer">
+      <p><strong>Uso interno.</strong> Los datos viven en JSON bajo <code>docs/team/knowledge/</code>. Para una futura edición pública, filtrar fuentes y redactar resúmenes editoriales aparte.</p>
+      <p>Regenerar solo el magazine (sin escanear red): <code>npm run knowledge:magazine</code></p>
+      <p>Pipeline completo: <code>npm run knowledge:run</code></p>
+    </footer>
+  </div>
+</body>
+</html>

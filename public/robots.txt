@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /api/
+Disallow: /calc/
+Disallow: /webhooks/
+Allow: /
+
+Sitemap: https://calculadora-bmc.vercel.app/sitemap.xml

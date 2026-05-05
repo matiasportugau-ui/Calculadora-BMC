@@ -24,6 +24,7 @@ Thumbs.db
 # Env
 .env
 .env.local
+.env.bak.*
 
 # Registro maestro credenciales — solo local / cifrado (ver npm run credentials:registry)
 docs/team/credentials-registry/local/
@@ -54,6 +55,9 @@ yarn-error.log*
 .parcel-cache
 .codebuddy
 .vercel
+
+# Claude Code worktrees (local, never commit as gitlink)
+.claude/worktrees/
 
 # Nested copies / other projects accidentally created inside this repo (never commit)
 Calculadora-BMC/

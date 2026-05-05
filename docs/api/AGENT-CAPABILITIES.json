@@ -237,6 +237,66 @@
         "path": "/api/internal/panelin/invoke",
         "summary": "Panelin interno: ejecutar tool por tool_id (RBAC; proxy localhost)",
         "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/internal/panelin/invoke"
+      },
+      {
+        "method": "GET",
+        "path": "/api/wa/health",
+        "summary": "WA Cockpit: liveness + counters (count_chats, count_msgs_24h)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/health"
+      },
+      {
+        "method": "POST",
+        "path": "/api/wa/ingest",
+        "summary": "WA Cockpit: ingest batch idempotente (max 500 msgs, dedupe por msg_id)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/ingest"
+      },
+      {
+        "method": "GET",
+        "path": "/api/wa/conversations",
+        "summary": "WA Cockpit: list conversations (filtros status, q, paginación)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/conversations"
+      },
+      {
+        "method": "GET",
+        "path": "/api/wa/messages",
+        "summary": "WA Cockpit: hilo de mensajes por chat_id (keyset pagination)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/messages"
+      },
+      {
+        "method": "GET",
+        "path": "/api/wa/suggestions",
+        "summary": "WA Cockpit (F2): sugerencias AI por chat (3 opciones: corta/técnica/cierre)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/suggestions"
+      },
+      {
+        "method": "POST",
+        "path": "/api/wa/suggestions/run",
+        "summary": "WA Cockpit (F2): generar sugerencias on-demand para un chat",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/suggestions/run"
+      },
+      {
+        "method": "POST",
+        "path": "/api/wa/suggestions/:id/chosen",
+        "summary": "WA Cockpit (F2): marcar opción elegida por el operador",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/suggestions/:id/chosen"
+      },
+      {
+        "method": "GET",
+        "path": "/api/wa/quotes",
+        "summary": "WA Cockpit (F3): cotizaciones generadas por chat",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/quotes"
+      },
+      {
+        "method": "POST",
+        "path": "/api/wa/quotes/run",
+        "summary": "WA Cockpit (F3): generar cotización on-demand desde texto o params",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/quotes/run"
+      },
+      {
+        "method": "POST",
+        "path": "/api/wa/conversations/:chat_id/upsert-lead",
+        "summary": "WA Cockpit (F3): asociar conversation con fila CRM_Operativo (lead_sheet_row, owner_op)",
+        "url": "https://panelin-calc-q74zutv7dq-uc.a.run.app/api/wa/conversations/:chat_id/upsert-lead"
       }
     ]
   },

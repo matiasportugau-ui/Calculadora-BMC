@@ -4,6 +4,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { CATEGORIAS_BOM } from "../data/constants.js";
+import {
+  montevideoYmd,
+  clientFileSlug,
+} from "./quotationNaming.js";
 
 const FILE_FORMAT_VERSION = 1;
 const APP_VERSION = "3.1.2";
@@ -182,17 +186,23 @@ export async function parseProjectFile(fileOrString) {
 }
 
 /**
- * Build the filename for a .bmc.json project file.
+ * Build the filename for a .bmc.json project file (descarga local).
+ * Formato: {código}_{fecha UY}_{slug cliente}.bmc.json
  */
-export function projectFileName(quotationCode, clientName) {
-  const safe = (clientName || "proyecto").replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ _-]/g, "").trim().slice(0, 40);
-  return `${quotationCode || "BMC"} — ${safe}.bmc.json`;
+export function projectFileName(quotationCode, proyectoOrCliente) {
+  const code = quotationCode || "BMC";
+  const ymd = montevideoYmd();
+  const slug = clientFileSlug(proyectoOrCliente);
+  return `${code}_${ymd}_${slug}.bmc.json`;
 }
 
 /**
  * Build the filename for the PDF.
+ * Formato: {código}_{fecha UY}_{slug cliente}.pdf
  */
-export function pdfFileName(quotationCode, clientName) {
-  const safe = (clientName || "cotización").replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ _-]/g, "").trim().slice(0, 40);
-  return `Cotización ${quotationCode || "BMC"} — ${safe}.pdf`;
+export function pdfFileName(quotationCode, proyectoOrCliente) {
+  const code = quotationCode || "BMC";
+  const ymd = montevideoYmd();
+  const slug = clientFileSlug(proyectoOrCliente);
+  return `${code}_${ymd}_${slug}.pdf`;
 }

@@ -1,27 +1,84 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// src/utils/googleDrive.js — Client-side Google Drive API v3 wrapper
-// Uses Google Identity Services (GIS) for auth + fetch for Drive REST API
+// src/utils/googleDrive.js — Client-side Google Drive API v3 wrapper +
+// Google Identity Services (GIS) auth, including OIDC userinfo for login.
 // ═══════════════════════════════════════════════════════════════════════════
 /* global google */
 
-const SCOPES = "https://www.googleapis.com/auth/drive.file";
+import {
+  buildDriveClientFolderName,
+  buildDriveQuotationFolderName,
+  montevideoYmd,
+  clientFileSlug,
+  isLegacyFlatQuotationFolder,
+} from "./quotationNaming.js";
+
+const SCOPES = "openid email profile https://www.googleapis.com/auth/drive.file";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
+const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 const APP_FOLDER_NAME = "Panelin BMC Cotizaciones";
 const BMC_MIME = "application/json";
 const PDF_MIME = "application/pdf";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const GIS_SCRIPT_SELECTOR = 'script[data-gis-client="1"]';
 
+// XSS exposure trade-off: storing the access token in localStorage means any
+// script with JS access to this origin can read it. Acceptable for the
+// current single-popup client-side model; for stricter security move the
+// token to an httpOnly cookie issued by the /api/auth/google endpoint.
+const STORAGE_KEY = "bmc.gdrive.identity";
+
 let _tokenClient = null;
 let _tokenClientId = null;
 let _accessToken = null;
 let _tokenExpiry = 0;
+let _user = null;
 let _onAuthChange = null;
 let _gsiLoadPromise = null;
 let _hasConsented = false;
 let _pendingErrorHandler = null;
 let _signInPromise = null;
+
+// ── localStorage persistence ─────────────────────────────────────────────────
+
+function persistIdentity() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        accessToken: _accessToken,
+        expiresAt: _tokenExpiry,
+        user: _user,
+      }),
+    );
+  } catch { /* quota / unavailable */ }
+}
+
+function clearIdentity() {
+  if (typeof localStorage === "undefined") return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch { /* unavailable */ }
+}
+
+// Hydrate token + identity from localStorage at module load so reloads stay
+// signed in until expiry without re-prompting.
+(function rehydrate() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const cached = JSON.parse(raw);
+    if (!cached?.accessToken || !cached?.expiresAt || cached.expiresAt <= Date.now()) {
+      clearIdentity();
+      return;
+    }
+    _accessToken = cached.accessToken;
+    _tokenExpiry = cached.expiresAt;
+    _user = cached.user || null;
+  } catch {
+    clearIdentity();
+  }
+})();
 
 /**
  * Load GIS script on demand — removed from index.html <head> to avoid
@@ -81,6 +138,10 @@ export function isAuthenticated() {
   return !!_accessToken && Date.now() < _tokenExpiry;
 }
 
+export function getCachedUser() {
+  return _user;
+}
+
 export function setAuthChangeCallback(cb) {
   _onAuthChange = cb;
 }
@@ -95,6 +156,21 @@ function notifyAuth() {
  */
 export function isDriveConfigured() {
   return !!getClientId();
+}
+
+/**
+ * Fetch the OIDC userinfo payload for an access token granted with
+ * `openid email profile` scopes.
+ */
+async function getUserInfo(accessToken) {
+  const resp = await fetch(USERINFO_URL, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => "");
+    throw new Error(`userinfo ${resp.status}: ${body}`);
+  }
+  return resp.json();
 }
 
 /**
@@ -121,14 +197,22 @@ export function initGoogleAuth() {
   _tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: SCOPES,
-    callback: () => {
-      // Default no-op: signIn() rebinds this callback per request so it can
-      // resolve/reject the pending promise. Left here so GIS doesn't error
-      // if a token response arrives without an explicit caller.
+    callback: (resp) => {
+      if (resp?.error) {
+        console.error("[GDrive] Auth error:", resp.error);
+        _accessToken = null;
+        _tokenExpiry = 0;
+        clearIdentity();
+        notifyAuth();
+        return;
+      }
+      if (!resp?.access_token) return;
+      _accessToken = resp.access_token;
+      _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
+      persistIdentity();
+      notifyAuth();
     },
     error_callback: (err) => {
-      // GIS routes popup_failed_to_open / popup_closed / etc. here instead
-      // of through the success callback. Fan out to the in-flight signIn().
       if (_pendingErrorHandler) {
         const handler = _pendingErrorHandler;
         _pendingErrorHandler = null;
@@ -168,12 +252,15 @@ function describeOAuthError(resp) {
 }
 
 /**
- * Request an access token (triggers Google sign-in popup if needed).
+ * Request an access token (triggers Google sign-in popup if needed) and fetch
+ * the OIDC user profile in the same call.
  *
  * Self-heals when the token client wasn't initialized (e.g. signIn() called
  * before the panel opened) by lazily loading GIS + initing the client.
  * Uses prompt="consent" the first time so users actually see the consent
  * screen — empty prompt can silently fail in some browser/cookie contexts.
+ *
+ * @returns {Promise<{ accessToken: string, expiresAt: number, user: object|null }>}
  */
 export async function signIn() {
   if (_signInPromise) return _signInPromise;
@@ -181,7 +268,7 @@ export async function signIn() {
   _signInPromise = (async () => {
     if (!_tokenClient) {
       await loadGsiScript();
-      initGoogleAuth(); // throws with descriptive message if mis-configured
+      initGoogleAuth();
     }
 
     return new Promise((resolve, reject) => {
@@ -191,14 +278,17 @@ export async function signIn() {
       }
 
       if (isAuthenticated()) {
-        resolve(_accessToken);
+        resolve({ accessToken: _accessToken, expiresAt: _tokenExpiry, user: _user });
         return;
       }
 
-      _tokenClient.callback = (resp) => {
+      _tokenClient.callback = async (resp) => {
         _pendingErrorHandler = null;
         if (resp?.error) {
           _accessToken = null;
+          _tokenExpiry = 0;
+          _user = null;
+          clearIdentity();
           notifyAuth();
           reject(describeOAuthError(resp));
           return;
@@ -207,15 +297,26 @@ export async function signIn() {
           reject(new Error("Google no devolvió un access_token."));
           return;
         }
+
         _accessToken = resp.access_token;
         _tokenExpiry = Date.now() + (resp.expires_in || 3600) * 1000;
+        try {
+          _user = await getUserInfo(_accessToken);
+        } catch (err) {
+          console.warn("[GDrive] userinfo failed:", err?.message || err);
+          _user = null;
+        }
         _hasConsented = true;
+        persistIdentity();
         notifyAuth();
-        resolve(resp.access_token);
+        resolve({ accessToken: _accessToken, expiresAt: _tokenExpiry, user: _user });
       };
 
       _pendingErrorHandler = (err) => {
         _accessToken = null;
+        _tokenExpiry = 0;
+        _user = null;
+        clearIdentity();
         notifyAuth();
         reject(describeOAuthError(err));
       };
@@ -245,6 +346,8 @@ export function signOut() {
   _accessToken = null;
   _tokenExpiry = 0;
   _hasConsented = false;
+  _user = null;
+  clearIdentity();
   notifyAuth();
 }
 
@@ -298,19 +401,23 @@ async function findOrCreateFolder(name, parentId = null) {
 }
 
 /**
- * Ensure the app root folder and a per-quotation subfolder exist.
+ * Raíz BMC → carpeta cliente (RUT+nombre / nombre) → carpeta código de cotización.
  */
-async function ensureQuotationFolder(quotationCode, clientName) {
+async function ensureQuotationFolderPath(quotationCode, proyecto) {
   const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
-  const subName = `${quotationCode} — ${(clientName || "proyecto").slice(0, 40)}`;
-  const subId = await findOrCreateFolder(subName, rootId);
-  return { rootId, subId, subName };
+  const clientSegment = proyecto && typeof proyecto === "object"
+    ? buildDriveClientFolderName(proyecto)
+    : buildDriveClientFolderName({ nombre: proyecto || "", razonSocial: "", rut: "" });
+  const clientFolderId = await findOrCreateFolder(clientSegment, rootId);
+  const quoteName = buildDriveQuotationFolderName(quotationCode);
+  const subId = await findOrCreateFolder(quoteName, clientFolderId);
+  return { rootId, subId, subName: quoteName };
 }
 
 // ── File upload ──────────────────────────────────────────────────────────────
 
-async function uploadFile(folderId, fileName, blob, mimeType, existingFileId = null) {
-  const metadata = { name: fileName };
+async function uploadFile(folderId, fileName, blob, mimeType, existingFileId = null, extraMetadata = {}) {
+  const metadata = { name: fileName, ...extraMetadata };
   if (!existingFileId) metadata.parents = [folderId];
 
   const form = new FormData();
@@ -353,7 +460,9 @@ async function findFileInFolder(folderId, fileName) {
  *
  * @param {Object} params
  * @param {string}  params.quotationCode — e.g. "BMC-2026-0042"
- * @param {string}  params.clientName    — client name for folder/file naming
+ * @param {string}  params.quotationCode — e.g. "BMC-2026-0042"
+ * @param {string}  [params.clientName] — fallback si no hay `proyecto`
+ * @param {Object}  [params.proyecto] — datos cliente (rut, razonSocial, nombre)
  * @param {Blob}    params.pdfBlob       — the generated PDF
  * @param {Object}  params.projectData   — the serialized project state
  * @param {string}  [params.pdfFileName] — override PDF file name
@@ -363,25 +472,42 @@ async function findFileInFolder(folderId, fileName) {
 export async function saveQuotation({
   quotationCode,
   clientName,
+  proyecto,
   pdfBlob,
   projectData,
   pdfFileName: pdfName,
   jsonFileName: jsonName,
 }) {
-  const { subId } = await ensureQuotationFolder(quotationCode, clientName);
+  const { subId } = await ensureQuotationFolderPath(
+    quotationCode,
+    proyecto && typeof proyecto === "object"
+      ? proyecto
+      : { nombre: clientName || "", razonSocial: "", rut: "" },
+  );
 
-  const safeName = (clientName || "cotización").replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ _-]/g, "").trim().slice(0, 40);
-  const finalPdfName = pdfName || `Cotización ${quotationCode} — ${safeName}.pdf`;
-  const finalJsonName = jsonName || `${quotationCode}.bmc.json`;
+  const slug = proyecto && typeof proyecto === "object"
+    ? clientFileSlug(proyecto)
+    : clientFileSlug(clientName);
+
+  const ymd = montevideoYmd();
+  const qCode = quotationCode || "BMC";
+
+  const finalPdfName = pdfName || `${qCode}_${ymd}_${slug}.pdf`;
+  const finalJsonName = jsonName || `${qCode}.bmc.json`;
 
   const existingPdf = await findFileInFolder(subId, finalPdfName);
   const existingJson = await findFileInFolder(subId, finalJsonName);
 
   const jsonBlob = new Blob([JSON.stringify(projectData, null, 2)], { type: BMC_MIME });
 
+  // Tag every saved file with the owner's email so listings can be filtered
+  // per user later. appProperties is private to this OAuth client.
+  const ownerEmail = _user?.email || "";
+  const extra = ownerEmail ? { appProperties: { ownerEmail } } : {};
+
   const [pdfFile, jsonFile] = await Promise.all([
-    uploadFile(subId, finalPdfName, pdfBlob, PDF_MIME, existingPdf?.id),
-    uploadFile(subId, finalJsonName, jsonBlob, BMC_MIME, existingJson?.id),
+    uploadFile(subId, finalPdfName, pdfBlob, PDF_MIME, existingPdf?.id, extra),
+    uploadFile(subId, finalJsonName, jsonBlob, BMC_MIME, existingJson?.id, extra),
   ]);
 
   return {
@@ -393,17 +519,47 @@ export async function saveQuotation({
 }
 
 /**
- * List all quotation folders inside the app root folder.
- * Returns folder metadata sorted by most recent.
+ * Lista carpetas de cotización: formato nuevo (root → cliente → código) + legajo plano bajo raíz.
  */
 export async function listQuotations() {
   const rootId = await findOrCreateFolder(APP_FOLDER_NAME);
-  const q = [`'${rootId}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
-  const resp = await authFetch(
-    `${DRIVE_API}/files?q=${encodeURIComponent(q.join(" and "))}&fields=files(id,name,createdTime,modifiedTime)&orderBy=modifiedTime desc&pageSize=50&spaces=drive`,
+  const rootQ = [`'${rootId}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
+  const rootResp = await authFetch(
+    `${DRIVE_API}/files?q=${encodeURIComponent(rootQ.join(" and "))}&fields=files(id,name,modifiedTime)&pageSize=100&spaces=drive`,
   );
-  const { files } = await resp.json();
-  return files || [];
+  const { files: rootChildren } = await rootResp.json();
+
+  /** @type {{ id:string, name:string, modifiedTime?:string }[]} */
+  const aggregate = [];
+
+  for (const f of rootChildren || []) {
+    if (isLegacyFlatQuotationFolder(f.name)) {
+      aggregate.push({
+        id: f.id,
+        name: String(f.name),
+        modifiedTime: f.modifiedTime,
+      });
+      continue;
+    }
+
+    const subQ = [`'${f.id}' in parents`, `mimeType='${FOLDER_MIME}'`, "trashed=false"];
+    const subResp = await authFetch(
+      `${DRIVE_API}/files?q=${encodeURIComponent(subQ.join(" and "))}&fields=files(id,name,modifiedTime)&spaces=drive`,
+    );
+    const { files: subFolders } = await subResp.json();
+    for (const sub of subFolders || []) {
+      aggregate.push({
+        id: sub.id,
+        name: `${f.name} / ${sub.name}`,
+        modifiedTime: sub.modifiedTime,
+      });
+    }
+  }
+
+  aggregate.sort((a, b) =>
+    String(b.modifiedTime || "").localeCompare(String(a.modifiedTime || "")));
+
+  return aggregate.slice(0, 50);
 }
 
 /**

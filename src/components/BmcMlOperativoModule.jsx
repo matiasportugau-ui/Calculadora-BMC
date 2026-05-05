@@ -64,9 +64,10 @@ function ActionBtn({ label, icon, desc, color, textColor = "#fff", onClick, disa
       onClick={onClick}
       disabled={disabled || busy}
       title={desc}
-      onMouseDown={e => { if (!disabled && !busy) e.currentTarget.style.transform = "translateY(2px)"; }}
-      onMouseUp={e => { e.currentTarget.style.transform = ""; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = ""; }}
+      onPointerDown={e => { if (!disabled && !busy) e.currentTarget.style.transform = "translateY(2px)"; }}
+      onPointerUp={e => { e.currentTarget.style.transform = ""; }}
+      onPointerLeave={e => { e.currentTarget.style.transform = ""; }}
+      onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
     >
       <span style={{ fontSize: 18, lineHeight: 1 }}>{busy ? "⏳" : icon}</span>
       <span style={{ fontSize: 11, fontWeight: 700, color: textColor, letterSpacing: 0.5 }}>{busy ? "…" : label}</span>
@@ -247,10 +248,11 @@ function EjectButton({ onEject }) {
       }}>
         <button
           type="button"
-          onMouseDown={() => setPressed(true)}
-          onMouseUp={() => { setPressed(false); onEject(); }}
-          onMouseLeave={() => { setPressed(false); setHovered(false); }}
-          onMouseEnter={() => setHovered(true)}
+          onPointerDown={() => setPressed(true)}
+          onPointerUp={() => { setPressed(false); onEject(); }}
+          onPointerLeave={() => { setPressed(false); setHovered(false); }}
+          onPointerCancel={() => setPressed(false)}
+          onPointerEnter={() => setHovered(true)}
           style={{
             width: 58, height: 58, borderRadius: "50%",
             background: pressed ? "#b91c1c" : hovered ? "#ef4444" : "#dc2626",
