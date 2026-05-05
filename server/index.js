@@ -54,6 +54,8 @@ const logger = pino({
 });
 
 const app = express();
+app.disable("x-powered-by"); // hide Express signature (defense in depth)
+app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
 app.use(
   cors({
     origin: (origin, cb) => {

@@ -5,12 +5,25 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
+import rateLimit from "express-rate-limit";
 
 const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
 const router = express.Router();
 
-router.post("/auth/google", async (req, res) => {
+// Rate limit: each IP can validate up to 30 access tokens per 15 minutes.
+// Real users sign in once per session (token cached client-side ~1h), so
+// 30/15min is generous for legitimate flow but blocks credential-stuffing or
+// fan-out abuse hitting the Google userinfo endpoint via this proxy.
+const authGoogleLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
+router.post("/auth/google", authGoogleLimiter, async (req, res) => {
   const accessToken = req.body?.accessToken;
   if (!accessToken || typeof accessToken !== "string") {
     return res.status(400).json({ ok: false, error: "Missing body.accessToken (string)" });
