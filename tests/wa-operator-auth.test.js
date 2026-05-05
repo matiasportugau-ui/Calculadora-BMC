@@ -9,6 +9,7 @@ import {
   revokeOperator,
   _resetWaAuthForTests,
 } from "../server/lib/waOperatorAuth.js";
+import crypto from "node:crypto";
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://localhost/bmc_wa_local";
 
@@ -26,20 +27,30 @@ async function runTests() {
 
     const testEmail = `test_auth_${Date.now()}@example.com`;
 
-    // 1. Invite
+    // 1. Invite (don't send mail yet)
     const inv = await inviteOperator({
       email: testEmail,
       name: "Test User",
       role: "admin",
       invitedBy: "admin_tester",
+      sendInviteMail: false,
     });
     console.log("✓ Invite OK");
 
     // 2. Magic Link
     await requestMagicLink({ email: testEmail, baseUrl: "http://localhost:3001" });
+    if (!sentMails[0]) throw new Error("No mail sent");
     const tokenMatch = sentMails[0].text.match(/token=([a-f0-9]+)/);
+    if (!tokenMatch) throw new Error("Token not found in email: " + sentMails[0].text);
     const magicToken = tokenMatch[1];
-    console.log("✓ Magic Link Sent & Captured");
+    console.log("✓ Magic Link Sent & Captured, token len:", magicToken.length);
+
+    // Debug: check DB directly
+    const { rows: dbCheck } = await pool.query("select magic_token_hash from wa_operators where email = $1", [testEmail]);
+    console.log("  DB hash:", dbCheck[0]?.magic_token_hash);
+    const expectedHash = crypto.createHash("sha256").update(magicToken).digest("hex");
+    console.log("  Expected hash:", expectedHash);
+    console.log("  Match?", dbCheck[0]?.magic_token_hash === expectedHash);
 
     // 3. Verify
     const sess = await verifyMagicLink({ token: magicToken });

@@ -22,7 +22,7 @@ function getQuoteConfig() {
   // Best-effort sync: waConfig.getConfig() es síncrono una vez primed.
   // Si todavía no está primed, usamos defaults inline.
   try {
-    // eslint-disable-next-line global-require
+
     return _quoteCfgSync();
   } catch {
     return { minM2: 5, defaultWallHeightM: 3, requireFamilyOrThickness: true };

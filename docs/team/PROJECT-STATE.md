@@ -12,6 +12,34 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
+
+- **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
+- **Auth Híbrida (Auth.js v5 pattern)**: Nuevo [`server/lib/waOperatorAuth.js`](../../server/lib/waOperatorAuth.js) con Magic Link (vía SMTP) → Access JWT (15min) + Refresh Token (30d) con rotación obligatoria y detección de reuso (revocación automática). Soporta roles canónicos: `Owner`, `Admin`, `Member`. Mantiene compatibilidad con token compartido para `/ingest`.
+- **Workers Operacionales**:
+  - **SLA Worker** ([`server/lib/waSlaWorker.js`](../../server/lib/waSlaWorker.js)): Detecta breaches de respuesta (`unreplied`) y asignación (`unassigned`) respetando business hours configurables. Popula `wa_sla_breaches`.
+  - **Routing Rules** ([`server/lib/waRoutingRules.js`](../../server/lib/waRoutingRules.js)): Motor de reglas estilo Missive (condition/action JSON) para auto-asignación, etiquetado y alertas en `/ingest`.
+  - **Webhooks Salientes** ([`server/lib/waWebhooks.js`](../../server/lib/waWebhooks.js)): HMAC SHA256 firmados, fire-and-forget con reintentos exponenciales y dead-letter queue. Eventos: `message.in/out`, `quote.created`, `sla.breach`.
+- **AI per-task**: `agentCore.callAgentOnce` extendido para soportar overrides de provider/model/temp/maxTokens por tarea (`classify`, `suggestions`, `quoteParse`, `followupText`) desde la configuración persistente.
+- **Migraciones**: 010-016 aplicadas (settings, flags, operators, audit_log, webhooks, rules, sla_breaches).
+- **Tests de Integración**: 4 nuevas suites verdes ([`tests/wa-config.test.js`](../../tests/wa-config.test.js), `wa-operator-auth.test.js`, `wa-webhooks.test.js`, `wa-rules.test.js`).
+- **Docs**: [`docs/wa-cockpit/CONFIG-REFERENCE.md`](../wa-cockpit/CONFIG-REFERENCE.md) (auto-gen) y [`docs/wa-cockpit/OPERATOR-GUIDE.md`](../wa-cockpit/OPERATOR-GUIDE.md).
+
+**Affects:** bmc-security (JWT multi-operador + audit log + HMAC webhooks), bmc-api-contract (nuevas rutas de config/auth), bmc-panelin-chat (AI per-task), bmc-judge (nuevas métricas de SLA y reglas), bmc-docs-sync (esta entrada + docs auto-gen).
+
+**Pendientes específicos**: Fase D (UI de Configuración) y Fase E1 (CLI de Admin) en construcción por subagente copilot.
+
+**Update 2026-05-05 (cierre de fases B5/E1/E5):**
+
+- **Extensión Chrome — magic-link login (fb5)**: popup en repo hermano [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) ahora soporta el flujo **email → "Enviar magic link" → pegar URL recibida → JWT + refresh** persistidos en `chrome.storage.local`. `lib/storage.ts` extendido con `operatorJwt`, `refreshToken`, `operatorEmail`, `operatorRole`, `accessTokenExpiresAt`. `lib/api.ts` añade `requestMagicLinkApi`, `verifyMagicLinkApi`, `refreshAccessTokenApi`, `logoutApi`, `extractMagicToken` y un wrapper `authenticatedFetch` que **refresca on 401** una vez antes de propagar. `background.ts` y `postIngest` priorizan JWT operador, fallback al token compartido para retrocompat. Token legacy queda colapsable en `<details>` del popup mientras dure la migración.
+- **CLI `wa-admin.mjs` (fe1) ampliado**: ahora cubre `operator add` con detección de **bootstrap del primer Owner** sin magic link, `operator list/revoke`, `config get/set/dump --out/import [--dry-run]` (validación zod, diff visible), `flags list/get/toggle`, **`webhook list/test --id`** (usa `testWebhook`), y **`sla check [--verbose]`** que dispara un tick real del worker e imprime el delta de breaches abiertos/resueltos.
+- **Tests integration (fe5)**: nuevo [`tests/wa-sla.test.js`](../../tests/wa-sla.test.js) cubre detect → no-doble-breach → resolve → flag-off; skipea limpio si `DATABASE_URL` no es alcanzable. Nuevo target `npm run test:wa-pro` (config + operator-auth + rules + webhooks + sla en serie).
+- **`.plan.md` sync**: 6 todos pasados a `completed` (plan estaba desfasado del repo): `fa2-config-loader`, `fb2-sla-worker`, `fb2-routing-rules`, `fd1-settings-tab`, `fd1-followups-tab`, `fd2-config-routes`, más `fb5-extension-config`, `fe1-cli`.
+- **Pendiente residual**: `fe3-metrics` (3 campos `sla_breach_count_24h`, `rule_hits`, `flag_changes_24h` aún no agregados a `/wa/metrics`); UI polish opcional (botón Preview en `RoutingSection`, tz selector en `SlaSection`).
+
+**Affects update:** bmc-security (refresh rotation + JWT-on-extension cierra surface de token compartido), bmc-api-contract (sin cambios — endpoints ya estaban), bmc-deployment (CI puede correr `npm run test:wa-pro` cuando haya DB de test), bmc-docs-sync (esta sub-entrada + AGENTS.md fila nueva).
+
+
 **2026-05-05 (Ops — rotación OPENAI_API_KEY + tooling de auditoría/rotación):** Clave de OpenAI activa rotada después de detectar 401 `invalid_api_key` en producción. La clave anterior `sk-proj-…A9IA` se reemplazó por `sk-proj-…AoEA` (token-fingerprint, no se publica el valor) y simultáneamente se restauró el mount vía Secret Manager (regresión de la migración del 2026-04-30: `panelin-calc` venía sirviendo `OPENAI_API_KEY` como env var inline; ahora vuelve a `--set-secrets OPENAI_API_KEY=openai-api-key:latest`). Nueva revisión Cloud Run **`panelin-calc-00352-vxk`**, secreto `openai-api-key` versión 3.
 
 Tooling agregado para que la próxima rotación sea de un comando:

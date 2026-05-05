@@ -80,6 +80,8 @@ export async function requestMagicLink({ email, baseUrl, ip, userAgent }) {
   const tokenHash = _sha256(tokenPlain);
   const expiresAt = new Date(Date.now() + MAGIC_TTL_MS);
 
+  // console.log("[waAuth] magic-link token:", tokenPlain, "hash:", tokenHash);
+
   await _pool.query(
     `update wa_operators
        set magic_token_hash = $2,

@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: fa2-config-loader
     content: server/lib/waConfig.js (cache LRU 30s + LISTEN/NOTIFY + drift recovery + getConfig/getFlag/setSetting + audit)
-    status: pending
+    status: completed
   - id: fa3-operator-auth
     content: Auth híbrida (waOperatorAuth.js) — magic link → access JWT 15min + refresh 30d con rotación + reuse detection + tenant check
     status: completed
@@ -31,10 +31,10 @@ todos:
     status: completed
   - id: fb2-sla-worker
     content: waSlaWorker.js detecta breaches respetando business_hours; popula wa_sla_breaches; emite webhook sla.breach
-    status: pending
+    status: completed
   - id: fb2-routing-rules
     content: waRoutingRules.js evalúa wa_rules en /ingest (assign, label, alert) con priority + endpoint preview
-    status: pending
+    status: completed
   - id: fb3-outbound
     content: Refactor rate limits desde config; fix bug chosen_by; audit_log per outbound
     status: completed
@@ -46,10 +46,10 @@ todos:
     status: completed
   - id: fd1-settings-tab
     content: BmcWaSettingsPanel.jsx con 13 secciones (Flags, General, AI, Quote, SLA, Routing, Followups, Outbound, Operadores, Webhooks, Prompts, Audit, Export)
-    status: pending
+    status: completed
   - id: fd1-followups-tab
     content: Habilitar tab Follow-ups en BmcWaCockpit.jsx (hoy enabled false)
-    status: pending
+    status: completed
   - id: fd1-rules-editor
     content: Editor visual de routing rules (condition builder + actions + preview cuántos chats matchearían)
     status: pending
@@ -58,7 +58,7 @@ todos:
     status: pending
   - id: fd2-config-routes
     content: Endpoints GET /api/wa/config, PATCH /settings, PATCH /flags/:key, test-ai, export/import, operadores CRUD, rules CRUD+preview, sla/breaches, webhooks, audit
-    status: pending
+    status: completed
   - id: fe1-cli
     content: scripts/wa-admin.mjs (operator add/revoke, config get/set/dump/import, flags toggle, webhook test, sla check) + npm run wa:admin
     status: pending

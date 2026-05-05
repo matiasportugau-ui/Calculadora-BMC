@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: read
 
 concurrency:
   group: deploy-calc-api-${{ github.ref }}
@@ -64,6 +65,8 @@ jobs:
 
       - name: Skip when no relevant paths changed
         id: paths
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -e
           # workflow_dispatch always deploys; otherwise replicate the original `paths:` filter.
@@ -72,16 +75,37 @@ jobs:
             echo "::notice::workflow_dispatch — proceeding with deploy."
             exit 0
           fi
-          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+
+          # Find the last successful deployment SHA on main to use as diff base.
+          # This ensures we don't miss changes from multi-commit pushes or rebase-merges.
+          PREV_SHA=$(gh run list --workflow "${{ github.workflow }}" --branch main --status success --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_SHA" ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No parent commit; deploying."
+            echo "::notice::No previous successful deploy found. Proceeding with deploy to be safe."
             exit 0
           fi
-          if git diff --name-only HEAD~1 HEAD | grep -qE '^(server/|src/utils/|src/data/|Dockerfile\.bmc-dashboard$|\.github/workflows/deploy-calc-api\.yml$)'; then
+
+          if [ "$PREV_SHA" = "$(git rev-parse HEAD)" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Re-running successful commit. Proceeding with deploy."
+            exit 0
+          fi
+
+          BASE="$PREV_SHA"
+          echo "::notice::Comparing against last successful deploy: $BASE"
+
+          if ! git rev-parse "$BASE" >/dev/null 2>&1; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Base commit $BASE not found in history; deploying."
+            exit 0
+          fi
+
+          if git diff --name-only "$BASE" HEAD | grep -qE '^(server/|src/utils/|src/data/|Dockerfile\.bmc-dashboard$|\.github/workflows/deploy-calc-api\.yml$)'; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
           else
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::No relevant paths changed in ${{ steps.sha.outputs.sha }}; skipping deploy."
+            echo "::notice::No relevant paths changed since $BASE; skipping deploy."
           fi
 
       - name: Authenticate to Google Cloud

@@ -18,6 +18,7 @@ import { classifyIntent, generateSuggestions } from "./waEnricher.js";
 import { runWaQuote } from "./waQuoteRunner.js";
 import { extractQuoteParams } from "./waQuoteParams.js";
 import { getConfig, getFlag } from "./waConfig.js";
+import { applyRoutingRules } from "./waRoutingRules.js";
 
 export function startWaEnricherWorker({ config, logger, pool }) {
   // Normaliza el logger para evitar `logger?.warn?.()` por todos lados.
@@ -216,6 +217,22 @@ export function startWaEnricherWorker({ config, logger, pool }) {
              where chat_id = $1`,
             [msg.chat_id, result.intent || intentHint],
           );
+
+          // F-B2: apply routing rules (assign, label, alert).
+          // Usamos el client de la tx para que la asignación sea atómica con el enriched_at.
+          try {
+            const { rows: [c] } = await client.query("select phone, contact_name from wa_conversations where chat_id = $1", [msg.chat_id]);
+            await applyRoutingRules(client, {
+              chat_id: msg.chat_id,
+              phone: c?.phone || "",
+              contact_name: c?.contact_name || "",
+              text: msg.text,
+              intent: result.intent || intentHint,
+              ts: new Date(msg.ts),
+            });
+          } catch (re) {
+            log.warn({ err: re.message, chat_id: msg.chat_id }, "[waEnricher] routing rules failed");
+          }
 
           await client.query(
             `update wa_messages
