@@ -29,6 +29,13 @@ import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
+import * as waConfigModule from "./lib/waConfig.js";
+const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
+import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
+import { setWaConfigModuleForQuoteParams } from "./lib/waQuoteParams.js";
+import { initWaWebhooks } from "./lib/waWebhooks.js";
+import { startWaSlaWorker } from "./lib/waSlaWorker.js";
+import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
@@ -958,8 +965,10 @@ const transportistaPool = getTransportistaPool(config.databaseUrl);
 // el shutdown handler sea seguro aunque la señal llegue antes del listen.
 let stopTransportista = () => {};
 let stopWaEnricher = () => {};
+let stopWaSla = () => {};
+let stopWaFollowups = () => {};
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, async () => {
   logger.info(
     {
       port: config.port,
@@ -971,11 +980,39 @@ const server = app.listen(config.port, () => {
   if (transportistaPool) {
     stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
   }
-  // WA Cockpit enricher (F2) — opt-in con WA_ENRICHER_ENABLED=true
+  // WA Cockpit — F-A4: prime config (settings + flags + LISTEN/NOTIFY) y auth.
+  // Se hace ANTES de los workers para que lean ya el cache caliente.
   const waPool = getWaPool(config.databaseUrl);
-  if (waPool && config.waEnricherEnabled) {
+  if (waPool) {
+    try {
+      await primeWaConfig({ pool: waPool, logger });
+      initWaOperatorAuth({ pool: waPool, logger });
+      initWaWebhooks({ pool: waPool, logger });
+      setWaConfigModuleForQuoteParams(waConfigModule);
+    } catch (e) {
+      logger.warn({ err: e }, "WA config/auth prime failed (continúo sin runtime config)");
+    }
+  }
+
+  // WA Cockpit enricher (F2) — gobernado por flag enricher.enabled (DB) o el
+  // fallback histórico WA_ENRICHER_ENABLED=true (.env). El flag DB tiene prioridad.
+  const enricherFlagOn = (() => {
+    try { return getWaFlag("enricher.enabled"); } catch { return false; }
+  })();
+  if (waPool && (enricherFlagOn || config.waEnricherEnabled)) {
     stopWaEnricher = startWaEnricherWorker({ config, logger, pool: waPool });
-    logger.info({ intervalMs: config.waEnricherIntervalMs, batchSize: config.waEnricherBatchSize }, "WA enricher worker started");
+    logger.info(
+      { source: enricherFlagOn ? "flag" : "env" },
+      "WA enricher worker started",
+    );
+  }
+
+  // WA Cockpit — SLA worker (Missive-style), governed by flag slaTracking.enabled.
+  // El worker mismo chequea el flag en cada tick → no duplicamos lógica acá.
+  if (waPool) {
+    stopWaSla = startWaSlaWorker({ logger, pool: waPool });
+    stopWaFollowups = startWaFollowupsWorker({ logger, pool: waPool });
+    logger.info("WA sla + followups workers started");
   }
 });
 
@@ -992,6 +1029,8 @@ function shutdown(signal) {
 
   try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
+  try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
+  try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
 
   server.close((err) => {
     if (err) logger.error({ err: err?.message }, "server.close error");

@@ -14,6 +14,9 @@ import { validateIngestBatch, validateIngestMessage } from "../lib/waValidate.js
 import { classifyIntent, generateSuggestions } from "../lib/waEnricher.js";
 import { runWaQuote } from "../lib/waQuoteRunner.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
+import { getConfig as getWaCfg, getFlag as getWaFlag } from "../lib/waConfig.js";
+import { emitWaWebhook } from "../lib/waWebhooks.js";
+import { applyRoutingRules } from "../lib/waRoutingRules.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -85,11 +88,26 @@ export default function createWaRouter(config, logger) {
     return next();
   }
 
-  // F5 — rate-limit por chat_id en outbound (no parecer bot)
-  const outboundLimit = Math.max(1, Number(config.waOutboundRateLimitPerMin || 6));
+  // F5 — rate-limit por chat_id en outbound. Lee desde waConfig en runtime
+  // con fallback a .env (config.waOutboundRateLimitPerMin).
+  function readOutboundLimit() {
+    try {
+      return Number(getWaCfg()?.outbound?.ratePerMinPerChat) || Number(config.waOutboundRateLimitPerMin) || 6;
+    } catch {
+      return Number(config.waOutboundRateLimitPerMin) || 6;
+    }
+  }
+  function readOperatorLimit() {
+    try {
+      return Number(getWaCfg()?.outbound?.ratePerMinPerOperator) || 30;
+    } catch {
+      return 30;
+    }
+  }
   const outboundLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: outboundLimit,
+    // express-rate-limit acepta función para max → re-evalúa en cada request.
+    max: () => readOutboundLimit(),
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {
@@ -97,8 +115,364 @@ export default function createWaRouter(config, logger) {
       const op = req.waOperatorId || "no-op";
       return `${cid}|${op}`;
     },
-    message: { ok: false, error: "rate_limited", limit_per_min: outboundLimit },
+    message: () => ({ ok: false, error: "rate_limited", limit_per_min: readOutboundLimit() }),
   });
+
+  // F5 — rate-limit complementario por operador (anti-spam global del operador).
+  const outboundOperatorLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: () => readOperatorLimit(),
+    standardHeaders: false,
+    legacyHeaders: false,
+    keyGenerator: (req) => `op|${req.waOperatorId || "no-op"}`,
+    message: () => ({ ok: false, error: "rate_limited_operator", limit_per_min: readOperatorLimit() }),
+  });
+
+  // ── Hybrid auth helper: acepta JWT operator (preferido) o legacy shared token.
+  //    Adjunta req.operator si JWT; req.waOperatorId si shared token.
+  function requireWaAccess({ requireWrite = false } = {}) {
+    return async (req, res, next) => {
+      const authH = String(req.headers.authorization || "").trim();
+      const m = /^Bearer (.+)$/i.exec(authH);
+      const tokenStr = m ? m[1] : "";
+      // 1) Probar como JWT operador
+      if (tokenStr && tokenStr.length > 32 && tokenStr.split(".").length === 3) {
+        try {
+          const { requireWaOperator } = await import("../lib/waOperatorAuth.js");
+          const wrapper = requireWaOperator({ require: requireWrite ? "admin" : "member" });
+          return wrapper(req, res, next);
+        } catch {
+          // fallthrough to legacy
+        }
+      }
+      // 2) Probar como token compartido (legacy)
+      if (tokenStr && tokenStr === config.apiAuthToken) {
+        const opId = String(req.headers["x-operator-id"] || "").slice(0, 64).trim();
+        req.waOperatorId = opId || null;
+        // Legacy token: read-only en endpoints write a menos que esté
+        // explicitamente whitelisted. Para el rollout gradual, permitimos
+        // escritura igual — en producción toggle requireWrite.
+        return next();
+      }
+      const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
+      if (xKey && xKey === config.apiAuthToken) {
+        req.waOperatorId = null;
+        return next();
+      }
+      return res.status(401).json({ ok: false, error: "Unauthorized — JWT operador o token compartido" });
+    };
+  }
+
+  // ── Config & Settings (Owner/Admin only) ──────────────────────────────
+  // GET /api/wa/config: devuelve config completa + flags + metadata del schema.
+  router.get(
+    "/wa/config",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { describeAll } = await import("../lib/waConfig.js");
+      const operatorId = req.operator?.id || req.waOperatorId;
+      const data = describeAll({ operatorId });
+      return res.json({ ok: true, ...data });
+    }),
+  );
+
+  // PATCH /api/wa/settings: actualiza una key puntual (ej. 'enricher.intervalMs').
+  router.patch(
+    "/wa/settings",
+    requireWaAccess({ requireWrite: true }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { setSetting } = await import("../lib/waConfig.js");
+      const { key, value, scope = "tenant", scopeId } = req.body;
+      if (!key) return res.status(400).json({ ok: false, error: "key required" });
+
+      try {
+        const r = await setSetting(key, value, {
+          actor: req.operator?.id || req.waOperatorId || "system",
+          scope,
+          scopeId: scope === "operator" ? (scopeId || req.operator?.id) : "tenant",
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 400).json({
+          ok: false,
+          error: e.message,
+          payload: e.payload,
+        });
+      }
+    }),
+  );
+
+  // PATCH /api/wa/flags/:key: toggle rápido de feature flags.
+  router.patch(
+    "/wa/flags/:key",
+    requireWaAccess({ requireWrite: true }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { setFlag } = await import("../lib/waConfig.js");
+      const key = req.params.key;
+      try {
+        const r = await setFlag(key, req.body, {
+          actor: req.operator?.id || req.waOperatorId || "system",
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 400).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  // POST /api/wa/settings/test-ai: prueba un prompt con un mensaje sample.
+  router.post(
+    "/wa/settings/test-ai",
+    requireWaAccess({ requireWrite: true }),
+    asyncHandler(async (req, res) => {
+      const { callAgentOnce } = await import("../lib/agentCore.js");
+      const { taskKey, message, override } = req.body;
+      if (!taskKey || !message) {
+        return res.status(400).json({ ok: false, error: "taskKey and message required" });
+      }
+      try {
+        const result = await callAgentOnce([{ role: "user", content: message }], {
+          taskKey,
+          override,
+          channel: "chat",
+        });
+        return res.json({ ok: true, result });
+      } catch (e) {
+        return res.status(500).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  // ── Operators CRUD ──────────────────────────────────────────────────────
+  router.get(
+    "/wa/operators",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (_req, res) => {
+      const { rows } = await pool.query(
+        `select operator_id, email, name, role, status, created_at,
+                last_login_at, last_active_at, invited_by,
+                (extract(epoch from now() - last_active_at) < 300) as online
+           from wa_operators
+          order by last_active_at desc nulls last, created_at desc`,
+      );
+      return res.json({ ok: true, count: rows.length, items: rows });
+    }),
+  );
+
+  router.post(
+    "/wa/operators/invite",
+    requireWaAccess({ requireWrite: true }),
+    asyncHandler(async (req, res) => {
+      const { inviteOperator } = await import("../lib/waOperatorAuth.js");
+      try {
+        const r = await inviteOperator({
+          ...req.body,
+          invitedBy: req.operator?.id || req.waOperatorId,
+          baseUrl: process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`,
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 400).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  router.delete(
+    "/wa/operators/:id/sessions",
+    requireWaAccess({ requireWrite: true }),
+    asyncHandler(async (req, res) => {
+      const { revokeOperator } = await import("../lib/waOperatorAuth.js");
+      await revokeOperator({
+        operatorId: req.params.id,
+        actorId: req.operator?.id || req.waOperatorId,
+        ip: req.ip,
+        userAgent: req.get?.("user-agent"),
+      });
+      return res.json({ ok: true });
+    }),
+  );
+
+  // ── Rules CRUD ──────────────────────────────────────────────────────────
+  router.get(
+    "/wa/rules",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (_req, res) => {
+      const { rows } = await pool.query("select * from wa_rules order by priority asc, created_at desc");
+      return res.json({ ok: true, count: rows.length, items: rows });
+    }),
+  );
+
+  router.post(
+    "/wa/rules/preview",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { previewRoutingRule } = await import("../lib/waRoutingRules.js");
+      const r = await previewRoutingRule(pool, req.body?.when_conditions);
+      return res.json({ ok: true, ...r });
+    }),
+  );
+
+  // ── Webhooks CRUD ───────────────────────────────────────────────────────
+  router.get(
+    "/wa/webhooks",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (_req, res) => {
+      const { rows } = await pool.query("select * from wa_webhooks order by created_at desc");
+      return res.json({ ok: true, count: rows.length, items: rows });
+    }),
+  );
+
+  router.post(
+    "/wa/webhooks/:id/test",
+    requireWaAccess({ requireWrite: true }),
+    asyncHandler(async (req, res) => {
+      const { testWebhook } = await import("../lib/waWebhooks.js");
+      try {
+        const r = await testWebhook({ id: req.params.id });
+        return res.json({ ok: true, result: r });
+      } catch (e) {
+        return res.status(e.status || 500).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  // ── Audit Log ───────────────────────────────────────────────────────────
+  router.get(
+    "/wa/audit-log",
+    requireWaAccess({ requireWrite: false }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const limit = Math.min(500, Number(req.query.limit) || 100);
+      const { rows } = await pool.query(
+        `select * from wa_audit_log order by occurred_at desc limit $1`,
+        [limit],
+      );
+      return res.json({ ok: true, count: rows.length, items: rows });
+    }),
+  );
+
+  // ── Auth (magic link → access JWT 15min + refresh 30d) ─────────────────
+  router.post(
+    "/wa/auth/request-magic-link",
+    asyncHandler(async (req, res) => {
+      const { requestMagicLink } = await import("../lib/waOperatorAuth.js");
+      const email = String(req.body?.email || "").trim();
+      try {
+        const r = await requestMagicLink({
+          email,
+          baseUrl: process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`,
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 400).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  router.get(
+    "/wa/auth/verify",
+    asyncHandler(async (req, res) => {
+      const { verifyMagicLink } = await import("../lib/waOperatorAuth.js");
+      const token = String(req.query?.token || "").trim();
+      try {
+        const r = await verifyMagicLink({ token, ip: req.ip, userAgent: req.get?.("user-agent") });
+        // Browser flow: redirige al cockpit con tokens en query.
+        if (req.accepts(["html", "json"]) === "html") {
+          const back = `/hub/wa?access_token=${encodeURIComponent(r.accessToken)}&refresh_token=${encodeURIComponent(r.refreshToken)}`;
+          return res.redirect(back);
+        }
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 401).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  router.post(
+    "/wa/auth/verify",
+    asyncHandler(async (req, res) => {
+      const { verifyMagicLink } = await import("../lib/waOperatorAuth.js");
+      try {
+        const r = await verifyMagicLink({
+          token: String(req.body?.token || "").trim(),
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 401).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  router.post(
+    "/wa/auth/refresh",
+    asyncHandler(async (req, res) => {
+      const { refreshTokens } = await import("../lib/waOperatorAuth.js");
+      try {
+        const r = await refreshTokens({
+          refreshToken: String(req.body?.refresh_token || "").trim(),
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json(r);
+      } catch (e) {
+        return res.status(e.status || 401).json({ ok: false, error: e.message });
+      }
+    }),
+  );
+
+  router.post(
+    "/wa/auth/logout",
+    asyncHandler(async (req, res) => {
+      const { logout, requireWaOperator } = await import("../lib/waOperatorAuth.js");
+      // El logout requiere JWT válido para identificar al operador.
+      return requireWaOperator()(req, res, async () => {
+        await logout({
+          operatorId: req.operator.id,
+          ip: req.ip,
+          userAgent: req.get?.("user-agent"),
+        });
+        return res.json({ ok: true });
+      });
+    }),
+  );
+
+  // ── Extension config endpoint (público, sólo lo que la extensión necesita) ─
+  // No requiere auth porque el cliente sólo lo usa para tunear timings;
+  // expone únicamente el namespace "extension" del schema.
+  router.get(
+    "/wa/config/extension",
+    asyncHandler(async (_req, res) => {
+      let cfg = null;
+      try { cfg = getWaCfg()?.extension; } catch { /* not primed */ }
+      return res.json({
+        ok: true,
+        config: cfg || {
+          heartbeatSeconds: 60,
+          batchSizeLive: 50,
+          batchSizeHistorical: 200,
+          retryDelaysMs: [500, 1500, 4000],
+          liveTickleDebounceMs: 2500,
+        },
+      });
+    }),
+  );
 
   // ── Health ──────────────────────────────────────────────────────────────
   router.get(
@@ -213,6 +587,29 @@ export default function createWaRouter(config, logger) {
         return res.status(500).json({ ok: false, error: "ingest_failed", detail: e?.message });
       } finally {
         client.release();
+      }
+
+      // F-B4: routing rules + webhooks (post-commit, fuera del lock).
+      // Procesamos sólo los mensajes inbound recién insertados.
+      const inboundMsgs = valid.filter((m) => m.direction === "in");
+      for (const m of inboundMsgs) {
+        try {
+          await applyRoutingRules(pool, {
+            chat_id: m.chat_id,
+            phone: m.phone || "",
+            contact_name: m.contact_name || "",
+            text: m.text || "",
+            intent: null,
+            ts: new Date(m.ts || Date.now()),
+          });
+        } catch { /* rules best-effort */ }
+        emitWaWebhook("message.in", {
+          chat_id: m.chat_id,
+          msg_id: m.msg_id,
+          text: m.text,
+          phone: m.phone,
+          ts: m.ts,
+        });
       }
 
       return res.json({
@@ -372,16 +769,35 @@ export default function createWaRouter(config, logger) {
         return res.status(400).json({ ok: false, error: "chosen_idx must be 0..10" });
       }
 
+      // Fix bug F-B3: la columna chosen_by existe (migración 006_wa_operator)
+      // pero hasta hoy no se escribía. Ahora la guardamos desde X-Operator-Id.
       const r = await pool.query(
         `update wa_suggestions
            set chosen_idx = $2,
                chosen_at = now(),
-               sent_msg_id = coalesce($3, sent_msg_id)
+               sent_msg_id = coalesce($3, sent_msg_id),
+               chosen_by = coalesce($4, chosen_by)
          where id = $1::uuid
-         returning id, chat_id, chosen_idx, chosen_at, sent_msg_id`,
-        [id, chosenIdx, sentMsgId],
+         returning id, chat_id, chosen_idx, chosen_at, sent_msg_id, chosen_by`,
+        [id, chosenIdx, sentMsgId, req.waOperatorId || null],
       );
       if (r.rowCount === 0) return res.status(404).json({ ok: false, error: "not found" });
+
+      // Audit log
+      try {
+        await pool.query(
+          `insert into wa_audit_log (operator_id, action, target, after, ip, user_agent)
+           values ($1, 'suggestion.choose', $2, $3::jsonb, $4, $5)`,
+          [
+            req.waOperatorId || null,
+            r.rows[0].chat_id,
+            JSON.stringify({ suggestion_id: id, chosen_idx: chosenIdx, sent_msg_id: sentMsgId }),
+            req.ip || null,
+            req.get?.("user-agent") || null,
+          ],
+        );
+      } catch { /* ignore audit failures */ }
+
       return res.json({ ok: true, suggestion: r.rows[0] });
     }),
   );
@@ -594,11 +1010,14 @@ export default function createWaRouter(config, logger) {
   );
 
   // ── F4 — Outbound: paste_back register OR cloud_api send ────────────────
+  // Rate limits aplicados en cascada: per-chat → per-operator → handler.
+  // F-B3: enforce daily cap por chat antes de proceder; audit + webhook al final.
   router.post(
     "/wa/outbound",
     auth,
     requireDb,
     outboundLimiter,
+    outboundOperatorLimiter,
     asyncHandler(async (req, res) => {
       const chatId = String(req.body?.chat_id || "").trim();
       const text = String(req.body?.text || "").trim();
@@ -610,6 +1029,24 @@ export default function createWaRouter(config, logger) {
         return res.status(400).json({ ok: false, error: "kind must be paste_back|cloud_api" });
       }
 
+      // Daily cap por chat (config.outbound.dailyCapPerChat).
+      let dailyCap = 50;
+      try { dailyCap = Number(getWaCfg()?.outbound?.dailyCapPerChat) || 50; } catch { /* default */ }
+      const dailyCheck = await pool.query(
+        `select count(*)::int as n
+           from wa_messages
+          where chat_id = $1 and direction = 'out' and ts > now() - interval '24 hours'`,
+        [chatId],
+      );
+      if (dailyCheck.rows[0]?.n >= dailyCap) {
+        return res.status(429).json({
+          ok: false,
+          error: "daily_cap_reached",
+          daily_cap: dailyCap,
+          current_24h: dailyCheck.rows[0].n,
+        });
+      }
+
       const conv = await pool.query(
         `select chat_id, phone, consent_at from wa_conversations where chat_id = $1`,
         [chatId],
@@ -618,6 +1055,12 @@ export default function createWaRouter(config, logger) {
       const row = conv.rows[0];
 
       if (kind === "cloud_api") {
+        // Flag explícito + consent (tooling defense in depth).
+        let cloudFlag = true;
+        try { cloudFlag = getWaFlag("cloudApiOutbound.enabled"); } catch { /* default true */ }
+        if (!cloudFlag) {
+          return res.status(503).json({ ok: false, error: "cloud_api_disabled_by_flag" });
+        }
         if (!row.consent_at) {
           return res.status(403).json({ ok: false, error: "no consent — set via /api/wa/conversations/:id/consent first" });
         }
@@ -648,6 +1091,9 @@ export default function createWaRouter(config, logger) {
               JSON.stringify({ outbound_kind: "cloud_api", suggestion_id: suggestionId }),
             ],
           );
+          // Audit + webhook
+          await _auditOutbound(pool, req, "cloud_api", chatId, msgId, text);
+          emitWaWebhook("message.out", { chat_id: chatId, msg_id: msgId, kind: "cloud_api", text, operator: req.waOperatorId });
           return res.json({ ok: true, kind: "cloud_api", msg_id: msgId });
         } catch (e) {
           return res.status(502).json({ ok: false, error: e.message });
@@ -669,6 +1115,8 @@ export default function createWaRouter(config, logger) {
           JSON.stringify({ outbound_kind: "paste_back", suggestion_id: suggestionId }),
         ],
       );
+      await _auditOutbound(pool, req, "paste_back", chatId, localId, text);
+      emitWaWebhook("message.out", { chat_id: chatId, msg_id: localId, kind: "paste_back", text, operator: req.waOperatorId });
       return res.json({ ok: true, kind: "paste_back", msg_id: localId, status: "pending_paste" });
     }),
   );
@@ -883,4 +1331,22 @@ export default function createWaRouter(config, logger) {
   );
 
   return router;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────
+
+async function _auditOutbound(pool, req, kind, chatId, msgId, text) {
+  try {
+    await pool.query(
+      `insert into wa_audit_log (operator_id, action, target, after, ip, user_agent)
+       values ($1, 'outbound.send', $2, $3::jsonb, $4, $5)`,
+      [
+        req.waOperatorId || null,
+        chatId,
+        JSON.stringify({ kind, msg_id: msgId, text_preview: String(text || "").slice(0, 200) }),
+        req.ip || null,
+        req.get?.("user-agent") || null,
+      ],
+    );
+  } catch { /* ignore audit failures */ }
 }

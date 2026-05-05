@@ -24,6 +24,7 @@ Thumbs.db
 # Env
 .env
 .env.local
+.env.bak.*
 
 # Registro maestro credenciales — solo local / cifrado (ver npm run credentials:registry)
 docs/team/credentials-registry/local/

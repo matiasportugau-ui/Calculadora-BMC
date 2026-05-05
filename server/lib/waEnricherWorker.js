@@ -17,6 +17,7 @@
 import { classifyIntent, generateSuggestions } from "./waEnricher.js";
 import { runWaQuote } from "./waQuoteRunner.js";
 import { extractQuoteParams } from "./waQuoteParams.js";
+import { getConfig, getFlag } from "./waConfig.js";
 
 export function startWaEnricherWorker({ config, logger, pool }) {
   // Normaliza el logger para evitar `logger?.warn?.()` por todos lados.
@@ -27,13 +28,26 @@ export function startWaEnricherWorker({ config, logger, pool }) {
     log.warn("[waEnricher] no pool, worker not started");
     return () => {};
   }
-  if (!config.waEnricherEnabled) {
-    log.info("[waEnricher] disabled (WA_ENRICHER_ENABLED=false)");
-    return () => {};
+
+  // Config en runtime: leemos getConfig() en cada batch para reflejar cambios
+  // hechos vía /api/wa/settings sin reiniciar el server. El flag
+  // enricher.enabled o el .env legacy actúan como kill-switch.
+  function readRuntime() {
+    let cfg, flagOn;
+    try { cfg = getConfig(); } catch { cfg = null; }
+    try { flagOn = getFlag("enricher.enabled"); } catch { flagOn = false; }
+    const intervalMs = Number(cfg?.enricher?.intervalMs ?? config.waEnricherIntervalMs ?? 8000);
+    const batchSize = Number(cfg?.enricher?.batchSize ?? config.waEnricherBatchSize ?? 5);
+    const maxHistoryMsgs = Number(cfg?.enricher?.maxHistoryMsgs ?? 12);
+    const enabled = flagOn || Boolean(config.waEnricherEnabled);
+    return { intervalMs, batchSize, maxHistoryMsgs, enabled };
   }
 
-  const intervalMs = Number(config.waEnricherIntervalMs || 8000);
-  const batchSize = Number(config.waEnricherBatchSize || 5);
+  let runtime = readRuntime();
+  if (!runtime.enabled) {
+    log.info("[waEnricher] disabled (flag enricher.enabled=false y .env=false)");
+    return () => {};
+  }
 
   // Shutdown coordinado: el cleanup retornado dispara `ac.abort()` para que
   // el batch in-flight termine de procesar el mensaje actual (no se interrumpe
@@ -48,6 +62,14 @@ export function startWaEnricherWorker({ config, logger, pool }) {
   async function processBatch() {
     if (running) return;
     running = true;
+
+    // Re-leer config cada batch — refleja cambios de /api/wa/settings inmediatos.
+    runtime = readRuntime();
+    if (!runtime.enabled) {
+      running = false;
+      return;
+    }
+    const { batchSize, maxHistoryMsgs } = runtime;
 
     const t0 = Date.now();
     let claimed = 0;
@@ -99,14 +121,14 @@ export function startWaEnricherWorker({ config, logger, pool }) {
             continue;
           }
 
-          // Trae histórico del chat (último 12 msgs orden cronológico)
+          // Trae histórico del chat (config.enricher.maxHistoryMsgs, default 12)
           const { rows: hist } = await client.query(
             `select direction, text, ts
              from wa_messages
              where chat_id = $1 and text is not null
              order by ts desc
-             limit 12`,
-            [msg.chat_id],
+             limit $2`,
+            [msg.chat_id, maxHistoryMsgs],
           );
           const history = hist.reverse();
 
@@ -141,23 +163,28 @@ export function startWaEnricherWorker({ config, logger, pool }) {
             ],
           );
 
-          // F4 — schedule follow-up 24h si todavía no hay respuesta nuestra
+          // F4 — schedule follow-up con configurable hours (config.followups.defaultHours)
           // (best-effort: si ya existe un follow-up pendiente para este chat, no duplica)
+          let followupHours = 24;
+          try { followupHours = Number(getConfig().followups.defaultHours) || 24; } catch { /* keep default */ }
           await client.query(
             `insert into wa_followups (chat_id, due_at, kind, note)
-             select $1, now() + interval '24 hours', 'remind_24h', 'Auto: msg cliente sin respuesta nuestra'
+             select $1, now() + ($2 || ' hours')::interval, 'remind_24h', 'Auto: msg cliente sin respuesta nuestra'
              where not exists (
                select 1 from wa_followups
                where chat_id = $1 and kind = 'remind_24h' and status = 'pending'
              )`,
-            [msg.chat_id],
+            [msg.chat_id, String(followupHours)],
           );
 
-          // F3 — auto cotización si intent=cotizacion y los params son detectables.
-          // runWaQuote usa su propia conexión del pool: NO es parte de esta tx.
-          // Si esta tx hace rollback, la cotización queda; idempotencia debe vivir en runWaQuote.
+          // F3 — auto cotización si intent=cotizacion, flag autoQuote.enabled,
+          // y los params son detectables. runWaQuote usa su propia conexión del
+          // pool: NO es parte de esta tx. Si esta tx hace rollback, la cotización
+          // queda; idempotencia debe vivir en runWaQuote.
           const finalIntent = result.intent || intentHint;
-          if (finalIntent === "cotizacion") {
+          let autoQuoteOn = false;
+          try { autoQuoteOn = getFlag("autoQuote.enabled"); } catch { /* default off */ }
+          if (finalIntent === "cotizacion" && autoQuoteOn) {
             const params = extractQuoteParams(msg.text);
             if (params?.ready) {
               try {
@@ -262,18 +289,24 @@ export function startWaEnricherWorker({ config, logger, pool }) {
     }
   }
 
-  timer = setInterval(() => {
+  // setTimeout en lugar de setInterval: cada tick releemos config para honrar
+  // cambios de enricher.intervalMs sin reiniciar. Si el flag se apaga, no
+  // re-agendamos hasta que vuelva a encenderse (verificado en readRuntime).
+  function schedule() {
     if (ac.signal.aborted) return;
-    processBatch().catch((e) => log.error({ err: e?.message }, "[waEnricher] batch failed"));
-  }, intervalMs);
-
-  if (typeof timer.unref === "function") timer.unref();
-
-  // Initial run
-  processBatch().catch((e) => log.error({ err: e?.message }, "[waEnricher] initial batch failed"));
+    const { intervalMs } = readRuntime();
+    timer = setTimeout(() => {
+      if (ac.signal.aborted) return;
+      processBatch()
+        .catch((e) => log.error({ err: e?.message }, "[waEnricher] batch failed"))
+        .finally(() => schedule());
+    }, intervalMs);
+    if (typeof timer.unref === "function") timer.unref();
+  }
+  schedule();
 
   return () => {
-    if (timer) clearInterval(timer);
+    if (timer) clearTimeout(timer);
     timer = null;
     ac.abort();
   };

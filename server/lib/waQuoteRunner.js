@@ -158,5 +158,17 @@ export async function runWaQuote({ pool, chatId, text, triggerMsgId, generatedBy
     return { ok: false, reason: "insert_no_row_no_existing" };
   }
 
+  // F-B4: emit webhook quote.created (fire-and-forget, dependency lazy).
+  try {
+    const mod = await import("./waWebhooks.js");
+    mod.emitWaWebhook?.("quote.created", {
+      quote_id: ins.rows[0].quote_id,
+      chat_id: ins.rows[0].chat_id,
+      total_usd: ins.rows[0].total_usd,
+      generated_by_ai: ins.rows[0].generated_by_ai,
+      link: ins.rows[0].link,
+    });
+  } catch { /* webhook is best-effort */ }
+
   return { ok: true, quote: ins.rows[0] };
 }

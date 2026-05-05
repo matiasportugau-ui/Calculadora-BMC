@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # Deploy Calculadora BMC to Vercel (calculadora-bmc.vercel.app)
+#
+# ⚠️  EMERGENCY USE ONLY.
+# Normal deploys go through .github/workflows/deploy-vercel.yml, which is gated
+# on a green CI run. Use this script only when you need to force a deploy
+# outside the gate (incident response, CI is broken, infra is down).
+# Every successful run of this script bypasses the CI/PR review process —
+# leave a note in #ops or in the next PR explaining why.
+#
 # Requires: vercel CLI (npm i -g vercel)
 # Set VITE_API_URL in Vercel project settings for "Cargar desde MATRIZ" to work.
 # Drive (GIS): `npm run drive:vercel-env -- '<client-id>'` luego redeploy — ver docs/VERCEL-CALCULADORA-SETUP.md
