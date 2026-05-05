@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: fb2-followups-worker
     content: waFollowupsWorker.js consume due_at; emite SSE/webhooks/auto-msg; reglas configurables
-    status: in_progress
+    status: completed
   - id: fb2-sla-worker
     content: waSlaWorker.js detecta breaches respetando business_hours; popula wa_sla_breaches; emite webhook sla.breach
     status: pending
@@ -37,13 +37,13 @@ todos:
     status: pending
   - id: fb3-outbound
     content: Refactor rate limits desde config; fix bug chosen_by; audit_log per outbound
-    status: pending
+    status: completed
   - id: fb4-webhooks
     content: waWebhooks.js (HMAC SHA256, fire-and-forget, retry exponencial, dead letter) wired en ingest/quote/followup/sla
-    status: pending
+    status: completed
   - id: fb5-extension-config
     content: Extensión lee config desde GET /api/wa/config/extension; magic link login en popup; JWT reemplaza apiAuthToken
-    status: pending
+    status: completed
   - id: fd1-settings-tab
     content: BmcWaSettingsPanel.jsx con 13 secciones (Flags, General, AI, Quote, SLA, Routing, Followups, Outbound, Operadores, Webhooks, Prompts, Audit, Export)
     status: pending

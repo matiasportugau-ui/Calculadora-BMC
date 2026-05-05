@@ -190,8 +190,10 @@ export async function generateSuggestions({ history, intentHint }) {
   let text = "";
   let provider = null;
   try {
-    // chat channel = más tokens (1200) y sin "Saludos" forzado en el cierre.
-    const r = await callAgentOnce(messages, { channel: "chat" });
+    // taskKey="suggestions" → lee config.ai.suggestions (provider/model/temp/maxTokens)
+    // desde waConfig en runtime. channel:"chat" mantiene formato JSON crudo (sin
+    // "Cerrar con ¡Saludos!").
+    const r = await callAgentOnce(messages, { channel: "chat", taskKey: "suggestions" });
     text = String(r?.text || "");
     provider = r?.provider || null;
   } catch (e) {
