@@ -2078,10 +2078,10 @@ const waSkip = verifyWhatsAppSignature({
   signatureHeader: "ignored",
 });
 assert(
-  "verifyWhatsAppSignature skipped without secret",
-  waSkip.skipped === true && waSkip.ok === true,
-  `${waSkip.skipped}/${waSkip.ok}`,
-  "true/true",
+  "verifyWhatsAppSignature rejects without secret",
+  waSkip.reason === "missing_app_secret" && waSkip.ok === false,
+  `${waSkip.reason}/${waSkip.ok}`,
+  "missing_app_secret/false",
 );
 
 assert("isAllowedDriverEventType stop_arrived", isAllowedDriverEventType("stop_arrived"), true, true);
