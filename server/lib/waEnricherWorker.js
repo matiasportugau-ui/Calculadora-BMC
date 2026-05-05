@@ -3,9 +3,14 @@
  * Patrón clonado de transportistaOutboxWorker.js: setInterval + transacción + cola en SQL.
  *
  * Loop:
- *   1. Selecciona N mensajes con `enriched_at IS NULL` y `direction='in'`.
- *   2. Para cada uno: classifyIntent + (si no es chatter) generateSuggestions.
- *   3. UPSERT en wa_suggestions y marca `enriched_at = now()` en el mensaje.
+ *   1. BEGIN tx + SELECT … FOR UPDATE SKIP LOCKED — claim atómico de N mensajes.
+ *   2. Por mensaje: SAVEPOINT + classifyIntent + (si no es chatter) generateSuggestions.
+ *      Errores aislados via ROLLBACK TO SAVEPOINT — el resto del batch sobrevive.
+ *   3. UPSERT en wa_suggestions y marca `enriched_at = now()` → COMMIT.
+ *
+ * Trade-off: las llamadas LLM corren dentro de la tx, manteniendo locks por la duración del batch.
+ * SKIP LOCKED evita bloquear a otras instancias (las saltean), pero conviene auditar
+ * `idle_in_transaction_session_timeout` en Postgres si batch × LLM_latency > timeout.
  *
  * Flag: WA_ENRICHER_ENABLED=true en config.waEnricherEnabled.
  */
@@ -34,8 +39,13 @@ export function startWaEnricherWorker({ config, logger, pool }) {
     running = true;
 
     const client = await pool.connect();
+    let inTx = false;
     try {
-      // Pull unenriched inbound messages, oldest first (FIFO)
+      await client.query("begin");
+      inTx = true;
+
+      // Claim atómico FIFO. SKIP LOCKED permite a otras instancias procesar otras filas
+      // sin bloquearse. El lock se mantiene hasta COMMIT/ROLLBACK al final del batch.
       const { rows: pendingMsgs } = await client.query(
         `select msg_id, chat_id, ts, text
          from wa_messages
@@ -43,19 +53,23 @@ export function startWaEnricherWorker({ config, logger, pool }) {
            and direction = 'in'
            and text is not null
          order by ts asc
-         limit $1`,
+         limit $1
+         for update skip locked`,
         [batchSize],
       );
 
       for (const msg of pendingMsgs) {
         const intentHint = classifyIntent(msg.text);
+        // Aislamos cada mensaje: si su procesamiento falla, hacemos ROLLBACK TO SAVEPOINT
+        // y el resto del batch continúa dentro de la misma tx.
+        await client.query("savepoint wa_msg");
         try {
           if (intentHint === "chatter") {
-            // Marca enriched, no genera sugerencias
             await client.query(
               `update wa_messages set enriched_at = now() where msg_id = $1`,
               [msg.msg_id],
             );
+            await client.query("release savepoint wa_msg");
             continue;
           }
 
@@ -90,21 +104,19 @@ export function startWaEnricherWorker({ config, logger, pool }) {
 
           // F4 — schedule follow-up 24h si todavía no hay respuesta nuestra
           // (best-effort: si ya existe un follow-up pendiente para este chat, no duplica)
-          try {
-            await client.query(
-              `insert into wa_followups (chat_id, due_at, kind, note)
-               select $1, now() + interval '24 hours', 'remind_24h', 'Auto: msg cliente sin respuesta nuestra'
-               where not exists (
-                 select 1 from wa_followups
-                 where chat_id = $1 and kind = 'remind_24h' and status = 'pending'
-               )`,
-              [msg.chat_id],
-            );
-          } catch (fe) {
-            logger.warn?.({ err: fe?.message }, "[waEnricher] followup schedule failed");
-          }
+          await client.query(
+            `insert into wa_followups (chat_id, due_at, kind, note)
+             select $1, now() + interval '24 hours', 'remind_24h', 'Auto: msg cliente sin respuesta nuestra'
+             where not exists (
+               select 1 from wa_followups
+               where chat_id = $1 and kind = 'remind_24h' and status = 'pending'
+             )`,
+            [msg.chat_id],
+          );
 
-          // F3 — auto cotización si intent=cotizacion y los params son detectables
+          // F3 — auto cotización si intent=cotizacion y los params son detectables.
+          // runWaQuote usa su propia conexión del pool: NO es parte de esta tx.
+          // Si esta tx hace rollback, la cotización queda; idempotencia debe vivir en runWaQuote.
           const finalIntent = result.intent || intentHint;
           if (finalIntent === "cotizacion") {
             const params = extractQuoteParams(msg.text);
@@ -142,21 +154,41 @@ export function startWaEnricherWorker({ config, logger, pool }) {
             `update wa_messages set enriched_at = now() where msg_id = $1`,
             [msg.msg_id],
           );
+          await client.query("release savepoint wa_msg");
         } catch (err) {
-          // No bloquea la cola: marca enriched para no reintentar infinitamente,
-          // y registra el error como suggestion fallida.
+          // Rollback solo este mensaje, mantiene el resto del batch.
+          await client.query("rollback to savepoint wa_msg");
           logger.warn?.({ err: err?.message, msg_id: msg.msg_id }, "[waEnricher] msg failed");
-          await client.query(
-            `insert into wa_suggestions (chat_id, trigger_msg_id, intent, options, error)
-             values ($1, $2, $3, '[]'::jsonb, $4)`,
-            [msg.chat_id, msg.msg_id, intentHint, err instanceof Error ? err.message : String(err)],
-          );
-          await client.query(
-            `update wa_messages set enriched_at = now() where msg_id = $1`,
-            [msg.msg_id],
-          );
+
+          // Sub-savepoint para registrar el fallo: si esto también falla,
+          // no aborta el batch entero, solo este mensaje queda sin marcar.
+          await client.query("savepoint wa_msg_fail");
+          try {
+            await client.query(
+              `insert into wa_suggestions (chat_id, trigger_msg_id, intent, options, error)
+               values ($1, $2, $3, '[]'::jsonb, $4)`,
+              [msg.chat_id, msg.msg_id, intentHint, err instanceof Error ? err.message : String(err)],
+            );
+            await client.query(
+              `update wa_messages set enriched_at = now() where msg_id = $1`,
+              [msg.msg_id],
+            );
+            await client.query("release savepoint wa_msg_fail");
+          } catch (e2) {
+            await client.query("rollback to savepoint wa_msg_fail").catch(() => {});
+            logger.error?.({ err: e2?.message, msg_id: msg.msg_id }, "[waEnricher] failed to record failure");
+          }
+          await client.query("release savepoint wa_msg").catch(() => {});
         }
       }
+
+      await client.query("commit");
+      inTx = false;
+    } catch (txErr) {
+      if (inTx) {
+        await client.query("rollback").catch(() => {});
+      }
+      throw txErr;
     } finally {
       client.release();
       running = false;
