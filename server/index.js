@@ -709,13 +709,16 @@ setInterval(() => {
 app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
   const sig = req.headers["x-hub-signature-256"];
+  const requireWaSignature = config.appEnv !== "development" && config.appEnv !== "test";
   const verified = verifyWhatsAppSignature({
     appSecret: config.whatsappAppSecret,
     rawBodyBuffer: raw,
     signatureHeader: sig,
+    requireSignature: requireWaSignature,
   });
-  if (!verified.skipped && !verified.ok) {
-    return res.status(401).json({ ok: false, error: "invalid webhook signature" });
+  if (!verified.ok) {
+    const status = verified.reason === "missing_app_secret" ? 503 : 401;
+    return res.status(status).json({ ok: false, error: "invalid webhook signature" });
   }
   if (verified.skipped && config.appEnv !== "test") {
     logger.warn("WHATSAPP_APP_SECRET unset — POST /webhooks/whatsapp HMAC verification skipped");

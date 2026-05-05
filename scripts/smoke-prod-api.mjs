@@ -10,7 +10,8 @@
  *
  * Falla (exit 1) si GET /health o GET /capabilities no responden 200,
  * si GET /api/actualizar-precios-calculadora no devuelve CSV MATRIZ (200 + text/csv + cabecera),
- * o si POST /api/crm/suggest-response no devuelve 200 + ok: true (salvo --skip-suggest / SMOKE_SKIP_SUGGEST).
+ * o si POST /api/crm/suggest-response no devuelve 200 + ok: true con token, ni 401 sin token
+ * (salvo --skip-suggest / SMOKE_SKIP_SUGGEST).
  * GET /auth/ml/status: 200 o 404 OK; otro código avisa pero no falla el smoke.
  *
  * Comprueba que public_base_url en /capabilities coincide con la base probada (advertencia si no).
@@ -21,6 +22,7 @@
 /** Default prod base — misma que `gcloud run services describe panelin-calc … status.url` y `PUBLIC_BASE_URL` en Cloud Run. */
 const DEFAULT_BASE = "https://panelin-calc-q74zutv7dq-uc.a.run.app";
 const TIMEOUT_MS = 25_000;
+const SMOKE_API_AUTH_TOKEN = process.env.API_AUTH_TOKEN || process.env.API_KEY || "";
 
 function parseArgs(argv) {
   let base = process.env.BMC_API_BASE || process.env.SMOKE_BASE_URL || DEFAULT_BASE;
@@ -84,6 +86,9 @@ async function fetchJson(method, path, base, bodyObj) {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
     };
+    if (SMOKE_API_AUTH_TOKEN) {
+      opts.headers.Authorization = `Bearer ${SMOKE_API_AUTH_TOKEN}`;
+    }
     if (bodyObj != null) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(bodyObj);
@@ -266,12 +271,17 @@ async function main() {
       consulta: "smoke test automatizado — responder breve",
       origen: "smoke-prod",
     });
-    const suggestOk = sr.status === 200 && sr.body && sr.body.ok === true;
+    const suggestProtected = !SMOKE_API_AUTH_TOKEN && sr.status === 401;
+    const suggestOk = (sr.status === 200 && sr.body && sr.body.ok === true) || suggestProtected;
     rows.push({
       path: "POST /api/crm/suggest-response",
       status: sr.status,
       ok: suggestOk,
-      note: suggestOk ? `IA ok (${sr.body.provider || "?"})` : suggestFailureNote(sr.body),
+      note: suggestProtected
+        ? "ruta protegida (401 sin API_AUTH_TOKEN en smoke)"
+        : suggestOk
+          ? `IA ok (${sr.body.provider || "?"})`
+          : suggestFailureNote(sr.body),
     });
     if (!suggestOk) criticalFail = true;
   }
