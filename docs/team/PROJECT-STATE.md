@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (QA — regression test coverage automation):** Se agregó cobertura offline para el bug fix reciente de `wa-admin` donde el CLI inicializaba `getWaPool()` sin pasar `DATABASE_URL`/`WA_DATABASE_URL`, rompiendo comandos administrativos como bootstrap del primer Owner. Nuevo test [`tests/wa-admin-cli.test.js`](../../tests/wa-admin-cli.test.js) valida prioridad de env vars, fallback, fail-fast sin DB env y que el URL resuelto se pasa a `getWaPool`. `npm test` verde con 7 asserts nuevos dentro del target estándar. **Affects:** bmc-security (bootstrap Owner/admin CLI), bmc-api-contract (sin cambio de contrato), bmc-docs-sync (esta entrada).
+
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 
 - **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
