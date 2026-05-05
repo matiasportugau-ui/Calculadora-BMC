@@ -8,6 +8,8 @@ import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 // so lazy-loading would just add an extra waterfall step with zero saved bytes.
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
+import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
+import AuthGateModal from "./components/auth/AuthGateModal.jsx";
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -74,7 +76,9 @@ export default function App() {
 
   return (
     <BrowserRouter basename={basename}>
+      <BmcAuthProvider>
       <LegacyAppQueryRedirect />
+      <AuthGateModal />
       <Routes>
         <Route path="/hub" element={<Suspense fallback={suspenseFallback}><BmcWolfboardHub /></Suspense>} />
         <Route
@@ -200,6 +204,7 @@ export default function App() {
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </BmcAuthProvider>
     </BrowserRouter>
   );
 }
