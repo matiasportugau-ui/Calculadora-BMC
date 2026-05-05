@@ -172,4 +172,6 @@ Standard lint/test/build commands are documented in the table at the top of this
 - **Disk precheck:** `npm run dev` and `npm run build` both run `disk:precheck` as a pre-hook. In cloud/CI environments with ample disk, set `BMC_DISK_PRECHECK_SKIP=1` to skip it, or it may fail on unusual filesystem layouts.
 - **`.env` file:** `npm run env:ensure` creates `.env` from `.env.example` (non-destructive). Most features work without credentials, but Google Sheets integration, MercadoLibre OAuth, and AI-powered CRM features require secrets in `.env`.
 - **API health check:** `curl http://localhost:3001/health` — returns `{"ok":true,...}`. The `hasSheets` and `hasTokens` fields will be `false` without Google/ML credentials configured.
-- **Tests run without a server:** `npm test` runs offline unit tests (288 assertions). `npm run test:contracts` requires the API server running on port 3001.
+- **Tests run without a server:** `npm test` runs offline unit tests (335+ assertions across validation.js, roofVisualQuoteConsistency.js, cockpitTokenOrigin.js, wa-ingest-contract.js, wa-enricher.test.js, wa-quote-params.test.js). `npm run test:contracts` requires the API server running on port 3001.
+- **Node.js version:** The project requires Node.js `>=20.18.0`. Use nvm to install: `nvm install 20`.
+- **Running dev servers:** Use `BMC_DISK_PRECHECK_SKIP=1 npm run dev:full` to start both API (:3001) and Vite (:5173). The `BMC_DISK_PRECHECK_SKIP=1` env var avoids disk precheck failures in cloud environments.
