@@ -23,6 +23,9 @@ Lee este archivo antes de cualquier tarea.
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
 | `npm run transportista:migrate` | Modo Transportista: aplica migraciones Postgres (`DATABASE_URL`) desde `transportista-cursor-package/migrations/` |
+| `npm run wa:migrate` | **WA Cockpit:** aplica migraciones SQL desde `wa-package/migrations/` (`wa_conversations`, `wa_messages`, `wa_suggestions`, `wa_quotes`, `wa_followups`, `wa_consent`, `wa_operator`, `wa_heartbeats`). Mismo `DATABASE_URL` que Transportista. Hub: [`docs/wa-cockpit/README.md`](docs/wa-cockpit/README.md). |
+| `npm run wa:reconcile` | **WA Cockpit:** reconciliador nocturno `wa_quotes.link` vs col AH `CRM_Operativo`; reporte `.runtime/wa-reconcile-<date>.json`. Requiere `DATABASE_URL` + `BMC_SHEET_ID` + `GOOGLE_APPLICATION_CREDENTIALS`. |
+| `npm run wa:purge-old` | **WA Cockpit (F5 TTL):** borra `wa_messages.text` y `raw` con `ts < now() - WA_TTL_DAYS` (default 180); mantiene metadata. `--dry-run` para preview. |
 | `npm run followup` | Follow-ups / recordatorios (CLI `scripts/followup.mjs`; almacén local `.followup/` o `FOLLOWUP_STORE_PATH`); API `GET/POST /api/followups` |
 | `npm run program:status` | Programa maestro multi-área: fase actual, progreso ~%, próximos pasos (`docs/team/orientation/programs/bmc-panelin-master.json`) |
 | `npm run project:compass` | **Seguimiento unificado:** `program:status` + follow-ups vencidos (`followup due`). Índice: `docs/team/PROJECT-SCHEDULE.md`. Alias: `npm run schedule` |

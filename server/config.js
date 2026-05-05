@@ -104,6 +104,14 @@ export const config = {
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
+  /** WA Cockpit (F2 enricher) — flags */
+  waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
+  waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
+  waEnricherBatchSize: Number(process.env.WA_ENRICHER_BATCH_SIZE || 5),
+  /** WA Cockpit (F4 outbound) — rate limit */
+  waOutboundRateLimitPerMin: Number(process.env.WA_OUTBOUND_RATE_LIMIT || 6),
+  /** WA Cockpit (F5 purge) — TTL días para wa_messages.text */
+  waTtlDays: Number(process.env.WA_TTL_DAYS || 180),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
   /** Drive folder for uploaded quote HTML files (server/lib/driveUpload.js) */

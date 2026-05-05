@@ -237,6 +237,23 @@ async function main() {
   });
   if (!waRouteAlive) criticalFail = true;
 
+  // WA Cockpit health — 200 (db ok) o 503 (DATABASE_URL no configurado en este entorno)
+  const waCockpit = await fetchJson("GET", "/api/wa/health", base);
+  const waCockpitAlive =
+    waCockpit.status === 200 || waCockpit.status === 503;
+  rows.push({
+    path: "GET /api/wa/health",
+    status: waCockpit.status,
+    ok: waCockpitAlive,
+    note:
+      waCockpit.status === 200
+        ? `WA cockpit ok (chats: ${waCockpit.body?.count_chats ?? "?"}, 24h: ${waCockpit.body?.count_msgs_24h ?? "?"})`
+        : waCockpit.status === 503
+          ? "WA cockpit deshabilitado (DATABASE_URL no configurado en este entorno) — informativo"
+          : `ruta caída — esperado 200 o 503, recibido ${waCockpit.status}`,
+  });
+  if (!waCockpitAlive) criticalFail = true;
+
   if (skipSuggest) {
     rows.push({
       path: "POST /api/crm/suggest-response",

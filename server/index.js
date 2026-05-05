@@ -28,6 +28,7 @@ import createMlSearchRouter from "./routes/mlSearch.js";
 import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
+import createWaRouter from "./routes/wa.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
@@ -37,6 +38,8 @@ import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
+import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
@@ -743,6 +746,50 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
     logger.info(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
 
+    // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
+    // SPA tenga vista unificada con los mensajes scrapeados via extensión.
+    try {
+      const waPoolForWebhook = getWaPool(config.databaseUrl);
+      if (waPoolForWebhook) {
+        const phoneDigits = String(chatId || "").replace(/\D/g, "").slice(0, 32);
+        await waPoolForWebhook.query(
+          `insert into wa_conversations (chat_id, phone, contact_name)
+           values ($1, $2, $3)
+           on conflict (chat_id) do update
+             set phone = coalesce(wa_conversations.phone, excluded.phone),
+                 contact_name = coalesce(wa_conversations.contact_name, excluded.contact_name),
+                 updated_at = now()`,
+          [chatId, phoneDigits || null, contactName],
+        );
+        const tsIso = new Date(Number(msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now())).toISOString();
+        await waPoolForWebhook.query(
+          `insert into wa_messages
+             (msg_id, chat_id, ts, direction, type, text, source, raw, meta)
+           values ($1, $2, $3::timestamptz, 'in', $4, $5, 'cloud_api', $6::jsonb, $7::jsonb)
+           on conflict (msg_id) do nothing`,
+          [
+            String(msg.id || `cloud_in_${chatId}_${Date.now()}`),
+            chatId,
+            tsIso,
+            String(msg.type || "text"),
+            text,
+            JSON.stringify(msg),
+            JSON.stringify({ webhook: true }),
+          ],
+        );
+        await waPoolForWebhook.query(
+          `update wa_conversations
+             set last_msg_at = greatest(coalesce(last_msg_at, '1970-01-01'::timestamptz), $2::timestamptz),
+                 last_msg_in_at = greatest(coalesce(last_msg_in_at, '1970-01-01'::timestamptz), $2::timestamptz),
+                 updated_at = now()
+           where chat_id = $1`,
+          [chatId, tsIso],
+        );
+      }
+    } catch (e) {
+      logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
+    }
+
     // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
     if (text.includes("🚀")) {
       logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
@@ -764,6 +811,7 @@ app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
+app.use("/api", createWaRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
@@ -912,5 +960,11 @@ app.listen(config.port, () => {
   );
   if (transportistaPool) {
     startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+  }
+  // WA Cockpit enricher (F2) — opt-in con WA_ENRICHER_ENABLED=true
+  const waPool = getWaPool(config.databaseUrl);
+  if (waPool && config.waEnricherEnabled) {
+    startWaEnricherWorker({ config, logger, pool: waPool });
+    logger.info({ intervalMs: config.waEnricherIntervalMs, batchSize: config.waEnricherBatchSize }, "WA enricher worker started");
   }
 });

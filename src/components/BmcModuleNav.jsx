@@ -37,6 +37,7 @@ export default function BmcModuleNav() {
     pathname.startsWith("/hub/agent-admin");
   const logiActive = pathname.endsWith("/logistica");
   const calcActive = pathname === "/" || pathname.endsWith("/calculadora");
+  const waActive = pathname === "/wa" || pathname.startsWith("/wa/");
 
   return (
     <nav style={bar} aria-label="Módulos BMC">
@@ -51,6 +52,9 @@ export default function BmcModuleNav() {
       </Link>
       <Link to="/logistica" style={btn(logiActive)}>
         Logística
+      </Link>
+      <Link to="/wa" style={btn(waActive)} title="WA Cockpit (F1 read-only)">
+        WA
       </Link>
     </nav>
   );

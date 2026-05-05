@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-03
+**Última actualización:** 2026-05-04
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,28 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-04 (Dev — WA Cockpit F1-F5 implementado end-to-end):** Plan canónico [`.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md`](../../.cursor/plans/) ejecutado. Nuevo cockpit operativo de WhatsApp Web sobre el stack actual:
+
+- **Repo separado** [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) (sibling a este repo) — Chrome MV3 + WXT + TypeScript: IDB scrape histórico, WS hook (MAIN world), MutationObserver UI, paste-back desde SPA, heartbeat 60s, crash reporter local.
+- **Postgres `wa_*`** (mismo `DATABASE_URL` Transportista): 7 migraciones en [`wa-package/migrations/`](../../wa-package/migrations/) (`wa_conversations`, `wa_messages`, `wa_suggestions`, `wa_quotes`, `wa_followups`, `wa_consent`, `wa_operator`, `wa_heartbeats`). Runner: `npm run wa:migrate` ([`scripts/run-wa-migrations.mjs`](../../scripts/run-wa-migrations.mjs)).
+- **API `/api/wa/*`** ([`server/routes/wa.js`](../../server/routes/wa.js), montada en [`server/index.js`](../../server/index.js)): `health`, `ingest` (idempotente, max 500 msgs/batch), `conversations`, `messages`, `suggestions{,/run,/:id/chosen}`, `quotes{,/run}`, `conversations/:id/{upsert-lead,consent}`, `outbound{,/:msg_id/confirm}`, `followups{,/:id}`, `heartbeat`, `operators`, `metrics`. Auth Bearer cockpit + header `X-Operator-Id`. Rate-limit por chat en outbound (`WA_OUTBOUND_RATE_LIMIT`).
+- **Enricher worker** ([`server/lib/waEnricherWorker.js`](../../server/lib/waEnricherWorker.js), flag `WA_ENRICHER_ENABLED`): patrón outbox Transportista, classifyIntent + 3 sugerencias AI vía `agentCore.callAgentOnce(channel="wa")` + auto-cotización si intent=cotización con m² detectados + auto-followup 24h.
+- **System prompt WA Cockpit** ([`server/lib/chatPrompts.js`](../../server/lib/chatPrompts.js) — `buildWaCockpitSuggestionsBlock`): formato JSON estricto con 3 opciones (corta / técnica / cierre).
+- **SPA `/wa`** ([`src/components/BmcWaCockpit.jsx`](../../src/components/BmcWaCockpit.jsx)): 3 columnas (lista virtualizada, hilo, panel acción con tabs Sugerencias AI / Cotizar / CRM / Follow-ups). Reusa `CockpitTokenPanel` y mismo flujo de token que ML/Admin/Canales. Link en `BmcModuleNav`.
+- **Webhook `/webhooks/whatsapp`**: extendido para espejar inbound Cloud API en `wa_messages` con `source=cloud_api` (HMAC ya validado).
+- **Reconciliador nocturno** [`scripts/wa-reconcile-sheet.mjs`](../../scripts/wa-reconcile-sheet.mjs) — cruza `wa_quotes.link` vs col AH del Sheet CRM_Operativo. `npm run wa:reconcile`.
+- **Purge TTL** [`scripts/wa-purge-old.mjs`](../../scripts/wa-purge-old.mjs) — `WA_TTL_DAYS` (default 180): borra `text` y `raw` manteniendo metadata. `npm run wa:purge-old`.
+- **Magazine diario** ([`scripts/magazine-daily-digest.mjs`](../../scripts/magazine-daily-digest.mjs)): bloque "WhatsApp Cockpit" con counters 24h (chats, mensajes, AI adoption, cotizaciones, follow-ups vencidos).
+- **Capabilities manifest** ([`server/agentCapabilitiesManifest.js`](../../server/agentCapabilitiesManifest.js)): 13 nuevas rutas WA expuestas para GPT/MCP. Snapshot regenerado: `npm run capabilities:snapshot`.
+- **Smoke prod** ([`scripts/smoke-prod-api.mjs`](../../scripts/smoke-prod-api.mjs)) y validador de contratos ([`scripts/validate-api-contracts.js`](../../scripts/validate-api-contracts.js)): incluyen `GET /api/wa/health` (200/503).
+- **Tests offline**: 26 + 23 + 22 = **71 nuevos asserts** en [`tests/wa-ingest-contract.js`](../../tests/wa-ingest-contract.js), [`tests/wa-enricher.test.js`](../../tests/wa-enricher.test.js), [`tests/wa-quote-params.test.js`](../../tests/wa-quote-params.test.js). `npm run gate:local` verde (`lint` + `test`).
+- **Docs nuevas**: [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md) (hub), [`docs/wa-cockpit/EXTENSION-INSTALL.md`](../wa-cockpit/EXTENSION-INSTALL.md), [`docs/wa-cockpit/API-REFERENCE.md`](../wa-cockpit/API-REFERENCE.md).
+- **Vars nuevas en `.env`**: `WA_ENRICHER_ENABLED`, `WA_ENRICHER_INTERVAL_MS`, `WA_ENRICHER_BATCH_SIZE`, `WA_OUTBOUND_RATE_LIMIT`, `WA_TTL_DAYS` ([`server/config.js`](../../server/config.js)).
+
+**Affects:** bmc-deployment (env vars + nuevas rutas para smoke/contract), bmc-api-contract (13 nuevos endpoints), bmc-security (Bearer + rate-limit por chat + consent gate Cloud API), bmc-docs-sync (nuevo hub `docs/wa-cockpit/`), bmc-panelin-chat (reusa `agentCore` con `channel="wa"`), bmc-sheets-mapping (sync col AH vía `/api/crm/cockpit/quote-link` existente — sin schema change), bmc-judge (criterios "WA Cockpit operator" pendientes en `JUDGE-CRITERIA-POR-AGENTE.md`), networks-development-agent (Postgres `wa_*` + extensión Chrome separada).
+
+**Pendientes específicos**: F4 cuando se publique con tráfico real → validar reconciliador AH vs `wa_quotes.link`; F5 evaluar migración a `pg-boss` si superan 100 jobs/min; criterios judge para rol WA Cockpit; opt-in formal Meta Cloud API para outbound automatizado a contactos opt-in.
 
 **2026-05-03 (Ops — Vercel prod deploy + verificación):** `vercel --prod` desde repo (proyecto `matprompts-projects/calculadora-bmc`): producción **lista** en alias `https://calculadora-bmc.vercel.app` (deployment `dpl_Hnytq4rL3tUsXvriX2No5YrGgL4S`). Build remoto con `VITE_API_URL`/`VITE_BASE` del CLI alineados a Cloud Run canónico. Previa: `npm run gate:local:full` OK; `npm run smoke:prod` OK. `npm run pre-deploy` con `BMC_API_BASE` prod: contrato **17/18** — falla esperada/datos **`GET /api/crm/cockpit/row/2`** (400 vs expectativa `linkPresupuesto` URL/null en fila de prueba); **`/api/transportista/health`** 503 documentado como skip Sheets. **Affects:** bmc-deployment, bmc-api-contract (revisar fila cockpit o contrato si se usa row/2 como fixture).
 

@@ -21,6 +21,7 @@ const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSand
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
 const CalcLogicInspector = lazy(() => import("./components/CalcLogicInspector.jsx"));
 const FichasPreview = lazy(() => import("./components/FichasPreview.jsx"));
+const BmcWaCockpit = lazy(() => import("./components/BmcWaCockpit.jsx"));
 
 const suspenseFallback = (
   <div
@@ -183,6 +184,16 @@ export default function App() {
             <Suspense fallback={suspenseFallback}>
               <FichasPreview />
             </Suspense>
+          }
+        />
+        <Route
+          path="/wa"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <BmcWaCockpit />
+              </Suspense>
+            </Shell>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
