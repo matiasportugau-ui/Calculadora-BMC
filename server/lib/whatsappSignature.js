@@ -6,7 +6,7 @@ import crypto from "node:crypto";
  * @returns {{ ok: boolean, skipped?: boolean, reason?: string }}
  */
 export function verifyWhatsAppSignature({ appSecret, rawBodyBuffer, signatureHeader }) {
-  if (!appSecret) return { ok: true, skipped: true };
+  if (!appSecret) return { ok: false, reason: "missing_app_secret" };
   if (!signatureHeader || !rawBodyBuffer) return { ok: false, reason: "missing_header_or_body" };
   const sig = String(signatureHeader).trim();
   const expected =

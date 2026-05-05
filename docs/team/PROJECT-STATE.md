@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-05 (Fix — CI checkout + WA webhook fail-closed):** Removido del índice el gitlink accidental `.claude/worktrees/sad-sanderson-90b0a3`, que hacía fallar `actions/checkout` con `submodules: recursive` por no existir `.gitmodules`. Agregado ignore para `.claude/worktrees/`. Además, `verifyWhatsAppSignature` ahora rechaza `POST /webhooks/whatsapp` cuando falta `WHATSAPP_APP_SECRET` en vez de aceptar tráfico sin HMAC; test actualizado en `tests/validation.js`. **Affects:** bmc-deployment (CI build), bmc-security (webhook WhatsApp), bmc-api-contract (semántica fail-closed de webhook).
+
 **2026-05-04 (Dev — WA Cockpit F1-F5 implementado end-to-end):** Plan canónico [`.cursor/plans/wa_cockpit_f1-f5_plan_*.plan.md`](../../.cursor/plans/) ejecutado. Nuevo cockpit operativo de WhatsApp Web sobre el stack actual:
 
 - **Repo separado** [`calculadora-bmc-wa-extension/`](../../../calculadora-bmc-wa-extension/) (sibling a este repo) — Chrome MV3 + WXT + TypeScript: IDB scrape histórico, WS hook (MAIN world), MutationObserver UI, paste-back desde SPA, heartbeat 60s, crash reporter local.
