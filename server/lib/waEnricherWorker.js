@@ -88,7 +88,10 @@ export function startWaEnricherWorker({ config, logger, pool }) {
         try {
           if (intentHint === "chatter") {
             await client.query(
-              `update wa_messages set enriched_at = now() where msg_id = $1`,
+              `update wa_messages
+                 set enriched_at = now(),
+                     enrichment_status = 'skipped_chatter'
+               where msg_id = $1`,
               [msg.msg_id],
             );
             await client.query("release savepoint wa_msg");
@@ -187,7 +190,10 @@ export function startWaEnricherWorker({ config, logger, pool }) {
           );
 
           await client.query(
-            `update wa_messages set enriched_at = now() where msg_id = $1`,
+            `update wa_messages
+               set enriched_at = now(),
+                   enrichment_status = 'ok'
+             where msg_id = $1`,
             [msg.msg_id],
           );
           await client.query("release savepoint wa_msg");
@@ -216,7 +222,10 @@ export function startWaEnricherWorker({ config, logger, pool }) {
               [msg.chat_id, msg.msg_id, intentHint, err instanceof Error ? err.message : String(err)],
             );
             await client.query(
-              `update wa_messages set enriched_at = now() where msg_id = $1`,
+              `update wa_messages
+                 set enriched_at = now(),
+                     enrichment_status = 'failed'
+               where msg_id = $1`,
               [msg.msg_id],
             );
             await client.query("release savepoint wa_msg_fail");
