@@ -157,6 +157,13 @@ jobs:
             SMTP_PASS=${{ secrets.SMTP_PASS }}
             WA_AUTH_EMAIL_FROM=${{ secrets.WA_AUTH_EMAIL_FROM }}
             WA_JWT_SECRET=${{ secrets.WA_JWT_SECRET }}
+            IDENTITY_JWT_SECRET=${{ secrets.IDENTITY_JWT_SECRET }}
+            GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+            IDENTITY_COOKIE_DOMAIN=${{ secrets.IDENTITY_COOKIE_DOMAIN }}
+            IDENTITY_COOKIE_NAME=${{ secrets.IDENTITY_COOKIE_NAME }}
+            INTERNAL_SUPERADMIN_EMAILS=${{ secrets.INTERNAL_SUPERADMIN_EMAILS }}
+            SHEETS_CLIENT_QUOTES_ENABLED=${{ secrets.SHEETS_CLIENT_QUOTES_ENABLED }}
+            SHEETS_CLIENT_QUOTES_TAB=${{ secrets.SHEETS_CLIENT_QUOTES_TAB }}
           flags: |
             --service-account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
             --allow-unauthenticated

@@ -11,6 +11,7 @@ import { onLCP, onINP, onCLS } from "web-vitals";
 import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
+import AuthHeader from "./components/auth/AuthHeader.jsx";
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -55,6 +56,19 @@ function Shell({ children }) {
         background: "#F5F5F7",
       }}
     >
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 16,
+          zIndex: 50,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <AuthHeader />
+      </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
     </div>
