@@ -166,7 +166,7 @@ function main() {
     `| **package.json** | \`${pkgVersion}\` |`,
     `| **Git** | \`${gitShort || "n/a"}\` · \`${gitBranch || "n/a"}\` |`,
     `| **CALCULATOR_DATA_VERSION** | \`${calc.hash || "n/a"}\` |`,
-    `| **Tests** | ${validation.passed != null ? `\`${validation.passed}\` passed (\`validation.js\`) + \`${roof.ok ?? "?"}\` ok (\`roofVisualQuoteConsistency.js\`)` : "omitidos"} |`,
+    `| **README smoke** | ${validation.passed != null ? `\`${validation.passed}\` passed (\`validation.js\`) + \`${roof.ok ?? "?"}\` ok (\`roofVisualQuoteConsistency.js\`)` : "omitidos"} |`,
     `| **Presentación Matrix** | [Local :5173](http://localhost:5173/matrix-presentation.html) · [Vercel](https://calculadora-bmc.vercel.app/matrix-presentation.html) |`,
     ``,
     `**Regenerar:** \`npm run readme:sync\` · solo README/JSON: \`npm run readme:generate\` · comprobar: \`npm run readme:check\`.`,
