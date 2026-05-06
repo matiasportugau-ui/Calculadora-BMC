@@ -298,7 +298,8 @@ router.post("/api/me/quotes", requireUser(), async (req, res) => {
     });
     res.json({ ok: true, quote: q });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    // upsertQuote throws { status: 400, ... } on URL allowlist violations.
+    res.status(e.status || 500).json({ ok: false, error: e.message, detail: e.detail });
   }
 });
 
@@ -312,11 +313,19 @@ router.delete("/api/me/quotes/:id", requireUser(), async (req, res) => {
   }
 });
 
+// cursor[bot] W-3: cap input + format check so a hostile body (`{clientQuoteIds:
+// [<100k strings>]}`) can't trigger an unbounded ANY($::text[]) scan.
+const CLAIM_ID_MAX = 100;
+const CLAIM_ID_PATTERN = /^cq_[A-Za-z0-9_-]{8,}$/;
+
 router.post("/api/me/quotes/claim", requireUser(), async (req, res) => {
   try {
-    const ids = req.body?.clientQuoteIds || [];
+    const raw = Array.isArray(req.body?.clientQuoteIds) ? req.body.clientQuoteIds : [];
+    const ids = raw
+      .filter((id) => typeof id === "string" && CLAIM_ID_PATTERN.test(id))
+      .slice(0, CLAIM_ID_MAX);
     const r = await claimAnonymousQuotes({ userId: req.user.id, clientQuoteIds: ids });
-    res.json({ ok: true, claimed: r.claimed });
+    res.json({ ok: true, claimed: r.claimed, accepted: ids.length, submitted: raw.length });
   } catch (e) {
     res.status(e.status || 500).json({ ok: false, error: e.message });
   }

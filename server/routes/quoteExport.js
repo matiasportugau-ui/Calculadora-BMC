@@ -258,11 +258,25 @@ router.get("/api/me/quotes/:id/export.csv", requireUser(), async (req, res) => {
 // machine-readable hint. The puppeteer-based "render server-side" path is a
 // follow-up (GOLIVE doc §"Out of scope"); until then the contract is:
 // `.pdf` ONLY returns a real PDF when one was uploaded by the calc flow.
+// Defense-in-depth allowlist (cursor[bot] H-1). The lib already validates on
+// write, but pre-existing rows could carry attacker-controlled URLs from
+// before the allowlist landed — re-check before redirecting.
+const ALLOWED_PDF_REDIRECT = /^https:\/\/(?:storage\.googleapis\.com|drive\.google\.com|[a-z0-9-]+\.run\.app)\//i;
+
 router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
   try {
     const q = await loadOwnedQuote(req.user.id, req.params.id);
     if (!q) return res.status(404).json({ ok: false, error: "not_found" });
-    if (q.pdf_url) return res.redirect(302, q.pdf_url);
+    if (q.pdf_url) {
+      if (!ALLOWED_PDF_REDIRECT.test(String(q.pdf_url))) {
+        return res.status(400).json({
+          ok: false,
+          error: "invalid_pdf_url",
+          detail: "stored pdf_url failed allowlist; re-render the quote via /api/me/quotes",
+        });
+      }
+      return res.redirect(302, q.pdf_url);
+    }
     return res.status(404).json({
       ok: false,
       error: "pdf_not_available",

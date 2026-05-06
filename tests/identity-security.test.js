@@ -264,6 +264,81 @@ describe("Access-token fallback validates aud + email_verified", () => {
   });
 });
 
+// ─── New regression tests (round 2) ───────────────────────────────────
+
+describe("initIdentityAuth — C-1 cross-system token substitution guard", () => {
+  it("throws when IDENTITY_JWT_SECRET === WA_JWT_SECRET", () => {
+    const prevId = process.env.IDENTITY_JWT_SECRET;
+    const prevWa = process.env.WA_JWT_SECRET;
+    const shared = "x".repeat(40);
+    process.env.IDENTITY_JWT_SECRET = shared;
+    process.env.WA_JWT_SECRET = shared;
+    try {
+      identityAuth.__test__.reset();
+      assert.throws(
+        () => identityAuth.initIdentityAuth({ pool: makeShim(), logger: { warn() {}, error() {}, info() {} } }),
+        /must differ from WA_JWT_SECRET/,
+      );
+    } finally {
+      process.env.IDENTITY_JWT_SECRET = prevId;
+      process.env.WA_JWT_SECRET = prevWa;
+    }
+  });
+
+  it("throws in production when IDENTITY_JWT_SECRET is empty", () => {
+    const prevId = process.env.IDENTITY_JWT_SECRET;
+    const prevEnv = process.env.APP_ENV;
+    delete process.env.IDENTITY_JWT_SECRET;
+    process.env.APP_ENV = "production";
+    try {
+      identityAuth.__test__.reset();
+      assert.throws(
+        () => identityAuth.initIdentityAuth({ pool: makeShim(), logger: { warn() {}, error() {}, info() {} } }),
+        /IDENTITY_JWT_SECRET is empty/,
+      );
+    } finally {
+      process.env.IDENTITY_JWT_SECRET = prevId;
+      process.env.APP_ENV = prevEnv;
+    }
+  });
+
+  it("throws in production when GOOGLE_OAUTH_CLIENT_ID is unset", () => {
+    const prevAud = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    const prevEnv = process.env.APP_ENV;
+    delete process.env.GOOGLE_OAUTH_CLIENT_ID;
+    process.env.APP_ENV = "production";
+    try {
+      identityAuth.__test__.reset();
+      assert.throws(
+        () => identityAuth.initIdentityAuth({ pool: makeShim(), logger: { warn() {}, error() {}, info() {} } }),
+        /GOOGLE_OAUTH_CLIENT_ID is unset/,
+      );
+    } finally {
+      process.env.GOOGLE_OAUTH_CLIENT_ID = prevAud;
+      process.env.APP_ENV = prevEnv;
+    }
+  });
+});
+
+describe("verifyGoogleAndUpsert — H-3 ID-token email_verified guard", () => {
+  it("rejects an ID-token profile whose email_verified is false", async () => {
+    identityAuth.__test__.injectGoogleAuthClient({
+      verifyIdToken: async () => ({
+        getPayload: () => ({
+          sub: "g-evil",
+          email: "matias@bmc.uy",          // email targets a seeded superadmin
+          email_verified: false,            // attacker-supplied, unverified
+          name: "Attacker",
+        }),
+      }),
+    });
+    await assert.rejects(
+      () => identityAuth.verifyGoogleAndUpsert({ idToken: "fake.unverified" }),
+      (e) => e.status === 401 && /email_not_verified/.test(e.message),
+    );
+  });
+});
+
 describe("/api/auth/logout revokes session by refresh cookie when no Bearer", () => {
   it("looks up the session by sha256(cookie) and revokes it", async () => {
     // Seed a session row that the cookie will match.

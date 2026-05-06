@@ -24,6 +24,37 @@ export const __test__ = {
   reset() { _testPool = null; },
 };
 
+// pdf_url + gcs_uri allowlist — only Google-hosted assets the calc/PDF flow
+// produces. Prevents an authenticated user from storing javascript:/data:/
+// arbitrary URLs (open-redirect via /api/me/quotes/:id/export.pdf).
+const ALLOWED_PDF_URL = /^https:\/\/(?:storage\.googleapis\.com|drive\.google\.com|[a-z0-9-]+\.run\.app)\//i;
+const ALLOWED_GCS_URI = /^gs:\/\/[a-z0-9-]+\//i;
+
+function _safePdfUrl(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (!ALLOWED_PDF_URL.test(s)) {
+    throw Object.assign(
+      new Error("invalid_pdf_url"),
+      { status: 400, detail: "pdf_url must be https on storage.googleapis.com / drive.google.com / *.run.app" },
+    );
+  }
+  return s;
+}
+
+function _safeGcsUri(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  // Allow https to GCS as well — uploadQuoteToGcs returns either form.
+  if (ALLOWED_GCS_URI.test(s) || ALLOWED_PDF_URL.test(s)) return s;
+  throw Object.assign(
+    new Error("invalid_gcs_uri"),
+    { status: 400, detail: "gcs_uri must be gs:// or an allow-listed https URL" },
+  );
+}
+
 function pickTotals(payload) {
   if (!payload || typeof payload !== "object") return { totalUsd: null, totalUyu: null };
   const totalUsd =
@@ -74,6 +105,11 @@ export async function upsertQuote({
   //   - both null → cannot key the row; reject.
   if (!userId && !clientQuoteId) throw new Error("userId_or_clientQuoteId_required");
 
+  // Validate URL-like fields before they hit the DB. Throws on bad input so
+  // the caller (route handler) can surface a 400.
+  const safePdfUrl = _safePdfUrl(pdfUrl);
+  const safeGcsUri = _safeGcsUri(gcsUri);
+
   const { totalUsd, totalUyu } = pickTotals(payload);
 
   // If we have a clientQuoteId, dedupe on the most-specific match:
@@ -96,8 +132,8 @@ export async function upsertQuote({
             returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
           [
             userId, clientQuoteId, JSON.stringify(payload || {}),
-            totalUsd, totalUyu, pdfId || null, pdfUrl || null,
-            gcsUri || null, driveFileId || null, wizardStep ?? null, status,
+            totalUsd, totalUyu, pdfId || null, safePdfUrl,
+            safeGcsUri, driveFileId || null, wizardStep ?? null, status,
           ],
         )
       : await pool().query(
@@ -115,8 +151,8 @@ export async function upsertQuote({
             returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
           [
             clientQuoteId, JSON.stringify(payload || {}),
-            totalUsd, totalUyu, pdfId || null, pdfUrl || null,
-            gcsUri || null, driveFileId || null, wizardStep ?? null, status,
+            totalUsd, totalUyu, pdfId || null, safePdfUrl,
+            safeGcsUri, driveFileId || null, wizardStep ?? null, status,
           ],
         );
     if (upd.rows.length) {
@@ -133,8 +169,8 @@ export async function upsertQuote({
      returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
     [
       userId || null, clientQuoteId || null, JSON.stringify(payload || {}),
-      totalUsd, totalUyu, pdfId || null, pdfUrl || null,
-      gcsUri || null, driveFileId || null, wizardStep ?? null, status,
+      totalUsd, totalUyu, pdfId || null, safePdfUrl,
+      safeGcsUri, driveFileId || null, wizardStep ?? null, status,
     ],
   );
   await _event(ins.rows[0].quote_id, "created", userId, { status });

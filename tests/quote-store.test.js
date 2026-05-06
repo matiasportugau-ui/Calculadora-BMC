@@ -150,6 +150,76 @@ beforeEach(() => {
   __test__.setPool(pool);
 });
 
+describe("upsertQuote — H-1 pdf_url allowlist", () => {
+  it("rejects javascript: URLs", async () => {
+    await assert.rejects(
+      () => upsertQuote({
+        userId: "user-1",
+        clientQuoteId: "cq-h1-js",
+        payload: {},
+        pdfUrl: "javascript:alert(1)",
+      }),
+      (e) => e.status === 400 && /invalid_pdf_url/.test(e.message),
+    );
+  });
+
+  it("rejects http:// URLs (must be https)", async () => {
+    await assert.rejects(
+      () => upsertQuote({
+        userId: "user-1",
+        clientQuoteId: "cq-h1-http",
+        payload: {},
+        pdfUrl: "http://attacker.example.com/evil",
+      }),
+      (e) => e.status === 400 && /invalid_pdf_url/.test(e.message),
+    );
+  });
+
+  it("rejects arbitrary attacker-controlled domain", async () => {
+    await assert.rejects(
+      () => upsertQuote({
+        userId: "user-1",
+        clientQuoteId: "cq-h1-evil",
+        payload: {},
+        pdfUrl: "https://evil.com/quote.pdf",
+      }),
+      (e) => e.status === 400 && /invalid_pdf_url/.test(e.message),
+    );
+  });
+
+  it("accepts https://storage.googleapis.com/<bucket>/...", async () => {
+    const r = await upsertQuote({
+      userId: "user-1",
+      clientQuoteId: "cq-h1-ok",
+      payload: {},
+      pdfUrl: "https://storage.googleapis.com/bmc-cotizaciones/quote.pdf",
+    });
+    assert.ok(r.quote_id);
+  });
+
+  it("accepts gs:// URIs for gcsUri", async () => {
+    const r = await upsertQuote({
+      userId: "user-1",
+      clientQuoteId: "cq-h1-gs",
+      payload: {},
+      gcsUri: "gs://bmc-cotizaciones/quote.pdf",
+    });
+    assert.ok(r.quote_id);
+  });
+
+  it("rejects gcsUri that is not gs:// or allow-listed https", async () => {
+    await assert.rejects(
+      () => upsertQuote({
+        userId: "user-1",
+        clientQuoteId: "cq-h1-bad-gcs",
+        payload: {},
+        gcsUri: "data:text/plain,hi",
+      }),
+      (e) => e.status === 400 && /invalid_gcs_uri/.test(e.message),
+    );
+  });
+});
+
 describe("upsertQuote", () => {
   it("inserts a fresh row when no client_quote_id supplied", async () => {
     const r = await upsertQuote({

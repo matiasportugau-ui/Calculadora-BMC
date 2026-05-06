@@ -176,6 +176,11 @@ export function BmcAuthProvider({ children }) {
     applyAuth(null);
   }, [applyAuth]);
 
+  // accessToken is intentionally exposed via context so consumers (RequireGrant,
+  // MySpacePage) can attach `Authorization: Bearer ${accessToken}` headers.
+  // Standard SPA pattern. NEVER log this value, NEVER pass it to analytics or
+  // third-party scripts, and NEVER set it as a non-httpOnly cookie. Any new
+  // consumer of this context should be reviewed in light of cursor[bot] H-2.
   const value = useMemo(
     () => ({
       user,

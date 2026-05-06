@@ -190,6 +190,19 @@ function makeShim() {
 
     // Quote endpoints (delegate-friendly)
     if (norm.startsWith("update identity.quotes set payload")) return { rows: [] };
+
+    // claimAnonymousQuotes
+    if (norm.startsWith("update identity.quotes set user_id = $1 where user_id is null")) {
+      const [user_id, ids] = params;
+      let count = 0;
+      for (const r of tables.quotes) {
+        if (r.user_id === null && Array.isArray(ids) && ids.includes(r.client_quote_id)) {
+          r.user_id = user_id;
+          count += 1;
+        }
+      }
+      return { rowCount: count, rows: [] };
+    }
     if (norm.startsWith("insert into identity.quotes")) {
       const [user_id, client_quote_id, payload, total_usd] = params;
       const q = {
@@ -419,6 +432,75 @@ describe("/api/me/quotes lifecycle", () => {
       body: JSON.stringify({}),
     });
     assert.equal(r.status, 400);
+  });
+});
+
+describe("POST /api/me/quotes/claim — W-3 input cap + format check", () => {
+  it("filters out garbage IDs and caps at 100", async () => {
+    // Seed an anonymous quote that the user could legitimately claim.
+    pool._tables.quotes.push({
+      quote_id: "q-anon",
+      user_id: null,
+      client_quote_id: "cq_real_id_12345678",
+      payload: {}, total_usd: 0, total_uyu: null,
+      status: "draft", pdf_url: null,
+      created_at: new Date(), updated_at: new Date(),
+    });
+
+    // 105 IDs with mixed validity. Should accept ≤100 valid ones.
+    const garbage = ["", null, 42, "; DROP TABLE", "javascript:1", "cq_short"];
+    const valid = Array.from({ length: 200 }, (_, i) => `cq_${"x".repeat(8)}_${i}`);
+    const submitted = [...garbage, ...valid];
+
+    const r = await fetch(url("/api/me/quotes/claim"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ clientQuoteIds: submitted }),
+    });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    // Garbage filtered out, the rest capped at 100.
+    assert.equal(j.accepted, 100);
+    assert.equal(j.submitted, submitted.length);
+  });
+
+  it("accepts an empty array as a no-op", async () => {
+    const r = await fetch(url("/api/me/quotes/claim"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ clientQuoteIds: [] }),
+    });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.accepted, 0);
+    assert.equal(j.claimed, 0);
+  });
+
+  it("rejects non-array body without crashing", async () => {
+    const r = await fetch(url("/api/me/quotes/claim"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ clientQuoteIds: "not-an-array" }),
+    });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.accepted, 0);
+  });
+});
+
+describe("POST /api/me/quotes — H-1 pdf_url validation surfaces 400", () => {
+  it("returns 400 invalid_pdf_url for javascript: scheme", async () => {
+    const r = await fetch(url("/api/me/quotes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({
+        payload: { totalUsd: 10 },
+        pdfUrl: "javascript:alert(1)",
+      }),
+    });
+    assert.equal(r.status, 400);
+    const j = await r.json();
+    assert.equal(j.error, "invalid_pdf_url");
   });
 });
 
