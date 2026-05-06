@@ -47,6 +47,37 @@ export function initIdentityAuth({ pool, logger = console } = {}) {
   _pool = pool;
   _logger = logger;
   _googleAuthClient = null; // lazy init on first use
+
+  // Hard fail-fast on misconfiguration in production. Emit a loud warning in
+  // dev/test so engineers see it before the first authenticated request hits
+  // the silent token-substitution risk.
+  const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "development";
+  const isProd = appEnv === "production";
+  const idSecret = process.env.IDENTITY_JWT_SECRET || "";
+  const waSecret = process.env.WA_JWT_SECRET || "";
+
+  // Cross-system token substitution guard: if both subsystems share the same
+  // HS256 secret, a valid wa_operator access JWT would pass identity verify
+  // (and vice versa). Reject this configuration outright.
+  if (idSecret && waSecret && idSecret === waSecret) {
+    throw new Error(
+      "[identityAuth] IDENTITY_JWT_SECRET must differ from WA_JWT_SECRET (cross-system token substitution guard)",
+    );
+  }
+  if (!idSecret) {
+    const msg = "[identityAuth] IDENTITY_JWT_SECRET is empty — Comprador auth will throw 500 on first authenticated request";
+    if (isProd) throw new Error(msg);
+    logger.warn?.(msg);
+  } else if (idSecret.length < 32) {
+    const msg = "[identityAuth] IDENTITY_JWT_SECRET must be ≥32 chars";
+    if (isProd) throw new Error(msg);
+    logger.warn?.(msg);
+  }
+  if (!process.env.GOOGLE_OAUTH_CLIENT_ID) {
+    const msg = "[identityAuth] GOOGLE_OAUTH_CLIENT_ID is unset — access-token audience check is disabled";
+    if (isProd) throw new Error(msg);
+    logger.warn?.(msg);
+  }
 }
 
 function logger() {
@@ -54,7 +85,10 @@ function logger() {
 }
 
 function getJwtSecret() {
-  const s = process.env.IDENTITY_JWT_SECRET || process.env.WA_JWT_SECRET || "";
+  // No fallback to WA_JWT_SECRET (Cross-system token substitution guard,
+  // see initIdentityAuth + cursor[bot] C-1). Use a distinct secret per
+  // subsystem.
+  const s = process.env.IDENTITY_JWT_SECRET || "";
   if (!s || s.length < 32) {
     throw Object.assign(
       new Error("IDENTITY_JWT_SECRET no configurado (requiere ≥32 chars)"),
@@ -123,9 +157,17 @@ async function _verifyAccessToken(accessToken) {
       throw _unauthorized("tokeninfo_aud_mismatch", `expected ${expectedAud}, got ${ti.aud}`);
     }
   } else {
+    // Production deploys without GOOGLE_OAUTH_CLIENT_ID would accept ANY
+    // Google access token from ANY OAuth client — refuse outright.
+    const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "development";
+    if (appEnv === "production") {
+      throw _serverError(
+        "GOOGLE_OAUTH_CLIENT_ID required in production for access-token authentication",
+      );
+    }
     logger().warn?.(
       { aud: ti.aud },
-      "[identityAuth] GOOGLE_OAUTH_CLIENT_ID not configured — accepting access token without audience check (dev only)",
+      "[identityAuth] GOOGLE_OAUTH_CLIENT_ID not configured — skipping aud check (dev only)",
     );
   }
 
@@ -177,6 +219,14 @@ export async function verifyGoogleAndUpsert({
 
   const email = String(profile.email || "").toLowerCase();
   if (!email) throw _unauthorized("no_email_in_profile");
+
+  // Reject unverified emails on BOTH paths. The seed migration pre-creates
+  // identity.users + role_grants by email for internal admins; an ID token
+  // carrying an unverified email matching a seeded row would otherwise bind
+  // the Google subject to that privileged identity.
+  if (!profile.email_verified) {
+    throw _unauthorized("email_not_verified");
+  }
 
   // Upsert by google_sub (preferred) or email.
   const upsert = await _pool.query(
