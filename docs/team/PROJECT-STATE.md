@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Fix CI deploy — Cloud Run env→secret migration):** `Deploy Calculator API` fallaba en PR #105 / SHA `5705c27` porque Cloud Run tenía `SMTP_PASS` como env var inline y el workflow intentaba setearlo como Secret Manager (`Cannot update environment variable [SMTP_PASS] ... different type`). Fix en [`.github/workflows/deploy-calc-api.yml`](../../.github/workflows/deploy-calc-api.yml): el deploy ahora remueve las claves inline `SMTP_PASS`, `WA_JWT_SECRET`, `IDENTITY_JWT_SECRET`, `OPENAI_API_KEY` y las aplica con `--update-secrets`, preservando otros secretos existentes; además mantiene `OPENAI_API_KEY=openai-api-key:latest` para no perder la clave de voz/chat durante el deploy. [`scripts/check-env-drift.mjs`](../../scripts/check-env-drift.mjs) ahora reconoce `--update-secrets` y listas separadas por coma.
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.

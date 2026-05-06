@@ -2,7 +2,7 @@
 /**
  * check-env-drift.mjs — fail when `process.env.X` references in server/ are not
  * documented in either:
- *   - .github/workflows/deploy-calc-api.yml `env_vars:` / `--set-secrets` blocks
+ *   - .github/workflows/deploy-calc-api.yml `env_vars:` / `--set/--update-secrets` blocks
  *   - .env.example
  *   - .github/ALLOWED_ENV_DRIFT.txt (explicit allowlist for vars set in Cloud Run console)
  *
@@ -64,11 +64,13 @@ function scanProvidedFromYaml() {
       if (m) provided.add(m[1]);
     }
   }
-  // --set-secrets=/path=secret-name:version  OR  --set-secrets=KEY=secret-name:version
-  for (const m of txt.matchAll(/--set-secrets=([^\s]+)/g)) {
-    const left = m[1].split("=")[0];
-    const key = left.replace(/^.*\//, "");
-    if (/^[A-Z][A-Z0-9_]+$/.test(key)) provided.add(key);
+  // --set-secrets=/path=secret-name:version  OR  --update-secrets=KEY=secret-name:version
+  for (const m of txt.matchAll(/--(?:set|update)-secrets=([^\s]+)/g)) {
+    for (const entry of m[1].split(",")) {
+      const left = entry.split("=")[0];
+      if (left.startsWith("/")) continue;
+      if (/^[A-Z][A-Z0-9_]+$/.test(left)) provided.add(left);
+    }
   }
   return provided;
 }
