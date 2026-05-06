@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Fix — OAuth Client ID drift en `.env.example`):** Corrección de regresión post-merge PR #159: `.env.example` vuelve a usar el Client ID productivo documentado en [`docs/master-plans/user-identity-GOLIVE.md`](../master-plans/user-identity-GOLIVE.md) para **ambas** variables, `VITE_GOOGLE_CLIENT_ID` y `GOOGLE_OAUTH_CLIENT_ID`. Se agregó [`tests/oauth-config-consistency.test.js`](../../tests/oauth-config-consistency.test.js) al target `npm test` para bloquear futuros drifts entre el template de entorno y la guía GoLive.
+
+**Impacto evitado:** builds/env frescos que copiaran `.env.example` podían bakear/verificar contra un OAuth Client ID distinto del canónico, rompiendo Google Drive / Comprador identity con `origin_mismatch`, `invalid_client` o `tokeninfo_aud_mismatch`.
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
