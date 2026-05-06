@@ -569,7 +569,7 @@ router.post("/cotizar/pdf", async (req, res) => {
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
     const persistUrl = gcsUrl || pdfUrl;
-    void registerQuotation({
+    registerQuotation({
       pdfId,
       pdfUrl: persistUrl,
       code: clientInfo.quote_code || null,

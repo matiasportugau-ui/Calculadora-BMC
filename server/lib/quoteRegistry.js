@@ -133,7 +133,7 @@ export async function listQuotations({ limit = 50, includeCancelled = false } = 
           const m = f.name.match(/^registry\/(.+)\.json$/);
           return m ? m[1] : null;
         })
-        .filter((id) => id && !seen.has(id));
+        .filter(Boolean);
       if (!ids.length) continue;
       const fetched = await Promise.all(ids.map((id) => getQuotation(id)));
       for (const entry of fetched) {
