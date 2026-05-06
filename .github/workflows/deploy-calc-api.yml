@@ -120,6 +120,43 @@ jobs:
         if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Normalize secret-backed env var types
+        if: steps.paths.outputs.skip != 'true'
+        id: normalize_env_types
+        shell: bash
+        run: |
+          set -euo pipefail
+          STALE_INLINE_VARS="$(
+            gcloud run services describe "${{ env.SERVICE_NAME }}" \
+              --region="${{ env.REGION }}" \
+              --format=json |
+              node -e '
+                const fs = require("node:fs");
+                const service = JSON.parse(fs.readFileSync(0, "utf8"));
+                const secretBacked = new Set(["SMTP_PASS", "WA_JWT_SECRET", "IDENTITY_JWT_SECRET"]);
+                const env = service?.spec?.template?.spec?.containers?.[0]?.env || [];
+                const stale = env
+                  .filter((entry) => secretBacked.has(entry.name))
+                  .filter((entry) => Object.prototype.hasOwnProperty.call(entry, "value"))
+                  .map((entry) => entry.name);
+                process.stdout.write(stale.join(","));
+              '
+          )"
+
+          if [[ -z "$STALE_INLINE_VARS" ]]; then
+            echo "migrated=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No stale inline secret env vars found."
+            exit 0
+          fi
+
+          echo "::notice::Removing stale inline secret env vars before Secret Manager deploy: $STALE_INLINE_VARS"
+          gcloud run services update "${{ env.SERVICE_NAME }}" \
+            --region="${{ env.REGION }}" \
+            --remove-env-vars="$STALE_INLINE_VARS" \
+            --no-traffic \
+            --quiet
+          echo "migrated=true" >> "$GITHUB_OUTPUT"
+
       - name: Configure Docker for Artifact Registry
         if: steps.paths.outputs.skip != 'true'
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
@@ -170,6 +207,14 @@ jobs:
             --cpu=1
             --timeout=60
             --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,SMTP_PASS=SMTP_PASS:latest,WA_JWT_SECRET=WA_JWT_SECRET:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest
+
+      - name: Route traffic to latest revision
+        if: steps.paths.outputs.skip != 'true'
+        run: |
+          gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --to-latest \
+            --quiet
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'

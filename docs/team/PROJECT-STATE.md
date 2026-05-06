@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Fix — Cloud Run deploy env type migration):** Detectado por automation de bug crítico tras CI rojo en `Deploy Calculator API`: Cloud Run rechazaba el deploy de `panelin-calc` con `Cannot update environment variable [SMTP_PASS] to the given type` porque el workflow migró `SMTP_PASS`/`WA_JWT_SECRET`/`IDENTITY_JWT_SECRET` desde env inline a Secret Manager sin remover primero los env vars literales existentes. Fix en [`.github/workflows/deploy-calc-api.yml`](../../.github/workflows/deploy-calc-api.yml): paso `Normalize secret-backed env var types` detecta esos vars inline en la revisión actual, los remueve con `--no-traffic`, luego el deploy normal setea los secretos y `update-traffic --to-latest` restaura el comportamiento para futuras corridas. Test nuevo [`tests/deploy-workflow.test.js`](../../tests/deploy-workflow.test.js) agregado a `npm run test:api` para bloquear regresiones del workflow. **Affects:** bmc-deployment, bmc-security.
+
 **2026-05-06 (Dev — Panelin agent: full tool platform, PR #110 ready for review):** Cierre de la línea de trabajo abierta el 2026-04-30 sobre el chat Panelin. El surface pasó de **5 tools → 28 tools** en 12 commits, con dos puntos de acceso (in-app chat + MCP externo), telemetría per-tool, registry persistente en GCS y un gate de confirmación de usuario que ya no depende de un flag seteado por el modelo.
 
 **Tool surface (28)** en [`server/lib/agentTools.js`](../../server/lib/agentTools.js):
