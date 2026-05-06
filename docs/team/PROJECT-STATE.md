@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-05
+**Última actualización:** 2026-05-06
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,24 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
+
+- **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
+- **PR #144** (`ef2a2da`) — `requireAuth` en `/calc/cotizaciones*` (lista/detalle/cancelar), 3 read tools sensibles agregados a `TOOLS_REQUIRING_AUTH` (`listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`, `obtener_pdf_html`), sanitizador anti-CSV-injection en escrituras a Sheets (`crmAppend.js` prefija `'` en valores que arrancan con `=`/`+`/`-`/`@`/tab/CR), refactor a imports directos para 4 tools de recall (`getQuotation` / `listQuotations` / `cancelQuotation` / `getPdf`), y **gate de auth en el chat tool-loop** (`shouldBlockToolForUnauthenticatedChat`) que cierra el bypass donde el modelo podía llamar tools sensibles desde un chat público sin token. Todas las findings de Cursor + Codex + Copilot resueltas.
+- **PR #147** (`00de9fe`) — Estructura de [`.github/CODEOWNERS`](../../.github/CODEOWNERS) lista para sumar un segundo reviewer humano sin tocar la regla catch-all. Hoy mantiene `@matiasportugau-ui` como único owner; cuando exista otro colaborador con permisos de revisión de seguridad, el upgrade es de una línea por path.
+
+**Verificación de producción (smoke + probes 2026-05-06 02:18 UTC):** `npm run smoke:prod` 8/8 OK contra Cloud Run; `GET /calc/cotizaciones` sin token → **401** (PR #144 desplegada y wireada — confirma que `API_AUTH_TOKEN` está presente en el env de Cloud Run, sino sería 503); `GET /api/agent/tools-manifest` → 28 tools con los 5 reads sensibles marcados `requires_auth: true`.
+
+**Cambio de comportamiento operativo (chat Panelin):** El servidor ahora lee la **intención del usuario** directamente del último mensaje del chat — el flag `user_confirmed` que seteaba el modelo ya no alcanza para escribir en CRM, mandar WhatsApp, cancelar cotización ni programar follow-ups. El operador tiene que decir frases imperativas claras como **"guardalo en CRM"** / **"mandale por WhatsApp"** / **"cancelá la cotización"** / **"recordame en X días"**. Si el modelo intenta sin esa señal, devuelve un mensaje pidiendo confirmación y la tool no se ejecuta. Documento de comunicación al equipo de ventas: [`docs/team/PANELIN-CHAT-2026-05-06-CONFIRMATION-CHANGE.md`](./PANELIN-CHAT-2026-05-06-CONFIRMATION-CHANGE.md).
+
+**Affects:** bmc-panelin-chat (28 tools + intent gate + auth en chat-loop), bmc-panelin-mcp (MCP server expone los 28 tools, write tools requieren `BMC_API_TOKEN`), bmc-security (auth en `/calc/cotizaciones*`, sanitizador CSV-injection, two-layer guard en write tools), bmc-deployment (sin nuevos env vars; `API_AUTH_TOKEN` ya existía y está confirmado), bmc-sheets-mapping (escritura sanitizada en CRM_Operativo + lectura B4:AH500), bmc-api-contract (rutas nuevas: `/api/agent/tool-stats`, `/api/agent/tools-manifest`, `/api/agent/exec-tool`, `/calc/cotizaciones/:id`, `/calc/cotizaciones/:id/cancelar`), bmc-docs-sync (esta entrada + ADR + comunicación al equipo).
+
+**Pendientes específicos** (no bloqueantes):
+- Sumar un segundo colaborador humano con permisos de review en paths de seguridad → upgrade de una línea por path en `.github/CODEOWNERS`.
+- Phase 4 del plan de desarrollo (voice input wiring) — `agentVoice.js` ya existe; falta integración con `useChat.js` (~120 LOC).
+- Telemetría de producción: el ring buffer de `toolStats.js` se pierde en cold-start de Cloud Run; conviene espejar `console.log({event:"agent_tool_call", ...})` a Cloud Logging estructurado para sostener un dashboard real.
+- Sanitizador anti-CSV-injection extendido a `wolfboardActualizarFila` (PR #144 cubrió `crmAppend`; el endpoint `/api/wolfboard/row` no estaba en scope).
 
 **2026-05-06 (Dev — Panelin agent: full tool platform, PR #110 ready for review):** Cierre de la línea de trabajo abierta el 2026-04-30 sobre el chat Panelin. El surface pasó de **5 tools → 28 tools** en 12 commits, con dos puntos de acceso (in-app chat + MCP externo), telemetría per-tool, registry persistente en GCS y un gate de confirmación de usuario que ya no depende de un flag seteado por el modelo.
 
