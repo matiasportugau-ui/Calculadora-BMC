@@ -96,6 +96,16 @@ group("Negation strips intent", () => {
   assert(!classifyIntents("no, no mandes nada por WhatsApp").has("enviar_whatsapp_link"), "no mandes nada");
 });
 
+group("Negation before conjunction preserves post-conjunction intent", () => {
+  const set1 = classifyIntents("no lo guardes en CRM y mandale por WhatsApp");
+  assert(!set1.has("guardar_en_crm"), "guardar_en_crm suppressed by negation");
+  assert(set1.has("enviar_whatsapp_link"), "enviar_whatsapp_link preserved after 'y'");
+
+  const set2 = classifyIntents("sin guardarlo en la planilla pero sí mandale el link");
+  assert(!set2.has("guardar_en_crm"), "guardar_en_crm suppressed by 'sin'");
+  assert(set2.has("enviar_whatsapp_link"), "enviar_whatsapp_link preserved after 'pero'");
+});
+
 // ── 5. Multi-intent ──────────────────────────────────────────────────────────
 
 group("Multi-intent — multiple triggers in one message", () => {

@@ -1178,7 +1178,9 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "listar_cotizaciones_recientes") {
-      const data = await fetchJson("/calc/cotizaciones");
+      // Fetch the full registry (up to 500) so client/source filters are applied
+      // across ALL stored quotes, not just the first page.
+      const data = await fetchJson("/calc/cotizaciones?limit=500");
       if (!data.ok) return JSON.stringify({ error: data.error || "Error al listar cotizaciones" });
       const filtroCliente = String(input?.cliente || "").trim().toLowerCase();
       const filtroSource = input?.source && ["ae_agent", "calculator"].includes(input.source) ? input.source : null;
@@ -1198,10 +1200,11 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const missing = requireField(input, "pdf_id");
       if (missing) return missing;
       const id = String(input.pdf_id).trim();
-      const list = await fetchJson("/calc/cotizaciones");
-      if (!list.ok) return JSON.stringify({ error: list.error || "No se pudo consultar el registro" });
-      const entry = (list.cotizaciones || []).find((e) => e.id === id);
-      if (!entry) return JSON.stringify({ error: `Cotización ${id} no encontrada o expirada (24h TTL)` });
+      // Use the dedicated :id endpoint — it searches the full persistent registry
+      // and returns cancelled quotes too, unlike the paginated listing.
+      const data = await fetchJson(`/calc/cotizaciones/${encodeURIComponent(id)}`);
+      if (!data.ok) return JSON.stringify({ error: data.error || `Cotización ${id} no encontrada` });
+      const entry = data.cotizacion;
       return JSON.stringify({
         ok: true,
         id: entry.id,

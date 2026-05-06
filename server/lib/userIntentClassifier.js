@@ -99,8 +99,10 @@ function normalize(s) {
 
 /**
  * Strip negation contexts ("no <phrase>", "sin <phrase>") so they don't
- * trigger intent. Imperfect — only covers a 6-word window after the
- * negation marker. Good enough for the common ambiguity cases.
+ * trigger intent. Stops at Spanish conjunctions (y, pero, aunque, mas, o, ni)
+ * so positive intents that follow in the same sentence are preserved —
+ * e.g. "no lo guardes en CRM y mandale por WhatsApp" correctly fires only
+ * the WhatsApp intent.
  *
  * Idiom guard: "dejar sin efecto" is a fixed Spanish phrase where "sin"
  * doesn't negate intent — it's part of the cancelar_cotizacion trigger.
@@ -108,8 +110,8 @@ function normalize(s) {
  */
 function stripNegations(text) {
   return text
-    .replace(/\bno\s+(\S+\s+){0,6}/g, " ")
-    .replace(/(?<!\bdejar\s)\bsin\s+(\S+\s+){0,6}/g, " ");
+    .replace(/\bno\s+((?!(?:y|pero|aunque|mas|o|ni)\b)\S+\s+){0,6}/g, " ")
+    .replace(/(?<!\bdejar\s)\bsin\s+((?!(?:y|pero|aunque|mas|o|ni)\b)\S+\s+){0,6}/g, " ");
 }
 
 /**

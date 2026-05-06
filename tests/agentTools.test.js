@@ -273,14 +273,17 @@ await group("presupuesto_libre", async () => {
 });
 
 await group("listar_cotizaciones_recientes — filters by client", async () => {
-  setFetch(async () => ({
-    ok: true,
-    cotizaciones: [
-      { id: "1", client: "Juan Pérez", scenario: "solo_techo", total: 100 },
-      { id: "2", client: "María López", scenario: "solo_fachada", total: 200 },
-      { id: "3", client: "JUAN G", scenario: "techo_fachada", total: 300 },
-    ],
-  }));
+  setFetch(async (url) => {
+    assert(url.includes("/calc/cotizaciones?limit=500"), "fetches with limit=500 to search full registry");
+    return {
+      ok: true,
+      cotizaciones: [
+        { id: "1", client: "Juan Pérez", scenario: "solo_techo", total: 100 },
+        { id: "2", client: "María López", scenario: "solo_fachada", total: 200 },
+        { id: "3", client: "JUAN G", scenario: "techo_fachada", total: 300 },
+      ],
+    };
+  });
   const { parsed } = await run("listar_cotizaciones_recientes", { cliente: "juan" });
   assert(parsed.ok === true, "ok true");
   assert(parsed.count === 2, "filters case-insensitively to 2 matches");
@@ -288,10 +291,13 @@ await group("listar_cotizaciones_recientes — filters by client", async () => {
 });
 
 await group("obtener_cotizacion_por_id", async () => {
-  setFetch(async () => ({
-    ok: true,
-    cotizaciones: [{ id: "abc-123", client: "X", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p.html", code: "X1", timestamp: "t" }],
-  }));
+  // Mock the dedicated /calc/cotizaciones/:id endpoint (new path)
+  setFetch(async (url) => {
+    if (url.includes("/calc/cotizaciones/abc-123")) {
+      return { ok: true, cotizacion: { id: "abc-123", client: "X", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p.html", code: "X1", timestamp: "t", status: "active" } };
+    }
+    return { ok: false, error: "Cotización no encontrada" };
+  });
   const { parsed: hit } = await run("obtener_cotizacion_por_id", { pdf_id: "abc-123" });
   assert(hit.ok === true, "ok true on hit");
   assert(hit.viewer_url.includes("/calc/pdf/abc-123"), "viewer_url built from id");
@@ -540,7 +546,7 @@ await group("programar_seguimiento — happy path", async () => {
 await group("historial_cliente — composes both sources", async () => {
   // Stub returns CRM no-config + listar_cotizaciones_recientes match.
   setFetch(async (url) => {
-    if (url.endsWith("/calc/cotizaciones")) {
+    if (url.includes("/calc/cotizaciones")) {
       return {
         ok: true,
         cotizaciones: [
