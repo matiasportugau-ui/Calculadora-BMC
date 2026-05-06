@@ -146,15 +146,25 @@ async function _verifyAccessToken(accessToken) {
   // returns the OAuth client (`aud`) it was minted for.
   const tiResp = await fetch(`${TOKENINFO_URL}?access_token=${encodeURIComponent(accessToken)}`);
   if (!tiResp.ok) {
+    // cursor[bot] W-3: never forward Google's error body to unauthenticated
+    // callers; log server-side only.
     const body = await tiResp.text().catch(() => "");
-    throw _unauthorized(`tokeninfo_${tiResp.status}`, body.slice(0, 200));
+    logger().warn?.({ status: tiResp.status, body: body.slice(0, 200) }, "[identityAuth] tokeninfo non-200");
+    throw _unauthorized(`tokeninfo_${tiResp.status}`);
   }
   const ti = await tiResp.json().catch(() => null);
   if (!ti?.aud) throw _unauthorized("tokeninfo_no_aud");
 
   if (expectedAud) {
     if (ti.aud !== expectedAud) {
-      throw _unauthorized("tokeninfo_aud_mismatch", `expected ${expectedAud}, got ${ti.aud}`);
+      // cursor[bot] F-1: do NOT include expectedAud (= GOOGLE_OAUTH_CLIENT_ID)
+      // in the wire-facing detail; that leaks the OAuth client ID to anyone
+      // who can hit /auth/google. Log internal context, return generic 401.
+      logger().warn?.(
+        { got_aud: ti.aud },
+        "[identityAuth] tokeninfo aud mismatch",
+      );
+      throw _unauthorized("tokeninfo_aud_mismatch");
     }
   } else {
     // Production deploys without GOOGLE_OAUTH_CLIENT_ID would accept ANY
@@ -177,7 +187,8 @@ async function _verifyAccessToken(accessToken) {
   });
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
-    throw _unauthorized(`userinfo_${resp.status}`, body.slice(0, 200));
+    logger().warn?.({ status: resp.status, body: body.slice(0, 200) }, "[identityAuth] userinfo non-200");
+    throw _unauthorized(`userinfo_${resp.status}`);
   }
   const u = await resp.json().catch(() => null);
   if (!u?.sub) throw _unauthorized("userinfo_no_sub");
@@ -621,14 +632,16 @@ function _levelAllows(actual, minimum) {
 }
 
 async function _readClaimsFromRequest(req) {
+  // cursor[bot] W-1: access JWT must arrive ONLY in `Authorization: Bearer`.
+  // The previous `bmc_access` cookie fallback was undocumented and would
+  // accept a JWT planted by a client-side script (XSS / extension), bypassing
+  // the httpOnly intent that protects the refresh cookie (`bmc_sess`).
+  // Refresh cookie → `/auth/refresh` only; access JWT → header only.
   const auth = req.get?.("authorization") || "";
   const m = /^Bearer (.+)$/i.exec(auth.trim());
-  let token = null;
-  if (m) token = m[1];
-  if (!token && req.cookies) token = req.cookies["bmc_access"] || null;
-  if (!token) return null;
+  if (!m) return null;
   try {
-    const claims = jwt.verify(token, getJwtSecret(), { algorithms: ["HS256"] });
+    const claims = jwt.verify(m[1], getJwtSecret(), { algorithms: ["HS256"] });
     if (!claims?.sub) return null;
     return claims;
   } catch {

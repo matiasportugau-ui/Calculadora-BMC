@@ -55,11 +55,16 @@ function isProd() {
   return config.appEnv === "production";
 }
 
+// cursor[bot] W-2: SameSite=Strict — the refresh cookie is only ever used by
+// /auth/refresh + /auth/logout (POSTs from the same origin SPA). Strict blocks
+// cross-site form-POST DoS on /auth/logout and any subdomain leak when the
+// cookie domain is set to a shared parent. The GIS popup flow does NOT need
+// Lax semantics — the redirect happens before the cookie is set.
 function setRefreshCookie(res, refreshToken) {
   const opts = {
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: REFRESH_COOKIE_MAX_AGE_MS,
   };
@@ -71,7 +76,7 @@ function clearRefreshCookie(res) {
   const opts = {
     httpOnly: true,
     secure: isProd(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
   };
   if (config.identityCookieDomain) opts.domain = config.identityCookieDomain;
@@ -106,9 +111,11 @@ router.post("/auth/google", authGoogleLimiter, async (req, res) => {
       accessTokenExpiresIn: r.accessTokenExpiresIn,
     });
   } catch (e) {
-    return res
-      .status(e.status || 401)
-      .json({ ok: false, error: e.message || "auth_failed", detail: e.detail });
+    // cursor[bot] F-1 / W-3: do NOT forward `e.detail` on /auth/* paths —
+    // it can carry Google's error body or our OAuth client ID. Log
+    // server-side; return only the coarse error code on the wire.
+    if (e.detail) req.log?.warn?.({ detail: e.detail }, "[auth/google] auth detail (server only)");
+    return res.status(e.status || 401).json({ ok: false, error: e.message || "auth_failed" });
   }
 });
 
