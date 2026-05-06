@@ -1,7 +1,10 @@
 # BMC Calculadora — CODEOWNERS
 #
-# Required reviewer mapping for GitHub PRs. Each modified file's most-specific
-# matching pattern wins; a file with no match falls back to "*".
+# Required reviewer mapping for GitHub PRs. GitHub's CODEOWNERS resolution
+# is **order-dependent**: the LAST matching pattern in this file takes
+# precedence (not the most specific). When editing, keep the catch-all
+# default at the top and put more-specific path rules below so they
+# correctly override the default for those paths.
 #
 # Default — single CODEOWNER until a second human collaborator is added.
 * @matiasportugau-ui
