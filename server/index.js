@@ -32,6 +32,8 @@ import createWaRouter from "./routes/wa.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
+import { initIdentityAuth } from "./lib/identityAuth.js";
+import cookieParser from "cookie-parser";
 import { setWaConfigModuleForQuoteParams } from "./lib/waQuoteParams.js";
 import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
@@ -43,6 +45,8 @@ import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
+import identityMeRouter from "./routes/identityMe.js";
+import quoteExportRouter from "./routes/quoteExport.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
@@ -95,6 +99,7 @@ app.use((req, res, next) => {
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
+app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,
@@ -813,6 +818,8 @@ app.use("/calc", calcRouter);
 // Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
 app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
+app.use(identityMeRouter);
+app.use(quoteExportRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
@@ -987,6 +994,8 @@ const server = app.listen(config.port, async () => {
     try {
       await primeWaConfig({ pool: waPool, logger });
       initWaOperatorAuth({ pool: waPool, logger });
+      // Comprador identity reuses the same Postgres pool.
+      initIdentityAuth({ pool: waPool, logger });
       initWaWebhooks({ pool: waPool, logger });
       setWaConfigModuleForQuoteParams(waConfigModule);
     } catch (e) {
