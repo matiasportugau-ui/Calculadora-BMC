@@ -45,6 +45,13 @@ function requireWaAuth(config) {
   };
 }
 
+export function parseWaQuotesLimit(rawLimit) {
+  const requestedLimit = Number.parseInt(String(rawLimit || "20"), 10);
+  return Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 100)
+    : 20;
+}
+
 /**
  * Recompute last_msg_at / last_msg_in_at / last_msg_out_at after a batch insert.
  * Cheaper than computing per-row in SQL trigger; one query per chat.
@@ -810,15 +817,15 @@ export default function createWaRouter(config, logger) {
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
       if (!chatId) return res.status(400).json({ ok: false, error: "chat_id required" });
-      const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
+      const limit = parseWaQuotesLimit(req.query.limit);
       const { rows } = await pool.query(
         `select quote_id, chat_id, trigger_msg_id, generated_at, generated_by_ai,
                 params, total_usd, total_iva_usd, bom_summary, link, status, sheet_row, meta
          from wa_quotes
          where chat_id = $1
          order by generated_at desc
-         limit ${limit}`,
-        [chatId],
+         limit $2`,
+        [chatId, limit],
       );
       return res.json({ ok: true, count: rows.length, items: rows });
     }),
