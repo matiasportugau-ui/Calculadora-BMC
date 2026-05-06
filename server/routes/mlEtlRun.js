@@ -81,6 +81,14 @@ export default function createMlEtlRunRouter({ config, logger }) {
     return body;
   }
 
+  function etlRunsPath(filters = {}) {
+    const query = new URLSearchParams({
+      select: "*",
+      ...filters,
+    });
+    return `bmc_price_monitor.etl_runs?${query.toString()}`;
+  }
+
   // ── POST /api/ml/etl-run — fire-and-forget child process ─────────────────
   router.post(
     "/api/ml/etl-run",
@@ -164,7 +172,7 @@ export default function createMlEtlRunRouter({ config, logger }) {
     requireAuth,
     asyncHandler(async (req, res) => {
       const rows = await sbGet(
-        "bmc_price_monitor.etl_runs?select=*&order=started_at.desc&limit=1",
+        etlRunsPath({ order: "started_at.desc", limit: "1" }),
       );
       res.json({ ok: true, run: Array.isArray(rows) && rows[0] ? rows[0] : null });
     }),
@@ -182,7 +190,7 @@ export default function createMlEtlRunRouter({ config, logger }) {
           .json({ ok: false, error: "id must be a positive integer" });
       }
       const rows = await sbGet(
-        `bmc_price_monitor.etl_runs?select=*&id=eq.${encodeURIComponent(id)}&limit=1`,
+        etlRunsPath({ id: `eq.${id}`, limit: "1" }),
       );
       const run = Array.isArray(rows) && rows[0] ? rows[0] : null;
       if (!run) return res.status(404).json({ ok: false, error: "run not found" });
