@@ -568,9 +568,10 @@ router.post("/cotizar/pdf", async (req, res) => {
     const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
+    const persistUrl = gcsUrl || pdfUrl;
     await registerQuotation({
       pdfId,
-      pdfUrl: gcsUrl || pdfUrl,
+      pdfUrl: persistUrl,
       code: clientInfo.quote_code || null,
       client: clientInfo.nombre || "—",
       scenario: escenario,
@@ -643,7 +644,11 @@ router.post("/cotizaciones/:id/cancelar", async (req, res) => {
       reason: req.body?.motivo || req.body?.reason,
       by: req.body?.by || "agent",
     });
-    if (!result.ok) return res.status(404).json(result);
+    if (!result.ok) {
+      const message = String(result.error || "");
+      const isNotFound = message.toLowerCase().includes("no encontrada");
+      return res.status(isNotFound ? 404 : 500).json(result);
+    }
     res.json(result);
   } catch (err) {
     req.log?.error({ err }, "calc/cotizaciones/:id/cancelar failed");

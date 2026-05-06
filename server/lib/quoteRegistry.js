@@ -119,18 +119,32 @@ export async function getQuotation(pdfId) {
 export async function listQuotations({ limit = 50, includeCancelled = false } = {}) {
   const b = bucket();
   const seen = new Map();
+  const cappedLimit = Math.max(1, Math.min(500, Number(limit) || 50));
 
   if (b) {
-    const files = await listJsonInGcs({ bucket: b, prefix: PREFIX, limit: Math.max(limit * 2, 100) });
-    const ids = files
-      .map((f) => {
-        const m = f.name.match(/^registry\/(.+)\.json$/);
-        return m ? m[1] : null;
-      })
-      .filter(Boolean);
-    const fetched = await Promise.all(ids.map((id) => getQuotation(id)));
-    for (const entry of fetched) {
-      if (entry?.id) seen.set(entry.id, entry);
+    const listLimit = Math.max(includeCancelled ? cappedLimit : cappedLimit * 3, 100);
+    const files = await listJsonInGcs({ bucket: b, prefix: PREFIX, limit: listLimit });
+    const batchSize = 20;
+    let collected = 0;
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize);
+      const ids = batch
+        .map((f) => {
+          const m = f.name.match(/^registry\/(.+)\.json$/);
+          return m ? m[1] : null;
+        })
+        .filter(Boolean);
+      if (!ids.length) continue;
+      const fetched = await Promise.all(ids.map((id) => getQuotation(id)));
+      for (const entry of fetched) {
+        if (!entry?.id || seen.has(entry.id)) continue;
+        seen.set(entry.id, entry);
+        if (includeCancelled || entry.status !== "cancelled") {
+          collected += 1;
+          if (collected >= cappedLimit) break;
+        }
+      }
+      if (collected >= cappedLimit) break;
     }
   } else {
     pruneCacheIfNoBucket();
@@ -147,7 +161,7 @@ export async function listQuotations({ limit = 50, includeCancelled = false } = 
   if (!includeCancelled) {
     entries = entries.filter((e) => e.status !== "cancelled");
   }
-  return entries.slice(0, Math.max(1, Math.min(500, limit)));
+  return entries.slice(0, cappedLimit);
 }
 
 /**

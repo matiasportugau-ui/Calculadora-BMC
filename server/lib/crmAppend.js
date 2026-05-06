@@ -10,7 +10,7 @@
  */
 import { google } from "googleapis";
 import { config } from "../config.js";
-import { defaultTailAHAK, rangeAHAK } from "./crmOperativoLayout.js";
+import { defaultTailAHAK } from "./crmOperativoLayout.js";
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -39,7 +39,7 @@ async function getSheetsClient() {
  * @param {string} [input.tipo_cliente]
  * @param {string} [input.urgencia]
  * @param {string} [input.probabilidad_cierre]
- * @returns {Promise<{ok:true,row:number,sheetId:string}|{ok:false,error:string}>}
+ * @returns {Promise<{ok:true,row:number|null,sheetId:string}|{ok:false,error:string}>}
  */
 export async function appendQuoteToCrm(input = {}) {
   const sheetId = config.bmcSheetId;
@@ -81,20 +81,6 @@ export async function appendQuoteToCrm(input = {}) {
       driveUrl ? `Drive: ${driveUrl}` : "",
     ].filter(Boolean).join(" | ");
     const observaciones = [obsBase, obsLinks].filter(Boolean).join(" — ");
-
-    // Find first empty row in C4:C500 (Cliente column)
-    const existing = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
-      range: "'CRM_Operativo'!C4:C500",
-    });
-    const rows = existing.data.values || [];
-    let row = rows.length + 4;
-    for (let i = 0; i < rows.length; i++) {
-      if (!rows[i][0] || !String(rows[i][0]).trim()) {
-        row = i + 4;
-        break;
-      }
-    }
 
     // Escribir toda la fila B:AK en una sola operación append para evitar
     // carreras entre lecturas/escrituras separadas al guardar concurrentemente.
@@ -155,7 +141,7 @@ export async function appendQuoteToCrm(input = {}) {
     const updatedRange = appendRes?.data?.updates?.updatedRange || "";
     const appendedRow = Number((updatedRange.match(/![A-Z]+(\d+):[A-Z]+(\d+)$/) || [])[1] || 0);
 
-    return { ok: true, row: appendedRow || row, sheetId };
+    return { ok: true, row: appendedRow || null, sheetId };
   } catch (err) {
     return { ok: false, error: err.message || "Error desconocido al escribir en Sheets" };
   }
