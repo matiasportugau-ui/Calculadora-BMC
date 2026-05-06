@@ -307,8 +307,10 @@ router.post("/api/me/quotes", requireUser(), async (req, res) => {
     });
     res.json({ ok: true, quote: q });
   } catch (e) {
-    // upsertQuote throws { status: 400, ... } on URL allowlist violations.
-    res.status(e.status || 500).json({ ok: false, error: e.message, detail: e.detail });
+    // cursor[bot] LOW: match the F-1/W-3 pattern from authGoogle.js — log
+    // e.detail server-side, return only the coarse error code on the wire.
+    if (e.detail) req.log?.warn?.({ detail: e.detail }, "[me/quotes] upsert detail");
+    res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });
 

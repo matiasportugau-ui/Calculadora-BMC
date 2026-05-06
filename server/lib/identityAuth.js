@@ -194,7 +194,15 @@ async function _verifyAccessToken(accessToken) {
   if (!u?.sub) throw _unauthorized("userinfo_no_sub");
 
   // Step 3: enforce verified email.
-  const emailVerified = !!(u.email_verified || ti.email_verified);
+  // cursor[bot] MEDIUM: Google's /tokeninfo returns email_verified as the
+  // STRING "false" for unverified accounts (not boolean false). The OIDC
+  // userinfo v3 endpoint returns a proper boolean. Use explicit equality
+  // checks so the string "false" stays falsy.
+  const emailVerified =
+    u.email_verified === true ||
+    u.email_verified === "true" ||
+    ti.email_verified === true ||
+    ti.email_verified === "true";
   if (!emailVerified) {
     throw _unauthorized("email_not_verified");
   }
@@ -521,7 +529,16 @@ export function requireUser(opts = {}) {
 
       // superadmin bypass
       if (userRole !== "superadmin") {
+        // cursor[bot] LOW: do NOT echo the caller's actual role/grant on the
+        // wire. Production responses are intentionally opaque ('forbidden')
+        // so a low-privilege JWT can't probe admin routes to enumerate its
+        // own state without going through /auth/me/grants. Outside production
+        // we surface the detail to keep the dev experience explicit.
+        const isProdResp = (process.env.APP_ENV || process.env.NODE_ENV) === "production";
         if (role && !_roleAllows(userRole, role)) {
+          if (isProdResp) {
+            return res.status(403).json({ ok: false, error: "forbidden" });
+          }
           return res.status(403).json({
             ok: false,
             error: "insufficient_role",
@@ -533,6 +550,9 @@ export function requireUser(opts = {}) {
           const grants = await getModuleGrants(u.user_id);
           const have = grants[requiredModule] || "none";
           if (!_levelAllows(have, minLevel)) {
+            if (isProdResp) {
+              return res.status(403).json({ ok: false, error: "forbidden" });
+            }
             return res.status(403).json({
               ok: false,
               error: "insufficient_module_grant",
