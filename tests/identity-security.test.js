@@ -339,6 +339,76 @@ describe("verifyGoogleAndUpsert — H-3 ID-token email_verified guard", () => {
   });
 });
 
+describe("F-1: /auth/google does not leak GOOGLE_OAUTH_CLIENT_ID in error responses", () => {
+  it("audience mismatch returns generic error code, no detail field", async () => {
+    mockFetch(async (u) => {
+      if (String(u).startsWith("https://oauth2.googleapis.com/tokeninfo")) {
+        return new Response(JSON.stringify({ aud: "ATTACKER-CLIENT.apps.googleusercontent.com", email_verified: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return null;
+    });
+    const r = await fetch(url("/api/auth/google"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken: "fake-bad-aud" }),
+    });
+    assert.equal(r.status, 401);
+    const text = await r.text();
+    const expected = process.env.GOOGLE_OAUTH_CLIENT_ID;
+    assert.ok(expected && expected.length > 0, "test requires GOOGLE_OAUTH_CLIENT_ID set");
+    assert.ok(!text.includes(expected), `response body must not include OAuth client ID; got: ${text}`);
+    // Response body should not contain a `detail` key either.
+    const body = JSON.parse(text);
+    assert.equal(body.detail, undefined);
+  });
+
+  it("tokeninfo non-200 does not forward Google's error body", async () => {
+    mockFetch(async (u) => {
+      if (String(u).startsWith("https://oauth2.googleapis.com/tokeninfo")) {
+        return new Response("INTERNAL_GOOGLE_ERROR_MESSAGE_SHOULD_NOT_LEAK", { status: 400 });
+      }
+      return null;
+    });
+    const r = await fetch(url("/api/auth/google"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken: "fake-bad-token" }),
+    });
+    assert.equal(r.status, 401);
+    const text = await r.text();
+    assert.ok(!text.includes("INTERNAL_GOOGLE_ERROR_MESSAGE_SHOULD_NOT_LEAK"), `Google error body must not be forwarded; got: ${text}`);
+  });
+});
+
+describe("W-1: bmc_access cookie is no longer accepted (Bearer-header-only)", () => {
+  it("rejects a JWT planted in a bmc_access cookie", async () => {
+    // Mint a syntactically valid JWT that would have authenticated under the
+    // old fallback path. Our shim has u-comprador in identity.users, so a
+    // properly-signed JWT for that subject would have been accepted.
+    const validJwt = jwt.sign(
+      { sub: "u-comprador", subject_type: "user" },
+      process.env.IDENTITY_JWT_SECRET,
+      { algorithm: "HS256", expiresIn: 60 * 15 },
+    );
+    const r = await fetch(url("/api/auth/me"), {
+      headers: { Cookie: `bmc_access=${validJwt}` },
+    });
+    assert.equal(r.status, 401, "bmc_access cookie must NOT authenticate");
+  });
+
+  it("still accepts the same JWT in Authorization: Bearer", async () => {
+    const validJwt = jwt.sign(
+      { sub: "u-comprador", subject_type: "user" },
+      process.env.IDENTITY_JWT_SECRET,
+      { algorithm: "HS256", expiresIn: 60 * 15 },
+    );
+    const r = await fetch(url("/api/auth/me"), {
+      headers: { Authorization: `Bearer ${validJwt}` },
+    });
+    assert.equal(r.status, 200);
+  });
+});
+
 describe("/api/auth/logout revokes session by refresh cookie when no Bearer", () => {
   it("looks up the session by sha256(cookie) and revokes it", async () => {
     // Seed a session row that the cookie will match.

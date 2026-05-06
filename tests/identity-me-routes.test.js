@@ -357,6 +357,52 @@ describe("PATCH /api/admin/access-requests/:id (grant flow)", () => {
     });
     assert.equal(r.status, 403);
   });
+
+  // cursor[bot] F-2: level enum must be enforced.
+  it("400 invalid_level when admin supplies a non-canonical level", async () => {
+    // arrange: comprador requests
+    await fetch(url("/api/access-requests"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ module: "wa" }),
+    });
+    const reqId = pool._tables.access_requests[0].request_id;
+
+    const r = await fetch(url(`/api/admin/access-requests/${reqId}`), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-admin") },
+      body: JSON.stringify({ decision: "granted", level: "superadmin" }),
+    });
+    assert.equal(r.status, 400);
+    const j = await r.json();
+    assert.equal(j.error, "invalid_level");
+    assert.deepEqual([...j.allowed].sort(), ["admin", "none", "read", "write"]);
+    // module_grants must NOT have been written.
+    const grant = pool._tables.module_grants.find(
+      (g) => g.user_id === "u-comprador" && g.module === "wa",
+    );
+    assert.equal(grant, undefined);
+  });
+
+  it("accepts omitted level (defaults to 'read')", async () => {
+    await fetch(url("/api/access-requests"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ module: "ml" }),
+    });
+    const reqId = pool._tables.access_requests.find((x) => x.module === "ml").request_id;
+
+    const r = await fetch(url(`/api/admin/access-requests/${reqId}`), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-admin") },
+      body: JSON.stringify({ decision: "granted" }),
+    });
+    assert.equal(r.status, 200);
+    const grant = pool._tables.module_grants.find(
+      (g) => g.user_id === "u-comprador" && g.module === "ml",
+    );
+    assert.equal(grant.level, "read");
+  });
 });
 
 describe("POST /api/me/special-quote-requests", () => {
