@@ -318,6 +318,20 @@ describe("POST /api/access-requests", () => {
     assert.ok(nFan.length >= 1);
   });
 
+  // Self-audit fix: notification payload must NOT include requester email.
+  it("notification payload does NOT include requester_email (PII scrub)", async () => {
+    await fetch(url("/api/access-requests"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ module: "ml" }),
+    });
+    const n = pool._tables.notifications.find((x) => x.kind === "access_request");
+    assert.ok(n, "fan-out notification should exist");
+    assert.equal(n.payload.requester_email, undefined, "structured PII must not be in payload");
+    // requester_id is fine — it's a UUID, not PII.
+    assert.ok(n.payload.requester_id);
+  });
+
   it("rejects an unknown module", async () => {
     const r = await fetch(url("/api/access-requests"), {
       method: "POST",

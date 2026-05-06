@@ -247,33 +247,53 @@ export async function verifyGoogleAndUpsert({
     throw _unauthorized("email_not_verified");
   }
 
-  // Upsert by google_sub (preferred) or email.
-  const upsert = await _pool.query(
-    `insert into identity.users (
-        google_sub, email, email_verified, name, picture_url, last_login_at, last_active_at
-     ) values ($1, $2, $3, $4, $5, now(), now())
-     on conflict (email) do update
-        set google_sub      = coalesce(identity.users.google_sub, excluded.google_sub),
-            email_verified  = excluded.email_verified or identity.users.email_verified,
-            name            = coalesce(excluded.name, identity.users.name),
-            picture_url     = coalesce(excluded.picture_url, identity.users.picture_url),
-            last_login_at   = now(),
-            last_active_at  = now()
-     returning user_id, email, name, picture_url, avatar_preset, plan_tier, status, jwt_revoked_at`,
-    [profile.sub, email, profile.email_verified, profile.name, profile.picture],
-  );
-  const u = upsert.rows[0];
-  if (u.status !== "active") throw _unauthorized("user_disabled");
+  // Self-audit fix: wrap user upsert + role grant + session creation in a
+  // single transaction so a partial failure (e.g. role_grants insert errors
+  // after users upsert succeeded) does NOT leave a half-provisioned account
+  // — _resolveTopRole would default to 'comprador' for the orphaned user
+  // even if the grant never landed, hiding the failure from operators.
+  let u;
+  let jwtToken, refreshToken, sessionId, refreshExpiresAt;
+  const client = typeof _pool.connect === "function" ? await _pool.connect() : null;
+  try {
+    if (client) await client.query("BEGIN");
+    const tx = client || _pool;
+    const upsert = await tx.query(
+      `insert into identity.users (
+          google_sub, email, email_verified, name, picture_url, last_login_at, last_active_at
+       ) values ($1, $2, $3, $4, $5, now(), now())
+       on conflict (email) do update
+          set google_sub      = coalesce(identity.users.google_sub, excluded.google_sub),
+              email_verified  = excluded.email_verified or identity.users.email_verified,
+              name            = coalesce(excluded.name, identity.users.name),
+              picture_url     = coalesce(excluded.picture_url, identity.users.picture_url),
+              last_login_at   = now(),
+              last_active_at  = now()
+       returning user_id, email, name, picture_url, avatar_preset, plan_tier, status, jwt_revoked_at`,
+      [profile.sub, email, profile.email_verified, profile.name, profile.picture],
+    );
+    u = upsert.rows[0];
+    if (u.status !== "active") throw _unauthorized("user_disabled");
 
-  // First-time users get the 'comprador' role. Idempotent.
-  await _pool.query(
-    `insert into identity.role_grants (user_id, role) values ($1, 'comprador')
-     on conflict (user_id, role) do nothing`,
-    [u.user_id],
-  );
+    // First-time users get the 'comprador' role. Idempotent.
+    await tx.query(
+      `insert into identity.role_grants (user_id, role) values ($1, 'comprador')
+       on conflict (user_id, role) do nothing`,
+      [u.user_id],
+    );
 
-  const { accessToken: jwtToken, refreshToken, sessionId, refreshExpiresAt } =
-    await _createSession({ userId: u.user_id, ip, userAgent });
+    ({ accessToken: jwtToken, refreshToken, sessionId, refreshExpiresAt } =
+      await _createSession({ userId: u.user_id, ip, userAgent, tx }));
+
+    if (client) await client.query("COMMIT");
+  } catch (err) {
+    if (client) {
+      try { await client.query("ROLLBACK"); } catch { /* ignore */ }
+    }
+    throw err;
+  } finally {
+    if (client && typeof client.release === "function") client.release();
+  }
 
   const role = await _resolveTopRole(u.user_id);
 
@@ -587,12 +607,16 @@ export function requireUser(opts = {}) {
 
 // ─── Internal helpers ──────────────────────────────────────────────────
 
-async function _createSession({ userId, ip, userAgent, rotatedFromSessionId = null }) {
+async function _createSession({ userId, ip, userAgent, rotatedFromSessionId = null, tx = null }) {
   const refreshToken = crypto.randomBytes(48).toString("hex");
   const refreshHash = _sha256(refreshToken);
   const refreshExpiresAt = new Date(Date.now() + REFRESH_TTL_MS);
 
-  const ins = await _pool.query(
+  // Self-audit fix: when called from inside verifyGoogleAndUpsert's
+  // transaction, route the insert through the same client so a session
+  // failure rolls back the user/role inserts atomically.
+  const runner = tx || _pool;
+  const ins = await runner.query(
     `insert into identity.sessions (
         user_id, refresh_token_hash, refresh_expires_at, ip, user_agent, rotated_from_session_id
      ) values ($1, $2, $3, $4, $5, $6)
