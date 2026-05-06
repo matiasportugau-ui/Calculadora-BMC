@@ -339,6 +339,47 @@ describe("verifyGoogleAndUpsert — H-3 ID-token email_verified guard", () => {
   });
 });
 
+describe("Round 5: ?key= URL token is no longer accepted", () => {
+  it("rejects API_AUTH_TOKEN passed via ?key= query string", async () => {
+    const r = await fetch(url(`/legacy/probe?key=${encodeURIComponent("static_service_token_xyz")}`));
+    assert.equal(r.status, 401, "URL token must NOT authenticate (OWASP API §API8)");
+  });
+
+  it("still accepts via Authorization: Bearer header", async () => {
+    const r = await fetch(url("/legacy/probe"), {
+      headers: { Authorization: "Bearer static_service_token_xyz" },
+    });
+    assert.equal(r.status, 200);
+  });
+
+  it("still accepts via X-Api-Key header", async () => {
+    const r = await fetch(url("/legacy/probe"), {
+      headers: { "X-Api-Key": "static_service_token_xyz" },
+    });
+    assert.equal(r.status, 200);
+  });
+});
+
+describe("Round 5: safeErr masks unknown DB messages as 'internal_error'", () => {
+  it("known sentinel codes pass through", async () => {
+    const { safeErr } = await import("../server/lib/safeErr.js");
+    assert.equal(safeErr({ message: "invalid_pdf_url" }), "invalid_pdf_url");
+    assert.equal(safeErr({ message: "not_found", status: 404 }), "not_found");
+  });
+
+  it("unknown messages (e.g. raw pg constraint errors) are masked", async () => {
+    const { safeErr } = await import("../server/lib/safeErr.js");
+    assert.equal(
+      safeErr({ message: 'duplicate key value violates unique constraint "identity.users_email_key"' }),
+      "internal_error",
+    );
+    assert.equal(safeErr({ message: "ECONNREFUSED 127.0.0.1:5432" }), "internal_error");
+    assert.equal(safeErr(new Error("relation \"identity.quotes\" does not exist")), "internal_error");
+    assert.equal(safeErr({}), "internal_error");
+    assert.equal(safeErr(undefined), "internal_error");
+  });
+});
+
 describe("Round 4: 403 body does not echo caller's role/grant in production", () => {
   it("returns generic 'forbidden' in production mode", async () => {
     const prevEnv = process.env.APP_ENV;

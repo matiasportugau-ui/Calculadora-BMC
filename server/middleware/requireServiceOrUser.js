@@ -48,8 +48,12 @@ function _setServicePrincipal(req) {
 function _hasStaticToken(req) {
   const token = config.apiAuthToken;
   if (!token) return false;
+  // cursor[bot] round-5 MEDIUM: do NOT accept the token from `?key=` URL
+  // query string — it would land in every reverse-proxy, CDN, and browser
+  // history log. OWASP API Security §API8. Bearer header and X-Api-Key
+  // header are the only supported auth surfaces.
   const bearer = String(req.headers.authorization || "").replace(/^Bearer /, "").trim();
-  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
+  const xKey = String(req.headers["x-api-key"] || "");
   return bearer === token || xKey === token;
 }
 
