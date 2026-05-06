@@ -39,7 +39,7 @@ async function getSheetsClient() {
  * @param {string} [input.tipo_cliente]
  * @param {string} [input.urgencia]
  * @param {string} [input.probabilidad_cierre]
- * @returns {Promise<{ok:true,row:number,sheetId:string}|{ok:false,error:string}>}
+ * @returns {Promise<{ok:true,row:number|null,sheetId:string}|{ok:false,error:string}>}
  */
 export async function appendQuoteToCrm(input = {}) {
   const sheetId = config.bmcSheetId;
