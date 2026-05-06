@@ -65,7 +65,68 @@ function extractCambiosRecientes(md) {
   return trimmed.length > 12000 ? `${trimmed.slice(0, 12000)}\n\n… [truncado]` : trimmed;
 }
 
-function buildEmailHtml({ dateLabel, gitBranch, gitStatus, gitLog, cambios }) {
+async function loadWaCockpitSnapshot() {
+  if (!process.env.DATABASE_URL) return null;
+  try {
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const [chats, messages, suggestions, quotes, followups] = await Promise.all([
+      pool.query("select count(*)::int as n from wa_conversations").catch(() => null),
+      pool.query("select count(*)::int as n from wa_messages where ts > now() - interval '24 hours'").catch(() => null),
+      pool.query(
+        `select count(*) filter (where chosen_idx is not null)::int as chosen,
+                count(*)::int as total
+         from wa_suggestions
+         where generated_at > now() - interval '24 hours'`,
+      ).catch(() => null),
+      pool.query(
+        `select count(*)::int as total,
+                count(distinct chat_id)::int as unique_chats
+         from wa_quotes
+         where generated_at > now() - interval '24 hours'`,
+      ).catch(() => null),
+      pool.query(
+        `select count(*) filter (where status = 'pending' and due_at < now())::int as overdue,
+                count(*) filter (where status = 'pending')::int as pending
+         from wa_followups`,
+      ).catch(() => null),
+    ]);
+    await pool.end().catch(() => {});
+    return {
+      chats: chats?.rows?.[0]?.n ?? 0,
+      msgs_24h: messages?.rows?.[0]?.n ?? 0,
+      suggestions_chosen: suggestions?.rows?.[0]?.chosen ?? 0,
+      suggestions_total: suggestions?.rows?.[0]?.total ?? 0,
+      quotes_24h: quotes?.rows?.[0]?.total ?? 0,
+      quotes_unique_chats_24h: quotes?.rows?.[0]?.unique_chats ?? 0,
+      followups_overdue: followups?.rows?.[0]?.overdue ?? 0,
+      followups_pending: followups?.rows?.[0]?.pending ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildWaCockpitBlock(snap) {
+  if (!snap) {
+    return `<h2 style="font-size:15px;margin:20px 0 8px;color:#e10600;">WhatsApp Cockpit</h2>
+<pre style="margin:0;padding:12px;background:#f8f8f8;border-radius:6px;font-size:12px;">(DATABASE_URL no disponible — bloque WA Cockpit omitido)</pre>`;
+  }
+  const adoption = snap.suggestions_total
+    ? `${snap.suggestions_chosen}/${snap.suggestions_total} (${Math.round(100 * snap.suggestions_chosen / snap.suggestions_total)}%)`
+    : "0/0 (sin sugerencias 24h)";
+  const lines = [
+    `Chats totales: ${snap.chats}`,
+    `Mensajes últimas 24h: ${snap.msgs_24h}`,
+    `Sugerencias adoption (24h): ${adoption}`,
+    `Cotizaciones (24h): ${snap.quotes_24h} en ${snap.quotes_unique_chats_24h} chats`,
+    `Follow-ups pending: ${snap.followups_pending}  (vencidos: ${snap.followups_overdue})`,
+  ];
+  return `<h2 style="font-size:15px;margin:20px 0 8px;color:#e10600;">WhatsApp Cockpit</h2>
+<pre style="margin:0;padding:12px;background:#f8f8f8;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;">${escapeHtml(lines.join('\n'))}</pre>`;
+}
+
+function buildEmailHtml({ dateLabel, gitBranch, gitStatus, gitLog, cambios, waBlock }) {
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>BMC — digest diario ${escapeHtml(dateLabel)}</title></head>
@@ -88,6 +149,7 @@ ${escapeHtml(dateLabel)} · ${escapeHtml(gitBranch)}
 <pre style="margin:0;padding:12px;background:#f8f8f8;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;">${escapeHtml(gitLog)}</pre>
 <h2 style="font-size:15px;margin:20px 0 8px;color:#e10600;">Cambios recientes (PROJECT-STATE)</h2>
 <pre style="margin:0;padding:12px;background:#f8f8f8;border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;">${escapeHtml(cambios)}</pre>
+${waBlock || ''}
 </td></tr>
 <tr><td style="padding:16px 24px;font-size:11px;color:#666;border-top:1px solid #e8e8e8;">
 Generado por <code>npm run magazine:daily</code>. No responder a este mensaje automático.
@@ -108,13 +170,15 @@ async function main() {
   const md = await readFile(PROJECT_STATE, 'utf8');
   const cambios = extractCambiosRecientes(md);
 
-  const [gitBranch, gitStatus, gitLog] = await Promise.all([
+  const [gitBranch, gitStatus, gitLog, waSnap] = await Promise.all([
     runGit(['rev-parse', '--abbrev-ref', 'HEAD']),
     runGit(['status', '-sb']),
     runGit(['log', '-8', '--oneline', '--no-decorate']),
+    loadWaCockpitSnapshot(),
   ]);
 
   const subject = `[BMC] Digest diario ${dateLabel} — ${gitBranch}`;
+  const waBlock = buildWaCockpitBlock(waSnap);
 
   const html = buildEmailHtml({
     dateLabel: `${dateLabel} (${timeFull})`,
@@ -122,6 +186,7 @@ async function main() {
     gitStatus,
     gitLog,
     cambios,
+    waBlock,
   });
 
   const text = [
@@ -136,6 +201,17 @@ async function main() {
     '',
     '--- Cambios recientes ---',
     cambios,
+    '',
+    '--- WhatsApp Cockpit ---',
+    waSnap
+      ? [
+          `Chats totales: ${waSnap.chats}`,
+          `Mensajes últimas 24h: ${waSnap.msgs_24h}`,
+          `Sugerencias adoption (24h): ${waSnap.suggestions_chosen}/${waSnap.suggestions_total}`,
+          `Cotizaciones 24h: ${waSnap.quotes_24h} (${waSnap.quotes_unique_chats_24h} chats únicos)`,
+          `Follow-ups pending: ${waSnap.followups_pending} (vencidos ${waSnap.followups_overdue})`,
+        ].join('\n')
+      : '(DATABASE_URL no disponible — bloque WA Cockpit omitido)',
   ].join('\n');
 
   if (dryRun) {

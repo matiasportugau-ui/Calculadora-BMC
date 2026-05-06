@@ -104,6 +104,13 @@ load_env_key AI_KNOWLEDGE_EVENTS_LOG
 load_env_key FOLLOWUP_STORE_PATH
 load_env_key CHROMIUM_EXECUTABLE_PATH
 
+# WA Cockpit (F2-F5)
+load_env_key WA_ENRICHER_ENABLED
+load_env_key WA_ENRICHER_INTERVAL_MS
+load_env_key WA_ENRICHER_BATCH_SIZE
+load_env_key WA_OUTBOUND_RATE_LIMIT
+load_env_key WA_TTL_DAYS
+
 if [[ -z "$ML_CLIENT_ID" || -z "$ML_CLIENT_SECRET" ]]; then
   echo "Error: .env debe tener ML_CLIENT_ID y ML_CLIENT_SECRET"
   exit 1
@@ -248,14 +255,25 @@ add_sensitive DATABASE_URL "$DATABASE_URL"
 [[ -n "$FOLLOWUP_STORE_PATH" ]]          && PAIRS+=("FOLLOWUP_STORE_PATH=$FOLLOWUP_STORE_PATH")
 [[ -n "$CHROMIUM_EXECUTABLE_PATH" ]]     && PAIRS+=("CHROMIUM_EXECUTABLE_PATH=$CHROMIUM_EXECUTABLE_PATH")
 
+# WA Cockpit (F2-F5) — flags públicos
+[[ -n "$WA_ENRICHER_ENABLED" ]]      && PAIRS+=("WA_ENRICHER_ENABLED=$WA_ENRICHER_ENABLED")
+[[ -n "$WA_ENRICHER_INTERVAL_MS" ]]  && PAIRS+=("WA_ENRICHER_INTERVAL_MS=$WA_ENRICHER_INTERVAL_MS")
+[[ -n "$WA_ENRICHER_BATCH_SIZE" ]]   && PAIRS+=("WA_ENRICHER_BATCH_SIZE=$WA_ENRICHER_BATCH_SIZE")
+[[ -n "$WA_OUTBOUND_RATE_LIMIT" ]]   && PAIRS+=("WA_OUTBOUND_RATE_LIMIT=$WA_OUTBOUND_RATE_LIMIT")
+[[ -n "$WA_TTL_DAYS" ]]              && PAIRS+=("WA_TTL_DAYS=$WA_TTL_DAYS")
+
 # ── Ejecutar update ──────────────────────────────────────────────────────────
-# Unir arrays con comas (gcloud requiere KEY=VAL,KEY=VAL)
-ENV_VARS=$(IFS=,; echo "${PAIRS[*]}")
+# Algunos valores contienen comas (SHOPIFY_SCOPES, CORS_ORIGIN,
+# COCKPIT_TOKEN_ALLOWED_ORIGINS), así que usamos el escape ^|^ de gcloud para
+# elegir | como separador de pares KEY=VAL en --update-env-vars.
+# Ref: gcloud topic escaping → "If the first character of the value is '^',
+# the next character is taken as the delimiter."
+ENV_VARS=$(IFS='|'; echo "${PAIRS[*]}")
 SECRETS=$(IFS=,; echo "${SECRET_PAIRS[*]}")
 
 declare -a UPDATE_ARGS
 UPDATE_ARGS+=(--region=us-central1)
-[[ -n "$ENV_VARS" ]] && UPDATE_ARGS+=(--update-env-vars="$ENV_VARS")
+[[ -n "$ENV_VARS" ]] && UPDATE_ARGS+=(--update-env-vars="^|^$ENV_VARS")
 [[ -n "$SECRETS" ]]  && UPDATE_ARGS+=(--update-secrets="$SECRETS")
 UPDATE_ARGS+=(--quiet)
 

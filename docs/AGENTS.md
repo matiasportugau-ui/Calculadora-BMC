@@ -70,6 +70,27 @@ Documentación de agentes especializados disponibles en el repositorio.
 
 ---
 
+## BMC Holistic Project Health
+
+**Skill:** `.cursor/skills/bmc-holistic-project-health/`
+
+**Rol:** Informe transversal **basado en evidencia**: estado desde `PROJECT-STATE`, mapa de módulos (SPA, API, Sheets/MATRIZ, canales, hub, CI), tabla de health (`smoke:prod`, `gate:local*`), **readiness %** con leyenda explícita, desarrollos recientes citados y próximos pasos por área.
+
+**Cuándo usar:**
+
+- project health, holistic status, readiness %, architecture map, executive snapshot
+- interpretar resultados de smoke/gate en conjunto, informe de situación multi-módulo
+
+**Referencias:**
+
+- [SKILL.md](../.cursor/skills/bmc-holistic-project-health/SKILL.md)
+- [PROJECT-STATE.md](./team/PROJECT-STATE.md)
+- [AGENTS.md](../AGENTS.md) — comandos canónicos
+
+**Cursor Rule:** `.cursor/rules/bmc-holistic-project-health.mdc`
+
+---
+
 ## Google Sheets — documentación canónica (mapeo y sync)
 
 **Hub:** [google-sheets-module/README.md](./google-sheets-module/README.md) — índice: `MAPPER-PRECISO-PLANILLAS-CODIGO.md` (código), `SYNC-FULL-TEAM-SHEETS-ACCESS-MAP.md` (dashboard/API/calc/GPT/OmniCRM), `VARIABLES-Y-MAPEO-UNO-A-UNO.md`. No mantener mapeos paralelos fuera de estos archivos sin deprecar el anterior.

@@ -1,0 +1,22 @@
+---
+description: "Holistic Calculadora BMC project health — evidence-based status across modules, smoke/gate interpretation, readiness %. Apply when user asks project health snapshot, architecture map with readiness, executive status, or full cross-area report."
+alwaysApply: false
+---
+
+# BMC Holistic Project Health
+
+When the user asks for a **holistic project health** report, **architecture map with readiness %**, **executive snapshot**, **full cross-area status**, or help **interpreting smoke/gate** results across the stack, read and follow:
+
+`.cursor/skills/bmc-holistic-project-health/SKILL.md`
+
+## Complements (does not replace)
+
+- **Project team sync** (`bmc-project-team-sync`) — updating `PROJECT-STATE` protocol and full team runs.
+- **Cross-sync** (`bmc-cross-sync-propagation`) — calculadora-focused local vs prod verification pipeline.
+- **Deploy** (`bmc-calculadora-deploy-from-cursor`) — shipping and rollback.
+
+## Triggers (EN / ES)
+
+- project health, holistic status, readiness, architecture map
+- estado del proyecto, informe ejecutivo, snapshot de salud
+- smoke prod results, gate local, interpret health checks

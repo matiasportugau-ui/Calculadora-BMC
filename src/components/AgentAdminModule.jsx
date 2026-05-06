@@ -1744,6 +1744,8 @@ function VoiceTab() {
   const [testResult, setTestResult] = useState(null);
   const [errors, setErrors] = useState([]);
   const [errorsLoading, setErrorsLoading] = useState(false);
+  const [checkingKey, setCheckingKey] = useState(false);
+  const [keyHealth, setKeyHealth] = useState(null);
 
   async function loadProviders() {
     try {
@@ -1790,6 +1792,19 @@ function VoiceTab() {
       setTesting(false);
     }
     loadErrors();
+  }
+
+  async function checkKey() {
+    setCheckingKey(true);
+    setKeyHealth(null);
+    try {
+      const r = await apiFetch("/api/agent/voice/health");
+      setKeyHealth(r);
+    } catch (err) {
+      setKeyHealth({ ok: false, error: err?.message || "Network error" });
+    } finally {
+      setCheckingKey(false);
+    }
   }
 
   useEffect(() => {
@@ -1839,9 +1854,43 @@ function VoiceTab() {
         <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, marginBottom: 12, lineHeight: 1.5 }}>
           Mintea un token efímero de OpenAI Realtime. Requiere OPENAI_API_KEY en el servidor.
         </div>
-        <Btn onClick={testSession} disabled={testing || !voiceAvailable} variant="primary">
-          {testing ? "Minteando…" : "Testear sesión de voz"}
-        </Btn>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Btn onClick={testSession} disabled={testing || !voiceAvailable} variant="primary">
+            {testing ? "Minteando…" : "Testear sesión de voz"}
+          </Btn>
+          <Btn onClick={checkKey} disabled={checkingKey} variant="secondary">
+            {checkingKey ? "Verificando…" : "Verificar clave"}
+          </Btn>
+        </div>
+        {keyHealth && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: keyHealth.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${keyHealth.ok ? "#bbf7d0" : "#fecaca"}` }}>
+            <div style={{ fontSize: 12, color: keyHealth.ok ? "#166534" : "#991b1b", fontFamily: C.ff }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                {keyHealth.ok ? "Clave activa" : keyHealth.configured === false ? "Clave no configurada" : "Clave inactiva"}
+              </div>
+              {keyHealth.configured !== false && (keyHealth.keyPrefix || keyHealth.keySuffix) && (
+                <div>
+                  fingerprint: <code>{keyHealth.keyPrefix || ""}…{keyHealth.keySuffix || ""}</code>
+                  {typeof keyHealth.keyLength === "number" ? ` · len ${keyHealth.keyLength}` : ""}
+                </div>
+              )}
+              {typeof keyHealth.status === "number" && (
+                <div>
+                  HTTP {keyHealth.status}
+                  {typeof keyHealth.latencyMs === "number" ? ` · ${keyHealth.latencyMs} ms` : ""}
+                </div>
+              )}
+              {keyHealth.model && (
+                <div>model: <code>{keyHealth.model}</code></div>
+              )}
+              {!keyHealth.ok && keyHealth.error && (
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ fontWeight: 700 }}>Detalle: </span>{keyHealth.error}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {testResult && (
           <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: testResult.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${testResult.ok ? "#bbf7d0" : "#fecaca"}` }}>
             {testResult.ok ? (

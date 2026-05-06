@@ -44,5 +44,6 @@
   "files.watcherExclude": {
     "**/docs/dev-trace/**": true,
     "docs/dev-trace/**": true
-  }
+  },
+  "editor.codeActions.triggerOnFocusChange": true
 }

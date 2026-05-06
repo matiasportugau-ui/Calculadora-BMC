@@ -55,10 +55,20 @@ else
   echo "   ⚠️  Node not found, skip contract validation"
 fi
 
-# 4. PROJECT-STATE pendientes (canonical: docs/team/PROJECT-STATE.md; docs/PROJECT-STATE.md is a redirect stub)
+# 4. OpenAI API key audit (local .env source — fails the gate if 401)
+echo ""
+echo "4. OpenAI API key (local .env)"
+if bash scripts/openai-key-audit.sh --source=local --strict >/dev/null 2>&1; then
+  echo "   ✅ Local OPENAI_API_KEY ACTIVE"
+else
+  echo "   ❌ Local OPENAI_API_KEY INACTIVE — rotate before deploy: npm run keys:rotate"
+  exit 1
+fi
+
+# 5. PROJECT-STATE pendientes (canonical: docs/team/PROJECT-STATE.md; docs/PROJECT-STATE.md is a redirect stub)
 TEAM_STATE="docs/team/PROJECT-STATE.md"
 echo ""
-echo "4. PROJECT-STATE pendientes ($TEAM_STATE)"
+echo "5. PROJECT-STATE pendientes ($TEAM_STATE)"
 if [ -f "$TEAM_STATE" ]; then
   OPEN_COUNT="$(grep -c '^- \[ \]' "$TEAM_STATE" 2>/dev/null || true)"
   if [ -z "$OPEN_COUNT" ]; then OPEN_COUNT=0; fi

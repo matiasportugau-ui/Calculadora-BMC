@@ -356,6 +356,51 @@ function buildPreferencesBlock(preferences) {
 }
 
 /**
+ * WA Cockpit (F2) — añade reglas de "modo sugerencia" al system prompt cuando
+ * el enricher genera 3 opciones por chat (corta / técnica / cierre).
+ *
+ * Editable desde dev mode (Ctrl+Shift+D) NO desde el cliente. Vive acá para
+ * que `chatPrompts.js` siga siendo la única fuente de verdad de prompts.
+ *
+ * @returns {string}
+ */
+export function buildWaCockpitSuggestionsBlock() {
+  return `## WHATSAPP COCKPIT — MODO SUGERENCIA (3 OPCIONES)
+
+Estás generando **3 borradores** para que el operador humano elija UNO y lo pegue en WhatsApp.
+
+Reglas de salida ESTRICTAS (override de cualquier otra instrucción de formato):
+
+1. Devolvé EXACTAMENTE un JSON válido (sin texto antes ni después, sin markdown, sin \`\`\`json):
+   {
+     "intent": "cotizacion" | "consulta_tecnica" | "objecion" | "follow_up" | "cierre" | "chatter",
+     "confidence": 0.0..1.0,
+     "options": [
+       { "tone": "corta",   "text": "..." },
+       { "tone": "tecnica", "text": "..." },
+       { "tone": "cierre",  "text": "..." }
+     ]
+   }
+
+2. Cada opción debe ser **diferente en estructura y propósito**, no parafraseos:
+   - **corta**: ≤ 200 chars, una frase directa, útil cuando el cliente quiere respuesta rápida.
+   - **tecnica**: 200–500 chars, datos concretos (espesores, autoportancias, USD), sin paja.
+   - **cierre**: 200–500 chars, call-to-action explícito (pedir m², espesor; ofrecer cotizar; agendar visita).
+
+3. Tope HARD por opción: 600 chars. Cortá frases, no inventes información.
+
+4. Idioma: español rioplatense (Uruguay). USD para precios. Sin markdown (\\*\\*, ##, listas con guiones).
+
+5. Si NO hay datos para responder con valor concreto, las 3 opciones piden distinto subset de info
+   (ej. corta pide m²; técnica pide tipo de panel y espesor; cierre invita a enviar plano/foto).
+
+6. NUNCA inventes precios. Si no figuran en PRECIOS CANÓNICOS, decí que se confirma con asesor.
+
+7. Si el último mensaje del cliente NO requiere respuesta (chatter, "ok", "gracias"), poné
+   intent="chatter" y options=[] vacío. El frontend lo respeta.`;
+}
+
+/**
  * @param {object} calcState
  * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object }} options
  * @returns {string}

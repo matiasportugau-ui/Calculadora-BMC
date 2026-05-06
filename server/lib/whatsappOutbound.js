@@ -9,8 +9,9 @@
  * @param {string} opts.text
  * @param {string} opts.accessToken
  * @param {string} opts.phoneNumberId
+ * @param {AbortSignal} [opts.signal] - cancelable desde el worker en SIGTERM
  */
-export async function sendWhatsAppText({ to, text, accessToken, phoneNumberId }) {
+export async function sendWhatsAppText({ to, text, accessToken, phoneNumberId, signal }) {
   const digits = String(to || "").replace(/\D/g, "");
   if (!digits) throw new Error("Missing destination phone");
   if (!accessToken || !phoneNumberId) throw new Error("WhatsApp not configured");
@@ -22,6 +23,11 @@ export async function sendWhatsAppText({ to, text, accessToken, phoneNumberId })
     type: "text",
     text: { body: String(text || "").slice(0, 4096) },
   };
+  // Combina el timeout interno con la señal del caller (shutdown). Cualquiera
+  // de los dos aborta el fetch. AbortSignal.any disponible en Node 20+.
+  const fetchSignal = signal
+    ? AbortSignal.any([AbortSignal.timeout(15000), signal])
+    : AbortSignal.timeout(15000);
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -29,7 +35,7 @@ export async function sendWhatsAppText({ to, text, accessToken, phoneNumberId })
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
+    signal: fetchSignal,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

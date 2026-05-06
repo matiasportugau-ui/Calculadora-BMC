@@ -217,6 +217,19 @@ async function main() {
       check: checkTransportistaHealth,
       allow503: true,
     },
+    {
+      name: "GET /api/wa/health",
+      path: "/api/wa/health",
+      check: (data) => {
+        // 503 (no DB) ya filtrado abajo via allow503; 200 esperamos shape básica.
+        if (!hasKeys(data, ["ok"])) return { ok: false, msg: "missing ok" };
+        if (data.ok && (typeof data.count_chats !== "number" || typeof data.count_msgs_24h !== "number")) {
+          return { ok: false, msg: "expected count_chats and count_msgs_24h numbers when ok=true" };
+        }
+        return { ok: true };
+      },
+      allow503: true,
+    },
   ];
 
   const apiToken = process.env.API_AUTH_TOKEN || process.env.API_KEY;
