@@ -70,6 +70,14 @@ function makeShim() {
       const u = tables.users.find((x) => x.user_id === s.user_id);
       return { rows: [{ ...s, status: u.status, email: u.email, name: u.name, picture_url: u.picture_url, avatar_preset: u.avatar_preset, plan_tier: u.plan_tier }] };
     }
+    // CAS revoke (atomic rotate) — must come before the looser catch-all
+    if (norm.startsWith("update identity.sessions set revoked_at = now() where session_id = $1 and revoked_at is null returning session_id")) {
+      const [session_id] = params;
+      const s = tables.sessions.find((x) => x.session_id === session_id);
+      if (!s || s.revoked_at) return { rows: [] };  // CAS lost
+      s.revoked_at = new Date();
+      return { rows: [{ session_id }] };
+    }
     if (norm.startsWith("update identity.sessions set revoked_at = now()") || (norm.includes("update identity.sessions") && norm.includes("revoked_at = coalesce(revoked_at, now())"))) {
       // catch-all session revoke
       const idMatch = sql.match(/where (\w+) = \$1/);

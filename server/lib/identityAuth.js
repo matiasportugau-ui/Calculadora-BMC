@@ -367,7 +367,47 @@ export async function refreshTokens({ refreshToken, ip, userAgent } = {}) {
     throw _unauthorized("refresh_expired");
   }
 
-  // Rotate: revoke this session, mint new one rotated_from = old.
+  // cursor[bot] round-6 MEDIUM: refresh rotation must be atomic. Two
+  // concurrent calls with the same valid refresh both pass the SELECT
+  // above (revoked_at=null at that moment). Without a CAS, both then mint
+  // new sessions and the reuse-detection branch is never reached.
+  //
+  // Atomic compare-and-swap revoke: only one concurrent caller wins the
+  // UPDATE (RETURNING returns 1 row); any later/concurrent caller sees
+  // 0 rows and falls into the reuse-detection kill-all path below.
+  const cas = await _pool.query(
+    `update identity.sessions
+        set revoked_at = now()
+      where session_id = $1 and revoked_at is null
+      returning session_id`,
+    [s.session_id],
+  );
+  if (!cas.rows.length) {
+    // Lost the CAS: another concurrent rotate already revoked this session.
+    // That's the same threat model as replaying a previously-rotated refresh
+    // — kill every session for this user and bump jwt_revoked_at.
+    await _pool.query(
+      `update identity.sessions set revoked_at = coalesce(revoked_at, now())
+        where user_id = $1`,
+      [s.user_id],
+    );
+    await _pool.query(
+      `update identity.users set jwt_revoked_at = now() where user_id = $1`,
+      [s.user_id],
+    );
+    await _audit({
+      actorId: s.user_id,
+      action: "auth.token_reuse_detected",
+      resource: "identity.sessions",
+      resourceId: s.session_id,
+      ip,
+      userAgent,
+      payload: { via: "concurrent_rotate_race" },
+    });
+    throw _unauthorized("token_reuse_detected");
+  }
+
+  // We won the CAS: mint the replacement session.
   const { accessToken, refreshToken: newRefresh, sessionId, refreshExpiresAt } =
     await _createSession({
       userId: s.user_id,
@@ -375,13 +415,6 @@ export async function refreshTokens({ refreshToken, ip, userAgent } = {}) {
       userAgent,
       rotatedFromSessionId: s.session_id,
     });
-
-  await _pool.query(
-    `update identity.sessions
-        set revoked_at = now()
-      where session_id = $1`,
-    [s.session_id],
-  );
 
   const role = await _resolveTopRole(s.user_id);
 

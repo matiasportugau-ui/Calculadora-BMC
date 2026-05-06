@@ -126,7 +126,16 @@ function makeShim() {
       };
     }
 
-    // ── revoke single session
+    // ── CAS revoke (atomic rotate): UPDATE ... WHERE session_id=$1 AND revoked_at IS NULL RETURNING session_id
+    if (norm.startsWith("update identity.sessions set revoked_at = now() where session_id = $1 and revoked_at is null returning session_id")) {
+      const [session_id] = params;
+      const s = tables.sessions.find((x) => x.session_id === session_id);
+      if (!s || s.revoked_at) return { rows: [] };  // CAS lost
+      s.revoked_at = new Date();
+      return { rows: [{ session_id }] };
+    }
+
+    // ── revoke single session (logout / non-CAS path)
     if (norm.startsWith("update identity.sessions set revoked_at = now() where session_id")) {
       const [session_id] = params;
       const s = tables.sessions.find((x) => x.session_id === session_id);
@@ -277,6 +286,33 @@ describe("identityAuth.refreshTokens", () => {
       () => refreshTokens({ refreshToken: "deadbeef".repeat(8) }),
       (err) => err.status === 401 && /refresh_invalid/.test(err.message),
     );
+  });
+
+  // cursor[bot] round-6 MEDIUM: atomic CAS prevents double-rotation race.
+  it("concurrent rotations of the same valid refresh: one wins, the other triggers reuse-detection", async () => {
+    stubGoogleClient({ sub: "g-1", email: "alice@example.com" });
+    const r1 = await verifyGoogleAndUpsert({ idToken: "fake" });
+
+    // Two simultaneous rotation attempts with the SAME valid refresh token.
+    // Before the fix: both passed the SELECT-then-check, both got fresh
+    // sessions. After the fix: only one wins the CAS UPDATE.
+    const results = await Promise.allSettled([
+      refreshTokens({ refreshToken: r1.refreshToken }),
+      refreshTokens({ refreshToken: r1.refreshToken }),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected  = results.filter((r) => r.status === "rejected");
+    assert.equal(fulfilled.length, 1, "exactly one concurrent rotation should win");
+    assert.equal(rejected.length, 1, "the other must be rejected as reuse");
+    assert.match(rejected[0].reason.message, /token_reuse_detected/);
+
+    // Reuse-detection side effects: every session for the user revoked,
+    // jwt_revoked_at bumped on the user row.
+    for (const s of pool._tables.sessions) {
+      assert.ok(s.revoked_at, "all sessions revoked after concurrent-rotate reuse");
+    }
+    assert.ok(pool._tables.users[0].jwt_revoked_at, "jwt_revoked_at bumped");
   });
 });
 
