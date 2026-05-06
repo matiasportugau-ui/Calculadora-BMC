@@ -37,6 +37,8 @@ import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { getToolStats } from "../lib/toolStats.js";
+import { classifyIntents } from "../lib/userIntentClassifier.js";
 
 const router = Router();
 
@@ -132,6 +134,108 @@ router.get("/agent/ai-options", (_req, res) => {
     autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
     providers,
   });
+});
+
+/**
+ * GET /api/agent/tool-stats — per-tool aggregates (count, p50/p95 latency,
+ * error rate, error buckets) over the last `windowMinutes` minutes (default 1440 = 24h).
+ * Used by the dev panel "Tool Stats" tab. No secrets; safe to expose without auth.
+ */
+router.get("/agent/tool-stats", (req, res) => {
+  const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
+  const stats = getToolStats({ windowMs: minutes * 60 * 1000 });
+  res.json({ ok: true, ...stats });
+});
+
+/**
+ * GET /api/agent/tools-manifest — list of all AGENT_TOOLS for external clients
+ * (e.g. the Panelin MCP server). Returns the same Anthropic input_schema format
+ * that the in-process tool-use loop receives.
+ */
+router.get("/agent/tools-manifest", (_req, res) => {
+  res.json({
+    ok: true,
+    count: AGENT_TOOLS.length,
+    tools: AGENT_TOOLS.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.input_schema,
+      requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
+    })),
+  });
+});
+
+/**
+ * POST /api/agent/exec-tool — execute a single tool by name. Auth-gated for
+ * write tools (those that mutate Sheets / WhatsApp / followups / quote registry).
+ * Used by the MCP server to surface every tool to external agents.
+ *
+ * Body: { name: string, input: object, calcState?: object }
+ * Auth: write tools AND CRM-read tools require Authorization: Bearer ${API_AUTH_TOKEN}.
+ *       Pure calculator / catalog reads are open.
+ */
+const TOOLS_REQUIRING_AUTH = new Set([
+  "guardar_en_crm",
+  "enviar_whatsapp_link",
+  "cancelar_cotizacion",
+  "programar_seguimiento",
+  // CRM read tools — return customer PII (names, phones, quote links, notes)
+  // from CRM_Operativo; must not be open to unauthenticated callers.
+  "buscar_cliente_crm",
+  "historial_cliente",
+  // Wolfboard hub — all routes are admin-only and the underlying router
+  // already enforces requireAuth. We mirror that gate at the MCP entry
+  // so external clients can't poll pendientes / export without the token.
+  "wolfboard_pendientes",
+  "wolfboard_export",
+  "wolfboard_sync",
+  "wolfboard_actualizar_fila",
+  "wolfboard_marcar_enviado",
+  "wolfboard_quote_batch",
+]);
+
+// Bound the MCP / external write surface. The chat endpoint already has
+// 10/min public + 30/min dev rate limits; exec-tool inherits nothing
+// without this. 60/min is generous for legitimate MCP clients while
+// preventing runaway loops or abuse.
+const execToolLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitClientKey,
+  message: { ok: false, error: "Demasiadas invocaciones de tool. Esperá un momento." },
+});
+
+router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
+  try {
+    const { name, input, calcState = {} } = req.body || {};
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ ok: false, error: "name (string) requerido" });
+    }
+    const tool = AGENT_TOOLS.find((t) => t.name === name);
+    if (!tool) {
+      return res.status(404).json({ ok: false, error: `Tool "${name}" no existe en AGENT_TOOLS` });
+    }
+    if (TOOLS_REQUIRING_AUTH.has(name)) {
+      const auth = String(req.headers.authorization || "");
+      const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      const xKey = String(req.headers["x-api-key"] || "");
+      if (!config.apiAuthToken) {
+        return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN no configurado en el server" });
+      }
+      if (bearer !== config.apiAuthToken && xKey !== config.apiAuthToken) {
+        return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
+      }
+    }
+    const raw = await executeTool(name, input || {}, calcState || {});
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+    res.json({ ok: true, name, result: parsed });
+  } catch (err) {
+    req.log?.error({ err }, "agent/exec-tool failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // 0.4 — Allowed origins (CSRF guard)
@@ -484,6 +588,19 @@ router.post("/agent/chat", async (req, res) => {
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
+  // Server-side intent classification — the only signal the model can't fabricate.
+  // Write tools (guardar_en_crm, enviar_whatsapp_link, etc.) check this set, not
+  // the model-set user_confirmed flag. See server/lib/userIntentClassifier.js.
+  const approvedActions = classifyIntents(lastUserMessage);
+  if (devMode && approvedActions.size > 0) {
+    // Surface to dev panel for transparency
+    setImmediate(() => {
+      try {
+        if (!aborted) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
+      } catch { /* ignore */ }
+    });
+  }
+
   // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
   await ensureGcsInit();
 
@@ -628,9 +745,10 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         let cacheReadTokens = 0;
-        // Tool-use loop: model may call tools up to 5 times before final response
+        // Tool-use loop: model may call tools up to 8 times before final response.
+        // Higher cap accommodates the slot-fill → calc → pdf → crm-format → crm-save chain.
         const toolMsgs = [...msgs];
-        for (let toolRound = 0; toolRound < 5; toolRound++) {
+        for (let toolRound = 0; toolRound < 8; toolRound++) {
           const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
           const toolCalls = [];
           let roundText = "";
@@ -670,7 +788,7 @@ router.post("/agent/chat", async (req, res) => {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState);
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
           }
