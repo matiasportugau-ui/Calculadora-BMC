@@ -54,7 +54,7 @@
     "test:e2e:wizard": "node scripts/playwright-calculator-wizard.mjs",
     "test:browser:full": "node scripts/browser-test-suite.mjs",
     "test:browser:full:local": "node scripts/browser-test-suite.mjs --local",
-    "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js && node tests/auth-routes.test.js && node tests/ml-search-routes.test.js && node tests/agentMcpRoutes.test.js && node tests/agentTranscribe.test.js",
+    "test:api": "node tests/calc-routes.validation.js && node tests/panelinInternalApi.test.js && node tests/auth-routes.test.js && node tests/ml-search-routes.test.js && node tests/agentMcpRoutes.test.js && node tests/agentTranscribe.test.js && node tests/sheetsCsvGuard.test.js",
     "test:wa-integration": "node tests/wa-enricher-integration.test.js",
     "test:wa-pro": "node tests/wa-config.test.js && node tests/wa-operator-auth.test.js && node tests/wa-rules.test.js && node tests/wa-webhooks.test.js && node tests/wa-sla.test.js",
     "test:chat": "node tests/chat-hardening.js",
