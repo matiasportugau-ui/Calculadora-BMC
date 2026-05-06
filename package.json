@@ -74,7 +74,7 @@
     "verify:rdx": "bash scripts/bmc-dev-verify.sh --all",
     "gate:local": "npm run lint && npm test && npm run test:api",
     "dev:check:all": "bash scripts/bmc-dev-check-all.sh",
-    "gate:local:full": "npm run lint && npm test && npm run build",
+    "gate:local:full": "npm run lint && npm test && npm run test:api && npm run build",
     "check:env-drift": "node scripts/check-env-drift.mjs",
     "check": "npm run gate:local",
     "lint": "eslint src/",
