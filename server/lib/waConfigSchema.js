@@ -131,7 +131,7 @@ export const SettingsSchema = z.object({
       sun: z.tuple([z.number().min(0).max(24), z.number().min(0).max(24)]).nullable().default(null),
     }).prefault({}),
     breachAction: z.enum(["notify", "reassign", "webhook"]).default("notify"),
-    workerIntervalMs: z.number().int().min(10000).max(600000).default(60000),
+    workerIntervalMs: z.number().int().min(1000).max(600000).default(60000),
   }).prefault({}),
 
   // Outbound
@@ -165,7 +165,7 @@ export const SettingsSchema = z.object({
   // Follow-ups (reglas declarativas: kind + horas + template)
   followups: z.object({
     defaultHours: z.number().min(1).max(720).default(24),
-    workerIntervalMs: z.number().int().min(10000).max(600000).default(60000),
+    workerIntervalMs: z.number().int().min(1000).max(600000).default(60000),
     rules: z.array(
       z.object({
         kind: z.string().min(1).max(64),
