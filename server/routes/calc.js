@@ -159,6 +159,29 @@ function getPdf(id) {
   return entry.html;
 }
 
+function safeQuoteFilenameToken(value, fallback = "quote") {
+  const token = String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return token || fallback;
+}
+
+function quoteDatePart(date = new Date()) {
+  if (date instanceof Date) return date.toISOString().slice(0, 10);
+  const s = String(date || "");
+  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : new Date().toISOString().slice(0, 10);
+}
+
+function buildQuoteArtifactFilename({ quoteCode, pdfId, date = new Date() } = {}) {
+  const idToken = safeQuoteFilenameToken(String(pdfId || "").slice(0, 8), "quote");
+  const codeToken = quoteCode ? safeQuoteFilenameToken(quoteCode, "") : "";
+  const nameToken = codeToken ? `${codeToken}-${idToken}` : idToken;
+  return `Cotizacion-${nameToken}-${quoteDatePart(date)}.html`;
+}
+
 // .unref() so the timer doesn't keep the process alive in test contexts
 // where calc.js is imported as a module (e.g. tests/agentTools.test.js
 // pulling in runCalculation directly).
@@ -555,8 +578,10 @@ router.post("/cotizar/pdf", async (req, res) => {
     const pdfUrl = `${baseUrl}/calc/pdf/${pdfId}`;
 
     // Upload to GCS + Drive in parallel — both best-effort, falls back to in-memory link
-    const code = clientInfo.quote_code || pdfId.slice(0, 8);
-    const filename = `Cotizacion-${code}-${new Date().toISOString().slice(0, 10)}.html`;
+    const filename = buildQuoteArtifactFilename({
+      quoteCode: clientInfo.quote_code,
+      pdfId,
+    });
     const [gcsRes, driveRes] = await Promise.allSettled([
       config.gcsQuotesBucket
         ? uploadQuoteToGcs(html, filename, config.gcsQuotesBucket)
@@ -904,6 +929,6 @@ router.get("/informe", (req, res) => {
   }
 });
 
-export { runCalculation, buildGptResponse };
+export { runCalculation, buildGptResponse, buildQuoteArtifactFilename };
 export { GPT_ACTIONS } from "../gptActions.js";
 export default router;

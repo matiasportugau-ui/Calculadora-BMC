@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Critical bug inspection — quote artifact overwrite fix):** Detectado y corregido un bug crítico en `POST /calc/cotizar/pdf`: dos cotizaciones generadas el mismo día con el mismo `cliente.quote_code` subían a GCS/Drive con el mismo nombre `Cotizacion-{quote_code}-{date}.html`, por lo que la segunda podía pisar la primera y dejar links previos apuntando a otra cotización. `server/routes/calc.js` ahora genera nombres de artefacto con `quote_code + pdf_id` sanitizado (`Cotizacion-{quote_code}-{pdf_id8}-{date}.html`), preservando legibilidad sin colisiones. Test de regresión agregado en `tests/calc-routes.validation.js`. Validación local bloqueada en esta máquina porque no hay `node`/`npm` en PATH.
+
 **2026-05-06 (Dev — Panelin agent: full tool platform, PR #110 ready for review):** Cierre de la línea de trabajo abierta el 2026-04-30 sobre el chat Panelin. El surface pasó de **5 tools → 28 tools** en 12 commits, con dos puntos de acceso (in-app chat + MCP externo), telemetría per-tool, registry persistente en GCS y un gate de confirmación de usuario que ya no depende de un flag seteado por el modelo.
 
 **Tool surface (28)** en [`server/lib/agentTools.js`](../../server/lib/agentTools.js):
