@@ -174,7 +174,7 @@ router.get("/agent/tools-manifest", (_req, res) => {
  * Auth: write tools AND CRM-read tools require Authorization: Bearer ${API_AUTH_TOKEN}.
  *       Pure calculator / catalog reads are open.
  */
-const TOOLS_REQUIRING_AUTH = new Set([
+export const TOOLS_REQUIRING_AUTH = new Set([
   // Customer-facing writes
   "guardar_en_crm",
   "enviar_whatsapp_link",
@@ -200,6 +200,26 @@ const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
 ]);
+
+/**
+ * Returns true if the chat tool loop should refuse to execute `toolName`
+ * for the current session. Public (non-devMode) chat sessions may not
+ * invoke any tool in TOOLS_REQUIRING_AUTH — same gate that protects
+ * /api/agent/exec-tool. devMode chats are pre-authenticated by
+ * API_AUTH_TOKEN at the route entry, so they pass.
+ *
+ * Exported for unit testing the regression Cursor flagged: prior to this
+ * gate, an unauthenticated chat could prompt the model to call
+ * `listar_cotizaciones_recientes` etc. and receive customer data.
+ *
+ * @param {string} toolName
+ * @param {boolean} isDevModeAuthenticated
+ * @returns {boolean}
+ */
+export function shouldBlockToolForUnauthenticatedChat(toolName, isDevModeAuthenticated) {
+  if (isDevModeAuthenticated) return false;
+  return TOOLS_REQUIRING_AUTH.has(toolName);
+}
 
 // Bound the MCP / external write surface. The chat endpoint already has
 // 10/min public + 30/min dev rate limits; exec-tool inherits nothing
@@ -794,6 +814,24 @@ router.post("/agent/chat", async (req, res) => {
           for (const tc of toolCalls) {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
+            // Auth gate for the chat tool loop: same TOOLS_REQUIRING_AUTH set
+            // that protects /api/agent/exec-tool. Without this, an
+            // unauthenticated chat session can prompt the model to fire
+            // sensitive registry/CRM/PDF reads (Cursor finding) — the chat
+            // route is public, but devMode chat is auth-gated by API_AUTH_TOKEN
+            // (lines 472-484 above), so devMode === true is our authenticated
+            // signal. Public chat must not be able to execute auth-required
+            // tools regardless of what the model decides to call.
+            if (shouldBlockToolForUnauthenticatedChat(tc.name, devMode)) {
+              const blockedResult = JSON.stringify({
+                ok: false,
+                error: `Esta tool (${tc.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+              });
+              send({ type: "tool_call", tool: tc.name, input: toolInput, blocked: "auth_required" });
+              req.log?.warn({ tool: tc.name }, "chat tool blocked: requires auth");
+              toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: blockedResult, is_error: true });
+              continue;
+            }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
             const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");

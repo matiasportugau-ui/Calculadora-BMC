@@ -89,6 +89,42 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(obtener?.requires_auth === false, "obtener_escenarios marked requires_auth=false");
 });
 
+// ── 1.5. Chat tool-loop auth gate (Cursor regression) ───────────────────────
+
+await group("shouldBlockToolForUnauthenticatedChat — public chat blocks auth-required tools", async () => {
+  const { shouldBlockToolForUnauthenticatedChat: gate } = await import("../server/routes/agentChat.js");
+
+  // Public chat (devMode=false) MUST block every auth-required tool
+  for (const sensitive of [
+    "listar_cotizaciones_recientes",
+    "obtener_cotizacion_por_id",
+    "obtener_pdf_html",
+    "buscar_cliente_crm",
+    "historial_cliente",
+    "guardar_en_crm",
+    "enviar_whatsapp_link",
+    "cancelar_cotizacion",
+    "programar_seguimiento",
+    "wolfboard_pendientes",
+    "wolfboard_export",
+    "wolfboard_sync",
+    "wolfboard_quote_batch",
+  ]) {
+    assert(gate(sensitive, false) === true, `public chat blocks ${sensitive}`);
+  }
+
+  // devMode chat (authenticated via API_AUTH_TOKEN at route entry) passes
+  for (const sensitive of ["listar_cotizaciones_recientes", "guardar_en_crm", "wolfboard_quote_batch"]) {
+    assert(gate(sensitive, true) === false, `devMode chat allows ${sensitive}`);
+  }
+
+  // Non-sensitive read tools always pass, regardless of devMode
+  for (const safe of ["calcular_cotizacion", "obtener_precio_panel", "obtener_escenarios", "obtener_catalogo"]) {
+    assert(gate(safe, false) === false, `public chat allows ${safe}`);
+    assert(gate(safe, true) === false, `devMode chat allows ${safe}`);
+  }
+});
+
 // ── 2. exec-tool — read tool, no auth ────────────────────────────────────────
 
 await group("POST /api/agent/exec-tool — read tool, no auth", async () => {
