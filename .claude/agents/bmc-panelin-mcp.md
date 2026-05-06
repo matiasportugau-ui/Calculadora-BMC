@@ -1,6 +1,6 @@
 ---
 name: bmc-panelin-mcp
-description: External agent surface for the Panelin BMC calculator. Exposes 22 tools (calc + catalog + state + PDF + CRM + WhatsApp + telemetry) over MCP for use by Claude Code subagents, GPT Builder, Cursor, and other MCP clients. Use when you need to drive calculadora-bmc.vercel.app from outside the in-app Panelin chat.
+description: External agent surface for the Panelin BMC calculator. Exposes AGENT_TOOLS tool surface (calc + catalog + state + PDF + CRM + WhatsApp + telemetry) over MCP for use by Claude Code subagents, GPT Builder, Cursor, and other MCP clients. Use when you need to drive calculadora-bmc.vercel.app from outside the in-app Panelin chat.
 ---
 
 # bmc-panelin-mcp
