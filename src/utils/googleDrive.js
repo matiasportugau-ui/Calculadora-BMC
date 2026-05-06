@@ -360,6 +360,8 @@ async function authFetch(url, opts = {}) {
   if (resp.status === 401) {
     _accessToken = null;
     _tokenExpiry = 0;
+    _user = null;
+    clearIdentity();
     notifyAuth();
     await signIn();
     const retryHeaders = { Authorization: `Bearer ${_accessToken}`, ...(opts.headers || {}) };
