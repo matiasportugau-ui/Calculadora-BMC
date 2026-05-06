@@ -52,6 +52,8 @@ Wolfboard hub (admin):
 
 The four customer-write tools and the four Wolfboard write tools enforce a **`user_confirmed: true`** flag in the input on top of the Bearer gate — server returns `requiere confirmación explícita del usuario` if missing, regardless of auth status. Two-layer gate. Wolfboard reads (`pendientes`, `export`) are auth-gated only (no `user_confirmed` needed; pure read).
 
+**Note: the MCP path has no intent classifier.** The in-app chat additionally validates the user's natural-language intent server-side (see `server/lib/userIntentClassifier.js`), but MCP is single-shot tool calls without conversation context, so we rely on Bearer + `user_confirmed`. Different threat model: the MCP caller is an authenticated automation, not a chat user.
+
 ## How to add to a Claude Code session
 
 ```bash

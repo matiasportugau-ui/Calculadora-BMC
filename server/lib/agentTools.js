@@ -25,6 +25,7 @@ import {
   parseDays,
 } from "./followUpStore.js";
 import { recordToolCall, classifyError } from "./toolStats.js";
+import { INTENT_HINTS } from "./userIntentClassifier.js";
 
 function apiBase() {
   return config.publicBaseUrl.replace(/\/$/, "");
@@ -724,6 +725,34 @@ function requireField(input, ...names) {
   return null;
 }
 
+/**
+ * Two-path confirmation guard for write tools.
+ *
+ * Chat path (opts.approvedActions is a Set): the user's last message was
+ * classified server-side; the tool fires only if its name is in the set.
+ * The model cannot fabricate this set — it comes from the user's words.
+ *
+ * MCP / external path (opts.approvedActions is undefined): the request
+ * came through /api/agent/exec-tool which already enforced Bearer auth.
+ * We fall back to the legacy `user_confirmed: true` flag so external
+ * automation keeps working — but the threat model is different (auth'd).
+ *
+ * @returns {string|null} JSON-stringified rejection if guard fails, null otherwise.
+ */
+function requireConfirmedAction(name, input, opts) {
+  if (opts?.approvedActions instanceof Set) {
+    if (opts.approvedActions.has(name)) return null;
+    const phrases = INTENT_HINTS[name] || [];
+    return JSON.stringify({
+      ok: false,
+      error: "Esperá que el usuario confirme explícitamente la acción en sus propias palabras antes de llamar esta tool.",
+      hint: phrases.length > 0 ? `Frases que cuentan: ${phrases.join(" / ")}` : undefined,
+    });
+  }
+  if (input?.user_confirmed === true) return null;
+  return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
+}
+
 function normalizeFamilia(f) {
   return f ? String(f).toUpperCase().replace(/-/g, "_") : f;
 }
@@ -1241,9 +1270,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "guardar_en_crm") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const result = await appendQuoteToCrm({
         cliente: input?.cliente,
         telefono: input?.telefono,
@@ -1271,9 +1298,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "enviar_whatsapp_link") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const to = String(input?.to || "").trim();
       if (!to) return JSON.stringify({ ok: false, error: "to (teléfono del cliente) es requerido" });
       if (!config.whatsappAccessToken || !config.whatsappPhoneNumberId) {
@@ -1341,9 +1366,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "cancelar_cotizacion") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const missing = requireField(input, "pdf_id");
       if (missing) return missing;
       const pdfId = String(input.pdf_id).trim();
@@ -1391,9 +1414,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "programar_seguimiento") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const missing = requireField(input, "title");
       if (missing) return missing;
       const title = String(input.title).trim();
@@ -1476,16 +1497,12 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "wolfboard_sync") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       return await wolfboardForward("/api/wolfboard/sync", { method: "POST", body: {} }, name);
     }
 
     if (name === "wolfboard_actualizar_fila") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const rowNum = Number(input?.rowNum);
       if (!Number.isFinite(rowNum) || rowNum < 2) {
         return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
@@ -1499,9 +1516,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "wolfboard_marcar_enviado") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const rowNum = Number(input?.rowNum);
       if (!Number.isFinite(rowNum) || rowNum < 2) {
         return JSON.stringify({ ok: false, error: "rowNum (>=2) requerido" });
@@ -1510,9 +1525,7 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "wolfboard_quote_batch") {
-      if (input?.user_confirmed !== true) {
-        return JSON.stringify({ ok: false, error: "requiere confirmación explícita del usuario (user_confirmed=true)" });
-      }
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
       const body = { force: !!input?.force };
       return await wolfboardForward("/api/wolfboard/quote-batch", { method: "POST", body }, name);
     }

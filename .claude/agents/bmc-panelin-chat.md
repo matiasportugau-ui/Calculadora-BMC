@@ -67,7 +67,11 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 
 All Wolfboard tools forward `Authorization: Bearer ${API_AUTH_TOKEN}` to the existing `/api/wolfboard/*` router (which already enforces `requireAuth`). MCP `TOOLS_REQUIRING_AUTH` set mirrors the same gate at the external entry point.
 
-**Confirmation guard (transversal):** `guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, and `programar_seguimiento` all reject server-side if `input.user_confirmed !== true`. Prompt-level gating + server-level guard = no silent misfires from a model hallucination.
+**Confirmation guard (transversal, dual-path):**
+- **Chat path:** `server/lib/userIntentClassifier.js` reads the user's last message and produces a `Set<string>` of approved tool names. The 8 write tools (`guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, `programar_seguimiento`, 4 Wolfboard) only fire if their name is in the set. **The model cannot fabricate this signal** — it comes from the user's words.
+- **MCP path:** No conversation context → falls back to the legacy `user_confirmed: true` flag (same write tools), behind Bearer auth at `/api/agent/exec-tool`.
+
+The intent classifier ships with regex patterns per tool (e.g. `guardar_en_crm` triggers on "guardalo en CRM", "pegalo al CRM", "agregalo a la planilla"). Negation handling: "no lo guardes en el CRM" → empty set. See `tests/userIntentClassifier.test.js` for the full matrix.
 
 The conversational extraction flow (slot-filling protocol) lives in `chatPrompts.js`'s `EXTRACTION_PROTOCOL` block. Source of truth for required fields is `obtener_escenarios` (i.e. `/calc/escenarios`), not the static WORKFLOW text.
 

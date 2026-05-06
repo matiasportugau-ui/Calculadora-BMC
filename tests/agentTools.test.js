@@ -667,6 +667,73 @@ await group("wolfboard_export — CSV via text branch", async () => {
   assert(parsed.contentType.includes("text/csv"), "contentType is CSV");
 });
 
+// ── Chat-path intent gate (replaces user_confirmed theatre) ─────────────────
+
+await group("chat path — guardar_en_crm with intent in approvedActions executes", async () => {
+  // BMC_SHEET_ID still unset → underlying helper returns ok:false but the
+  // GUARD lets us through to the helper. That's what we're testing here.
+  const opts = { approvedActions: new Set(["guardar_en_crm"]) };
+  const raw = await executeTool("guardar_en_crm", { pdf_url: "https://x", total: 100 }, {}, opts);
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === false, "still ok false (no sheet)");
+  // Critical: error is from the helper, not the guard
+  assert(typeof parsed.error === "string" && parsed.error.includes("BMC_SHEET_ID"), "error from helper, not guard");
+});
+
+await group("chat path — guardar_en_crm without intent rejected", async () => {
+  // approvedActions present but does NOT include guardar_en_crm
+  const opts = { approvedActions: new Set(["enviar_whatsapp_link"]) };
+  const raw = await executeTool("guardar_en_crm", { pdf_url: "https://x", user_confirmed: true }, {}, opts);
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === false, "ok false");
+  assert(typeof parsed.error === "string" && parsed.error.includes("usuario confirme"), "guard fired with intent message");
+  assert(typeof parsed.hint === "string" && parsed.hint.includes("guardalo en CRM"), "hint includes trigger phrase");
+});
+
+await group("chat path — empty approvedActions blocks even with user_confirmed=true", async () => {
+  // Defense in depth: model setting the flag must NOT bypass the chat-path guard
+  const opts = { approvedActions: new Set() };
+  const raw = await executeTool("guardar_en_crm", { pdf_url: "https://x", user_confirmed: true }, {}, opts);
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === false, "ok false");
+  assert(parsed.error.includes("usuario confirme"), "intent guard fired (model-set flag ignored)");
+});
+
+await group("MCP path — back-compat: no approvedActions, user_confirmed=true reaches helper", async () => {
+  // Install a clean fetch stub so the previous group's assertions don't fire on this URL.
+  setFetch(async () => ({ ok: true, entry: { id: "abc-123", status: "cancelled" } }));
+  // No opts → MCP/external path → falls back to user_confirmed flag
+  const raw = await executeTool("cancelar_cotizacion", { pdf_id: "abc-123", user_confirmed: true }, {});
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === true, "tool ran (guard passed via legacy flag)");
+});
+
+await group("MCP path — no approvedActions, no user_confirmed → rejected", async () => {
+  const raw = await executeTool("guardar_en_crm", { pdf_url: "https://x" }, {});
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === false, "ok false");
+  assert(parsed.error.includes("user_confirmed"), "legacy flag-required message");
+});
+
+await group("chat path — wolfboard_quote_batch intent gate", async () => {
+  const opts = { approvedActions: new Set(["wolfboard_quote_batch"]) };
+  setFetch(async () => ({ ok: true, processed: 0, succeeded: 0, failed: 0 }));
+  // API_AUTH_TOKEN already set by earlier wolfboard tests; helper proceeds
+  const { config } = await import("../server/config.js");
+  config.apiAuthToken = "test-wolfb-token";
+  const raw = await executeTool("wolfboard_quote_batch", {}, {}, opts);
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === true, "intent gate passed and helper ran");
+});
+
+await group("chat path — wolfboard_quote_batch without intent rejected", async () => {
+  const opts = { approvedActions: new Set() };
+  const raw = await executeTool("wolfboard_quote_batch", { user_confirmed: true }, {}, opts);
+  const parsed = JSON.parse(raw);
+  assert(parsed.ok === false, "ok false");
+  assert(parsed.error.includes("usuario confirme"), "guard fired");
+});
+
 await group("unknown tool", async () => {
   const { parsed } = await run("does_not_exist", {});
   assert(parsed.error && parsed.error.includes("no implementada"), "unknown tool returns no-implementada error");

@@ -38,6 +38,7 @@ import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 import { getToolStats } from "../lib/toolStats.js";
+import { classifyIntents } from "../lib/userIntentClassifier.js";
 
 const router = Router();
 
@@ -582,6 +583,19 @@ router.post("/agent/chat", async (req, res) => {
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
+  // Server-side intent classification — the only signal the model can't fabricate.
+  // Write tools (guardar_en_crm, enviar_whatsapp_link, etc.) check this set, not
+  // the model-set user_confirmed flag. See server/lib/userIntentClassifier.js.
+  const approvedActions = classifyIntents(lastUserMessage);
+  if (devMode && approvedActions.size > 0) {
+    // Surface to dev panel for transparency
+    setImmediate(() => {
+      try {
+        if (!aborted) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
+      } catch { /* ignore */ }
+    });
+  }
+
   // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
   await ensureGcsInit();
 
@@ -769,7 +783,7 @@ router.post("/agent/chat", async (req, res) => {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
           }
