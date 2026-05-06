@@ -11,6 +11,7 @@
 import { google } from "googleapis";
 import { config } from "../config.js";
 import { defaultTailAHAK, rangeAHAK } from "./crmOperativoLayout.js";
+import { sanitizeCellValue } from "./sheetsCsvGuard.js";
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -55,21 +56,9 @@ export async function appendQuoteToCrm(input = {}) {
   }
 
   try {
-    // CSV injection guard: Sheets `valueInputOption: USER_ENTERED` interprets
-    // values starting with =, +, -, @, tab, or carriage return as formulas.
-    // A malicious customer name like `=HYPERLINK("http://evil.com")` could
-    // exfiltrate data when the sheet recalculates. Prefix unsafe leading
-    // chars with an apostrophe so Sheets treats them as literal text.
-    // (Cursor security finding.)
-    const sanitize = (s) => {
-      const v = String(s || "");
-      if (!v) return "";
-      const first = v.charAt(0);
-      if (first === "=" || first === "+" || first === "-" || first === "@" || first === "\t" || first === "\r") {
-        return "'" + v;
-      }
-      return v;
-    };
+    // CSV injection guard centralized in sheetsCsvGuard.js — same rules apply
+    // to crmAppend, wolfboard /row, and any future USER_ENTERED writer.
+    const sanitize = sanitizeCellValue;
     const now = new Date().toISOString();
     const cliente = sanitize(String(input.cliente || "").trim() || "—");
     const telefono = sanitize(String(input.telefono || "").trim());
