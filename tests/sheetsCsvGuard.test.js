@@ -4,7 +4,7 @@
 // Run: node tests/sheetsCsvGuard.test.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { sanitizeCellValue } from "../server/lib/sheetsCsvGuard.js";
+import { sanitizeCellValue, sanitizeSheetRow, sanitizeSheetRows } from "../server/lib/sheetsCsvGuard.js";
 
 let passed = 0;
 let failed = 0;
@@ -21,13 +21,14 @@ function group(name, fn) {
 
 // ── leading formula trigger characters ──────────────────────────────────────
 
-group("prefixes leading = / + / - / @ / tab / CR with apostrophe", () => {
+group("prefixes leading = / + / - / @ / tab / CR / LF with apostrophe", () => {
   assert(sanitizeCellValue("=cmd|'/c calc'!A1") === "'=cmd|'/c calc'!A1", "= prefixed");
   assert(sanitizeCellValue("+1234") === "'+1234", "+ prefixed");
   assert(sanitizeCellValue("-100") === "'-100", "- prefixed");
   assert(sanitizeCellValue("@SUM(A1:A10)") === "'@SUM(A1:A10)", "@ prefixed");
   assert(sanitizeCellValue("\tinjected") === "'\tinjected", "tab prefixed");
   assert(sanitizeCellValue("\rinjected") === "'\rinjected", "CR prefixed");
+  assert(sanitizeCellValue("\ninjected") === "'\ninjected", "LF prefixed");
 });
 
 group("HYPERLINK exfiltration payload — the canonical attack", () => {
@@ -61,6 +62,18 @@ group("idempotent — sanitizing twice does not double-prefix", () => {
   const once = sanitizeCellValue("=evil");
   const twice = sanitizeCellValue(once);
   assert(once === twice, `idempotent: ${once} === ${twice}`);
+});
+
+group("sanitizes full row and matrix values before Sheets writes", () => {
+  const row = sanitizeSheetRow(["ok", "=evil", "+598", 42]);
+  assert(row[0] === "ok", "safe row cell unchanged");
+  assert(row[1] === "'=evil", "unsafe row cell prefixed");
+  assert(row[2] === "'+598", "plus-leading row cell prefixed");
+  assert(row[3] === "42", "row helper coerces number like cell helper");
+
+  const rows = sanitizeSheetRows([["safe"], ["@evil"]]);
+  assert(rows[0][0] === "safe", "safe matrix cell unchanged");
+  assert(rows[1][0] === "'@evil", "unsafe matrix cell prefixed");
 });
 
 // ── summary ──────────────────────────────────────────────────────────────────

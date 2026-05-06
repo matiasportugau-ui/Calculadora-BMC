@@ -57,6 +57,7 @@ import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
 import { addTrainingEntry } from "./lib/trainingKB.js";
+import { sanitizeSheetRow } from "./lib/sheetsCsvGuard.js";
 import { google } from "googleapis";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -607,13 +608,13 @@ async function processWaConversation(chatId, conv) {
           spreadsheetId: sheetId,
           range: `'Form responses 1'!A${formRow}:P${formRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
+          requestBody: { values: [sanitizeSheetRow([
             now, now, d.cliente || "", d.telefono || chatId,
             d.ubicacion || "", "WA-Auto", d.resumen_pedido || "", d.categoria || "",
             d.urgencia || "", d.cotizacion_formal || "", d.tipo_cliente || "",
             d.vendedor || "", d.observaciones || "", d.validar_stock || "No",
             d.probabilidad_cierre || "", dialogo,
-          ]] },
+          ])] },
         });
 
         // CRM_Operativo — primera fila con col C (Cliente) vacía a partir de fila 4
@@ -630,23 +631,23 @@ async function processWaConversation(chatId, conv) {
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
+          requestBody: { values: [sanitizeSheetRow([
             now, d.cliente || "", d.telefono || chatId,
             d.ubicacion || "", "WA-Auto", d.resumen_pedido || "",
             d.categoria || "", "", "Pendiente", d.vendedor || "",
-          ]] },
+          ])] },
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
+          requestBody: { values: [sanitizeSheetRow([d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"])] },
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
+          requestBody: { values: [sanitizeSheetRow([d.tipo_cliente || "", d.observaciones || ""])] },
         });
 
         // Generar respuesta IA para col AF — usa agente unificado (canal: wa + KB)
@@ -666,7 +667,7 @@ async function processWaConversation(chatId, conv) {
             spreadsheetId: sheetId,
             range: `'CRM_Operativo'!AF${crmRow}:AG${crmRow}`,
             valueInputOption: "USER_ENTERED",
-            requestBody: { values: [[ai.respuesta, ai.provider || ""]] },
+            requestBody: { values: [sanitizeSheetRow([ai.respuesta, ai.provider || ""])] },
           });
         }
 

@@ -26,6 +26,7 @@ import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 import { addTrainingEntry } from "../lib/trainingKB.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
+import { sanitizeCellValue, sanitizeSheetRow, sanitizeSheetRows } from "../lib/sheetsCsvGuard.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -518,7 +519,7 @@ async function handleMarcarEntregado(sheetId, body) {
     spreadsheetId: sheetId,
     range: "'Ventas realizadas y entregadas'!A:Y",
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [destRow] },
+    requestBody: { values: [sanitizeSheetRow(destRow)] },
   });
 
   const sheetMeta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
@@ -740,6 +741,13 @@ function getCotizacionesSheetOpts(schema) {
 // ─── Write helpers ────────────────────────────────────────────────────────
 // colIndexToLetter / colLetterToIndex: ../lib/sheetColumnLetters.js
 
+function sanitizeValueUpdates(updates = []) {
+  return updates.map((update) => ({
+    ...update,
+    values: sanitizeSheetRows(update.values || []),
+  }));
+}
+
 async function appendAuditLog(sheets, sheetId, action, rowId, oldVal, newVal, sheetName) {
   const now = new Date().toISOString();
   try {
@@ -748,7 +756,7 @@ async function appendAuditLog(sheets, sheetId, action, rowId, oldVal, newVal, sh
       range: "'AUDIT_LOG'!A:H",
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[now, action, String(rowId), String(oldVal), String(newVal), "api", "api", sheetName]],
+        values: [sanitizeSheetRow([now, action, String(rowId), String(oldVal), String(newVal), "api", "api", sheetName])],
       },
     });
   } catch (_e) {
@@ -796,7 +804,7 @@ async function handleCreateCotizacion(sheetId, body) {
     spreadsheetId: sheetId,
     range: "'CRM_Operativo'!A:ZZ",
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] },
+    requestBody: { values: [sanitizeSheetRow(row)] },
   });
 
   await appendAuditLog(sheets, sheetId, "API_CREATE", newId, "", newId, "CRM_Operativo");
@@ -848,7 +856,7 @@ async function handleUpdateCotizacion(sheetId, id, body) {
   if (updates.length > 0) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: sheetId,
-      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+      requestBody: { valueInputOption: "USER_ENTERED", data: sanitizeValueUpdates(updates) },
     });
   }
 
@@ -905,7 +913,7 @@ async function handleCreatePago(pagoSheetId, mainSheetId, body) {
     spreadsheetId: pagoSheetId,
     range: `'${tabName}'!A:ZZ`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] },
+    requestBody: { values: [sanitizeSheetRow(row)] },
   });
 
   await appendAuditLog(sheets, mainSheetId, "API_CREATE_PAGO", body.COTIZACION_ID || "NEW", "", JSON.stringify(body), tabName);
@@ -956,7 +964,7 @@ async function handleUpdatePago(pagoSheetId, mainSheetId, id, body) {
   if (updates.length > 0) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: pagoSheetId,
-      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+      requestBody: { valueInputOption: "USER_ENTERED", data: sanitizeValueUpdates(updates) },
     });
   }
 
@@ -1020,7 +1028,7 @@ async function handleCreateVenta(ventasSheetId, body) {
     spreadsheetId: ventasSheetId,
     range: `'${targetTab}'!A:ZZ`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [row] },
+    requestBody: { values: [sanitizeSheetRow(row)] },
   });
 
   invalidateVentasSheetsReadCache(ventasSheetId);
@@ -1072,7 +1080,7 @@ async function handleVentasLogisticaFechaEntrega(ventasSheetId, body) {
     spreadsheetId: ventasSheetId,
     range,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[value]] },
+    requestBody: { values: [[sanitizeCellValue(value)]] },
   });
 
   invalidateVentasSheetsReadCache(ventasSheetId);
@@ -1131,7 +1139,7 @@ async function handleUpdateStock(stockSheetId, mainSheetId, codigo, body) {
   if (updates.length > 0) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: stockSheetId,
-      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+      requestBody: { valueInputOption: "USER_ENTERED", data: sanitizeValueUpdates(updates) },
     });
   }
 
@@ -2391,23 +2399,23 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!B${crmRow}:K${crmRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[
+          requestBody: { values: [sanitizeSheetRow([
             now, d.cliente || "", d.telefono || d.email_remitente || remitente || "",
             d.ubicacion || "", "Email-Auto", d.resumen_pedido || "",
             d.categoria || "", "", "Pendiente", "",
-          ]] },
+          ])] },
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!R${crmRow}:T${crmRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"]] },
+          requestBody: { values: [sanitizeSheetRow([d.probabilidad_cierre || "", d.urgencia || "", d.validar_stock || "No"])] },
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
           range: `'CRM_Operativo'!V${crmRow}:W${crmRow}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[d.tipo_cliente || "", d.observaciones || ""]] },
+          requestBody: { values: [sanitizeSheetRow([d.tipo_cliente || "", d.observaciones || ""])] },
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: sheetId,
@@ -2707,7 +2715,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         spreadsheetId: sheetId,
         range: `'${CRM_TAB}'!${Col.LINK_PRESUPUESTO}${row}`,
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[url]] },
+        requestBody: { values: [[sanitizeCellValue(url)]] },
       });
       return res.json({ ok: true, row, column: Col.LINK_PRESUPUESTO });
     } catch (e) {
@@ -2747,7 +2755,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         spreadsheetId: sheetId,
         range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[sentAt]] },
+        requestBody: { values: [[sanitizeCellValue(sentAt)]] },
       });
       return res.json({ ok: true, row, enviadoEl: sentAt });
     } catch (e) {
@@ -2771,7 +2779,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         spreadsheetId: sheetId,
         range: `'${CRM_TAB}'!AF${row}`,
         valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[text]] },
+        requestBody: { values: [[sanitizeCellValue(text)]] },
       });
       let trainingEntry = null;
       if (question && original && original !== text) {
@@ -2835,7 +2843,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           spreadsheetId: sheetId,
           range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
+          requestBody: { values: [[sanitizeCellValue(sentAt)]] },
         });
 
         // KB: human-approved ML answer → save as high-confidence active entry
@@ -2877,7 +2885,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
           spreadsheetId: sheetId,
           range: `'${CRM_TAB}'!${Col.ENVIADO_EL}${row}`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [[sentAt]] },
+          requestBody: { values: [[sanitizeCellValue(sentAt)]] },
         });
         return res.json({ ok: true, channel: "whatsapp", questionId: null, sentAt, wa });
       }

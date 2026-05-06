@@ -9,6 +9,7 @@
 import { google } from "googleapis";
 import { setListaPrecios, PANELS_TECHO, PANELS_PARED, p } from "../src/data/constants.js";
 import { defaultTailAGAK_ML } from "./lib/crmOperativoLayout.js";
+import { sanitizeSheetRow } from "./lib/sheetsCsvGuard.js";
 import { analyzeQuotationGaps, formatGapsForOperator } from "./ml-quotation-gaps.js";
 
 const SHEET_TAB  = "CRM_Operativo";
@@ -268,7 +269,7 @@ export async function syncUnansweredQuestions({ ml, sheetId, credsPath, logger =
       range: `'${SHEET_TAB}'!B${rowNum}:AK${rowNum}`,
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[...rowCore, ...defaultTailAGAK_ML()]],
+        values: [sanitizeSheetRow([...rowCore, ...defaultTailAGAK_ML()])],
       },
     });
 
