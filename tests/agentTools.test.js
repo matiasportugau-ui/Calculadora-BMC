@@ -21,6 +21,11 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
 process.env.PUBLIC_BASE_URL = "http://localhost:3001";
 
 const { AGENT_TOOLS, executeTool } = await import("../server/lib/agentTools.js");
+// Force quoteRegistry into pure in-memory mode after config loads.
+// dotenv.config() in config.js overrides empty process.env values from .env,
+// so the env-var path doesn't work; mutate the cached config object instead.
+const { config: _testConfig } = await import("../server/config.js");
+_testConfig.gcsQuotesBucket = "";
 
 let failures = 0;
 let passed = 0;
@@ -272,32 +277,43 @@ await group("presupuesto_libre", async () => {
   assert(parsed.ok === true && parsed.resumen?.total_usd === 500, "carries resumen.total_usd");
 });
 
+// Direct registry seeding — these tools no longer go through HTTP; they call
+// quoteRegistry helpers in-process. Stubbing fetch is no longer enough.
+const { registerQuotation: _registerQ, _resetCacheForTests: _resetReg } = await import("../server/lib/quoteRegistry.js");
+
 await group("listar_cotizaciones_recientes — filters by client", async () => {
-  setFetch(async (url) => {
-    assert(url.includes("/calc/cotizaciones?limit=500"), "fetches with limit=500 to search full registry");
-    return {
-      ok: true,
-      cotizaciones: [
-        { id: "1", client: "Juan Pérez", scenario: "solo_techo", total: 100 },
-        { id: "2", client: "María López", scenario: "solo_fachada", total: 200 },
-        { id: "3", client: "JUAN G", scenario: "techo_fachada", total: 300 },
-      ],
-    };
-  });
+  _resetReg();
+  await _registerQ({ pdfId: "1", client: "Juan Pérez", scenario: "solo_techo", total: 100, pdfUrl: "u1" });
+  await _registerQ({ pdfId: "2", client: "María López", scenario: "solo_fachada", total: 200, pdfUrl: "u2" });
+  await _registerQ({ pdfId: "3", client: "JUAN G", scenario: "techo_fachada", total: 300, pdfUrl: "u3" });
   const { parsed } = await run("listar_cotizaciones_recientes", { cliente: "juan" });
   assert(parsed.ok === true, "ok true");
   assert(parsed.count === 2, "filters case-insensitively to 2 matches");
   assert(parsed.cotizaciones.every((c) => c.client.toLowerCase().includes("juan")), "all matches contain juan");
 });
 
+await group("listar_cotizaciones_recientes — filters by source", async () => {
+  _resetReg();
+  await _registerQ({ pdfId: "a", client: "C1", scenario: "solo_techo", total: 1, pdfUrl: "u", source: "ae_agent" });
+  await _registerQ({ pdfId: "b", client: "C2", scenario: "solo_techo", total: 2, pdfUrl: "u", source: "calculator" });
+  const { parsed } = await run("listar_cotizaciones_recientes", { source: "ae_agent" });
+  assert(parsed.count === 1 && parsed.cotizaciones[0].id === "a", "source filter narrows to ae_agent only");
+});
+
+await group("listar_cotizaciones_recientes — include_cancelled", async () => {
+  _resetReg();
+  await _registerQ({ pdfId: "x", client: "X", scenario: "solo_techo", total: 1, pdfUrl: "u" });
+  const { cancelQuotation: _cancelQ } = await import("../server/lib/quoteRegistry.js");
+  await _cancelQ("x", { reason: "test" });
+  const { parsed: defaultList } = await run("listar_cotizaciones_recientes", {});
+  assert(defaultList.count === 0, "cancelled excluded by default");
+  const { parsed: withCancelled } = await run("listar_cotizaciones_recientes", { include_cancelled: true });
+  assert(withCancelled.count === 1, "cancelled visible with include_cancelled=true");
+});
+
 await group("obtener_cotizacion_por_id", async () => {
-  // Mock the dedicated /calc/cotizaciones/:id endpoint (new path)
-  setFetch(async (url) => {
-    if (url.includes("/calc/cotizaciones/abc-123")) {
-      return { ok: true, cotizacion: { id: "abc-123", client: "X", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p.html", code: "X1", timestamp: "t", status: "active" } };
-    }
-    return { ok: false, error: "Cotización no encontrada" };
-  });
+  _resetReg();
+  await _registerQ({ pdfId: "abc-123", client: "X", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p.html", code: "X1" });
   const { parsed: hit } = await run("obtener_cotizacion_por_id", { pdf_id: "abc-123" });
   assert(hit.ok === true, "ok true on hit");
   assert(hit.viewer_url.includes("/calc/pdf/abc-123"), "viewer_url built from id");
@@ -451,21 +467,10 @@ await group("cancelar_cotizacion — missing pdf_id", async () => {
 });
 
 await group("cancelar_cotizacion — happy path", async () => {
-  setFetch(async (url, init) => {
-    assert(url.endsWith("/calc/cotizaciones/abc-123/cancelar"), "hits cancelar endpoint with id");
-    assert(init.method === "POST", "uses POST");
-    const body = JSON.parse(init.body || "{}");
-    assert(body.motivo === "cliente declinó", "motivo passed through");
-    return {
-      ok: true,
-      entry: {
-        id: "abc-123",
-        status: "cancelled",
-        cancelledAt: "2026-05-02T12:00:00Z",
-        cancelReason: "cliente declinó",
-      },
-    };
-  });
+  // Direct registry seeding (the tool now imports cancelQuotation from
+  // quoteRegistry.js, no HTTP).
+  _resetReg();
+  await _registerQ({ pdfId: "abc-123", client: "X", scenario: "solo_techo", total: 100, pdfUrl: "u" });
   const { parsed } = await run("cancelar_cotizacion", {
     pdf_id: "abc-123",
     motivo: "cliente declinó",
@@ -476,37 +481,25 @@ await group("cancelar_cotizacion — happy path", async () => {
   assert(parsed.cancelReason === "cliente declinó", "cancelReason carried over");
 });
 
-// ── 4. Unknown tool name ─────────────────────────────────────────────────────
-
-await group("obtener_pdf_html — happy path", async () => {
-  // The stubbed fetch returns the body via .text() which JSON.stringifies the body.
-  // For HTML retrieval the executor calls resp.text() and we want the HTML string back,
-  // so the stub returns a string body via the special branch.
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = async (url) => ({
-    ok: true,
-    status: 200,
-    text: async () => "<html><body>Test PDF</body></html>",
-    json: async () => ({}),
+await group("cancelar_cotizacion — not found", async () => {
+  _resetReg();
+  const { parsed } = await run("cancelar_cotizacion", {
+    pdf_id: "missing-id",
+    user_confirmed: true,
   });
-  const { parsed } = await run("obtener_pdf_html", { pdf_id: "abc-123" });
-  globalThis.fetch = realFetch;
-  assert(parsed.ok === true, "ok true");
-  assert(parsed.html === "<html><body>Test PDF</body></html>", "html body returned");
-  assert(parsed.viewer_url.includes("/calc/pdf/abc-123"), "viewer_url built from id");
+  assert(parsed.ok === false, "ok false on miss");
+  assert(typeof parsed.error === "string" && parsed.error.includes("no encontrada"), "error mentions not found");
 });
 
-await group("obtener_pdf_html — 404", async () => {
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => ({
-    ok: false,
-    status: 404,
-    text: async () => "not found",
-    json: async () => ({}),
-  });
-  const { parsed } = await run("obtener_pdf_html", { pdf_id: "missing" });
-  globalThis.fetch = realFetch;
-  assert(parsed.ok === false, "ok false on 404");
+// ── 4. Unknown tool name ─────────────────────────────────────────────────────
+
+await group("obtener_pdf_html — not found", async () => {
+  // The tool now reads from calc.js' pdfStore in-process (no HTTP). The store
+  // is populated only by POST /calc/cotizar/pdf, so an arbitrary ID looks up
+  // empty. Happy-path coverage lives in tests/calc-routes.validation.js where
+  // the full PDF pipeline runs.
+  const { parsed } = await run("obtener_pdf_html", { pdf_id: "missing-id-xyz" });
+  assert(parsed.ok === false, "ok false on miss");
   assert(typeof parsed.error === "string" && parsed.error.includes("no encontrada"), "error mentions not found");
 });
 
@@ -544,24 +537,15 @@ await group("programar_seguimiento — happy path", async () => {
 });
 
 await group("historial_cliente — composes both sources", async () => {
-  // Stub returns CRM no-config + listar_cotizaciones_recientes match.
-  setFetch(async (url) => {
-    if (url.includes("/calc/cotizaciones")) {
-      return {
-        ok: true,
-        cotizaciones: [
-          { id: "q1", client: "Juan Pérez", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p1" },
-        ],
-      };
-    }
-    return { ok: false, error: "unexpected url" };
-  });
+  // listar_cotizaciones_recientes now reads quoteRegistry directly — seed it.
+  // CRM read still goes through Sheets (no fetch) and reports unavailable
+  // when BMC_SHEET_ID is unset in test env.
+  _resetReg();
+  await _registerQ({ pdfId: "q1", client: "Juan Pérez", scenario: "solo_techo", total: 100, lista: "web", pdfUrl: "https://x/p1" });
   const { parsed } = await run("historial_cliente", { cliente: "Juan Pérez" });
   assert(parsed.ok === true, "ok true");
   assert(parsed.cliente === "Juan Pérez", "cliente echoed");
-  // CRM read fails (no BMC_SHEET_ID in test env) — historial reports it as unavailable
-  assert(parsed.crm.available === false, "crm marked unavailable");
-  // Quotes branch returned via stub
+  assert(parsed.crm.available === false, "crm marked unavailable (no BMC_SHEET_ID)");
   assert(parsed.cotizaciones.available === true, "cotizaciones available");
   assert(parsed.cotizaciones.count === 1, "1 quote returned");
   assert(parsed.cotizaciones.items[0].id === "q1", "quote id carried");
@@ -706,8 +690,9 @@ await group("chat path — empty approvedActions blocks even with user_confirmed
 });
 
 await group("MCP path — back-compat: no approvedActions, user_confirmed=true reaches helper", async () => {
-  // Install a clean fetch stub so the previous group's assertions don't fire on this URL.
-  setFetch(async () => ({ ok: true, entry: { id: "abc-123", status: "cancelled" } }));
+  // cancelar_cotizacion now reads quoteRegistry directly — seed it.
+  _resetReg();
+  await _registerQ({ pdfId: "abc-123", client: "X", scenario: "solo_techo", total: 1, pdfUrl: "u" });
   // No opts → MCP/external path → falls back to user_confirmed flag
   const raw = await executeTool("cancelar_cotizacion", { pdf_id: "abc-123", user_confirmed: true }, {});
   const parsed = JSON.parse(raw);

@@ -96,14 +96,16 @@ group("Negation strips intent", () => {
   assert(!classifyIntents("no, no mandes nada por WhatsApp").has("enviar_whatsapp_link"), "no mandes nada");
 });
 
-group("Negation before conjunction preserves post-conjunction intent", () => {
-  const set1 = classifyIntents("no lo guardes en CRM y mandale por WhatsApp");
-  assert(!set1.has("guardar_en_crm"), "guardar_en_crm suppressed by negation");
-  assert(set1.has("enviar_whatsapp_link"), "enviar_whatsapp_link preserved after 'y'");
+group("Negation stops at conjunction — mixed instruction preserves later intent", () => {
+  // Copilot finding: prior stripper consumed everything after "no" up to 6
+  // words, swallowing the WhatsApp clause. Now stops at "y" / "o" / punct.
+  const set = classifyIntents("no lo guardes en CRM y mandale por WhatsApp");
+  assert(!set.has("guardar_en_crm"), "guardar_en_crm correctly stripped");
+  assert(set.has("enviar_whatsapp_link"), "WhatsApp intent after `y` survives");
 
-  const set2 = classifyIntents("sin guardarlo en la planilla pero sí mandale el link");
-  assert(!set2.has("guardar_en_crm"), "guardar_en_crm suppressed by 'sin'");
-  assert(set2.has("enviar_whatsapp_link"), "enviar_whatsapp_link preserved after 'pero'");
+  const set2 = classifyIntents("no canceles, mandale por WA");
+  assert(!set2.has("cancelar_cotizacion"), "cancel correctly stripped");
+  assert(set2.has("enviar_whatsapp_link"), "WA intent after comma survives");
 });
 
 // ── 5. Multi-intent ──────────────────────────────────────────────────────────

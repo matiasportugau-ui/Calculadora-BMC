@@ -99,19 +99,25 @@ function normalize(s) {
 
 /**
  * Strip negation contexts ("no <phrase>", "sin <phrase>") so they don't
- * trigger intent. Stops at Spanish conjunctions (y, pero, aunque, mas, o, ni)
- * so positive intents that follow in the same sentence are preserved —
- * e.g. "no lo guardes en CRM y mandale por WhatsApp" correctly fires only
- * the WhatsApp intent.
+ * trigger intent. The window stops at the next conjunction (y, o, pero,
+ * mientras) or punctuation (`,;.!?`) so a mixed instruction like
+ * "no lo guardes en CRM y mandale por WhatsApp" loses only the first
+ * clause — the WhatsApp trigger after `y` survives. (Copilot finding.)
  *
  * Idiom guard: "dejar sin efecto" is a fixed Spanish phrase where "sin"
- * doesn't negate intent — it's part of the cancelar_cotizacion trigger.
- * Skip "sin" stripping when preceded by "dejar".
+ * doesn't negate intent — skip "sin" stripping when preceded by "dejar".
  */
 function stripNegations(text) {
+  // Word match excludes terminator chars (`,;.!?`) so the non-greedy `+?`
+  // actually stops at the first one. Earlier `\S+` swallowed the comma in
+  // "no canceles, mandale por WA" which broke the "WA after comma survives"
+  // case. STOP lookahead enforces the negation window ends at a terminator
+  // or conjunction (y / o / pero / mientras).
+  const WORD = "[^\\s,;.!?]+";
+  const STOP = "(?=$|[,;.!?]|\\by\\b|\\bo\\b|\\bpero\\b|\\bmientras\\b)";
   return text
-    .replace(/\bno\s+((?!(?:y|pero|aunque|mas|o|ni)\b)\S+\s+){0,6}/g, " ")
-    .replace(/(?<!\bdejar\s)\bsin\s+((?!(?:y|pero|aunque|mas|o|ni)\b)\S+\s+){0,6}/g, " ");
+    .replace(new RegExp(`\\bno\\s+(?:${WORD}\\s*)+?${STOP}`, "g"), " ")
+    .replace(new RegExp(`(?<!\\bdejar\\s)\\bsin\\s+(?:${WORD}\\s*)+?${STOP}`, "g"), " ");
 }
 
 /**

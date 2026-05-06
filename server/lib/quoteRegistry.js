@@ -112,16 +112,26 @@ export async function getQuotation(pdfId) {
 /**
  * List quotes sorted by createdAt desc. Filters cancelled by default.
  * @param {object} [opts]
- * @param {number} [opts.limit=50]
+ * @param {number}  [opts.limit=50]
  * @param {boolean} [opts.includeCancelled=false]
+ * @param {string}  [opts.cliente]   Case-insensitive substring filter on client
+ * @param {string}  [opts.source]    "ae_agent" | "calculator"
  * @returns {Promise<Array<object>>}
+ *
+ * Filters apply BEFORE the limit cap so requesting "10 quotes for cliente=Juan"
+ * returns up to 10 matching Juan quotes — not the 10 newest quotes that
+ * happen to include Juan. (Copilot finding: prior code paginated first then
+ * filtered, silently missing matches outside the first page.)
  */
-export async function listQuotations({ limit = 50, includeCancelled = false } = {}) {
+export async function listQuotations({ limit = 50, includeCancelled = false, cliente = null, source = null } = {}) {
   const b = bucket();
   const seen = new Map();
 
   if (b) {
-    const files = await listJsonInGcs({ bucket: b, prefix: PREFIX, limit: Math.max(limit * 2, 100) });
+    // Pull a wider GCS window when filters are active so post-filter results
+    // can still satisfy `limit`. 500 covers ~6 months at typical volume.
+    const fetchLimit = (cliente || source) ? 500 : Math.max(limit * 2, 100);
+    const files = await listJsonInGcs({ bucket: b, prefix: PREFIX, limit: fetchLimit });
     const ids = files
       .map((f) => {
         const m = f.name.match(/^registry\/(.+)\.json$/);
@@ -146,6 +156,13 @@ export async function listQuotations({ limit = 50, includeCancelled = false } = 
   entries.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   if (!includeCancelled) {
     entries = entries.filter((e) => e.status !== "cancelled");
+  }
+  if (cliente) {
+    const needle = String(cliente).trim().toLowerCase();
+    entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(needle));
+  }
+  if (source && (source === "ae_agent" || source === "calculator")) {
+    entries = entries.filter((e) => (e.source || "calculator") === source);
   }
   return entries.slice(0, Math.max(1, Math.min(500, limit)));
 }

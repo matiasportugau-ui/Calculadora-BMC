@@ -610,7 +610,11 @@ router.get("/pdf/:id", (req, res) => {
 
 // ── GET /cotizaciones ────────────────────────────────────────────────────────
 
-router.get("/cotizaciones", async (req, res) => {
+// Persistent registry routes — gate behind requireAuth. Anonymous callers
+// could enumerate every quote via GET, exfiltrate customer data via /:id, or
+// soft-delete arbitrary quotes via /cancelar. The agent path bypasses this
+// gate by importing quoteRegistry helpers directly (in-process).
+router.get("/cotizaciones", requireAuth, async (req, res) => {
   try {
     const includeCancelled = String(req.query?.include_cancelled || "").toLowerCase() === "true";
     const limit = Math.max(1, Math.min(500, Number(req.query?.limit || 50)));
@@ -624,7 +628,7 @@ router.get("/cotizaciones", async (req, res) => {
 
 // ── GET /cotizaciones/:id ───────────────────────────────────────────────────
 
-router.get("/cotizaciones/:id", async (req, res) => {
+router.get("/cotizaciones/:id", requireAuth, async (req, res) => {
   try {
     const entry = await getQuotation(String(req.params.id || ""));
     if (!entry) return res.status(404).json({ ok: false, error: "Cotización no encontrada" });
@@ -637,7 +641,7 @@ router.get("/cotizaciones/:id", async (req, res) => {
 
 // ── POST /cotizaciones/:id/cancelar ─────────────────────────────────────────
 
-router.post("/cotizaciones/:id/cancelar", async (req, res) => {
+router.post("/cotizaciones/:id/cancelar", requireAuth, async (req, res) => {
   try {
     const result = await cancelQuotation(String(req.params.id || ""), {
       reason: req.body?.motivo || req.body?.reason,
@@ -904,6 +908,6 @@ router.get("/informe", (req, res) => {
   }
 });
 
-export { runCalculation, buildGptResponse };
+export { runCalculation, buildGptResponse, getPdf };
 export { GPT_ACTIONS } from "../gptActions.js";
 export default router;

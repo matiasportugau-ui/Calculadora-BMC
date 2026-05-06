@@ -175,6 +175,7 @@ router.get("/agent/tools-manifest", (_req, res) => {
  *       Pure calculator / catalog reads are open.
  */
 const TOOLS_REQUIRING_AUTH = new Set([
+  // Customer-facing writes
   "guardar_en_crm",
   "enviar_whatsapp_link",
   "cancelar_cotizacion",
@@ -183,6 +184,12 @@ const TOOLS_REQUIRING_AUTH = new Set([
   // from CRM_Operativo; must not be open to unauthenticated callers.
   "buscar_cliente_crm",
   "historial_cliente",
+  // Quote registry / PDF read tools — return customer + quote metadata and
+  // full quote HTML. Cursor + Copilot security review flagged these as
+  // exposing business data through unauthenticated /api/agent/exec-tool.
+  "listar_cotizaciones_recientes",
+  "obtener_cotizacion_por_id",
+  "obtener_pdf_html",
   // Wolfboard hub — all routes are admin-only and the underlying router
   // already enforces requireAuth. We mirror that gate at the MCP entry
   // so external clients can't poll pendientes / export without the token.

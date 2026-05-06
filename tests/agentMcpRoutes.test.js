@@ -78,6 +78,13 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(buscar?.requires_auth === true, "buscar_cliente_crm marked requires_auth=true (CRM PII)");
   const historial = body.tools.find((t) => t.name === "historial_cliente");
   assert(historial?.requires_auth === true, "historial_cliente marked requires_auth=true (CRM PII)");
+  // Quote registry / PDF read tools — also gated (Cursor + Copilot security finding)
+  const listar = body.tools.find((t) => t.name === "listar_cotizaciones_recientes");
+  assert(listar?.requires_auth === true, "listar_cotizaciones_recientes marked requires_auth=true (quote metadata)");
+  const porId = body.tools.find((t) => t.name === "obtener_cotizacion_por_id");
+  assert(porId?.requires_auth === true, "obtener_cotizacion_por_id marked requires_auth=true (quote metadata)");
+  const pdfHtml = body.tools.find((t) => t.name === "obtener_pdf_html");
+  assert(pdfHtml?.requires_auth === true, "obtener_pdf_html marked requires_auth=true (full quote HTML)");
   const obtener = body.tools.find((t) => t.name === "obtener_escenarios");
   assert(obtener?.requires_auth === false, "obtener_escenarios marked requires_auth=false");
 });

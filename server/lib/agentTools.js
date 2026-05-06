@@ -13,8 +13,13 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
 import { config } from "../config.js";
-import { runCalculation, buildGptResponse } from "../routes/calc.js";
+import { runCalculation, buildGptResponse, getPdf } from "../routes/calc.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
+import {
+  getQuotation as getQuotationFromRegistry,
+  listQuotations as listQuotationsFromRegistry,
+  cancelQuotation as cancelQuotationInRegistry,
+} from "./quoteRegistry.js";
 import { searchCrmClients } from "./crmSearch.js";
 import { sendWhatsAppText } from "./whatsappOutbound.js";
 import {
@@ -320,9 +325,10 @@ export const AGENT_TOOLS = [
     input_schema: {
       type: "object",
       properties: {
-        cliente: { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
-        source:  { type: "string", enum: ["ae_agent", "calculator"], description: "Filtrar por origen: 'ae_agent' (generado por el agente) o 'calculator' (UI manual)" },
-        limite:  { type: "number", description: "Máx resultados a devolver. Default 10" },
+        cliente:           { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
+        source:            { type: "string", enum: ["ae_agent", "calculator"], description: "Filtrar por origen: 'ae_agent' (generado por el agente) o 'calculator' (UI manual)" },
+        include_cancelled: { type: "boolean", description: "Si true, incluye cotizaciones canceladas. Default false." },
+        limite:            { type: "number", description: "Máx resultados a devolver. Default 10" },
       },
     },
   },
@@ -1178,33 +1184,34 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "listar_cotizaciones_recientes") {
-      // Fetch the full registry (up to 500) so client/source filters are applied
-      // across ALL stored quotes, not just the first page.
-      const data = await fetchJson("/calc/cotizaciones?limit=500");
-      if (!data.ok) return JSON.stringify({ error: data.error || "Error al listar cotizaciones" });
-      const filtroCliente = String(input?.cliente || "").trim().toLowerCase();
-      const filtroSource = input?.source && ["ae_agent", "calculator"].includes(input.source) ? input.source : null;
-      const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
-      let entries = data.cotizaciones || [];
-      if (filtroCliente) {
-        entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(filtroCliente));
+      // Direct registry call — bypasses HTTP/auth roundtrip and pushes
+      // filtering server-side so matches outside the first page are not
+      // silently dropped (Copilot finding).
+      const cliente = String(input?.cliente || "").trim();
+      const source = input?.source && ["ae_agent", "calculator"].includes(input.source) ? input.source : null;
+      const includeCancelled = input?.include_cancelled === true;
+      const limit = Math.max(1, Math.min(50, Number(input?.limite || 10)));
+      try {
+        const entries = await listQuotationsFromRegistry({
+          limit,
+          includeCancelled,
+          cliente: cliente || null,
+          source,
+        });
+        return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
+      } catch (err) {
+        return JSON.stringify({ error: err.message || "Error al listar cotizaciones" });
       }
-      if (filtroSource) {
-        entries = entries.filter((e) => (e.source || "calculator") === filtroSource);
-      }
-      entries = entries.slice(0, limite);
-      return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
     }
 
     if (name === "obtener_cotizacion_por_id") {
       const missing = requireField(input, "pdf_id");
       if (missing) return missing;
       const id = String(input.pdf_id).trim();
-      // Use the dedicated :id endpoint — it searches the full persistent registry
-      // and returns cancelled quotes too, unlike the paginated listing.
-      const data = await fetchJson(`/calc/cotizaciones/${encodeURIComponent(id)}`);
-      if (!data.ok) return JSON.stringify({ error: data.error || `Cotización ${id} no encontrada` });
-      const entry = data.cotizacion;
+      // Direct registry lookup — fixes Codex/Copilot finding that the prior
+      // list-then-find missed quotes outside the first 50 or marked cancelled.
+      const entry = await getQuotationFromRegistry(id);
+      if (!entry) return JSON.stringify({ error: `Cotización ${id} no encontrada en el registry` });
       return JSON.stringify({
         ok: true,
         id: entry.id,
@@ -1398,20 +1405,19 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (missing) return missing;
       const pdfId = String(input.pdf_id).trim();
       const motivo = String(input?.motivo || "").trim();
-      const data = await fetchJson(`/calc/cotizaciones/${encodeURIComponent(pdfId)}/cancelar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo, by: "panelin-chat" }),
-      });
-      if (!data.ok) return JSON.stringify({ ok: false, error: data.error || "Error al cancelar cotización" });
-      const entry = data.entry || {};
+      // Direct registry call — bypass HTTP/auth roundtrip. The HTTP route is
+      // now requireAuth-gated for external callers; in-process agent uses the
+      // intent-classifier gate above (requireConfirmedAction) instead.
+      const result = await cancelQuotationInRegistry(pdfId, { reason: motivo, by: "panelin-chat" });
+      if (!result.ok) return JSON.stringify({ ok: false, error: result.error || "Error al cancelar cotización" });
+      const entry = result.entry || {};
       return JSON.stringify({
         ok: true,
         id: entry.id,
         status: entry.status,
         cancelledAt: entry.cancelledAt,
         cancelReason: entry.cancelReason,
-        alreadyCancelled: !!data.alreadyCancelled,
+        alreadyCancelled: !!result.alreadyCancelled,
       });
     }
 
@@ -1419,25 +1425,17 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const missing = requireField(input, "pdf_id");
       if (missing) return missing;
       const id = String(input.pdf_id).trim();
-      try {
-        const resp = await fetch(`${apiBase()}/calc/pdf/${encodeURIComponent(id)}`);
-        if (resp.status === 404) {
-          return JSON.stringify({ ok: false, error: `Cotización ${id} no encontrada o expirada` });
-        }
-        if (!resp.ok) {
-          return JSON.stringify({ ok: false, error: `HTTP ${resp.status} al recuperar el HTML` });
-        }
-        const html = await resp.text();
-        return JSON.stringify({
-          ok: true,
-          pdf_id: id,
-          html,
-          length: html.length,
-          viewer_url: `${apiBase()}/calc/pdf/${id}`,
-        });
-      } catch (err) {
-        return JSON.stringify({ ok: false, error: err.message || "Error al recuperar HTML" });
-      }
+      // Direct in-process read from pdfStore (still 24h TTL — HTML is a
+      // regenerable artifact). No HTTP, no auth roundtrip.
+      const html = getPdf(id);
+      if (!html) return JSON.stringify({ ok: false, error: `Cotización ${id} no encontrada o expirada` });
+      return JSON.stringify({
+        ok: true,
+        pdf_id: id,
+        html,
+        length: html.length,
+        viewer_url: `${apiBase()}/calc/pdf/${id}`,
+      });
     }
 
     if (name === "programar_seguimiento") {
