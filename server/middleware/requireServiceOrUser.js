@@ -1,15 +1,22 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// requireServiceOrUser — accepts EITHER:
+// requireServiceOrUser — explicit, opt-in dual-mode guard.
+//
+// Accepts EITHER:
 //   1) the static API_AUTH_TOKEN (legacy operator/CI calls) → synthesizes
 //      req.user = { role: 'service', subject_type: 'service' } with full
 //      module access, OR
-//   2) a valid identity JWT (Phase B) for end-user/admin calls.
+//   2) a valid identity JWT (Phase B) — but only when the route author
+//      explicitly opts in via opts.role / opts.module / opts.minLevel.
+//      Without opts, no user JWT is accepted; only the static token.
 //
-// Lets us decouple UI calls (which migrate to JWT) from CI/cron callers
-// (which keep the static token) without two parallel guard stacks.
+// Why explicit opt-in: the legacy `requireAuth` alias was previously
+// service-token-only. Routes that import that alias (interaction-log,
+// /agent/voice, /followups, /ml/*, /ml/etl-run) must keep that contract.
+// Adding `requireServiceOrUser({...})` at a specific call site is the only
+// way to widen authentication, and the route author owns the RBAC choice.
 //
-// Drop-in replacement for server/middleware/requireAuth.js — that file now
-// re-exports this for backwards compatibility.
+// CODEOWNERS guidance: any new use of requireServiceOrUser without role
+// or module opts should be reviewed as a security-sensitive change.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { config } from "../config.js";
@@ -26,33 +33,69 @@ const ALL_MODULES_ADMIN = {
   "crm-personal": "admin",
 };
 
-export function requireServiceOrUser(opts = {}) {
-  const userMw = requireUser(opts);
-  return async (req, res, next) => {
-    // 1) Static token short-circuit
-    const token = config.apiAuthToken;
-    if (token) {
-      const bearer = String(req.headers.authorization || "").replace(/^Bearer /, "").trim();
-      const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-      if (bearer === token || xKey === token) {
-        req.user = {
-          id: "service",
-          email: "service@bmc.local",
-          role: "service",
-          subject_type: "service",
-          plan_tier: "plus",
-          modules: ALL_MODULES_ADMIN,
-          name: "service",
-        };
-        return next();
-      }
-    }
-    // 2) Otherwise fall through to identity JWT (cookie or Bearer JWT).
-    return userMw(req, res, next);
+function _setServicePrincipal(req) {
+  req.user = {
+    id: "service",
+    email: "service@bmc.local",
+    role: "service",
+    subject_type: "service",
+    plan_tier: "plus",
+    modules: ALL_MODULES_ADMIN,
+    name: "service",
   };
 }
 
-/** Backwards-compat: existing routes import { requireAuth } from this path. */
-export const requireAuth = requireServiceOrUser();
+function _hasStaticToken(req) {
+  const token = config.apiAuthToken;
+  if (!token) return false;
+  const bearer = String(req.headers.authorization || "").replace(/^Bearer /, "").trim();
+  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
+  return bearer === token || xKey === token;
+}
+
+/**
+ * Opt-in dual-mode guard. Pass opts (role/module/minLevel) to also accept
+ * identity JWTs from users meeting those constraints. Pass no opts to behave
+ * as a strict service-token guard (equivalent to the legacy requireAuth).
+ *
+ * @param {{role?: string, module?: string, minLevel?: string, optional?: boolean}} opts
+ */
+export function requireServiceOrUser(opts = {}) {
+  const acceptsUserJwt = !!(opts.role || opts.module || opts.optional);
+  const userMw = acceptsUserJwt ? requireUser(opts) : null;
+
+  return async (req, res, next) => {
+    // 1) Static token short-circuit — always honored.
+    if (_hasStaticToken(req)) {
+      _setServicePrincipal(req);
+      return next();
+    }
+
+    // 2) If the caller explicitly opted in to user JWTs, fall through.
+    if (userMw) return userMw(req, res, next);
+
+    // 3) Otherwise this is a service-token-only route — reject.
+    return res
+      .status(401)
+      .json({ ok: false, error: "service_token_required" });
+  };
+}
+
+/**
+ * Backwards-compat: existing routes import { requireAuth } from this path.
+ * Keeps the original token-only contract; no widening to user JWTs.
+ */
+export const requireAuth = (req, res, next) => {
+  if (_hasStaticToken(req)) {
+    _setServicePrincipal(req);
+    return next();
+  }
+  // Match original 503/401 semantics: 503 when token isn't configured server-side,
+  // 401 when configured but presented credentials don't match.
+  if (!config.apiAuthToken) {
+    return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+  }
+  return res.status(401).json({ ok: false, error: "Unauthorized" });
+};
 
 export default requireServiceOrUser;
