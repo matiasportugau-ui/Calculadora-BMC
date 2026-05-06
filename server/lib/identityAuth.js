@@ -22,6 +22,7 @@ import jwt from "jsonwebtoken";
 const ACCESS_JWT_TTL_SEC = 15 * 60;
 const REFRESH_TTL_MS = 30 * 24 * 3600 * 1000;
 const USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+const TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 
 const ALL_MODULES = [
   "calc",
@@ -92,8 +93,43 @@ async function _verifyIdToken(idToken) {
   };
 }
 
-/** Verifies a Google access token via the OIDC userinfo endpoint (fallback). */
+/**
+ * Verifies a Google access token via tokeninfo (audience check) AND userinfo
+ * (profile fetch). REJECTS the token if:
+ *   - tokeninfo `aud` does not match GOOGLE_OAUTH_CLIENT_ID (token-substitution
+ *     attack: a token minted for a different OAuth client cannot mint a BMC
+ *     session for that user).
+ *   - `email_verified` is not true.
+ *
+ * If GOOGLE_OAUTH_CLIENT_ID is unset (dev), the audience check is skipped with
+ * a logger warning so local development still works against the GIS popup
+ * but production deploys must set it.
+ */
 async function _verifyAccessToken(accessToken) {
+  const expectedAud = process.env.GOOGLE_OAUTH_CLIENT_ID;
+
+  // Step 1: tokeninfo — verifies the token is genuinely Google-issued AND
+  // returns the OAuth client (`aud`) it was minted for.
+  const tiResp = await fetch(`${TOKENINFO_URL}?access_token=${encodeURIComponent(accessToken)}`);
+  if (!tiResp.ok) {
+    const body = await tiResp.text().catch(() => "");
+    throw _unauthorized(`tokeninfo_${tiResp.status}`, body.slice(0, 200));
+  }
+  const ti = await tiResp.json().catch(() => null);
+  if (!ti?.aud) throw _unauthorized("tokeninfo_no_aud");
+
+  if (expectedAud) {
+    if (ti.aud !== expectedAud) {
+      throw _unauthorized("tokeninfo_aud_mismatch", `expected ${expectedAud}, got ${ti.aud}`);
+    }
+  } else {
+    logger().warn?.(
+      { aud: ti.aud },
+      "[identityAuth] GOOGLE_OAUTH_CLIENT_ID not configured — accepting access token without audience check (dev only)",
+    );
+  }
+
+  // Step 2: userinfo — pulls the OIDC profile claims.
   const resp = await fetch(USERINFO_URL, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -103,10 +139,17 @@ async function _verifyAccessToken(accessToken) {
   }
   const u = await resp.json().catch(() => null);
   if (!u?.sub) throw _unauthorized("userinfo_no_sub");
+
+  // Step 3: enforce verified email.
+  const emailVerified = !!(u.email_verified || ti.email_verified);
+  if (!emailVerified) {
+    throw _unauthorized("email_not_verified");
+  }
+
   return {
     sub: u.sub,
     email: u.email,
-    email_verified: !!u.email_verified,
+    email_verified: true,
     name: u.name,
     picture: u.picture,
     locale: u.locale,
@@ -281,6 +324,42 @@ export async function refreshTokens({ refreshToken, ip, userAgent } = {}) {
     refreshExpiresAt,
     sessionId,
   };
+}
+
+/**
+ * Revoke a session whose refresh-token cookie value is known but whose
+ * access JWT was not presented (typical SPA logout: browser only sends the
+ * httpOnly cookie). Looks up the session row by sha256(refreshToken) and
+ * marks it revoked. Returns the userId that owned the session, or null if
+ * the cookie matched no session (already logged out / fake cookie).
+ */
+export async function logoutByRefreshToken({ refreshToken, ip, userAgent } = {}) {
+  if (!_pool) throw _serverError("identityAuth not initialized");
+  if (!refreshToken) return { ok: true, userId: null };
+  const hash = _sha256(String(refreshToken));
+  const { rows } = await _pool.query(
+    `select session_id, user_id, revoked_at from identity.sessions
+      where refresh_token_hash = $1`,
+    [hash],
+  );
+  const s = rows[0];
+  if (!s) return { ok: true, userId: null };
+  if (!s.revoked_at) {
+    await _pool.query(
+      `update identity.sessions set revoked_at = now() where session_id = $1`,
+      [s.session_id],
+    );
+  }
+  await _audit({
+    actorId: s.user_id,
+    action: "auth.logout",
+    resource: "identity.sessions",
+    resourceId: s.session_id,
+    ip,
+    userAgent,
+    payload: { via: "refresh_cookie" },
+  });
+  return { ok: true, userId: s.user_id, sessionId: s.session_id };
 }
 
 /** Logs out a single session (or all sessions if sessionId omitted). */

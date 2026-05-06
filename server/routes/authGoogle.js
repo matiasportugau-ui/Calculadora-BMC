@@ -22,6 +22,7 @@ import {
   verifyGoogleAndUpsert,
   refreshTokens,
   logout,
+  logoutByRefreshToken,
   requireUser,
   getModuleGrants,
   getRole,
@@ -144,12 +145,25 @@ router.post("/auth/refresh", refreshLimiter, async (req, res) => {
 router.post("/auth/logout", requireUser({ optional: true }), async (req, res) => {
   try {
     if (req.user) {
+      // Authenticated logout (Bearer access JWT supplied) — revoke that session.
       await logout({
         userId: req.user.id,
         sessionId: req.user.sessionId,
         ip: req.ip,
         userAgent: req.get("user-agent") || undefined,
       });
+    } else {
+      // Cookie-only logout (typical SPA case): the browser only sent the
+      // httpOnly refresh cookie. Revoke the session by hashing the cookie
+      // value so a stolen refresh can't be replayed after logout.
+      const refreshToken = req.cookies?.[COOKIE_NAME];
+      if (refreshToken) {
+        await logoutByRefreshToken({
+          refreshToken,
+          ip: req.ip,
+          userAgent: req.get("user-agent") || undefined,
+        });
+      }
     }
   } catch (e) {
     // ignore — clearing the cookie is the important part
