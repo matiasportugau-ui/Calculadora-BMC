@@ -74,6 +74,10 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(calc?.input_schema?.type === "object", "input_schema is an object schema");
   const guardar = body.tools.find((t) => t.name === "guardar_en_crm");
   assert(guardar?.requires_auth === true, "guardar_en_crm marked requires_auth=true");
+  const buscar = body.tools.find((t) => t.name === "buscar_cliente_crm");
+  assert(buscar?.requires_auth === true, "buscar_cliente_crm marked requires_auth=true (CRM PII)");
+  const historial = body.tools.find((t) => t.name === "historial_cliente");
+  assert(historial?.requires_auth === true, "historial_cliente marked requires_auth=true (CRM PII)");
   const obtener = body.tools.find((t) => t.name === "obtener_escenarios");
   assert(obtener?.requires_auth === false, "obtener_escenarios marked requires_auth=false");
 });
@@ -121,6 +125,28 @@ await group("POST /api/agent/exec-tool — write tool without auth → 401", asy
     input: { pdf_url: "https://x/p.html", user_confirmed: true },
   });
   assert(status === 401, "401 Unauthorized");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+// ── 5b. exec-tool — CRM read tool without auth → 401 ─────────────────────────
+
+await group("POST /api/agent/exec-tool — buscar_cliente_crm without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "buscar_cliente_crm",
+    input: { query: "Juan Pérez" },
+  });
+  assert(status === 401, "401 Unauthorized (CRM read requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — historial_cliente without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "historial_cliente",
+    input: { cliente: "Juan Pérez" },
+  });
+  assert(status === 401, "401 Unauthorized (CRM read requires auth)");
   assert(body?.ok === false, "ok false");
   assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
 });

@@ -171,13 +171,18 @@ router.get("/agent/tools-manifest", (_req, res) => {
  * Used by the MCP server to surface every tool to external agents.
  *
  * Body: { name: string, input: object, calcState?: object }
- * Auth: write tools require Authorization: Bearer ${API_AUTH_TOKEN}; reads are open.
+ * Auth: write tools AND CRM-read tools require Authorization: Bearer ${API_AUTH_TOKEN}.
+ *       Pure calculator / catalog reads are open.
  */
 const TOOLS_REQUIRING_AUTH = new Set([
   "guardar_en_crm",
   "enviar_whatsapp_link",
   "cancelar_cotizacion",
   "programar_seguimiento",
+  // CRM read tools — return customer PII (names, phones, quote links, notes)
+  // from CRM_Operativo; must not be open to unauthenticated callers.
+  "buscar_cliente_crm",
+  "historial_cliente",
   // Wolfboard hub — all routes are admin-only and the underlying router
   // already enforces requireAuth. We mirror that gate at the MCP entry
   // so external clients can't poll pendientes / export without the token.
