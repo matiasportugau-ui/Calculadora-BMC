@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (CI deploy — Cloud Run secret type migration guard):** Se corrigió el workflow [`deploy-calc-api.yml`](../../.github/workflows/deploy-calc-api.yml) después de que el deploy de `main` fallara con `Cannot update environment variable [SMTP_PASS] to the given type`. Causa: Cloud Run tenía `SMTP_PASS` como env var literal y el workflow intentaba cambiarlo a Secret Manager en el mismo `gcloud run deploy`. El workflow ahora detecta solo variables target que sigan como texto plano (`SMTP_PASS`, `WA_JWT_SECRET`, `IDENTITY_JWT_SECRET`), verifica que exista el secret, remueve el valor legacy y lo restaura como secret ref antes de desplegar la imagen. Se agregó test estático [`deploy-workflow-secrets.test.js`](../../tests/deploy-workflow-secrets.test.js) al `test:api` para que nuevos `--set-secrets` queden cubiertos por ese guard.
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.

@@ -124,6 +124,73 @@ jobs:
         if: steps.paths.outputs.skip != 'true'
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
 
+      - name: Normalize Cloud Run secret env types
+        if: steps.paths.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+
+          TARGET_SECRET_ENVS=(SMTP_PASS WA_JWT_SECRET IDENTITY_JWT_SECRET)
+          SERVICE_JSON="$(mktemp)"
+          gcloud run services describe "${SERVICE_NAME}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format=json > "${SERVICE_JSON}"
+
+          LEGACY_SECRET_ENVS="$(python3 - "${SERVICE_JSON}" "${TARGET_SECRET_ENVS[@]}" <<'PY'
+          import json
+          import sys
+
+          service_path = sys.argv[1]
+          targets = set(sys.argv[2:])
+          with open(service_path, "r", encoding="utf-8") as fh:
+              service = json.load(fh)
+
+          containers = (
+              service.get("spec", {})
+              .get("template", {})
+              .get("spec", {})
+              .get("containers", [])
+          )
+          envs = containers[0].get("env", []) if containers else []
+          legacy = [
+              env.get("name")
+              for env in envs
+              if env.get("name") in targets and "value" in env
+          ]
+          print(",".join(name for name in legacy if name))
+          PY
+          )"
+
+          if [[ -z "${LEGACY_SECRET_ENVS}" ]]; then
+            echo "::notice::Cloud Run secret env types already normalized."
+            exit 0
+          fi
+
+          echo "::notice::Migrating legacy plaintext env vars to Secret Manager refs: ${LEGACY_SECRET_ENVS}"
+          IFS=',' read -r -a LEGACY_NAMES <<< "${LEGACY_SECRET_ENVS}"
+          UPDATE_SECRETS=""
+          for name in "${LEGACY_NAMES[@]}"; do
+            gcloud secrets versions describe latest \
+              --project="${PROJECT_ID}" \
+              --secret="${name}" >/dev/null
+            UPDATE_SECRETS+="${UPDATE_SECRETS:+,}${name}=${name}:latest"
+          done
+
+          # Cloud Run cannot change an env var from literal value to secret ref in
+          # one deploy. Normalize the existing service first so the image deploy
+          # can merge --set-secrets without hitting a type conflict.
+          gcloud run services update "${SERVICE_NAME}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --remove-env-vars="${LEGACY_SECRET_ENVS}" \
+            --quiet
+
+          gcloud run services update "${SERVICE_NAME}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --update-secrets="${UPDATE_SECRETS}" \
+            --quiet
+
       - name: Build and Push Docker Image
         if: steps.paths.outputs.skip != 'true'
         run: |
