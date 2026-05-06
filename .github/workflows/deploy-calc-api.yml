@@ -134,6 +134,51 @@ jobs:
             .
           docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"
 
+      - name: Normalize legacy literal secret env vars
+        if: steps.paths.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          SERVICE_JSON="$(mktemp)"
+          if ! gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --project="${{ env.PROJECT_ID }}" \
+            --region="${{ env.REGION }}" \
+            --format=json > "$SERVICE_JSON"; then
+            echo "Cloud Run service does not exist yet; no legacy env vars to normalize."
+            exit 0
+          fi
+
+          CONFLICTS="$(python3 - "$SERVICE_JSON" <<'PY'
+          import json
+          import sys
+
+          secret_env_names = {"SMTP_PASS", "WA_JWT_SECRET", "IDENTITY_JWT_SECRET"}
+          with open(sys.argv[1], encoding="utf-8") as fh:
+              service = json.load(fh)
+
+          containers = service.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+          env = containers[0].get("env", []) if containers else []
+          conflicts = [
+              item.get("name")
+              for item in env
+              if item.get("name") in secret_env_names and "value" in item and "valueSource" not in item
+          ]
+          print(",".join(conflicts))
+          PY
+          )"
+
+          if [ -z "$CONFLICTS" ]; then
+            echo "No legacy literal secret env vars found."
+            exit 0
+          fi
+
+          echo "Removing legacy literal env vars before binding them from Secret Manager: $CONFLICTS"
+          gcloud run services update "${{ env.SERVICE_NAME }}" \
+            --project="${{ env.PROJECT_ID }}" \
+            --region="${{ env.REGION }}" \
+            --remove-env-vars="$CONFLICTS" \
+            --no-traffic \
+            --quiet
+
       - name: Deploy to Cloud Run
         if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/deploy-cloudrun@v3
@@ -170,6 +215,7 @@ jobs:
             --cpu=1
             --timeout=60
             --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,SMTP_PASS=SMTP_PASS:latest,WA_JWT_SECRET=WA_JWT_SECRET:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest
+          revision_traffic: LATEST=100
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'
