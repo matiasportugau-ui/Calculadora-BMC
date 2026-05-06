@@ -28,24 +28,38 @@ Tests: 19 identity tests + validation suite (22) all green offline.
 
 ## Pre-deploy checklist (do NOT merge until all checked)
 
-### 1. Apply migrations to Supabase
+### 0. One-command harness (recommended)
+
+```bash
+DATABASE_URL=postgres://...  \
+ADMINS='alice@bmc.uy,bob@bmc.uy' \
+API_BASE=https://panelin-calc-642127786762.us-central1.run.app \
+  bash scripts/identity-golive.sh
+```
+
+This orchestrator runs Phases 1+2 below (migration apply + preflight),
+prints the irreducible human steps that remain (Sheets tab + UAT), and
+exits non-zero if anything is wrong. Use the manual fallbacks below only
+if you need to debug a specific step.
+
+### 1. Apply migrations to Supabase (manual fallback)
 
 ```bash
 # Production project htnwozvopveibwppyjhg.
-# Connect with the Supabase CLI or psql against DATABASE_URL.
 
+# Init schema (idempotent)
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f supabase/migrations/20260601000001_identity_init.sql
 
 # Verify
-psql "$DATABASE_URL" -c "\dt identity.*"   # 13 rows
+psql "$DATABASE_URL" -c "\dt identity.*"          # 13 rows
 psql "$DATABASE_URL" -c "select count(*) from identity.modules;"  # 8
 
-# Edit superadmin emails in the migration before applying:
-# - Open supabase/migrations/20260601000002_identity_seed_superadmins.sql
-# - Replace 'matias@bmc.uy' (line 19) with the actual internal admin emails.
+# Seed superadmins (psql -v admins=... is REQUIRED — comma-separated)
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -v admins='alice@bmc.uy,bob@bmc.uy' \
   -f supabase/migrations/20260601000002_identity_seed_superadmins.sql
+
 psql "$DATABASE_URL" -c \
   "select u.email, rg.role from identity.role_grants rg
      join identity.users u on u.user_id = rg.user_id
