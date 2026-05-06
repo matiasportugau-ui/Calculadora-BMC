@@ -130,7 +130,23 @@ export const config = {
   /** Sheets sync — opt-in admin sync to «Base de datos cotis de clientes» */
   sheetsClientQuotesEnabled: bool(process.env.SHEETS_CLIENT_QUOTES_ENABLED, false),
   sheetsClientQuotesTab: process.env.SHEETS_CLIENT_QUOTES_TAB || "Base de datos cotis de clientes",
-  /** Comma-separated emails seeded as superadmin on first login (Phase G). */
+  /**
+   * Comma-separated emails seeded as superadmin (Phase G).
+   *
+   * **NEVER consult this list at runtime**: the privilege check in
+   * `identityAuth.requireUser` reads `identity.role_grants` from the DB
+   * exclusively. This array is consumed ONLY by the operator running
+   *
+   *     psql -v admins="$INTERNAL_SUPERADMIN_EMAILS" \
+   *          -f supabase/migrations/20260601000002_identity_seed_superadmins.sql
+   *
+   * cursor[bot] round-7 W-3 invariant: a misconfigured env var (e.g.
+   * trailing comma → empty entry → match-all) MUST NOT silently grant
+   * superadmin. Bypassing the DB grant check from this list would create
+   * a privilege-escalation window. Keep this array unused at request
+   * time; if you need a runtime check, add a separate function that
+   * reads role_grants from the DB.
+   */
   internalSuperadminEmails: (
     process.env.INTERNAL_SUPERADMIN_EMAILS
       ? process.env.INTERNAL_SUPERADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)

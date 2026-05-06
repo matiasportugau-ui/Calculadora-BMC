@@ -55,6 +55,25 @@ function _safeGcsUri(value) {
   );
 }
 
+// cursor[bot] round-7 W-2: validate drive_file_id before DB write so a
+// future code path that renders it as a URL (or builds a Drive link from it)
+// can't be tricked by a planted `javascript:`/`<svg/onload>`/etc string.
+// Real Drive file IDs are alphanumeric + dashes/underscores, ~28–44 chars.
+const ALLOWED_DRIVE_FILE_ID = /^[A-Za-z0-9_-]{8,128}$/;
+
+function _safeDriveFileId(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (!ALLOWED_DRIVE_FILE_ID.test(s)) {
+    throw Object.assign(
+      new Error("invalid_drive_file_id"),
+      { status: 400, detail: "drive_file_id must be 8-128 chars of [A-Za-z0-9_-]" },
+    );
+  }
+  return s;
+}
+
 function pickTotals(payload) {
   if (!payload || typeof payload !== "object") return { totalUsd: null, totalUyu: null };
   const totalUsd =
@@ -109,6 +128,7 @@ export async function upsertQuote({
   // the caller (route handler) can surface a 400.
   const safePdfUrl = _safePdfUrl(pdfUrl);
   const safeGcsUri = _safeGcsUri(gcsUri);
+  const safeDriveFileId = _safeDriveFileId(driveFileId);
 
   const { totalUsd, totalUyu } = pickTotals(payload);
 
@@ -133,7 +153,7 @@ export async function upsertQuote({
           [
             userId, clientQuoteId, JSON.stringify(payload || {}),
             totalUsd, totalUyu, pdfId || null, safePdfUrl,
-            safeGcsUri, driveFileId || null, wizardStep ?? null, status,
+            safeGcsUri, safeDriveFileId, wizardStep ?? null, status,
           ],
         )
       : await pool().query(
@@ -152,7 +172,7 @@ export async function upsertQuote({
           [
             clientQuoteId, JSON.stringify(payload || {}),
             totalUsd, totalUyu, pdfId || null, safePdfUrl,
-            safeGcsUri, driveFileId || null, wizardStep ?? null, status,
+            safeGcsUri, safeDriveFileId, wizardStep ?? null, status,
           ],
         );
     if (upd.rows.length) {
@@ -170,7 +190,7 @@ export async function upsertQuote({
     [
       userId || null, clientQuoteId || null, JSON.stringify(payload || {}),
       totalUsd, totalUyu, pdfId || null, safePdfUrl,
-      safeGcsUri, driveFileId || null, wizardStep ?? null, status,
+      safeGcsUri, safeDriveFileId, wizardStep ?? null, status,
     ],
   );
   await _event(ins.rows[0].quote_id, "created", userId, { status });

@@ -27,6 +27,7 @@ import {
   getModuleGrants,
   getRole,
 } from "../lib/identityAuth.js";
+import { safeErr as _safeErr } from "../lib/safeErr.js";
 
 const router = express.Router();
 
@@ -208,7 +209,7 @@ router.get("/auth/me/grants", requireUser(), async (req, res) => {
       modules,
     });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message || "grants_failed" });
+    return res.status(500).json({ ok: false, error: _safeErr(e) || "grants_failed" });
   }
 });
 

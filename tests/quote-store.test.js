@@ -220,6 +220,42 @@ describe("upsertQuote — H-1 pdf_url allowlist", () => {
   });
 });
 
+describe("upsertQuote — W-2 drive_file_id allowlist", () => {
+  it("rejects drive_file_id with HTML/script characters", async () => {
+    await assert.rejects(
+      () => upsertQuote({
+        userId: "user-1",
+        clientQuoteId: "cq-w2-script",
+        payload: {},
+        driveFileId: "<svg/onload=alert(1)>",
+      }),
+      (e) => e.status === 400 && /invalid_drive_file_id/.test(e.message),
+    );
+  });
+
+  it("rejects drive_file_id shorter than 8 chars", async () => {
+    await assert.rejects(
+      () => upsertQuote({
+        userId: "user-1",
+        clientQuoteId: "cq-w2-short",
+        payload: {},
+        driveFileId: "abc",
+      }),
+      (e) => e.status === 400 && /invalid_drive_file_id/.test(e.message),
+    );
+  });
+
+  it("accepts a real-shaped Drive file id (alphanumeric + - _)", async () => {
+    const r = await upsertQuote({
+      userId: "user-1",
+      clientQuoteId: "cq-w2-ok",
+      payload: {},
+      driveFileId: "1A2B3C-_xyzABC1234567890",
+    });
+    assert.ok(r.quote_id);
+  });
+});
+
 describe("upsertQuote", () => {
   it("inserts a fresh row when no client_quote_id supplied", async () => {
     const r = await upsertQuote({
