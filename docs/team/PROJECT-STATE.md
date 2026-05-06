@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Fix deploy — Cloud Run env type conflict):** Detectado y corregido el bloqueo del job **Deploy Calculator API** en `main` (`gcloud.run.deploy`: `Cannot update environment variable [SMTP_PASS] to the given type`). La PR de fix mantiene `SMTP_PASS` y `WA_JWT_SECRET` en el mismo path de env vars plano que ya existía en Cloud Run, y deja solo `IDENTITY_JWT_SECRET` como nuevo binding de Secret Manager. Esto evita que Cloud Run intente convertir una variable existente de tipo env-var a secret en el mismo deploy.
+
+**Affects:** bmc-deployment (workflow `.github/workflows/deploy-calc-api.yml`), bmc-security (migración de secretos requiere paso separado si se decide endurecer `SMTP_PASS`/`WA_JWT_SECRET`), bmc-docs-sync (esta entrada).
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
