@@ -9,9 +9,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { getWaPool } from "../lib/waDb.js";
 import { config } from "../config.js";
 import { requireUser } from "../lib/identityAuth.js";
+// cursor[bot] round-5 LOW: scrub raw DB messages from wire responses.
+// Shared with quoteExport.js — see server/lib/safeErr.js.
+import { safeErr as _safeErr } from "../lib/safeErr.js";
 import {
   listMyQuotes,
   getMyQuote,
@@ -73,7 +77,7 @@ router.get("/api/me/notifications", requireUser(), async (req, res) => {
     const { rows } = await pool().query(sql, [req.user.id, limit]);
     res.json({ ok: true, items: rows });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -90,7 +94,7 @@ router.patch("/api/me/notifications/:id", requireUser(), async (req, res) => {
     if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
     res.json({ ok: true, notification: rows[0] });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -103,7 +107,55 @@ const ALLOWED_MODULES = new Set([
 // identity.module_grants and breaks _levelAllows reasoning silently.
 const VALID_LEVELS = new Set(["none", "read", "write", "admin"]);
 
-router.post("/api/access-requests", requireUser(), async (req, res) => {
+// Self-audit fix: per-user rate limits on the abuse-vector POST endpoints.
+// Key by req.user.id (not IP) so multiple users behind the same NAT/proxy
+// don't collide. requireUser runs before these limiters and populates
+// req.user; if for any reason it isn't there yet, we degrade to IP keying.
+function _userOrIpKey(req /*, res */) {
+  return req.user?.id || req.ip;
+}
+
+// Spam-vector limiters — different rates per route.
+// /access-requests + /special-quote-requests are admin-queue inputs that
+// should not be flooded; /me/quotes is a user-driven workflow upsert and
+// can tolerate higher volume.
+const accessRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: _userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
+const specialQuoteLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: _userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
+const meQuotesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  keyGenerator: _userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
+const claimLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: _userOrIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
+
+router.post("/api/access-requests", requireUser(), accessRequestLimiter, async (req, res) => {
   try {
     const { module: m, notes } = req.body || {};
     if (!m || !ALLOWED_MODULES.has(m)) {
@@ -116,15 +168,18 @@ router.post("/api/access-requests", requireUser(), async (req, res) => {
       [req.user.id, m, notes || null],
     );
     const rec = ins.rows[0];
+    // Self-audit fix: drop requester_email from structured payload — it's
+    // already in the human-readable body. Keep only IDs in the JSONB so
+    // notification queries don't surface PII unintentionally.
     await notifySuperadmins({
       kind: "access_request",
       title: `Solicitud de acceso a "${m}"`,
       body: `${req.user.email} solicitó acceso al módulo ${m}.`,
-      payload: { request_id: rec.request_id, module: m, requester_id: req.user.id, requester_email: req.user.email },
+      payload: { request_id: rec.request_id, module: m, requester_id: req.user.id },
     });
     res.json({ ok: true, request: rec });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -139,7 +194,7 @@ router.get("/api/me/access-requests", requireUser(), async (req, res) => {
     );
     res.json({ ok: true, items: rows });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -158,7 +213,7 @@ router.get("/api/admin/access-requests", requireUser({ role: "admin" }), async (
     );
     res.json({ ok: true, items: rows });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -208,13 +263,13 @@ router.patch("/api/admin/access-requests/:id", requireUser({ role: "admin" }), a
     );
     res.json({ ok: true });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
 // ─── Special-quote (>USD 8500) requests ────────────────────────────────
 
-router.post("/api/me/special-quote-requests", requireUser(), async (req, res) => {
+router.post("/api/me/special-quote-requests", requireUser(), specialQuoteLimiter, async (req, res) => {
   try {
     const { quoteId, notes } = req.body || {};
     if (!quoteId || typeof quoteId !== "string") {
@@ -248,7 +303,7 @@ router.post("/api/me/special-quote-requests", requireUser(), async (req, res) =>
     });
     res.json({ ok: true, request: rec });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -265,7 +320,7 @@ router.get("/api/me/special-quote-requests", requireUser(), async (req, res) => 
     );
     res.json({ ok: true, items: rows });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -277,7 +332,7 @@ router.get("/api/me/quotes", requireUser(), async (req, res) => {
     const items = await listMyQuotes({ userId: req.user.id, limit });
     res.json({ ok: true, items });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -287,11 +342,11 @@ router.get("/api/me/quotes/:id", requireUser(), async (req, res) => {
     if (!q) return res.status(404).json({ ok: false, error: "not_found" });
     res.json({ ok: true, quote: q });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
-router.post("/api/me/quotes", requireUser(), async (req, res) => {
+router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) => {
   try {
     const { clientQuoteId, payload, status, wizardStep, pdfId, pdfUrl, gcsUri, driveFileId } = req.body || {};
     if (!payload || typeof payload !== "object") {
@@ -310,7 +365,7 @@ router.post("/api/me/quotes", requireUser(), async (req, res) => {
     // cursor[bot] LOW: match the F-1/W-3 pattern from authGoogle.js — log
     // e.detail server-side, return only the coarse error code on the wire.
     if (e.detail) req.log?.warn?.({ detail: e.detail }, "[me/quotes] upsert detail");
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -320,7 +375,7 @@ router.delete("/api/me/quotes/:id", requireUser(), async (req, res) => {
     if (!q) return res.status(404).json({ ok: false, error: "not_found" });
     res.json({ ok: true });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -329,7 +384,7 @@ router.delete("/api/me/quotes/:id", requireUser(), async (req, res) => {
 const CLAIM_ID_MAX = 100;
 const CLAIM_ID_PATTERN = /^cq_[A-Za-z0-9_-]{8,}$/;
 
-router.post("/api/me/quotes/claim", requireUser(), async (req, res) => {
+router.post("/api/me/quotes/claim", requireUser(), claimLimiter, async (req, res) => {
   try {
     const raw = Array.isArray(req.body?.clientQuoteIds) ? req.body.clientQuoteIds : [];
     const ids = raw
@@ -338,7 +393,7 @@ router.post("/api/me/quotes/claim", requireUser(), async (req, res) => {
     const r = await claimAnonymousQuotes({ userId: req.user.id, clientQuoteIds: ids });
     res.json({ ok: true, claimed: r.claimed, accepted: ids.length, submitted: raw.length });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -358,7 +413,7 @@ router.post("/api/admin/sheets/clientes/reconcile", requireUser({ role: "admin" 
     const result = await sheetReconcile({ actorUserId: req.user.id, limit: Number(req.body?.limit) || 200 });
     res.json(result);
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -371,7 +426,7 @@ router.post("/api/admin/sheets/clientes/sync/:quote_id", requireUser({ role: "ad
     });
     res.json(result);
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 

@@ -19,6 +19,7 @@ import JSZip from "jszip";
 import { config } from "../config.js";
 import { getWaPool } from "../lib/waDb.js";
 import { requireUser } from "../lib/identityAuth.js";
+import { safeErr as _safeErr } from "../lib/safeErr.js";
 
 const router = express.Router();
 
@@ -206,7 +207,7 @@ router.post("/api/admin/export", requireUser({ role: "admin" }), async (req, res
     res.setHeader("Content-Disposition", `attachment; filename="bmc-export-${stamp}.zip"`);
     return res.send(buf);
   } catch (e) {
-    return res.status(e.status || 500).json({ ok: false, error: e.message });
+    return res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -230,7 +231,7 @@ router.get("/api/me/quotes/:id/export.json", requireUser(), async (req, res) => 
     res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.json"`);
     res.send(JSON.stringify(q, null, 2));
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -250,7 +251,7 @@ router.get("/api/me/quotes/:id/export.csv", requireUser(), async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.csv"`);
     res.send(toCsv([flat]));
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -283,7 +284,7 @@ router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
       detail: "No pdf_url stored for this quote. Use export.html for a printable HTML view.",
     });
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
@@ -296,7 +297,7 @@ router.get("/api/me/quotes/:id/export.html", requireUser(), async (req, res) => 
     res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.html"`);
     res.send(`<!doctype html><html><body>${entityToHtmlTable("quote", [q])}</body></html>`);
   } catch (e) {
-    res.status(e.status || 500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: _safeErr(e) });
   }
 });
 
