@@ -76,16 +76,29 @@ JWT_SECRET=$(openssl rand -base64 48)
 # Pattern follows the existing WA_JWT_SECRET wiring.
 #
 # The production GOOGLE_OAUTH_CLIENT_ID for project `chatbot-bmc-live` is:
-#   642127786762-bebp48f2mki7ckmr94mkj7fumgk0hk16.apps.googleusercontent.com
+#   642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3.apps.googleusercontent.com
 # (public client identifier — safe to commit. The matching client_secret is
 # NOT used by our flow and is NOT needed by the API; we use Google Identity
 # Services on the frontend, server only verifies ID-token audience against
 # this client_id.)
+#
+# IMPORTANT — frontend↔backend client_id MUST match:
+#   - Frontend (Vercel) builds with VITE_GOOGLE_CLIENT_ID = the value above.
+#   - Backend (Cloud Run) verifies with GOOGLE_OAUTH_CLIENT_ID = same value.
+# A mismatch surfaces at runtime as either:
+#   - origin_mismatch (Google rejects the GIS popup → frontend never gets a token)
+#   - tokeninfo_aud_mismatch (server rejects the verified ID token → 401 on /auth/google)
+#
+# The Web client also needs these origins in "Authorized JavaScript origins":
+#   https://calculadora-bmc.vercel.app
+#   http://localhost:5173
+#   http://localhost:3001
+# (Plus any Vercel preview URL you actively test against.)
 gcloud run services update panelin-calc \
   --region=us-central1 \
   --update-env-vars=\
 "IDENTITY_JWT_SECRET=$JWT_SECRET,\
-GOOGLE_OAUTH_CLIENT_ID=642127786762-bebp48f2mki7ckmr94mkj7fumgk0hk16.apps.googleusercontent.com,\
+GOOGLE_OAUTH_CLIENT_ID=642127786762-hbkkonaqp9vvfk2qa9sv5go4bd8u4sj3.apps.googleusercontent.com,\
 IDENTITY_COOKIE_DOMAIN=.calculadora-bmc.vercel.app,\
 INTERNAL_SUPERADMIN_EMAILS=matias@bmc.uy"
 
