@@ -84,10 +84,13 @@ function logger() {
   return _logger || console;
 }
 
+// cursor[bot] round-11 MEDIUM: the same equality check lives in
+// initIdentityAuth() above, but server/index.js wraps that init in a broad
+// try/catch that logs-and-continues. If the env was misconfigured at
+// startup, the throw was swallowed and request-time auth still ran with
+// the shared key. Repeat the check at every JWT operation so the system
+// fails closed on every request, not just at boot.
 function getJwtSecret() {
-  // No fallback to WA_JWT_SECRET (Cross-system token substitution guard,
-  // see initIdentityAuth + cursor[bot] C-1). Use a distinct secret per
-  // subsystem.
   const s = process.env.IDENTITY_JWT_SECRET || "";
   if (!s || s.length < 32) {
     throw Object.assign(
@@ -95,8 +98,25 @@ function getJwtSecret() {
       { status: 500 },
     );
   }
+  const waSecret = process.env.WA_JWT_SECRET || "";
+  if (waSecret && s === waSecret) {
+    // Cross-system token substitution guard. Refuse to sign or verify any
+    // identity JWT until IDENTITY_JWT_SECRET differs from WA_JWT_SECRET.
+    throw Object.assign(
+      new Error("IDENTITY_JWT_SECRET equals WA_JWT_SECRET — cross-system token substitution refused"),
+      { status: 500 },
+    );
+  }
   return s;
 }
+
+// JWT iss/aud — second defense layer. A WA-operator JWT signed with a
+// stolen/shared HMAC key would still fail audience verification here,
+// even if both subsystems somehow ended up with the same secret. WA
+// tokens are signed without these claims, so they can't impersonate
+// identity tokens at this verification point.
+const JWT_ISSUER = "bmc-identity";
+const JWT_AUDIENCE = "bmc-identity-api";
 
 // ─── Google verification ───────────────────────────────────────────────
 
@@ -718,7 +738,11 @@ async function _readClaimsFromRequest(req) {
   const m = /^Bearer (.+)$/i.exec(auth.trim());
   if (!m) return null;
   try {
-    const claims = jwt.verify(m[1], getJwtSecret(), { algorithms: ["HS256"] });
+    const claims = jwt.verify(m[1], getJwtSecret(), {
+      algorithms: ["HS256"],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+    });
     if (!claims?.sub) return null;
     return claims;
   } catch {
@@ -741,6 +765,8 @@ function _publicUser(u) {
 function _signJwt(claims) {
   return jwt.sign(claims, getJwtSecret(), {
     algorithm: "HS256",
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
     expiresIn: ACCESS_JWT_TTL_SEC,
   });
 }

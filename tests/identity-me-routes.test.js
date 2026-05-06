@@ -240,7 +240,13 @@ function bearerFor(userId) {
   const token = jwt.sign(
     { sub: userId, sid: "test-sess", subject_type: "user" },
     process.env.IDENTITY_JWT_SECRET,
-    { algorithm: "HS256", expiresIn: 60 * 15 },
+    {
+      algorithm: "HS256",
+      expiresIn: 60 * 15,
+      // Match production claims (round-11 hardening).
+      issuer: "bmc-identity",
+      audience: "bmc-identity-api",
+    },
   );
   return `Bearer ${token}`;
 }

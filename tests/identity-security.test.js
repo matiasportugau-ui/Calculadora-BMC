@@ -99,7 +99,13 @@ function bearerFor(userId) {
   const t = jwt.sign(
     { sub: userId, sid: "sess-test", subject_type: "user" },
     process.env.IDENTITY_JWT_SECRET,
-    { algorithm: "HS256", expiresIn: 60 * 15 },
+    {
+      algorithm: "HS256",
+      expiresIn: 60 * 15,
+      // Match the production iss/aud claims (round-11 hardening).
+      issuer: "bmc-identity",
+      audience: "bmc-identity-api",
+    },
   );
   return `Bearer ${t}`;
 }
@@ -344,6 +350,60 @@ describe("verifyGoogleAndUpsert — H-3 ID-token email_verified guard", () => {
 const _quoteExportTest = (await import("../server/routes/quoteExport.js")).__test__;
 const csvEscape = _quoteExportTest.csvEscape;
 
+describe("Round 11: getJwtSecret refuses shared secret at request time", () => {
+  it("request-time guard fires even when startup init was swallowed by a try/catch", async () => {
+    // Reproduces the exact scenario the bot flagged: server/index.js wraps
+    // initIdentityAuth in a broad try/catch. If the operator misconfigures
+    // both env vars to the same value, the startup throw gets logged-and-
+    // swallowed. Without the request-time check in getJwtSecret, identity
+    // auth would still work with the shared secret. This test asserts the
+    // request-time check fails closed.
+    const prevId = process.env.IDENTITY_JWT_SECRET;
+    const prevWa = process.env.WA_JWT_SECRET;
+    const shared = "x".repeat(40);
+    process.env.IDENTITY_JWT_SECRET = shared;
+    process.env.WA_JWT_SECRET = shared;
+    try {
+      // 1. Boot succeeds (configure pool BEFORE the env vars match) so we
+      //    can simulate "init threw, caller swallowed, _pool still set".
+      process.env.WA_JWT_SECRET = "different-secret-during-init-only-xxxxx";
+      identityAuth.__test__.reset();
+      identityAuth.initIdentityAuth({ pool: makeShim(), logger: { warn() {}, error() {}, info() {} } });
+      identityAuth.__test__.injectGoogleAuthClient({
+        verifyIdToken: async () => ({
+          getPayload: () => ({ sub: "g-shared", email: "x@y.com", email_verified: true, name: "X" }),
+        }),
+      });
+      // 2. After init, an operator (or a misconfig reload) sets the WA
+      //    secret to match. Now every JWT op should refuse.
+      process.env.WA_JWT_SECRET = shared;
+      await assert.rejects(
+        () => identityAuth.verifyGoogleAndUpsert({ idToken: "fake" }),
+        (e) => /equals WA_JWT_SECRET/.test(e.message),
+      );
+    } finally {
+      process.env.IDENTITY_JWT_SECRET = prevId;
+      process.env.WA_JWT_SECRET = prevWa;
+    }
+  });
+
+  it("rejects WA-style JWT (no iss/aud) at /api/auth/me even when same secret", async () => {
+    // Mint a JWT that's signed with the SAME secret but lacks the iss/aud
+    // claims that production identity tokens carry. Even if a deployment
+    // accidentally shared the secret, the audience check here (round-11
+    // second defense layer) blocks WA-shape tokens from authenticating.
+    const waShape = jwt.sign(
+      { sub: "u-comprador", subject_type: "user" },
+      process.env.IDENTITY_JWT_SECRET,
+      { algorithm: "HS256", expiresIn: 60 * 15 }, // NO iss, NO aud
+    );
+    const r = await fetch(url("/api/auth/me"), {
+      headers: { Authorization: `Bearer ${waShape}` },
+    });
+    assert.equal(r.status, 401, "WA-shape JWT (no iss/aud) must NOT authenticate");
+  });
+});
+
 describe("Round 9: CSV formula injection neutralized in admin export", () => {
   it("prefixes single-quote on values starting with '='", () => {
     const out = csvEscape('=HYPERLINK("https://attacker.example","open")');
@@ -565,7 +625,12 @@ describe("W-1: bmc_access cookie is no longer accepted (Bearer-header-only)", ()
     const validJwt = jwt.sign(
       { sub: "u-comprador", subject_type: "user" },
       process.env.IDENTITY_JWT_SECRET,
-      { algorithm: "HS256", expiresIn: 60 * 15 },
+      {
+        algorithm: "HS256",
+        expiresIn: 60 * 15,
+        issuer: "bmc-identity",
+        audience: "bmc-identity-api",
+      },
     );
     const r = await fetch(url("/api/auth/me"), {
       headers: { Cookie: `bmc_access=${validJwt}` },
@@ -577,7 +642,12 @@ describe("W-1: bmc_access cookie is no longer accepted (Bearer-header-only)", ()
     const validJwt = jwt.sign(
       { sub: "u-comprador", subject_type: "user" },
       process.env.IDENTITY_JWT_SECRET,
-      { algorithm: "HS256", expiresIn: 60 * 15 },
+      {
+        algorithm: "HS256",
+        expiresIn: 60 * 15,
+        issuer: "bmc-identity",
+        audience: "bmc-identity-api",
+      },
     );
     const r = await fetch(url("/api/auth/me"), {
       headers: { Authorization: `Bearer ${validJwt}` },
