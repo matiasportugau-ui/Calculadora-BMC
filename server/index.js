@@ -19,6 +19,7 @@ import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
 import agentVoiceRouter from "./routes/agentVoice.js";
+import agentTranscribeRouter from "./routes/agentTranscribe.js";
 import agentFeedbackRouter from "./routes/agentFeedback.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
@@ -825,6 +826,7 @@ app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
 app.use("/api", agentFeedbackRouter);
 app.use("/api", agentVoiceRouter);
+app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
+import { useDictation } from "../hooks/useDictation.js";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 
 const FONT =
@@ -260,7 +261,6 @@ export default function PanelinChatPanel({
   const [input, setInput] = useState("");
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
-  const [isListening, setIsListening] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -278,7 +278,6 @@ export default function PanelinChatPanel({
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const openerRef = useRef(null);
-  const recognitionRef = useRef(null);
   const prevMsgCountRef = useRef(0);
   const drawerResizeActiveRef = useRef(false);
   const inputLiftDragActiveRef = useRef(false);
@@ -404,15 +403,24 @@ export default function PanelinChatPanel({
     prevMsgCountRef.current = count;
   }, [messages, ttsEnabled]);
 
-  // Cleanup recognition on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
-      }
-    };
-  }, []);
+  // Whisper-backed dictation (cross-browser, replaces deprecated Web Speech API).
+  // The hook manages mic stream lifecycle internally; cleanup happens on unmount.
+  const dictation = useDictation({
+    onTranscript: (text) => {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return;
+      // Append to existing input so the user can speak in pieces or edit between captures
+      setInput((prev) => (prev ? `${prev.trimEnd()} ${trimmed}` : trimmed));
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    },
+    onError: (msg) => {
+      // Surface error inline; the user can also see it in the mic-button title attribute
+      console.warn("[dictation]", msg);
+    },
+    language: "es",
+  });
+  const isListening = dictation.status === "recording";
+  const isTranscribing = dictation.status === "transcribing";
 
   useEffect(() => {
     if (typeof window === "undefined" || !devMode) return;
@@ -475,51 +483,18 @@ export default function PanelinChatPanel({
     else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
   }, []);
 
+  // Mic button toggles dictation: idle → record, record → stop+transcribe.
+  // Uses Whisper via /api/agent/transcribe — works in all modern browsers
+  // including Safari/Firefox (Web Speech API was Chrome/Edge only).
   const toggleListening = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Tu navegador no soporta reconocimiento de voz. Usá Chrome o Edge.");
-      return;
+    if (dictation.status === "recording") {
+      dictation.stop();
+    } else if (dictation.status === "idle" || dictation.status === "error") {
+      if (dictation.status === "error") dictation.reset();
+      dictation.start();
     }
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = "es-UY";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 1;
-    let finalTranscript = "";
-    recognition.onresult = (event) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += t;
-        } else {
-          interim += t;
-        }
-      }
-      setInput(finalTranscript || interim);
-    };
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-      if (finalTranscript) {
-        setInput(finalTranscript);
-      }
-    };
-    recognition.onerror = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [isListening]);
+    // While transcribing, the button is disabled (handled in the JSX below).
+  }, [dictation]);
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -1398,14 +1373,26 @@ export default function PanelinChatPanel({
           )}
           <button
             onClick={toggleListening}
-            title={isListening ? "Escuchando..." : "Hablar"}
+            disabled={isTranscribing}
+            title={
+              isTranscribing
+                ? "Transcribiendo…"
+                : isListening
+                  ? "Tocá para detener y transcribir"
+                  : dictation.error
+                    ? `Error: ${dictation.error}`
+                    : "Hablar (Whisper)"
+            }
             style={{
               ...iconBtn,
-              background: isListening ? "#ff3b30" : "transparent",
-              color: isListening ? "#fff" : SUBTEXT,
+              background: isListening ? "#ff3b30" : isTranscribing ? PRIMARY : "transparent",
+              color: isListening || isTranscribing ? "#fff" : SUBTEXT,
               animation: isListening ? "panelin-mic-pulse 1.5s infinite" : "none",
+              opacity: isTranscribing ? 0.7 : 1,
+              cursor: isTranscribing ? "wait" : "pointer",
             }}
-            aria-label={isListening ? "Detener grabación" : "Hablar"}
+            aria-label={isTranscribing ? "Transcribiendo" : isListening ? "Detener grabación" : "Hablar"}
+            aria-busy={isTranscribing}
           >
             <Mic size={18} />
           </button>
