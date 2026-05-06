@@ -339,6 +339,56 @@ describe("verifyGoogleAndUpsert — H-3 ID-token email_verified guard", () => {
   });
 });
 
+// Pull the internal csvEscape via the test hook on quoteExport (round-9
+// regression coverage). Top-level await — `describe` callbacks aren't async.
+const _quoteExportTest = (await import("../server/routes/quoteExport.js")).__test__;
+const csvEscape = _quoteExportTest.csvEscape;
+
+describe("Round 9: CSV formula injection neutralized in admin export", () => {
+  it("prefixes single-quote on values starting with '='", () => {
+    const out = csvEscape('=HYPERLINK("https://attacker.example","open")');
+    assert.ok(out.startsWith("\"'="), `expected leading single quote, got ${out}`);
+    // The single quote breaks the formula in Excel/Sheets/LibreOffice.
+    assert.ok(!out.match(/^"=/), "raw =FORMULA must not survive");
+  });
+
+  it("prefixes single-quote on '+', '-', '@'", () => {
+    for (const prefix of ["+SUM(1+1)", "-1+cmd|'/c calc'!A1", "@SUM(1+1)"]) {
+      const out = csvEscape(prefix);
+      assert.ok(out.startsWith("'") || out.startsWith("\"'"), `prefix '${prefix[0]}' must be neutralized; got ${out}`);
+    }
+  });
+
+  it("prefixes single-quote on values starting with leading whitespace + formula char", () => {
+    const out = csvEscape("   =1+1");
+    assert.ok(out.startsWith("\"'") || out.startsWith("'"), `whitespace-then-formula must be neutralized; got ${out}`);
+  });
+
+  it("prefixes single-quote on TAB / CR / LF leading characters", () => {
+    // TAB-leading: not wrapped in quotes (TAB isn't a CSV special char), but
+    // single-quote prefix still neutralizes the formula.
+    assert.equal(csvEscape("\t=1+1"), "'\t=1+1");
+    // CR / LF-leading: wrapped in quotes (CR/LF ARE CSV special chars), with
+    // the single quote inside the quoted form.
+    assert.match(csvEscape("\r=1+1"), /^"'/);
+    assert.match(csvEscape("\n=1+1"), /^"'/);
+  });
+
+  it("does NOT prefix benign values", () => {
+    assert.equal(csvEscape("alice@example.com"), "alice@example.com"); // wait — '@' starts? No, 'a' starts.
+    assert.equal(csvEscape("normal name"), "normal name");
+    assert.equal(csvEscape("123.45"), "123.45");
+    assert.equal(csvEscape(""), "");
+    assert.equal(csvEscape(null), "");
+  });
+
+  it("still quotes values that contain commas, quotes, or newlines", () => {
+    assert.equal(csvEscape('he said "hi"'), '"he said ""hi"""');
+    assert.equal(csvEscape("a,b,c"), '"a,b,c"');
+    assert.equal(csvEscape("line1\nline2"), '"line1\nline2"');
+  });
+});
+
 describe("Round 5: ?key= URL token is no longer accepted", () => {
   it("rejects API_AUTH_TOKEN passed via ?key= query string", async () => {
     const r = await fetch(url(`/legacy/probe?key=${encodeURIComponent("static_service_token_xyz")}`));

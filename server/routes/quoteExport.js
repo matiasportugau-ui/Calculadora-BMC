@@ -40,9 +40,22 @@ function pool() {
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
+// cursor[bot] round-9 MEDIUM: CSV formula injection mitigation.
+// Excel/Sheets/LibreOffice treat any cell whose first non-whitespace char is
+// =, +, -, @, TAB, CR, or LF as a formula. The export bundle includes user-
+// controlled fields (special_quote_requests.notes, users.name, etc.), so an
+// authenticated user can submit `=HYPERLINK("https://attacker", "open")` and
+// trigger payload execution when an admin opens the CSV. Standard mitigation
+// (OWASP, Google Sheets docs) is to prefix the value with a single quote so
+// the spreadsheet treats it as a literal string.
+const CSV_FORMULA_PREFIX = /^[\s\t\r\n]*[=+\-@\t\r\n]/;
+
 function csvEscape(v) {
   if (v == null) return "";
-  const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+  let s = typeof v === "object" ? JSON.stringify(v) : String(v);
+  if (CSV_FORMULA_PREFIX.test(s)) {
+    s = `'${s}`; // literal single-quote prefix neutralizes formula evaluation
+  }
   if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
@@ -302,3 +315,7 @@ router.get("/api/me/quotes/:id/export.html", requireUser(), async (req, res) => 
 });
 
 export default router;
+
+// cursor[bot] round-9 regression coverage — exposed for tests/identity-security
+// (no production code path imports these names directly).
+export const __test__ = { csvEscape };
