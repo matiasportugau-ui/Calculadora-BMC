@@ -134,6 +134,52 @@ jobs:
             .
           docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"
 
+      - name: Normalize secret-backed env var types
+        if: steps.paths.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+
+          if ! gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --region="${{ env.REGION }}" \
+            --format=json > /tmp/cloud-run-service.json; then
+            echo "::notice::Cloud Run service does not exist yet; no env var type migration needed."
+            exit 0
+          fi
+
+          export SECRET_ENV_NAMES="SMTP_PASS WA_JWT_SECRET IDENTITY_JWT_SECRET"
+          literal_names="$(
+            python3 - <<'PY'
+          import json
+          import os
+
+          with open("/tmp/cloud-run-service.json", encoding="utf-8") as f:
+              service = json.load(f)
+
+          names = set(os.environ.get("SECRET_ENV_NAMES", "").split())
+          containers = service.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+          literals = []
+
+          for container in containers:
+              for env in container.get("env", []):
+                  if env.get("name") in names and "value" in env:
+                      literals.append(env["name"])
+
+          print(",".join(dict.fromkeys(literals)))
+          PY
+          )"
+
+          if [ -z "$literal_names" ]; then
+            echo "::notice::Secret-backed env vars are already Secret Manager refs or absent."
+            exit 0
+          fi
+
+          echo "::notice::Removing literal env vars before Secret Manager migration: $literal_names"
+          gcloud run services update "${{ env.SERVICE_NAME }}" \
+            --region="${{ env.REGION }}" \
+            --remove-env-vars="$literal_names" \
+            --no-traffic \
+            --quiet
+
       - name: Deploy to Cloud Run
         if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/deploy-cloudrun@v3
@@ -169,7 +215,15 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
-            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,SMTP_PASS=SMTP_PASS:latest,WA_JWT_SECRET=WA_JWT_SECRET:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest
+            --update-secrets=/run/secrets/service-account.json=panelin-service-account:latest,SMTP_PASS=SMTP_PASS:latest,WA_JWT_SECRET=WA_JWT_SECRET:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest
+
+      - name: Route traffic to latest revision
+        if: steps.paths.outputs.skip != 'true'
+        run: |
+          gcloud run services update-traffic "${{ env.SERVICE_NAME }}" \
+            --region="${{ env.REGION }}" \
+            --to-latest \
+            --quiet
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'
