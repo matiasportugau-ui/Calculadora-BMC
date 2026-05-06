@@ -64,6 +64,20 @@ function scanProvidedFromYaml() {
       if (m) provided.add(m[1]);
     }
   }
+  // secrets: |
+  //   /path=secret-name:version
+  //   KEY=secret-name:version
+  const secretsBlock = txt.match(
+    /secrets:\s*\|\s*\n([\s\S]*?)(?:\n\s{0,10}(?:flags|revision_traffic|env_vars|\w+):|$)/,
+  );
+  if (secretsBlock) {
+    for (const line of secretsBlock[1].split("\n")) {
+      const m = line.trim().match(/^([^=\s]+)=/);
+      if (!m) continue;
+      const key = m[1].replace(/^.*\//, "");
+      if (/^[A-Z][A-Z0-9_]+$/.test(key)) provided.add(key);
+    }
+  }
   // --set-secrets=/path=secret-name:version  OR  --set-secrets=KEY=secret-name:version
   for (const m of txt.matchAll(/--set-secrets=([^\s]+)/g)) {
     const left = m[1].split("=")[0];

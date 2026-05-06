@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Fix CI deploy — migración Cloud Run inline env → Secret Manager):** Se corrigió el workflow [`deploy-calc-api.yml`](../../.github/workflows/deploy-calc-api.yml) para desbloquear el deploy de `panelin-calc` cuando una variable sensible ya existe en Cloud Run como env var inline y el workflow intenta moverla a Secret Manager. El job ahora detecta solo `SMTP_PASS` / `WA_JWT_SECRET` / `IDENTITY_JWT_SECRET` que sigan inline, las remueve con `--no-traffic`, despliega la nueva imagen con el input oficial `secrets:` de `deploy-cloudrun@v3` y fuerza `LATEST=100` para evitar que la revisión transitoria quede recibiendo tráfico. [`check-env-drift.mjs`](../../scripts/check-env-drift.mjs) también reconoce `secrets:` además de `--set-secrets`.
+
+**Affects:** bmc-deployment (Cloud Run deploy desde Actions), bmc-security (secrets sensibles en Secret Manager), bmc-docs-sync (estado actualizado).
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
