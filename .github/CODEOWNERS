@@ -25,7 +25,10 @@
 #      other than the last pusher" for true 2-person rule on these paths.
 
 # Auth + authorization core
-/server/middleware/                    @matiasportugau-ui
+# Note: list specific files rather than the whole /server/middleware/
+# directory so future non-auth middleware doesn't inherit a stricter
+# review requirement than it needs (Sourcery feedback). New auth-related
+# middleware should be added explicitly as a new line below.
 /server/middleware/requireAuth.js      @matiasportugau-ui
 
 # Agent tool surface — direct customer/quote/CRM/PDF data exposure
