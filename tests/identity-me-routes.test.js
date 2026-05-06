@@ -548,6 +548,23 @@ describe("POST /api/me/quotes — H-1 pdf_url validation surfaces 400", () => {
     const j = await r.json();
     assert.equal(j.error, "invalid_pdf_url");
   });
+
+  // cursor[bot] round-4 LOW: error response must NOT include `e.detail`,
+  // matching the F-1/W-3 pattern from /auth/* routes.
+  it("does NOT include detail field on URL-allowlist rejection", async () => {
+    const r = await fetch(url("/api/me/quotes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({
+        payload: { totalUsd: 10 },
+        pdfUrl: "https://evil.example.com/quote.pdf",
+      }),
+    });
+    assert.equal(r.status, 400);
+    const j = await r.json();
+    assert.equal(j.error, "invalid_pdf_url");
+    assert.equal(j.detail, undefined, "wire response must not include e.detail");
+  });
 });
 
 describe("GET /api/admin/sheets/clientes/status", () => {

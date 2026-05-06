@@ -339,6 +339,92 @@ describe("verifyGoogleAndUpsert — H-3 ID-token email_verified guard", () => {
   });
 });
 
+describe("Round 4: 403 body does not echo caller's role/grant in production", () => {
+  it("returns generic 'forbidden' in production mode", async () => {
+    const prevEnv = process.env.APP_ENV;
+    process.env.APP_ENV = "production";
+    try {
+      // Re-init NOT needed for this test — requireUser reads env at runtime.
+      const r = await fetch(url("/operator/probe"), {
+        headers: { Authorization: bearerFor("u-comprador") },
+      });
+      assert.equal(r.status, 403);
+      const j = await r.json();
+      assert.equal(j.error, "forbidden");
+      assert.equal(j.have, undefined, "must NOT echo caller's role");
+      assert.equal(j.required, undefined, "must NOT echo required role");
+    } finally {
+      process.env.APP_ENV = prevEnv;
+    }
+  });
+
+  it("includes role/grant detail outside production for dev visibility", async () => {
+    const prevEnv = process.env.APP_ENV;
+    process.env.APP_ENV = "test";
+    try {
+      const r = await fetch(url("/operator/probe"), {
+        headers: { Authorization: bearerFor("u-comprador") },
+      });
+      assert.equal(r.status, 403);
+      const j = await r.json();
+      assert.equal(j.error, "insufficient_role");
+      assert.equal(j.have, "comprador");
+    } finally {
+      process.env.APP_ENV = prevEnv;
+    }
+  });
+});
+
+describe("Round 4: email_verified string-coercion bypass on access-token path", () => {
+  it("rejects when tokeninfo returns email_verified='false' (string) AND userinfo returns false (boolean)", async () => {
+    mockFetch(async (u) => {
+      const url = String(u);
+      if (url.startsWith("https://oauth2.googleapis.com/tokeninfo")) {
+        return new Response(JSON.stringify({
+          aud: process.env.GOOGLE_OAUTH_CLIENT_ID,
+          email_verified: "false",          // STRING — Google returns this
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.startsWith("https://www.googleapis.com/oauth2/v3/userinfo")) {
+        return new Response(JSON.stringify({
+          sub: "g-attacker",
+          email: "matias@bmc.uy",            // targets a seeded superadmin
+          email_verified: false,             // BOOLEAN — userinfo returns this
+          name: "Attacker",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return null;
+    });
+    await assert.rejects(
+      () => identityAuth.verifyGoogleAndUpsert({ accessToken: "fake-string-coercion" }),
+      (e) => e.status === 401 && /email_not_verified/.test(e.message),
+    );
+  });
+
+  it("accepts when tokeninfo returns email_verified='true' (string)", async () => {
+    mockFetch(async (u) => {
+      const url = String(u);
+      if (url.startsWith("https://oauth2.googleapis.com/tokeninfo")) {
+        return new Response(JSON.stringify({
+          aud: process.env.GOOGLE_OAUTH_CLIENT_ID,
+          email_verified: "true",            // string truthy
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.startsWith("https://www.googleapis.com/oauth2/v3/userinfo")) {
+        return new Response(JSON.stringify({
+          sub: "g-ok",
+          email: "alice@y.com",
+          email_verified: false,             // userinfo says false
+          name: "Alice",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return null;
+    });
+    const r = await identityAuth.verifyGoogleAndUpsert({ accessToken: "fake-string-true" });
+    assert.equal(r.user.email, "alice@y.com");
+  });
+});
+
 describe("F-1: /auth/google does not leak GOOGLE_OAUTH_CLIENT_ID in error responses", () => {
   it("audience mismatch returns generic error code, no detail field", async () => {
     mockFetch(async (u) => {
