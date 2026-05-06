@@ -513,7 +513,7 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 - \`obtener_cotizacion_por_id\` — cuando referencien un id concreto.
 
 **Cancelación (soft delete):**
-- \`cancelar_cotizacion\` — el cliente declinó, los datos cambiaron, o querés limpiar el listado. Marca status=cancelled (no borra). REQUIERE user_confirmed=true. SOLO con confirmación explícita ("cancelá la cotización X", "el cliente desistió", "borrala del listado"). Listar_cotizaciones_recientes la oculta por default; pasá include_cancelled=true si necesitás verla.
+- \`cancelar_cotizacion\` — el cliente declinó, los datos cambiaron, o querés limpiar el listado. Marca status=cancelled (no borra). REQUIERE user_confirmed=true. SOLO con confirmación explícita ("cancelá la cotización X", "el cliente desistió", "borrala del listado"). Las cotizaciones canceladas quedan ocultas del listado reciente por default; no pidas ni asumas filtros especiales no soportados por la herramienta.
 
 **Historial agregado:**
 - \`historial_cliente\` — un solo call que combina buscar_cliente_crm + listar_cotizaciones_recientes para un cliente dado. Usar cuando el usuario pide "historial de Juan" / "qué tenemos del cliente X" — más eficiente que llamar las dos por separado.
