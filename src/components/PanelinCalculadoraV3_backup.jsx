@@ -89,7 +89,7 @@ import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
-  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser,
+  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
@@ -4125,13 +4125,14 @@ export default function PanelinCalculadoraV3() {
   const [driveLastSave, setDriveLastSave] = useState(null);
 
   const ensureDriveGsi = useCallback(async () => {
-    try {
-      await loadGsiScript();
-      initGoogleAuth();
-      setDriveAuth(gdriveIsAuth());
-    } catch {
-      /* GIS optional until Drive is used */
+    if (!isDriveConfigured()) {
+      throw new Error(
+        "Google Drive no está configurado: falta VITE_GOOGLE_CLIENT_ID en este entorno."
+      );
     }
+    await loadGsiScript();
+    initGoogleAuth();
+    setDriveAuth(gdriveIsAuth());
   }, []);
 
   useEffect(() => {
@@ -4140,7 +4141,9 @@ export default function PanelinCalculadoraV3() {
 
   useEffect(() => {
     if (!showDrivePanel) return;
-    ensureDriveGsi();
+    ensureDriveGsi().catch((err) => {
+      setDriveError(err?.message || "No se pudo inicializar Google Drive");
+    });
   }, [showDrivePanel, ensureDriveGsi]);
 
   useEffect(() => {
@@ -4168,6 +4171,7 @@ export default function PanelinCalculadoraV3() {
   }, []);
 
   const handleDriveSignIn = useCallback(async () => {
+    setDriveError(null);
     try {
       // gdriveSignIn() is self-healing: it loads GIS + initializes the token
       // client internally, so no need to await ensureDriveGsi() first.
@@ -4176,7 +4180,7 @@ export default function PanelinCalculadoraV3() {
       setDriveUser(result?.user || null);
       handleDriveRefresh();
     } catch (err) {
-      setDriveError(err.message || "Error al iniciar sesión");
+      setDriveError(err?.message || "Error al iniciar sesión");
     }
   }, [handleDriveRefresh]);
 
@@ -6594,6 +6598,7 @@ export default function PanelinCalculadoraV3() {
         onLoad={handleDriveLoad}
         onDelete={handleDriveDelete}
         isAuthenticated={driveAuth}
+        configured={isDriveConfigured()}
         currentUser={driveUser}
         onSignIn={handleDriveSignIn}
         onSignOut={handleDriveSignOut}

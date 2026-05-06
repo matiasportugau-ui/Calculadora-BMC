@@ -1,2 +1,67 @@
-# Default code owner
+# BMC Calculadora — CODEOWNERS
+#
+# Required reviewer mapping for GitHub PRs. GitHub's CODEOWNERS resolution
+# is **order-dependent**: the LAST matching pattern in this file takes
+# precedence (not the most specific). When editing, keep the catch-all
+# default at the top and put more-specific path rules below so they
+# correctly override the default for those paths.
+#
+# Default — single CODEOWNER until a second human collaborator is added.
 * @matiasportugau-ui
+
+# ─── Security-sensitive paths ─────────────────────────────────────────────
+#
+# These paths handle authentication, authorization, customer PII, prompt
+# injection surface, or third-party write surfaces (Sheets, WhatsApp, GCS).
+# Listed individually below so a future second reviewer can be added
+# (e.g. `@bmc-security` or a named GitHub username) WITHOUT touching the
+# default catch-all rule above. Until a second collaborator exists, these
+# rules continue to map to @matiasportugau-ui — same as today, but now the
+# structural gate is in place for a one-line update later.
+#
+# How to add a second reviewer once available:
+#   1. Add the username/team to the right of @matiasportugau-ui on each
+#      line below (CODEOWNERS uses space-separated owners — ALL listed
+#      owners are requested as reviewers; ANY one of them can approve).
+#   2. (Optional, stricter) Combine with branch protection rule
+#      "Require review from Code Owners" + "Require approval from someone
+#      other than the last pusher" for true 2-person rule on these paths.
+
+# Auth + authorization core
+# Note: list specific files rather than the whole /server/middleware/
+# directory so future non-auth middleware doesn't inherit a stricter
+# review requirement than it needs (Sourcery feedback). New auth-related
+# middleware should be added explicitly as a new line below.
+/server/middleware/requireAuth.js      @matiasportugau-ui
+
+# Agent tool surface — direct customer/quote/CRM/PDF data exposure
+/server/lib/agentTools.js              @matiasportugau-ui
+/server/lib/userIntentClassifier.js    @matiasportugau-ui
+/server/routes/agentChat.js            @matiasportugau-ui
+
+# Quote registry (persistent customer data) + calc routes (registry mutation)
+/server/lib/quoteRegistry.js           @matiasportugau-ui
+/server/routes/calc.js                 @matiasportugau-ui
+
+# CRM Sheets writers — formula injection + customer PII
+/server/lib/crmAppend.js               @matiasportugau-ui
+/server/lib/crmSearch.js               @matiasportugau-ui
+/server/lib/crmOperativoLayout.js      @matiasportugau-ui
+
+# WhatsApp / outbound integrations
+/server/lib/whatsappOutbound.js        @matiasportugau-ui
+/server/lib/whatsappSignature.js       @matiasportugau-ui
+
+# MCP external surface
+/scripts/mcp-panelin-http.mjs          @matiasportugau-ui
+
+# Secret/config handling
+/server/config.js                      @matiasportugau-ui
+/server/tokenStore.js                  @matiasportugau-ui
+/server/lib/googleAuthCache.js         @matiasportugau-ui
+
+# Prompt — model behavior changes
+/server/lib/chatPrompts.js             @matiasportugau-ui
+
+# CI / deploy / release pipelines
+/.github/workflows/                    @matiasportugau-ui

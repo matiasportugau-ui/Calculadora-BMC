@@ -12,6 +12,36 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Dev — Panelin agent: full tool platform, PR #110 ready for review):** Cierre de la línea de trabajo abierta el 2026-04-30 sobre el chat Panelin. El surface pasó de **5 tools → 28 tools** en 12 commits, con dos puntos de acceso (in-app chat + MCP externo), telemetría per-tool, registry persistente en GCS y un gate de confirmación de usuario que ya no depende de un flag seteado por el modelo.
+
+**Tool surface (28)** en [`server/lib/agentTools.js`](../../server/lib/agentTools.js):
+- *Read / catalog:* `obtener_escenarios`, `obtener_catalogo`, `obtener_informe_completo`, `listar_opciones_panel`, `obtener_precio_panel`, `get_calc_state`, `listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`, `obtener_pdf_html`, `historial_cliente`, `buscar_cliente_crm`
+- *Calc:* `calcular_cotizacion` (delegado a `runCalculation`/`buildGptResponse` desde `calc.js` — single source of truth), `presupuesto_libre`, `comparar_listas`, `comparar_escenarios`
+- *Live UI write (chat-only):* `aplicar_estado_calc` — emite `setScenario / setLP / setTecho / setTechoZonas / setPared / setCamara / setFlete / setProyecto` vía `emitAction` callback
+- *PDF + CRM + WhatsApp:* `generar_pdf`, `formatear_resumen_crm`, `guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, `programar_seguimiento`
+- *Wolfboard hub (admin):* `wolfboard_pendientes`, `wolfboard_export`, `wolfboard_sync`, `wolfboard_actualizar_fila`, `wolfboard_marcar_enviado`, `wolfboard_quote_batch`
+
+**Gate de confirmación real (no más `user_confirmed` theatre):** Nuevo [`server/lib/userIntentClassifier.js`](../../server/lib/userIntentClassifier.js) clasifica el último mensaje del usuario en server-side y produce un `Set<string>` de tools aprobadas para ese turno (regex per-tool, accent-insensitive, con manejo de negación `no <phrase>` + idiom guard `dejar sin efecto`). Las 8 write tools (4 customer-facing + 4 Wolfboard admin) chequean ese set en lugar del flag seteado por el modelo. Path MCP (`POST /api/agent/exec-tool`) mantiene el flag legacy + Bearer auth — threat model distinto.
+
+**Persistencia + telemetría:** Nuevo [`server/lib/quoteRegistry.js`](../../server/lib/quoteRegistry.js) — registry GCS-backed (`gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`), sin TTL, sobrevive cold-starts de Cloud Run; fallback in-memory cuando no hay bucket. Nuevo [`server/lib/toolStats.js`](../../server/lib/toolStats.js) — ring buffer de 1k records con per-tool count / p50 / p95 / error_rate / errores clasificados (`guard:user_confirmed`, `config:missing_env`, `validation:required`, etc.); expuesto en `GET /api/agent/tool-stats` y surfaceado en una nueva tab "Tools" del `PanelinDevPanel.jsx`.
+
+**Acceso externo (MCP):** [`scripts/mcp-panelin-http.mjs`](../../scripts/mcp-panelin-http.mjs) registra los 28 tools dinámicamente al boot leyendo `GET /api/agent/tools-manifest`. Las 8 write tools requieren `BMC_API_TOKEN` Bearer + `user_confirmed: true`. Nueva agent definition [`bmc-panelin-mcp.md`](../../.claude/agents/bmc-panelin-mcp.md).
+
+**Helpers nuevos:** [`server/lib/crmAppend.js`](../../server/lib/crmAppend.js) (`appendQuoteToCrm()`, escribe PDF URL en col **AH** LINK_PRESUPUESTO, flags `AI/AK = "No"` para gate humano), [`server/lib/crmSearch.js`](../../server/lib/crmSearch.js) (`searchCrmClients()` lee `B4:AH500` con match fuzzy por nombre/teléfono/observaciones).
+
+**Rate-limit:** `/api/agent/exec-tool` ahora cuenta con `express-rate-limit` (60/min por IP), match con el patrón del chat endpoint (10/min público, 30/min dev).
+
+**Tests:** **884 assertions verdes** distribuidas en 9 archivos de test:
+- 384 validation + 26 wa-ingest + 23 wa-enricher + 22 wa-quote-params + 243 agentTools + 30 toolStats + 67 userIntentClassifier (lo nuevo de PR #110) + 18 calc-routes API + 29 panelin internal + 6 auth + 36 agentMcpRoutes
+- Nuevos archivos: `tests/agentTools.test.js`, `tests/toolStats.test.js`, `tests/userIntentClassifier.test.js`, `tests/agentMcpRoutes.test.js`
+- `gate:local` ahora corre `lint + test + test:api` (antes solo `lint + test`); `gate:local:full` agrega `build`. Esto detectó un bug latente de bare-backticks en `chatPrompts.js` que rompía el chat path en prod.
+
+**Cambios al `chatPrompts.js`:** nuevo bloque **EXTRACTION_PROTOCOL** (slot-filling conversacional, un campo por turno, `obtener_escenarios` como source of truth), nueva sección **REGLA CRÍTICA — Confirmación real** (explica al modelo que el server lee la intención del usuario, no su flag).
+
+**Affects:** bmc-panelin-chat (tool surface + protocolo + prompt + gate de intent), bmc-calc-specialist (sin cambios al motor — `calcular_cotizacion` ahora delega a `runCalculation`), bmc-sheets-mapping (escritura nueva CRM_Operativo col AH + lectura B4:AH500), bmc-api-contract (nuevas rutas: `/api/agent/tool-stats`, `/api/agent/tools-manifest`, `/api/agent/exec-tool`, `/calc/cotizaciones/:id`, `/calc/cotizaciones/:id/cancelar`), bmc-deployment (env vars: `GCS_QUOTES_BUCKET` ya existe, sin nuevas; `WHATSAPP_*` y `BMC_SHEET_ID` para tools opcionales), bmc-security (rate-limit en exec-tool, two-layer guard en write tools), bmc-panelin-mcp (nueva agent definition).
+
+**Estado PR #110:** 14 commits en `claude/integrate-bmc-calculator-FLjeh`, conflictos vs main resueltos vía merge real (no manual cherry-pick). Provenance + ADR + structured log event landed (commit `5c2bd59`). Listo para review.
+
 **2026-05-05 (Dev — Comprador Identity — Phases A→J):** Master plan completo aterrizado en una sola PR de feature branch [`claude/user-identity-master-plan-hYGmq`](https://github.com/matiasportugau-ui/calculadora-bmc/pull/137). Implementa identidad de Comprador con OAuth Google, RBAC por módulo, persistencia de cotizaciones por usuario, sync opcional a Sheets y export admin multi-formato:
 - **Phase A** — `supabase/migrations/20260601000001_identity_init.sql` con 13 tablas bajo schema `identity` (users, sessions, role_grants, module_grants, modules, access_requests, quotes, quote_events, special_quote_requests, notifications, crm_personal_*, audit_log).
 - **Phase B** — [`server/lib/identityAuth.js`](../../server/lib/identityAuth.js) espeja a `waOperatorAuth.js`: `verifyGoogleAndUpsert`, `refreshTokens` con rotación + reuse detection, `requireUser({role,module,minLevel})` middleware. 11 tests unitarios passing.
