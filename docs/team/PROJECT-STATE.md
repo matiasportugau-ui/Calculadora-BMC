@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Hotfix — deploy Cloud Run + auth fail-closed):** Inspección crítica sobre el CI fallido de `Deploy Calculator API` (`13772fd`) detectó que el workflow había cambiado `SMTP_PASS` y `WA_JWT_SECRET` de env vars literales a Secret Manager refs, pero la última revisión exitosa de Cloud Run los tenía como env vars literales. Cloud Run rechaza ese cambio de tipo en el mismo deploy (`Cannot update environment variable [SMTP_PASS] to the given type`), bloqueando todos los deploys relevantes antes del smoke. Hotfix: [`.github/workflows/deploy-calc-api.yml`](../../.github/workflows/deploy-calc-api.yml) vuelve a publicar `SMTP_PASS` y `WA_JWT_SECRET` con el mismo tipo que producción; `IDENTITY_JWT_SECRET` queda como Secret Manager ref porque no existía en el deploy base.
+
+En la misma corrida se cerró un bypass de configuración insegura: [`server/routes/wolfboard.js`](../../server/routes/wolfboard.js) y [`server/routes/superAgent.js`](../../server/routes/superAgent.js) ahora devuelven `503 API_AUTH_TOKEN not configured` si falta el token de servicio, en vez de permitir acceso anónimo. Regresión cubierta en [`tests/auth-routes.test.js`](../../tests/auth-routes.test.js). Validación local pendiente por entorno Cursor Cloud sin `node`/`npm` en `PATH`; branch hotfix: `cursor/critical-bug-inspection-7c85`.
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
