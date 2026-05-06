@@ -27,11 +27,19 @@ import {
 
 const router = express.Router();
 
+let _testPool = null;
 function pool() {
+  if (_testPool) return _testPool;
   const p = getWaPool(config.databaseUrl);
   if (!p) throw Object.assign(new Error("db_unavailable"), { status: 503 });
   return p;
 }
+
+/** Test-only — inject the same in-memory shim used by quoteStore + identityAuth. */
+export const __test__ = {
+  setPool(p) { _testPool = p; },
+  reset() { _testPool = null; },
+};
 
 async function notifySuperadmins({ kind, title, body, payload }) {
   const p = pool();
