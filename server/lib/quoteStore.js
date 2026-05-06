@@ -10,11 +10,19 @@
 import { getWaPool } from "./waDb.js";
 import { config } from "../config.js";
 
+let _testPool = null;
 function pool() {
+  if (_testPool) return _testPool;
   const p = getWaPool(config.databaseUrl);
   if (!p) throw Object.assign(new Error("db_unavailable"), { status: 503 });
   return p;
 }
+
+/** Test-only — inject an in-memory pg.Pool shim. */
+export const __test__ = {
+  setPool(p) { _testPool = p; },
+  reset() { _testPool = null; },
+};
 
 function pickTotals(payload) {
   if (!payload || typeof payload !== "object") return { totalUsd: null, totalUyu: null };

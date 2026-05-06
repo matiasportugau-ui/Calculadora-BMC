@@ -18,6 +18,7 @@ import React, {
   useState,
 } from "react";
 import { signIn as gisSignIn, signOut as gisSignOut } from "../utils/googleDrive.js";
+import { getPendingClientQuoteIds, clearPending } from "../utils/clientQuoteId.js";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -133,6 +134,28 @@ export function BmcAuthProvider({ children }) {
     }
     const data = await res.json();
     applyAuth(data);
+
+    // Anonymous→user merge (master plan §Phase F): claim any quotes the
+    // browser created before this login. Best-effort — failure must NOT
+    // break the login UX.
+    try {
+      const ids = getPendingClientQuoteIds();
+      if (ids.length) {
+        const claimRes = await fetch(`${ApiBase}/api/me/quotes/claim`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(data.accessToken ? { Authorization: `Bearer ${data.accessToken}` } : {}),
+          },
+          body: JSON.stringify({ clientQuoteIds: ids }),
+        });
+        if (claimRes.ok) clearPending();
+      }
+    } catch {
+      /* ignore — claim is best-effort */
+    }
+
     return data;
   }, [applyAuth]);
 
