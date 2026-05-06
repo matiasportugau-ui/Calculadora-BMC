@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
-import calcRouter from "../server/routes/calc.js";
+import calcRouter, { buildQuoteArtifactFilename } from "../server/routes/calc.js";
 
 let passed = 0;
 let failed = 0;
@@ -168,6 +168,25 @@ async function run() {
       (cotizacionesJson?.cotizaciones || []).some((c) => c.id === pdfResp.json.pdf_id && c.client === "QA Regression"),
       `count=${cotizacionesJson?.count || 0}`,
       "contains QA Regression entry"
+    );
+
+    const duplicateCodeNameA = buildQuoteArtifactFilename({
+      quoteCode: "QA-ROUTES-001",
+      pdfId: "11111111-aaaa-bbbb-cccc-111111111111",
+      date: "2026-05-06",
+    });
+    const duplicateCodeNameB = buildQuoteArtifactFilename({
+      quoteCode: "QA-ROUTES-001",
+      pdfId: "22222222-aaaa-bbbb-cccc-222222222222",
+      date: "2026-05-06",
+    });
+    assert(
+      "Quote artifact filenames stay unique when quote_code repeats",
+      duplicateCodeNameA !== duplicateCodeNameB &&
+        duplicateCodeNameA.includes("QA-ROUTES-001-11111111") &&
+        duplicateCodeNameB.includes("QA-ROUTES-001-22222222"),
+      `${duplicateCodeNameA} / ${duplicateCodeNameB}`,
+      "distinct names with pdf_id token"
     );
   } finally {
     await new Promise((resolve) => server.close(resolve));
