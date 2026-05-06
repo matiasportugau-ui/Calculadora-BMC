@@ -99,6 +99,9 @@ router.patch("/api/me/notifications/:id", requireUser(), async (req, res) => {
 const ALLOWED_MODULES = new Set([
   "calc", "wa", "ml", "admin", "plan-import", "agent-admin", "canales", "crm-personal",
 ]);
+// cursor[bot] F-2: canonical level set — anything else writes garbage into
+// identity.module_grants and breaks _levelAllows reasoning silently.
+const VALID_LEVELS = new Set(["none", "read", "write", "admin"]);
 
 router.post("/api/access-requests", requireUser(), async (req, res) => {
   try {
@@ -165,6 +168,12 @@ router.patch("/api/admin/access-requests/:id", requireUser({ role: "admin" }), a
     const { decision, level } = req.body || {};
     if (!["granted", "denied"].includes(decision)) {
       return res.status(400).json({ ok: false, error: "invalid_decision" });
+    }
+    // F-2: only enforce the level enum when actually granting. If the admin
+    // omits `level`, default to 'read' below; if they supplied a non-enum
+    // value, refuse outright instead of silently demoting to 'read'.
+    if (decision === "granted" && level !== undefined && !VALID_LEVELS.has(level)) {
+      return res.status(400).json({ ok: false, error: "invalid_level", allowed: [...VALID_LEVELS] });
     }
     const lookup = await pool().query(
       `select user_id, module from identity.access_requests where request_id = $1`,
