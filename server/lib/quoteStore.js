@@ -67,31 +67,58 @@ export async function upsertQuote({
   status = "draft",
   wizardStep,
 }) {
-  if (!userId) throw new Error("userId_required");
+  // Validation:
+  //   - userId given → row keyed by user (authenticated quote).
+  //   - userId null + clientQuoteId given → anonymous row, claimable later
+  //     via claimAnonymousQuotes once the user logs in.
+  //   - both null → cannot key the row; reject.
+  if (!userId && !clientQuoteId) throw new Error("userId_or_clientQuoteId_required");
+
   const { totalUsd, totalUyu } = pickTotals(payload);
 
-  // If clientQuoteId was provided, dedupe on (user_id, client_quote_id);
-  // otherwise insert a new row.
+  // If we have a clientQuoteId, dedupe on the most-specific match:
+  //   - (user_id IS NOT NULL): upsert by (user_id, client_quote_id)
+  //   - (user_id IS NULL):     upsert by (user_id IS NULL AND client_quote_id)
   if (clientQuoteId) {
-    const upd = await pool().query(
-      `update identity.quotes
-          set payload = $3::jsonb,
-              total_usd = coalesce($4, total_usd),
-              total_uyu = coalesce($5, total_uyu),
-              pdf_id = coalesce($6, pdf_id),
-              pdf_url = coalesce($7, pdf_url),
-              gcs_uri = coalesce($8, gcs_uri),
-              drive_file_id = coalesce($9, drive_file_id),
-              wizard_step = coalesce($10, wizard_step),
-              status = case when status = 'deleted' then status else $11 end
-        where user_id = $1 and client_quote_id = $2
-        returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
-      [
-        userId, clientQuoteId, JSON.stringify(payload || {}),
-        totalUsd, totalUyu, pdfId || null, pdfUrl || null,
-        gcsUri || null, driveFileId || null, wizardStep ?? null, status,
-      ],
-    );
+    const upd = userId
+      ? await pool().query(
+          `update identity.quotes
+              set payload = $3::jsonb,
+                  total_usd = coalesce($4, total_usd),
+                  total_uyu = coalesce($5, total_uyu),
+                  pdf_id = coalesce($6, pdf_id),
+                  pdf_url = coalesce($7, pdf_url),
+                  gcs_uri = coalesce($8, gcs_uri),
+                  drive_file_id = coalesce($9, drive_file_id),
+                  wizard_step = coalesce($10, wizard_step),
+                  status = case when status = 'deleted' then status else $11 end
+            where user_id = $1 and client_quote_id = $2
+            returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
+          [
+            userId, clientQuoteId, JSON.stringify(payload || {}),
+            totalUsd, totalUyu, pdfId || null, pdfUrl || null,
+            gcsUri || null, driveFileId || null, wizardStep ?? null, status,
+          ],
+        )
+      : await pool().query(
+          `update identity.quotes
+              set payload = $2::jsonb,
+                  total_usd = coalesce($3, total_usd),
+                  total_uyu = coalesce($4, total_uyu),
+                  pdf_id = coalesce($5, pdf_id),
+                  pdf_url = coalesce($6, pdf_url),
+                  gcs_uri = coalesce($7, gcs_uri),
+                  drive_file_id = coalesce($8, drive_file_id),
+                  wizard_step = coalesce($9, wizard_step),
+                  status = case when status = 'deleted' then status else $10 end
+            where user_id is null and client_quote_id = $1
+            returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
+          [
+            clientQuoteId, JSON.stringify(payload || {}),
+            totalUsd, totalUyu, pdfId || null, pdfUrl || null,
+            gcsUri || null, driveFileId || null, wizardStep ?? null, status,
+          ],
+        );
     if (upd.rows.length) {
       await _event(upd.rows[0].quote_id, "updated", userId, { status });
       return upd.rows[0];
@@ -105,7 +132,7 @@ export async function upsertQuote({
      ) values ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11)
      returning quote_id, status, total_usd, total_uyu, created_at, updated_at`,
     [
-      userId, clientQuoteId || null, JSON.stringify(payload || {}),
+      userId || null, clientQuoteId || null, JSON.stringify(payload || {}),
       totalUsd, totalUyu, pdfId || null, pdfUrl || null,
       gcsUri || null, driveFileId || null, wizardStep ?? null, status,
     ],

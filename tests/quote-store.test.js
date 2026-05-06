@@ -20,11 +20,31 @@ function makeShim() {
   async function query(sql, params = []) {
     const norm = sql.replace(/\s+/g, " ").trim().toLowerCase();
 
-    // upsert by (user_id, client_quote_id)
+    // upsert by (user_id, client_quote_id) — authenticated path
     if (norm.startsWith("update identity.quotes set payload = $3::jsonb,")) {
       const [user_id, client_quote_id, payload, total_usd, total_uyu, pdf_id, pdf_url, gcs_uri, drive_file_id, wizard_step, status] = params;
       const row = tables.quotes.find(
         (q) => q.user_id === user_id && q.client_quote_id === client_quote_id,
+      );
+      if (!row) return { rows: [] };
+      row.payload = JSON.parse(payload);
+      if (total_usd != null) row.total_usd = Number(total_usd);
+      if (total_uyu != null) row.total_uyu = Number(total_uyu);
+      if (pdf_id) row.pdf_id = pdf_id;
+      if (pdf_url) row.pdf_url = pdf_url;
+      if (gcs_uri) row.gcs_uri = gcs_uri;
+      if (drive_file_id) row.drive_file_id = drive_file_id;
+      if (wizard_step != null) row.wizard_step = wizard_step;
+      if (row.status !== "deleted") row.status = status;
+      row.updated_at = new Date();
+      return { rows: [{ ...row }] };
+    }
+
+    // upsert anonymous rows (user_id IS NULL) — keyed by client_quote_id only
+    if (norm.startsWith("update identity.quotes set payload = $2::jsonb,")) {
+      const [client_quote_id, payload, total_usd, total_uyu, pdf_id, pdf_url, gcs_uri, drive_file_id, wizard_step, status] = params;
+      const row = tables.quotes.find(
+        (q) => q.user_id === null && q.client_quote_id === client_quote_id,
       );
       if (!row) return { rows: [] };
       row.payload = JSON.parse(payload);
@@ -152,8 +172,27 @@ describe("upsertQuote", () => {
     assert.equal(pool._tables.quotes[0].status, "completed");
   });
 
-  it("requires userId", async () => {
-    await assert.rejects(() => upsertQuote({ payload: {} }), /userId_required/);
+  it("requires userId OR clientQuoteId", async () => {
+    await assert.rejects(() => upsertQuote({ payload: {} }), /userId_or_clientQuoteId_required/);
+  });
+
+  it("inserts an anonymous row when only clientQuoteId is supplied (no userId)", async () => {
+    const r = await upsertQuote({
+      clientQuoteId: "cq-anon-1",
+      payload: { totalUsd: 50 },
+      status: "completed",
+    });
+    assert.equal(r.status, "completed");
+    assert.equal(pool._tables.quotes.length, 1);
+    assert.equal(pool._tables.quotes[0].user_id, null);
+    assert.equal(pool._tables.quotes[0].client_quote_id, "cq-anon-1");
+  });
+
+  it("dedupes anonymous rows by client_quote_id alone (user_id IS NULL)", async () => {
+    await upsertQuote({ clientQuoteId: "cq-anon-2", payload: { totalUsd: 10 } });
+    await upsertQuote({ clientQuoteId: "cq-anon-2", payload: { totalUsd: 20 }, status: "completed" });
+    assert.equal(pool._tables.quotes.length, 1);
+    assert.equal(Number(pool._tables.quotes[0].total_usd), 20);
   });
 
   it("preserves status='deleted' across updates", async () => {

@@ -576,10 +576,14 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
     });
 
     // Per-user quote persistence (best-effort — must not regress PDF flow).
-    // Identity master plan §Phase F: when req.user is present (Bearer JWT or
-    // bmc_sess cookie via requireServiceOrUser), upsert into identity.quotes
-    // so the user can see it in /mi-espacio. Anonymous quotes also land if
-    // a client_quote_id was sent so they can be claimed on later login.
+    // Identity master plan §Phase F. req.user is populated when the caller
+    // presents `Authorization: Bearer <access JWT>` (typical for the
+    // server-to-server chat agent in agentTools.js and GPT Actions). The
+    // React wizard generates PDFs client-side and uses POST /api/me/quotes
+    // directly — this hook covers the agent paths.
+    //
+    // Anonymous (no req.user) but with clientQuoteId: row lands with
+    // user_id=null; claimAnonymousQuotes() reattaches it on first login.
     const clientQuoteId =
       typeof req.body?.clientQuoteId === "string" ? req.body.clientQuoteId : null;
     if (req.user?.id || clientQuoteId) {
