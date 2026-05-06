@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 /**
- * MCP server (stdio) — exposes the Panelin agent's full tool surface to
- * external Claude Code subagents, GPT Builder, and other MCP clients.
+ * MCP server (stdio) — exposes the Panelin agent's full tool surface
+ * (28 tools: calc + catalog + state + PDF + CRM + WhatsApp + Wolfboard
+ * admin + telemetry) to external Claude Code subagents, GPT Builder,
+ * and other MCP clients.
  *
- * The tool count is determined at boot by fetching GET /api/agent/tools-manifest
- * from the running API. Auth-gated tools (those whose `requires_auth` flag is
- * true in the manifest) include the Bearer token from BMC_API_TOKEN if set.
- * Unauthenticated tools are called without a token.
- *
- * Auth-gated tools include CRM reads (buscar_cliente_crm, historial_cliente),
- * CRM/WA writes (guardar_en_crm, enviar_whatsapp_link, cancelar_cotizacion,
- * programar_seguimiento), and all Wolfboard admin tools.
+ * Boots by fetching GET /api/agent/tools-manifest from the running API,
+ * then registers each tool dynamically. All invocations forward to
+ * POST /api/agent/exec-tool. Auth-gated tools include the Bearer token
+ * from BMC_API_TOKEN if set:
+ *   - Customer writes: guardar_en_crm, enviar_whatsapp_link,
+ *     cancelar_cotizacion, programar_seguimiento
+ *   - CRM/quote/PDF reads: buscar_cliente_crm, historial_cliente,
+ *     listar_cotizaciones_recientes, obtener_cotizacion_por_id,
+ *     obtener_pdf_html
+ *   - Wolfboard admin: wolfboard_pendientes, _export, _sync,
+ *     _actualizar_fila, _marcar_enviado, _quote_batch
  *
  * Usage:
  *   BMC_API_BASE=http://localhost:3001 npm run mcp:panelin

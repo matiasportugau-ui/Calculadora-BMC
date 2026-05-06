@@ -62,12 +62,13 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
 
     const qLower = q.toLowerCase();
     const qDigits = normalizePhone(q);
-    const isPhoneQuery = qDigits.length >= 6;
-    // A RUT-like query has ≥ 7 digits (UY RUT is 8-12 digits, often formatted
-    // as "1234567-8" or "120456789012"). Agents typically store RUT data in the
-    // observaciones column ("RUT: 12345678-9"). Digit-normalize both sides so
-    // queries with or without dashes match the stored text.
-    const isRutQuery = qDigits.length >= 7;
+    const isPhoneQuery = qDigits.length >= 6 && qDigits.length <= 11;
+    // Uruguay RUT: 12 digits (e.g. 217123620016). Treat 12+ digit queries
+    // as RUT lookups against cliente + observaciones (RUT is sometimes
+    // embedded in the client name like "ACME SRL — RUT 21712362016" or in
+    // the observations field). Copilot finding: prior code advertised RUT
+    // search but never actually checked it.
+    const isRutQuery = qDigits.length >= 12;
 
     const matches = [];
     for (let i = 0; i < rows.length && matches.length < cap; i++) {
@@ -85,21 +86,14 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
       const clienteHit = cliente.toLowerCase().includes(qLower);
       const obsHit = observaciones.toLowerCase().includes(qLower);
       const phoneHit = isPhoneQuery && normalizePhone(telefono).includes(qDigits);
-      // RUT hit: digit-normalize the observaciones text so "RUT: 12345678-9"
-      // matches a query of "123456789" (dashes stripped on both sides).
-      const rutHit = isRutQuery && normalizePhone(observaciones).includes(qDigits);
+      // RUT match: digits-only across cliente + observaciones (so embedded
+      // RUTs match regardless of formatting like dots/dashes).
+      const rutHit = isRutQuery && (
+        normalizePhone(cliente).includes(qDigits) ||
+        normalizePhone(observaciones).includes(qDigits)
+      );
 
       if (clienteHit || obsHit || phoneHit || rutHit) {
-        let matchVia;
-        if (phoneHit) {
-          matchVia = "telefono";
-        } else if (rutHit && !obsHit) {
-          matchVia = "rut";
-        } else if (clienteHit) {
-          matchVia = "cliente";
-        } else {
-          matchVia = "observaciones";
-        }
         matches.push({
           row: i + 4,
           cliente,
@@ -108,7 +102,7 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
           link_presupuesto: linkPresupuesto || null,
           observaciones: observaciones.slice(0, 200) || null,
           timestamp: timestamp || null,
-          match_via: matchVia,
+          match_via: rutHit ? "rut" : phoneHit ? "telefono" : (clienteHit ? "cliente" : "observaciones"),
         });
       }
     }

@@ -78,8 +78,51 @@ await group("GET /api/agent/tools-manifest", async () => {
   assert(buscar?.requires_auth === true, "buscar_cliente_crm marked requires_auth=true (CRM PII)");
   const historial = body.tools.find((t) => t.name === "historial_cliente");
   assert(historial?.requires_auth === true, "historial_cliente marked requires_auth=true (CRM PII)");
+  // Quote registry / PDF read tools — also gated (Cursor + Copilot security finding)
+  const listar = body.tools.find((t) => t.name === "listar_cotizaciones_recientes");
+  assert(listar?.requires_auth === true, "listar_cotizaciones_recientes marked requires_auth=true (quote metadata)");
+  const porId = body.tools.find((t) => t.name === "obtener_cotizacion_por_id");
+  assert(porId?.requires_auth === true, "obtener_cotizacion_por_id marked requires_auth=true (quote metadata)");
+  const pdfHtml = body.tools.find((t) => t.name === "obtener_pdf_html");
+  assert(pdfHtml?.requires_auth === true, "obtener_pdf_html marked requires_auth=true (full quote HTML)");
   const obtener = body.tools.find((t) => t.name === "obtener_escenarios");
   assert(obtener?.requires_auth === false, "obtener_escenarios marked requires_auth=false");
+});
+
+// ── 1.5. Chat tool-loop auth gate (Cursor regression) ───────────────────────
+
+await group("shouldBlockToolForUnauthenticatedChat — public chat blocks auth-required tools", async () => {
+  const { shouldBlockToolForUnauthenticatedChat: gate } = await import("../server/routes/agentChat.js");
+
+  // Public chat (devMode=false) MUST block every auth-required tool
+  for (const sensitive of [
+    "listar_cotizaciones_recientes",
+    "obtener_cotizacion_por_id",
+    "obtener_pdf_html",
+    "buscar_cliente_crm",
+    "historial_cliente",
+    "guardar_en_crm",
+    "enviar_whatsapp_link",
+    "cancelar_cotizacion",
+    "programar_seguimiento",
+    "wolfboard_pendientes",
+    "wolfboard_export",
+    "wolfboard_sync",
+    "wolfboard_quote_batch",
+  ]) {
+    assert(gate(sensitive, false) === true, `public chat blocks ${sensitive}`);
+  }
+
+  // devMode chat (authenticated via API_AUTH_TOKEN at route entry) passes
+  for (const sensitive of ["listar_cotizaciones_recientes", "guardar_en_crm", "wolfboard_quote_batch"]) {
+    assert(gate(sensitive, true) === false, `devMode chat allows ${sensitive}`);
+  }
+
+  // Non-sensitive read tools always pass, regardless of devMode
+  for (const safe of ["calcular_cotizacion", "obtener_precio_panel", "obtener_escenarios", "obtener_catalogo"]) {
+    assert(gate(safe, false) === false, `public chat allows ${safe}`);
+    assert(gate(safe, true) === false, `devMode chat allows ${safe}`);
+  }
 });
 
 // ── 2. exec-tool — read tool, no auth ────────────────────────────────────────
