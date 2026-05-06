@@ -23,18 +23,21 @@ server/routes/agentChat.js
    server/lib/agentTools.js  executeTool(name, input, calcState)
 ```
 
-## Tool surface (28)
+## Tool surface (AGENT_TOOLS)
 
 Same set as `bmc-panelin-chat`, surfaced unchanged. Loose Zod input (`z.record(z.unknown())`); the actual JSON Schema is included in each tool's MCP description so downstream models can render the contract.
 
 **Open (no auth):**
-- Read: `obtener_escenarios`, `obtener_catalogo`, `obtener_informe_completo`, `listar_opciones_panel`, `obtener_precio_panel`, `get_calc_state`, `listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`, `obtener_pdf_html`, `historial_cliente`, `buscar_cliente_crm`
+- Read: `obtener_escenarios`, `obtener_catalogo`, `obtener_informe_completo`, `listar_opciones_panel`, `obtener_precio_panel`, `get_calc_state`, `listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`, `obtener_pdf_html`
 - Calc: `calcular_cotizacion`, `presupuesto_libre`
 - State write (UI-only): `aplicar_estado_calc` — emits ACTION_JSON which only the in-app chat client consumes; harmless from MCP context
 - Compare: `comparar_listas`, `comparar_escenarios`
 - Compose: `formatear_resumen_crm`, `generar_pdf`
 
 **Auth-gated (require `BMC_API_TOKEN` env):**
+
+CRM reads (PII):
+- `buscar_cliente_crm`, `historial_cliente`
 
 Customer-touching writes:
 - `guardar_en_crm` — appends to `CRM_Operativo` Sheet
@@ -80,7 +83,7 @@ BMC_API_BASE=https://panelin-calc-XXX-uc.a.run.app BMC_API_TOKEN=$API_AUTH_TOKEN
 npm run start:api
 
 # 2. Verify manifest
-curl -s http://localhost:3001/api/agent/tools-manifest | jq '.count'   # → 22
+curl -s http://localhost:3001/api/agent/tools-manifest | jq '.count'   # → 28
 
 # 3. Run a read tool over HTTP
 curl -s -X POST http://localhost:3001/api/agent/exec-tool \
@@ -101,7 +104,7 @@ curl -s -X POST http://localhost:3001/api/agent/exec-tool \
 
 ## Security posture
 
-1. **Read tools** are open: catalog, pricing, formulas, scenarios. No customer PII surfaces (it's only present on `historial_cliente` which combines `buscar_cliente_crm` — and that read requires `BMC_SHEET_ID`-configured GCP creds anyway, so external instances naturally degrade to "no data").
+1. **Read tools** are open for catalog, pricing, formulas, scenarios, and quote registry (no PII). CRM lookups (`buscar_cliente_crm`, `historial_cliente`) are auth-gated because they return customer data.
 2. **Write tools** require both `Authorization: Bearer ${API_AUTH_TOKEN}` AND `user_confirmed: true` in the input. Server-side enforcement; can't bypass via prompt.
 3. **`aplicar_estado_calc`** emits ACTION_JSON via the `emitAction` callback — but that callback is null in the `exec-tool` HTTP route (no SSE stream), so calling it from MCP just records the request without affecting any UI. Safe.
 4. **Telemetry** at `/api/agent/tool-stats` is open by design (no PII). Useful for sidecar monitoring.
