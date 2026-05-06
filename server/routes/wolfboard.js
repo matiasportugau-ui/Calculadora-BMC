@@ -24,6 +24,7 @@ import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helper
 import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
+import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -334,7 +335,10 @@ export function createWolfboardRouter(config) {
     for (const aRow of adminRows) {
       const match = crmRows.find(cr => cr.G && normalizeText(cr.G) === normalizeText(aRow.consulta));
       if (match) {
-        crmUpdates.push({ range: `'${crmTab}'!AF${match._rowNum}`, values: [[aRow.respuesta]] });
+        // CSV/formula injection guard — even though the source is the Admin
+        // sheet, the value is operator-supplied and gets re-written into CRM
+        // with USER_ENTERED, so a leading =/+/-/@ would still execute.
+        crmUpdates.push({ range: `'${crmTab}'!AF${match._rowNum}`, values: [[sanitizeCellValue(aRow.respuesta)]] });
       } else {
         skipped++;
       }
@@ -371,11 +375,19 @@ export function createWolfboardRouter(config) {
     try { sheets = await getSheetsClient(); }
     catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
 
+    // CSV/formula injection guard — see server/lib/sheetsCsvGuard.js. Sheets
+    // writes use USER_ENTERED so any leading =/+/-/@/tab/CR is interpreted as
+    // a formula. Operator-supplied respuesta/link and the M-column snapshot
+    // URL are all attacker-controllable in principle.
+    const safeRespuesta = respuesta !== undefined ? sanitizeCellValue(respuesta) : undefined;
+    const safeLink = link !== undefined ? sanitizeCellValue(link) : undefined;
+    const safeReplay = replaySnapshotUrl !== undefined ? sanitizeCellValue(replaySnapshotUrl) : undefined;
+
     const adminUpdates = [];
-    if (respuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[respuesta]] });
-    if (link !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[link]] });
-    if (replaySnapshotUrl !== undefined) {
-      adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[replaySnapshotUrl]] });
+    if (safeRespuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[safeRespuesta]] });
+    if (safeLink !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[safeLink]] });
+    if (safeReplay !== undefined) {
+      adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[safeReplay]] });
     }
     if (aprobado) adminUpdates.push({ range: `'${adminTab}'!L${adminRow}`, values: [["Aprobado"]] });
 
@@ -416,7 +428,7 @@ export function createWolfboardRouter(config) {
               spreadsheetId: crmSheetId,
               range: `'${crmTab}'!AF${match._rowNum}`,
               valueInputOption: "USER_ENTERED",
-              requestBody: { values: [[respuesta]] },
+              requestBody: { values: [[safeRespuesta]] },
             });
             crmRow = match._rowNum;
           }
@@ -460,12 +472,15 @@ export function createWolfboardRouter(config) {
       // Append to Enviados tab (best-effort)
       if (crmSheetId && enviadosTab && rowData.length > 0) {
         try {
+          // CSV/formula injection guard — Admin row cells are operator-controlled
+          // and we re-write them into Enviados with USER_ENTERED.
+          const safeRow = rowData.map(sanitizeCellValue);
           await sheets.spreadsheets.values.append({
             spreadsheetId: crmSheetId,
             range: `'${enviadosTab}'!A:M`,
             valueInputOption: "USER_ENTERED",
             insertDataOption: "INSERT_ROWS",
-            requestBody: { values: [rowData] },
+            requestBody: { values: [safeRow] },
           });
         } catch { /* best-effort */ }
       }
@@ -717,9 +732,14 @@ export function createWolfboardRouter(config) {
       const isError = response.startsWith("⚠");
       if (isError && status === "quoted") status = "failed";
 
+      // CSV/formula injection guard — the response is LLM output. While
+      // unlikely to start with =/+/-/@, defense-in-depth: sanitize before
+      // writing to Sheets with USER_ENTERED.
+      const safeResponse = sanitizeCellValue(response);
+
       valueUpdates.push({
         range: `'${adminTab}'!J${row.rowNum}`,
-        values: [[response]],
+        values: [[safeResponse]],
       });
 
       // Upload quote HTML to GCS+Drive in parallel (best-effort, calc-only)
@@ -810,7 +830,7 @@ export function createWolfboardRouter(config) {
         if (match) {
           crmUpdates.push({
             range: `'${crmTab}'!AF${match._rowNum}`,
-            values: [[response]],
+            values: [[safeResponse]],
           });
         }
       }

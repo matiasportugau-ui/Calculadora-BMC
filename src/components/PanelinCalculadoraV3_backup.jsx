@@ -6,6 +6,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, ChevronLeft, Printer, Trash2, Copy, Check,
@@ -87,7 +89,7 @@ import { Line, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import {
   initGoogleAuth, loadGsiScript, signIn as gdriveSignIn, signOut as gdriveSignOut,
-  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser,
+  isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
@@ -2333,6 +2335,7 @@ const PENDIENTE_MODOS = [
 
 export default function PanelinCalculadoraV3() {
   const navigate = useNavigate();
+  const bmcAuth = useBmcAuth();
   const isDetachedChatWindow = useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("panelinDetached") === "1";
@@ -2631,6 +2634,17 @@ export default function PanelinCalculadoraV3() {
 
   /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
   const advanceWizardStep = useCallback(() => {
+    // Identity gate — block at step 5 (Pendiente → Estructura) if anonymous.
+    // Master plan §Phase D. The modal listens to bmc-auth-gate-required and
+    // re-emits bmc-wizard-next on successful login so we resume here.
+    if (
+      scenario === "solo_techo" &&
+      wizardStep === SOLO_TECHO_PENDIENTE_STEP_INDEX &&
+      bmcAuth.status === "anonymous"
+    ) {
+      requestAuthGate("wizard-step-5");
+      return;
+    }
     setWizardStep((s) => {
       if (s >= SOLO_TECHO_STEPS.length - 1) return s;
       let next = s + 1;
@@ -2640,7 +2654,7 @@ export default function PanelinCalculadoraV3() {
       setMaxReachedStep((mr) => Math.max(mr, next));
       return next;
     });
-  }, [techo.zonas?.length]);
+  }, [techo.zonas?.length, scenario, wizardStep, bmcAuth.status]);
 
   const goPrevWizardSoloTecho = useCallback(() => {
     setWizardStep((s) => {
@@ -4111,13 +4125,14 @@ export default function PanelinCalculadoraV3() {
   const [driveLastSave, setDriveLastSave] = useState(null);
 
   const ensureDriveGsi = useCallback(async () => {
-    try {
-      await loadGsiScript();
-      initGoogleAuth();
-      setDriveAuth(gdriveIsAuth());
-    } catch {
-      /* GIS optional until Drive is used */
+    if (!isDriveConfigured()) {
+      throw new Error(
+        "Google Drive no está configurado: falta VITE_GOOGLE_CLIENT_ID en este entorno."
+      );
     }
+    await loadGsiScript();
+    initGoogleAuth();
+    setDriveAuth(gdriveIsAuth());
   }, []);
 
   useEffect(() => {
@@ -4126,7 +4141,9 @@ export default function PanelinCalculadoraV3() {
 
   useEffect(() => {
     if (!showDrivePanel) return;
-    ensureDriveGsi();
+    ensureDriveGsi().catch((err) => {
+      setDriveError(err?.message || "No se pudo inicializar Google Drive");
+    });
   }, [showDrivePanel, ensureDriveGsi]);
 
   useEffect(() => {
@@ -4154,6 +4171,7 @@ export default function PanelinCalculadoraV3() {
   }, []);
 
   const handleDriveSignIn = useCallback(async () => {
+    setDriveError(null);
     try {
       // gdriveSignIn() is self-healing: it loads GIS + initializes the token
       // client internally, so no need to await ensureDriveGsi() first.
@@ -4162,7 +4180,7 @@ export default function PanelinCalculadoraV3() {
       setDriveUser(result?.user || null);
       handleDriveRefresh();
     } catch (err) {
-      setDriveError(err.message || "Error al iniciar sesión");
+      setDriveError(err?.message || "Error al iniciar sesión");
     }
   }, [handleDriveRefresh]);
 
@@ -6580,6 +6598,7 @@ export default function PanelinCalculadoraV3() {
         onLoad={handleDriveLoad}
         onDelete={handleDriveDelete}
         isAuthenticated={driveAuth}
+        configured={isDriveConfigured()}
         currentUser={driveUser}
         onSignIn={handleDriveSignIn}
         onSignOut={handleDriveSignOut}
