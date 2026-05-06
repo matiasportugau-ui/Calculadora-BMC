@@ -548,6 +548,82 @@ describe("POST /api/me/quotes/claim — W-3 input cap + format check", () => {
   });
 });
 
+describe("POST /api/me/quotes — W-1 status allowlist coerces user input", () => {
+  it("user-supplied status='completed' is silently coerced to 'draft'", async () => {
+    const r = await fetch(url("/api/me/quotes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ payload: { totalUsd: 10 }, status: "completed" }),
+    });
+    assert.equal(r.status, 200);
+    // The DB should have a draft, not a completed row — preventing
+    // self-triggered Sheets sync via the reconciler.
+    const stored = pool._tables.quotes[pool._tables.quotes.length - 1];
+    assert.equal(stored.status, "draft");
+  });
+
+  it("user-supplied status='deleted' is also coerced to 'draft' (audit bypass blocked)", async () => {
+    const r = await fetch(url("/api/me/quotes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ payload: { totalUsd: 10 }, status: "deleted" }),
+    });
+    assert.equal(r.status, 200);
+    const stored = pool._tables.quotes[pool._tables.quotes.length - 1];
+    assert.equal(stored.status, "draft");
+  });
+
+  it("status='draft' is accepted as-is", async () => {
+    const r = await fetch(url("/api/me/quotes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ payload: { totalUsd: 10 }, status: "draft" }),
+    });
+    assert.equal(r.status, 200);
+    const stored = pool._tables.quotes[pool._tables.quotes.length - 1];
+    assert.equal(stored.status, "draft");
+  });
+});
+
+describe("W-2 notes cap on access/special-quote routes", () => {
+  it("/api/access-requests truncates notes to 2000 chars", async () => {
+    const longNotes = "x".repeat(5000);
+    const r = await fetch(url("/api/access-requests"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: bearerFor("u-comprador") },
+      body: JSON.stringify({ module: "wa", notes: longNotes }),
+    });
+    assert.equal(r.status, 200);
+    const ar = pool._tables.access_requests[pool._tables.access_requests.length - 1];
+    assert.equal(ar.notes.length, 2000);
+  });
+});
+
+describe("GET /api/admin/access-requests — W-3 status enum guard", () => {
+  it("400 invalid_status when status query is not in {pending,granted,denied}", async () => {
+    const r = await fetch(url("/api/admin/access-requests?status=garbage"), {
+      headers: { Authorization: bearerFor("u-admin") },
+    });
+    assert.equal(r.status, 400);
+    const j = await r.json();
+    assert.equal(j.error, "invalid_status");
+  });
+
+  it("200 with status=pending (default)", async () => {
+    const r = await fetch(url("/api/admin/access-requests"), {
+      headers: { Authorization: bearerFor("u-admin") },
+    });
+    assert.equal(r.status, 200);
+  });
+
+  it("200 with status=granted", async () => {
+    const r = await fetch(url("/api/admin/access-requests?status=granted"), {
+      headers: { Authorization: bearerFor("u-admin") },
+    });
+    assert.equal(r.status, 200);
+  });
+});
+
 describe("POST /api/me/quotes — H-1 pdf_url validation surfaces 400", () => {
   it("returns 400 invalid_pdf_url for javascript: scheme", async () => {
     const r = await fetch(url("/api/me/quotes"), {

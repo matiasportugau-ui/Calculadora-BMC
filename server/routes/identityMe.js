@@ -107,6 +107,25 @@ const ALLOWED_MODULES = new Set([
 // identity.module_grants and breaks _levelAllows reasoning silently.
 const VALID_LEVELS = new Set(["none", "read", "write", "admin"]);
 
+// cursor[bot] round-8 W-1: quote status enum. Comprador-supplied status
+// must NOT be allowed to set 'completed' (would auto-trigger Sheets sync)
+// or 'deleted' (would bypass softDeleteQuote audit event). 'exported' is
+// admin-only too — keep it out of the user-input allowlist. Anything not
+// in the user-input set silently coerces to 'draft'.
+const VALID_USER_QUOTE_STATUSES = new Set(["draft"]);
+
+// cursor[bot] round-8 W-3: admin access-request status query enum.
+const VALID_AR_STATUSES = new Set(["pending", "granted", "denied"]);
+
+// cursor[bot] round-8 W-2: cap free-form notes fields. The rate limit is
+// 10 req / 15 min per user; without a per-request cap, an attacker can
+// still ship 10 × N MB notes that fan out as superadmin notifications.
+const MAX_NOTES_LEN = 2000;
+function _capNotes(value) {
+  if (typeof value !== "string") return null;
+  return value.slice(0, MAX_NOTES_LEN);
+}
+
 // Self-audit fix: per-user rate limits on the abuse-vector POST endpoints.
 // Key by req.user.id (not IP) so multiple users behind the same NAT/proxy
 // don't collide. requireUser runs before these limiters and populates
@@ -165,7 +184,7 @@ router.post("/api/access-requests", requireUser(), accessRequestLimiter, async (
       `insert into identity.access_requests (user_id, module, notes)
        values ($1, $2, $3)
        returning request_id, status, created_at`,
-      [req.user.id, m, notes || null],
+      [req.user.id, m, _capNotes(notes)],
     );
     const rec = ins.rows[0];
     // Self-audit fix: drop requester_email from structured payload — it's
@@ -202,6 +221,10 @@ router.get("/api/me/access-requests", requireUser(), async (req, res) => {
 router.get("/api/admin/access-requests", requireUser({ role: "admin" }), async (req, res) => {
   try {
     const status = String(req.query.status || "pending");
+    // W-3: enum guard — bad input would silently return 0 rows otherwise.
+    if (!VALID_AR_STATUSES.has(status)) {
+      return res.status(400).json({ ok: false, error: "invalid_status", allowed: [...VALID_AR_STATUSES] });
+    }
     const { rows } = await pool().query(
       `select ar.request_id, ar.user_id, u.email, u.name, ar.module, ar.status, ar.notes,
               ar.resolved_by, ar.resolved_at, ar.created_at
@@ -292,7 +315,7 @@ router.post("/api/me/special-quote-requests", requireUser(), specialQuoteLimiter
     const ins = await pool().query(
       `insert into identity.special_quote_requests (quote_id, user_id, notes)
        values ($1, $2, $3) returning request_id, status, created_at`,
-      [quoteId, req.user.id, notes || null],
+      [quoteId, req.user.id, _capNotes(notes)],
     );
     const rec = ins.rows[0];
     await notifySuperadmins({
@@ -352,12 +375,16 @@ router.post("/api/me/quotes", requireUser(), meQuotesLimiter, async (req, res) =
     if (!payload || typeof payload !== "object") {
       return res.status(400).json({ ok: false, error: "missing_payload" });
     }
+    // W-1: silently coerce any non-allowlisted status to 'draft'. Server-side
+    // workflow (calc completion path, admin queue, soft delete) is what flips
+    // status to 'completed', 'exported', or 'deleted' — never a user POST.
+    const safeStatus = VALID_USER_QUOTE_STATUSES.has(status) ? status : "draft";
     const q = await upsertQuote({
       userId: req.user.id,
       clientQuoteId,
       payload,
       pdfId, pdfUrl, gcsUri, driveFileId,
-      status: status || "draft",
+      status: safeStatus,
       wizardStep,
     });
     res.json({ ok: true, quote: q });

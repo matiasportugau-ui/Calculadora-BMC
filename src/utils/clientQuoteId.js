@@ -32,10 +32,26 @@ function safeStorage() {
 }
 
 function generateId() {
+  // Preferred: crypto.randomUUID — 122 bits of entropy.
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `cq_${crypto.randomUUID()}`;
   }
-  return `cq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  // cursor[bot] round-8 W-4: Math.random() is non-cryptographic. Although
+  // /api/me/quotes/claim requires a valid session, an authenticated
+  // attacker could theoretically brute-force ~47-bit IDs in legacy/SSR
+  // environments to claim other users' anonymous quotes. Use
+  // crypto.getRandomValues (144 bits) when randomUUID is unavailable.
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const arr = new Uint8Array(18);
+    crypto.getRandomValues(arr);
+    let hex = "";
+    for (let i = 0; i < arr.length; i++) hex += arr[i].toString(16).padStart(2, "0");
+    return `cq_${hex}`;
+  }
+  // Last-resort fallback for environments without crypto at all.
+  // Throw so the caller knows entropy is unavailable; caller can decide
+  // whether to operate (anonymous quotes won't claim cleanly) or block.
+  throw new Error("crypto_unavailable_for_clientQuoteId");
 }
 
 function readList(store) {
