@@ -96,54 +96,66 @@ export async function appendQuoteToCrm(input = {}) {
       }
     }
 
-    // B–K: timestamp, cliente, telefono, ubicacion, canal, resumen, categoria, "", estado, vendedor
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
-      range: `'CRM_Operativo'!B${row}:K${row}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[
-          now,
-          cliente,
-          telefono,
-          ubicacion,
-          "Calculadora-Panelin",
-          resumenPedido,
-          "Cotización",
-          "",
-          "Pendiente",
-          vendedor,
-        ]],
-      },
-    });
-
-    // R–T: probabilidad, urgencia, validar_stock
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
-      range: `'CRM_Operativo'!R${row}:T${row}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[probabilidad, urgencia, "No"]] },
-    });
-
-    // V–W: tipo_cliente, observaciones (incluye URLs)
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
-      range: `'CRM_Operativo'!V${row}:W${row}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: { values: [[tipoCliente, observaciones]] },
-    });
-
-    // AH–AK: link presupuesto + flags por defecto (gate humano)
+    // Escribir toda la fila B:AK en una sola operación append para evitar
+    // carreras entre lecturas/escrituras separadas al guardar concurrentemente.
     const tail = defaultTailAHAK();
     tail[0] = pdfUrl || driveUrl || ""; // AH = LINK_PRESUPUESTO
-    await sheets.spreadsheets.values.update({
+
+    const rowValues = [
+      // B–K
+      now,
+      cliente,
+      telefono,
+      ubicacion,
+      "Calculadora-Panelin",
+      resumenPedido,
+      "Cotización",
+      "",
+      "Pendiente",
+      vendedor,
+      // L–Q
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      // R–T
+      probabilidad,
+      urgencia,
+      "No",
+      // U
+      "",
+      // V–W
+      tipoCliente,
+      observaciones,
+      // X–AG
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      // AH–AK
+      ...tail,
+    ];
+
+    const appendRes = await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: rangeAHAK(row),
+      range: `'CRM_Operativo'!B:AK`,
       valueInputOption: "USER_ENTERED",
-      requestBody: { values: [tail] },
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values: [rowValues] },
     });
 
-    return { ok: true, row, sheetId };
+    const updatedRange = appendRes?.data?.updates?.updatedRange || "";
+    const appendedRow = Number((updatedRange.match(/![A-Z]+(\d+):[A-Z]+(\d+)$/) || [])[1] || 0);
+
+    return { ok: true, row: appendedRow || row, sheetId };
   } catch (err) {
     return { ok: false, error: err.message || "Error desconocido al escribir en Sheets" };
   }
