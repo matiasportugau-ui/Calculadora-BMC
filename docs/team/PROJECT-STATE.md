@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Security — PDF quote registry persistence guard):** PR #142 review automation restored awaited persistence for `/calc/cotizar/pdf` before returning the PDF response. This prevents Cloud Run request lifecycle/cold-start behavior from dropping quote registry writes when `registerQuotation` is left fire-and-forget. Added route regression coverage in `tests/calc-routes.validation.js`.
+
 **2026-05-06 (Dev — Panelin agent: full tool platform, PR #110 ready for review):** Cierre de la línea de trabajo abierta el 2026-04-30 sobre el chat Panelin. El surface pasó de **5 tools → 28 tools** en 12 commits, con dos puntos de acceso (in-app chat + MCP externo), telemetría per-tool, registry persistente en GCS y un gate de confirmación de usuario que ya no depende de un flag seteado por el modelo.
 
 **Tool surface (28)** en [`server/lib/agentTools.js`](../../server/lib/agentTools.js):

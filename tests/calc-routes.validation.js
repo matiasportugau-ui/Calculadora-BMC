@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
+import fs from "node:fs";
 import calcRouter from "../server/routes/calc.js";
 
 let passed = 0;
@@ -168,6 +169,14 @@ async function run() {
       (cotizacionesJson?.cotizaciones || []).some((c) => c.id === pdfResp.json.pdf_id && c.client === "QA Regression"),
       `count=${cotizacionesJson?.count || 0}`,
       "contains QA Regression entry"
+    );
+
+    const calcRouteSource = fs.readFileSync(new URL("../server/routes/calc.js", import.meta.url), "utf8");
+    assert(
+      "PDF route awaits quotation registry persistence before responding",
+      calcRouteSource.includes("await registerQuotation({"),
+      "registerQuotation fire-and-forget",
+      "await registerQuotation"
     );
   } finally {
     await new Promise((resolve) => server.close(resolve));

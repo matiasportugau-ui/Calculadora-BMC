@@ -569,7 +569,7 @@ router.post("/cotizar/pdf", async (req, res) => {
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
     const persistUrl = gcsUrl || pdfUrl;
-    registerQuotation({
+    await registerQuotation({
       pdfId,
       pdfUrl: persistUrl,
       code: clientInfo.quote_code || null,
@@ -578,8 +578,6 @@ router.post("/cotizar/pdf", async (req, res) => {
       total: gptResp.resumen.total_usd,
       lista,
       source,
-    }).catch((err) => {
-      req.log?.warn({ err }, "calc/cotizar/pdf registry persist failed");
     });
 
     return res.json({
