@@ -46,11 +46,18 @@ async function run() {
     return { status: resp.status, json, headers: resp.headers };
   };
 
-  const getText = async (path) => {
-    const resp = await fetch(`${baseUrl}${path}`);
+  const getText = async (path, opts = {}) => {
+    const resp = await fetch(`${baseUrl}${path}`, opts);
     const text = await resp.text();
     return { status: resp.status, text, headers: resp.headers };
   };
+
+  // /calc/cotizaciones routes are now requireAuth-gated. Pre-set the token
+  // on config so the test can authenticate via x-api-key.
+  process.env.API_AUTH_TOKEN = process.env.API_AUTH_TOKEN || "test-calc-routes-token";
+  const { config: _testConfig } = await import("../server/config.js");
+  _testConfig.apiAuthToken = process.env.API_AUTH_TOKEN;
+  const authHdr = { "x-api-key": process.env.API_AUTH_TOKEN };
 
   try {
     // ── Test 1: required scenario validation ───────────────────────────────
@@ -160,7 +167,7 @@ async function run() {
       "contains QA Regression or QA-ROUTES-001"
     );
 
-    const cotizaciones = await getText("/calc/cotizaciones");
+    const cotizaciones = await getText("/calc/cotizaciones", { headers: authHdr });
     const cotizacionesJson = JSON.parse(cotizaciones.text);
     assert("GET /calc/cotizaciones returns ok", cotizaciones.status === 200 && cotizacionesJson?.ok === true, cotizaciones.status, 200);
     assert(

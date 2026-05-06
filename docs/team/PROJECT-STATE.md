@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-05
+**Última actualización:** 2026-05-06
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,68 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
+
+- **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
+- **PR #144** (`ef2a2da`) — `requireAuth` en `/calc/cotizaciones*` (lista/detalle/cancelar), 3 read tools sensibles agregados a `TOOLS_REQUIRING_AUTH` (`listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`, `obtener_pdf_html`), sanitizador anti-CSV-injection en escrituras a Sheets (`crmAppend.js` prefija `'` en valores que arrancan con `=`/`+`/`-`/`@`/tab/CR), refactor a imports directos para 4 tools de recall (`getQuotation` / `listQuotations` / `cancelQuotation` / `getPdf`), y **gate de auth en el chat tool-loop** (`shouldBlockToolForUnauthenticatedChat`) que cierra el bypass donde el modelo podía llamar tools sensibles desde un chat público sin token. Todas las findings de Cursor + Codex + Copilot resueltas.
+- **PR #147** (`00de9fe`) — Estructura de [`.github/CODEOWNERS`](../../.github/CODEOWNERS) lista para sumar un segundo reviewer humano sin tocar la regla catch-all. Hoy mantiene `@matiasportugau-ui` como único owner; cuando exista otro colaborador con permisos de revisión de seguridad, el upgrade es de una línea por path.
+
+**Verificación de producción (smoke + probes 2026-05-06 02:18 UTC):** `npm run smoke:prod` 8/8 OK contra Cloud Run; `GET /calc/cotizaciones` sin token → **401** (PR #144 desplegada y wireada — confirma que `API_AUTH_TOKEN` está presente en el env de Cloud Run, sino sería 503); `GET /api/agent/tools-manifest` → 28 tools con los 5 reads sensibles marcados `requires_auth: true`.
+
+**Cambio de comportamiento operativo (chat Panelin):** El servidor ahora lee la **intención del usuario** directamente del último mensaje del chat — el flag `user_confirmed` que seteaba el modelo ya no alcanza para escribir en CRM, mandar WhatsApp, cancelar cotización ni programar follow-ups. El operador tiene que decir frases imperativas claras como **"guardalo en CRM"** / **"mandale por WhatsApp"** / **"cancelá la cotización"** / **"recordame en X días"**. Si el modelo intenta sin esa señal, devuelve un mensaje pidiendo confirmación y la tool no se ejecuta. Documento de comunicación al equipo de ventas: [`docs/team/PANELIN-CHAT-2026-05-06-CONFIRMATION-CHANGE.md`](./PANELIN-CHAT-2026-05-06-CONFIRMATION-CHANGE.md).
+
+**Affects:** bmc-panelin-chat (28 tools + intent gate + auth en chat-loop), bmc-panelin-mcp (MCP server expone los 28 tools, write tools requieren `BMC_API_TOKEN`), bmc-security (auth en `/calc/cotizaciones*`, sanitizador CSV-injection, two-layer guard en write tools), bmc-deployment (sin nuevos env vars; `API_AUTH_TOKEN` ya existía y está confirmado), bmc-sheets-mapping (escritura sanitizada en CRM_Operativo + lectura B4:AH500), bmc-api-contract (rutas nuevas: `/api/agent/tool-stats`, `/api/agent/tools-manifest`, `/api/agent/exec-tool`, `/calc/cotizaciones/:id`, `/calc/cotizaciones/:id/cancelar`), bmc-docs-sync (esta entrada + ADR + comunicación al equipo).
+
+**Pendientes específicos** (no bloqueantes):
+- Sumar un segundo colaborador humano con permisos de review en paths de seguridad → upgrade de una línea por path en `.github/CODEOWNERS`.
+- Phase 4 del plan de desarrollo (voice input wiring) — `agentVoice.js` ya existe; falta integración con `useChat.js` (~120 LOC).
+- Telemetría de producción: el ring buffer de `toolStats.js` se pierde en cold-start de Cloud Run; conviene espejar `console.log({event:"agent_tool_call", ...})` a Cloud Logging estructurado para sostener un dashboard real.
+- Sanitizador anti-CSV-injection extendido a `wolfboardActualizarFila` (PR #144 cubrió `crmAppend`; el endpoint `/api/wolfboard/row` no estaba en scope).
+
+**2026-05-06 (Dev — Panelin agent: full tool platform, PR #110 ready for review):** Cierre de la línea de trabajo abierta el 2026-04-30 sobre el chat Panelin. El surface pasó de **5 tools → 28 tools** en 12 commits, con dos puntos de acceso (in-app chat + MCP externo), telemetría per-tool, registry persistente en GCS y un gate de confirmación de usuario que ya no depende de un flag seteado por el modelo.
+
+**Tool surface (28)** en [`server/lib/agentTools.js`](../../server/lib/agentTools.js):
+- *Read / catalog:* `obtener_escenarios`, `obtener_catalogo`, `obtener_informe_completo`, `listar_opciones_panel`, `obtener_precio_panel`, `get_calc_state`, `listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`, `obtener_pdf_html`, `historial_cliente`, `buscar_cliente_crm`
+- *Calc:* `calcular_cotizacion` (delegado a `runCalculation`/`buildGptResponse` desde `calc.js` — single source of truth), `presupuesto_libre`, `comparar_listas`, `comparar_escenarios`
+- *Live UI write (chat-only):* `aplicar_estado_calc` — emite `setScenario / setLP / setTecho / setTechoZonas / setPared / setCamara / setFlete / setProyecto` vía `emitAction` callback
+- *PDF + CRM + WhatsApp:* `generar_pdf`, `formatear_resumen_crm`, `guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, `programar_seguimiento`
+- *Wolfboard hub (admin):* `wolfboard_pendientes`, `wolfboard_export`, `wolfboard_sync`, `wolfboard_actualizar_fila`, `wolfboard_marcar_enviado`, `wolfboard_quote_batch`
+
+**Gate de confirmación real (no más `user_confirmed` theatre):** Nuevo [`server/lib/userIntentClassifier.js`](../../server/lib/userIntentClassifier.js) clasifica el último mensaje del usuario en server-side y produce un `Set<string>` de tools aprobadas para ese turno (regex per-tool, accent-insensitive, con manejo de negación `no <phrase>` + idiom guard `dejar sin efecto`). Las 8 write tools (4 customer-facing + 4 Wolfboard admin) chequean ese set en lugar del flag seteado por el modelo. Path MCP (`POST /api/agent/exec-tool`) mantiene el flag legacy + Bearer auth — threat model distinto.
+
+**Persistencia + telemetría:** Nuevo [`server/lib/quoteRegistry.js`](../../server/lib/quoteRegistry.js) — registry GCS-backed (`gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`), sin TTL, sobrevive cold-starts de Cloud Run; fallback in-memory cuando no hay bucket. Nuevo [`server/lib/toolStats.js`](../../server/lib/toolStats.js) — ring buffer de 1k records con per-tool count / p50 / p95 / error_rate / errores clasificados (`guard:user_confirmed`, `config:missing_env`, `validation:required`, etc.); expuesto en `GET /api/agent/tool-stats` y surfaceado en una nueva tab "Tools" del `PanelinDevPanel.jsx`.
+
+**Acceso externo (MCP):** [`scripts/mcp-panelin-http.mjs`](../../scripts/mcp-panelin-http.mjs) registra los 28 tools dinámicamente al boot leyendo `GET /api/agent/tools-manifest`. Las 8 write tools requieren `BMC_API_TOKEN` Bearer + `user_confirmed: true`. Nueva agent definition [`bmc-panelin-mcp.md`](../../.claude/agents/bmc-panelin-mcp.md).
+
+**Helpers nuevos:** [`server/lib/crmAppend.js`](../../server/lib/crmAppend.js) (`appendQuoteToCrm()`, escribe PDF URL en col **AH** LINK_PRESUPUESTO, flags `AI/AK = "No"` para gate humano), [`server/lib/crmSearch.js`](../../server/lib/crmSearch.js) (`searchCrmClients()` lee `B4:AH500` con match fuzzy por nombre/teléfono/observaciones).
+
+**Rate-limit:** `/api/agent/exec-tool` ahora cuenta con `express-rate-limit` (60/min por IP), match con el patrón del chat endpoint (10/min público, 30/min dev).
+
+**Tests:** **884 assertions verdes** distribuidas en 9 archivos de test:
+- 384 validation + 26 wa-ingest + 23 wa-enricher + 22 wa-quote-params + 243 agentTools + 30 toolStats + 67 userIntentClassifier (lo nuevo de PR #110) + 18 calc-routes API + 29 panelin internal + 6 auth + 36 agentMcpRoutes
+- Nuevos archivos: `tests/agentTools.test.js`, `tests/toolStats.test.js`, `tests/userIntentClassifier.test.js`, `tests/agentMcpRoutes.test.js`
+- `gate:local` ahora corre `lint + test + test:api` (antes solo `lint + test`); `gate:local:full` agrega `build`. Esto detectó un bug latente de bare-backticks en `chatPrompts.js` que rompía el chat path en prod.
+
+**Cambios al `chatPrompts.js`:** nuevo bloque **EXTRACTION_PROTOCOL** (slot-filling conversacional, un campo por turno, `obtener_escenarios` como source of truth), nueva sección **REGLA CRÍTICA — Confirmación real** (explica al modelo que el server lee la intención del usuario, no su flag).
+
+**Affects:** bmc-panelin-chat (tool surface + protocolo + prompt + gate de intent), bmc-calc-specialist (sin cambios al motor — `calcular_cotizacion` ahora delega a `runCalculation`), bmc-sheets-mapping (escritura nueva CRM_Operativo col AH + lectura B4:AH500), bmc-api-contract (nuevas rutas: `/api/agent/tool-stats`, `/api/agent/tools-manifest`, `/api/agent/exec-tool`, `/calc/cotizaciones/:id`, `/calc/cotizaciones/:id/cancelar`), bmc-deployment (env vars: `GCS_QUOTES_BUCKET` ya existe, sin nuevas; `WHATSAPP_*` y `BMC_SHEET_ID` para tools opcionales), bmc-security (rate-limit en exec-tool, two-layer guard en write tools), bmc-panelin-mcp (nueva agent definition).
+
+**Estado PR #110:** 14 commits en `claude/integrate-bmc-calculator-FLjeh`, conflictos vs main resueltos vía merge real (no manual cherry-pick). Provenance + ADR + structured log event landed (commit `5c2bd59`). Listo para review.
+
+**2026-05-05 (Dev — Comprador Identity — Phases A→J):** Master plan completo aterrizado en una sola PR de feature branch [`claude/user-identity-master-plan-hYGmq`](https://github.com/matiasportugau-ui/calculadora-bmc/pull/137). Implementa identidad de Comprador con OAuth Google, RBAC por módulo, persistencia de cotizaciones por usuario, sync opcional a Sheets y export admin multi-formato:
+- **Phase A** — `supabase/migrations/20260601000001_identity_init.sql` con 13 tablas bajo schema `identity` (users, sessions, role_grants, module_grants, modules, access_requests, quotes, quote_events, special_quote_requests, notifications, crm_personal_*, audit_log).
+- **Phase B** — [`server/lib/identityAuth.js`](../../server/lib/identityAuth.js) espeja a `waOperatorAuth.js`: `verifyGoogleAndUpsert`, `refreshTokens` con rotación + reuse detection, `requireUser({role,module,minLevel})` middleware. 11 tests unitarios passing.
+- **Phase C** — [`server/routes/authGoogle.js`](../../server/routes/authGoogle.js) ahora emite cookie httpOnly `bmc_sess` + access JWT y agrega `/auth/refresh`, `/auth/logout`, `/auth/me`, `/auth/me/grants`. 8 tests de integración passing.
+- **Phase D** — Frontend: `BmcAuthProvider` + `AuthGateModal` listening a `bmc-auth-gate-required`; wizard `advanceWizardStep` bloquea anonymous users en step 5 (Pendiente → Estructura).
+- **Phase E** — RBAC server (`requireUser`) + `RequireGrant` route guard + `POST /api/access-requests` con notificación a superadmins.
+- **Phase F** — Per-user quote persistence ([`server/lib/quoteStore.js`](../../server/lib/quoteStore.js)) con anonymous→user merge; `/api/me/quotes`, `/api/me/notifications`, `/api/me/special-quote-requests` (>USD 8500); página `/mi-espacio`.
+- **Phase G** — `requireServiceOrUser` shim acepta API_AUTH_TOKEN o JWT; `requireAuth.js` rebaja a re-export para zero-breaking-change. Migración 20260601000002 siembra superadmins.
+- **Phase H** — [`server/routes/quoteExport.js`](../../server/routes/quoteExport.js): `POST /api/admin/export` (CSV/JSON/HTML, multi-entity, ZIP) + per-user `/api/me/quotes/:id/export.{csv,json,pdf}`.
+- **Phase I** — [`server/lib/clientQuotesSheetSync.js`](../../server/lib/clientQuotesSheetSync.js): upsert idempotente por `quote_id` (col A) en tab «Base de datos cotis de clientes»; debounced 60s + admin reconcile + retry. Doc en [`docs/sheets-mapper-clientes.md`](../sheets-mapper-clientes.md).
+- **Phase J** — `.env.example` actualizado, [`docs/identity-auth.md`](../identity-auth.md) con flow + deprecación de API_AUTH_TOKEN, env-drift verde, lint clean (0 errores), 19 tests identity-auth + identity-routes verdes.
+
+**Pendientes humanos (GOLIVE)**: aplicar migrations a Supabase, inyectar `IDENTITY_JWT_SECRET` + `GOOGLE_OAUTH_CLIENT_ID` + `IDENTITY_COOKIE_DOMAIN` en Cloud Run secrets, crear manualmente la tab «Base de datos cotis de clientes» en BMC_SHEET_ID, deploy + UAT browser. Detalle: [`docs/master-plans/user-identity-GOLIVE.md`](../master-plans/user-identity-GOLIVE.md).
 
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 

@@ -15,11 +15,11 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 
 | Campo | Valor |
 |-------|-------|
-| **Fecha generación (UTC)** | `2026-04-16` · timestamp ISO en `public/presentation-data.json` |
+| **Fecha generación (UTC)** | `2026-05-06` · timestamp ISO en `public/presentation-data.json` |
 | **package.json** | `3.1.5` |
-| **Git** | `15a2972` · `main` |
-| **CALCULATOR_DATA_VERSION** | `ddbdddc9b4` |
-| **Tests** | `335` passed (`validation.js`) + `10` ok (`roofVisualQuoteConsistency.js`) |
+| **Git** | `0bd4d7f` · `copilot/update-readme` |
+| **CALCULATOR_DATA_VERSION** | `45e744c8db` |
+| **README smoke** | `384` passed (`validation.js`) + `10` ok (`roofVisualQuoteConsistency.js`) |
 | **Presentación Matrix** | [Local :5173](http://localhost:5173/matrix-presentation.html) · [Vercel](https://calculadora-bmc.vercel.app/matrix-presentation.html) |
 
 **Regenerar:** `npm run readme:sync` · solo README/JSON: `npm run readme:generate` · comprobar: `npm run readme:check`.
@@ -42,37 +42,45 @@ Genera cotizaciones de materiales en tiempo real para obras con paneles sandwich
 
 **Requisitos:** Node.js 20+
 
+> En Linux, `npm install` / `npm ci` puede requerir `libasound2-dev` por la dependencia nativa de `easymidi`.
+
 ```bash
 git clone https://github.com/matiasportugau-ui/Calculadora-BMC.git
 cd Calculadora-BMC
 npm install
 npm run env:ensure    # crea .env desde .env.example si falta
-npm run dev           # http://localhost:5173
+npm run dev:full      # API :3001 + Vite :5173
 ```
 
 ### Scripts
 
 | Comando | Descripción |
 |---------|-------------|
-| `npm run dev` | Servidor de desarrollo Vite (puerto 5173) |
-| `npm run dev:full` | API (3001) + Vite (5173) — app completa con pestaña Finanzas |
-| `npm run dev:full-stack` | API + Vite + Panelin Evolution viewer (3847) si existe |
+| `npm run dev` | Solo frontend Vite (puerto 5173) |
+| `npm run dev:full` | API Express (3001) + Vite (5173) |
 | `npm run start:api` | Solo API Express (3001) |
-| `npm run dev:api` | API con `--watch` (recarga al editar `server/`) |
-| `npm run bmc-dashboard` | Dashboard Finanzas standalone (3849) |
+| `npm run dev:api` | API con `--watch` |
 | `npm run build` | Build de producción → `dist/` |
-| `npm run preview` | Preview local del build |
-| `npm test` | Suite offline: `validation.js` **335** passed + `roofVisualQuoteConsistency.js` **10** ok → **345** checks |
+| `npm test` | Suite offline principal del repo (sin servidor) |
+| `npm run test:api` | Suite offline de rutas y contratos internos de la API |
 | `npm run lint` | ESLint sobre `src/` |
+| `npm run gate:local` | `lint` + `test` + `test:api` |
+| `npm run gate:local:full` | `gate:local` + `build` |
+| `npm run test:contracts` | Valida contratos HTTP con la API corriendo en :3001 |
+| `npm run smoke:prod` | Smoke de la API pública canónica |
+| `npm run capabilities:snapshot` | Regenera `docs/api/AGENT-CAPABILITIES.json` |
 | `npm run readme:sync` | `version:data` + README generado + `public/presentation-data.json` (presentación Matrix) |
 | `npm run readme:generate` | Solo README + JSON de presentación (sin recalcular `CALCULATOR_DATA_VERSION`) |
 | `npm run readme:check` | Falla en CI si `README.md` no coincide con el template |
 
 ---
 
-## IA, agentes y presentación Matrix
+## IA, agentes y módulos operativos
 
 - **`AGENTS.md`** — índice de comandos y convenciones para agentes de código (Cursor, Claude, etc.).
+- **`docs/team/PROJECT-STATE.md`** — estado canónico del proyecto, cambios recientes y próximos pasos.
+- **Panelin Chat / MCP** — el backend expone capacidades para chat in-app, tools y manifest externos desde `server/`.
+- **WA Cockpit / módulos hub** — la SPA incluye rutas operativas como `/hub`, `/hub/wa`, `/hub/ml`, `/hub/canales` y `/hub/admin`.
 - **Presentación Matrix** — HTML estático con lluvia de código y panel de datos vivo: abrí `http://localhost:5173/matrix-presentation.html` con `npm run dev`. Los datos salen de `public/presentation-data.json` (regenerado por `npm run readme:generate` o `readme:sync`). El cliente puede **refrescar** datos o hacer polling automático.
 
 ---
@@ -112,51 +120,44 @@ npm run dev           # http://localhost:5173
 ## Arquitectura
 
 ```
-src/
-├── main.jsx                          # Punto de entrada React
-├── App.jsx                           # Componente raíz
-├── data/
-│   └── constants.js                  # Tokens, precios, paneles, perfiles, escenarios
-├── utils/
-│   ├── calculations.js               # Motores de cálculo puros (sin React)
-│   └── helpers.js                    # BOM, PDF, WhatsApp
-└── components/
-    └── PanelinCalculadoraV3.jsx      # Componente principal
+src/                                  # SPA React + Vite
+├── main.jsx                          # Bootstrap + error boundary
+├── App.jsx                           # Router principal y módulos /hub/*
+├── PanelinCalculadoraV3.jsx          # Re-export del componente canónico
+├── components/
+│   └── PanelinCalculadoraV3_backup.jsx
+├── data/                             # Catálogo, precios, escenarios
+└── utils/                            # Cálculo, exportes, helpers
+
+server/                               # API Express 5
+├── index.js                          # Entry point, middleware, health, mount de rutas
+├── config.js                         # Env/config centralizada
+├── routes/                           # /api, /calc, /auth, /webhooks
+└── lib/                              # Integraciones, auth, agent tools, workers
+
+tests/                                # Suites offline y validaciones de contrato
+scripts/                              # Tooling, smoke, snapshots, automation
 ```
 
-### `src/data/constants.js` — fuente de verdad
+### Frontend React
 
-| Sección | Contenido |
-|---------|-----------|
-| §1 Design Tokens | Colores (`C`), tipografía (`FONT`) |
-| §2 Motor de Precios | `LISTA_ACTIVA`, `p()`, `pIVA()` |
-| §3 Paneles Techo | `PANELS_TECHO` — 5 familias |
-| §4 Paneles Pared | `PANELS_PARED` — 2 familias |
-| §5 Fijaciones | `FIJACIONES` — varilla, tuerca, arandela, anclaje, tornillo T2, remaches |
-| §6 Selladores | `SELLADORES` — silicona, cinta, membrana, espuma PU |
-| §7 Perfilería | `PERFIL_TECHO`, `PERFIL_PARED` |
-| §8 Escenarios | `SCENARIOS_DEF`, `VIS`, `BORDER_OPTIONS` |
+| Archivo | Rol |
+|---------|-----|
+| `src/App.jsx` | Router de la calculadora y módulos operativos |
+| `src/components/PanelinCalculadoraV3_backup.jsx` | Calculadora canónica |
+| `src/PanelinCalculadoraV3.jsx` | Re-export estable del componente principal |
+| `src/data/constants.js` | Catálogo base, escenarios, perfiles y pricing helpers |
+| `src/utils/calculations.js` | Motor de cálculo puro para techo/pared |
+| `src/utils/helpers.js` | PDF, WhatsApp, BOM y formateadores |
 
-### `src/utils/calculations.js` — motores de cálculo
+### Backend y operaciones
 
-Funciones puras, sin dependencias de React.
-
-**Techo:** `calcTechoCompleto()` orquesta `calcPanelesTecho`, `calcAutoportancia`, `calcFijacionesVarilla` / `calcFijacionesCaballete`, `calcPerfileriaTecho`, `calcSelladoresTecho`.
-
-**Pared:** `calcParedCompleto()` orquesta `calcPanelesPared`, `calcPerfilesU`, `calcEsquineros`, `calcFijacionesPared`, `calcPerfilesParedExtra`, `calcSelladorPared`.
-
-**General:** `calcTotalesSinIVA()` — subtotal + IVA 22% = total final.
-
-### `src/utils/helpers.js` — utilidades de salida
-
-| Función | Propósito |
-|---------|-----------|
-| `applyOverrides()` | Aplica ediciones del usuario al BOM |
-| `bomToGroups()` | Transforma resultados de cálculo en grupos de BOM |
-| `fmtPrice()` | Formatea números como moneda |
-| `generatePrintHTML()` | Genera HTML A4 para PDF |
-| `openPrintWindow()` | Abre diálogo de impresión |
-| `buildWhatsAppText()` | Formatea el BOM para WhatsApp |
+| Área | Puntos clave |
+|------|--------------|
+| API | `server/index.js` monta `/calc`, `/api/*`, `/auth/*`, `/webhooks/*` |
+| Dashboard / Wolfboard | Rutas operativas centralizadas en `server/routes/` y módulos `/hub/*` |
+| Integraciones | MercadoLibre, Google Sheets, WhatsApp, GCS, OpenAI y MCP |
+| Validación | Tests offline en `tests/` + smoke/contratos desde `scripts/` |
 
 ---
 
@@ -281,8 +282,13 @@ Pipeline de GitHub Actions en `.github/workflows/ci.yml`. Se ejecuta en push a `
 
 | Job | Pasos |
 |-----|-------|
-| **validate** | `npm ci` → `node tests/validation.js` → `npm run build` |
-| **lint** | `npm ci` → `npm run lint` |
+| **validate** | `npm ci --include=dev` → `node tests/validation.js` → `npm run build` |
+| **lint** | `npm ci --include=dev` → `npm run lint` |
+| **env-drift** | Verifica desvíos entre `.env.example` y el runtime esperado |
+| **smoke** | Smoke de la API pública en pushes a `main` |
+| **channels_pipeline** | Corre `channels:automated` en CI |
+| **voice_health** | Verifica `/api/agent/voice/health` en producción |
+| **knowledge_antenna** | Ejecuta el workflow reusable de knowledge antenna |
 
 ---
 
@@ -290,12 +296,12 @@ Pipeline de GitHub Actions en `.github/workflows/ci.yml`. Se ejecuta en push a `
 
 | Regla | Detalle |
 |-------|---------|
-| Cantidades | `Math.ceil()` siempre — nunca `round()` ni `floor()` |
-| Precios | `p(item)` para resolver precios — nunca hardcodeados |
-| IVA | Una sola vez al final en `calcTotalesSinIVA()` |
-| Estilos | Inline styles únicamente — tokens `C` y `FONT` de `constants.js` |
-| Estado | Solo `React.useState` — sin `localStorage` ni fetch externo |
-| Props | El componente principal no requiere props |
+| Módulos | ES modules (`import` / `export`) en frontend y backend |
+| Rutas API | Las rutas `/api` viven en `server/routes/` |
+| Sheets | `503` = Sheets no disponible; no hardcodear IDs ni credenciales |
+| Secrets | Solo en `.env` / runtime; nunca commitear tokens |
+| Logging | Usar `pino` / `pino-http` en backend |
+| Gate local | Antes de PR: `npm run gate:local` o `npm run gate:local:full` |
 
 Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución.
 
@@ -306,7 +312,10 @@ Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución
 | Documento | Contenido |
 |-----------|-----------|
 | [`AGENTS.md`](AGENTS.md) | Comandos y convenciones para agentes de IA |
+| [`docs/team/PROJECT-STATE.md`](docs/team/PROJECT-STATE.md) | Estado vivo del proyecto y changelog operativo |
 | [`docs/readme/README.template.md`](docs/readme/README.template.md) | Plantilla del README (no editar `README.md` a mano en bloques auto) |
+| [`docs/wa-cockpit/README.md`](docs/wa-cockpit/README.md) | Hub del módulo WhatsApp Cockpit |
+| [`docs/api/AGENT-CAPABILITIES.json`](docs/api/AGENT-CAPABILITIES.json) | Snapshot de capacidades expuestas a agentes/MCP |
 | [`docs/bmc-dashboard-modernization/IMPLEMENTATION.md`](docs/bmc-dashboard-modernization/IMPLEMENTATION.md) | Setup completo del dashboard (4 fases, triggers, testing) |
 | [`docs/bmc-dashboard-modernization/README.md`](docs/bmc-dashboard-modernization/README.md) | Quick start Phase 1–2 + dashboard |
 | [`docs/ML-OAUTH-SETUP.md`](docs/ML-OAUTH-SETUP.md) | Configuración OAuth MercadoLibre |

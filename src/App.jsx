@@ -8,6 +8,10 @@ import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 // so lazy-loading would just add an extra waterfall step with zero saved bytes.
 import BmcModuleNav from "./components/BmcModuleNav.jsx";
 import { onLCP, onINP, onCLS } from "web-vitals";
+import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
+import AuthGateModal from "./components/auth/AuthGateModal.jsx";
+import RequireGrant from "./components/auth/RequireGrant.jsx";
+import AuthHeader from "./components/auth/AuthHeader.jsx";
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -25,6 +29,7 @@ const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUni
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
+const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 
 const suspenseFallback = (
   <div
@@ -51,6 +56,19 @@ function Shell({ children }) {
         background: "#F5F5F7",
       }}
     >
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 16,
+          zIndex: 50,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <AuthHeader />
+      </div>
       {!isCalc && <BmcModuleNav />}
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
     </div>
@@ -74,7 +92,9 @@ export default function App() {
 
   return (
     <BrowserRouter basename={basename}>
+      <BmcAuthProvider>
       <LegacyAppQueryRedirect />
+      <AuthGateModal />
       <Routes>
         <Route path="/hub" element={<Suspense fallback={suspenseFallback}><BmcWolfboardHub /></Suspense>} />
         <Route
@@ -91,9 +111,11 @@ export default function App() {
           path="/hub/wa"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcWaModuleWithTabs />
-              </Suspense>
+              <RequireGrant module="wa" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcWaModuleWithTabs />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
@@ -111,13 +133,16 @@ export default function App() {
           path="/hub/admin"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcAdminCotizacionesModule />
-              </Suspense>
+              <RequireGrant role="admin">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcAdminCotizacionesModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
         <Route path="/hub/plan-import" element={<Suspense fallback={suspenseFallback}><BmcPlanImportModule /></Suspense>} />
+        <Route path="/mi-espacio" element={<Shell><Suspense fallback={suspenseFallback}><MySpacePage /></Suspense></Shell>} />
         <Route path="/hub/agent-admin" element={<Suspense fallback={suspenseFallback}><AgentAdminModule /></Suspense>} />
         <Route
           path="/"
@@ -200,6 +225,7 @@ export default function App() {
         <Route path="/wa" element={<Navigate to="/hub/wa" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </BmcAuthProvider>
     </BrowserRouter>
   );
 }

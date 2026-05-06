@@ -34,7 +34,46 @@ PanelinCalculadoraV3_backup.jsx   server/routes/agentChat.js   ← SSE endpoint
 | `server/routes/agentChat.js` | SSE stream, devMode branch (~167), kb_match (~231) |
 | `server/routes/agentTraining.js` | POST /agent/train, GET /agent/training-kb |
 | `server/lib/trainingKB.js` | KB CRUD, findRelevantExamples() |
-| `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220) |
+| `server/lib/chatPrompts.js` | buildSystemPrompt(), trainingExamples injection (~195-220), `EXTRACTION_PROTOCOL` block |
+| `server/lib/agentTools.js` | 28 Anthropic tools (calc + catalog + state + PDF + CRM + price-list/scenario compare + CRM-search + WhatsApp send + quote-cancel + raw-HTML + follow-up + client-history + 6 Wolfboard hub tools); `executeTool(name,input,calcState,{emitAction})` |
+| `server/lib/quoteRegistry.js` | GCS-backed persistent registry. One JSON per quote at `gs://${GCS_QUOTES_BUCKET}/registry/{pdf_id}.json`. Survives Cloud Run cold-starts; falls back to 24h in-memory cache when bucket unset. |
+| `server/lib/toolStats.js` | Per-tool telemetry: in-process ring buffer (1k records). Wraps `executeTool` to capture latency, ok/error, and a small set of error classes (`guard:user_confirmed`, `config:missing_env`, etc.). Exposed via `GET /api/agent/tool-stats`; surfaced in `PanelinDevPanel.jsx` Tools tab (auto-refresh 30s, 24h window default). |
+| `scripts/mcp-panelin-http.mjs` | MCP server (stdio). Boots by fetching `/api/agent/tools-manifest`, registers all 22 tools dynamically, forwards calls to `/api/agent/exec-tool`. Forwards `BMC_API_TOKEN` as Bearer for the 4 write tools. Companion agent definition: `bmc-panelin-mcp.md`. |
+| `server/lib/crmAppend.js` | `appendQuoteToCrm()` — Sheets writer for CRM_Operativo (col AH = quote URL, AI/AK gates default "No") |
+
+## Tool surface (Claude tool-use loop, max 8 rounds)
+
+**Read / catalog:** `obtener_escenarios`, `obtener_catalogo`, `obtener_informe_completo`, `listar_opciones_panel`, `obtener_precio_panel`, `get_calc_state`
+**Calc:** `calcular_cotizacion`, `presupuesto_libre`
+**Live UI write:** `aplicar_estado_calc` — emits `setScenario / setLP / setTecho / setTechoZonas / setPared / setCamara / setFlete / setProyecto` ACTION_JSON events through the SSE stream via the `emitAction` callback threaded into `executeTool`.
+**PDF + share:** `generar_pdf` (POST `/calc/cotizar/pdf`), `listar_cotizaciones_recientes`, `obtener_cotizacion_por_id`
+**CRM:** `formatear_resumen_crm` (pure, returns `{crm_text}`), `guardar_en_crm` (writes Sheets row — **only after explicit user save intent**)
+**Price-list compare:** `comparar_listas` — runs the same quote on `web` and `venta`, returns `{web, venta, delta_usd, delta_pct, nota}`. Use when the seller asks "¿cuánto baja con lista venta?".
+**Scenario compare:** `comparar_escenarios` — same shape but compares two scenarios (`solo_techo` vs `techo_fachada`, etc.). Single listaPrecios; use for "¿cuánto extra si le sumo la fachada?".
+**CRM dedupe (read):** `buscar_cliente_crm` — searches `CRM_Operativo!B4:AH500` by name / phone / RUT. Required pre-step before `guardar_en_crm` (prompt enforces it).
+**Customer outreach:** `enviar_whatsapp_link` — sends quote URL to customer via WhatsApp Cloud API (`server/lib/whatsappOutbound.js`). **Requires `user_confirmed: true`** in input.
+**Quote cancel (soft delete):** `cancelar_cotizacion` — flips a quote's `status` to `cancelled` in the GCS registry (no hard delete). **Requires `user_confirmed: true`**. Filtered out of `listar_cotizaciones_recientes` unless `?include_cancelled=true`.
+**Raw HTML access:** `obtener_pdf_html` — returns the HTML body of a stored quote (not the link), for inspection / translation / branding overrides.
+**Internal follow-ups:** `programar_seguimiento` — wraps `server/lib/followUpStore.js` to add a local reminder for the operator. **Requires `user_confirmed: true`**. Local-only (operator-facing); does not touch the customer.
+**Client history (composite):** `historial_cliente` — composes `buscar_cliente_crm` + `listar_cotizaciones_recientes`, returns merged `{crm, cotizaciones}` for a single client name. One tool call instead of two.
+
+**Wolfboard hub (admin cotizaciones, all auth-gated):**
+- `wolfboard_pendientes` — list pending Admin 2.0 rows (consulta scope or full admin)
+- `wolfboard_export` — CSV export of the same listing
+- `wolfboard_sync` — propagate Admin col J → CRM col AF (batch, **user_confirmed**)
+- `wolfboard_actualizar_fila` — edit a single Admin row (respuesta/linkDrive/estado/replaySnapshotUrl) (**user_confirmed**)
+- `wolfboard_marcar_enviado` — move a row to the Enviados tab (**user_confirmed**)
+- `wolfboard_quote_batch` — Claude Haiku batch quoting over pending consultas (**user_confirmed**, optional `force`)
+
+All Wolfboard tools forward `Authorization: Bearer ${API_AUTH_TOKEN}` to the existing `/api/wolfboard/*` router (which already enforces `requireAuth`). MCP `TOOLS_REQUIRING_AUTH` set mirrors the same gate at the external entry point.
+
+**Confirmation guard (transversal, dual-path):**
+- **Chat path:** `server/lib/userIntentClassifier.js` reads the user's last message and produces a `Set<string>` of approved tool names. The 8 write tools (`guardar_en_crm`, `enviar_whatsapp_link`, `cancelar_cotizacion`, `programar_seguimiento`, 4 Wolfboard) only fire if their name is in the set. **The model cannot fabricate this signal** — it comes from the user's words.
+- **MCP path:** No conversation context → falls back to the legacy `user_confirmed: true` flag (same write tools), behind Bearer auth at `/api/agent/exec-tool`.
+
+The intent classifier ships with regex patterns per tool (e.g. `guardar_en_crm` triggers on "guardalo en CRM", "pegalo al CRM", "agregalo a la planilla"). Negation handling: "no lo guardes en el CRM" → empty set. See `tests/userIntentClassifier.test.js` for the full matrix.
+
+The conversational extraction flow (slot-filling protocol) lives in `chatPrompts.js`'s `EXTRACTION_PROTOCOL` block. Source of truth for required fields is `obtener_escenarios` (i.e. `/calc/escenarios`), not the static WORKFLOW text.
 
 ## Dev mode rules
 
