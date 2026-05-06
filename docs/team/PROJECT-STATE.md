@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (QA — regression coverage for Sheets CSV guard):** La automation de cobertura agregó una prueba de integración offline en [`tests/sheetsCsvGuard.test.js`](../../tests/sheetsCsvGuard.test.js) para verificar que [`appendQuoteToCrm()`](../../server/lib/crmAppend.js) no solo usa el helper `sanitizeCellValue()`, sino que escribe todas las celdas CRM controladas por usuario ya sanitizadas cuando el destino es Google Sheets con `valueInputOption: "USER_ENTERED"`. Cubre payloads tipo `=HYPERLINK(...)`, prefijos `+`, `-`, `@` y preserva el comportamiento de append. Validación local: `node tests/sheetsCsvGuard.test.js` y `npm run test:api` verdes con Node 20.20.2.
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
