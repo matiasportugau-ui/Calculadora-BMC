@@ -71,6 +71,8 @@ Lee este archivo antes de cualquier tarea.
 | `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
 | `npm run local:stack:launchd:install` | macOS: LaunchAgent `com.bmc.calculadora-localstack` — al login levanta API `:3001` + Vite `:5173` si no están arriba; logs `.runtime/local-stack-launchd*.log` |
 | `npm run local:stack:launchd:uninstall` | Quita el LaunchAgent del stack local (`unload` + borra plist en `~/Library/LaunchAgents/`) |
+| `npm run wa:admin` | CLI de administración del módulo WhatsApp Pro (operadores, config, flags, webhooks, SLA). |
+| `npm run wa:gen-docs` | Regenera la documentación técnica de configuración desde el schema Zod. |
 
 **Loops de validación:**
 

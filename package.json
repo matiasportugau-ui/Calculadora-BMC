@@ -131,6 +131,7 @@
     "wa:admin": "node scripts/wa-admin.mjs",
     "wa:reconcile": "node scripts/wa-reconcile-sheet.mjs",
     "wa:purge-old": "node scripts/wa-purge-old.mjs",
+    "wa:gen-docs": "node scripts/wa-gen-config-docs.mjs",
     "wa:ext:load": "bash scripts/wa-extension-load.sh",
     "wa:ext:rebuild": "bash scripts/wa-extension-load.sh --rebuild",
     "wa:ext:watch": "bash scripts/wa-extension-load.sh --watch",

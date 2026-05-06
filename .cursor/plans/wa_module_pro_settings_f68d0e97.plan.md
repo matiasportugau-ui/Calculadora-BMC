@@ -61,7 +61,7 @@ todos:
     status: completed
   - id: fe1-cli
     content: scripts/wa-admin.mjs (operator add/revoke, config get/set/dump/import, flags toggle, webhook test, sla check) + npm run wa:admin
-    status: pending
+    status: completed
   - id: fe3-metrics
     content: Extender /api/wa/metrics con sla_breach_count, avg_first_response, rule_hits, flag_changes; sub-tab Estado del módulo
     status: pending

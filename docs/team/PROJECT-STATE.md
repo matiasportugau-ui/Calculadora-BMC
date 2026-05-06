@@ -12,6 +12,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Docs — WA Cockpit Claude Web):** Guía **[`docs/wa-cockpit/CLAUDE-WEB-WA-COCKPIT-PRO-SETUP.md`](../wa-cockpit/CLAUDE-WEB-WA-COCKPIT-PRO-SETUP.md)** — flujo acortado **3 pasos + un solo mega-prompt** para pegar en Claude Web, más checklist post-auditoría. Hub [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md).
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.
