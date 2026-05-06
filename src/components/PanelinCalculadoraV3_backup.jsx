@@ -6,6 +6,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, lazy, Suspense, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { useBmcAuth } from "../hooks/useBmcAuth.js";
+import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
   ChevronDown, ChevronUp, ChevronLeft, Printer, Trash2, Copy, Check,
@@ -2333,6 +2335,7 @@ const PENDIENTE_MODOS = [
 
 export default function PanelinCalculadoraV3() {
   const navigate = useNavigate();
+  const bmcAuth = useBmcAuth();
   const isDetachedChatWindow = useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("panelinDetached") === "1";
@@ -2631,6 +2634,17 @@ export default function PanelinCalculadoraV3() {
 
   /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
   const advanceWizardStep = useCallback(() => {
+    // Identity gate — block at step 5 (Pendiente → Estructura) if anonymous.
+    // Master plan §Phase D. The modal listens to bmc-auth-gate-required and
+    // re-emits bmc-wizard-next on successful login so we resume here.
+    if (
+      scenario === "solo_techo" &&
+      wizardStep === SOLO_TECHO_PENDIENTE_STEP_INDEX &&
+      bmcAuth.status === "anonymous"
+    ) {
+      requestAuthGate("wizard-step-5");
+      return;
+    }
     setWizardStep((s) => {
       if (s >= SOLO_TECHO_STEPS.length - 1) return s;
       let next = s + 1;
@@ -2640,7 +2654,7 @@ export default function PanelinCalculadoraV3() {
       setMaxReachedStep((mr) => Math.max(mr, next));
       return next;
     });
-  }, [techo.zonas?.length]);
+  }, [techo.zonas?.length, scenario, wizardStep, bmcAuth.status]);
 
   const goPrevWizardSoloTecho = useCallback(() => {
     setWizardStep((s) => {

@@ -15,6 +15,9 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
+import { upsertQuote } from "../lib/quoteStore.js";
+import { enqueue as sheetEnqueue, isSheetSyncEnabled } from "../lib/clientQuotesSheetSync.js";
+import { requireUser } from "../lib/identityAuth.js";
 import {
   setListaPrecios,
   PANELS_TECHO,
@@ -460,7 +463,7 @@ router.post("/cotizar", (req, res) => {
 
 // ── POST /cotizar/pdf ───────────────────────────────────────────────────────
 
-router.post("/cotizar/pdf", async (req, res) => {
+router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
   try {
     const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
     // Provenance marker — distinguishes agent-generated quotes from human-driven ones
@@ -578,6 +581,46 @@ router.post("/cotizar/pdf", async (req, res) => {
       lista,
       source,
     });
+
+    // Per-user quote persistence (best-effort — must not regress PDF flow).
+    // Identity master plan §Phase F. req.user is populated when the caller
+    // presents `Authorization: Bearer <access JWT>` (typical for the
+    // server-to-server chat agent in agentTools.js and GPT Actions). The
+    // React wizard generates PDFs client-side and uses POST /api/me/quotes
+    // directly — this hook covers the agent paths.
+    //
+    // Anonymous (no req.user) but with clientQuoteId: row lands with
+    // user_id=null; claimAnonymousQuotes() reattaches it on first login.
+    const clientQuoteId =
+      typeof req.body?.clientQuoteId === "string" ? req.body.clientQuoteId : null;
+    if (req.user?.id || clientQuoteId) {
+      try {
+        const stored = await upsertQuote({
+          userId: req.user?.id || null,
+          clientQuoteId,
+          payload: {
+            scenario: escenario,
+            lista,
+            client: clientInfo,
+            resumen: gptResp.resumen,
+            quote_code: clientInfo.quote_code || null,
+          },
+          pdfId,
+          pdfUrl: gcsUrl || pdfUrl,
+          gcsUri: gcsUrl || null,
+          driveFileId: driveUrl || null,
+          status: "completed",
+          wizardStep: typeof req.body?.wizardStep === "number" ? req.body.wizardStep : null,
+        });
+        // Phase I trigger: enqueue Sheets sync (debounced 60s) when authenticated.
+        if (req.user?.id && stored?.quote_id && isSheetSyncEnabled()) {
+          try { sheetEnqueue(stored.quote_id); } catch (e) { req.log.warn?.({ err: e }, "sheet enqueue failed"); }
+        }
+      } catch (err) {
+        // Best-effort: do not surface DB errors to the calc consumer.
+        req.log.warn?.({ err }, "identity.quotes upsert failed (non-fatal)");
+      }
+    }
 
     return res.json({
       ok: true,
