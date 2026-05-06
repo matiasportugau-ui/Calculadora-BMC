@@ -11,6 +11,7 @@
 
 import { google } from "googleapis";
 import { generateAiResponse } from "./suggestResponse.js";
+import { sanitizeCellValue } from "./sheetsCsvGuard.js";
 
 const SHEET_TAB = "CRM_Operativo";
 
@@ -57,7 +58,7 @@ export async function autoAnswerPipeline({ rows, ml, sheetId, credsPath, config,
         spreadsheetId: sheetId,
         range:          `'${SHEET_TAB}'!AF${rowNum}`,
         valueInputOption: "USER_ENTERED",
-        requestBody:    { values: [[text]] },
+        requestBody:    { values: [[sanitizeCellValue(text)]] },
       });
 
       // 3. Answer on MercadoLibre
@@ -76,7 +77,7 @@ export async function autoAnswerPipeline({ rows, ml, sheetId, credsPath, config,
         spreadsheetId: sheetId,
         range:          `'${SHEET_TAB}'!AJ${rowNum}`,
         valueInputOption: "USER_ENTERED",
-        requestBody:    { values: [[stamp]] },
+        requestBody:    { values: [[sanitizeCellValue(stamp)]] },
       });
 
       answered++;

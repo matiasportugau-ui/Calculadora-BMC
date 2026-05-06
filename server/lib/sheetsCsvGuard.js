@@ -2,7 +2,7 @@
  * sheetsCsvGuard — shared CSV/formula injection guard for Sheets writes.
  *
  * Google Sheets `valueInputOption: "USER_ENTERED"` interprets cell values
- * starting with `=`, `+`, `-`, `@`, tab, or carriage return as formulas.
+ * starting with `=`, `+`, `-`, `@`, tab, CR, or LF as formulas.
  * That makes user-supplied strings dangerous: e.g. an operator typing
  * `=HYPERLINK("http://evil.com")` into a Wolfboard reply, or a customer
  * name like `=cmd|'/c calc'!A1`, executes when the sheet recalculates.
@@ -15,7 +15,7 @@
  * the same guard to `server/routes/wolfboard.js` `/row` writes.
  */
 
-const UNSAFE_LEADING = new Set(["=", "+", "-", "@", "\t", "\r"]);
+const UNSAFE_LEADING = new Set(["=", "+", "-", "@", "\t", "\r", "\n"]);
 
 /**
  * Sanitize a single cell value before writing with USER_ENTERED.
@@ -27,4 +27,22 @@ export function sanitizeCellValue(s) {
   if (!v) return "";
   if (UNSAFE_LEADING.has(v.charAt(0))) return "'" + v;
   return v;
+}
+
+/**
+ * Sanitize a 1-D row before writing with USER_ENTERED.
+ * @param {unknown[]} row
+ * @returns {string[]}
+ */
+export function sanitizeSheetRow(row = []) {
+  return row.map(sanitizeCellValue);
+}
+
+/**
+ * Sanitize a 2-D values matrix before writing with USER_ENTERED.
+ * @param {unknown[][]} rows
+ * @returns {string[][]}
+ */
+export function sanitizeSheetRows(rows = []) {
+  return rows.map(sanitizeSheetRow);
 }

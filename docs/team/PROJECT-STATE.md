@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Security follow-up — CSV/formula injection guard coverage):** Después del merge de PR #160 se detectó que el guard compartido existía pero todavía no cubría rutas activas de escritura a Sheets con `USER_ENTERED`. Se extendió `sanitizeSheetRow` / `sanitizeSheetRows` a escrituras de `bmcDashboard.js` (cotizaciones/pagos/ventas/entregas, ingest-email y cockpit CRM), ingest legacy WA en `server/index.js`, webhook Shopify, sync ML→CRM y auto-answer ML. Esto cierra escenarios concretos donde texto de cliente/email/ML/Shopify podía arrancar con `=`/`+`/`-`/`@` y aterrizar como fórmula ejecutable en Google Sheets.
+
+**Affects:** bmc-security (cierre de sinks CSV/formula injection restantes), bmc-sheets-mapping (todas las escrituras nuevas usan guard compartido), bmc-api-contract (sin cambio de shape ni auth), bmc-panelin-chat/WA/ML/Shopify (solo sanitización en persistencia Sheets; texto enviado al canal se mantiene sin prefijo).
+
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 
 - **PR #110** (`96e0b13`) — 28 tools del agente, registry GCS persistente, MCP server externo, telemetría per-tool, intent classifier server-side, hub Wolfboard.

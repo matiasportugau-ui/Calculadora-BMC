@@ -7,6 +7,7 @@ import { Buffer } from "node:buffer";
 import { Router } from "express";
 import { google } from "googleapis";
 import { createShopifyStore } from "../shopifyStore.js";
+import { sanitizeSheetRow } from "../lib/sheetsCsvGuard.js";
 
 const SCOPES_SHEETS = ["https://www.googleapis.com/auth/spreadsheets"];
 const COOKIE_OPTIONS = {
@@ -276,7 +277,7 @@ export default function createShopifyRouter(config, logger) {
           spreadsheetId: bmcSheetId,
           range: `'${shopifyQuestionsSheetTab}'!A:E`,
           valueInputOption: "USER_ENTERED",
-          requestBody: { values: [row] },
+          requestBody: { values: [sanitizeSheetRow(row)] },
         });
       } catch (e) {
         if (logger) logger.warn({ err: e, topic, shop }, "Sheet append failed");
