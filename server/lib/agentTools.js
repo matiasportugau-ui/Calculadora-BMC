@@ -313,14 +313,15 @@ export const AGENT_TOOLS = [
   {
     name: "listar_cotizaciones_recientes",
     description:
-      "Lista las cotizaciones generadas recientemente en esta instancia (últimas 24h). " +
-      "Cada entrada incluye id, code, cliente, escenario, total, lista y la URL del PDF. " +
+      "Lista las cotizaciones generadas recientemente (registry persistente en GCS, sin TTL). " +
+      "Cada entrada incluye id, code, cliente, escenario, total, lista, source ('ae_agent' | 'calculator') y la URL del PDF. " +
       "Usar cuando el usuario diga 'mandale otra vez la cotización a Juan', 'pasame el link del último presupuesto', " +
-      "'¿qué cotizaciones hice hoy?'.",
+      "'¿qué cotizaciones hice hoy?', '¿qué generó la IA?' (filtrar source='ae_agent').",
     input_schema: {
       type: "object",
       properties: {
         cliente: { type: "string", description: "Filtrar por nombre de cliente (match parcial, case-insensitive)" },
+        source:  { type: "string", enum: ["ae_agent", "calculator"], description: "Filtrar por origen: 'ae_agent' (generado por el agente) o 'calculator' (UI manual)" },
         limite:  { type: "number", description: "Máx resultados a devolver. Default 10" },
       },
     },
@@ -1047,14 +1048,18 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "generar_pdf") {
+      const t0 = Date.now();
       const { scenario, listaPrecios = "web", techo, pared, camara, flete = 0, cliente = {} } = input;
 
-      // Map tool input to /calc/cotizar/pdf body format
+      // Map tool input to /calc/cotizar/pdf body format. `source: "ae_agent"`
+      // marks the registry entry as agent-generated for downstream audit
+      // (listar_cotizaciones_recientes / historial_cliente surface this field).
       const body = {
         lista: listaPrecios,
         escenario: scenario,
         flete,
         cliente,
+        source: "ae_agent",
         ...(techo && {
           techo: {
             ...techo,
@@ -1079,6 +1084,19 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         body: JSON.stringify(body),
       });
       const data = await resp.json();
+
+      // Structured log event for durable out-of-process audit (Cloud Logging /
+      // pino scrapers can filter on event="ae_agent_quote"). Never includes
+      // full cliente body — only PII-free fields.
+      console.log(JSON.stringify({
+        event: "ae_agent_quote",
+        tool: "generar_pdf",
+        scenario,
+        lista: listaPrecios,
+        duration_ms: Date.now() - t0,
+        ok: !!data.ok,
+        pdf_id: data.pdf_id || null,
+      }));
 
       if (!data.ok) return JSON.stringify({ error: data.error || "Error al generar PDF" });
 
@@ -1163,10 +1181,14 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const data = await fetchJson("/calc/cotizaciones");
       if (!data.ok) return JSON.stringify({ error: data.error || "Error al listar cotizaciones" });
       const filtroCliente = String(input?.cliente || "").trim().toLowerCase();
+      const filtroSource = input?.source && ["ae_agent", "calculator"].includes(input.source) ? input.source : null;
       const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
       let entries = data.cotizaciones || [];
       if (filtroCliente) {
         entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(filtroCliente));
+      }
+      if (filtroSource) {
+        entries = entries.filter((e) => (e.source || "calculator") === filtroSource);
       }
       entries = entries.slice(0, limite);
       return JSON.stringify({ ok: true, count: entries.length, cotizaciones: entries });
@@ -1191,6 +1213,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         pdf_url: entry.pdfUrl,
         viewer_url: `${apiBase()}/calc/pdf/${id}`,
         timestamp: entry.timestamp,
+        source: entry.source || "calculator",
+        status: entry.status || "active",
       });
     }
 

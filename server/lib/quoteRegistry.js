@@ -32,7 +32,7 @@ function gcsPath(pdfId) {
   return `${PREFIX}${pdfId}.json`;
 }
 
-function buildEntry({ pdfId, pdfUrl, code, client, scenario, total, lista }) {
+function buildEntry({ pdfId, pdfUrl, code, client, scenario, total, lista, source }) {
   return {
     id: pdfId,
     code: code || null,
@@ -43,6 +43,7 @@ function buildEntry({ pdfId, pdfUrl, code, client, scenario, total, lista }) {
     pdfUrl,
     createdAt: Date.now(),
     timestamp: new Date().toISOString(),
+    source: source === "ae_agent" ? "ae_agent" : "calculator",
     status: "active",
     cancelledAt: null,
     cancelReason: null,

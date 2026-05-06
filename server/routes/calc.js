@@ -462,7 +462,10 @@ router.post("/cotizar", (req, res) => {
 
 router.post("/cotizar/pdf", async (req, res) => {
   try {
-    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente } = req.body;
+    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
+    // Provenance marker — distinguishes agent-generated quotes from human-driven ones
+    // in the registry. Defaults to "calculator"; agent path passes "ae_agent".
+    const source = sourceRaw === "ae_agent" ? "ae_agent" : "calculator";
     const results = runCalculation({ escenario, lista, techo, pared, camara });
     if (results.error && !results.allItems) {
       return res.status(400).json({ ok: false, error: results.error });
@@ -573,6 +576,7 @@ router.post("/cotizar/pdf", async (req, res) => {
       scenario: escenario,
       total: gptResp.resumen.total_usd,
       lista,
+      source,
     });
 
     return res.json({
