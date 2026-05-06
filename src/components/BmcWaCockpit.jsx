@@ -1244,6 +1244,20 @@ export default function BmcWaCockpit() {
                     </div>
                   )}
                 </div>
+              ) : activeTab === "followups" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <strong style={{ fontSize: 12 }}>Follow-ups</strong>
+                  <div style={{ fontSize: 12, color: "#3a3a3c", lineHeight: 1.45 }}>
+                    Los recordatorios operativos del equipo se gestionan con{" "}
+                    <code style={{ fontSize: 11 }}>npm run followup</code> en la máquina del operador o vía{" "}
+                    <code style={{ fontSize: 11 }}>GET/POST /api/followups</code> usando el mismo Bearer que el
+                    cockpit. Esta vista WA no incrusta aún la bandeja de follow-ups.
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6e6e73" }}>
+                    Chat seleccionado: <code style={{ fontSize: 11 }}>{activeChat.chat_id}</code>
+                    {activeChat.contact_name ? ` · ${activeChat.contact_name}` : ""}
+                  </div>
+                </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div

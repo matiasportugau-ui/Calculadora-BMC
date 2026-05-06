@@ -25,6 +25,7 @@ import { uploadQuoteToGcs, uploadQuoteJsonToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
+import { appendQuoteToCrm } from "../lib/crmAppend.js";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
@@ -571,7 +572,12 @@ export function createWolfboardRouter(config) {
   router.post("/quote-batch", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
 
-    const { force = false } = req.body || {};
+    const {
+      force = false,
+      syncToCrm = true,
+      createCrmRows = true,
+      syncQuoteLink = true,
+    } = req.body || {};
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
@@ -620,9 +626,13 @@ export function createWolfboardRouter(config) {
     const pendingRows = rawRows
       .map((row, idx) => ({
         rowNum: idx + 2,
+        telefono: String(row[3] ?? "").trim(), // D
         cliente: String(row[4] ?? "").trim(),  // E
+        canal: String(row[5] ?? "").trim(),    // F
+        zona: String(row[7] ?? "").trim(),     // H
         consulta: String(row[8] ?? "").trim(),  // I
         respuesta: String(row[9] ?? "").trim(), // J
+        link: String(row[10] ?? "").trim(),     // K
       }))
       .filter((r) => {
         if (!r.consulta) return false;
@@ -642,9 +652,11 @@ export function createWolfboardRouter(config) {
       });
     }
 
+    const canCreateCrmRows = createCrmRows && crmTab === "CRM_Operativo";
+
     // Load CRM rows for propagation (best-effort)
     let crmRows = [];
-    if (crmSheetId) {
+    if (syncToCrm && crmSheetId) {
       try {
         const crmResp = await sheets.spreadsheets.values.get({
           spreadsheetId: crmSheetId,
@@ -670,14 +682,19 @@ export function createWolfboardRouter(config) {
       let response = "";
       let status = "quoted";
       let method = "text";
+      let quoteLink = "";
+      let crmRow = null;
+      let crmCreated = false;
+      let extracted = null;
+      const usedDefaults = [];
+      let calcQuoted = false;
+      let calcRaw = null;
 
       if (row.consulta.length < MIN_CONSULTA_LEN) {
         response = ERROR_MARKER;
         status = "too_short";
       } else {
         // Step 1: Extract structured params from the consultation text
-        let extracted = null;
-        const usedDefaults = [];
         try {
           const extractMsg = await anthropic.messages.create({
             model: HAIKU_MODEL,
@@ -693,8 +710,6 @@ export function createWolfboardRouter(config) {
         }
 
         // Step 2: Try the real calculator if we have enough params
-        let calcQuoted = false;
-        let calcRaw = null;
         if (extracted?.escenario && extracted.escenario !== "null") {
           calcRaw = runBatchCalc(extracted, usedDefaults);
           if (calcRaw) {
@@ -778,7 +793,8 @@ export function createWolfboardRouter(config) {
           ]);
           const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
           if (gcsUrl) {
-            valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[gcsUrl]] });
+            quoteLink = String(gcsUrl || "").trim();
+            valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[sanitizeCellValue(quoteLink)]] });
           }
         } catch {
           // upload pipeline is non-critical; proceed without link
@@ -804,6 +820,50 @@ export function createWolfboardRouter(config) {
         }
       }
 
+      if (!quoteLink && row.link) {
+        quoteLink = String(row.link).trim();
+      }
+
+      if (syncToCrm && crmSheetId) {
+        const existing = crmRows.find(
+          (cr) => cr.G && normalizeText(cr.G) === normalizeText(row.consulta)
+        );
+        if (existing) {
+          crmRow = existing._rowNum;
+        } else if (canCreateCrmRows) {
+          const scenario =
+            extracted?.escenario && extracted.escenario !== "null"
+              ? extracted.escenario
+              : "presupuesto_libre";
+          const total =
+            Number(calcRaw?.totales?.totalFinal || 0) > 0
+              ? Number(calcRaw.totales.totalFinal)
+              : undefined;
+          const appendRes = await appendQuoteToCrm({
+            cliente: row.cliente,
+            telefono: row.telefono,
+            ubicacion: row.zona,
+            scenario,
+            lista: "web",
+            total,
+            pdf_url: quoteLink || "",
+            vendedor: row.canal,
+            observaciones: row.consulta,
+            tipo_cliente: "Cliente",
+            urgencia: "Media",
+            probabilidad_cierre: "Media",
+          });
+          if (appendRes?.ok && Number(appendRes.row) > 0) {
+            crmRow = Number(appendRes.row);
+            crmCreated = true;
+            crmRows.push({
+              _rowNum: crmRow,
+              G: row.consulta,
+            });
+          }
+        }
+      }
+
       if (numericSheetId !== undefined) {
         formatRequests.push({
           repeatCell: {
@@ -822,20 +882,29 @@ export function createWolfboardRouter(config) {
         });
       }
 
-      // Propagate to CRM_Operativo.AF (match by consulta text in CRM.G)
-      if (!isError && crmRows.length > 0) {
-        const match = crmRows.find(
-          (cr) => cr.G && normalizeText(cr.G) === normalizeText(row.consulta)
-        );
-        if (match) {
-          crmUpdates.push({
-            range: `'${crmTab}'!AF${match._rowNum}`,
-            values: [[safeResponse]],
-          });
-        }
+      // Propagate to CRM_Operativo.AF / AH
+      if (!isError && crmRow) {
+        crmUpdates.push({
+          range: `'${crmTab}'!AF${crmRow}`,
+          values: [[safeResponse]],
+        });
+      }
+      if (syncQuoteLink && quoteLink && crmRow) {
+        crmUpdates.push({
+          range: `'${crmTab}'!AH${crmRow}`,
+          values: [[sanitizeCellValue(quoteLink)]],
+        });
       }
 
-      results.push({ rowNum: row.rowNum, status, method, preview: response.slice(0, 100) });
+      results.push({
+        rowNum: row.rowNum,
+        status,
+        method,
+        crmRow,
+        crmCreated,
+        quoteLink: quoteLink || "",
+        preview: response.slice(0, 100),
+      });
     }
 
     // Write responses to Admin.J

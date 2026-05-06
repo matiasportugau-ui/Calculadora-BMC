@@ -71,6 +71,12 @@ function setFetch(handler) {
   fetchHistory.length = 0;
 }
 
+/** Restore default stub so strict handlers from one group cannot break later tools that call `fetch`. */
+function resetFetch() {
+  fetchHandler = async (_url, _init) => ({ ok: false, error: "no handler set" });
+  fetchHistory.length = 0;
+}
+
 // ── 1. AGENT_TOOLS surface ───────────────────────────────────────────────────
 
 group("AGENT_TOOLS surface", () => {
@@ -347,6 +353,7 @@ await group("generar_pdf — propagates urls", async () => {
   assert(parsed.ok === true, "ok true");
   assert(parsed.pdf_id === "xyz-1", "pdf_id present");
   assert(parsed.gcs_url && parsed.drive_url, "both gcs_url and drive_url present");
+  resetFetch();
 });
 
 await group("comparar_listas", async () => {
@@ -417,6 +424,10 @@ await group("enviar_whatsapp_link — requires user_confirmed", async () => {
 });
 
 await group("enviar_whatsapp_link — no whatsapp configured", async () => {
+  // Avoid real tokens from `.env` leaking into this contract run.
+  const { config } = await import("../server/config.js");
+  config.whatsappAccessToken = "";
+  config.whatsappPhoneNumberId = "";
   // WHATSAPP_ACCESS_TOKEN/PHONE_NUMBER_ID are unset in test env.
   const { parsed } = await run("enviar_whatsapp_link", {
     to: "59899123456",
@@ -560,6 +571,8 @@ await group("historial_cliente — missing cliente", async () => {
 // ── Wolfboard hub tools ──────────────────────────────────────────────────────
 
 await group("wolfboard_pendientes — no auth token configured", async () => {
+  const { config } = await import("../server/config.js");
+  config.apiAuthToken = "";
   // API_AUTH_TOKEN unset in this test env → wolfboardForward short-circuits.
   const { parsed } = await run("wolfboard_pendientes", { scope: "consulta" });
   assert(parsed.ok === false, "ok false when API_AUTH_TOKEN unset");
