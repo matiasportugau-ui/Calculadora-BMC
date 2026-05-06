@@ -74,11 +74,18 @@ JWT_SECRET=$(openssl rand -base64 48)
 
 # Inject into Cloud Run service `panelin-calc` (us-central1).
 # Pattern follows the existing WA_JWT_SECRET wiring.
+#
+# The production GOOGLE_OAUTH_CLIENT_ID for project `chatbot-bmc-live` is:
+#   642127786762-bebp48f2mki7ckmr94mkj7fumgk0hk16.apps.googleusercontent.com
+# (public client identifier — safe to commit. The matching client_secret is
+# NOT used by our flow and is NOT needed by the API; we use Google Identity
+# Services on the frontend, server only verifies ID-token audience against
+# this client_id.)
 gcloud run services update panelin-calc \
   --region=us-central1 \
   --update-env-vars=\
 "IDENTITY_JWT_SECRET=$JWT_SECRET,\
-GOOGLE_OAUTH_CLIENT_ID=<your-google-oauth-client-id>.apps.googleusercontent.com,\
+GOOGLE_OAUTH_CLIENT_ID=642127786762-bebp48f2mki7ckmr94mkj7fumgk0hk16.apps.googleusercontent.com,\
 IDENTITY_COOKIE_DOMAIN=.calculadora-bmc.vercel.app,\
 INTERNAL_SUPERADMIN_EMAILS=matias@bmc.uy"
 
