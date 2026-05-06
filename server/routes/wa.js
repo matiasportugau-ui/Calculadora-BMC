@@ -22,6 +22,14 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
+export function parseWaLimit(rawValue, defaultValue, maxValue) {
+  const value = rawValue === undefined || rawValue === null || rawValue === ""
+    ? defaultValue
+    : Number(rawValue);
+  if (!Number.isFinite(value)) return defaultValue;
+  return Math.min(Math.max(Math.floor(value), 1), maxValue);
+}
+
 function requireWaAuth(config) {
   return (req, res, next) => {
     const token = config.apiAuthToken;
@@ -634,12 +642,12 @@ export default function createWaRouter(config, logger) {
     asyncHandler(async (req, res) => {
       const status = req.query.status ? String(req.query.status).slice(0, 32) : "";
       const q = req.query.q ? String(req.query.q).slice(0, 64) : "";
-      const limit = Math.min(Math.max(Number(req.query.limit || 100), 1), 500);
+      const limit = parseWaLimit(req.query.limit, 100, 500);
       const cursor = req.query.cursor ? String(req.query.cursor) : "";
 
       const where = [];
-      const params = [];
-      let idx = 1;
+      const params = [limit + 1];
+      let idx = 2;
 
       if (status === "stale_24h") {
         where.push(`(c.last_msg_in_at is not null and c.last_msg_in_at > coalesce(c.last_msg_out_at, '1970-01-01') and c.last_msg_in_at < now() - interval '24 hours')`);
@@ -665,7 +673,7 @@ export default function createWaRouter(config, logger) {
         from wa_conversations c
         ${where.length ? "where " + where.join(" and ") : ""}
         order by c.last_msg_at desc nulls last
-        limit ${limit + 1}
+        limit $1
       `;
       const { rows } = await pool.query(sql, params);
       const hasMore = rows.length > limit;
@@ -689,22 +697,21 @@ export default function createWaRouter(config, logger) {
         return res.status(400).json({ ok: false, error: "chat_id required" });
       }
       const before = req.query.before ? String(req.query.before) : null;
-      const limit = Math.min(Math.max(Number(req.query.limit || 100), 1), 500);
+      const limit = parseWaLimit(req.query.limit, 100, 500);
 
-      const params = [chatId];
-      let idx = 2;
-      let where = "chat_id = $1";
+      const params = [limit + 1, chatId];
+      let idx = 3;
+      let where = "chat_id = $2";
       if (before) {
         where += ` and ts < $${idx++}`;
         params.push(before);
       }
-
       const { rows } = await pool.query(
         `select msg_id, chat_id, ts, direction, type, text, reply_to, source, status, meta
          from wa_messages
          where ${where}
          order by ts desc
-         limit ${limit + 1}`,
+         limit $1`,
         params,
       );
       const hasMore = rows.length > limit;
@@ -731,11 +738,11 @@ export default function createWaRouter(config, logger) {
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
       if (!chatId) return res.status(400).json({ ok: false, error: "chat_id required" });
-      const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
+      const limit = parseWaLimit(req.query.limit, 20, 100);
       const onlyPending = req.query.pending === "1" || req.query.pending === "true";
 
-      const where = ["chat_id = $1"];
-      const params = [chatId];
+      const where = ["chat_id = $2"];
+      const params = [limit, chatId];
       if (onlyPending) where.push("chosen_idx is null");
 
       const { rows } = await pool.query(
@@ -744,7 +751,7 @@ export default function createWaRouter(config, logger) {
          from wa_suggestions
          where ${where.join(" and ")}
          order by generated_at desc
-         limit ${limit}`,
+         limit $1`,
         params,
       );
 
@@ -810,15 +817,16 @@ export default function createWaRouter(config, logger) {
     asyncHandler(async (req, res) => {
       const chatId = String(req.query.chat_id || "").trim();
       if (!chatId) return res.status(400).json({ ok: false, error: "chat_id required" });
-      const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
+      const limit = parseWaLimit(req.query.limit, 20, 100);
+      const params = [chatId, limit];
       const { rows } = await pool.query(
         `select quote_id, chat_id, trigger_msg_id, generated_at, generated_by_ai,
                 params, total_usd, total_iva_usd, bom_summary, link, status, sheet_row, meta
          from wa_quotes
          where chat_id = $1
          order by generated_at desc
-         limit ${limit}`,
-        [chatId],
+         limit $2`,
+        params,
       );
       return res.json({ ok: true, count: rows.length, items: rows });
     }),
@@ -915,10 +923,10 @@ export default function createWaRouter(config, logger) {
     asyncHandler(async (req, res) => {
       const chatId = req.query.chat_id ? String(req.query.chat_id).trim() : "";
       const status = req.query.status ? String(req.query.status).trim() : "pending";
-      const limit = Math.min(Math.max(Number(req.query.limit || 100), 1), 500);
-      const where = ["status = $1"];
-      const params = [status];
-      let idx = 2;
+      const limit = parseWaLimit(req.query.limit, 100, 500);
+      const where = ["status = $2"];
+      const params = [limit, status];
+      let idx = 3;
       if (chatId) {
         where.push(`chat_id = $${idx++}`);
         params.push(chatId);
@@ -931,7 +939,7 @@ export default function createWaRouter(config, logger) {
          from wa_followups
          where ${where.join(" and ")}
          order by due_at asc
-         limit ${limit}`,
+         limit $1`,
         params,
       );
       return res.json({ ok: true, count: rows.length, items: rows });

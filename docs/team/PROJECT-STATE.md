@@ -12,6 +12,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-05-06 (Security — WA list query hardening + Sourcery blocker follow-up):** Se corrigieron los endpoints de listado WA que interpolaban `LIMIT` en SQL (`/wa/conversations`, `/wa/messages`, `/wa/suggestions`, `/wa/quotes`, `/wa/followups`): ahora usan `parseWaLimit` con default/clamp finito y `LIMIT $n` parametrizado. Trigger concreto cerrado: requests autenticados con `?limit=abc` podían generar SQL inválido (`LIMIT NaN`) y romper listados críticos del cockpit; además se elimina el patrón señalado por Sourcery. `server/routes/mlEtlRun.js` reemplaza la construcción manual de query REST por `URLSearchParams` para el lookup de corridas ETL (el ID ya estaba validado como entero, cambio preventivo para scanner/futuras ediciones). Test nuevo `tests/wa-limit.test.js` agregado al `npm test`.
+
+**Affects:** bmc-security (SQL construction hardening), bmc-api-contract (sin cambio de contrato; mismos endpoints y defaults), bmc-docs-sync (esta entrada), WA Cockpit operators (listados no fallan con límites malformados).
+
 **2026-05-05 (Dev — WA Module Pro Settings — Backend Core + Config Loader + Auth Híbrida):** Plan canónico [`.cursor/plans/wa_module_pro_settings_f68d0e97.plan.md`](../../.cursor/plans/) en ejecución. El módulo WhatsApp ahora soporta configuración profesional persistente y multi-operador real:
 
 - **Configuración persistente (Single Source of Truth)**: Nuevo loader [`server/lib/waConfig.js`](../../server/lib/waConfig.js) basado en **Zod schema** ([`server/lib/waConfigSchema.js`](../../server/lib/waConfigSchema.js)). Separa *Feature Flags* (`wa_flags`), *Runtime Config* (`wa_settings`) y *Secrets* (`.env`). Cache LRU 30s con invalidación instantánea vía `LISTEN/NOTIFY` Postgres. Drift recovery automático (no crashea si DB tiene valores inválidos).
