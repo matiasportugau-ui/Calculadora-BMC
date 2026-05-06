@@ -26,7 +26,10 @@ const ALLOWED_ENTITIES = new Set([
   "users", "quotes", "crm_personal_contacts", "crm_personal_leads",
   "special_quote_requests", "access_requests", "audit_log",
 ]);
-const ALLOWED_FORMATS = new Set(["csv", "json", "pdf"]);
+// "html" is what the admin export bundle emits today. The puppeteer-based
+// PDF rendering path is a follow-up (see GOLIVE doc §"Out of scope"); until
+// then, the admin tool ships HTML so the API contract isn't ambiguous.
+const ALLOWED_FORMATS = new Set(["csv", "json", "html"]);
 
 function pool() {
   const p = getWaPool(config.databaseUrl);
@@ -193,12 +196,8 @@ router.post("/api/admin/export", requireUser({ role: "admin" }), async (req, res
       if (formats.includes("csv")) {
         zip.file(`${entity}.csv`, toCsv(rows));
       }
-      if (formats.includes("pdf")) {
+      if (formats.includes("html")) {
         zip.file(`${entity}.html`, `<!doctype html><html><body>${entityToHtmlTable(entity, rows)}</body></html>`);
-        // Note: PDF rendering is delegated to the existing /api/pdf/generate
-        // pipeline in production; for the export bundle we ship the source
-        // HTML so the admin can convert it (browser print) without paying
-        // puppeteer cold-start in this code path.
       }
     }
 
@@ -255,14 +254,30 @@ router.get("/api/me/quotes/:id/export.csv", requireUser(), async (req, res) => {
   }
 });
 
-// PDF: redirect to existing pdf_url if present; otherwise return 404 hint.
-// The full templated PDF reuses the puppeteer pipeline in /api/pdf/generate
-// (Phase H+ may inline the call here).
+// PDF: redirect to existing pdf_url if present; otherwise return 404 with a
+// machine-readable hint. The puppeteer-based "render server-side" path is a
+// follow-up (GOLIVE doc §"Out of scope"); until then the contract is:
+// `.pdf` ONLY returns a real PDF when one was uploaded by the calc flow.
 router.get("/api/me/quotes/:id/export.pdf", requireUser(), async (req, res) => {
   try {
     const q = await loadOwnedQuote(req.user.id, req.params.id);
     if (!q) return res.status(404).json({ ok: false, error: "not_found" });
     if (q.pdf_url) return res.redirect(302, q.pdf_url);
+    return res.status(404).json({
+      ok: false,
+      error: "pdf_not_available",
+      detail: "No pdf_url stored for this quote. Use export.html for a printable HTML view.",
+    });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
+// HTML — printable view, always works for any owned quote.
+router.get("/api/me/quotes/:id/export.html", requireUser(), async (req, res) => {
+  try {
+    const q = await loadOwnedQuote(req.user.id, req.params.id);
+    if (!q) return res.status(404).json({ ok: false, error: "not_found" });
     res.setHeader("Content-Type", "text/html");
     res.setHeader("Content-Disposition", `attachment; filename="quote-${q.quote_id}.html"`);
     res.send(`<!doctype html><html><body>${entityToHtmlTable("quote", [q])}</body></html>`);
