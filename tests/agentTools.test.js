@@ -50,9 +50,29 @@ async function run(name, input, calcState = {}, opts = {}) {
 }
 
 // ── Stub fetch for HTTP-backed tools ─────────────────────────────────────────
+//
+// After the loopback refactor, calcular_cotizacion / presupuesto_libre /
+// generar_pdf all go through globalThis.fetch as well. The default handler
+// delegates /calc/cotizar* to runCalculation+buildGptResponse so tests that
+// don't explicitly setFetch (e.g. calcular_cotizacion happy path,
+// comparar_listas, comparar_escenarios) still see real BOM math.
+
+const { runCalculation: _runCalc, buildGptResponse: _buildGpt } = await import("../server/routes/calc.js");
+
+function _defaultCalcLoopback(url, init) {
+  const path = String(url).replace(/^https?:\/\/[^/]+/, "");
+  if (path === "/calc/cotizar" || path === "/calc/cotizar/presupuesto-libre") {
+    const body = init?.body ? JSON.parse(init.body) : {};
+    const escenario = path.endsWith("/presupuesto-libre") ? "presupuesto_libre" : body.escenario;
+    const r = _runCalc({ escenario, lista: body.lista, techo: body.techo, pared: body.pared, camara: body.camara, libre: path.endsWith("/presupuesto-libre") ? body : undefined });
+    if (r.error && !r.allItems) return { ok: false, error: r.error };
+    return _buildGpt(escenario, body.lista, r, body.flete || 0);
+  }
+  return { ok: false, error: "no handler set" };
+}
 
 const fetchHistory = [];
-let fetchHandler = async (_url, _init) => ({ ok: false, error: "no handler set" });
+let fetchHandler = async (url, init) => _defaultCalcLoopback(url, init);
 
 globalThis.fetch = async (url, init) => {
   fetchHistory.push({ url: String(url), init });
@@ -73,7 +93,7 @@ function setFetch(handler) {
 
 /** Restore default stub so strict handlers from one group cannot break later tools that call `fetch`. */
 function resetFetch() {
-  fetchHandler = async (_url, _init) => ({ ok: false, error: "no handler set" });
+  fetchHandler = async (url, init) => _defaultCalcLoopback(url, init);
   fetchHistory.length = 0;
 }
 
