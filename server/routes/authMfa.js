@@ -19,13 +19,14 @@
 
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { requireUser } from "../lib/identityAuth.js";
+import { requireUser, createSessionForUser } from "../lib/identityAuth.js";
 import {
   generateSecret,
   buildProvisioningUri,
   verifyCode,
   encryptSecret,
   decryptSecret,
+  verifyMfaChallengeToken,
 } from "../lib/mfaTotp.js";
 import { safeErr as _safeErr } from "../lib/safeErr.js";
 
@@ -254,6 +255,78 @@ router.post("/auth/mfa/disable", mfaLimiter, requireUser(), async (req, res) => 
   } catch (e) {
     logger().error?.({ err: e }, "[authMfa] disable failed");
     return res.status(500).json({ ok: false, error: _safeErr(e) || "disable_failed" });
+  }
+});
+
+// ─── POST /auth/mfa/challenge ──────────────────────────────────────────
+// Body: { mfa_token, code }. The mfa_token is the short-lived JWT returned
+// by POST /auth/google when users.mfa_required=true. On a valid TOTP code
+// the route mints a real session via createSessionForUser — same shape as
+// the no-MFA login response, so the SPA can finalize login uniformly.
+//
+// 401: token invalid/expired or wrong code.
+// 403: user has no enabled MFA secret (shouldn't happen in practice — see
+//      invariant in authMfa.js header — but guarded so a manually-flipped
+//      mfa_required without enrollment can't lock anyone into a soft brick).
+router.post("/auth/mfa/challenge", mfaLimiter, async (req, res) => {
+  if (!requirePool(res)) return;
+  try {
+    const mfaToken = String(req.body?.mfa_token || "").trim();
+    const code = String(req.body?.code || "").trim();
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).json({ ok: false, error: "code_invalid_format" });
+    }
+
+    let userId;
+    try {
+      ({ userId } = verifyMfaChallengeToken(mfaToken));
+    } catch (e) {
+      return res.status(e.status || 401).json({ ok: false, error: e.message || "mfa_token_invalid" });
+    }
+
+    const row = await _pool.query(
+      `select totp_secret_encrypted, enabled_at
+         from identity.mfa_secrets
+        where user_id = $1`,
+      [userId],
+    );
+    if (!row.rows.length || !row.rows[0].enabled_at) {
+      return res.status(403).json({ ok: false, error: "mfa_not_enrolled" });
+    }
+
+    let secret;
+    try {
+      secret = decryptSecret(row.rows[0].totp_secret_encrypted);
+    } catch (e) {
+      logger().error?.({ err: e, userId }, "[authMfa] challenge decrypt failed");
+      return res.status(500).json({ ok: false, error: "mfa_storage_corrupt" });
+    }
+
+    if (!verifyCode({ secret, code })) {
+      return res.status(401).json({ ok: false, error: "code_invalid" });
+    }
+
+    await _pool.query(
+      `update identity.mfa_secrets set last_used_at = now() where user_id = $1`,
+      [userId],
+    );
+    await _pool.query(
+      `insert into identity.audit_log (actor_user_id, actor_kind, action, resource, resource_id, payload)
+       values ($1, 'user', 'auth.mfa_challenge_passed', 'identity.mfa_secrets', $1::text, '{}'::jsonb)`,
+      [userId],
+    );
+
+    const result = await createSessionForUser({
+      userId,
+      ip: req.ip,
+      userAgent: req.get?.("user-agent") || null,
+      source: "mfa_challenge",
+    });
+
+    return res.json(result);
+  } catch (e) {
+    logger().error?.({ err: e }, "[authMfa] challenge failed");
+    return res.status(500).json({ ok: false, error: _safeErr(e) || "challenge_failed" });
   }
 });
 

@@ -100,6 +100,25 @@ router.post("/auth/google", authGoogleLimiter, async (req, res) => {
       ip: req.ip,
       userAgent: req.get("user-agent") || undefined,
     });
+
+    // MFA gate: when verifyGoogleAndUpsert returns mfa_required, no session
+    // was created. Forward the challenge token to the SPA without setting
+    // a refresh cookie — only POST /auth/mfa/challenge can mint one. Module
+    // grants are deliberately omitted here so a stolen mfa_token cannot leak
+    // authorization metadata.
+    if (r.status === "mfa_required") {
+      return res.json({
+        ok: true,
+        status: "mfa_required",
+        user: r.user,
+        role: r.role,
+        plan_tier: r.plan_tier,
+        mfa_token: r.mfa_token,
+        mfa_token_expires_in: r.mfa_token_expires_in,
+        has_enrolled: r.has_enrolled,
+      });
+    }
+
     setRefreshCookie(res, r.refreshToken);
     const grants = await getModuleGrants(r.user.id);
     return res.json({

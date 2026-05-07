@@ -15,6 +15,7 @@
  */
 
 import crypto from "node:crypto";
+import jwt from "jsonwebtoken";
 import {
   generateSecret as _generateSecret,
   generateURI as _generateURI,
@@ -25,6 +26,14 @@ import {
 const TOTP_PERIOD = 30;
 const TOTP_DIGITS = 6;
 const TOTP_WINDOW = 1;
+
+// Ephemeral JWT bridging the Google login response and the /auth/mfa/challenge
+// call. Distinct issuer+audience from the regular access JWT (defined in
+// identityAuth.js) so a leaked challenge token cannot impersonate a session,
+// and a leaked access JWT cannot pass the challenge verifier.
+const MFA_CHALLENGE_TTL_SEC = 5 * 60;
+const MFA_CHALLENGE_ISSUER = "bmc-identity";
+const MFA_CHALLENGE_AUDIENCE = "bmc-mfa-challenge";
 
 const KEK_BYTES = 32;
 const IV_BYTES = 12;
@@ -116,4 +125,66 @@ export function decryptSecret(encrypted) {
   return pt.toString("utf8");
 }
 
-export const __test__ = { TOTP_PERIOD, TOTP_DIGITS, TOTP_WINDOW };
+export const __test__ = { TOTP_PERIOD, TOTP_DIGITS, TOTP_WINDOW, MFA_CHALLENGE_TTL_SEC };
+
+// ─── Challenge token (post-Google login bridge) ────────────────────────
+
+function getJwtSecret() {
+  const s = process.env.IDENTITY_JWT_SECRET || "";
+  if (!s || s.length < 32) {
+    throw Object.assign(
+      new Error("IDENTITY_JWT_SECRET no configurado (requiere ≥32 chars)"),
+      { status: 500 },
+    );
+  }
+  return s;
+}
+
+/**
+ * Sign a short-lived JWT that lets the SPA call POST /auth/mfa/challenge to
+ * exchange for a real session. NEVER returned alongside an access JWT —
+ * holding both would defeat the second-factor gate.
+ */
+export function signMfaChallengeToken({ userId, hasEnrolled }) {
+  if (!userId) throw new Error("signMfaChallengeToken: userId required");
+  return jwt.sign(
+    {
+      sub: String(userId),
+      type: "mfa_challenge",
+      has_enrolled: !!hasEnrolled,
+    },
+    getJwtSecret(),
+    {
+      algorithm: "HS256",
+      expiresIn: MFA_CHALLENGE_TTL_SEC,
+      issuer: MFA_CHALLENGE_ISSUER,
+      audience: MFA_CHALLENGE_AUDIENCE,
+    },
+  );
+}
+
+/**
+ * Verify a token issued by signMfaChallengeToken. Returns { userId, hasEnrolled }
+ * on success; throws an error tagged with status=401 on any failure (expired,
+ * wrong audience, bad signature) so callers can map to a 401 response without
+ * leaking detail.
+ */
+export function verifyMfaChallengeToken(token) {
+  if (!token) {
+    throw Object.assign(new Error("mfa_token_required"), { status: 401 });
+  }
+  let payload;
+  try {
+    payload = jwt.verify(token, getJwtSecret(), {
+      algorithms: ["HS256"],
+      issuer: MFA_CHALLENGE_ISSUER,
+      audience: MFA_CHALLENGE_AUDIENCE,
+    });
+  } catch {
+    throw Object.assign(new Error("mfa_token_invalid"), { status: 401 });
+  }
+  if (payload.type !== "mfa_challenge" || !payload.sub) {
+    throw Object.assign(new Error("mfa_token_invalid"), { status: 401 });
+  }
+  return { userId: payload.sub, hasEnrolled: !!payload.has_enrolled };
+}
