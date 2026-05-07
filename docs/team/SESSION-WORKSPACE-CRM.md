@@ -13,13 +13,28 @@
 
 | Field                              | Value                                                                                                                                                                                                                                                                            |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Date**                           | 2026-04-19                                                                                                                                                                                                                                                                       |
-| **Focus (one line)**               | **cm-2** — prod: timeout Cloud Run **300s** + ingest **OK** (`crmRow=31`). Revisar fila en planilla.                                                                                        |
+| **Date**                           | 2026-05-07                                                                                                                                                                                                                                                                       |
+| **Focus (one line)**               | **E2E desarrollo Calculadora BMC** — operar el flujo local → `gate:local` / `gate:local:full` → `test:contracts` (API :3001 si tocaste rutas) → `pre-deploy` → `smoke:prod` → entrada en `PROJECT-STATE`. Trazabilidad: [`EXPERT-DEV-TRACEABILITY.md`](./orientation/EXPERT-DEV-TRACEABILITY.md). |
 | **Energy / time box**              | —                                                                                                                                                                                                                                                                                |
-| **Definition of “done” for today** | Evidencia CLI + `.channels/last-pipeline.json`; **cm-0** abierto hasta Meta/webhook + fila CRM verificada ([`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md)).                                                                                                           |
+| **Definition of “done” for today** | SESSION (§1) + `PROJECT-STATE` reflejan este flujo; gates y smoke ejecutados con resultado verde (o fallo documentado en §7). Integraciones OAuth/Meta/ML/correo: solo “ok” con evidencia vía [`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md).                          |
 
+### 1.0 Flujo E2E — recordatorio de comandos (no duplica el plan Cursor)
 
-### 1.1 Full Team Run — checklist rápido (antes de “Invoque full team”)
+Orden canónico alineado al repo (ver [`EXPERT-DEV-TRACEABILITY.md`](./orientation/EXPERT-DEV-TRACEABILITY.md)):
+
+1. Arranque / stack: `npm run env:ensure` → `npm run dev:full` (API `http://localhost:3001/health`, Vite `http://localhost:5173`). Antes de trabajo riesgoso: opcional `npm run expert:checkpoint -- --message="…"`.
+2. Calidad pre-merge: `npm run gate:local` habituales; **`npm run gate:local:full`** si cambios fuertes en `src/` / bundle.
+3. Contrato API (si tocaste rutas públicas): API en `:3001` + `npm run test:contracts`.
+4. Pre-deploy + prod: `npm run pre-deploy`; deploy según [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](../../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md); verificación **`npm run smoke:prod`**.
+5. Opcional navegador / WA: `npm run smoke:browser*` / `wa:ext:load` + hub [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md).
+
+Si cambiás `server/**/*.js` y el proceso en `:3001` **no** usa `node --watch`, reiniciá manualmente para que **`npm run test:contracts`** y **`pre-deploy`** vean el código nuevo.
+
+### 1.2 Human gates (OAuth / Meta / WhatsApp / ML / correo)
+
+No declarar canal “listo” sin evidencia. Pasos cerrados + enlaces: **[`HUMAN-GATES-ONE-BY-ONE.md`](./HUMAN-GATES-ONE-BY-ONE.md)** (cm-0 / cm-1 / cm-2). Tras cualquier cambio en tokens o webhooks, repetir smoke/canales según **[`PROCEDIMIENTO-CANALES-WA-ML-CORREO.md`](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md)** cuando aplique.
+
+### 1.3 Full Team Run — checklist rápido (antes de “Invoque full team”)
 
 Definición canónica: `[FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION.md)`.
 
@@ -39,6 +54,7 @@ Definición canónica: `[FULL-TEAM-RUN-DEFINITION.md](./FULL-TEAM-RUN-DEFINITION
 
 > Keep the newest at the top. Move old lines to archive or delete. Do not duplicate `PROJECT-STATE` long history; summarize only what **you** need to remember.
 
+- 2026-05-07: **E2E workflow** — SESSION §1 flujo canónico + §1.2 human gates + links §6; ejecución `gate:local:full`, `test:contracts` (API :3010 fresco), `smoke:prod`; **transportista health** → 503 si DB no responde (`transportista_db_unreachable`). Reiniciar `:3001` si no hay watch.
 - 2026-04-19: **Ingest correo + Cloud Run timeout** — `gcloud run services update panelin-calc --timeout=300` (revisión **00170-5jb**). **Prod:** `npm run email:ingest-snapshot -- --limit 1` → **1 ok**, `crmRow=31` (~195s). **Local** (intento previo): también ok. Script repo: `scripts/cloud-run-panelin-calc-request-timeout.sh`; `scripts/deploy-cloud-run.sh` ahora pasa `--timeout=300` en deploy.
 - 2026-04-18: **Plan próximos pasos (repo)** — `npm run smoke:prod` OK; `PUBLIC_BASE_URL=…642127786762… npm run wa:cloud-check -- --probe` OK (`OK_META`); `BMC_API_BASE=… npm run ml:verify` OK (token ML); `email:ingest-snapshot --dry-run --limit 5` OK. `scripts/smoke-prod-api.mjs` `DEFAULT_BASE` alineado a `public_base_url`. Informes [`reports/CM0-WHATSAPP-VERIFICATION-2026-04-18.md`](./reports/CM0-WHATSAPP-VERIFICATION-2026-04-18.md), [`reports/CM2-EMAIL-INGEST-DRYRUN-2026-04-18.md`](./reports/CM2-EMAIL-INGEST-DRYRUN-2026-04-18.md). `bmc-panelin-master.json`: **cm-0** y **cm-1** → `done`; **cm-2** sigue `doing` hasta ingest real opcional. Pendiente humano: **`WHATSAPP_APP_SECRET`** en Cloud Run ([`WHATSAPP-META-E2E.md`](./WHATSAPP-META-E2E.md) §1.1).
 - 2026-04-17: **Plan BMC run (pipeline ligero)** — Lecturas canónicas + `gate:local` + `smoke:prod` + `project:compass` + `channels:automated --write` → `.channels/last-pipeline.json`; **`humanGate` → cm-0**. `PROJECT-STATE` + `PROMPT` actualizados; no reemplaza Invoque full team 0→9.
@@ -119,6 +135,9 @@ Rules:
 | **Cronograma + rutina + seguimiento unificado**  | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) — `npm run project:compass` (alias `npm run schedule`)              |
 | **WhatsApp → ML → Correo (checklist)**           | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) — `npm run channels:onboarding` |
 | **Programa maestro (JSON)**                      | [orientation/README.md](./orientation/README.md) — `npm run program:status`                                      |
+| **E2E local → gates → prod (trazabilidad)**      | [orientation/EXPERT-DEV-TRACEABILITY.md](./orientation/EXPERT-DEV-TRACEABILITY.md) — `expert:checkpoint`, `expert:workflow` |
+| **Estudio por materia (paralelo al delivery)**   | [orientation/DEV-STUDY-ROADMAP.md](./orientation/DEV-STUDY-ROADMAP.md)                                           |
+| **Human gates (Meta / OAuth / correo)**          | [HUMAN-GATES-ONE-BY-ONE.md](./HUMAN-GATES-ONE-BY-ONE.md)                                                         |
 | Repo-wide state, pendientes, cambios             | [PROJECT-STATE.md](./PROJECT-STATE.md)                                                                           |
 | Full team run input + próximos prompts           | [PROMPT-FOR-EQUIPO-COMPLETO.md](./PROMPT-FOR-EQUIPO-COMPLETO.md)                                                 |
 | Agent backlog / KB maturity                      | [IMPROVEMENT-BACKLOG-BY-AGENT.md](./IMPROVEMENT-BACKLOG-BY-AGENT.md)                                             |
@@ -136,9 +155,7 @@ Rules:
 
 | Date       | Outcome in one line                                                                              |
 | ---------- | ------------------------------------------------------------------------------------------------ |
+| 2026-05-07 | E2E workflow operacionalizado en SESSION (§1.0 + links §6): gates + contracts + pre-deploy + smoke según AGENTS/expert traceability. |
 | 2026-03-28 | Run Scope Gate (R1–R4), RUN-MODES-AND-TRIGGERS, Docs & Repos Organizer §2, Telegram Scout.       |
 | 2026-03-27 | Run 55 formal; gates humanos cm-0/1/2 pendientes; smoke prod OK; MATRIZ duplicados documentados. |
 | 2026-03-21 | Added SESSION-WORKSPACE-CRM.md; seeded from PROJECT-STATE.                                       |
-
-
-can you run for me 
