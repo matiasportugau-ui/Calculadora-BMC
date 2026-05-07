@@ -479,7 +479,12 @@ router.post("/agent/chat", async (req, res) => {
     aiModel: rawAiModel,
     conversationId: rawConvId,
     thinkingMode = false,
+    channel: rawChannel,
   } = req.body || {};
+  // Channel selects which KB override the example renderer prefers
+  // (chat → goodAnswer raw; ml → goodAnswerML, capped 350; wa → goodAnswerWA, capped 800).
+  // Defaults to "chat" so existing callers see no behavior change.
+  const channel = ["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat";
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
@@ -663,7 +668,7 @@ router.post("/agent/chat", async (req, res) => {
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
