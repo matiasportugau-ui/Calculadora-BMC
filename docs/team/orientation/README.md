@@ -12,6 +12,7 @@
 | [../HUMAN-GATES-ONE-BY-ONE.md](../HUMAN-GATES-ONE-BY-ONE.md) | **Humano paso a paso:** enlaces Meta / ML / correo, opciones de menú, criterio de listo |
 | [EXECUTION-PLAN-MASTER.md](./EXECUTION-PLAN-MASTER.md) | **Plan maestro paso a paso:** Fase 0→5, tabla “dónde encontrar” cada doc y script, orden cm-0 → cm-1 → cm-2 → resto |
 | [VERSION-HISTORY-BMC-CALC.md](./VERSION-HISTORY-BMC-CALC.md) | **Versiones:** semver `package.json` desde 3.0.0 (tabla + commits), `CALCULATOR_DATA_VERSION`, deploys, tags, enlaces a PROJECT-STATE |
+| [DEV-STUDY-ROADMAP.md](./DEV-STUDY-ROADMAP.md) | **Estudio tema por tema:** documentación oficial + prácticas + tendencias; progresión creación→producción; anclas al repo y ritual 2 h/bloque |
 | [EXPERT-DEV-TRACEABILITY.md](./EXPERT-DEV-TRACEABILITY.md) | Checkpoints locales `expert:checkpoint` / flujo local → prod |
 | [AI-MAGAZINE-UPDATE-LOGS-PROMPT.md](./AI-MAGAZINE-UPDATE-LOGS-PROMPT.md) | Prompt para agente IA: revista/spread **logs completos (izq.)** + **explicación visual usuario (der.)**, estilo cyber-industrial |
 | [MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md](./MAGAZINE-SPREAD-UPDATE-LOGS-2026-04-09.md) | **Ejemplo ejecutado v1.1:** spread + resumen ejecutivo + spec Figma/PDF (márgenes mm, tipografía pt, hex, anexos), fuente PROJECT-STATE 2026-04-09 + Git |

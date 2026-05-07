@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-06
+**Última actualización:** 2026-05-07
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-07 (Docs — guía de estudio desarrollo y liderazgo técnico):** Nueva **[`orientation/DEV-STUDY-ROADMAP.md`](./orientation/DEV-STUDY-ROADMAP.md)** — mapa por materia (producto, SPA, backend, MV3, seguridad, datos, observabilidad, liderazgo), enlaces a documentación oficial, prácticas y notas de tendencia; progresión sugerida desde creación hasta operación estable; ritual de **2 h por bloque** y anclas al repo (`AGENTS.md`, WA Cockpit, Sheets hub). Índices actualizados: [`orientation/README.md`](./orientation/README.md), [`docs/team/README.md`](./README.md).
 
 **2026-05-06 (Docs — WA Cockpit Claude Web):** Guía **[`docs/wa-cockpit/CLAUDE-WEB-WA-COCKPIT-PRO-SETUP.md`](../wa-cockpit/CLAUDE-WEB-WA-COCKPIT-PRO-SETUP.md)** — flujo acortado **3 pasos + un solo mega-prompt** para pegar en Claude Web, más checklist post-auditoría. Hub [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md).
 
