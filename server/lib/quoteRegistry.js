@@ -116,6 +116,7 @@ export async function getQuotation(pdfId) {
  * @param {boolean} [opts.includeCancelled=false]
  * @param {string}  [opts.cliente]   Case-insensitive substring filter on client
  * @param {string}  [opts.source]    "ae_agent" | "calculator"
+ * @param {boolean} [opts.omitCalcOnly=false] When true, drop `kind: "calc_only"` rows (HTTP list for humans).
  * @returns {Promise<Array<object>>}
  *
  * Filters apply BEFORE the limit cap so requesting "10 quotes for cliente=Juan"
@@ -123,7 +124,7 @@ export async function getQuotation(pdfId) {
  * happen to include Juan. (Copilot finding: prior code paginated first then
  * filtered, silently missing matches outside the first page.)
  */
-export async function listQuotations({ limit = 50, includeCancelled = false, cliente = null, source = null } = {}) {
+export async function listQuotations({ limit = 50, includeCancelled = false, cliente = null, source = null, omitCalcOnly = false } = {}) {
   const b = bucket();
   const seen = new Map();
 
@@ -163,6 +164,9 @@ export async function listQuotations({ limit = 50, includeCancelled = false, cli
   }
   if (source && (source === "ae_agent" || source === "calculator")) {
     entries = entries.filter((e) => (e.source || "calculator") === source);
+  }
+  if (omitCalcOnly) {
+    entries = entries.filter((e) => e.kind !== "calc_only");
   }
   return entries.slice(0, Math.max(1, Math.min(500, limit)));
 }

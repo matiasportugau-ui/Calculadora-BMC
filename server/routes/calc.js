@@ -684,7 +684,12 @@ router.get("/cotizaciones", requireAuth, async (req, res) => {
   try {
     const includeCancelled = String(req.query?.include_cancelled || "").toLowerCase() === "true";
     const limit = Math.max(1, Math.min(500, Number(req.query?.limit || 50)));
-    const entries = await listQuotations({ limit, includeCancelled });
+    const includeCalcOnly = String(req.query?.include_calc_only || "").toLowerCase() === "true";
+    const entries = await listQuotations({
+      limit,
+      includeCancelled,
+      omitCalcOnly: !includeCalcOnly,
+    });
     res.json({ ok: true, count: entries.length, cotizaciones: entries });
   } catch (err) {
     req.log?.error({ err }, "calc/cotizaciones failed");

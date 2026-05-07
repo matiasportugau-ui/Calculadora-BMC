@@ -71,6 +71,9 @@ function assert(name, cond, actual, expected) {
   assert("listQuotations returns >= 2 ae_agent rows", list.length >= 2, list.length, ">=2");
   assert("listQuotations rows include kind=calc_only", list.some((e) => e.kind === "calc_only"), list.map((e) => e.kind), "[calc_only,...]");
 
+  const listHuman = await listQuotations({ source: "ae_agent", omitCalcOnly: true });
+  assert("omitCalcOnly drops calc_only rows", !listHuman.some((e) => e.kind === "calc_only"), listHuman.map((e) => e.kind), "no calc_only");
+
   // No requestHash → no dedupe collision
   _resetCacheForTests();
   const r4 = await recordCalcEvent({ source: "ae_agent", scenario: "solo_techo", lista: "web", summary: {} });

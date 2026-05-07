@@ -54,6 +54,14 @@ Toda cotización AE-agent queda archivada en
 `recordCalcEvent` es **idempotente** dentro de una ventana de 5 minutos por
 hash de body — protege contra reintentos del mismo turno.
 
+## Listados — `calc_only` vs PDF
+
+- La tool **`listar_cotizaciones_recientes`** llama `listQuotations` **sin**
+  `omitCalcOnly` — el agente ve también filas `kind: "calc_only"`.
+- **`GET /calc/cotizaciones`** (auth) **excluye** `calc_only` por defecto para
+  listas orientadas a PDF/operador. Query opcional
+  **`include_calc_only=true`** devuelve el universo completo (debug / soporte).
+
 ## Logs estructurados
 
 Cada tool emite una línea JSON al stdout para Cloud Logging / pino:
@@ -81,7 +89,7 @@ DURA** cerca del tope del bloque de tools:
 - [`tests/calcLoopbackClient.test.js`](../../../tests/calcLoopbackClient.test.js)
   — 15 unit + integration (host, fallback, error normalization).
 - [`tests/quoteRegistryCalcEvent.test.js`](../../../tests/quoteRegistryCalcEvent.test.js)
-  — 11 dedupe + listing.
+  — dedupe + listado + `omitCalcOnly`.
 - [`tests/agentTools.test.js`](../../../tests/agentTools.test.js) — 242
   contract tests, default fetch stub delega `/calc/cotizar*` a
   `runCalculation`+`buildGptResponse`.
