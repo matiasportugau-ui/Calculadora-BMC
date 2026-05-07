@@ -1,0 +1,33 @@
+# Vercel upload scope — keep SPA build inputs only; exclude local/heavy paths.
+# (CLI may bundle paths that are gitignored but huge on disk.)
+
+node_modules
+.mypy_cache
+.eslintcache
+.parcel-cache
+.codebuddy
+.claude/worktrees
+.cursor/dev-checkpoints
+.vercel
+
+# Local runtime / exports (CSV, logs)
+.runtime
+
+# Nested apps / accidental copies (not part of root Vite build)
+shop-chat-agent
+OmniCRM-Sync
+Calculadora-BMC
+
+# Git metadata
+.git
+
+# Build output (Vercel runs `npm run build` on the server)
+dist
+
+# Heavy / optional content
+docs/team/ux-feedback/sessions
+docs/team/panelsim/reports/ml-corpus/exports
+.email-ingest
+.followup
+.channels
+data/transportista-evidence
