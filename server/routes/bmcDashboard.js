@@ -16,6 +16,7 @@ import {
   Col,
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
+import { normalizeSurface, SURFACES } from "../lib/surface.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
@@ -3039,16 +3040,23 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     return Math.floor(row);
   }
 
-  /** Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada. */
+  /**
+   * Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada.
+   * Delegates to normalizeSurface but preserves the legacy string output
+   * ("mercadolibre" | "whatsapp" | ...) consumed by /unified-queue.
+   */
   function classifyCrmChannel(parsed) {
-    const origen = String(parsed?.origen || "");
-    const obs = String(parsed?.observaciones || "");
-    const qid = extractMlQuestionId(obs);
-    if (qid || /ML/i.test(origen) || /\bQ:\d+/i.test(obs)) return "mercadolibre";
-    if (/WA|WhatsApp/i.test(origen)) return "whatsapp";
-    if (/instagram|(^|\s)ig(\s|$)|IG-/i.test(origen)) return "instagram";
-    if (/facebook|messenger|\bfb\b/i.test(origen)) return "facebook";
-    return null;
+    const surface = normalizeSurface({
+      origen: parsed?.origen,
+      observaciones: parsed?.observaciones,
+    });
+    switch (surface) {
+      case SURFACES.MERCADO_LIBRE: return "mercadolibre";
+      case SURFACES.WHATSAPP:      return "whatsapp";
+      case SURFACES.INSTAGRAM:     return "instagram";
+      case SURFACES.FACEBOOK:      return "facebook";
+      default:                     return null;
+    }
   }
 
   /**

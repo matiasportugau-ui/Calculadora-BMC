@@ -43,6 +43,7 @@ import { getToolStats } from "../lib/toolStats.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
+import { normalizeSurface, surfaceToChannel } from "../lib/surface.js";
 
 const router = Router();
 
@@ -480,11 +481,16 @@ router.post("/agent/chat", async (req, res) => {
     conversationId: rawConvId,
     thinkingMode = false,
     channel: rawChannel,
+    surface: rawSurface,
   } = req.body || {};
   // Channel selects which KB override the example renderer prefers
   // (chat → goodAnswer raw; ml → goodAnswerML, capped 350; wa → goodAnswerWA, capped 800).
-  // Defaults to "chat" so existing callers see no behavior change.
-  const channel = ["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat";
+  // Body accepts either `channel` (legacy / direct) or `surface` (canonical brand
+  // label, normalized via lib/surface.js). `surface` wins when present.
+  const surfaceCanonical = normalizeSurface(rawSurface);
+  const channelFromSurface = surfaceCanonical ? surfaceToChannel(surfaceCanonical) : null;
+  const channel = channelFromSurface
+    ?? (["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat");
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
