@@ -216,6 +216,12 @@ function makeShim() {
       return { rows: r ? [{ user_id: r.user_id, enabled_at: r.enabled_at }] : [] };
     }
 
+    if (norm.startsWith("select 1 from identity.mfa_secrets") && norm.includes("enabled_at is not null")) {
+      const [user_id] = params;
+      const r = tables.mfa_secrets.find((x) => x.user_id === user_id && x.enabled_at);
+      return { rows: r ? [{ "?column?": 1 }] : [] };
+    }
+
     if (norm.startsWith("insert into identity.mfa_secrets")) {
       const [user_id, totp_secret_encrypted] = params;
       const existing = tables.mfa_secrets.find((x) => x.user_id === user_id);
@@ -483,6 +489,236 @@ describe("POST /api/auth/mfa/verify", () => {
     assert.equal(r.status, 200);
     const body = await r.json();
     assert.equal(body.was_pending, false);
+  });
+});
+
+// ─── Integration: MFA gate at login time ───────────────────────────────
+
+describe("verifyGoogleAndUpsert — MFA gate", () => {
+  it("returns mfa_required + has_enrolled=true when user has mfa_required and an enabled secret", async () => {
+    // Pre-create the user with mfa_required=true and an enabled secret.
+    const seedUser = {
+      user_id: "user-mfa-1",
+      google_sub: null,
+      email: "admin-mfa@example.com",
+      email_verified: false,
+      name: null,
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "base",
+      status: "active",
+      jwt_revoked_at: null,
+      mfa_required: true,
+    };
+    pool._tables.users.push(seedUser);
+    pool._tables.role_grants.push({ user_id: seedUser.user_id, role: "admin" });
+    pool._tables.mfa_secrets.push({
+      user_id: seedUser.user_id,
+      totp_secret_encrypted: mfaTotp.encryptSecret(mfaTotp.generateSecret()),
+      enabled_at: new Date(),
+      last_used_at: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    identityAuth.__test__.injectGoogleAuthClient({
+      verifyIdToken: async () => ({
+        getPayload: () => ({
+          sub: "g-mfa-1",
+          email: "admin-mfa@example.com",
+          email_verified: true,
+          name: "Admin MFA",
+        }),
+      }),
+    });
+
+    const r = await identityAuth.verifyGoogleAndUpsert({ idToken: "fake" });
+    assert.equal(r.ok, true);
+    assert.equal(r.status, "mfa_required");
+    assert.equal(r.has_enrolled, true);
+    assert.ok(r.mfa_token, "mfa_token must be present");
+    assert.equal(r.accessToken, undefined, "access JWT must NOT be minted");
+    assert.equal(r.refreshToken, undefined, "refresh token must NOT be minted");
+    assert.equal(pool._tables.sessions.length, 0, "no session row must be created");
+
+    // _audit() in identityAuth passes action as a param, not inlined SQL.
+    const audit = pool._tables.audit_log.find((e) =>
+      (e.params || []).some((p) => p === "auth.mfa_required"),
+    );
+    assert.ok(audit, "audit_log must record auth.mfa_required");
+  });
+
+  it("returns mfa_required + has_enrolled=false when user has mfa_required but no enabled secret", async () => {
+    const seedUser = {
+      user_id: "user-mfa-2",
+      google_sub: null,
+      email: "admin-pending@example.com",
+      email_verified: false,
+      name: null,
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "base",
+      status: "active",
+      jwt_revoked_at: null,
+      mfa_required: true,
+    };
+    pool._tables.users.push(seedUser);
+
+    identityAuth.__test__.injectGoogleAuthClient({
+      verifyIdToken: async () => ({
+        getPayload: () => ({
+          sub: "g-mfa-2",
+          email: "admin-pending@example.com",
+          email_verified: true,
+        }),
+      }),
+    });
+
+    const r = await identityAuth.verifyGoogleAndUpsert({ idToken: "fake" });
+    assert.equal(r.status, "mfa_required");
+    assert.equal(r.has_enrolled, false);
+    assert.ok(r.mfa_token);
+  });
+
+  it("falls through to normal session minting when mfa_required=false", async () => {
+    identityAuth.__test__.injectGoogleAuthClient({
+      verifyIdToken: async () => ({
+        getPayload: () => ({
+          sub: "g-no-mfa",
+          email: "regular@example.com",
+          email_verified: true,
+          name: "Regular",
+        }),
+      }),
+    });
+
+    const r = await identityAuth.verifyGoogleAndUpsert({ idToken: "fake" });
+    assert.equal(r.ok, true);
+    assert.notEqual(r.status, "mfa_required");
+    assert.ok(r.accessToken, "regular login still mints access JWT");
+    assert.ok(r.refreshToken);
+  });
+});
+
+describe("POST /api/auth/mfa/challenge", () => {
+  function seedMfaUser(secret, { mfaRequired = true, enabled = true } = {}) {
+    const userId = `user-ch-${pool._tables.users.length + 1}`;
+    pool._tables.users.push({
+      user_id: userId,
+      google_sub: "g-" + userId,
+      email: userId + "@example.com",
+      email_verified: true,
+      name: userId,
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "base",
+      status: "active",
+      jwt_revoked_at: null,
+      mfa_required: mfaRequired,
+    });
+    pool._tables.role_grants.push({ user_id: userId, role: "admin" });
+    pool._tables.mfa_secrets.push({
+      user_id: userId,
+      totp_secret_encrypted: mfaTotp.encryptSecret(secret),
+      enabled_at: enabled ? new Date() : null,
+      last_used_at: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    return userId;
+  }
+
+  it("rejects malformed code with 400", async () => {
+    const userId = seedMfaUser(mfaTotp.generateSecret());
+    const mfaToken = mfaTotp.signMfaChallengeToken({ userId, hasEnrolled: true });
+    const r = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfa_token: mfaToken, code: "abc" }),
+    });
+    assert.equal(r.status, 400);
+  });
+
+  it("rejects missing/invalid mfa_token with 401", async () => {
+    const r1 = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "123456" }),
+    });
+    assert.equal(r1.status, 401);
+
+    const r2 = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfa_token: "not-a-jwt", code: "123456" }),
+    });
+    assert.equal(r2.status, 401);
+  });
+
+  it("rejects an access JWT presented as mfa_token (audience mismatch)", async () => {
+    // Login a normal user to obtain a real access JWT, then try to use it
+    // as the challenge token — must fail because the audience is wrong.
+    identityAuth.__test__.injectGoogleAuthClient({
+      verifyIdToken: async () => ({
+        getPayload: () => ({ sub: "g-x", email: "x@example.com", email_verified: true }),
+      }),
+    });
+    const login = await identityAuth.verifyGoogleAndUpsert({ idToken: "fake" });
+    const r = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfa_token: login.accessToken, code: "123456" }),
+    });
+    assert.equal(r.status, 401);
+  });
+
+  it("returns 403 when user has no enrolled secret (manual mfa_required flip)", async () => {
+    const userId = seedMfaUser(mfaTotp.generateSecret(), { enabled: false });
+    const mfaToken = mfaTotp.signMfaChallengeToken({ userId, hasEnrolled: false });
+    const r = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfa_token: mfaToken, code: "123456" }),
+    });
+    assert.equal(r.status, 403);
+    const body = await r.json();
+    assert.equal(body.error, "mfa_not_enrolled");
+  });
+
+  it("returns 401 on a wrong code without minting a session", async () => {
+    const secret = mfaTotp.generateSecret();
+    const userId = seedMfaUser(secret);
+    const mfaToken = mfaTotp.signMfaChallengeToken({ userId, hasEnrolled: true });
+    const r = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfa_token: mfaToken, code: "000000" }),
+    });
+    assert.equal(r.status, 401);
+    assert.equal(pool._tables.sessions.length, 0, "no session must be minted on wrong code");
+  });
+
+  it("mints a real session on a valid code (same shape as no-MFA login)", async () => {
+    const secret = mfaTotp.generateSecret();
+    const userId = seedMfaUser(secret);
+    const mfaToken = mfaTotp.signMfaChallengeToken({ userId, hasEnrolled: true });
+    const code = totpGenerateSync({ secret });
+
+    const r = await fetch(url("/api/auth/mfa/challenge"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfa_token: mfaToken, code }),
+    });
+    assert.equal(r.status, 200);
+    const body = await r.json();
+    assert.equal(body.ok, true);
+    assert.ok(body.accessToken, "access JWT must be present");
+    assert.ok(body.refreshToken, "refresh token must be present");
+    assert.equal(body.role, "admin");
+    assert.equal(pool._tables.sessions.length, 1, "session must be minted");
+
+    const audit = pool._tables.audit_log.find((e) => e.sql.includes("auth.mfa_challenge_passed"));
+    assert.ok(audit, "audit_log must record auth.mfa_challenge_passed");
   });
 });
 
