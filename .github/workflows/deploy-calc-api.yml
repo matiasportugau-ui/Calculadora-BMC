@@ -169,7 +169,7 @@ jobs:
             --memory=512Mi
             --cpu=1
             --timeout=60
-            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,SMTP_PASS=SMTP_PASS:latest,WA_JWT_SECRET=WA_JWT_SECRET:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,SMTP_PASS=SMTP_PASS:latest,WA_JWT_SECRET=WA_JWT_SECRET:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest
 
       - name: Show service URL
         if: steps.paths.outputs.skip != 'true'
