@@ -11,6 +11,7 @@
   "scripts": {
     "version:data": "node scripts/update-calculator-data-version.js",
     "quotation-preview:render": "node scripts/render-quotation-preview-html.mjs",
+    "smoke:bmc-pdf": "node scripts/bmc-pdf-export-smoke.mjs",
     "preview:watch": "node scripts/preview-dev.mjs",
     "readme:generate": "node scripts/generate-readme-presentation.mjs",
     "readme:sync": "npm run version:data && node scripts/generate-readme-presentation.mjs",
