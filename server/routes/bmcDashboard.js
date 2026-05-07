@@ -50,6 +50,19 @@ const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
 /** CRM IA fallback order (suggest-response, parse-email, etc.): quality first, then cost/speed. */
 const CRM_AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
 
+/**
+ * /crm/suggest-response routing flag.
+ *
+ * When true (default), delegates to server/lib/suggestResponse.js → callAgentOnce,
+ * which gives the CRM endpoint the full Panelin brain (KB retrieval, channelRenderer
+ * overrides for goodAnswerML/goodAnswerWA, canonical pricing block).
+ *
+ * When false, falls back to the legacy inline provider chain with a 1-line system
+ * prompt. Kept as a runtime rollback knob — flip in Cloud Run env without redeploy.
+ */
+const SUGGEST_RESPONSE_USE_AGENT_CORE =
+  String(process.env.SUGGEST_RESPONSE_USE_AGENT_CORE || "true").toLowerCase() === "true";
+
 const sheetsReadCache = new Map();
 
 function sheetsCacheGet(key) {
@@ -2088,13 +2101,6 @@ export default function createBmcDashboardRouter(config) {
     const { consulta, origen, cliente, producto, observaciones, provider, itemId } = req.body || {};
     if (!consulta) return res.status(400).json({ ok: false, error: "Missing consulta" });
 
-    // Ranking: 1-Claude (best instruction following + rioplatense)
-    //          2-OpenAI gpt-4o-mini (reliable, good Spanish)
-    //          3-Grok grok-3-mini  (proven working, fast)
-    //          4-Gemini 2.0-flash  (fallback)
-    const RANKING = CRM_AI_PROVIDER_RANKING;
-    const chain = provider ? [provider] : RANKING;
-
     const apiKeys = {
       claude: config.anthropicApiKey,
       openai: config.openaiApiKey,
@@ -2112,7 +2118,7 @@ export default function createBmcDashboardRouter(config) {
       });
     }
 
-    // Look up previous Q&A from the same client on the same product
+    // Look up previous Q&A from the same client on the same product.
     let historyContext = "";
     if (cliente && itemId && checkSheetsAvailable(config)) {
       try {
@@ -2139,14 +2145,49 @@ export default function createBmcDashboardRouter(config) {
       } catch (_) { /* non-fatal — continue without history */ }
     }
 
+    const observacionesCombined = [observaciones, historyContext].filter(Boolean).join("\n\n");
+
+    if (SUGGEST_RESPONSE_USE_AGENT_CORE) {
+      try {
+        const { generateAiResponse } = await import("../lib/suggestResponse.js");
+        const result = await generateAiResponse({
+          consulta,
+          origen,
+          cliente,
+          producto,
+          observaciones: observacionesCombined,
+          provider,
+        });
+        return res.json({
+          ok: true,
+          respuesta: result.text,
+          provider: result.provider,
+          model: result.model || null,
+        });
+      } catch (err) {
+        return res.status(503).json({
+          ok: false,
+          error: "All providers failed",
+          details: err.errors || [err.message],
+        });
+      }
+    }
+
+    // Legacy path: 1-line system prompt + manual provider chain. Kept for rollback
+    // (toggle SUGGEST_RESPONSE_USE_AGENT_CORE=false in Cloud Run env). The flag exists
+    // because the canonical Panelin prompt produces longer / different-toned answers
+    // than the legacy 1-line prompt; if a regression surfaces we can revert without
+    // redeploy.
+    const RANKING = CRM_AI_PROVIDER_RANKING;
+    const chain = provider ? [provider] : RANKING;
+
     const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
 
     const userMsg = [
       `Canal: ${origen || "desconocido"}`,
       `Cliente: ${cliente || "desconocido"}`,
       producto      ? `Producto/publicación: ${producto}`  : null,
-      observaciones ? `Observaciones: ${observaciones}`    : null,
-      historyContext || null,
+      observacionesCombined ? `Observaciones: ${observacionesCombined}` : null,
       `Consulta: ${consulta}`,
     ].filter(Boolean).join("\n");
 
