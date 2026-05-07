@@ -26,6 +26,7 @@ import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
 import { addTrainingEntry } from "../lib/trainingKB.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
+import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -1424,6 +1425,7 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
 
 export default function createBmcDashboardRouter(config) {
   const router = Router();
+  const requireEmailIngestAuth = makeRequireEmailIngestAuth(config);
   const sheetId = config.bmcSheetId || "";
   const schema = config.bmcSheetSchema || "Master_Cotizaciones";
   const { sheetName: cotizSheet, opts: cotizOpts } = getCotizacionesSheetOpts(schema);
@@ -2288,8 +2290,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     res.status(503).json({ ok: false, error: "All providers failed", details: errors });
   });
 
-  // ── ingest-email: parsea email + escribe en CRM_Operativo ──
-  router.post("/crm/ingest-email", async (req, res) => {
+  // ── ingest-email: parsea email + escribe en CRM_Operativo — auth obligatoria (API_AUTH_TOKEN o EMAIL_INGEST_TOKEN)
+  router.post("/crm/ingest-email", requireEmailIngestAuth, async (req, res) => {
     const { asunto, cuerpo, remitente, messageId } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
 

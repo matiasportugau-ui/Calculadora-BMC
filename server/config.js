@@ -39,6 +39,11 @@ export const config = {
   maxRetries: Number(process.env.ML_HTTP_MAX_RETRIES || 3),
   requestTimeoutMs: Number(process.env.ML_HTTP_TIMEOUT_MS || 15000),
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
+  /**
+   * Opcional — POST /api/crm/ingest-email: si está definido, el bridge IMAP puede usar solo este secreto
+   * (además de API_AUTH_TOKEN). Ver docs/team/panelsim/EMAIL-ADMINISTRATOR.md
+   */
+  emailIngestToken: process.env.EMAIL_INGEST_TOKEN || "",
   /** Repo hermano IMAP / PANELSIM (opcional; default = carpeta hermana) */
   bmcEmailInboxRepo: process.env.BMC_EMAIL_INBOX_REPO || "",
   // BMC Finanzas dashboard (Google Sheets)

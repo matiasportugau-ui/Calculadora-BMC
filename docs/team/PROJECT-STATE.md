@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-07
+**Última actualización:** 2026-05-08
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-08 (Seguridad / PANELSIM — auth obligatoria en `POST /api/crm/ingest-email`):** Nuevo [`server/lib/emailIngestAuth.js`](../../server/lib/emailIngestAuth.js) y variable opcional `EMAIL_INGEST_TOKEN` en [`server/config.js`](../../server/config.js). El ingest exige Bearer / `X-Api-Key` (mismo criterio que cockpit); acepta `EMAIL_INGEST_TOKEN` o `API_AUTH_TOKEN` cuando corresponde. Script [`scripts/email-snapshot-ingest.mjs`](../../scripts/email-snapshot-ingest.mjs) envía `EMAIL_INGEST_TOKEN` con prioridad. Tests: [`tests/emailIngestAuth.test.js`](../../tests/emailIngestAuth.test.js). Documentación: [`docs/team/panelsim/EMAIL-ADMINISTRATOR.md`](./panelsim/EMAIL-ADMINISTRATOR.md), `.env.example`, [`docs/openapi-email-gpt.yaml`](../openapi-email-gpt.yaml) (path ingest), [`AGENTS.md`](../../AGENTS.md).
 
 **2026-05-07 (Hotfix — deploy Cloud Run desbloqueado + auth fail-closed):** Cinco deploys consecutivos fallaban con `Cannot update environment variable [SMTP_PASS] to the given type because it has already been set with a different type` porque el workflow había migrado `SMTP_PASS` y `WA_JWT_SECRET` de env vars literales a `--set-secrets`, mientras que la última revisión exitosa de Cloud Run los tenía como literales (Cloud Run rechaza ese cambio de tipo en un mismo deploy). Hotfix #167 los regresa a `env_vars` con `${{ secrets.* }}`; `IDENTITY_JWT_SECRET` y `MFA_KEK_HEX` (PR #181) quedan como Secret Manager refs. En la misma corrida, [`server/routes/wolfboard.js`](../../server/routes/wolfboard.js) y [`server/routes/superAgent.js`](../../server/routes/superAgent.js) ahora devuelven `503 API_AUTH_TOKEN not configured` cuando falta el token de servicio (antes permitían acceso anónimo). Regresión cubierta en [`tests/auth-routes.test.js`](../../tests/auth-routes.test.js). **Bootstrap simultáneo:** se sembraron 6 GitHub repo secrets (`GOOGLE_OAUTH_CLIENT_ID`, `IDENTITY_COOKIE_DOMAIN=.calculadora-bmc.vercel.app`, `IDENTITY_COOKIE_NAME=bmc_sess`, `INTERNAL_SUPERADMIN_EMAILS=matias@bmc.uy`, `SHEETS_CLIENT_QUOTES_ENABLED=false`, `SHEETS_CLIENT_QUOTES_TAB`) y 2 GCP Secret Manager secrets (`IDENTITY_JWT_SECRET`, `MFA_KEK_HEX`) con IAM al runtime SA `panelin-runner@…`, dejando todo lo no-sensible para Comprador Identity listo para el primer deploy verde. Pendientes humanos: `DATABASE_URL` no está en el workflow (workflow usa `env_vars_update_strategy: merge`, persiste de set-up manual), Supabase migrations no aplicadas, tab «Base de datos cotis de clientes» no creada, OAuth client origins por verificar.
 
