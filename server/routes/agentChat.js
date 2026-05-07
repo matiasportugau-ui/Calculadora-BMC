@@ -39,6 +39,7 @@ import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 import { getToolStats } from "../lib/toolStats.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
+import { recordAgentToolCall, bearerFingerprint } from "../lib/agentAuditLog.js";
 
 const router = Router();
 
@@ -235,13 +236,29 @@ const execToolLimiter = rateLimit({
 });
 
 router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
+  const t0 = Date.now();
+  const callerFp = bearerFingerprint(req.headers.authorization || "");
+  const auditCaller = callerFp ? `mcp:${callerFp}` : "mcp:anon";
+  const requestId = req.id || null;
+  let toolName = null;
+  let toolInput = null;
   try {
     const { name, input, calcState = {} } = req.body || {};
+    toolName = name;
+    toolInput = input;
     if (!name || typeof name !== "string") {
+      recordAgentToolCall({
+        tool: "<missing>", source: "mcp", caller: auditCaller, input: null,
+        ok: false, error_class: "bad_request", duration_ms: Date.now() - t0, request_id: requestId,
+      });
       return res.status(400).json({ ok: false, error: "name (string) requerido" });
     }
     const tool = AGENT_TOOLS.find((t) => t.name === name);
     if (!tool) {
+      recordAgentToolCall({
+        tool: name, source: "mcp", caller: auditCaller, input,
+        ok: false, error_class: "unknown_tool", duration_ms: Date.now() - t0, request_id: requestId,
+      });
       return res.status(404).json({ ok: false, error: `Tool "${name}" no existe en AGENT_TOOLS` });
     }
     if (TOOLS_REQUIRING_AUTH.has(name)) {
@@ -249,17 +266,35 @@ router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
       const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
       const xKey = String(req.headers["x-api-key"] || "");
       if (!config.apiAuthToken) {
+        recordAgentToolCall({
+          tool: name, source: "mcp", caller: auditCaller, input,
+          ok: false, error_class: "config:missing_env", duration_ms: Date.now() - t0, request_id: requestId,
+        });
         return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN no configurado en el server" });
       }
       if (bearer !== config.apiAuthToken && xKey !== config.apiAuthToken) {
+        recordAgentToolCall({
+          tool: name, source: "mcp", caller: auditCaller, input,
+          ok: false, error_class: "auth:unauthorized", duration_ms: Date.now() - t0, request_id: requestId,
+        });
         return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
       }
     }
     const raw = await executeTool(name, input || {}, calcState || {});
     let parsed;
     try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+    const ok = parsed?.ok !== false;
+    recordAgentToolCall({
+      tool: name, source: "mcp", caller: auditCaller, input,
+      ok, error_class: ok ? null : (parsed?.error_class || "tool_error"),
+      duration_ms: Date.now() - t0, request_id: requestId,
+    });
     res.json({ ok: true, name, result: parsed });
   } catch (err) {
+    recordAgentToolCall({
+      tool: toolName || "<unknown>", source: "mcp", caller: auditCaller, input: toolInput,
+      ok: false, error_class: "internal:throw", duration_ms: Date.now() - t0, request_id: requestId,
+    });
     req.log?.error({ err }, "agent/exec-tool failed");
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -822,6 +857,8 @@ router.post("/agent/chat", async (req, res) => {
             // (lines 472-484 above), so devMode === true is our authenticated
             // signal. Public chat must not be able to execute auth-required
             // tools regardless of what the model decides to call.
+            const auditCaller = `chat:${conversationId || "anon"}`;
+            const auditRequestId = req.id || null;
             if (shouldBlockToolForUnauthenticatedChat(tc.name, devMode)) {
               const blockedResult = JSON.stringify({
                 ok: false,
@@ -829,12 +866,29 @@ router.post("/agent/chat", async (req, res) => {
               });
               send({ type: "tool_call", tool: tc.name, input: toolInput, blocked: "auth_required" });
               req.log?.warn({ tool: tc.name }, "chat tool blocked: requires auth");
+              recordAgentToolCall({
+                tool: tc.name, source: "chat", caller: auditCaller, input: toolInput,
+                ok: false, error_class: "auth:public_chat_blocked", duration_ms: 0, request_id: auditRequestId,
+              });
               toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: blockedResult, is_error: true });
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
+            const tToolStart = Date.now();
             const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
+            const tToolDur = Date.now() - tToolStart;
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
+            let resultOk = true;
+            let resultErrClass = null;
+            try {
+              const parsed = JSON.parse(result);
+              if (parsed && parsed.ok === false) { resultOk = false; resultErrClass = parsed.error_class || "tool_error"; }
+            } catch { /* non-JSON result is treated as ok */ }
+            recordAgentToolCall({
+              tool: tc.name, source: "chat", caller: auditCaller, input: toolInput,
+              ok: resultOk, error_class: resultErrClass,
+              duration_ms: tToolDur, request_id: auditRequestId,
+            });
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
           }
 

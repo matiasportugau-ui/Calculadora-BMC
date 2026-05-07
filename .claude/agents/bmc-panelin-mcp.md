@@ -105,6 +105,12 @@ curl -s -X POST http://localhost:3001/api/agent/exec-tool \
 2. **Write tools** require both `Authorization: Bearer ${API_AUTH_TOKEN}` AND `user_confirmed: true` in the input. Server-side enforcement; can't bypass via prompt.
 3. **`aplicar_estado_calc`** emits ACTION_JSON via the `emitAction` callback — but that callback is null in the `exec-tool` HTTP route (no SSE stream), so calling it from MCP just records the request without affecting any UI. Safe.
 4. **Telemetry** at `/api/agent/tool-stats` is open by design (no PII). Useful for sidecar monitoring.
+5. **Durable audit trail.** Every `/api/agent/exec-tool` call (success, failure, auth-rejected, unknown-tool) emits a structured JSON line tagged `event="agent_tool_audit"` to stdout. Cloud Logging captures it across cold-starts. The `caller` field is `mcp:<sha256-prefix>` (a non-reversible 12-char fingerprint of the Bearer token) so each external client is correlatable across calls without exposing the secret. Free-text inputs (mensaje/consulta/observaciones) are reduced to lengths; identifiers (telefono/rut/pdf_id) are fingerprinted; arrays summarized to counts. Cloud Logging filter:
+   ```
+   resource.type="cloud_run_revision"
+   jsonPayload.event="agent_tool_audit"
+   jsonPayload.source="mcp"
+   ```
 
 ## When NOT to use this agent
 
