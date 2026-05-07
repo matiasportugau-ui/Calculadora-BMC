@@ -6,7 +6,7 @@
   "type": "module",
   "main": "src/components/PanelinCalculadoraV3.jsx",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "version:data": "node scripts/update-calculator-data-version.js",
