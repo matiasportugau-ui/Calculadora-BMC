@@ -14,6 +14,18 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 **2026-05-07 (Docs — guía de estudio desarrollo y liderazgo técnico):** Nueva **[`orientation/DEV-STUDY-ROADMAP.md`](./orientation/DEV-STUDY-ROADMAP.md)** — mapa por materia (producto, SPA, backend, MV3, seguridad, datos, observabilidad, liderazgo), enlaces a documentación oficial, prácticas y notas de tendencia; progresión sugerida desde creación hasta operación estable; ritual de **2 h por bloque** y anclas al repo (`AGENTS.md`, WA Cockpit, Sheets hub). Índices actualizados: [`orientation/README.md`](./orientation/README.md), [`docs/team/README.md`](./README.md).
 
+**2026-05-07 (AE-Agent — unificación HTTP loopback + provenance):** las tools del chat Panelin que producen cotizaciones (`calcular_cotizacion`, `presupuesto_libre`, `generar_pdf`) ahora pasan por una sola superficie HTTP — `127.0.0.1:${config.port}/calc/*` — vía un cliente nuevo [`server/lib/calcLoopbackClient.js`](../../server/lib/calcLoopbackClient.js). Eso reemplaza el camino in-process anterior (`runCalculation` + `buildGptResponse` importados directo) y consolida los tres patrones de host que coexistían (`waQuoteRunner` dev/prod split, `panelinInternal` `127.0.0.1`, `agentTools` `publicBaseUrl`). `generar_pdf` mantiene fallback puntual a `publicBaseUrl` solo si el loopback lanza error de transporte (logueado como `event: "ae_agent_quote_pdf_fallback"`).
+
+**Storage AE-Agent.** Toda cotización del agente que pase por `/calc/cotizar` con `source: "ae_agent"` queda archivada en `quoteRegistry` (GCS-backed) vía `recordCalcEvent` — incluso cuando no se genera PDF. Antes solo se archivaban las cotizaciones que llegaban al PDF. Idempotente con ventana de 5 min por hash de body. Las entradas `kind: "calc_only"` aparecen en `listar_cotizaciones_recientes` con `source: "ae_agent"`.
+
+**Guardrail prompt.** Se agregó una "REGLA DURA" cerca del tope del bloque de tools en `chatPrompts.js`: el modelo no puede emitir USD/m², subtotal, IVA o total c/IVA salvo que provengan del último resultado de `obtener_precio_panel` / `calcular_cotizacion` / `presupuesto_libre` / `comparar_listas`. Cierra la puerta a "improvisar" precios desde el bloque PRECIOS CANÓNICOS.
+
+**Tests.** Nuevos: [`tests/calcLoopbackClient.test.js`](../../tests/calcLoopbackClient.test.js) (15 unit + integration) y [`tests/quoteRegistryCalcEvent.test.js`](../../tests/quoteRegistryCalcEvent.test.js) (11 dedupe + listado). El default fetch stub en `tests/agentTools.test.js` ahora delega `/calc/cotizar*` a `runCalculation`+`buildGptResponse`, así los tests existentes de `calcular_cotizacion` / `comparar_listas` / `comparar_escenarios` corren contra el camino HTTP sin tener que mockear cada caso. `npm run gate:local` verde.
+
+**Affects:** bmc-panelin-chat (toolloop sin drift de math), bmc-calc-specialist (single source of truth), bmc-api-contract (`POST /calc/cotizar` ahora acepta `source` opcional para provenance), bmc-deployment (sin env vars nuevos), bmc-docs-sync (esta entrada + nota de contrato AE-agent).
+
+**Pendientes específicos:** ver más abajo en *Pendientes de sincronización*.
+
 **2026-05-06 (Docs — WA Cockpit Claude Web):** Guía **[`docs/wa-cockpit/CLAUDE-WEB-WA-COCKPIT-PRO-SETUP.md`](../wa-cockpit/CLAUDE-WEB-WA-COCKPIT-PRO-SETUP.md)** — flujo acortado **3 pasos + un solo mega-prompt** para pegar en Claude Web, más checklist post-auditoría. Hub [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md).
 
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
@@ -1069,6 +1081,8 @@ Todos los agentes deben consultar este plan al iniciar tareas. Al finalizar cada
 
 ## Pendientes de sincronización
 
+- [ ] **AE-Agent loopback rollout:** smoke test post-deploy contra Cloud Run — confirmar que `127.0.0.1:${PORT}` resuelve para `/calc/cotizar` desde el mismo container (esperable, ya validado por `panelinInternal.js` y `waQuoteRunner.js`). Refactor opcional: migrar el handler `/invoke` de [`server/routes/panelinInternal.js`](../../server/routes/panelinInternal.js) al nuevo `calcLoopbackClient` para eliminar el último patrón duplicado (no bloqueante).
+- [ ] **AE-Agent storage:** decidir si las entradas `kind: "calc_only"` deben aparecer en el dashboard de ventas o solo en `listar_cotizaciones_recientes`. Hoy `listQuotations` las surface con todas las demás.
 - [x] **KPI Report (inicio):** Implementado 2026-03-16. GET /api/kpi-report + bloque UI en #inicio.
 - [x] **Paso 1:** C2, C6, C7 (quick wins) — completado (C2/C6 ya existían; C7 doc creada)
 - [x] **Fase 0:** Verificación stack (T0.1–T0.4) — completado

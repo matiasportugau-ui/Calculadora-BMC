@@ -403,3 +403,138 @@ describe("identityAuth.getModuleGrants", () => {
     assert.equal(grants.wa || "none", "none");
   });
 });
+
+// ─── Hardening regression tests (Phase B of backend-auth plan) ─────────
+
+describe("identityAuth hardening — email_verified guard", () => {
+  it("rejects a brand-new user (no pre-seed) when Google reports email_verified=false", async () => {
+    stubGoogleClient({
+      sub: "g-attacker",
+      email: "newcomer@example.com",
+      email_verified: false,
+      name: "Newcomer",
+    });
+
+    await assert.rejects(
+      () => verifyGoogleAndUpsert({ idToken: "fake" }),
+      (err) => err.status === 401 && /email_not_verified/.test(err.message),
+    );
+
+    // No user row, no session, no grant should have been created.
+    assert.equal(pool._tables.users.length, 0, "users table must remain empty");
+    assert.equal(pool._tables.sessions.length, 0, "sessions table must remain empty");
+    assert.equal(pool._tables.role_grants.length, 0, "no comprador grant should leak");
+  });
+});
+
+describe("identityAuth hardening — refresh preserves elevated role", () => {
+  it("admin role survives refresh token rotation", async () => {
+    // Pre-seed an admin grant so _resolveTopRole returns 'admin' after login.
+    pool._tables.users.push({
+      user_id: "user-pre-admin",
+      google_sub: null,
+      email: "admin-pre@example.com",
+      email_verified: false,
+      name: null,
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "base",
+      status: "active",
+      jwt_revoked_at: null,
+    });
+    pool._tables.role_grants.push({ user_id: "user-pre-admin", role: "admin" });
+
+    stubGoogleClient({
+      sub: "g-admin",
+      email: "admin-pre@example.com",
+      email_verified: true,
+      name: "Admin Pre",
+    });
+
+    const r1 = await verifyGoogleAndUpsert({ idToken: "fake" });
+    assert.equal(r1.role, "admin", "first login must resolve role=admin from pre-seed");
+
+    const r2 = await refreshTokens({ refreshToken: r1.refreshToken });
+    assert.notEqual(r1.accessToken, r2.accessToken, "refresh must mint a new access JWT");
+
+    // The new access token must still pass requireUser({ role: 'admin' }).
+    const mw = requireUser({ role: "admin" });
+    const { req, res } = makeReqRes({ authHeader: `Bearer ${r2.accessToken}` });
+    const { nextCalled } = await runMw(mw, req, res);
+    assert.equal(nextCalled, true, "post-refresh JWT must keep admin gating");
+    assert.equal(req.user.role, "admin", "role must remain admin after rotation");
+  });
+});
+
+describe("identityAuth hardening — logout isolation across users", () => {
+  it("logging out userA does not revoke userB's session or invalidate userB's access JWT", async () => {
+    // userA logs in.
+    stubGoogleClient({ sub: "g-A", email: "a@example.com", email_verified: true, name: "A" });
+    const rA = await verifyGoogleAndUpsert({ idToken: "fakeA" });
+
+    // userB logs in.
+    stubGoogleClient({ sub: "g-B", email: "b@example.com", email_verified: true, name: "B" });
+    const rB = await verifyGoogleAndUpsert({ idToken: "fakeB" });
+
+    assert.notEqual(rA.user.id, rB.user.id, "users must be distinct");
+    assert.equal(pool._tables.sessions.length, 2);
+
+    await logout({ userId: rA.user.id, sessionId: rA.sessionId });
+
+    const sA = pool._tables.sessions.find((s) => s.user_id === rA.user.id);
+    const sB = pool._tables.sessions.find((s) => s.user_id === rB.user.id);
+    assert.ok(sA.revoked_at, "userA session must be revoked");
+    assert.equal(sB.revoked_at, null, "userB session must remain active");
+
+    // userB's access JWT must still pass requireUser().
+    const mw = requireUser();
+    const { req, res } = makeReqRes({ authHeader: `Bearer ${rB.accessToken}` });
+    const { nextCalled } = await runMw(mw, req, res);
+    assert.equal(nextCalled, true, "userB access JWT must remain valid");
+    assert.equal(req.user.email, "b@example.com");
+  });
+});
+
+describe("identityAuth hardening — superadmin module bypass (general)", () => {
+  it("any superadmin user (not just seeded admin) bypasses every module/admin-level check", async () => {
+    // Pre-seed a user with ONLY 'superadmin' grant — verifies the bypass branch
+    // in identityAuth.js (`if (userRole !== 'superadmin')`) for the general case,
+    // not the seeded-admin-with-both-grants case covered by identity-default-admin.
+    pool._tables.users.push({
+      user_id: "user-pre-super",
+      google_sub: null,
+      email: "super@example.com",
+      email_verified: false,
+      name: null,
+      picture_url: null,
+      avatar_preset: null,
+      plan_tier: "base",
+      status: "active",
+      jwt_revoked_at: null,
+    });
+    pool._tables.role_grants.push({ user_id: "user-pre-super", role: "superadmin" });
+
+    stubGoogleClient({
+      sub: "g-super",
+      email: "super@example.com",
+      email_verified: true,
+      name: "Super",
+    });
+
+    const r = await verifyGoogleAndUpsert({ idToken: "fake" });
+    assert.equal(r.role, "superadmin");
+
+    const allModules = ["calc", "wa", "ml", "admin", "plan-import", "agent-admin", "canales", "crm-personal"];
+    for (const m of allModules) {
+      const mw = requireUser({ module: m, minLevel: "admin" });
+      const { req, res } = makeReqRes({ authHeader: `Bearer ${r.accessToken}` });
+      const { nextCalled } = await runMw(mw, req, res);
+      assert.equal(
+        nextCalled,
+        true,
+        `superadmin must bypass module=${m} minLevel=admin`,
+      );
+    }
+  });
+});
+
