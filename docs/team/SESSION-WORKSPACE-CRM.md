@@ -24,7 +24,7 @@ Orden canónico alineado al repo (ver [`EXPERT-DEV-TRACEABILITY.md`](./orientati
 
 1. Arranque / stack: `npm run env:ensure` → `npm run dev:full` (API `http://localhost:3001/health`, Vite `http://localhost:5173`). Antes de trabajo riesgoso: opcional `npm run expert:checkpoint -- --message="…"`.
 2. Calidad pre-merge: `npm run gate:local` habituales; **`npm run gate:local:full`** si cambios fuertes en `src/` / bundle.
-3. Contrato API (si tocaste rutas públicas): API en `:3001` + `npm run test:contracts`.
+3. Contrato API (si tocaste rutas públicas): API en `:3001` + `npm run test:contracts`, o proceso aparte **`PORT=<puerto-libre>`** + `sleep 12` + `BMC_API_BASE=http://localhost:<puerto>` (el primer boot puede tardar por Postgres/WA primeros contactos).
 4. Pre-deploy + prod: `npm run pre-deploy`; deploy según [`.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md`](../../.cursor/skills/bmc-calculadora-deploy-from-cursor/SKILL.md); verificación **`npm run smoke:prod`**.
 5. Opcional navegador / WA: `npm run smoke:browser*` / `wa:ext:load` + hub [`docs/wa-cockpit/README.md`](../wa-cockpit/README.md).
 
@@ -155,7 +155,7 @@ Rules:
 
 | Date       | Outcome in one line                                                                              |
 | ---------- | ------------------------------------------------------------------------------------------------ |
-| 2026-05-07 | E2E workflow operacionalizado en SESSION (§1.0 + links §6): gates + contracts + pre-deploy + smoke según AGENTS/expert traceability. |
+| 2026-05-07 | E2E SESSION §1–§7 + checkpoints: **`hazlo todo`** — `gate:local:full`, `test:contracts` `:3010` (sleep≥12s, `otplib`/`npm install`), `expert:checkpoint`, `pre-deploy`/`smoke:prod`; reiniciar `:3001` para alinear contrato cockpit/transportista. |
 | 2026-03-28 | Run Scope Gate (R1–R4), RUN-MODES-AND-TRIGGERS, Docs & Repos Organizer §2, Telegram Scout.       |
 | 2026-03-27 | Run 55 formal; gates humanos cm-0/1/2 pendientes; smoke prod OK; MATRIZ duplicados documentados. |
 | 2026-03-21 | Added SESSION-WORKSPACE-CRM.md; seeded from PROJECT-STATE.                                       |
