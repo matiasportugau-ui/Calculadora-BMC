@@ -13,7 +13,8 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, PANELS_PARED, IVA_MULT, setListaPrecios } from "../../src/data/constants.js";
 import { config } from "../config.js";
-import { runCalculation, buildGptResponse, getPdf } from "../routes/calc.js";
+import { getPdf } from "../routes/calc.js";
+import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
 import {
   getQuotation as getQuotationFromRegistry,
@@ -1016,34 +1017,48 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "calcular_cotizacion") {
+      const t0 = Date.now();
       const { scenario, listaPrecios = "web", techo, pared, camara } = input;
 
-      // Delegate to the same runCalculation + buildGptResponse used by
-      // POST /calc/cotizar — single source of truth, no drift between
-      // the agent path and the HTTP path.
+      // Route through the same /calc/cotizar HTTP surface humans use, via
+      // 127.0.0.1 loopback. This keeps the calc routes as the single source
+      // of truth (advisory text, warnings, BOM shape) and means any future
+      // middleware on /calc/cotizar applies to AE quotes automatically.
       const techoNorm = techo ? { ...techo, familia: normalizeFamilia(techo.familia) } : undefined;
       const paredNorm = pared ? { ...pared, familia: normalizeFamilia(pared.familia) } : undefined;
 
-      const r = runCalculation({
-        escenario: scenario,
+      const body = {
         lista: listaPrecios,
-        techo: techoNorm,
-        pared: paredNorm,
-        camara,
-      });
-      if (r.error && !r.allItems) return JSON.stringify({ error: r.error });
+        escenario: scenario,
+        flete: 0,
+        source: "ae_agent",
+        ...(techoNorm && { techo: techoNorm }),
+        ...(paredNorm && { pared: paredNorm }),
+        ...(camara && { camara }),
+      };
 
-      const gpt = buildGptResponse(scenario, listaPrecios, r, 0);
-      if (!gpt.ok) return JSON.stringify({ error: gpt.error || "Error al construir respuesta de cotización" });
+      const result = await postCotizar(body);
+      console.log(JSON.stringify({
+        event: "ae_agent_quote",
+        tool: "calcular_cotizacion",
+        scenario,
+        lista: listaPrecios,
+        duration_ms: Date.now() - t0,
+        ok: result.ok,
+      }));
 
+      if (!result.ok) {
+        return JSON.stringify({ error: result.error || "Error al calcular cotización" });
+      }
+      const gpt = result.body || {};
       const out = {
         scenario,
         listaPrecios,
-        subtotalSinIVA: gpt.resumen.subtotal_usd,
-        totalConIVA: gpt.resumen.total_usd,
-        iva22: gpt.resumen.iva_usd,
-        area_m2: gpt.resumen.area_m2,
-        cant_paneles: gpt.resumen.cant_paneles,
+        subtotalSinIVA: gpt.resumen?.subtotal_usd,
+        totalConIVA: gpt.resumen?.total_usd,
+        iva22: gpt.resumen?.iva_usd,
+        area_m2: gpt.resumen?.area_m2,
+        cant_paneles: gpt.resumen?.cant_paneles,
         autoportancia: gpt.autoportancia || null,
         warnings: gpt.advertencias || [],
       };
@@ -1083,13 +1098,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         ...(camara && { camara }),
       };
 
-      const apiBase = config.publicBaseUrl.replace(/\/$/, "");
-      const resp = await fetch(`${apiBase}/calc/cotizar/pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await resp.json();
+      const result = await postCotizarPdf(body);
+      const data = result.body || {};
 
       // Structured log event for durable out-of-process audit (Cloud Logging /
       // pino scrapers can filter on event="ae_agent_quote"). Never includes
@@ -1100,11 +1110,11 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         scenario,
         lista: listaPrecios,
         duration_ms: Date.now() - t0,
-        ok: !!data.ok,
+        ok: result.ok,
         pdf_id: data.pdf_id || null,
       }));
 
-      if (!data.ok) return JSON.stringify({ error: data.error || "Error al generar PDF" });
+      if (!result.ok) return JSON.stringify({ error: result.error || data.error || "Error al generar PDF" });
 
       return JSON.stringify({
         ok: true,
@@ -1159,21 +1169,28 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
     }
 
     if (name === "presupuesto_libre") {
+      const t0 = Date.now();
+      const lista = input?.lista === "venta" ? "venta" : "web";
       const body = {
-        lista: input?.lista === "venta" ? "venta" : "web",
+        lista,
         librePanelLines: Array.isArray(input?.librePanelLines) ? input.librePanelLines : [],
         librePerfilQty: input?.librePerfilQty || {},
         libreFijQty: input?.libreFijQty || {},
         libreSellQty: input?.libreSellQty || {},
         flete: Number(input?.flete || 0),
         libreExtra: input?.libreExtra || {},
+        source: "ae_agent",
       };
-      const data = await fetchJson("/calc/cotizar/presupuesto-libre", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!data.ok) return JSON.stringify({ error: data.error || "Error en presupuesto libre" });
+      const result = await postPresupuestoLibre(body);
+      const data = result.body || {};
+      console.log(JSON.stringify({
+        event: "ae_agent_quote",
+        tool: "presupuesto_libre",
+        lista,
+        duration_ms: Date.now() - t0,
+        ok: result.ok,
+      }));
+      if (!result.ok) return JSON.stringify({ error: result.error || data.error || "Error en presupuesto libre" });
       return JSON.stringify({
         ok: true,
         resumen: data.resumen,

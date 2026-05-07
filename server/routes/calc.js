@@ -45,6 +45,7 @@ import {
   getQuotation,
   listQuotations,
   cancelQuotation,
+  recordCalcEvent,
 } from "../lib/quoteRegistry.js";
 
 const router = Router();
@@ -449,12 +450,34 @@ router.post("/cotizar/presupuesto-libre", (req, res) => {
 
 router.post("/cotizar", (req, res) => {
   try {
-    const { lista = "web", escenario, techo, pared, camara, flete = 0 } = req.body;
+    const { lista = "web", escenario, techo, pared, camara, flete = 0, source: sourceRaw } = req.body;
+    const source = sourceRaw === "ae_agent" ? "ae_agent" : null;
     const results = runCalculation({ escenario, lista, techo, pared, camara });
     if (results.error && !results.allItems) {
       return res.status(400).json({ ok: false, error: results.error });
     }
-    return res.json(buildGptResponse(escenario, lista, results, flete));
+    const gpt = buildGptResponse(escenario, lista, results, flete);
+    // Provenance archive: when an AE-agent quote runs without a follow-up
+    // PDF call, record a thin "calc_only" entry in the registry. Best-effort
+    // — any failure here is logged inside recordCalcEvent and never affects
+    // the calc response itself.
+    if (source === "ae_agent" && gpt?.ok) {
+      const requestHash = crypto
+        .createHash("sha1")
+        .update(JSON.stringify({ escenario, lista, techo, pared, camara }))
+        .digest("hex");
+      Promise.resolve(recordCalcEvent({
+        source,
+        scenario: escenario,
+        lista,
+        summary: gpt.resumen,
+        requestHash,
+        sessionId: req.headers["x-session-id"] || null,
+      })).catch((err) => {
+        console.warn(`[calc/cotizar] recordCalcEvent failed: ${err?.message || err}`);
+      });
+    }
+    return res.json(gpt);
   } catch (err) {
     req.log.error({ err }, "calc/cotizar failed");
     return res.status(500).json({ ok: false, error: err.message });
@@ -661,7 +684,12 @@ router.get("/cotizaciones", requireAuth, async (req, res) => {
   try {
     const includeCancelled = String(req.query?.include_cancelled || "").toLowerCase() === "true";
     const limit = Math.max(1, Math.min(500, Number(req.query?.limit || 50)));
-    const entries = await listQuotations({ limit, includeCancelled });
+    const includeCalcOnly = String(req.query?.include_calc_only || "").toLowerCase() === "true";
+    const entries = await listQuotations({
+      limit,
+      includeCancelled,
+      omitCalcOnly: !includeCalcOnly,
+    });
     res.json({ ok: true, count: entries.length, cotizaciones: entries });
   } catch (err) {
     req.log?.error({ err }, "calc/cotizaciones failed");

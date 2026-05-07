@@ -40,6 +40,7 @@ async function getSheetsClient() {
  * @param {string} [input.tipo_cliente]
  * @param {string} [input.urgencia]
  * @param {string} [input.probabilidad_cierre]
+ * @param {string} [input.correlation_id]  Wolfboard / Admin col A — written to CRM column A when set
  * @returns {Promise<{ok:true,row:number,sheetId:string}|{ok:false,error:string}>}
  */
 export async function appendQuoteToCrm(input = {}) {
@@ -72,6 +73,7 @@ export async function appendQuoteToCrm(input = {}) {
     const tipoCliente = sanitize(String(input.tipo_cliente || "").trim());
     const urgencia = sanitize(String(input.urgencia || "").trim());
     const probabilidad = sanitize(String(input.probabilidad_cierre || "").trim());
+    const correlationId = sanitize(String(input.correlation_id || "").trim());
 
     const resumenPedido = [
       scenario ? `[${scenario}]` : "",
@@ -161,8 +163,22 @@ export async function appendQuoteToCrm(input = {}) {
 
     const updatedRange = appendRes?.data?.updates?.updatedRange || "";
     const appendedRow = Number((updatedRange.match(/![A-Z]+(\d+):[A-Z]+(\d+)$/) || [])[1] || 0);
+    const dataRow = appendedRow || row;
 
-    return { ok: true, row: appendedRow || row, sheetId };
+    if (correlationId) {
+      try {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: sheetId,
+          range: `'CRM_Operativo'!A${dataRow}`,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[correlationId]] },
+        });
+      } catch {
+        // non-fatal; row body already appended
+      }
+    }
+
+    return { ok: true, row: dataRow, sheetId };
   } catch (err) {
     return { ok: false, error: err.message || "Error desconocido al escribir en Sheets" };
   }

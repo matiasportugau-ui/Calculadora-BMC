@@ -1,20 +1,16 @@
 /**
- * WA Cockpit — F1 read-only scrape viewer
+ * WA Cockpit — F1 read-only scrape viewer + Pro Settings
  *
- * Ruta: /wa  (separada de /hub/wa, que sigue siendo la vista legacy de Sheets).
- *
- * F1 — esta versión:
- *   - 3 columnas (lista chats / hilo / panel acción placeholder).
- *   - Lee /api/wa/conversations y /api/wa/messages (Bearer cockpit token).
- *   - Filtros: status (new|pending|quoted|stale_24h|closed) + buscador.
- *   - Sin AI, sin envío. Las tabs derechas son stubs F2-F5.
+ * Ruta: /wa
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
+import BmcWaSettingsPanel from "./BmcWaSettingsPanel.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
+const VIEW_STORAGE_KEY = "bmc_cockpit_view";
 
 const STATUS_OPTIONS = [
   { id: "", label: "Todos" },
@@ -29,7 +25,8 @@ const TABS = [
   { id: "ai", label: "Sugerencias AI", phase: "F2", enabled: true },
   { id: "quote", label: "Cotizar", phase: "F3", enabled: true },
   { id: "crm", label: "CRM", phase: "F3", enabled: true },
-  { id: "followups", label: "Follow-ups", phase: "F4", enabled: false },
+  { id: "followups", label: "Follow-ups", phase: "F4", enabled: true },
+  { id: "settings", label: "Configuración", phase: "F-Pro", enabled: true },
 ];
 
 const TONE_LABELS = {
@@ -198,7 +195,7 @@ function buildHeaders(token) {
 export default function BmcWaCockpit() {
   const apiBase = useMemo(() => getCalcApiBase(), []);
 
-  // ── token bootstrap (mismo flujo que ML / Admin / Canales modules) ─────
+  // ── token bootstrap ───────────────────────────────────────────────────
   const [tokenInput, setTokenInput] = useState("");
   const [token, setToken] = useState("");
   const [, setTokenAutoLoaded] = useState(false);
@@ -317,6 +314,33 @@ export default function BmcWaCockpit() {
   const [loadingThread, setLoadingThread] = useState(false);
   const [threadError, setThreadError] = useState("");
   const [activeTab, setActiveTab] = useState("ai");
+  const [view, setView] = useState(() => {
+    try {
+      return localStorage.getItem(VIEW_STORAGE_KEY) || "cockpit";
+    } catch {
+      return "cockpit";
+    }
+  });
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      setView("settings");
+    } else {
+      setView("cockpit");
+    }
+  }, [activeTab]);
+
+  const toggleView = useCallback(() => {
+    const next = view === "cockpit" ? "settings" : "cockpit";
+    setView(next);
+    if (next === "settings") setActiveTab("settings");
+    else setActiveTab("ai");
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }, [view]);
 
   const activeChat = useMemo(
     () => conversations.find((c) => c.chat_id === activeChatId) || null,
@@ -398,9 +422,8 @@ export default function BmcWaCockpit() {
       try {
         await navigator.clipboard.writeText(text);
       } catch {
-        /* ignore — fallback below */
+        /* ignore */
       }
-      // postMessage al content script de la extensión (si está cargado)
       try {
         window.postMessage({ kind: "wa_cockpit/pasteSuggestion", text }, "*");
       } catch {
@@ -409,7 +432,6 @@ export default function BmcWaCockpit() {
       setPasteStatus({ [suggestionId]: "ok" });
       setTimeout(() => setPasteStatus({}), 2000);
       markChosen(suggestionId, chosenIdx);
-      // Abre WA Web en nueva pestaña si no está
       window.open("https://web.whatsapp.com/", "_blank");
     },
     [markChosen],
@@ -419,18 +441,7 @@ export default function BmcWaCockpit() {
     if (activeChatId && activeTab === "ai") fetchSuggestions(activeChatId);
   }, [activeChatId, activeTab, fetchSuggestions]);
 
-  // Listen for paste-back result from extension
-  useEffect(() => {
-    const onMsg = (ev) => {
-      if (ev.origin !== window.location.origin) return;
-      if (!ev?.data || ev.data.kind !== "wa_cockpit/pasteResult") return;
-      // could surface a toast; for now we leave the optimistic "ok" set above
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, []);
-
-  // ── F2 SPA-bridge: detect extensión + autoconfig ───────────────────
+  // ── F2 SPA-bridge ───────────────────────────────────────────────────
   const [extPresent, setExtPresent] = useState(false);
   const [extVersion, setExtVersion] = useState("");
   const [extConfigStatus, setExtConfigStatus] = useState("");
@@ -455,14 +466,8 @@ export default function BmcWaCockpit() {
           setExtConfigStatus("✓ extensión configurada");
           setTimeout(() => setExtConfigStatus(""), 4000);
         } else {
-          const errMsg = String(ev.data.error || "?");
-          const isCtxInvalid = /context invalidated/i.test(errMsg);
-          setExtConfigStatus(
-            isCtxInvalid
-              ? "error: extensión recargada — recargá esta pestaña (Cmd+R) y volvé a intentar"
-              : `error: ${errMsg}`,
-          );
-          setTimeout(() => setExtConfigStatus(""), isCtxInvalid ? 12000 : 4000);
+          setExtConfigStatus(`error: ${ev.data.error || "?"}`);
+          setTimeout(() => setExtConfigStatus(""), 4000);
         }
       }
     };
@@ -471,18 +476,13 @@ export default function BmcWaCockpit() {
   }, []);
 
   const configureExtension = useCallback(() => {
-    if (!token) {
-      setExtConfigStatus("error: token no disponible aún");
-      setTimeout(() => setExtConfigStatus(""), 4000);
-      return;
-    }
+    if (!token) return;
     const cleanOp = (operatorId || "matias").trim() || "matias";
     try {
       localStorage.setItem("bmc_wa_operator_id", cleanOp);
     } catch {
       /* ignore */
     }
-    // En dev (Vite proxy) apuntamos al API en :3001 directamente, no al :5173.
     const baseForExt = apiBase || "http://localhost:3001";
     setExtConfigStatus("configurando…");
     window.postMessage(
@@ -497,7 +497,7 @@ export default function BmcWaCockpit() {
     );
   }, [token, operatorId, apiBase]);
 
-  // ── F3 quotes per chat ───────────────────────────────────────────────
+  // ── F3 quotes ───────────────────────────────────────────────────────
   const [quotes, setQuotes] = useState([]);
   const [quoteForm, setQuoteForm] = useState({ metros: "", espesor: "", familia: "", scope: "techo", color: "Blanco", lista: "web" });
   const [generatingQuote, setGeneratingQuote] = useState(false);
@@ -555,7 +555,7 @@ export default function BmcWaCockpit() {
     if (activeChatId && activeTab === "quote") fetchQuotes(activeChatId);
   }, [activeChatId, activeTab, fetchQuotes]);
 
-  // ── F3 CRM lead linkage ────────────────────────────────────────────
+  // ── F3 CRM ──────────────────────────────────────────────────────────
   const [crmRow, setCrmRow] = useState("");
   const [crmOwner, setCrmOwner] = useState("");
   const [savingCrm, setSavingCrm] = useState(false);
@@ -590,7 +590,6 @@ export default function BmcWaCockpit() {
         return;
       }
       setCrmStatus("guardado");
-      // Refrescar conversaciones para que la lista muestre lead_sheet_row
       fetchConversations();
     } finally {
       setSavingCrm(false);
@@ -759,6 +758,9 @@ export default function BmcWaCockpit() {
               {extConfigStatus}
             </span>
           )}
+          <button type="button" onClick={toggleView} style={btnGhost}>
+            {view === "cockpit" ? "Configuración" : "Volver al Cockpit"}
+          </button>
           <button type="button" onClick={fetchConversations} style={btnGhost} disabled={loadingList}>
             {loadingList ? "…" : "Refresh"}
           </button>
@@ -768,508 +770,533 @@ export default function BmcWaCockpit() {
         </div>
       </div>
 
-      <div style={grid}>
-        <div style={colLeft}>
-          <div style={{ padding: 10, borderBottom: "1px solid #f0f0f3", display: "flex", flexDirection: "column", gap: 8 }}>
-            <input
-              type="text"
-              placeholder="Buscar nombre / teléfono / chat_id"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={inputStyle}
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={select}
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.id || "all"} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {listError && (
-              <div style={{ fontSize: 11, color: "#a4262c" }}>error: {listError}</div>
-            )}
-          </div>
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {conversations.length === 0 && !loadingList && (
-              <div style={{ padding: 24, color: "#8a8a8e", fontSize: 13, textAlign: "center" }}>
-                {`Sin conversaciones. Instalá la extensión Chrome y dale "Sync histórico".`}
-              </div>
-            )}
-            {conversations.map((c) => {
-              const active = c.chat_id === activeChatId;
-              const stale =
-                c.last_msg_in_at &&
-                c.last_msg_in_at > (c.last_msg_out_at || "1970") &&
-                Date.now() - new Date(c.last_msg_in_at).getTime() > 24 * 3600 * 1000;
-              return (
-                <div
-                  key={c.chat_id}
-                  style={chatItem(active)}
-                  onClick={() => setActiveChatId(c.chat_id)}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <strong
-                      style={{
-                        fontSize: 13,
-                        color: "#1d1d1f",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {c.contact_name || c.phone || c.chat_id}
-                    </strong>
-                    <span style={{ fontSize: 10, color: "#8a8a8e" }}>{fmtTs(c.last_msg_at)}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "#6e6e73",
-                        background: "#f0f0f3",
-                        borderRadius: 4,
-                        padding: "1px 6px",
-                      }}
-                    >
-                      {c.status || "new"}
-                    </span>
-                    {stale && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: "#a4262c",
-                          background: "#fde7e7",
-                          borderRadius: 4,
-                          padding: "1px 6px",
-                        }}
-                      >
-                        stale 24h
-                      </span>
-                    )}
-                    {c.intent_last && (
-                      <span
-                        style={{
-                          fontSize: 10,
-                          color: "#1a3a5c",
-                          background: "#eaf2ff",
-                          borderRadius: 4,
-                          padding: "1px 6px",
-                        }}
-                      >
-                        {c.intent_last}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={colCenter}>
-          <div
-            style={{
-              padding: "10px 16px",
-              borderBottom: "1px solid #e5e5ea",
-              background: "#fff",
-              fontSize: 13,
-              color: "#1d1d1f",
-            }}
-          >
-            {activeChat ? (
-              <>
-                <strong>{activeChat.contact_name || activeChat.phone || activeChat.chat_id}</strong>
-                {activeChat.phone && activeChat.contact_name ? (
-                  <span style={{ marginLeft: 8, color: "#8a8a8e", fontSize: 12 }}>
-                    {activeChat.phone}
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              <span style={{ color: "#8a8a8e" }}>Seleccioná un chat</span>
-            )}
-          </div>
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: 16,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {threadError && (
-              <div style={{ color: "#a4262c", fontSize: 12 }}>error: {threadError}</div>
-            )}
-            {loadingThread && <div style={{ color: "#8a8a8e", fontSize: 12 }}>cargando…</div>}
-            {messages.map((m) => (
-              <div key={m.msg_id} style={m.direction === "out" ? msgOut : msgIn}>
-                <div>{m.text || <em style={{ color: "#8a8a8e" }}>[{m.type}]</em>}</div>
-                <div style={{ fontSize: 10, color: "#6e6e73", marginTop: 4, textAlign: "right" }}>
-                  {fmtTs(m.ts)} · {m.source}
-                </div>
-              </div>
-            ))}
-            {!loadingThread && activeChat && messages.length === 0 && !threadError && (
-              <div style={{ color: "#8a8a8e", fontSize: 12, textAlign: "center", marginTop: 32 }}>
-                Sin mensajes para este chat.
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={colRight}>
-          <div style={{ padding: 10, borderBottom: "1px solid #f0f0f3", display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                style={{
-                  ...tabBtn(activeTab === t.id),
-                  opacity: t.enabled ? 1 : 0.5,
-                  cursor: t.enabled ? "pointer" : "not-allowed",
-                }}
-                onClick={() => {
-                  if (t.enabled) setActiveTab(t.id);
-                }}
-                title={t.enabled ? t.label : `${t.label} — disponible en ${t.phase}`}
+      {view === "settings" ? (
+        <BmcWaSettingsPanel
+          token={token}
+          apiBase={apiBase}
+          onBack={() => {
+            setView("cockpit");
+            setActiveTab("ai");
+          }}
+        />
+      ) : (
+        <div style={grid}>
+          <div style={colLeft}>
+            <div style={{ padding: 10, borderBottom: "1px solid #f0f0f3", display: "flex", flexDirection: "column", gap: 8 }}>
+              <input
+                type="text"
+                placeholder="Buscar nombre / teléfono / chat_id"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                style={inputStyle}
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={select}
               >
-                {t.label}{" "}
-                <span style={{ fontSize: 9, opacity: 0.6, marginLeft: 4 }}>{t.phase}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: 16, fontSize: 13, color: "#3a3a3c" }}>
-            {!activeChat ? (
-              <div style={{ color: "#8a8a8e", fontSize: 12 }}>
-                Seleccioná un chat para ver acciones.
-              </div>
-            ) : activeTab === "ai" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <strong style={{ fontSize: 12 }}>3 borradores AI por chat</strong>
-                  <button
-                    type="button"
-                    style={btnPrimary}
-                    onClick={runSuggestion}
-                    disabled={generatingSugg}
-                  >
-                    {generatingSugg ? "generando…" : "Generar ahora"}
-                  </button>
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.id || "all"} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              {listError && (
+                <div style={{ fontSize: 11, color: "#a4262c" }}>error: {listError}</div>
+              )}
+            </div>
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {conversations.length === 0 && !loadingList && (
+                <div style={{ padding: 24, color: "#8a8a8e", fontSize: 13, textAlign: "center" }}>
+                  {`Sin conversaciones. Instalá la extensión Chrome y dale "Sync histórico".`}
                 </div>
-
-                {loadingSugg && <div style={{ color: "#8a8a8e", fontSize: 12 }}>cargando…</div>}
-
-                {!loadingSugg && suggestions.length === 0 && (
-                  <div style={{ color: "#8a8a8e", fontSize: 12 }}>
-                    Sin sugerencias todavía. Click en <strong>Generar ahora</strong> o esperá al
-                    enricher (intervalo {`${8}s`}).
-                  </div>
-                )}
-
-                {suggestions.map((s) => (
+              )}
+              {conversations.map((c) => {
+                const active = c.chat_id === activeChatId;
+                const stale =
+                  c.last_msg_in_at &&
+                  c.last_msg_in_at > (c.last_msg_out_at || "1970") &&
+                  Date.now() - new Date(c.last_msg_in_at).getTime() > 24 * 3600 * 1000;
+                return (
                   <div
-                    key={s.id}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #e5e5ea",
-                      borderRadius: 10,
-                      padding: 10,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
-                    }}
+                    key={c.chat_id}
+                    style={chatItem(active)}
+                    onClick={() => setActiveChatId(c.chat_id)}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#6e6e73" }}>
-                      <span>
-                        intent: <strong>{s.intent || "?"}</strong>
-                        {s.meta?.confidence != null ? ` · conf: ${Number(s.meta.confidence).toFixed(2)}` : ""}
-                      </span>
-                      <span>
-                        {s.provider || "?"} · {s.latency_ms ?? "?"}ms · {fmtTs(s.generated_at)}
-                      </span>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <strong
+                        style={{
+                          fontSize: 13,
+                          color: "#1d1d1f",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {c.contact_name || c.phone || c.chat_id}
+                      </strong>
+                      <span style={{ fontSize: 10, color: "#8a8a8e" }}>{fmtTs(c.last_msg_at)}</span>
                     </div>
-                    {s.error && (
-                      <div style={{ fontSize: 11, color: "#a4262c" }}>error: {s.error}</div>
-                    )}
-                    {Array.isArray(s.options) && s.options.length === 0 && !s.error && (
-                      <div style={{ fontSize: 11, color: "#8a8a8e" }}>
-                        Sin opciones (chatter o intent sin valor — el enricher decidió no responder).
+                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "#6e6e73",
+                          background: "#f0f0f3",
+                          borderRadius: 4,
+                          padding: "1px 6px",
+                        }}
+                      >
+                        {c.status || "new"}
+                      </span>
+                      {stale && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "#a4262c",
+                            background: "#fde7e7",
+                            borderRadius: 4,
+                            padding: "1px 6px",
+                          }}
+                        >
+                          stale 24h
+                        </span>
+                      )}
+                      {c.intent_last && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "#1a3a5c",
+                            background: "#eaf2ff",
+                            borderRadius: 4,
+                            padding: "1px 6px",
+                          }}
+                        >
+                          {c.intent_last}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={colCenter}>
+            <div
+              style={{
+                padding: "10px 16px",
+                borderBottom: "1px solid #e5e5ea",
+                background: "#fff",
+                fontSize: 13,
+                color: "#1d1d1f",
+              }}
+            >
+              {activeChat ? (
+                <>
+                  <strong>{activeChat.contact_name || activeChat.phone || activeChat.chat_id}</strong>
+                  {activeChat.phone && activeChat.contact_name ? (
+                    <span style={{ marginLeft: 8, color: "#8a8a8e", fontSize: 12 }}>
+                      {activeChat.phone}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span style={{ color: "#8a8a8e" }}>Seleccioná un chat</span>
+              )}
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: 16,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {threadError && (
+                <div style={{ color: "#a4262c", fontSize: 12 }}>error: {threadError}</div>
+              )}
+              {loadingThread && <div style={{ color: "#8a8a8e", fontSize: 12 }}>cargando…</div>}
+              {messages.map((m) => (
+                <div key={m.msg_id} style={m.direction === "out" ? msgOut : msgIn}>
+                  <div>{m.text || <em style={{ color: "#8a8a8e" }}>[{m.type}]</em>}</div>
+                  <div style={{ fontSize: 10, color: "#6e6e73", marginTop: 4, textAlign: "right" }}>
+                    {fmtTs(m.ts)} · {m.source}
+                  </div>
+                </div>
+              ))}
+              {!loadingThread && activeChat && messages.length === 0 && !threadError && (
+                <div style={{ color: "#8a8a8e", fontSize: 12, textAlign: "center", marginTop: 32 }}>
+                  Sin mensajes para este chat.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={colRight}>
+            <div style={{ padding: 10, borderBottom: "1px solid #f0f0f3", display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  style={{
+                    ...tabBtn(activeTab === t.id),
+                    opacity: t.enabled ? 1 : 0.5,
+                    cursor: t.enabled ? "pointer" : "not-allowed",
+                  }}
+                  onClick={() => {
+                    if (t.enabled) setActiveTab(t.id);
+                  }}
+                  title={t.enabled ? t.label : `${t.label} — disponible en ${t.phase}`}
+                >
+                  {t.label}{" "}
+                  <span style={{ fontSize: 9, opacity: 0.6, marginLeft: 4 }}>{t.phase}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: 16, fontSize: 13, color: "#3a3a3c" }}>
+              {!activeChat ? (
+                <div style={{ color: "#8a8a8e", fontSize: 12 }}>
+                  Seleccioná un chat para ver acciones.
+                </div>
+              ) : activeTab === "ai" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <strong style={{ fontSize: 12 }}>3 borradores AI por chat</strong>
+                    <button
+                      type="button"
+                      style={btnPrimary}
+                      onClick={runSuggestion}
+                      disabled={generatingSugg}
+                    >
+                      {generatingSugg ? "generando…" : "Generar ahora"}
+                    </button>
+                  </div>
+
+                  {loadingSugg && <div style={{ color: "#8a8a8e", fontSize: 12 }}>cargando…</div>}
+
+                  {!loadingSugg && suggestions.length === 0 && (
+                    <div style={{ color: "#8a8a8e", fontSize: 12 }}>
+                      Sin sugerencias todavía. Click en <strong>Generar ahora</strong> o esperá al
+                      enricher (intervalo {`${8}s`}).
+                    </div>
+                  )}
+
+                  {suggestions.map((s) => (
+                    <div
+                      key={s.id}
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #e5e5ea",
+                        borderRadius: 10,
+                        padding: 10,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#6e6e73" }}>
+                        <span>
+                          intent: <strong>{s.intent || "?"}</strong>
+                          {s.meta?.confidence != null ? ` · conf: ${Number(s.meta.confidence).toFixed(2)}` : ""}
+                        </span>
+                        <span>
+                          {s.provider || "?"} · {s.latency_ms ?? "?"}ms · {fmtTs(s.generated_at)}
+                        </span>
                       </div>
-                    )}
-                    {Array.isArray(s.options) &&
-                      s.options.map((opt, idx) => {
-                        const colors = toneBadgeColor(opt.tone);
-                        const isChosen = s.chosen_idx === idx;
-                        return (
-                          <div
-                            key={idx}
-                            style={{
-                              border: isChosen ? "1.5px solid #0071e3" : "1px solid #f0f0f3",
-                              borderRadius: 8,
-                              padding: 8,
-                              background: isChosen ? "#eaf2ff" : "#fafafc",
-                            }}
-                          >
+                      {s.error && (
+                        <div style={{ fontSize: 11, color: "#a4262c" }}>error: {s.error}</div>
+                      )}
+                      {Array.isArray(s.options) && s.options.length === 0 && !s.error && (
+                        <div style={{ fontSize: 11, color: "#8a8a8e" }}>
+                          Sin opciones (chatter o intent sin valor — el enricher decidió no responder).
+                        </div>
+                      )}
+                      {Array.isArray(s.options) &&
+                        s.options.map((opt, idx) => {
+                          const colors = toneBadgeColor(opt.tone);
+                          const isChosen = s.chosen_idx === idx;
+                          return (
                             <div
+                              key={idx}
                               style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: 4,
+                                border: isChosen ? "1.5px solid #0071e3" : "1px solid #f0f0f3",
+                                borderRadius: 8,
+                                padding: 8,
+                                background: isChosen ? "#eaf2ff" : "#fafafc",
                               }}
                             >
-                              <span
+                              <div
                                 style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  background: colors.bg,
-                                  color: colors.fg,
-                                  borderRadius: 4,
-                                  padding: "2px 6px",
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  marginBottom: 4,
                                 }}
                               >
-                                {TONE_LABELS[opt.tone] || opt.tone}
-                              </span>
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <button
-                                  type="button"
-                                  style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
-                                  onClick={() => navigator.clipboard?.writeText(opt.text)}
-                                  title="Copiar al portapapeles"
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    background: colors.bg,
+                                    color: colors.fg,
+                                    borderRadius: 4,
+                                    padding: "2px 6px",
+                                  }}
                                 >
-                                  Copiar
-                                </button>
-                                <button
-                                  type="button"
-                                  style={{ ...btnPrimary, fontSize: 11, padding: "4px 8px" }}
-                                  onClick={() => copyAndOpenWa(s.id, idx, opt.text)}
-                                  title="Copia + paste-back en WA + abre pestaña"
-                                >
-                                  Copiar y abrir WA
-                                </button>
+                                  {TONE_LABELS[opt.tone] || opt.tone}
+                                </span>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button
+                                    type="button"
+                                    style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
+                                    onClick={() => navigator.clipboard?.writeText(opt.text)}
+                                    title="Copiar al portapapeles"
+                                  >
+                                    Copiar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={{ ...btnPrimary, fontSize: 11, padding: "4px 8px" }}
+                                    onClick={() => copyAndOpenWa(s.id, idx, opt.text)}
+                                    title="Copia + paste-back en WA + abre pestaña"
+                                  >
+                                    Copiar y abrir WA
+                                  </button>
+                                </div>
                               </div>
+                              <div style={{ fontSize: 12, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>
+                                {opt.text}
+                              </div>
+                              {isChosen && (
+                                <div style={{ fontSize: 10, color: "#2a7a2a", marginTop: 4 }}>
+                                  ✓ elegida {fmtTs(s.chosen_at)}
+                                </div>
+                              )}
+                              {pasteStatus[s.id] === "ok" && isChosen && (
+                                <div style={{ fontSize: 10, color: "#2a7a2a", marginTop: 4 }}>
+                                  ✓ pegado en WA Web (confirmá con Enter en la app)
+                                </div>
+                              )}
                             </div>
-                            <div style={{ fontSize: 12, lineHeight: 1.4, whiteSpace: "pre-wrap" }}>
-                              {opt.text}
-                            </div>
-                            {isChosen && (
-                              <div style={{ fontSize: 10, color: "#2a7a2a", marginTop: 4 }}>
-                                ✓ elegida {fmtTs(s.chosen_at)}
-                              </div>
-                            )}
-                            {pasteStatus[s.id] === "ok" && isChosen && (
-                              <div style={{ fontSize: 10, color: "#2a7a2a", marginTop: 4 }}>
-                                ✓ pegado en WA Web (confirmá con Enter en la app)
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                ))}
-              </div>
-            ) : activeTab === "quote" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <strong style={{ fontSize: 12 }}>Generar cotización</strong>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  <input
-                    type="number"
-                    placeholder="m²"
-                    value={quoteForm.metros}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, metros: e.target.value })}
-                    style={inputStyle}
-                  />
-                  <input
-                    type="number"
-                    placeholder="espesor (mm)"
-                    value={quoteForm.espesor}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, espesor: e.target.value })}
-                    style={inputStyle}
-                  />
-                  <select
-                    value={quoteForm.scope}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, scope: e.target.value })}
-                    style={select}
-                  >
-                    <option value="techo">techo</option>
-                    <option value="pared">pared/fachada</option>
-                  </select>
-                  <select
-                    value={quoteForm.lista}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, lista: e.target.value })}
-                    style={select}
-                  >
-                    <option value="web">web</option>
-                    <option value="venta">venta</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="familia (isodec_eps, isoroof_3g, ...)"
-                    value={quoteForm.familia}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, familia: e.target.value })}
-                    style={inputStyle}
-                  />
-                  <input
-                    type="text"
-                    placeholder="color"
-                    value={quoteForm.color}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, color: e.target.value })}
-                    style={inputStyle}
-                  />
+                          );
+                        })}
+                    </div>
+                  ))}
                 </div>
-                <button type="button" style={btnPrimary} onClick={runQuote} disabled={generatingQuote}>
-                  {generatingQuote ? "cotizando…" : "Cotizar y guardar"}
-                </button>
-                {quoteError && (
-                  <div style={{ fontSize: 11, color: "#a4262c" }}>error: {quoteError}</div>
-                )}
+              ) : activeTab === "quote" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <strong style={{ fontSize: 12 }}>Generar cotización</strong>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    <input
+                      type="number"
+                      placeholder="m²"
+                      value={quoteForm.metros}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, metros: e.target.value })}
+                      style={inputStyle}
+                    />
+                    <input
+                      type="number"
+                      placeholder="espesor (mm)"
+                      value={quoteForm.espesor}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, espesor: e.target.value })}
+                      style={inputStyle}
+                    />
+                    <select
+                      value={quoteForm.scope}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, scope: e.target.value })}
+                      style={select}
+                    >
+                      <option value="techo">techo</option>
+                      <option value="pared">pared/fachada</option>
+                    </select>
+                    <select
+                      value={quoteForm.lista}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, lista: e.target.value })}
+                      style={select}
+                    >
+                      <option value="web">web</option>
+                      <option value="venta">venta</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="familia (isodec_eps, isoroof_3g, ...)"
+                      value={quoteForm.familia}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, familia: e.target.value })}
+                      style={inputStyle}
+                    />
+                    <input
+                      type="text"
+                      placeholder="color"
+                      value={quoteForm.color}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, color: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <button type="button" style={btnPrimary} onClick={runQuote} disabled={generatingQuote}>
+                    {generatingQuote ? "cotizando…" : "Cotizar y guardar"}
+                  </button>
+                  {quoteError && (
+                    <div style={{ fontSize: 11, color: "#a4262c" }}>error: {quoteError}</div>
+                  )}
 
-                <div style={{ height: 1, background: "#f0f0f3", margin: "4px 0" }} />
-                <strong style={{ fontSize: 12 }}>Cotizaciones guardadas</strong>
-                {quotes.length === 0 && (
-                  <div style={{ color: "#8a8a8e", fontSize: 12 }}>aún no hay cotizaciones para este chat</div>
-                )}
-                {quotes.map((q) => (
+                  <div style={{ height: 1, background: "#f0f0f3", margin: "4px 0" }} />
+                  <strong style={{ fontSize: 12 }}>Cotizaciones guardadas</strong>
+                  {quotes.length === 0 && (
+                    <div style={{ color: "#8a8a8e", fontSize: 12 }}>aún no hay cotizaciones para este chat</div>
+                  )}
+                  {quotes.map((q) => (
+                    <div
+                      key={q.quote_id}
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #e5e5ea",
+                        borderRadius: 10,
+                        padding: 10,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#6e6e73" }}>
+                        <span>
+                          USD {Number(q.total_usd || 0).toFixed(2)} sin IVA · {q.params?.scope || "?"} ·{" "}
+                          {q.params?.familia || "?"} {q.params?.espesor || ""}mm · {q.params?.metros || "?"}m²
+                        </span>
+                        <span>{fmtTs(q.generated_at)}</span>
+                      </div>
+                      {q.link && (
+                        <a
+                          href={q.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#0071e3", fontSize: 11, wordBreak: "break-all" }}
+                        >
+                          {q.link}
+                        </a>
+                      )}
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          type="button"
+                          style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
+                          onClick={() => navigator.clipboard?.writeText(q.link || "")}
+                          disabled={!q.link}
+                        >
+                          Copiar link
+                        </button>
+                        <button
+                          type="button"
+                          style={{ ...btnPrimary, fontSize: 11, padding: "4px 8px" }}
+                          onClick={() => pushQuoteLinkToSheet(q)}
+                          disabled={!q.link || !crmRow}
+                          title={!crmRow ? "Asocia primero la fila CRM en la tab CRM" : ""}
+                        >
+                          Mandar a Sheet (col AH)
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : activeTab === "crm" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <strong style={{ fontSize: 12 }}>Asociar con CRM_Operativo</strong>
+                  <div style={{ fontSize: 11, color: "#6e6e73" }}>
+                    Indicá la fila del lead en la pestaña CRM_Operativo (la columna AH se sincroniza desde la tab Cotizar).
+                  </div>
+                  <input
+                    type="number"
+                    placeholder="fila CRM_Operativo"
+                    value={crmRow}
+                    onChange={(e) => setCrmRow(e.target.value)}
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    placeholder="owner_op (matias, etc.)"
+                    value={crmOwner}
+                    onChange={(e) => setCrmOwner(e.target.value)}
+                    style={inputStyle}
+                  />
+                  <button type="button" style={btnPrimary} onClick={saveCrm} disabled={savingCrm}>
+                    {savingCrm ? "guardando…" : "Save"}
+                  </button>
+                  {crmStatus && <div style={{ fontSize: 11, color: "#2a7a2a" }}>{crmStatus}</div>}
+
+                  <div style={{ height: 1, background: "#f0f0f3", margin: "4px 0" }} />
+                  <div>
+                    <strong style={{ fontSize: 12 }}>chat_id:</strong>{" "}
+                    <code style={{ fontSize: 11 }}>{activeChat.chat_id}</code>
+                  </div>
+                  {activeChat.phone && (
+                    <div>
+                      <strong style={{ fontSize: 12 }}>teléfono:</strong> {activeChat.phone}
+                    </div>
+                  )}
+                  {activeChat.contact_name && (
+                    <div>
+                      <strong style={{ fontSize: 12 }}>nombre:</strong> {activeChat.contact_name}
+                    </div>
+                  )}
+                  {activeChat.intent_last && (
+                    <div>
+                      <strong style={{ fontSize: 12 }}>intent último:</strong> {activeChat.intent_last}
+                    </div>
+                  )}
+                </div>
+              ) : activeTab === "followups" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <strong style={{ fontSize: 12 }}>Follow-ups</strong>
+                  <div style={{ fontSize: 12, color: "#3a3a3c", lineHeight: 1.45 }}>
+                    Los recordatorios operativos del equipo se gestionan con{" "}
+                    <code style={{ fontSize: 11 }}>npm run followup</code> en la máquina del operador o vía{" "}
+                    <code style={{ fontSize: 11 }}>GET/POST /api/followups</code> usando el mismo Bearer que el
+                    cockpit. Esta vista WA no incrusta aún la bandeja de follow-ups.
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6e6e73" }}>
+                    Chat seleccionado: <code style={{ fontSize: 11 }}>{activeChat.chat_id}</code>
+                    {activeChat.contact_name ? ` · ${activeChat.contact_name}` : ""}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div
-                    key={q.quote_id}
                     style={{
-                      background: "#fff",
-                      border: "1px solid #e5e5ea",
-                      borderRadius: 10,
+                      background: "#fffbeb",
+                      border: "1px solid #ffe066",
+                      borderRadius: 8,
                       padding: 10,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 4,
+                      fontSize: 12,
+                      color: "#5c4d00",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#6e6e73" }}>
-                      <span>
-                        USD {Number(q.total_usd || 0).toFixed(2)} sin IVA · {q.params?.scope || "?"} ·{" "}
-                        {q.params?.familia || "?"} {q.params?.espesor || ""}mm · {q.params?.metros || "?"}m²
-                      </span>
-                      <span>{fmtTs(q.generated_at)}</span>
+                    <strong>{TABS.find((t) => t.id === activeTab)?.phase || "?"}.</strong> Esta tab se
+                    habilita en una fase posterior.
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: 12 }}>chat_id:</strong>{" "}
+                    <code style={{ fontSize: 11 }}>{activeChat.chat_id}</code>
+                  </div>
+                  {activeChat.phone && (
+                    <div>
+                      <strong style={{ fontSize: 12 }}>teléfono:</strong> {activeChat.phone}
                     </div>
-                    {q.link && (
-                      <a
-                        href={q.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "#0071e3", fontSize: 11, wordBreak: "break-all" }}
-                      >
-                        {q.link}
-                      </a>
-                    )}
-                    <div style={{ display: "flex", gap: 4 }}>
-                      <button
-                        type="button"
-                        style={{ ...btnGhost, fontSize: 11, padding: "4px 8px" }}
-                        onClick={() => navigator.clipboard?.writeText(q.link || "")}
-                        disabled={!q.link}
-                      >
-                        Copiar link
-                      </button>
-                      <button
-                        type="button"
-                        style={{ ...btnPrimary, fontSize: 11, padding: "4px 8px" }}
-                        onClick={() => pushQuoteLinkToSheet(q)}
-                        disabled={!q.link || !crmRow}
-                        title={!crmRow ? "Asocia primero la fila CRM en la tab CRM" : ""}
-                      >
-                        Mandar a Sheet (col AH)
-                      </button>
+                  )}
+                  {activeChat.lead_sheet_row != null && (
+                    <div>
+                      <strong style={{ fontSize: 12 }}>fila CRM:</strong> {activeChat.lead_sheet_row}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : activeTab === "crm" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <strong style={{ fontSize: 12 }}>Asociar con CRM_Operativo</strong>
-                <div style={{ fontSize: 11, color: "#6e6e73" }}>
-                  Indicá la fila del lead en la pestaña CRM_Operativo (la columna AH se sincroniza desde la tab Cotizar).
-                </div>
-                <input
-                  type="number"
-                  placeholder="fila CRM_Operativo"
-                  value={crmRow}
-                  onChange={(e) => setCrmRow(e.target.value)}
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  placeholder="owner_op (matias, etc.)"
-                  value={crmOwner}
-                  onChange={(e) => setCrmOwner(e.target.value)}
-                  style={inputStyle}
-                />
-                <button type="button" style={btnPrimary} onClick={saveCrm} disabled={savingCrm}>
-                  {savingCrm ? "guardando…" : "Save"}
-                </button>
-                {crmStatus && <div style={{ fontSize: 11, color: "#2a7a2a" }}>{crmStatus}</div>}
-
-                <div style={{ height: 1, background: "#f0f0f3", margin: "4px 0" }} />
-                <div>
-                  <strong style={{ fontSize: 12 }}>chat_id:</strong>{" "}
-                  <code style={{ fontSize: 11 }}>{activeChat.chat_id}</code>
-                </div>
-                {activeChat.phone && (
+                  )}
                   <div>
-                    <strong style={{ fontSize: 12 }}>teléfono:</strong> {activeChat.phone}
+                    <strong style={{ fontSize: 12 }}>último mensaje:</strong>{" "}
+                    {fmtTs(activeChat.last_msg_at)}
                   </div>
-                )}
-                {activeChat.contact_name && (
-                  <div>
-                    <strong style={{ fontSize: 12 }}>nombre:</strong> {activeChat.contact_name}
-                  </div>
-                )}
-                {activeChat.intent_last && (
-                  <div>
-                    <strong style={{ fontSize: 12 }}>intent último:</strong> {activeChat.intent_last}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div
-                  style={{
-                    background: "#fffbeb",
-                    border: "1px solid #ffe066",
-                    borderRadius: 8,
-                    padding: 10,
-                    fontSize: 12,
-                    color: "#5c4d00",
-                  }}
-                >
-                  <strong>{TABS.find((t) => t.id === activeTab)?.phase || "?"}.</strong> Esta tab se
-                  habilita en una fase posterior.
                 </div>
-                <div>
-                  <strong style={{ fontSize: 12 }}>chat_id:</strong>{" "}
-                  <code style={{ fontSize: 11 }}>{activeChat.chat_id}</code>
-                </div>
-                {activeChat.phone && (
-                  <div>
-                    <strong style={{ fontSize: 12 }}>teléfono:</strong> {activeChat.phone}
-                  </div>
-                )}
-                {activeChat.lead_sheet_row != null && (
-                  <div>
-                    <strong style={{ fontSize: 12 }}>fila CRM:</strong> {activeChat.lead_sheet_row}
-                  </div>
-                )}
-                <div>
-                  <strong style={{ fontSize: 12 }}>último mensaje:</strong>{" "}
-                  {fmtTs(activeChat.last_msg_at)}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

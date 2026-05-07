@@ -273,6 +273,7 @@ export async function verifyGoogleAndUpsert({
   // — _resolveTopRole would default to 'comprador' for the orphaned user
   // even if the grant never landed, hiding the failure from operators.
   let u;
+  let mfaRequired = false;
   let jwtToken, refreshToken, sessionId, refreshExpiresAt;
   const client = typeof _pool.connect === "function" ? await _pool.connect() : null;
   try {
@@ -289,7 +290,7 @@ export async function verifyGoogleAndUpsert({
               picture_url     = coalesce(excluded.picture_url, identity.users.picture_url),
               last_login_at   = now(),
               last_active_at  = now()
-       returning user_id, email, name, picture_url, avatar_preset, plan_tier, status, jwt_revoked_at`,
+       returning user_id, email, name, picture_url, avatar_preset, plan_tier, status, jwt_revoked_at, mfa_required`,
       [profile.sub, email, profile.email_verified, profile.name, profile.picture],
     );
     u = upsert.rows[0];
@@ -302,8 +303,17 @@ export async function verifyGoogleAndUpsert({
       [u.user_id],
     );
 
-    ({ accessToken: jwtToken, refreshToken, sessionId, refreshExpiresAt } =
-      await _createSession({ userId: u.user_id, ip, userAgent, tx }));
+    mfaRequired = !!u.mfa_required;
+
+    // MFA gate: when mfa_required=true, do NOT create a session here — return
+    // a short-lived challenge token instead. The SPA must call
+    // POST /auth/mfa/challenge to exchange the token + a valid TOTP code for
+    // a real access JWT + refresh cookie. createSessionForUser handles that
+    // second leg.
+    if (!mfaRequired) {
+      ({ accessToken: jwtToken, refreshToken, sessionId, refreshExpiresAt } =
+        await _createSession({ userId: u.user_id, ip, userAgent, tx }));
+    }
 
     if (client) await client.query("COMMIT");
   } catch (err) {
@@ -316,6 +326,40 @@ export async function verifyGoogleAndUpsert({
   }
 
   const role = await _resolveTopRole(u.user_id);
+
+  if (mfaRequired) {
+    // Look up enrollment state once (token claim is hint only; /challenge
+    // re-checks server-side before minting the session).
+    const enrolledRow = await _pool.query(
+      `select 1 from identity.mfa_secrets where user_id = $1 and enabled_at is not null limit 1`,
+      [u.user_id],
+    );
+    const hasEnrolled = enrolledRow.rows.length > 0;
+
+    const { signMfaChallengeToken } = await import("./mfaTotp.js");
+    const mfa_token = signMfaChallengeToken({ userId: u.user_id, hasEnrolled });
+
+    await _audit({
+      actorId: u.user_id,
+      action: "auth.mfa_required",
+      resource: "identity.users",
+      resourceId: u.user_id,
+      ip,
+      userAgent,
+      payload: { has_enrolled: hasEnrolled, provider: idToken ? "google_id_token" : "google_access_token" },
+    });
+
+    return {
+      ok: true,
+      status: "mfa_required",
+      user: _publicUser({ ...u, role }),
+      role,
+      plan_tier: u.plan_tier,
+      mfa_token,
+      mfa_token_expires_in: 5 * 60,
+      has_enrolled: hasEnrolled,
+    };
+  }
 
   await _audit({
     actorId: u.user_id,
@@ -333,6 +377,58 @@ export async function verifyGoogleAndUpsert({
     role,
     plan_tier: u.plan_tier,
     accessToken: jwtToken,
+    accessTokenExpiresIn: ACCESS_JWT_TTL_SEC,
+    refreshToken,
+    refreshExpiresAt,
+    sessionId,
+  };
+}
+
+/**
+ * Creates a fresh session for a user that has already been authenticated by
+ * a different mechanism (e.g. /auth/mfa/challenge after a verified TOTP
+ * code). Returns the same shape as the success branch of
+ * verifyGoogleAndUpsert — a real access JWT + refresh + role + plan_tier —
+ * so the SPA can finalize login uniformly across paths.
+ *
+ * The caller is responsible for any prior auditing of how this session was
+ * earned (e.g. audit 'auth.mfa_challenge_passed'); this helper records
+ * 'auth.login' just like the no-MFA path.
+ */
+export async function createSessionForUser({ userId, ip, userAgent, source = "mfa_challenge" } = {}) {
+  if (!_pool) throw _serverError("identityAuth not initialized");
+  if (!userId) throw _badReq("userId required");
+
+  const userRow = await _pool.query(
+    `select user_id, email, name, picture_url, avatar_preset, plan_tier, status, jwt_revoked_at
+       from identity.users where user_id = $1`,
+    [userId],
+  );
+  const u = userRow.rows[0];
+  if (!u) throw _unauthorized("user_not_found");
+  if (u.status !== "active") throw _unauthorized("user_disabled");
+
+  const { accessToken, refreshToken, sessionId, refreshExpiresAt } =
+    await _createSession({ userId: u.user_id, ip, userAgent });
+
+  const role = await _resolveTopRole(u.user_id);
+
+  await _audit({
+    actorId: u.user_id,
+    action: "auth.login",
+    resource: "identity.users",
+    resourceId: u.user_id,
+    ip,
+    userAgent,
+    payload: { source },
+  });
+
+  return {
+    ok: true,
+    user: _publicUser({ ...u, role }),
+    role,
+    plan_tier: u.plan_tier,
+    accessToken,
     accessTokenExpiresIn: ACCESS_JWT_TTL_SEC,
     refreshToken,
     refreshExpiresAt,

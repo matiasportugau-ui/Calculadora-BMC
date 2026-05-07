@@ -12,6 +12,7 @@ docs/team/
 ├── orientation/                 Hub de programa: arquitectura, cronograma, JSON maestro, npm run program:status
 │   ├── README.md
 │   ├── VERSION-HISTORY-BMC-CALC.md   Semver + huella datos + trazabilidad desde inicio del repo
+│   ├── DEV-STUDY-ROADMAP.md           Estudio por materias (docs, prácticas, tendencias): idea → prod estable
 │   ├── PROGRAM-ARCHITECTURE.md
 │   ├── CHRONOGRAM-TEMPLATE.md
 │   ├── ASYNC-RUNBOOK-UNATTENDED.md   Runbook asíncrono (H0/A/H)
@@ -78,6 +79,7 @@ docs/team/
 | [PROJECT-SCHEDULE.md](./PROJECT-SCHEDULE.md) | Seguimiento unificado: `npm run project:compass` (fase, tareas, follow-ups); rutina |
 | [PROCEDIMIENTO-CANALES-WA-ML-CORREO.md](./PROCEDIMIENTO-CANALES-WA-ML-CORREO.md) | Orden fijo WA → ML → Correo: checklist, comandos, `npm run channels:onboarding` |
 | [orientation/README.md](./orientation/README.md) | Programa maestro multi-área: JSON, fases, `npm run program:status` |
+| [orientation/DEV-STUDY-ROADMAP.md](./orientation/DEV-STUDY-ROADMAP.md) | Guía autónoma: estudio por tema (frontend, API, ext-MV3, seguridad, ops, liderazgo técnico) |
 | [orientation/VERSION-HISTORY-BMC-CALC.md](./orientation/VERSION-HISTORY-BMC-CALC.md) | Historial semver (3.0.0→actual), `CALCULATOR_DATA_VERSION`, deploys, cómo mantener la tabla |
 | [FULL-PROJECT-STATUS-AND-TASK-PLAN.md](./FULL-PROJECT-STATUS-AND-TASK-PLAN.md) | Plan task-by-task para full operacional; evaluación equipo |
 | [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) | Equipo completo; áreas; roles; propagación; full team run |

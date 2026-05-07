@@ -35,6 +35,7 @@ Lee este archivo antes de cualquier tarea.
 | `npm run channels:onboarding` | **Arranque canales (orden WA → ML → Correo):** ejecuta `smoke:prod` + `project:compass` e indica el doc [`docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md`](docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md). `-- --skip-smoke` / `--skip-compass` |
 | `npm run channels:automated` | **Solo máquina, máximo paralelo:** smoke prod + follow-ups + snapshot programa + `humanGate` (cm-0/1/2). JSON en stdout; `-- --write` → `.channels/last-pipeline.json`. Ver [`docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md`](docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md). **CI:** job `channels_pipeline` en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (push/PR `main`). |
 | `npm run smoke:prod` | Smoke contra API pública (URL canónica en script): `GET /health`, `/capabilities`, chequeo `public_base_url`, **`GET /api/actualizar-precios-calculadora` (CSV MATRIZ, crítico)**, `GET /auth/ml/status`, `POST /api/crm/suggest-response` (IA). `BMC_API_BASE` / `SMOKE_BASE_URL`; `-- --json`; omitir solo MATRIZ: `SMOKE_SKIP_MATRIZ=1` o `-- --skip-matriz` |
+| `npm run smoke:bmc-pdf` | Cotización de prueba (`solo_techo`, techo 2 zonas) + HTML en `.runtime/bmc-pdf-smoke.html`; si la API corre (`npm run start:api`), intenta `POST /api/pdf/generate` → `.runtime/bmc-pdf-smoke.pdf`. Var.: `BMC_PDF_SMOKE_API`, `--no-pdf`. Si el renderer devuelve `503` (Chromium), abrir el HTML e imprimir a PDF. |
 | `npm run capabilities:snapshot` | Regenera `docs/api/AGENT-CAPABILITIES.json` desde `server/agentCapabilitiesManifest.js` (base: `CAPABILITIES_SNAPSHOT_BASE` → `PUBLIC_BASE_URL` → host canónico Cloud Run). |
 | `npm run email:ingest-snapshot` | Bridge correo: lee `snapshot-latest.json` (repo IMAP hermano) y POST `/api/crm/ingest-email`. `--dry-run`, `--limit`, `--file`, `BMC_EMAIL_SNAPSHOT_PATH`. Dedupe `.email-ingest/` |
 | `GET /api/email/panelsim-summary` | Con API arriba y **`API_AUTH_TOKEN`**: lee `PANELSIM-STATUS.json` + `PANELSIM-ULTIMO-REPORTE.md` del repo IMAP (`BMC_EMAIL_INBOX_REPO`). Query opcional `reportMaxChars`. Ver [`docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md`](docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md) |
@@ -71,6 +72,8 @@ Lee este archivo antes de cualquier tarea.
 | `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
 | `npm run local:stack:launchd:install` | macOS: LaunchAgent `com.bmc.calculadora-localstack` — al login levanta API `:3001` + Vite `:5173` si no están arriba; logs `.runtime/local-stack-launchd*.log` |
 | `npm run local:stack:launchd:uninstall` | Quita el LaunchAgent del stack local (`unload` + borra plist en `~/Library/LaunchAgents/`) |
+| `npm run wa:admin` | CLI de administración del módulo WhatsApp Pro (operadores, config, flags, webhooks, SLA). |
+| `npm run wa:gen-docs` | Regenera la documentación técnica de configuración desde el schema Zod. |
 
 **Loops de validación:**
 
@@ -132,6 +135,7 @@ Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico
 5. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
 6. **Pedidos vagos o “quién hace esto”:** agente `.cursor/agents/bmc-team-liaison.md` y skill `.cursor/skills/bmc-team-liaison/SKILL.md` — brief + sugerencia de siguiente rol/skill y gates; modo refinamiento de input: `.cursor/skills/contribut-input-mode/SKILL.md`.
 7. **Panelin interno / orquestador en app (Claude u otro agente en terminal):** [`docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md`](docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md) — fases RBAC → tools → cola de aprobación; prompts listos para pegar en `claude "…"`.
+8. **AE-Agent × Calculadora — contrato de cotización:** [`docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`](docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md) — todas las tools de cotización (`calcular_cotizacion` / `presupuesto_libre` / `generar_pdf`) atraviesan `127.0.0.1:${config.port}/calc/*` vía [`server/lib/calcLoopbackClient.js`](server/lib/calcLoopbackClient.js); provenance `source: "ae_agent"` y archivado en `quoteRegistry`.
 
 En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 

@@ -46,6 +46,7 @@ import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
+import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
 import identityMeRouter from "./routes/identityMe.js";
 import quoteExportRouter from "./routes/quoteExport.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
@@ -819,6 +820,7 @@ app.use("/calc", calcRouter);
 // Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
 app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
+app.use("/api", authMfaRouter);
 app.use(identityMeRouter);
 app.use(quoteExportRouter);
 app.use("/api", agentChatRouter);
@@ -998,6 +1000,7 @@ const server = app.listen(config.port, async () => {
       initWaOperatorAuth({ pool: waPool, logger });
       // Comprador identity reuses the same Postgres pool.
       initIdentityAuth({ pool: waPool, logger });
+      initAuthMfa({ pool: waPool, logger });
       initWaWebhooks({ pool: waPool, logger });
       setWaConfigModuleForQuoteParams(waConfigModule);
     } catch (e) {

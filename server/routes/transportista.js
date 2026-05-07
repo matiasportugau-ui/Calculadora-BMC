@@ -78,8 +78,17 @@ export default function createTransportistaRouter(config, logger) {
     "/transportista/health",
     requireDb,
     asyncHandler(async (_req, res) => {
-      await pool.query("select 1");
-      res.json({ ok: true, module: "transportista" });
+      try {
+        await pool.query("select 1");
+        res.json({ ok: true, module: "transportista" });
+      } catch (err) {
+        log.warn?.({ err: err instanceof Error ? err.message : String(err) }, "[transportista] health db ping failed");
+        res.status(503).json({
+          ok: false,
+          module: "transportista",
+          error: "transportista_db_unreachable",
+        });
+      }
     }),
   );
 

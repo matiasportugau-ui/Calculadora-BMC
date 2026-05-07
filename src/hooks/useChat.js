@@ -78,6 +78,7 @@ function saveHistory(messages) {
       role: m.role,
       content: m.content,
       actions: m.actions,
+      suggestions: m.suggestions,
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {
@@ -349,6 +350,13 @@ export function useChat({
                       : m
                   ));
                 });
+              } else if (evt.type === "suggestions") {
+                const sug = evt.suggestions?.groups?.length ? evt.suggestions : null;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, suggestions: sug || undefined } : m
+                  )
+                );
               }
               // type === "done" → loop exits naturally when reader closes
             } catch {
@@ -609,6 +617,13 @@ export function useChat({
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
+  /** Hide quick-reply chips on an assistant bubble after the user taps one */
+  const clearSuggestionsForMessage = useCallback((messageId) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, suggestions: undefined } : m))
+    );
+  }, []);
+
   return {
     messages,
     isStreaming,
@@ -642,5 +657,6 @@ export function useChat({
     loadConversationAnalysis,
     conversationId,
     sendFeedback,
+    clearSuggestionsForMessage,
   };
 }
