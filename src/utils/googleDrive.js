@@ -235,9 +235,9 @@ function describeOAuthError(resp) {
     popup_failed_to_open:
       "El navegador bloqueó la ventana de Google. Permití pop-ups para este sitio y volvé a intentar.",
     popup_closed:
-      "Cerraste la ventana de Google antes de completar el ingreso.",
+      "El popup de Google se cerró sin completar el login. Si no lo cerraste vos, suele ser que el origen actual no está autorizado en el cliente OAuth (Google Cloud Console → APIs & Services → Credentials → Authorized JavaScript origins) o que un bloqueador de pop-ups intervino.",
     popup_closed_by_user:
-      "Cerraste la ventana de Google antes de completar el ingreso.",
+      "El popup de Google se cerró sin completar el login. Si no lo cerraste vos, suele ser que el origen actual no está autorizado en el cliente OAuth (Google Cloud Console → APIs & Services → Credentials → Authorized JavaScript origins) o que un bloqueador de pop-ups intervino.",
     access_denied:
       "Rechazaste el permiso para acceder a Google Drive.",
     invalid_client:
