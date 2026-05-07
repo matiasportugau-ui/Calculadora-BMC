@@ -134,6 +134,7 @@ Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico
 5. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
 6. **Pedidos vagos o “quién hace esto”:** agente `.cursor/agents/bmc-team-liaison.md` y skill `.cursor/skills/bmc-team-liaison/SKILL.md` — brief + sugerencia de siguiente rol/skill y gates; modo refinamiento de input: `.cursor/skills/contribut-input-mode/SKILL.md`.
 7. **Panelin interno / orquestador en app (Claude u otro agente en terminal):** [`docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md`](docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md) — fases RBAC → tools → cola de aprobación; prompts listos para pegar en `claude "…"`.
+8. **AE-Agent × Calculadora — contrato de cotización:** [`docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`](docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md) — todas las tools de cotización (`calcular_cotizacion` / `presupuesto_libre` / `generar_pdf`) atraviesan `127.0.0.1:${config.port}/calc/*` vía [`server/lib/calcLoopbackClient.js`](server/lib/calcLoopbackClient.js); provenance `source: "ae_agent"` y archivado en `quoteRegistry`.
 
 En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 

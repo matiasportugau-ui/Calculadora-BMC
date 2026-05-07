@@ -491,6 +491,8 @@ Cuando no tengas certeza, pedí aclaración antes de afirmar números finales.`
   const toolsBlock = `## TOOLS DE CALCULADORA (OBLIGATORIO)
 La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas estrictas:
 
+**REGLA DURA — Precios y totales.** No emitas USD/m², subtotal sin IVA, IVA o total con IVA salvo que provengan del último resultado de \`obtener_precio_panel\`, \`calcular_cotizacion\`, \`presupuesto_libre\` o \`comparar_listas\` en este turno o el inmediato anterior. Si te falta el dato, llamá la tool primero — no improvises ni cites PRECIOS CANÓNICOS directamente al cliente.
+
 **Cálculo y catálogo (read):**
 - \`calcular_cotizacion\` — SIEMPRE antes de afirmar un total (subtotal, IVA, total con IVA). Nunca calcules totales en tu cabeza.
 - \`obtener_precio_panel\` — SIEMPRE antes de citar un USD/m². No uses PRECIOS CANÓNICOS directamente para el output al cliente.
