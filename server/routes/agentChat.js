@@ -7,6 +7,8 @@
  * Response: text/event-stream, events:
  *   {"type":"text","delta":"..."}
  *   {"type":"action","action":{"type":"setTecho","payload":{...}}}
+ *   {"type":"suggestions","suggestions":{"groups":[{"title":"…","items":[{"label":"…","send":"…"}]}]}}
+ *        (model SUGGEST_JSON:… lines, or server-injected after Wolfboard tools in devMode)
  *   {"type":"done"}
  *   {"type":"error","message":"..."}
  */
@@ -39,6 +41,8 @@ import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
 import { getToolStats } from "../lib/toolStats.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
+import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
+import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
 
 const router = Router();
 
@@ -568,7 +572,7 @@ router.post("/agent/chat", async (req, res) => {
     }
   }
 
-  /** Process buffered text: emit text events, extract ACTION_JSON directives. Returns leftover tail. */
+  /** Process buffered text: emit text events, extract ACTION_JSON / SUGGEST_JSON directives. Returns leftover tail. */
   function flushLines(buf) {
     const lines = buf.split("\n");
     const tail = lines.pop(); // keep incomplete last line
@@ -584,6 +588,14 @@ router.post("/agent/chat", async (req, res) => {
           }
         } catch {
           if (line) send({ type: "text", delta: line + "\n" });
+        }
+      } else if (trimmed.startsWith("SUGGEST_JSON:")) {
+        try {
+          const parsed = JSON.parse(trimmed.slice("SUGGEST_JSON:".length).trim());
+          const normalized = normalizeSuggestionsPayload(parsed);
+          if (normalized) send({ type: "suggestions", suggestions: normalized });
+        } catch {
+          /* ignore malformed suggestion line — never surface raw directive */
         }
       } else if (line !== "") {
         send({ type: "text", delta: line + "\n" });
@@ -606,6 +618,14 @@ router.post("/agent/chat", async (req, res) => {
         }
       } catch {
         send({ type: "text", delta: trimmed });
+      }
+    } else if (trimmed.startsWith("SUGGEST_JSON:")) {
+      try {
+        const parsed = JSON.parse(trimmed.slice("SUGGEST_JSON:".length).trim());
+        const normalized = normalizeSuggestionsPayload(parsed);
+        if (normalized) send({ type: "suggestions", suggestions: normalized });
+      } catch {
+        /* ignore */
       }
     } else {
       send({ type: "text", delta: trimmed });
@@ -836,6 +856,16 @@ router.post("/agent/chat", async (req, res) => {
             const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
+            // Wolfboard: deterministic quick replies (devMode only — tools are auth-gated)
+            if (devMode && !aborted) {
+              try {
+                const parsedTool = JSON.parse(result);
+                const sug = wolfboardSuggestionsAfterTool(tc.name, parsedTool);
+                if (sug) send({ type: "suggestions", suggestions: sug });
+              } catch {
+                /* ignore malformed tool JSON */
+              }
+            }
           }
 
           toolMsgs.push({ role: "assistant", content: assistantContent });

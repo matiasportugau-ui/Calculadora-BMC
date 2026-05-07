@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-06
+**Última actualización:** 2026-05-07
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,10 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-07 (Feature — Chat Panelin: respuestas rápidas clicables):** El stream `/api/agent/chat` reconoce líneas `SUGGEST_JSON:…` (igual que `ACTION_JSON:`) y emite SSE `{"type":"suggestions","suggestions":{"groups":…}}` sin mostrar la directiva. `useChat` persiste `suggestions` en el mensaje del asistente; `PanelinChatPanel` renderiza chips (tema/skins) que envían `send` y limpian sugerencias vía `clearSuggestionsForMessage`. Nuevo bloque `SUGGESTIONS_DOC` en `server/lib/chatPrompts.js` con ejemplos para el modelo.
+
+**2026-05-07 (Follow-up — Wolfboard + chips server-side):** Tras tools Wolfboard exitosas en chat **devMode**, el servidor emite `suggestions` automáticas (`server/lib/wolfboardChatSuggestions.js`) para CSV, sync CRM, batch IA y refrescar pendientes; los `send` están alineados con `userIntentClassifier` donde aplica. Tests: `tests/wolfboardChatSuggestions.test.js`.
 
 **2026-05-06 (Deploy — Panelin agent platform en producción, 3 PRs cerrados):** Las tres PRs del arco "Panelin como plataforma de tools" están **mergeadas en `main` y verificadas en producción** (`https://panelin-calc-q74zutv7dq-uc.a.run.app` + `https://calculadora-bmc.vercel.app`):
 

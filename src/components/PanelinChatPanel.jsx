@@ -186,9 +186,10 @@ function Avatar({ size = 28 }) {
  * @param {{
  *   isOpen: boolean,
  *   onClose: () => void,
- *   messages: Array<{id:string, role:string, content:string, pending?:boolean}>,
+ *   messages: Array<{id:string, role:string, content:string, pending?:boolean, suggestions?: { groups?: Array<{ title?: string, items: Array<{ label: string, send?: string }> }> }}>,
  *   isStreaming: boolean,
  *   send: (text:string) => void,
+ *   clearSuggestionsForMessage?: (messageId: string) => void,
  *   clear: () => void,
  *   error: string|null,
  *   devMode?: boolean,
@@ -221,6 +222,7 @@ export default function PanelinChatPanel({
   messages,
   isStreaming,
   send,
+  clearSuggestionsForMessage,
   stop,
   retry,
   clear,
@@ -1001,6 +1003,54 @@ export default function PanelinChatPanel({
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {/* Quick replies from SUGGEST_JSON (server SSE) */}
+                  {!isUser && Array.isArray(msg.suggestions?.groups) && msg.suggestions.groups.length > 0 && !msg.pending && (
+                    <div
+                      style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 2, maxWidth: "100%" }}
+                      role="group"
+                      aria-label="Respuestas sugeridas"
+                    >
+                      {msg.suggestions.groups.map((g, gi) => (
+                        <div key={gi}>
+                          {g.title && (
+                            <div style={{ fontSize: 11, color: SUBTEXT_COLOR, marginBottom: 4, fontWeight: 600, fontFamily: FONT }}>
+                              {g.title}
+                            </div>
+                          )}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {(g.items || []).map((it, ii) => (
+                              <button
+                                key={`${gi}-${ii}`}
+                                type="button"
+                                disabled={isStreaming}
+                                onClick={() => {
+                                  const text = String(it.send || it.label || "").trim();
+                                  if (!text) return;
+                                  clearSuggestionsForMessage?.(msg.id);
+                                  send(text);
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: 20,
+                                  border: `1px solid ${BORDER_COLOR}`,
+                                  background: SURFACE_COLOR,
+                                  color: TEXT_COLOR,
+                                  fontSize: 12,
+                                  cursor: isStreaming ? "not-allowed" : "pointer",
+                                  fontFamily: FONT,
+                                  opacity: isStreaming ? 0.55 : 1,
+                                  maxWidth: "100%",
+                                  textAlign: "left",
+                                }}
+                              >
+                                {it.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                   {/* TTS play button for assistant messages */}

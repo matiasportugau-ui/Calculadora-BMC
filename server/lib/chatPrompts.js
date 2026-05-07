@@ -206,6 +206,24 @@ REGLAS DE ACCIONES (OBLIGATORIAS — incumplirlas arruina la UX):
 7. Para setTechoZonas: usá números: [{"largo":10,"ancho":5}] CORRECTO, [{"largo":"10","ancho":"5"}] INCORRECTO.
 8. buildQuote: espesor SIEMPRE como string ("80" no 80). Dimensiones (largo, ancho, alto, zonas) como NÚMEROS.`;
 
+const SUGGESTIONS_DOC = `## RESPUESTAS RÁPIDAS (CHIPS EN LA UI)
+
+Cuando hagas una pregunta cerrada con pocas alternativas (2–6), además del texto normal podés ofrecer chips táctiles: emití **una sola línea** al final del mensaje con el prefijo \`SUGGEST_JSON:\` seguido de JSON compacto (sin saltos dentro del JSON).
+
+La línea **no se muestra** al usuario; solo se usan los datos para botones. El texto visible debe repetir la misma pregunta/opciones en prosa como siempre.
+
+**Formato plano** (una fila de opciones):
+\`SUGGEST_JSON:{"items":[{"label":"Techo","send":"Es para techo"},{"label":"Pared / fachada","send":"Es para pared o fachada"},{"label":"Cámara frigorífica","send":"Es para cámara frigorífica"}]}\`
+
+**Formato con grupos** (varias filas con título opcional):
+\`SUGGEST_JSON:{"groups":[{"title":"¿Dónde va el panel?","items":[{"label":"Techo","send":"Techo"},{"label":"Pared","send":"Pared o fachada"}]},{"title":"Tipo de obra","items":[{"label":"Vivienda","send":"Vivienda"},{"label":"Galpón","send":"Galpón industrial"}]}]}\`
+
+Reglas:
+- \`label\`: texto del chip (corto). \`send\`: mensaje que se envía al chat si lo tocás (podés ser más explícito y **más largo** que el label; el servidor trunca \`send\` a ~800 caracteres para no inflar eventos SSE); si omitís \`send\`, se usa \`label\`.
+- Máximo ~12 opciones en total; labels cortos (≤120 caracteres).
+- No uses esto en paralelo de una lista enorme en el párrafo: mantené el cuerpo del mensaje breve y dejá el detalle en los chips o al revés.
+- No reemplaza ACTION_JSON: las acciones de calculadora siguen siendo \`ACTION_JSON:\` en líneas separadas.`;
+
 function fmtUsdM2(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return "?";
@@ -534,6 +552,8 @@ La calculadora es tu herramienta nativa: tenés que usarla, no narrarla. Reglas 
 
 Todas las herramientas Wolfboard requieren API_AUTH_TOKEN configurado en el server (auth admin). Si no está configurado, devuelven error sin tocar el sheet.
 
+**Chips automáticos (modo desarrollador):** cuando ejecutás \`wolfboard_pendientes\`, \`wolfboard_export\`, \`wolfboard_sync\`, \`wolfboard_quote_batch\`, \`wolfboard_actualizar_fila\` o \`wolfboard_marcar_enviado\` con éxito, el servidor puede mostrar chips de siguiente paso sin que vos emitas \`SUGGEST_JSON:\`. Los textos de esos chips están alineados con las frases de confirmación que el servidor espera para sync/batch.
+
 **REGLA CRÍTICA — Confirmación real:**
 El servidor lee la INTENCIÓN del usuario directamente del último mensaje del cliente, NO del campo \`user_confirmed\` que vos seteás. Si el usuario no dijo en sus propias palabras "guardalo en CRM" / "mandale por WhatsApp" / "cancelá la cotización" / "recordame en X días" / "sincronizá Wolfboard" / etc., la tool va a rechazar la llamada con un mensaje pidiendo que esperes la confirmación. NO podés sintetizar la confirmación por el usuario. Pedí la confirmación con frases concretas y esperá la respuesta del usuario antes de invocar la tool.
 
@@ -589,7 +609,7 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }
