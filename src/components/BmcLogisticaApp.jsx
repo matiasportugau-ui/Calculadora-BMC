@@ -1015,10 +1015,10 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
   const viewH = 240;
   const sorted = [...placedView].sort((a, b) => b.row - a.row || a.zBase - b.zBase);
   const tf = (x, y, z) => isoP(x, y, z, OX, OY);
-  const trLine = (x1, y1, z1, x2, y2, z2, col = "#60A5FA", sw = 1, dash = "") => {
+  const trLine = (x1, y1, z1, x2, y2, z2, col = "#60A5FA", sw = 1, dash = "", k) => {
     const a = tf(x1, y1, z1);
     const b = tf(x2, y2, z2);
-    return <line x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={col} strokeWidth={sw} strokeDasharray={dash} />;
+    return <line key={k} x1={a.px} y1={a.py} x2={b.px} y2={b.py} stroke={col} strokeWidth={sw} strokeDasharray={dash} />;
   };
   const pctA = Math.round((rowH[0] / MAX_H) * 100);
   const pctB = Math.round((rowH[1] / MAX_H) * 100);
@@ -1128,7 +1128,7 @@ function DiagramPanel({ cargo, truckL, remitoNumero }) {
             [shiftX + truckL, 0],
             [shiftX, TRUCK_W],
             [shiftX + truckL, TRUCK_W],
-          ].map(([x, y], i) => trLine(x, y, 0, x, y, MAX_H, "rgba(255,255,255,.25)", 1, i > 0 ? "3,3" : ""))}
+          ].map(([x, y], i) => trLine(x, y, 0, x, y, MAX_H, "rgba(255,255,255,.25)", 1, i > 0 ? "3,3" : "", `truck-corner-${i}`))}
           {trLine(shiftX, 0, 0, shiftX + truckL, 0, 0, "#60A5FA", 1.2)}
           {trLine(shiftX, TRUCK_W, 0, shiftX + truckL, TRUCK_W, 0, "#60A5FA", 1.2)}
           {trLine(shiftX + truckL, 0, 0, shiftX + truckL, TRUCK_W, 0, "#60A5FA", 1.5)}
