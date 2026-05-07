@@ -178,6 +178,51 @@ function normalizeText(s) {
     .trim();
 }
 
+/** 0-based indices when reading `CRM_Operativo!A4:AK` as row[] (A = 0). */
+const CRM_INDEX = { G: 6, W: 22 };
+
+/**
+ * First segment of observaciones (W): Wolfboard / appendQuoteToCrm joins
+ * `consulta — PDF: …` with a spaced dash; split keeps the original consulta stem.
+ */
+function observacionesConsultaStem(w) {
+  const s = String(w ?? "").trim();
+  if (!s) return "";
+  const seg = s.split(/\s+[—–−-]\s+/)[0] || s;
+  return String(seg).trim();
+}
+
+/** True if CRM row G or W (full or stem) matches Admin consulta after normalizeText. */
+function consultaMatchesCrmRow(cr, consultaRaw) {
+  const q = normalizeText(consultaRaw);
+  if (!q) return false;
+  const g = normalizeText(cr.G);
+  const wFull = normalizeText(cr.W);
+  const wStem = normalizeText(observacionesConsultaStem(cr.W));
+  return (g && g === q) || (wFull && wFull === q) || (wStem && wStem === q);
+}
+
+/**
+ * Find CRM row for an Admin consulta. Scans **bottom-up** so duplicate keys
+ * prefer the most recently appended row.
+ */
+function findCrmRowByConsulta(crmRows, consulta) {
+  if (!String(consulta ?? "").trim()) return null;
+  for (let i = crmRows.length - 1; i >= 0; i--) {
+    const cr = crmRows[i];
+    if (consultaMatchesCrmRow(cr, consulta)) return cr;
+  }
+  return null;
+}
+
+function mapCrmRowsForConsultaMatch(values) {
+  return (values || []).map((row, idx) => ({
+    _rowNum: idx + 4,
+    G: String(row[CRM_INDEX.G] ?? "").trim(),
+    W: String(row[CRM_INDEX.W] ?? "").trim(),
+  }));
+}
+
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
   if (!expected) return true;
@@ -325,16 +370,13 @@ export function createWolfboardRouter(config) {
         range: `'${crmTab}'!A4:AK`,
         valueRenderOption: "FORMATTED_VALUE",
       });
-      crmRows = (crmResp.data.values || []).map((row, idx) => ({
-        _rowNum: idx + 4,
-        G: String(row[6] ?? "").trim(),
-      }));
+      crmRows = mapCrmRowsForConsultaMatch(crmResp.data.values || []);
     } catch { /* best-effort */ }
 
     const crmUpdates = [];
     let skipped = 0;
     for (const aRow of adminRows) {
-      const match = crmRows.find(cr => cr.G && normalizeText(cr.G) === normalizeText(aRow.consulta));
+      const match = findCrmRowByConsulta(crmRows, aRow.consulta);
       if (match) {
         // CSV/formula injection guard — even though the source is the Admin
         // sheet, the value is operator-supplied and gets re-written into CRM
@@ -419,11 +461,8 @@ export function createWolfboardRouter(config) {
             range: `'${crmTab}'!A4:AK`,
             valueRenderOption: "FORMATTED_VALUE",
           });
-          const crmRows = (crmResp.data.values || []).map((row, idx) => ({
-            _rowNum: idx + 4,
-            G: String(row[6] ?? "").trim(),
-          }));
-          const match = crmRows.find(cr => cr.G && normalizeText(cr.G) === normalizeText(consulta));
+          const crmRows = mapCrmRowsForConsultaMatch(crmResp.data.values || []);
+          const match = findCrmRowByConsulta(crmRows, consulta);
           if (match) {
             await sheets.spreadsheets.values.update({
               spreadsheetId: crmSheetId,
@@ -663,10 +702,7 @@ export function createWolfboardRouter(config) {
           range: `'${crmTab}'!A4:AK`,
           valueRenderOption: "FORMATTED_VALUE",
         });
-        crmRows = (crmResp.data.values || []).map((row, idx) => ({
-          _rowNum: idx + 4,
-          G: String(row[6] ?? "").trim(),
-        }));
+        crmRows = mapCrmRowsForConsultaMatch(crmResp.data.values || []);
       } catch {
         // CRM read is best-effort; proceed without propagation
       }
@@ -825,9 +861,7 @@ export function createWolfboardRouter(config) {
       }
 
       if (syncToCrm && crmSheetId) {
-        const existing = crmRows.find(
-          (cr) => cr.G && normalizeText(cr.G) === normalizeText(row.consulta)
-        );
+        const existing = findCrmRowByConsulta(crmRows, row.consulta);
         if (existing) {
           crmRow = existing._rowNum;
         } else if (canCreateCrmRows) {
@@ -859,6 +893,7 @@ export function createWolfboardRouter(config) {
             crmRows.push({
               _rowNum: crmRow,
               G: row.consulta,
+              W: row.consulta,
             });
           }
         }
