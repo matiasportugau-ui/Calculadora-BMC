@@ -14,6 +14,8 @@ const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
 const KB_VERSION = "1.0.0";
 
+const MS_PER_DAY = 86_400_000;
+
 // ─── GCS persistence (Cloud Run) ─────────────────────────────────────────────
 // Cloud Run filesystem is ephemeral — every deploy loses local writes.
 // When running in Cloud Run (K_SERVICE env set) and GCS_KB_BUCKET is configured,
@@ -605,11 +607,11 @@ export function getSurfaceCoverage() {
 export function getRetrievalTrend({ days = 14 } = {}) {
   const kb = loadTrainingKB();
   const buckets = new Map(); // YYYY-MM-DD → count
-  const nowMs = Date.now();
-  // Seed buckets in UTC so bucket keys and lastRetrievedAt ISO slices stay
-  // consistent regardless of the server's local timezone.
+  // Snap to UTC midnight so bucket keys align with the calendar-day slices of
+  // lastRetrievedAt ISO strings, regardless of the server's local timezone.
+  const todayMidnightMs = (() => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.getTime(); })();
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(nowMs - i * 86_400_000);
+    const d = new Date(todayMidnightMs - i * MS_PER_DAY);
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
   for (const e of kb.entries) {
@@ -634,7 +636,7 @@ export function getRetrievalTrend({ days = 14 } = {}) {
  */
 export function getTopQueries({ days = 14, limit = 20 } = {}) {
   if (!fs.existsSync(sessionsDir)) return [];
-  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  const cutoff = new Date(Date.now() - days * MS_PER_DAY).toISOString();
   const counts = new Map(); // normalizedQuery → { raw, count, hasMatch }
 
   let files;
@@ -642,7 +644,7 @@ export function getTopQueries({ days = 14, limit = 20 } = {}) {
     // Only load files whose date portion falls within the requested window.
     // Session files are named SESSION-YYYY-MM-DD.jsonl, so we can derive the
     // earliest expected date and skip files older than the window entirely.
-    const cutoffFileDate = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    const cutoffFileDate = new Date(Date.now() - days * MS_PER_DAY).toISOString().slice(0, 10);
     files = fs.readdirSync(sessionsDir).filter(
       (f) => f.startsWith("SESSION-") && f.endsWith(".jsonl") && f.slice(8, 18) >= cutoffFileDate
     );
