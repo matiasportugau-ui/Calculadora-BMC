@@ -487,10 +487,16 @@ export function getHealthEntries() {
   const now = new Date().toISOString();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
+  // mlGap / waGap: canonical answer too long for the channel and no override.
+  // Override = responses[surface] (new shape) OR legacy goodAnswerML/WA.
+  const hasMlOverride = (e) => !!(e.responses?.mercado_libre) || !!e.goodAnswerML;
+  const hasWaOverride = (e) => !!(e.responses?.whatsapp) || !!e.goodAnswerWA;
+
   return {
     stale: active.filter((e) => e.reviewDueAt && e.reviewDueAt < now),
     zeroRetrieval: active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && (e.createdAt || "") < thirtyDaysAgo),
-    mlGap: active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML),
+    mlGap: active.filter((e) => (e.goodAnswer || "").length > 350 && !hasMlOverride(e)),
+    waGap: active.filter((e) => (e.goodAnswer || "").length > 700 && !hasWaOverride(e)),
   };
 }
 
@@ -512,10 +518,14 @@ export function getTrainingStats() {
     return acc;
   }, {});
 
-  // Health signals
+  // Health signals — count entries that need attention per channel.
+  // Override = new responses[surface] map OR legacy goodAnswerML/WA field.
+  const hasMlOverride = (e) => !!(e.responses?.mercado_libre) || !!e.goodAnswerML;
+  const hasWaOverride = (e) => !!(e.responses?.whatsapp) || !!e.goodAnswerWA;
   const stale = active.filter((e) => e.reviewDueAt && e.reviewDueAt < new Date().toISOString()).length;
   const zeroRetrieval = active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && e.createdAt < thirtyDaysAgo).length;
-  const mlGap = active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML).length;
+  const mlGap = active.filter((e) => (e.goodAnswer || "").length > 350 && !hasMlOverride(e)).length;
+  const waGap = active.filter((e) => (e.goodAnswer || "").length > 700 && !hasWaOverride(e)).length;
   const pending = all.filter((e) => e.status === "pending").length;
 
   return {
@@ -527,7 +537,8 @@ export function getTrainingStats() {
       stale,           // have reviewDueAt in the past
       zeroRetrieval,   // never retrieved, older than 30 days
       mlGap,           // goodAnswer too long for ML channel, no override
-      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3),
+      waGap,           // goodAnswer too long for WA channel, no override
+      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3 - waGap * 2),
     },
     updatedAt: new Date().toISOString(),
   };

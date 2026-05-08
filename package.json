@@ -47,7 +47,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "demo:combinada-fijacion": "node scripts/demo-combinada-fijacion-planta.mjs",
-    "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js && node tests/cockpitTokenOrigin.js && node tests/emailIngestAuth.test.js && node tests/wa-ingest-contract.js && node tests/wa-enricher.test.js && node tests/wa-quote-params.test.js && node tests/agentTools.test.js && node tests/toolStats.test.js && node tests/userIntentClassifier.test.js && node tests/calcLoopbackClient.test.js && node tests/quoteRegistryCalcEvent.test.js && node tests/wolfboardReplaySnapshot.test.js && node tests/suggestionsNormalize.test.js && node tests/wolfboardChatSuggestions.test.js && node tests/policyLoader.test.js && node tests/budget.test.js && node tests/kbSurfaceResolve.test.js && node tests/trainingAnalytics.test.js",
+    "test": "node tests/validation.js && node tests/roofVisualQuoteConsistency.js && node tests/cockpitTokenOrigin.js && node tests/emailIngestAuth.test.js && node tests/wa-ingest-contract.js && node tests/wa-enricher.test.js && node tests/wa-quote-params.test.js && node tests/agentTools.test.js && node tests/toolStats.test.js && node tests/userIntentClassifier.test.js && node tests/calcLoopbackClient.test.js && node tests/quoteRegistryCalcEvent.test.js && node tests/wolfboardReplaySnapshot.test.js && node tests/suggestionsNormalize.test.js && node tests/wolfboardChatSuggestions.test.js && node tests/policyLoader.test.js && node tests/budget.test.js && node tests/kbSurfaceResolve.test.js && node tests/trainingAnalytics.test.js && node tests/waGap.test.js",
     "test:playwright:roof-bordes-local": "node scripts/playwright-roof-bordes-local.mjs",
     "test:playwright:hub-canales": "node scripts/playwright-hub-canales-smoke.mjs",
     "test:playwright:wizard": "node scripts/playwright-wizard-happy-path.mjs",
@@ -212,6 +212,7 @@
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.3",
+    "recharts": "^3.8.1",
     "three": "^0.169.0",
     "web-vitals": "^5.2.0",
     "zod": "^4.4.3"

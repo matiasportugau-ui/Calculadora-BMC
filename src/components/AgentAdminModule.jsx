@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 import AgentClassificationViewerTab from "./AgentClassificationViewerTab.jsx";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import BmcModuleNav from "./BmcModuleNav.jsx";
@@ -358,6 +359,8 @@ function KBTab() {
   const [matchResults, setMatchResults] = useState(null);
   const [generatingML, setGeneratingML] = useState(false);
   const [mlGenMsg, setMlGenMsg] = useState("");
+  const [generatingWA, setGeneratingWA] = useState(false);
+  const [waGenMsg, setWaGenMsg] = useState("");
   const fileRef = useRef();
 
   const PAGE_SIZE = 30;
@@ -520,6 +523,19 @@ function KBTab() {
     setTimeout(() => setMlGenMsg(""), 6000);
   }
 
+  async function generateWAOverrides() {
+    setGeneratingWA(true); setWaGenMsg("");
+    const data = await apiFetch("/api/agent/training-kb/generate-wa-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGeneratingWA(false);
+    if (data.ok) {
+      setWaGenMsg(`✓ ${data.generated} overrides WA generados (${data.failed} fallaron)`);
+      load();
+    } else {
+      setWaGenMsg("Error: " + (data.error || "desconocido"));
+    }
+    setTimeout(() => setWaGenMsg(""), 6000);
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card style={{ background: "#f0f7ff", borderColor: "#b6d4fe" }}>
@@ -549,6 +565,7 @@ function KBTab() {
             ["Vencidas", stats.health?.stale || 0, stats.health?.stale > 0 ? "#dc2626" : null],
             ["Sin uso 30d", stats.health?.zeroRetrieval || 0, stats.health?.zeroRetrieval > 0 ? "#6b7280" : null],
             ["Gap ML", stats.health?.mlGap || 0, stats.health?.mlGap > 0 ? "#dc2626" : null],
+            ["Gap WA", stats.health?.waGap || 0, stats.health?.waGap > 0 ? "#d97706" : null],
           ].map(([label, val, color]) => (
             <Card key={label} style={{ padding: "8px 14px", flex: "none", borderColor: color ? color : undefined }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: color || C.navy, fontFamily: C.ff }}>{val}</div>
@@ -578,6 +595,12 @@ function KBTab() {
             </Btn>
           )}
           {mlGenMsg && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>{mlGenMsg}</span>}
+          {(stats?.health?.waGap || 0) > 0 && (
+            <Btn onClick={generateWAOverrides} disabled={generatingWA} style={{ background: "#d97706", color: "#fff", border: "none" }}>
+              {generatingWA ? "Generando…" : `⚡ Auto-WA (${stats.health.waGap})`}
+            </Btn>
+          )}
+          {waGenMsg && <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>{waGenMsg}</span>}
           <div style={{ flex: 1 }} />
           <label
             style={{
@@ -1317,15 +1340,23 @@ function ConfigTab() {
 // ── HEALTH TAB ───────────────────────────────────────────────────────────────
 function HealthTab() {
   const [data, setData] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState({});
   const [msg, setMsg] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [generatingWA, setGeneratingWA] = useState(false);
 
   async function load() {
     setLoading(true);
-    const d = await apiFetch("/api/agent/training-kb/health");
-    setData(d);
+    // Load /health + /analytics in parallel — analytics is optional and the
+    // panel still renders if it 404s (e.g. before F4 ships to Cloud Run).
+    const [healthData, analyticsData] = await Promise.all([
+      apiFetch("/api/agent/training-kb/health"),
+      apiFetch("/api/agent/training-kb/analytics").catch(() => null),
+    ]);
+    setData(healthData);
+    setAnalytics(analyticsData?.ok ? analyticsData : null);
     setLoading(false);
   }
 
@@ -1354,6 +1385,15 @@ function HealthTab() {
     const d = await apiFetch("/api/agent/training-kb/generate-ml-overrides", { method: "POST", body: JSON.stringify({}) });
     setGenerating(false);
     if (d.ok) { setMsg(`✓ ${d.generated} overrides ML generados`); load(); }
+    else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 5000);
+  }
+
+  async function autoFixWAGaps() {
+    setGeneratingWA(true);
+    const d = await apiFetch("/api/agent/training-kb/generate-wa-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGeneratingWA(false);
+    if (d.ok) { setMsg(`✓ ${d.generated} overrides WA generados`); load(); }
     else setMsg("Error: " + (d.error || "desconocido"));
     setTimeout(() => setMsg(null), 5000);
   }
@@ -1402,6 +1442,20 @@ function HealthTab() {
         </button>
       ) : null,
     },
+    {
+      key: "waGap",
+      label: "Gap canal WhatsApp",
+      color: "#d97706",
+      hint: "goodAnswer >700 chars sin override WA — se trunca automáticamente.",
+      entries: data.waGap || [],
+      action: null,
+      headerAction: data.waGap?.length > 0 ? (
+        <button onClick={autoFixWAGaps} disabled={generatingWA}
+          style={{ padding: "5px 14px", borderRadius: 7, border: "none", background: "#d97706", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {generatingWA ? "Generando…" : `⚡ Auto-generar ${data.waGap.length} overrides`}
+        </button>
+      ) : null,
+    },
   ];
 
   return (
@@ -1409,6 +1463,7 @@ function HealthTab() {
       {msg && (
         <div style={{ padding: "10px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, color: "#166534", fontSize: 13 }}>{msg}</div>
       )}
+      {analytics?.bySurface && <SurfaceCoverageMatrix bySurface={analytics.bySurface} retrievalTrend={analytics.retrievalTrend} />}
       {sections.every((s) => s.entries.length === 0) && (
         <div style={{ padding: "48px 0", textAlign: "center", color: C.muted, fontSize: 15 }}>
           KB en buen estado — sin entradas vencidas, sin gaps ni entradas sin uso.
@@ -1441,6 +1496,66 @@ function HealthTab() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── SURFACE COVERAGE MATRIX (F5) ─────────────────────────────────────────────
+// Renders the bySurface coverage block from /api/agent/training-kb/analytics:
+//   - one BarChart with coverage_pct per surface (mercado_libre, whatsapp, email)
+//   - a small daily retrieval-trend LineChart (14 days by default)
+//
+// Both charts gracefully handle the analytics endpoint not yet being deployed:
+// the parent passes `bySurface = undefined` and we render nothing.
+function SurfaceCoverageMatrix({ bySurface, retrievalTrend }) {
+  if (!bySurface) return null;
+  const SURFACE_LABEL = { mercado_libre: "Mercado Libre", whatsapp: "WhatsApp", email: "Email" };
+  const surfaceData = Object.entries(bySurface).map(([key, val]) => ({
+    surface: SURFACE_LABEL[key] || key,
+    coverage: val.coverage_pct,
+    gap: val.gap_count,
+    eligible: val.eligible,
+  }));
+  const trend = Array.isArray(retrievalTrend) ? retrievalTrend : [];
+
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, color: C.navy, marginBottom: 4 }}>Cobertura por canal</div>
+      <div style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>
+        % de respuestas con override por canal — el resto se trunca al límite del canal.
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: trend.length > 0 ? "1fr 1fr" : "1fr", gap: 16 }}>
+        <div style={{ height: 180 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={surfaceData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="surface" tick={{ fontSize: 11, fill: C.sub }} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: C.sub }} unit="%" />
+              <Tooltip
+                formatter={(value, name, item) =>
+                  name === "coverage"
+                    ? [`${value}% (gap ${item.payload.gap}/${item.payload.eligible})`, "Cobertura"]
+                    : [value, name]
+                }
+              />
+              <Bar dataKey="coverage" fill="#1a3a5c" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        {trend.length > 0 && (
+          <div style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.sub }} tickFormatter={(d) => d.slice(5)} />
+                <YAxis tick={{ fontSize: 11, fill: C.sub }} allowDecimals={false} />
+                <Tooltip />
+                <Line type="monotone" dataKey="count" stroke="#0071e3" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
