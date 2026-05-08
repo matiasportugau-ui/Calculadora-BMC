@@ -2377,7 +2377,7 @@ export default function PanelinCalculadoraV3() {
   });
   const [devAuthToken, setDevAuthToken] = useState(() => {
     if (typeof window === "undefined") return "";
-    return sessionStorage.getItem("panelin-dev-token") || "";
+    return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
   const [pendingQuote, setPendingQuote] = useState(null);
   const undoStackRef = useRef([]);
@@ -2563,9 +2563,9 @@ export default function PanelinCalculadoraV3() {
       if (typeof window !== "undefined") sessionStorage.setItem("panelin-dev-mode", "0");
       return;
     }
-    let token = devAuthToken;
+    let token = String(devAuthToken || "").trim();
     if (!token && typeof window !== "undefined") {
-      token = window.prompt("API_AUTH_TOKEN para activar Developer Mode:") || "";
+      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
     }
     if (!token) return;
     setDevAuthToken(token);

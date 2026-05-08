@@ -227,9 +227,11 @@ export function useChat({
 
   const buildDevAuthHeaders = useCallback(() => {
     if (!devMode || !devAuthToken) return {};
+    const t = String(devAuthToken).trim();
+    if (!t) return {};
     return {
-      Authorization: `Bearer ${devAuthToken}`,
-      "X-Api-Key": devAuthToken,
+      Authorization: `Bearer ${t}`,
+      "X-Api-Key": t,
     };
   }, [devMode, devAuthToken]);
 
