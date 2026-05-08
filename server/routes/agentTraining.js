@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { config } from "../config.js";
+import { isAiGatewayEnabled, generateTextViaGateway } from "../lib/aiGatewayClient.js";
 import {
   addTrainingEntry,
   appendTrainingSessionEvent,
@@ -372,8 +373,13 @@ router.post("/agent/training-kb/:id/resolve-conflict", requireDevModeAuth, (req,
 // ─── ML override batch generator ──────────────────────────────────────────────
 
 router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, async (req, res) => {
-  const apiKey = config.anthropicApiKey;
-  if (!apiKey) return res.status(503).json({ ok: false, error: "ANTHROPIC_API_KEY not set" });
+  // Two code paths sharing the same loop body:
+  //   - F3.2: AI Gateway via generateTextViaGateway (preferred when configured)
+  //   - Legacy: direct Anthropic SDK with config.anthropicApiKey
+  const useGateway = isAiGatewayEnabled();
+  if (!useGateway && !config.anthropicApiKey) {
+    return res.status(503).json({ ok: false, error: "AI Gateway not configured and ANTHROPIC_API_KEY not set" });
+  }
 
   const { ids } = req.body || {}; // optional: specific entry IDs; omit = all gaps
   const all = listTrainingEntries();
@@ -383,21 +389,34 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
 
   if (targets.length === 0) return res.json({ ok: true, processed: 0, message: "No ML gaps found" });
 
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const client = new Anthropic({ apiKey });
+  // Lazy-load Anthropic SDK only when running the legacy path.
+  let anthropic = null;
+  if (!useGateway) {
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
+    anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+  }
+
+  const SUMMARY_PROMPT_PREFIX = `Resumí esta respuesta en máximo 320 caracteres para MercadoLibre. Sin markdown, sin URLs. Mantené los datos clave (precios, plazos, datos técnicos). Directo y profesional. Solo devolvé el texto, sin comillas ni explicaciones.\n\nRespuesta original:\n`;
 
   const results = [];
   for (const entry of targets) {
     try {
-      const msg = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 100,
-        messages: [{
-          role: "user",
-          content: `Resumí esta respuesta en máximo 320 caracteres para MercadoLibre. Sin markdown, sin URLs. Mantené los datos clave (precios, plazos, datos técnicos). Directo y profesional. Solo devolvé el texto, sin comillas ni explicaciones.\n\nRespuesta original:\n${entry.goodAnswer}`,
-        }],
-      });
-      const mlText = (msg.content?.[0]?.text || "").trim().slice(0, 350);
+      let mlText = "";
+      if (useGateway) {
+        const { text } = await generateTextViaGateway({
+          system: "",
+          prompt: `${SUMMARY_PROMPT_PREFIX}${entry.goodAnswer}`,
+          maxTokens: 100,
+        });
+        mlText = String(text || "").trim().slice(0, 350);
+      } else {
+        const msg = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 100,
+          messages: [{ role: "user", content: `${SUMMARY_PROMPT_PREFIX}${entry.goodAnswer}` }],
+        });
+        mlText = (msg.content?.[0]?.text || "").trim().slice(0, 350);
+      }
       if (mlText) {
         updateTrainingEntry(entry.id, { goodAnswerML: mlText });
         results.push({ id: entry.id, ok: true, chars: mlText.length });

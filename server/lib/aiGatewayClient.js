@@ -47,6 +47,9 @@ export const DEFAULT_PROVIDER_ORDER = Object.freeze([
 export function isAiGatewayEnabled() {
   // Prefer OIDC when present (no manual rotation needed).
   if (typeof process !== "undefined" && process.env?.VERCEL_OIDC_TOKEN) return true;
+  // Read process.env first so rotated keys take effect without a process restart.
+  // Falls back to the cached config value when env is not set at this moment.
+  if (typeof process !== "undefined" && process.env?.AI_GATEWAY_API_KEY) return true;
   if (config.aiGatewayApiKey) return true;
   return false;
 }

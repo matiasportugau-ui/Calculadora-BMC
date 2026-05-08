@@ -53,6 +53,32 @@ const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
 /** CRM IA fallback order (suggest-response, parse-email, etc.): quality first, then cost/speed. */
 const CRM_AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
 
+/**
+ * Zod schema for /crm/parse-email and /crm/ingest-email structured extraction.
+ * Used by the AI Gateway path via `generateObjectViaGateway`. The legacy SDK
+ * chain returns the same shape via JSON.parse; both code paths pass through
+ * the same downstream consumers (Sheets writer, etc.).
+ *
+ * All fields are strings (possibly empty) to match the legacy contract.
+ */
+async function getEmailExtractionSchema() {
+  const { z } = await import("zod");
+  return z.object({
+    cliente: z.string().default(""),
+    telefono: z.string().default(""),
+    ubicacion: z.string().default(""),
+    email_remitente: z.string().default(""),
+    resumen_pedido: z.string().default(""),
+    categoria: z.string().default(""),
+    urgencia: z.string().default(""),
+    tipo_cliente: z.string().default(""),
+    cotizacion_formal: z.string().default(""),
+    validar_stock: z.string().default(""),
+    probabilidad_cierre: z.string().default(""),
+    observaciones: z.string().default(""),
+  });
+}
+
 const sheetsReadCache = new Map();
 
 function sheetsCacheGet(key) {
@@ -2303,6 +2329,25 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 }`;
 
     const errors = [];
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const { object, provider: usedProvider } = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (object) return res.json({ ok: true, data: object, provider: usedProvider });
+        errors.push("gateway: empty object");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
+
     for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
@@ -2375,7 +2420,30 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     let parsed = null;
     let provider = null;
     const errors = [];
-    for (const p of RANKING) {
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    // On success we continue to the Sheets writer below.
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const result = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (result?.object) {
+          parsed = result.object;
+          provider = result.provider;
+        } else {
+          errors.push("gateway: empty object");
+        }
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+    }
+
+    if (!parsed) for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
