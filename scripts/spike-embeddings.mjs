@@ -242,10 +242,11 @@ async function main() {
 
   // 5. Write report
   const lines = [];
+  const paraphraseQueryCount = queries.filter((q) => q.kind === 'paraphrase').length;
   lines.push(`# Embedding Spike — Results (${new Date().toISOString().slice(0, 10)})`);
   lines.push('');
   lines.push(`Corpus: ${entries.length} active entries from \`data/training-kb.json\`.`);
-  lines.push(`Queries: ${queries.length} (${entries.length} original questions + ${entries.length * PARAPHRASES_PER_ENTRY} Haiku paraphrases).`);
+  lines.push(`Queries: ${queries.length} (${entries.length} original questions + ${paraphraseQueryCount} Haiku paraphrases).`);
   lines.push('Score: 1.0 means the source entry was returned at that rank or better.');
   lines.push('');
   lines.push('| method | recall@1 | recall@5 | recall@10 |');

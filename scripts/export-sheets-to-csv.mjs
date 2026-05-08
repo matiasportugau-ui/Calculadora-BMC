@@ -2,7 +2,7 @@
 /**
  * Export BMC Google Sheets tabs to CSV files for RAG ingest.
  *
- * Mapping rule (memory: feedback_full_mapping_before_ingest.md):
+ * Mapping rule:
  *   - Never reference nonexistent tabs.
  *   - The full per-workbook mapping comes from
  *     `scripts/discover-sheets-mapping.mjs` → /tmp/panelin-rag/sheets-mapping.json.
@@ -84,7 +84,22 @@ async function main() {
       summary.push({ envId: wb.envId, status: `skipped: ${wb.status}` });
       continue;
     }
-    const id = process.env[wb.envId];
+    const id = wb.spreadsheetId || process.env[wb.envId];
+    if (!id) {
+      console.error(
+        `SKIP ${wb.envId} — missing spreadsheetId in mapping and env var ${wb.envId} is not set.`,
+      );
+      summary.push({
+        envId: wb.envId,
+        status: `skipped: missing spreadsheetId (mapping/env ${wb.envId})`,
+      });
+      continue;
+    }
+    if (wb.spreadsheetId && process.env[wb.envId] && process.env[wb.envId] !== wb.spreadsheetId) {
+      console.warn(
+        `WARN ${wb.envId}: mapping spreadsheetId (${wb.spreadsheetId}) differs from env var (${process.env[wb.envId]}). Using mapping value for reproducibility across environments.`,
+      );
+    }
     for (const tab of wb.tabs) {
       const name = `${wb.num}_${slug(tab.title)}`;
       try {

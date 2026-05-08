@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Auto-discover the FULL mapping of every tab in every BMC Google Sheets workbook.
+ * Auto-discover the tab mapping of configured BMC Google Sheets workbooks.
  *
- * Hard rule (memory: feedback_full_mapping_before_ingest.md):
+ * Hard rule for ingestion safety:
  *   - Never reference a nonexistent tab.
  *   - Before any ingest, the mapping must be 100% verified.
  *
@@ -22,26 +22,32 @@ import { google } from 'googleapis';
 
 const OUT_DIR = '/tmp/panelin-rag';
 
-// Workbook scope (per /tmp/panelin-rag/HANDOFF-UNIFIED-LM.md §4).
-// Wolfb intentionally skipped — different company, out of BMC scope here.
+// Workbook scope for BMC workbooks used by sync/ingest scripts.
 const WORKBOOKS = [
   { num: 1, label: 'BMC crm_automatizado',         envId: 'BMC_SHEET_ID' },
   { num: 2, label: 'Pagos Pendientes 2026',        envId: 'BMC_PAGOS_SHEET_ID' },
   { num: 3, label: '2.0 - Ventas',                  envId: 'BMC_VENTAS_SHEET_ID' },
   { num: 4, label: 'Stock E-Commerce',              envId: 'BMC_STOCK_SHEET_ID' },
   { num: 5, label: 'Calendario de vencimientos',    envId: 'BMC_CALENDARIO_SHEET_ID' },
+  { num: 6, label: 'MATRIZ Costos y Ventas 2026',   envId: 'BMC_MATRIZ_SHEET_ID' },
 ];
 
-// Tabs the codebase already references (extracted from
-// scripts/accessible-base-sync.js — keep in sync if that file changes).
+// Tabs the codebase already references (aligned with scripts/accessible-base-sync.js).
+// NOTE: WOLFB_CRM_MAIN_TAB (originally introduced for WOLFB workbooks) is reused
+// here for compatibility with accessible-base-sync.
+// It allows overriding the CRM tab name when BMC_SHEET_ID
+// points to a workbook whose main CRM tab is not named "CRM_Operativo".
 const CODE_REFS = [
-  { envId: 'BMC_SHEET_ID',         tab: 'CRM_Operativo',        key: 'crm_operativo',         optional: false },
+  { envId: 'BMC_SHEET_ID',         tab: process.env.WOLFB_CRM_MAIN_TAB || 'CRM_Operativo', key: 'crm_operativo', optional: false },
   { envId: 'BMC_SHEET_ID',         tab: 'Master_Cotizaciones',  key: 'master_cotizaciones',   optional: false },
   { envId: 'BMC_SHEET_ID',         tab: 'Metas_Ventas',          key: 'metas_ventas',          optional: true  },
-  { envId: 'BMC_SHEET_ID',         tab: 'AUDIT_LOG',             key: 'audit_log',             optional: false },
+  // audit_log is optional in accessible-base-sync because some reduced BMC
+  // workbook variants omit the AUDIT_LOG tab.
+  { envId: 'BMC_SHEET_ID',         tab: 'AUDIT_LOG',             key: 'audit_log',             optional: true  },
   { envId: 'BMC_PAGOS_SHEET_ID',   tab: null /* first tab */,    key: 'pagos_pendientes',      optional: false },
   { envId: 'BMC_VENTAS_SHEET_ID',  tab: null /* all tabs */,     key: 'ventas',                optional: false },
   { envId: 'BMC_STOCK_SHEET_ID',   tab: null /* all tabs */,     key: 'stock',                 optional: false },
+  { envId: 'BMC_MATRIZ_SHEET_ID',  tab: 'BROMYROS',              key: 'matriz_precios',        optional: true  },
 ];
 
 async function discoverWorkbook(sheets, wb) {
@@ -110,6 +116,7 @@ async function main() {
       envId: d.envId,
       status: d.status,
       title: d.title,
+      spreadsheetId: d.spreadsheetId,
       tabs: d.tabs,
     })),
     codeMappingDrift: drift,
