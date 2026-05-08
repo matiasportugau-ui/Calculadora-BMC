@@ -3,7 +3,7 @@
  *
  * Provider chain: default claude → grok → gemini → openai; optional `aiProvider` + `aiModel` (see GET /api/agent/ai-options).
  *
- * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string }
+ * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string, surface?: "panelin_chat"|"mercado_libre"|"whatsapp"|"email"|"wolfboard" }
  * Response: text/event-stream, events:
  *   {"type":"text","delta":"..."}
  *   {"type":"action","action":{"type":"setTecho","payload":{...}}}
@@ -26,7 +26,8 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit, resolveTrainingAnswer } from "../lib/trainingKB.js";
+import { normalizeSurface } from "../lib/kbSurface.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
@@ -482,7 +483,10 @@ router.post("/agent/chat", async (req, res) => {
     aiModel: rawAiModel,
     conversationId: rawConvId,
     thinkingMode = false,
+    surface: rawSurface,
   } = req.body || {};
+  // Multi-canal: whitelist + default panelin_chat. Brief §6.1.
+  const surface = normalizeSurface(rawSurface);
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
@@ -678,10 +682,17 @@ router.post("/agent/chat", async (req, res) => {
   // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
   await ensureGcsInit();
 
-  // Always use KB — not just devMode
-  const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  // Always use KB — not just devMode.
+  // Multi-canal (Brief §6.5): resolve the per-surface answer for each match
+  // BEFORE handing them to buildSystemPrompt, so the rendering layer (which
+  // serializes entry.goodAnswer) doesn't need to know about surfaces.
+  const rawTrainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  const trainingExamples = rawTrainingExamples.map((entry) => ({
+    ...entry,
+    goodAnswer: resolveTrainingAnswer(entry, surface) || entry.goodAnswer || "",
+  }));
   if (devMode) {
-    send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
+    send({ type: "kb_match", count: trainingExamples.length, surface, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
 
   // Extract last 3 assistant openings for anti-repetition guidance

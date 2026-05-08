@@ -1,0 +1,16 @@
+{
+  "id": "04-aplicar-no-trust-emit",
+  "description": "aplicar_estado_calc is NOT trust-eligible → no verified_quote emitted when only the wizard fills in.",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Pasame al escenario solo_techo y configurá ISODEC EPS 100mm, lista web. Solo aplicá el estado, no calcules todavía." }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

@@ -1,0 +1,17 @@
+{
+  "id": "03-no-tool-without-data",
+  "description": "Insufficient data → calcular_cotizacion must NOT fire (model should ask for missing fields, not invent a quote).",
+  "calcState": "empty",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Hola, ¿cuánto sale un panel ISODEC?" }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "tool_not_called", "name": "calcular_cotizacion" },
+    { "type": "verified_quote_not_emitted" }
+  ],
+  "timeoutMs": 60000
+}

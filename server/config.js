@@ -94,6 +94,13 @@ export const config = {
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // Vercel AI Gateway (unified multi-provider).
+  // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
+  // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
+  // /agent/training-kb/generate-ml-overrides through the gateway. When unset,
+  // the legacy 4-SDK chain (Anthropic / OpenAI / Grok / Gemini) keeps working
+  // unchanged so deploys without env wiring don't regress.
+  aiGatewayApiKey: process.env.AI_GATEWAY_API_KEY || "",
   // WhatsApp Business Cloud API
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",

@@ -25,7 +25,9 @@ import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.j
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
-import { addTrainingEntry } from "../lib/trainingKB.js";
+import { addTrainingEntry, findRelevantExamples, resolveTrainingAnswer, ensureGcsInit } from "../lib/trainingKB.js";
+import { mapOrigenToSurface } from "../lib/kbSurface.js";
+import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
 
@@ -50,6 +52,32 @@ const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
 
 /** CRM IA fallback order (suggest-response, parse-email, etc.): quality first, then cost/speed. */
 const CRM_AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
+
+/**
+ * Zod schema for /crm/parse-email and /crm/ingest-email structured extraction.
+ * Used by the AI Gateway path via `generateObjectViaGateway`. The legacy SDK
+ * chain returns the same shape via JSON.parse; both code paths pass through
+ * the same downstream consumers (Sheets writer, etc.).
+ *
+ * All fields are strings (possibly empty) to match the legacy contract.
+ */
+async function getEmailExtractionSchema() {
+  const { z } = await import("zod");
+  return z.object({
+    cliente: z.string().default(""),
+    telefono: z.string().default(""),
+    ubicacion: z.string().default(""),
+    email_remitente: z.string().default(""),
+    resumen_pedido: z.string().default(""),
+    categoria: z.string().default(""),
+    urgencia: z.string().default(""),
+    tipo_cliente: z.string().default(""),
+    cotizacion_formal: z.string().default(""),
+    validar_stock: z.string().default(""),
+    probabilidad_cierre: z.string().default(""),
+    observaciones: z.string().default(""),
+  });
+}
 
 const sheetsReadCache = new Map();
 
@@ -2142,16 +2170,67 @@ export default function createBmcDashboardRouter(config) {
 
     const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
 
+    // Multi-canal KB injection (Brief §6.5):
+    // - resolve surface from CRM `origen` (ML/WA/Email/CRM) → KB_SURFACES
+    // - retrieve top-3 KB matches by overlap scoring
+    // - drop weak matches (matchScore < 2) so ML/WA replies don't pick up
+    //   noise when the user query has no real overlap with the KB.
+    // The resolved per-surface text (ML override max 350 chars, WA 700, etc.)
+    // is prefixed to userMsg as a compact policies block.
+    let kbBlock = "";
+    try {
+      await ensureGcsInit();
+      const surface = mapOrigenToSurface(origen);
+      const matches = findRelevantExamples(consulta, { limit: 3 })
+        .filter((m) => (m.matchScore ?? 0) >= 2);
+      if (matches.length > 0) {
+        const items = matches
+          .map((m, i) => {
+            const text = resolveTrainingAnswer(m, surface);
+            return text ? `[${i + 1}] ${text}` : null;
+          })
+          .filter(Boolean);
+        if (items.length > 0) {
+          kbBlock = `Políticas / FAQs relevantes (usar como guía):\n${items.join("\n")}`;
+        }
+      }
+    } catch (_) { /* non-fatal — continue without KB block */ }
+
     const userMsg = [
       `Canal: ${origen || "desconocido"}`,
       `Cliente: ${cliente || "desconocido"}`,
       producto      ? `Producto/publicación: ${producto}`  : null,
       observaciones ? `Observaciones: ${observaciones}`    : null,
+      kbBlock || null,
       historyContext || null,
       `Consulta: ${consulta}`,
     ].filter(Boolean).join("\n");
 
     const errors = [];
+
+    // F3.2 — Vercel AI Gateway path. When enabled, route through the unified
+    // gateway endpoint instead of the per-SDK chain below. Provider fallback
+    // is delegated to gateway (`providerOptions.gateway.order`). Brief §5.6.
+    if (isAiGatewayEnabled()) {
+      try {
+        // If the caller forced a provider, keep that as the only option;
+        // otherwise use the default ranking that matches the legacy chain.
+        const providerOrder = provider
+          ? [providerToGatewaySlug(provider)].filter(Boolean)
+          : DEFAULT_PROVIDER_ORDER;
+        const { text, provider: usedProvider } = await generateTextViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          maxTokens: 300,
+          providerOrder: providerOrder.length ? providerOrder : DEFAULT_PROVIDER_ORDER,
+        });
+        if (text) return res.json({ ok: true, respuesta: text, provider: usedProvider });
+        errors.push("gateway: empty response");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
 
     for (const p of chain) {
       const apiKey = apiKeys[p];
@@ -2250,6 +2329,25 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 }`;
 
     const errors = [];
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const { object, provider: usedProvider } = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (object) return res.json({ ok: true, data: object, provider: usedProvider });
+        errors.push("gateway: empty object");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
+
     for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
@@ -2322,7 +2420,30 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     let parsed = null;
     let provider = null;
     const errors = [];
-    for (const p of RANKING) {
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    // On success we continue to the Sheets writer below.
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const result = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (result?.object) {
+          parsed = result.object;
+          provider = result.provider;
+        } else {
+          errors.push("gateway: empty object");
+        }
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+    }
+
+    if (!parsed) for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
