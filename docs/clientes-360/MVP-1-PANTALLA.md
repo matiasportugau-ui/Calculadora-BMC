@@ -139,7 +139,7 @@ El MVP está **DONE** cuando:
 - [ ] Seed script corre y crea ≥ 30 customers reales con eventos
 - [ ] `GET /api/clientes/customers` responde JSON válido en < 500ms
 - [ ] `/clientes` carga en producción con react-query, sin errores de consola
-- [ ] Sandra tiene `clientes.write` grant en `identity.role_grants`
+- [ ] Sandra tiene `level='write'` para `module='clientes'` en `identity.module_grants` (con `clientes` registrado en `identity.modules`)
 - [ ] Sandra abre `/clientes` y marca al menos 3 clientes como contactados (= recibió onboarding de 5 min)
 - [ ] Métricas instrumentadas (query semanal documentada en `MVP-METRICS.md`)
 
@@ -166,7 +166,7 @@ A los **30 días** post-deploy del MVP:
 | Rankings (7 obligatorios + 10 evaluables) | Ídem |
 | Ficha individual con timeline 3-columnas | Una tabla alcanza para validar |
 | 11 agentes Cloud Run Jobs | Seed manual alcanza |
-| `agent-resolver` en runtime (el código YA existe en repo, solo se usa en el seed) | Sin sync continuo, no necesita correr cada 5 min |
+| `agent-resolver` en runtime (el módulo se implementa después del MVP; en MVP basta con normalización/seed simple) | Sin sync continuo, no necesita correr cada 5 min |
 | NBA con Claude API | Caro y no probado |
 | 9 cards de dashboard | Una tabla alcanza |
 | Vistas por rol (admin/operator/field) | Sandra es la única usuaria |
@@ -199,7 +199,7 @@ A los **30 días** post-deploy del MVP:
 Antes de Día 1:
 
 1. **¿Aprobás este alcance?** (Sí / "agregar X" / "cambiar Y" / no)
-2. **Email de Sandra** — ✅ confirmado: `sandra@bmc.com` (fuente: `docs/bmc-dashboard-modernization/Code.gs:142-146`, tab `EQUIPOS` del workbook CRM).
+2. **Email de Sandra** — ✅ confirmado internamente (valor real omitido en este repo).
 3. **¿Aplico migration en branch Supabase, o creás un proyecto Supabase separado para staging?**
 4. **¿Mergeo PR #188 como draft → ready, o lo cierro y rehago en chunks más chicos?**
 
@@ -219,7 +219,7 @@ No se construye nada que no tenga métrica. Punto.
 - `docs/clientes-360/EXISTING-CRM-MAPPING.md` — qué reusar de lo existente
 - `supabase/migrations/20260508000001_clientes_360_init.sql` — schema
 - `supabase/migrations/20260508000001_clientes_360_init_rollback.sql` — kill switch SQL
-- `server/lib/clientes/customerResolver.js` — algoritmo de resolución (ya en repo, usado en el seed del MVP)
+- `server/lib/clientes/customerResolver.js` — algoritmo de resolución (a crear en Phase 2; MVP usa seed/manual matching)
 
 ---
 
@@ -229,12 +229,12 @@ Fuente: `docs/bmc-dashboard-modernization/Code.gs` — tab `EQUIPOS` del workboo
 
 | Nombre | Email | Rol | Departamento | Grant Phase 1 (MVP) | Grant Phase 2 |
 |---|---|---|---|---|---|
-| Matías | `matias@bmc.com` | CEO | Dirección | `clientes.admin` (vía superadmin) | — |
-| **Sandra** | **`sandra@bmc.com`** | **Admin** | **Administración** | **`clientes.write`** | — |
-| Ramiro | `ramiro@bmc.com` | Vendedor | Ventas | — | `clientes.read` (mobile-first) |
-| Martin | `martin@bmc.com` | Vendedor | Ventas | — | `clientes.read` (oficina) |
+| Matías | `<ceo-email-interno>` | CEO | Dirección | `clientes.admin` (vía superadmin) | — |
+| **Sandra** | **`<admin-email-interno>`** | **Admin** | **Administración** | **`clientes.write`** | — |
+| Ramiro | `<sales1-email-interno>` | Vendedor | Ventas | — | `clientes.read` (mobile-first) |
+| Martin | `<sales2-email-interno>` | Vendedor | Ventas | — | `clientes.read` (oficina) |
 
 Notas:
-- Identity superadmin distinto: `matias@bmc.uy` (en `INTERNAL_SUPERADMIN_EMAILS`). Si el login Google de Matias usa `bmc.com`, hay que decidir cuál de los dos es la identidad canónica.
+- Identity superadmin puede usar un email distinto al corporativo visible. Definir una sola identidad canónica antes de otorgar grants productivos.
 - Sandra Sánchez aparece en `docs/google-sheets-module/FULL-SHEETS-AUDIT-RAW.json` con su nombre completo.
 - En Phase 2, antes de dar grant a Martin/Ramiro, **entrevistar 15 min cada uno** para confirmar que el panel les sirve. No asumir.

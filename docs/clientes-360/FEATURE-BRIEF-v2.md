@@ -17,14 +17,14 @@
 | Tema | v1 decía | v2 corrige |
 |---|---|---|
 | Stack DB | "Supabase" como producto | Postgres 15 vía `pg`, migrations en `supabase/migrations/` por convención de naming. NO `@supabase/*` SDK. |
-| Auth | "Implementar JWT con claim role" | Ya existe: Google OAuth + JWT bearer + refresh cookie + MFA TOTP + `identity.role_grants` por módulo. Agregar grants de módulo `clientes`, no rol nominal. |
-| Roles `matias\|sandra\|ramiro` | Asume claim plano | No existen. Mapear vía `identity.role_grants(user_id, module, role)` con `module='clientes'`, `role IN ('admin','operator','field')`. |
+| Auth | "Implementar JWT con claim role" | Ya existe: Google OAuth + JWT bearer + refresh cookie + MFA TOTP + RBAC en `identity.role_grants` (rol global) + `identity.module_grants` (nivel por módulo). Agregar grants de módulo `clientes` en `identity.module_grants`. |
+| Roles `matias\|sandra\|ramiro` | Asume claim plano | No existen. Mapear vía `identity.module_grants(user_id, module, level)` con `module='clientes'`, `level IN ('admin','write','read')`. |
 | Shopify | "API disponible, no integrado" | Integrado: PKCE + HMAC OAuth + webhook HMAC. Falta el sync de pedidos a `customer_purchases`. |
 | WhatsApp | "Implementar agent-sync-whatsapp en Phase 2" | Ya existe stack `wa-package/migrations` (17 tablas) + `waEnricherWorker`. Phase 1 lee de ahí, no se reescribe. |
 | Followups | "Crear `customer_followups`" | Ya existe `server/routes/followups.js` con `followUpStore.js` (JSON local). Migrar a Postgres en Phase 1, **no paralelizar dos sistemas**. |
 | CRM existente | Greenfield | Ya existe `ml-crm-sync.js`, `crmSearch.js`, `crmTaxonomy.js`, `quoteRegistry.js`, `bmc-dashboard-modernization/`. Phase 1 incluye **inventario + mapeo**. |
 | Orquestación | "LangGraph **+** Cloud Run Jobs **+** Cloud Tasks" (3 cosas) | Cloud Run Jobs + Cloud Scheduler + tabla `agent_jobs` en Postgres como cola. Sin LangGraph (stack es Node ESM, LangGraph es Python-first). |
-| `customer_events.source_ref UNIQUE` | UNIQUE simple | UNIQUE compuesto `(channel, source_ref)` — el mismo ID puede repetirse entre canales. |
+| `customer_events.source_ref UNIQUE` | UNIQUE simple | `source_ref` pasa a `NOT NULL` + UNIQUE compuesto `(channel, source_ref)` — el mismo ID puede repetirse entre canales sin romper idempotencia. |
 | `agent-resolver` | Mencionado, sin algoritmo | Algoritmo definido (sec 4.4) + tabla `customer_aliases` para overrides manuales. |
 | Frontend fetching | "duda abierta" | `@tanstack/react-query` v5 (justificado en sec 6.2). |
 | Scoring | "Hourly, todos los clientes" | **Daily incremental** (solo clientes con eventos en últimas 24h) en SQL puro con window functions. Hourly solo para top-100 VIP. |
@@ -43,7 +43,7 @@
 
 **Impacto esperado:**
 - Reducir cotizaciones perdidas por falta de follow-up.
-- Priorización diaria automática (3 perfiles operativos: admin / operator / field).
+- Priorización diaria automática (3 niveles operativos: admin / write / read).
 - Base para automatizaciones de marketing.
 
 **Implementación:** Trabajo paralelo en branches por agente (sec 8.3), pero **sin agentes Python externos** ni LangGraph. Todo Node ESM dentro del servicio `panelin-calc` + Cloud Run Jobs siblings.
@@ -171,7 +171,7 @@ create table clientes.customer_events (
   event_type text not null,          -- 'message','quote','purchase','visit','call','login','status_change'
   payload jsonb not null default '{}',
   occurred_at timestamptz not null,
-  source_ref text,
+  source_ref text not null,
   ingested_at timestamptz not null default now(),
   unique (channel, source_ref)       -- ← UNIQUE compuesto, idempotencia por canal
 ) partition by range (occurred_at);
@@ -313,7 +313,7 @@ Pipeline:
 [Shopify API]         ─┘                              └──► customer_field_provenance
 ```
 
-**Idempotencia:** `customer_events.source_ref` UNIQUE por canal. Re-runs no duplican.
+**Idempotencia:** `customer_events.source_ref` es `NOT NULL` y UNIQUE por canal. Re-runs no duplican (si una fuente no trae ID, el ingestor genera una `source_ref` determinística).
 
 **Conflictos de campos:** cada cambio escribe a `customer_field_provenance`. La regla de precedencia (sec 4.4) decide cuál se promueve a `customers.<field>`.
 
@@ -422,19 +422,19 @@ src/modules/clientes/
 
 Routing: `/clientes` y `/clientes/:id`.
 
-### 6.3 Vistas por perfil `[v2: vía role_grants]`
+### 6.3 Vistas por perfil `[v2: vía module_grants]`
 
-`identity.role_grants` extendido con `module='clientes'`:
+`identity.modules` + `identity.module_grants`:
 
 | Grant | Vista por defecto | Acciones primarias |
 |---|---|---|
-| `clientes.admin` | Dashboard completo + tabla full | Todo |
-| `clientes.operator` | Tabla filtrada (pagos pendientes) + fichas | Marcar pagos, notas admin |
-| `clientes.field` | Mobile-first: lista de visitas + ficha simplificada | Confirmar visita, agregar nota campo |
+| `clientes.admin` (`level='admin'`) | Dashboard completo + tabla full | Todo |
+| `clientes.write` (`level='write'`) | Tabla filtrada (pagos pendientes) + fichas | Marcar pagos, notas admin |
+| `clientes.read` (`level='read'`) | Mobile-first: lista de visitas + ficha simplificada | Confirmar visita, agregar nota campo |
 
-**Implementación:** middleware `requireGrant('clientes', ['admin','operator','field'])` en routers. Frontend lee grants vía `useBmcAuth()` y renderiza variantes del mismo módulo.
+**Implementación:** registrar `clientes` en `identity.modules`, otorgar niveles en `identity.module_grants`, y proteger routers con `requireUser({ module: 'clientes', minLevel: 'read'|'write'|'admin' })`. Frontend lee `user.modules.clientes` vía `useBmcAuth()` y renderiza variantes del mismo módulo.
 
-Mapeo nominal a usuarios reales (no en código, vía seed): Matias→admin, Sandra→operator, Ramiro→field.
+Mapeo nominal a usuarios reales (no en código, vía seed): Matias→`admin`, Sandra→`write`, Ramiro→`read`.
 
 ### 6.4 Componentes clave (sin cambios respecto v1)
 ScoreGauge SVG · TimelineUnificado vertical con icono por canal · 5 botones de Acciones Rápidas.
@@ -572,7 +572,7 @@ Step 3 (en Phase 3):
 
 - [ ] **Auditoría e inventario** de lo existente (followups, wa-package, ml-crm-sync, crmSearch, quoteRegistry, clientQuotesSheetSync). Output: `docs/clientes-360/EXISTING-CRM-MAPPING.md`.
 - [ ] Migration `20260508000001_clientes_360_init.sql` (8 tablas + 2 auxiliares de jobs).
-- [ ] Seed de grants `clientes.{admin,operator,field}` para usuarios actuales.
+- [ ] Seed de grants `clientes.{admin,write,read}` para usuarios actuales.
 - [ ] `agent-sync-postgres-existing`: lee wa-package + quoteRegistry → events.
 - [ ] `agent-resolver` con algoritmo de sec 4.4 (sin fuzzy aún, solo match fuerte).
 - [ ] Routers: `clientes/customers.js`, `clientes/events.js`, `clientes/followups.js`.
@@ -590,7 +590,7 @@ Step 3 (en Phase 3):
 - [ ] `agent-sync-shopify` (lee orders).
 - [ ] `agent-automation` engine + 5 reglas iniciales.
 - [ ] Dashboard general (9 cards).
-- [ ] Vistas diferenciadas por grant (admin/operator/field).
+- [ ] Vistas diferenciadas por grant (admin/write/read).
 - [ ] Scoring v2 (3 factores adicionales: cantidad, expansión, riesgo).
 - [ ] Fuzzy match en `agent-resolver` + UI manual review.
 
@@ -640,7 +640,7 @@ Step 3 (en Phase 3):
 - **Riesgo:** `recency > 180d AND score > 60`.
 - **Escenario:** `solo_techo|techo_fachada|solo_fachada|camara_frig`.
 - **E.164:** formato internacional de phone (`598XXXXXXXX` para Uruguay, sin `+`).
-- **Grant:** registro en `identity.role_grants` que autoriza un rol dentro de un módulo.
+- **Grant:** registro en `identity.module_grants` que autoriza un `level` sobre un módulo (catálogo en `identity.modules`).
 - **Provenance:** registro de qué fuente proveyó qué valor de qué campo en qué momento.
 
 ## Apéndice B — Referencias internas (sin URLs externas)
