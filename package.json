@@ -63,6 +63,7 @@
     "test:wa-pro": "node tests/wa-config.test.js && node tests/wa-operator-auth.test.js && node tests/wa-rules.test.js && node tests/wa-webhooks.test.js && node tests/wa-sla.test.js",
     "test:chat": "node tests/chat-hardening.js",
     "test:contracts": "node scripts/validate-api-contracts.js",
+    "test:agent-golden": "node tests/agentGolden/runner.mjs",
     "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
     "verify-tabs": "node scripts/verify-sheets-tabs.js",
     "setup-sheets-tabs": "node scripts/setup-sheets-tabs.js",

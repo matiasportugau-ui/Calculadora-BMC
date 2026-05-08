@@ -1,0 +1,19 @@
+{
+  "id": "02-comparar-listas",
+  "description": "comparar_listas tool fires; verified_quote.kind=comparar_listas with both sides populated.",
+  "calcState": "solo-techo",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Para un techo de 6m × 4m con ISODEC EPS 100mm, una agua, pendiente 5%, comparame el total en lista web vs lista venta usando comparar_listas." }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "tool_called", "name": "comparar_listas" },
+    { "type": "verified_quote_emitted" },
+    { "type": "verified_quote_field_eq", "field": "kind", "value": "comparar_listas" },
+    { "type": "verified_quote_field_eq", "field": "iva_pct", "value": 22 }
+  ],
+  "timeoutMs": 90000
+}
