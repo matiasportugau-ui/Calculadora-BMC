@@ -171,7 +171,7 @@ create table clientes.customer_events (
   event_type text not null,          -- 'message','quote','purchase','visit','call','login','status_change'
   payload jsonb not null default '{}',
   occurred_at timestamptz not null,
-  source_ref text not null,
+  source_ref text not null,          -- si la fuente no trae ID, el ingestor genera un ref determinístico
   ingested_at timestamptz not null default now(),
   unique (channel, source_ref)       -- ← UNIQUE compuesto, idempotencia por canal
 ) partition by range (occurred_at);

@@ -166,6 +166,7 @@ Los routers de `clientes` usan `requireUser({ module: 'clientes', minLevel: 'adm
 
 ```sql
 -- Asume identity.users ya tiene a los 3 usuarios.
+-- Asume infraestructura identity ya aplicada (incluye tabla identity.modules).
 INSERT INTO identity.modules (module, display_name, category)
 VALUES ('clientes', 'Clientes 360', 'crm')
 ON CONFLICT (module) DO NOTHING;
