@@ -32,6 +32,7 @@ import { clearKnowledgeCache } from "../lib/knowledgeLoader.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import { loadConversationById } from "../lib/conversationLog.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
+import { buildKbAnalytics, clearAnalyticsCache } from "../lib/kbAnalytics.js";
 
 const router = Router();
 
@@ -430,6 +431,28 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, asyn
 
   const done = results.filter((r) => r.ok).length;
   res.json({ ok: true, processed: targets.length, generated: done, failed: results.filter((r) => !r.ok).length, results });
+});
+
+/**
+ * GET /api/agent/training-kb/analytics
+ * Compute KB analytics: coverage, health, trends, miss analysis.
+ * Query params:
+ *   - days=N (default 30, max 365)
+ *   - include=kb,knowledge_events (comma-separated; default "kb")
+ */
+router.get("/agent/training-kb/analytics", requireDevModeAuth, async (req, res) => {
+  try {
+    const daysBack = Math.max(1, Math.min(Number(req.query.days || 30), config.kbAnalyticsWindowMaxDays));
+    const includeParam = String(req.query.include || "kb")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const result = await buildKbAnalytics({ daysBack, include: includeParam });
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 export default router;

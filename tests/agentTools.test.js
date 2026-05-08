@@ -123,6 +123,8 @@ group("AGENT_TOOLS surface", () => {
     "obtener_pdf_html",
     "programar_seguimiento",
     "historial_cliente",
+    "leer_crm_taxonomia",
+    "escribir_crm_taxonomia",
     "wolfboard_pendientes",
     "wolfboard_export",
     "wolfboard_sync",

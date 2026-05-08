@@ -27,7 +27,8 @@ import {
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
 import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit, resolveTrainingAnswer } from "../lib/trainingKB.js";
-import { normalizeSurface } from "../lib/kbSurface.js";
+import { normalizeSurface as kbSurfaceForTraining } from "../lib/kbSurface.js";
+import { normalizeSurface as canonicalBrandSurface, surfaceToChannel, SURFACES } from "../lib/surface.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
@@ -483,10 +484,26 @@ router.post("/agent/chat", async (req, res) => {
     aiModel: rawAiModel,
     conversationId: rawConvId,
     thinkingMode = false,
+    channel: rawChannel,
     surface: rawSurface,
   } = req.body || {};
-  // Multi-canal: whitelist + default panelin_chat. Brief §6.1.
-  const surface = normalizeSurface(rawSurface);
+  // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
+  // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
+  const brandHints =
+    rawSurface != null && String(rawSurface).trim() !== ""
+      ? rawSurface
+      : { channel: rawChannel, origen: req.body?.origen, observaciones: req.body?.observaciones };
+  const brandCanonical = canonicalBrandSurface(brandHints);
+  const channel = brandCanonical
+    ? surfaceToChannel(brandCanonical)
+    : (["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat");
+  const surface = brandCanonical
+    ? kbSurfaceForTraining(
+        brandCanonical === SURFACES.INSTAGRAM || brandCanonical === SURFACES.FACEBOOK
+          ? "whatsapp"
+          : brandCanonical,
+      )
+    : kbSurfaceForTraining(rawSurface);
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
@@ -701,7 +718,7 @@ router.post("/agent/chat", async (req, res) => {
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
