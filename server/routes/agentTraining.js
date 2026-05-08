@@ -11,6 +11,7 @@ import {
   findAllConflicts,
   findRelevantExamples,
   getHealthEntries,
+  getTrainingAnalytics,
   getTrainingPaths,
   getTrainingStats,
   hasSimilarQuestion,
@@ -271,6 +272,30 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
     res.json({ ok: true, entry });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
+// ─── Analytics (F4) ───────────────────────────────────────────────────────────
+//
+// Pre-computed aggregates for the Admin "Salud KB" panel — saves the client
+// from having to derive bySurface coverage and retrievalTrend from the raw
+// /training-kb response. Brief: docs/team/panelsim/knowledge/KB-MULTICANAL-DESIGN-V2.md §6.6.
+//
+// Query params:
+//   days             — window for retrievalTrend + topQueries. Default 14, capped at 90.
+//   topQueriesLimit  — max rows in topQueries. Default 20, capped at 100.
+
+router.get("/agent/training-kb/analytics", requireDevModeAuth, async (req, res) => {
+  try {
+    await ensureGcsInit();
+    const rawDays = Number(req.query?.days);
+    const days = Math.max(1, Math.min(90, Number.isFinite(rawDays) ? rawDays : 14));
+    const rawLimit = Number(req.query?.topQueriesLimit);
+    const topQueriesLimit = Math.max(1, Math.min(100, Number.isFinite(rawLimit) ? rawLimit : 20));
+    const data = getTrainingAnalytics({ days, topQueriesLimit });
+    res.json({ ok: true, ...data, window: { days, topQueriesLimit } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || String(err) });
   }
 });
 

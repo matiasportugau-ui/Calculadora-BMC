@@ -14,6 +14,8 @@ const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
 const KB_VERSION = "1.0.0";
 
+const MS_PER_DAY = 86_400_000;
+
 // ─── GCS persistence (Cloud Run) ─────────────────────────────────────────────
 // Cloud Run filesystem is ephemeral — every deploy loses local writes.
 // When running in Cloud Run (K_SERVICE env set) and GCS_KB_BUCKET is configured,
@@ -527,6 +529,178 @@ export function getTrainingStats() {
       mlGap,           // goodAnswer too long for ML channel, no override
       score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3),
     },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Per-surface coverage metrics (F4 / Brief §6.6).
+ *
+ * For each non-default surface, count entries that:
+ *   - have an override (responses[surface] or legacy goodAnswer{ML,WA})
+ *   - are eligible for an override (active + non-permanent + canonical
+ *     answer too long for the surface limit)
+ *
+ * The result lets the Admin compute coverage_pct = with_override / eligible.
+ *
+ * @returns {{
+ *   mercado_libre: { total_with_override: number, gap_count: number, eligible: number, coverage_pct: number },
+ *   whatsapp:      { total_with_override: number, gap_count: number, eligible: number, coverage_pct: number },
+ *   email:         { total_with_override: number, gap_count: number, eligible: number, coverage_pct: number }
+ * }}
+ */
+export function getSurfaceCoverage() {
+  const kb = loadTrainingKB();
+  // Exclude archived, permanent, and non-active entries — permanent entries
+  // don't need surface overrides so they are excluded from eligibility, matching
+  // the JSDoc contract ("active + non-permanent + canonical answer too long").
+  const active = kb.entries.filter(
+    (e) => !e.archived && !e.permanent && (e.status == null || e.status === "active")
+  );
+
+  const SURFACE_TO_LEGACY = {
+    mercado_libre: "goodAnswerML",
+    whatsapp: "goodAnswerWA",
+    email: null,
+  };
+
+  const out = {};
+  for (const surface of Object.keys(SURFACE_TO_LEGACY)) {
+    const legacyField = SURFACE_TO_LEGACY[surface];
+    // Use the shared constant from kbSurface.js to avoid duplication and drift.
+    const limit = SURFACE_LIMITS[surface];
+
+    let withOverride = 0;
+    let eligible = 0;
+    for (const e of active) {
+      const isLong = (e.goodAnswer || "").length > limit;
+      if (!isLong) continue;
+      // Only count eligible entries — prevents coverage_pct from exceeding 100.
+      eligible++;
+      const hasMapOverride = !!(e.responses && typeof e.responses === "object" && e.responses[surface]);
+      const hasLegacy = !!(legacyField && e[legacyField]);
+      if (hasMapOverride || hasLegacy) withOverride++;
+    }
+    const gap = Math.max(0, eligible - withOverride);
+    const coveragePct = eligible === 0 ? 100 : Math.round((withOverride / eligible) * 100);
+
+    out[surface] = {
+      total_with_override: withOverride,
+      gap_count: gap,
+      eligible,
+      coverage_pct: coveragePct,
+    };
+  }
+  return out;
+}
+
+/**
+ * Daily retrieval trend over the last `days` days, as `[{ date, count }]`
+ * sorted oldest → newest. Counts are based on `entry.lastRetrievedAt` only,
+ * so the series only reflects ONE retrieval per entry per period (the
+ * latest). For full per-turn aggregation we'd need session JSONLs — see
+ * getTopQueries for that path.
+ *
+ * @param {{ days?: number }} [opts]
+ * @returns {Array<{ date: string, count: number }>}
+ */
+export function getRetrievalTrend({ days = 14 } = {}) {
+  const kb = loadTrainingKB();
+  const buckets = new Map(); // YYYY-MM-DD → count
+  // Snap to UTC midnight so bucket keys align with the calendar-day slices of
+  // lastRetrievedAt ISO strings, regardless of the server's local timezone.
+  const todayMidnightMs = new Date().setUTCHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(todayMidnightMs - i * MS_PER_DAY);
+    buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const e of kb.entries) {
+    if (!e.lastRetrievedAt) continue;
+    const day = String(e.lastRetrievedAt).slice(0, 10);
+    if (buckets.has(day)) buckets.set(day, buckets.get(day) + 1);
+  }
+  return [...buckets.entries()].map(([date, count]) => ({ date, count }));
+}
+
+/**
+ * Aggregated top user queries from session JSONL files over the last `days`
+ * days. Each row is a query string + occurrence count + a `hasMatch` flag
+ * derived from whether ANY session event for that query reported at least
+ * one matched KB entry.
+ *
+ * Falls back to an empty array if no sessions are available (sessionsDir
+ * missing or unreadable). Never throws.
+ *
+ * @param {{ days?: number, limit?: number }} [opts]
+ * @returns {Array<{ query: string, count: number, hasMatch: boolean }>}
+ */
+export function getTopQueries({ days = 14, limit = 20 } = {}) {
+  if (!fs.existsSync(sessionsDir)) return [];
+  const cutoff = new Date(Date.now() - days * MS_PER_DAY).toISOString();
+  const counts = new Map(); // normalizedQuery → { raw, count, hasMatch }
+
+  let files;
+  try {
+    // Only load files whose date portion falls within the requested window.
+    // Session files are named SESSION-YYYY-MM-DD.jsonl, so we can derive the
+    // earliest expected date and skip files older than the window entirely.
+    const cutoffFileDate = new Date(Date.now() - days * MS_PER_DAY).toISOString().slice(0, 10);
+    files = fs.readdirSync(sessionsDir).filter(
+      (f) => f.startsWith("SESSION-") && f.endsWith(".jsonl") && f.slice(8, 18) >= cutoffFileDate
+    );
+  }
+  catch { return []; }
+
+  for (const f of files) {
+    let content;
+    try { content = fs.readFileSync(path.join(sessionsDir, f), "utf8"); }
+    catch { continue; }
+    const lines = content.split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      let row;
+      try { row = JSON.parse(trimmed); }
+      catch { continue; }
+      if (!row.ts || row.ts < cutoff) continue;
+      const q = row.query || row.question || row.user_message;
+      if (typeof q !== "string" || !q.trim()) continue;
+      const norm = q.trim().toLowerCase().slice(0, 200);
+      const matchedCount = Number(row.matchedCount ?? row.matches?.length ?? 0);
+      const prev = counts.get(norm);
+      if (prev) {
+        prev.count++;
+        if (matchedCount > 0) prev.hasMatch = true;
+      } else {
+        counts.set(norm, { raw: q.trim().slice(0, 200), count: 1, hasMatch: matchedCount > 0 });
+      }
+    }
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((row) => ({ query: row.raw, count: row.count, hasMatch: row.hasMatch }));
+}
+
+/**
+ * Bundles all analytics for the GET /agent/training-kb/analytics endpoint.
+ * Composed from existing helpers + the F4 additions above.
+ *
+ * @param {{ days?: number, topQueriesLimit?: number }} [opts]
+ */
+export function getTrainingAnalytics({ days = 14, topQueriesLimit = 20 } = {}) {
+  const stats = getTrainingStats();
+  return {
+    byCategory: stats.byCategory,
+    bySource: stats.bySource,
+    bySurface: getSurfaceCoverage(),
+    retrievalTrend: getRetrievalTrend({ days }),
+    topQueries: getTopQueries({ days, limit: topQueriesLimit }),
+    conflicts: { count: findAllConflicts().length },
+    health: stats.health,
+    total: stats.total,
+    pending: stats.pending,
     updatedAt: new Date().toISOString(),
   };
 }
