@@ -609,7 +609,7 @@ export function getRetrievalTrend({ days = 14 } = {}) {
   const buckets = new Map(); // YYYY-MM-DD → count
   // Snap to UTC midnight so bucket keys align with the calendar-day slices of
   // lastRetrievedAt ISO strings, regardless of the server's local timezone.
-  const todayMidnightMs = (() => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.getTime(); })();
+  const todayMidnightMs = new Date().setUTCHours(0, 0, 0, 0);
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(todayMidnightMs - i * MS_PER_DAY);
     buckets.set(d.toISOString().slice(0, 10), 0);
