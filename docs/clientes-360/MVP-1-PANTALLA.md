@@ -171,6 +171,7 @@ A los **30 días** post-deploy del MVP:
 | 9 cards de dashboard | Una tabla alcanza |
 | Vistas por rol (admin/operator/field) | Sandra es la única usuaria |
 | 4 bloqueantes de seguridad (HMAC ML, HMAC WA, etc.) | Phase 2 según v2 brief; MVP no expone webhooks |
+| Martin / Ramiro como usuarios | Phase 2 — entrar al panel sin entrevistar su workflow corrompe la métrica del experimento (N=1 controlado vs N=2 ambiguo) |
 | Migración `followUpStore.json` → Postgres | Legacy sigue funcionando, no la rompas |
 | Sync con Sheets / ML / Shopify | Phase 2; MVP usa solo Postgres existente |
 | Email digest diario | Phase 3 |
@@ -198,7 +199,7 @@ A los **30 días** post-deploy del MVP:
 Antes de Día 1:
 
 1. **¿Aprobás este alcance?** (Sí / "agregar X" / "cambiar Y" / no)
-2. **Email de Sandra** (para el grant `clientes.write`).
+2. **Email de Sandra** — ✅ confirmado: `sandra@bmc.com` (fuente: `docs/bmc-dashboard-modernization/Code.gs:142-146`, tab `EQUIPOS` del workbook CRM).
 3. **¿Aplico migration en branch Supabase, o creás un proyecto Supabase separado para staging?**
 4. **¿Mergeo PR #188 como draft → ready, o lo cierro y rehago en chunks más chicos?**
 
@@ -217,4 +218,23 @@ No se construye nada que no tenga métrica. Punto.
 - `docs/clientes-360/FEATURE-BRIEF-v2.md` — diseño completo (post-MVP)
 - `docs/clientes-360/EXISTING-CRM-MAPPING.md` — qué reusar de lo existente
 - `supabase/migrations/20260508000001_clientes_360_init.sql` — schema
+- `supabase/migrations/20260508000001_clientes_360_init_rollback.sql` — kill switch SQL
 - `server/lib/clientes/customerResolver.js` — algoritmo de resolución (ya en repo, usado en el seed del MVP)
+
+---
+
+## Apéndice B — Equipo BMC (referencia, no scope MVP)
+
+Fuente: `docs/bmc-dashboard-modernization/Code.gs` — tab `EQUIPOS` del workbook CRM.
+
+| Nombre | Email | Rol | Departamento | Grant Phase 1 (MVP) | Grant Phase 2 |
+|---|---|---|---|---|---|
+| Matías | `matias@bmc.com` | CEO | Dirección | `clientes.admin` (vía superadmin) | — |
+| **Sandra** | **`sandra@bmc.com`** | **Admin** | **Administración** | **`clientes.write`** | — |
+| Ramiro | `ramiro@bmc.com` | Vendedor | Ventas | — | `clientes.read` (mobile-first) |
+| Martin | `martin@bmc.com` | Vendedor | Ventas | — | `clientes.read` (oficina) |
+
+Notas:
+- Identity superadmin distinto: `matias@bmc.uy` (en `INTERNAL_SUPERADMIN_EMAILS`). Si el login Google de Matias usa `bmc.com`, hay que decidir cuál de los dos es la identidad canónica.
+- Sandra Sánchez aparece en `docs/google-sheets-module/FULL-SHEETS-AUDIT-RAW.json` con su nombre completo.
+- En Phase 2, antes de dar grant a Martin/Ramiro, **entrevistar 15 min cada uno** para confirmar que el panel les sirve. No asumir.
