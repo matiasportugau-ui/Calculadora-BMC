@@ -20,10 +20,11 @@ export default function AuthGateModal() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    function onGate(e) {
-      if (isAuthenticated) return; // already in
-      setReason(e?.detail?.reason || "wizard");
-      setOpen(true);
+    function onGate(_e) {
+      // Auth gate disabled app-wide — never block. Immediately resume any
+      // wizard flow that was awaiting the gate to close.
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-disabled" } }));
     }
     window.addEventListener("bmc-auth-gate-required", onGate);
     return () => window.removeEventListener("bmc-auth-gate-required", onGate);
