@@ -1,40 +1,39 @@
 #!/usr/bin/env node
 /**
- * Export curated BMC Google Sheets tabs to CSV files for RAG ingest.
+ * Export BMC Google Sheets tabs to CSV files for RAG ingest.
  *
- * Sources (numbered per /tmp/panelin-rag/HANDOFF-UNIFIED-LM.md §4):
- *   1a CRM_Operativo          ← BMC_SHEET_ID
- *   1d Metas_Ventas           ← BMC_SHEET_ID
- *   2a (first tab of Pagos)   ← BMC_PAGOS_SHEET_ID
+ * Mapping rule (memory: feedback_full_mapping_before_ingest.md):
+ *   - Never reference nonexistent tabs.
+ *   - The full per-workbook mapping comes from
+ *     `scripts/discover-sheets-mapping.mjs` → /tmp/panelin-rag/sheets-mapping.json.
+ *   - This script reads that mapping and ingests 100% of every tab in every
+ *     workbook listed in INGEST_SCOPE below.
  *
- * Output: /tmp/panelin-rag/sheets/*.csv (idempotent — overwrites on re-run)
+ * Output: /tmp/panelin-rag/sheets/<workbookNum>_<tabSlug>.csv
+ * Idempotent — overwrites on re-run.
  *
  * Auth: GOOGLE_APPLICATION_CREDENTIALS (service account JSON path).
  */
 
 import 'dotenv/config';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { google } from 'googleapis';
 
 const OUT_DIR = '/tmp/panelin-rag/sheets';
+const MAPPING_PATH = '/tmp/panelin-rag/sheets-mapping.json';
 
-const TARGETS = [
-  {
-    name: '1a_CRM_Operativo',
-    spreadsheetEnv: 'BMC_SHEET_ID',
-    tabTitle: 'CRM_Operativo',
-  },
-  {
-    name: '1d_Metas_Ventas',
-    spreadsheetEnv: 'BMC_SHEET_ID',
-    tabTitle: 'Metas_Ventas',
-  },
-  {
-    name: '2a_Pagos_Pendientes_2026',
-    spreadsheetEnv: 'BMC_PAGOS_SHEET_ID',
-    tabTitle: null, // first tab — resolved at runtime
-  },
-];
+// Workbooks to fully ingest. Tabs are resolved from the mapping JSON, so
+// nonexistent or renamed tabs cannot leak in.
+const INGEST_SCOPE = ['BMC_SHEET_ID', 'BMC_PAGOS_SHEET_ID'];
+
+const slug = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60) || 'untitled';
 
 function csvEscape(cell) {
   const s = cell == null ? '' : String(cell);
@@ -43,18 +42,6 @@ function csvEscape(cell) {
 
 function rowsToCsv(rows) {
   return rows.map((r) => r.map(csvEscape).join(',')).join('\n') + '\n';
-}
-
-async function getFirstTabTitle(sheets, spreadsheetId) {
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets(properties(title,index))',
-  });
-  const first = (meta.data.sheets ?? []).sort(
-    (a, b) => (a.properties.index ?? 0) - (b.properties.index ?? 0),
-  )[0];
-  if (!first) throw new Error(`No tabs found in spreadsheet ${spreadsheetId}`);
-  return first.properties.title;
 }
 
 async function fetchTab(sheets, spreadsheetId, tabTitle) {
@@ -67,12 +54,21 @@ async function fetchTab(sheets, spreadsheetId, tabTitle) {
   return res.data.values ?? [];
 }
 
+async function loadMapping() {
+  if (!existsSync(MAPPING_PATH)) {
+    throw new Error(
+      `Mapping not found at ${MAPPING_PATH}. Run scripts/discover-sheets-mapping.mjs first.`,
+    );
+  }
+  return JSON.parse(await readFile(MAPPING_PATH, 'utf8'));
+}
+
 async function main() {
-  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!credPath) {
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     throw new Error('GOOGLE_APPLICATION_CREDENTIALS is not set in .env');
   }
 
+  const mapping = await loadMapping();
   const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
   });
@@ -81,35 +77,35 @@ async function main() {
   await mkdir(OUT_DIR, { recursive: true });
 
   const summary = [];
-  for (const t of TARGETS) {
-    const spreadsheetId = process.env[t.spreadsheetEnv];
-    if (!spreadsheetId) {
-      console.error(`SKIP ${t.name} — env ${t.spreadsheetEnv} is missing`);
-      summary.push({ ...t, status: 'skipped: env missing' });
+  for (const wb of mapping.workbooks) {
+    if (!INGEST_SCOPE.includes(wb.envId)) continue;
+    if (wb.status !== 'ok') {
+      console.error(`SKIP ${wb.envId} — ${wb.status}`);
+      summary.push({ envId: wb.envId, status: `skipped: ${wb.status}` });
       continue;
     }
-
-    try {
-      const tabTitle =
-        t.tabTitle ?? (await getFirstTabTitle(sheets, spreadsheetId));
-      const rows = await fetchTab(sheets, spreadsheetId, tabTitle);
-      const csv = rowsToCsv(rows);
-      const outPath = `${OUT_DIR}/${t.name}.csv`;
-      await writeFile(outPath, csv, 'utf8');
-      console.log(
-        `OK  ${t.name.padEnd(28)} → ${outPath} (${rows.length} rows, tab="${tabTitle}")`,
-      );
-      summary.push({ ...t, status: 'ok', rows: rows.length, outPath });
-    } catch (err) {
-      console.error(`FAIL ${t.name} — ${err.message}`);
-      summary.push({ ...t, status: `fail: ${err.message}` });
+    const id = process.env[wb.envId];
+    for (const tab of wb.tabs) {
+      const name = `${wb.num}_${slug(tab.title)}`;
+      try {
+        const rows = await fetchTab(sheets, id, tab.title);
+        const csv = rowsToCsv(rows);
+        const outPath = `${OUT_DIR}/${name}.csv`;
+        await writeFile(outPath, csv, 'utf8');
+        console.log(
+          `OK  ${name.padEnd(50)} → ${outPath} (${rows.length} rows, tab="${tab.title}")`,
+        );
+        summary.push({ workbook: wb.envId, tab: tab.title, status: 'ok', rows: rows.length, outPath });
+      } catch (err) {
+        console.error(`FAIL ${name} (tab="${tab.title}") — ${err.message}`);
+        summary.push({ workbook: wb.envId, tab: tab.title, status: `fail: ${err.message}` });
+      }
     }
   }
 
   const failures = summary.filter((s) => s.status?.startsWith('fail'));
-  if (failures.length) {
-    process.exitCode = 1;
-  }
+  console.log(`\n${summary.length} tabs processed, ${failures.length} failures.`);
+  if (failures.length) process.exitCode = 1;
 }
 
 main().catch((err) => {
