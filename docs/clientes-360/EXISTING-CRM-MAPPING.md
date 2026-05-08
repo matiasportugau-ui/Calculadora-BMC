@@ -172,6 +172,7 @@ VALUES ('clientes', 'Clientes 360', 'crm')
 ON CONFLICT (module) DO NOTHING;
 
 INSERT INTO identity.module_grants (user_id, module, level)
+-- Reemplazar <admin-email-interno> por el email real antes de ejecutar en deploy.
 SELECT user_id, 'clientes', 'admin' FROM identity.users WHERE email = '<admin-email-interno>';
 -- repetir para sandra (write), ramiro (read).
 ```

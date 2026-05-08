@@ -24,7 +24,7 @@
 | Followups | "Crear `customer_followups`" | Ya existe `server/routes/followups.js` con `followUpStore.js` (JSON local). Migrar a Postgres en Phase 1, **no paralelizar dos sistemas**. |
 | CRM existente | Greenfield | Ya existe `ml-crm-sync.js`, `crmSearch.js`, `crmTaxonomy.js`, `quoteRegistry.js`, `bmc-dashboard-modernization/`. Phase 1 incluye **inventario + mapeo**. |
 | Orquestación | "LangGraph **+** Cloud Run Jobs **+** Cloud Tasks" (3 cosas) | Cloud Run Jobs + Cloud Scheduler + tabla `agent_jobs` en Postgres como cola. Sin LangGraph (stack es Node ESM, LangGraph es Python-first). |
-| `customer_events.source_ref UNIQUE` | UNIQUE simple | `source_ref` pasa a `NOT NULL` + UNIQUE compuesto `(channel, source_ref)` — el mismo ID puede repetirse entre canales sin romper idempotencia. |
+| `customer_events.source_ref UNIQUE` | UNIQUE simple | En el diseño v2, `source_ref` se define como `NOT NULL` + UNIQUE compuesto `(channel, source_ref)` — el mismo ID puede repetirse entre canales sin romper idempotencia. |
 | `agent-resolver` | Mencionado, sin algoritmo | Algoritmo definido (sec 4.4) + tabla `customer_aliases` para overrides manuales. |
 | Frontend fetching | "duda abierta" | `@tanstack/react-query` v5 (justificado en sec 6.2). |
 | Scoring | "Hourly, todos los clientes" | **Daily incremental** (solo clientes con eventos en últimas 24h) en SQL puro con window functions. Hourly solo para top-100 VIP. |
