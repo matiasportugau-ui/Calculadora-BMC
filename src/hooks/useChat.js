@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { mapErrorMessage } from "../utils/chatErrors.js";
 
@@ -97,6 +97,8 @@ function saveHistory(messages) {
  *   devAuthToken?: string,
  *   persistHistory?: boolean,
  * }} opts
+ * When the API sets `PANELIN_RELAX_DEV_AUTH`, GET /capabilities returns `panelin_relax_dev_auth: true`
+ * and dev routes accept requests without API_AUTH_TOKEN (local dev only).
  * @returns {{ messages, isStreaming, aiProvider, aiModel, setAiProvider, setAiModel, setAiSelection, aiOptions, aiOptionsError, send, stop, retry, clear, error, ... }}
  */
 export function useChat({
@@ -118,6 +120,8 @@ export function useChat({
   const [{ aiProvider, aiModel }, setAiSelectionState] = useState(loadAiSelection);
   const [aiOptions, setAiOptions] = useState(null);
   const [aiOptionsError, setAiOptionsError] = useState(null);
+  /** Mirrors server `PANELIN_RELAX_DEV_AUTH` (see GET /capabilities `panelin_relax_dev_auth`). */
+  const [relaxDevAuth, setRelaxDevAuth] = useState(false);
   const abortRef = useRef(null);
   // Keep a ref to messages so send()/retry() closures see current history
   const messagesRef = useRef(messages);
@@ -148,6 +152,30 @@ export function useChat({
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const apiBase = getCalcApiBase();
+        const res = await fetch(`${apiBase}/capabilities`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data && typeof data.panelin_relax_dev_auth === "boolean") {
+          setRelaxDevAuth(Boolean(data.panelin_relax_dev_auth));
+        }
+      } catch {
+        // ignore — dev token flow still works when API_AUTH_TOKEN is configured
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const devApisAuthorized = useMemo(() => {
+    if (!devMode) return false;
+    if (relaxDevAuth) return true;
+    return Boolean(String(devAuthToken || "").trim());
+  }, [devMode, relaxDevAuth, devAuthToken]);
 
   const setAiProvider = useCallback((p) => {
     setAiSelectionState((prev) => {
@@ -211,7 +239,7 @@ export function useChat({
   // Auto-load dev panel data when devMode activates — no manual reload clicks needed
   const devAutoLoadedRef = useRef(false);
   useEffect(() => {
-    if (!devMode || !devAuthToken) {
+    if (!devMode || !devApisAuthorized) {
       devAutoLoadedRef.current = false;
       return;
     }
@@ -223,17 +251,18 @@ export function useChat({
       reloadPromptPreview().catch(() => {}),
     ]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devMode, devAuthToken]);
+  }, [devMode, devApisAuthorized]);
 
   const buildDevAuthHeaders = useCallback(() => {
-    if (!devMode || !devAuthToken) return {};
-    const t = String(devAuthToken).trim();
+    if (!devMode) return {};
+    if (relaxDevAuth) return {};
+    const t = String(devAuthToken || "").trim();
     if (!t) return {};
     return {
       Authorization: `Bearer ${t}`,
       "X-Api-Key": t,
     };
-  }, [devMode, devAuthToken]);
+  }, [devMode, devAuthToken, relaxDevAuth]);
 
   const send = useCallback(
     async (userText) => {
@@ -419,7 +448,7 @@ export function useChat({
   }, []);
 
   const reloadTrainingKB = useCallback(async () => {
-    if (!devMode || !devAuthToken) return null;
+    if (!devMode || !devApisAuthorized) return null;
     const apiBase = getCalcApiBase();
     const res = await fetch(`${apiBase}/api/agent/training-kb`, {
       method: "GET",
@@ -430,7 +459,7 @@ export function useChat({
     setTrainingEntries(data.entries || []);
     setTrainingStats(data.stats || { total: 0 });
     return data;
-  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+  }, [devMode, devApisAuthorized, buildDevAuthHeaders]);
 
   const saveCorrection = useCallback(
     async ({ category, question, badAnswer, goodAnswer, context, allowDuplicate = false, force = false }) => {
@@ -480,7 +509,7 @@ export function useChat({
   }, [conversationId]);
 
   const bulkDeleteKB = useCallback(async (ids) => {
-    if (!devMode || !devAuthToken || !Array.isArray(ids) || ids.length === 0) return null;
+    if (!devMode || !devApisAuthorized || !Array.isArray(ids) || ids.length === 0) return null;
     const apiBase = getCalcApiBase();
     const res = await fetch(`${apiBase}/api/agent/train/bulk`, {
       method: "DELETE",
@@ -490,10 +519,10 @@ export function useChat({
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     await reloadTrainingKB();
     return res.json();
-  }, [devMode, devAuthToken, buildDevAuthHeaders, reloadTrainingKB]);
+  }, [devMode, devApisAuthorized, buildDevAuthHeaders, reloadTrainingKB]);
 
   const bulkArchiveKB = useCallback(async (ids) => {
-    if (!devMode || !devAuthToken || !Array.isArray(ids) || ids.length === 0) return null;
+    if (!devMode || !devApisAuthorized || !Array.isArray(ids) || ids.length === 0) return null;
     const apiBase = getCalcApiBase();
     const res = await fetch(`${apiBase}/api/agent/train/bulk`, {
       method: "PATCH",
@@ -503,10 +532,10 @@ export function useChat({
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     await reloadTrainingKB();
     return res.json();
-  }, [devMode, devAuthToken, buildDevAuthHeaders, reloadTrainingKB]);
+  }, [devMode, devApisAuthorized, buildDevAuthHeaders, reloadTrainingKB]);
 
   const loadConversationList = useCallback(async ({ days = 30, page = 1, limit = 20 } = {}) => {
-    if (!devMode || !devAuthToken) return null;
+    if (!devMode || !devApisAuthorized) return null;
     const apiBase = getCalcApiBase();
     const params = new URLSearchParams({ days, page, limit });
     const res = await fetch(`${apiBase}/api/agent/conversations?${params}`, {
@@ -514,20 +543,20 @@ export function useChat({
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
-  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+  }, [devMode, devApisAuthorized, buildDevAuthHeaders]);
 
   const loadConversationAnalysis = useCallback(async (convId) => {
-    if (!devMode || !devAuthToken || !convId) return null;
+    if (!devMode || !devApisAuthorized || !convId) return null;
     const apiBase = getCalcApiBase();
     const res = await fetch(`${apiBase}/api/agent/conversations/${convId}/analysis`, {
       headers: buildDevAuthHeaders(),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
-  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+  }, [devMode, devApisAuthorized, buildDevAuthHeaders]);
 
   const reloadPromptPreview = useCallback(async () => {
-    if (!devMode || !devAuthToken) return null;
+    if (!devMode || !devApisAuthorized) return null;
     const apiBase = getCalcApiBase();
     const q = [...messagesRef.current].reverse().find((m) => m.role === "user")?.content || "";
     const res = await fetch(`${apiBase}/api/agent/prompt-preview`, {
@@ -542,10 +571,10 @@ export function useChat({
     const data = await res.json();
     setPromptPreview(data.prompt || "");
     return data;
-  }, [devMode, devAuthToken, calcState, buildDevAuthHeaders]);
+  }, [devMode, devApisAuthorized, calcState, buildDevAuthHeaders]);
 
   const reloadPromptSections = useCallback(async () => {
-    if (!devMode || !devAuthToken) return null;
+    if (!devMode || !devApisAuthorized) return null;
     const apiBase = getCalcApiBase();
     const res = await fetch(`${apiBase}/api/agent/dev-config`, {
       method: "GET",
@@ -555,7 +584,7 @@ export function useChat({
     const data = await res.json();
     setPromptSections(data.sections || {});
     return data;
-  }, [devMode, devAuthToken, buildDevAuthHeaders]);
+  }, [devMode, devApisAuthorized, buildDevAuthHeaders]);
 
   const savePromptSection = useCallback(
     async ({ section, content }) => {
@@ -649,6 +678,7 @@ export function useChat({
     setAiSelection,
     aiOptions,
     aiOptionsError,
+    relaxDevAuth,
     send,
     stop,
     retry,

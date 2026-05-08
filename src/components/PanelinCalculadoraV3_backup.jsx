@@ -2564,17 +2564,17 @@ export default function PanelinCalculadoraV3() {
       return;
     }
     let token = String(devAuthToken || "").trim();
-    if (!token && typeof window !== "undefined") {
+    if (!token && !chat.relaxDevAuth && typeof window !== "undefined") {
       token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
     }
-    if (!token) return;
+    if (!chat.relaxDevAuth && !token) return;
     setDevAuthToken(token);
     setDevMode(true);
     if (typeof window !== "undefined") {
       sessionStorage.setItem("panelin-dev-token", token);
       sessionStorage.setItem("panelin-dev-mode", "1");
     }
-  }, [devMode, devAuthToken]);
+  }, [devMode, devAuthToken, chat.relaxDevAuth]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
