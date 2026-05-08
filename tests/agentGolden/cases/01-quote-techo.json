@@ -1,0 +1,25 @@
+{
+  "id": "01-quote-techo",
+  "description": "calcular_cotizacion fires for a fully-specified roof; verified_quote payload is single + lista=web + positive totals.",
+  "calcState": "solo-techo",
+  "request": {
+    "messages": [
+      { "role": "user", "content": "Cotizame ya un techo de 6m por 4m con ISODEC EPS 100mm, una agua, pendiente 5%, lista web. Pasame el total con IVA usando el cotizador." }
+    ],
+    "aiProvider": "auto",
+    "aiModel": ""
+  },
+  "asserts": [
+    { "type": "tool_called", "name": "calcular_cotizacion" },
+    { "type": "verified_quote_emitted" },
+    { "type": "verified_quote_field_eq", "field": "kind", "value": "single" },
+    { "type": "verified_quote_field_eq", "field": "lista", "value": "web" },
+    { "type": "verified_quote_field_eq", "field": "scenario", "value": "solo_techo" },
+    { "type": "verified_quote_field_gt", "field": "total_con_iva", "value": 0 },
+    { "type": "verified_quote_field_gt", "field": "subtotal_sin_iva", "value": 0 },
+    { "type": "verified_quote_field_eq", "field": "iva_pct", "value": 22 },
+    { "type": "verified_quote_field_gt", "field": "area_m2", "value": 0 },
+    { "type": "verified_quote_field_gt", "field": "cant_paneles", "value": 0 }
+  ],
+  "timeoutMs": 60000
+}

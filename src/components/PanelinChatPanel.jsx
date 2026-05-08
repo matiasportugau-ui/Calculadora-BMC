@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
+import TrustBlock from "./panelin/TrustBlock.jsx";
 import { useDictation } from "../hooks/useDictation.js";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 
@@ -990,6 +991,10 @@ export default function PanelinChatPanel({
                         </div>
                       ))}
                     </div>
+                  )}
+                  {/* Trust UI: cifras verificadas por el cotizador */}
+                  {!isUser && msg.verifiedQuote && (
+                    <TrustBlock verifiedQuote={msg.verifiedQuote} />
                   )}
                   {/* Action feedback badges */}
                   {!isUser && msg.actions?.length > 0 && (

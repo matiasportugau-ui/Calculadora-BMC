@@ -1,0 +1,180 @@
+#!/usr/bin/env node
+/**
+ * Auto-discover the tab mapping of configured BMC Google Sheets workbooks.
+ *
+ * Hard rule for ingestion safety:
+ *   - Never reference a nonexistent tab.
+ *   - Before any ingest, the mapping must be 100% verified.
+ *
+ * Cross-references the discovered reality against the code mappings declared
+ * in scripts/accessible-base-sync.js, so stale tab names surface immediately.
+ *
+ * Outputs:
+ *   /tmp/panelin-rag/sheets-mapping.json  — programmatic mapping (machine)
+ *   /tmp/panelin-rag/SHEETS-MAP.md         — human-readable summary
+ *
+ * Read-only, idempotent, re-runnable.
+ */
+
+import 'dotenv/config';
+import fs from 'node:fs/promises';
+import { google } from 'googleapis';
+
+const OUT_DIR = '/tmp/panelin-rag';
+
+// Workbook scope for BMC workbooks used by sync/ingest scripts.
+const WORKBOOKS = [
+  { num: 1, label: 'BMC crm_automatizado',         envId: 'BMC_SHEET_ID' },
+  { num: 2, label: 'Pagos Pendientes 2026',        envId: 'BMC_PAGOS_SHEET_ID' },
+  { num: 3, label: '2.0 - Ventas',                  envId: 'BMC_VENTAS_SHEET_ID' },
+  { num: 4, label: 'Stock E-Commerce',              envId: 'BMC_STOCK_SHEET_ID' },
+  { num: 5, label: 'Calendario de vencimientos',    envId: 'BMC_CALENDARIO_SHEET_ID' },
+  { num: 6, label: 'MATRIZ Costos y Ventas 2026',   envId: 'BMC_MATRIZ_SHEET_ID' },
+];
+
+// Tabs the codebase already references (aligned with scripts/accessible-base-sync.js).
+// NOTE: WOLFB_CRM_MAIN_TAB (originally introduced for WOLFB workbooks) is reused
+// here for compatibility with accessible-base-sync.
+// It allows overriding the CRM tab name when BMC_SHEET_ID
+// points to a workbook whose main CRM tab is not named "CRM_Operativo".
+const CODE_REFS = [
+  { envId: 'BMC_SHEET_ID',         tab: process.env.WOLFB_CRM_MAIN_TAB || 'CRM_Operativo', key: 'crm_operativo', optional: false },
+  { envId: 'BMC_SHEET_ID',         tab: 'Master_Cotizaciones',  key: 'master_cotizaciones',   optional: false },
+  { envId: 'BMC_SHEET_ID',         tab: 'Metas_Ventas',          key: 'metas_ventas',          optional: true  },
+  // audit_log is optional in accessible-base-sync because some reduced BMC
+  // workbook variants omit the AUDIT_LOG tab.
+  { envId: 'BMC_SHEET_ID',         tab: 'AUDIT_LOG',             key: 'audit_log',             optional: true  },
+  { envId: 'BMC_PAGOS_SHEET_ID',   tab: null /* first tab */,    key: 'pagos_pendientes',      optional: false },
+  { envId: 'BMC_VENTAS_SHEET_ID',  tab: null /* all tabs */,     key: 'ventas',                optional: false },
+  { envId: 'BMC_STOCK_SHEET_ID',   tab: null /* all tabs */,     key: 'stock',                 optional: false },
+  { envId: 'BMC_MATRIZ_SHEET_ID',  tab: 'BROMYROS',              key: 'matriz_precios',        optional: true  },
+];
+
+async function discoverWorkbook(sheets, wb) {
+  const id = process.env[wb.envId];
+  if (!id) return { ...wb, status: 'env_missing', tabs: [] };
+  try {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: id,
+      fields: 'properties.title,sheets(properties(title,index,gridProperties(rowCount,columnCount)))',
+    });
+    const tabs = (meta.data.sheets ?? [])
+      .sort((a, b) => (a.properties.index ?? 0) - (b.properties.index ?? 0))
+      .map((s) => ({
+        index: s.properties.index ?? 0,
+        title: s.properties.title,
+        rowCount: s.properties.gridProperties?.rowCount ?? 0,
+        columnCount: s.properties.gridProperties?.columnCount ?? 0,
+      }));
+    return {
+      ...wb,
+      status: 'ok',
+      title: meta.data.properties?.title ?? wb.label,
+      spreadsheetId: id,
+      tabs,
+    };
+  } catch (err) {
+    return { ...wb, status: `error: ${err.message}`, tabs: [] };
+  }
+}
+
+async function main() {
+  if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    throw new Error('GOOGLE_APPLICATION_CREDENTIALS missing in .env');
+  }
+  const auth = new google.auth.GoogleAuth({
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  await fs.mkdir(OUT_DIR, { recursive: true });
+
+  const discovered = await Promise.all(WORKBOOKS.map((wb) => discoverWorkbook(sheets, wb)));
+
+  // Cross-reference code mappings against reality.
+  const drift = [];
+  for (const ref of CODE_REFS) {
+    const wb = discovered.find((d) => d.envId === ref.envId);
+    if (!wb || wb.status !== 'ok') continue;
+    if (ref.tab == null) continue; // first-tab / all-tabs refs cannot drift on name
+    const found = wb.tabs.find((t) => t.title === ref.tab);
+    drift.push({
+      envId: ref.envId,
+      key: ref.key,
+      expectedTab: ref.tab,
+      optional: ref.optional,
+      status: found ? 'present' : 'MISSING',
+    });
+  }
+
+  // Write JSON (programmatic).
+  const json = {
+    generatedAt: new Date().toISOString(),
+    workbooks: discovered.map((d) => ({
+      num: d.num,
+      label: d.label,
+      envId: d.envId,
+      status: d.status,
+      title: d.title,
+      spreadsheetId: d.spreadsheetId,
+      tabs: d.tabs,
+    })),
+    codeMappingDrift: drift,
+  };
+  await fs.writeFile(`${OUT_DIR}/sheets-mapping.json`, JSON.stringify(json, null, 2), 'utf8');
+
+  // Write Markdown (human).
+  const lines = [];
+  lines.push(`# BMC Sheets — Full Mapping (${new Date().toISOString().slice(0, 16)})`);
+  lines.push('');
+  lines.push('Source of truth for any RAG / KB / sync ingest. Auto-generated by `scripts/discover-sheets-mapping.mjs`.');
+  lines.push('');
+  for (const d of discovered) {
+    lines.push(`## ${d.num}. ${d.label} — \`${d.envId}\``);
+    lines.push('');
+    if (d.status !== 'ok') {
+      lines.push(`> **${d.status}** — workbook unreachable.`);
+      lines.push('');
+      continue;
+    }
+    lines.push(`Title: **${d.title}** · Tabs: **${d.tabs.length}**`);
+    lines.push('');
+    lines.push('| # | tab | rows | cols |');
+    lines.push('|---|---|---|---|');
+    for (const t of d.tabs) {
+      lines.push(`| ${t.index} | \`${t.title}\` | ${t.rowCount} | ${t.columnCount} |`);
+    }
+    lines.push('');
+  }
+  lines.push('## Code mapping drift');
+  lines.push('');
+  lines.push('Values declared in `scripts/accessible-base-sync.js` checked against reality.');
+  lines.push('');
+  lines.push('| envId | key | expected tab | optional | status |');
+  lines.push('|---|---|---|---|---|');
+  for (const r of drift) {
+    const marker = r.status === 'MISSING' ? '❌ MISSING' : '✅ present';
+    lines.push(`| ${r.envId} | ${r.key} | \`${r.expectedTab}\` | ${r.optional ? 'yes' : 'no'} | ${marker} |`);
+  }
+
+  await fs.writeFile(`${OUT_DIR}/SHEETS-MAP.md`, lines.join('\n') + '\n', 'utf8');
+
+  // Console summary.
+  for (const d of discovered) {
+    if (d.status !== 'ok') {
+      console.log(`${d.num}. ${d.label} — ${d.status}`);
+      continue;
+    }
+    console.log(`${d.num}. ${d.label} (${d.tabs.length} tabs): ${d.tabs.map((t) => t.title).join(', ')}`);
+  }
+  console.log('');
+  console.log('Drift:');
+  for (const r of drift) console.log(`  ${r.status === 'MISSING' ? 'X' : 'OK'} ${r.envId} → ${r.expectedTab}${r.optional ? ' (optional)' : ''}`);
+  console.log('');
+  console.log(`Written: ${OUT_DIR}/sheets-mapping.json + ${OUT_DIR}/SHEETS-MAP.md`);
+}
+
+main().catch((err) => {
+  console.error('FATAL', err);
+  process.exit(1);
+});

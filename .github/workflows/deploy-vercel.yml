@@ -82,7 +82,7 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install Vercel CLI
@@ -150,7 +150,7 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install Vercel CLI

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { normalizeSurface, SURFACE_LIMITS } from "./kbSurface.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -191,12 +192,13 @@ function scoreOverlap(query, text) {
 
 export function addTrainingEntry(payload = {}) {
   const kb = loadTrainingKB();
+  const goodAnswerRaw = payload.goodAnswer ?? payload.answer;
   const entry = {
     id: crypto.randomUUID(),
     category: normalizeCategory(payload.category),
     question: String(payload.question || "").trim(),
     badAnswer: String(payload.badAnswer || "").trim(),
-    goodAnswer: String(payload.goodAnswer || "").trim(),
+    goodAnswer: String(goodAnswerRaw || "").trim(),
     context: String(payload.context || "").trim(),
     source: String(payload.source || "manual"),
     permanent: Boolean(payload.permanent),
@@ -244,12 +246,18 @@ export function updateTrainingEntry(entryId, patch = {}) {
   const idx = kb.entries.findIndex((e) => e.id === entryId);
   if (idx < 0) throw new Error("entry not found");
   const prev = kb.entries[idx];
+  let nextGood = prev.goodAnswer;
+  if (Object.prototype.hasOwnProperty.call(patch, "goodAnswer")) {
+    nextGood = String(patch.goodAnswer ?? "").trim();
+  } else if (Object.prototype.hasOwnProperty.call(patch, "answer")) {
+    nextGood = String(patch.answer ?? "").trim();
+  }
   const next = {
     ...prev,
     category: patch.category ? normalizeCategory(patch.category) : prev.category,
     question: patch.question != null ? String(patch.question).trim() : prev.question,
     badAnswer: patch.badAnswer != null ? String(patch.badAnswer).trim() : prev.badAnswer,
-    goodAnswer: patch.goodAnswer != null ? String(patch.goodAnswer).trim() : prev.goodAnswer,
+    goodAnswer: nextGood,
     context: patch.context != null ? String(patch.context).trim() : prev.context,
     permanent: patch.permanent != null ? Boolean(patch.permanent) : prev.permanent,
     status: patch.status && ["active", "pending", "rejected"].includes(patch.status) ? patch.status : prev.status ?? "active",
@@ -356,6 +364,49 @@ export function hasSimilarQuestion(question, { threshold = 4 } = {}) {
       for (const t of qTokens) { if (String(e.question || "").toLowerCase().includes(t)) score++; }
       return score >= threshold;
     });
+}
+
+/**
+ * Resolves the answer text for an entry on a given surface (channel).
+ *
+ * Fallback chain (per Brief §6.4):
+ *   1. entry.responses[surface]    (new shape, per-surface override)
+ *   2. legacy fields               (goodAnswerML for mercado_libre, goodAnswerWA for whatsapp)
+ *   3. entry.responses.default     (new shape, canonical)
+ *   4. entry.goodAnswer            (legacy canonical)
+ *   5. "" (empty — caller should treat as "no entry to inject")
+ *
+ * The result is truncated to SURFACE_LIMITS[surface] with an ellipsis suffix.
+ * Empty strings in any layer are skipped (treated as missing).
+ *
+ * @param {object|null|undefined} entry — KB entry or null.
+ * @param {string} [surface] — one of KB_SURFACES; invalid values fall back to "panelin_chat".
+ * @returns {string}
+ */
+export function resolveTrainingAnswer(entry, surface) {
+  if (!entry || typeof entry !== "object") return "";
+  const s = normalizeSurface(surface);
+  const responses = entry.responses && typeof entry.responses === "object" ? entry.responses : null;
+
+  const LEGACY_BY_SURFACE = {
+    mercado_libre: entry.goodAnswerML,
+    whatsapp: entry.goodAnswerWA,
+  };
+
+  const candidates = [
+    responses ? responses[s] : null,
+    LEGACY_BY_SURFACE[s],
+    responses ? responses.default : null,
+    entry.goodAnswer,
+  ];
+
+  let text = "";
+  for (const c of candidates) {
+    if (typeof c === "string" && c.length > 0) { text = c; break; }
+  }
+
+  const max = SURFACE_LIMITS[s] ?? SURFACE_LIMITS.panelin_chat;
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
 
 export function findRelevantExamples(query, { limit = 5, scoringConfig, track = true } = {}) {

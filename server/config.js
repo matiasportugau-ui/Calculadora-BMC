@@ -84,10 +84,23 @@ export const config = {
   anthropicChatModel: process.env.ANTHROPIC_CHAT_MODEL || "claude-opus-4-7",
   /** Set CHAT_LOG_CONVERSATIONS=true to persist conversation turns to disk in production. Default: off (devMode always logs). */
   chatLogConversations: bool(process.env.CHAT_LOG_CONVERSATIONS, false),
+  // Soft per-session budget for /api/agent/chat. Default OFF — see docs/team/runbooks/PANELIN-IA-OPS.md §4.
+  budgetEnabled: bool(process.env.BUDGET_ENABLED, false),
+  budgetTurnsPerMin: process.env.BUDGET_TURNS_PER_MIN ? Number(process.env.BUDGET_TURNS_PER_MIN) : null,
+  budgetTurnsPer5Min: process.env.BUDGET_TURNS_PER_5MIN ? Number(process.env.BUDGET_TURNS_PER_5MIN) : null,
+  budgetTurnsPer24h: process.env.BUDGET_TURNS_PER_24H ? Number(process.env.BUDGET_TURNS_PER_24H) : null,
+  budgetTokensPer24h: process.env.BUDGET_TOKENS_PER_24H ? Number(process.env.BUDGET_TOKENS_PER_24H) : null,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // Vercel AI Gateway (unified multi-provider).
+  // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
+  // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
+  // /agent/training-kb/generate-ml-overrides through the gateway. When unset,
+  // the legacy 4-SDK chain (Anthropic / OpenAI / Grok / Gemini) keeps working
+  // unchanged so deploys without env wiring don't regress.
+  aiGatewayApiKey: process.env.AI_GATEWAY_API_KEY || "",
   // WhatsApp Business Cloud API
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",

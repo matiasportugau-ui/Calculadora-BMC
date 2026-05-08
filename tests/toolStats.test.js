@@ -100,7 +100,7 @@ await group("executeTool — telemetry wrapper records error call with class", a
 
 group("AGENT_TOOLS not regressed by wrapper", () => {
   // Wrapper change shouldn't affect tool surface — same 22 tools should still be exported.
-  assert(AGENT_TOOLS.length === 28, `28 tools exported (got ${AGENT_TOOLS.length})`);
+  assert(AGENT_TOOLS.length === 30, `30 tools exported (got ${AGENT_TOOLS.length})`);
 });
 
 console.log(`\n${"═".repeat(60)}`);

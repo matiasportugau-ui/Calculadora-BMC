@@ -21,6 +21,7 @@ export const AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
  */
 export async function generateAiResponse({
   consulta, origen, cliente, producto, observaciones, provider, surface,
+  apiKeys: apiKeysOverride = null,
 }) {
   const detectedSurface =
     normalizeSurface(surface)
@@ -37,6 +38,6 @@ export async function generateAiResponse({
 
   return callAgentOnce(
     [{ role: "user", content: userContent }],
-    { channel, provider },
+    { channel, provider, apiKeys: apiKeysOverride },
   );
 }

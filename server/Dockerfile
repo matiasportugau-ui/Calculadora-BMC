@@ -4,12 +4,12 @@
 # Express backend exposing /calc/* endpoints for GPT Panelin Actions.
 # Build context must be the repo root (needs server/ + src/).
 
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="Panelin Calculator API for GPT Actions"
 WORKDIR /app

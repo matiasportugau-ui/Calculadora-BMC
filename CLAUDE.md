@@ -7,7 +7,7 @@
 ## Tech stack
 
 - **Frontend:** React 18 + **Vite 7** (dev server **:5173**)
-- **API:** **Express 5** on **Node.js** (target **20 LTS**; ES modules via `"type": "module"`) — **:3001**
+- **API:** **Express 5** on **Node.js** (target **24.x** on Vercel/CI; ES modules via `"type": "module"`) — **:3001**
 - **Data / ops:** **PostgreSQL** (`pg`) where the Transportista / migrations flow applies; Google Sheets + Cloud integrations per feature
 - **Modules:** **ES modules only** (`import` / `export`) — no `require()`
 

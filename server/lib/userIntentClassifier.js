@@ -67,6 +67,13 @@ const TOOL_INTENT_PATTERNS = {
     /\bcotizar\s+pendientes\b/,
     /\bgenera(r)?\s+respuestas\s+(con\s+)?ia\b/,
   ],
+  escribir_crm_taxonomia: [
+    /\bclasifica(r)?\s+(esta\s+)?(fila|contacto)\b/,
+    /\bguarda(r)?\s+(la\s+)?(taxonomia|clasificacion)\s+(en\s+)?(el\s+)?crm\b/,
+    /\betiqueta(r)?\s+(esta\s+)?fila\b/,
+    /\bactualiza(r)?\s+(el\s+)?(tipo|tags)\s+(en\s+)?(el\s+)?crm\b/,
+    /\bmarca(r)?\s+(como\s+)?(proveedor|cliente)\s+(en\s+)?(el\s+)?crm\b/,
+  ],
 };
 
 /**
@@ -82,6 +89,7 @@ export const INTENT_HINTS = {
   wolfboard_actualizar_fila: ["actualizá la fila X", "editá la respuesta"],
   wolfboard_marcar_enviado: ["marcá como enviada", "ya la envié"],
   wolfboard_quote_batch: ["generá las respuestas con IA", "cotizá todas las pendientes"],
+  escribir_crm_taxonomia: ["clasificá la fila en CRM", "guardá la taxonomía en CRM", "marcá como proveedor en CRM"],
 };
 
 /**

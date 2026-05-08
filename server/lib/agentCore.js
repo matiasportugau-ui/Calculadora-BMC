@@ -93,6 +93,7 @@ export async function callAgentOnce(messages, opts = {}) {
     provider,
     taskKey,
     override = null,
+    apiKeys: apiKeysOverride = null,
   } = opts;
 
   // Aplicar override directo, después taskKey desde waConfig, después fallback.
@@ -104,7 +105,7 @@ export async function callAgentOnce(messages, opts = {}) {
     maxTokens: override?.maxTokens || fromTask?.maxTokens || null,
   };
 
-  const apiKeys = {
+  const apiKeys = apiKeysOverride || {
     claude: config.anthropicApiKey,
     openai: config.openaiApiKey,
     grok:   config.grokApiKey,

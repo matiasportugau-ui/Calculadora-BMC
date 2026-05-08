@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Trash2 } from "lucide-react";
+import { Check, HelpCircle, Trash2 } from "lucide-react";
+import { isCompactMainLayoutWidth, isPhoneViewportWidth } from "../constants/viewportBreakpoints.js";
 import { BORDER_OPTIONS, C, FONT, PANELS_TECHO, PERFIL_TECHO, TR } from "../data/constants.js";
 import CollapsibleHint from "./CollapsibleHint.jsx";
 import { calcFactorPendiente, calcLargoRealFromModo } from "../utils/calculations.js";
@@ -1866,6 +1867,10 @@ export default function RoofPreview({
   const [plantaBorderPopoverStyle, setPlantaBorderPopoverStyle] = useState(null);
   const [dragOverlay, setDragOverlay] = useState(null);
   const [encounterPrompt, setEncounterPrompt] = useState(null);
+  const [plantaHelpOpen, setPlantaHelpOpen] = useState(false);
+  const [viewportW, setViewportW] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1200,
+  );
   const [internalSelectedGi, setInternalSelectedGi] = useState(null);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
@@ -1898,6 +1903,26 @@ export default function RoofPreview({
     },
     [metricsExternal, onSelectedZonaGiChange],
   );
+
+  useEffect(() => {
+    const onResize = () => setViewportW(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!plantaHelpOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setPlantaHelpOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [plantaHelpOpen]);
+
+  /** Visor embebido en layout estrecho: métricas debajo del dibujo para dar ancho completo al SVG. */
+  const stackPlantaMetricsBelow = Boolean(denseChrome && isCompactMainLayoutWidth(viewportW));
+  /** Teléfono + embebido: textos largos pasan a overlay «?». */
+  const plantaMobileHelp = Boolean(denseChrome && isPhoneViewportWidth(viewportW));
 
   const { planEdges, layout } = useRoofPreviewPlanLayout(zonas, tipoAguas, panelObj ? 0.60 : null);
 
@@ -2850,7 +2875,33 @@ export default function RoofPreview({
           flexWrap: "wrap",
         }}
       >
-        <span>Vista previa del techo</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span>Vista previa del techo</span>
+          {plantaMobileHelp ? (
+            <button
+              type="button"
+              aria-label="Ayuda · planta 2D"
+              title="Ayuda"
+              onClick={() => setPlantaHelpOpen(true)}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                border: `1px solid ${C.border}`,
+                background: C.surface,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0,
+                color: C.primary,
+                padding: 0,
+              }}
+            >
+              <HelpCircle size={16} strokeWidth={2.2} aria-hidden />
+            </button>
+          ) : null}
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {onAddZona && (
             <button
@@ -2949,7 +3000,7 @@ export default function RoofPreview({
           )}
         </div>
       </div>
-      {showPlantaDimensionChrome && (
+      {showPlantaDimensionChrome && !plantaMobileHelp && (
         <div
           style={{
             fontSize: 11,
@@ -3271,7 +3322,7 @@ export default function RoofPreview({
           })()}
         </div>
       )}
-      {bordesPlantaAssign && bordesPlantaHandlersOk && (
+      {bordesPlantaAssign && bordesPlantaHandlersOk && !plantaMobileHelp && (
         <div
           style={{
             fontSize: 11,
@@ -3285,19 +3336,22 @@ export default function RoofPreview({
           <strong style={{ color: C.tp }}>Accesorios perimetrales (planta):</strong> tocá los bordes resaltados de cada zona; misma convención que el 3D (frente = borde inferior del rectángulo en 2D). Los lados totalmente compartidos entre zonas no se eligen aquí.
         </div>
       )}
-      <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
-        Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
-        Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y elegir perfil del catálogo por tramo (laterales o frente/fondo según el eje del encuentro).
-        Doble clic en la superficie: pendiente visual. <strong style={{ color: C.tp }}>+ Otra medida</strong> en cada tarjeta
-        suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
-        independiente en planta.
-      </CollapsibleHint>
+      {!plantaMobileHelp ? (
+        <CollapsibleHint title="Zonas del techo" style={{ marginBottom: 10 }}>
+          Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
+          Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y elegir perfil del catálogo por tramo (laterales o frente/fondo según el eje del encuentro).
+          Doble clic en la superficie: pendiente visual. <strong style={{ color: C.tp }}>+ Otra medida</strong> en cada tarjeta
+          suma tramo lateral (mismo cuerpo). <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> aquí arriba suma una zona
+          independiente en planta.
+        </CollapsibleHint>
+      ) : null}
       <div
         style={{
           display: "flex",
+          flexDirection: stackPlantaMetricsBelow ? "column" : "row",
           alignItems: "stretch",
           gap: denseChrome ? 12 : 20,
-          flexWrap: "wrap",
+          flexWrap: stackPlantaMetricsBelow ? "nowrap" : "wrap",
           ...(denseChrome ? { flex: 1, minHeight: 0 } : {}),
         }}
       >
@@ -3331,13 +3385,17 @@ export default function RoofPreview({
                   : "1 1 280px"
                 : "1 1 100%",
               width: "100%",
-              minWidth: 200,
+              minWidth: stackPlantaMetricsBelow ? 0 : 200,
               maxWidth: "100%",
               ...(denseChrome
                 ? {
                     flex: "1 1 0%",
-                    minHeight: plantaCotaChromeActive ? 260 : 200,
-                    height: "100%",
+                    minHeight: stackPlantaMetricsBelow
+                      ? (plantaCotaChromeActive ? 300 : 260)
+                      : plantaCotaChromeActive
+                        ? 260
+                        : 200,
+                    height: stackPlantaMetricsBelow ? "auto" : "100%",
                   }
                 : {
                     height:
@@ -3354,6 +3412,7 @@ export default function RoofPreview({
               <div
                 onPointerDown={(e) => e.stopPropagation()}
                 style={{
+                  order: stackPlantaMetricsBelow ? 2 : 1,
                   flexShrink: 0,
                   display: "flex",
                   flexWrap: "wrap",
@@ -3428,6 +3487,15 @@ export default function RoofPreview({
                 )}
               </div>
             )}
+            <div
+              style={{
+                order: stackPlantaMetricsBelow ? 1 : 2,
+                flex: 1,
+                minHeight: stackPlantaMetricsBelow ? (plantaCotaChromeActive ? 260 : 220) : 0,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
             <svg
               ref={svgRef}
               data-bmc-capture="roof-plan-2d"
@@ -3927,20 +3995,25 @@ export default function RoofPreview({
               );
             })}
             </svg>
+            </div>
           </div>
         )}
         {embedMetricsSidebar ? (
           <div
             style={{
               minWidth: 0,
-              flex: denseChrome
-                ? plantaCotaChromeActive
-                  ? "0 1 min(220px, 34vw)"
-                  : "0 1 min(200px, 32vw)"
-                : plantaCotaChromeActive
-                  ? "1 1 200px"
-                  : "1 1 160px",
-              order: 2,
+              width: stackPlantaMetricsBelow ? "100%" : undefined,
+              maxWidth: stackPlantaMetricsBelow ? "100%" : undefined,
+              flex: stackPlantaMetricsBelow
+                ? "0 0 auto"
+                : denseChrome
+                  ? plantaCotaChromeActive
+                    ? "0 1 min(220px, 34vw)"
+                    : "0 1 min(200px, 32vw)"
+                  : plantaCotaChromeActive
+                    ? "1 1 200px"
+                    : "1 1 160px",
+              order: stackPlantaMetricsBelow ? 3 : 2,
             }}
           >
             <RoofPreviewMetricsSidebar
@@ -4058,6 +4131,108 @@ export default function RoofPreview({
             document.body,
           )
         : null}
+      {plantaMobileHelp && plantaHelpOpen ? (
+        <div
+          role="presentation"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10085,
+            background: "rgba(15,23,42,0.42)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            padding: "max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))",
+          }}
+          onClick={() => setPlantaHelpOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bmc-planta-help-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(100%, 420px)",
+              maxHeight: "min(78vh, 620px)",
+              overflow: "auto",
+              WebkitOverflowScrolling: "touch",
+              borderRadius: 16,
+              border: `1px solid ${C.border}`,
+              background: "rgba(255,255,255,0.94)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+              padding: "16px 16px 14px",
+              fontFamily: FONT,
+              marginBottom: 4,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+              <div id="bmc-planta-help-title" style={{ fontSize: 16, fontWeight: 800, color: C.tp, lineHeight: 1.25 }}>
+                Ayuda · Planta 2D
+              </div>
+              <button
+                type="button"
+                aria-label="Cerrar ayuda"
+                onClick={() => setPlantaHelpOpen(false)}
+                style={{
+                  flexShrink: 0,
+                  border: `1px solid ${C.border}`,
+                  background: C.surfaceAlt,
+                  borderRadius: 10,
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  color: C.tp,
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <section style={{ fontSize: 12, color: C.ts, lineHeight: 1.45 }}>
+                <div style={{ fontWeight: 800, color: C.tp, marginBottom: 6, fontSize: 12 }}>Cotas y planta</div>
+                {estructuraHintsByGi != null ? (
+                  <p style={{ margin: 0 }}>
+                    <strong style={{ color: C.tp }}>Estructura:</strong> líneas violetas = ejes de apoyo (cantidad según autoportancia);
+                    cotas (gris grafito) = solo perímetro libre y longitud en cada encuentro; chip = resumen apoyos/pts fij.; pasá el cursor sobre un punto para ver los productos de fijación que entran en la cotización.
+                    {combinadaSingleZona ? (
+                      <>
+                        {" "}
+                        <strong style={{ color: C.tp }}>Combinada:</strong> tocá una línea de apoyo, una banda violeta del perímetro o un punto para rotar hormigón → metal → madera; los contadores se actualizan solos. Con varias zonas en planta, usá los números del panel.
+                      </>
+                    ) : null}{" "}
+                    Movimiento de zonas en planta: <strong>Deshacer / Rehacer</strong> o <kbd>Ctrl/Cmd+Z</kbd> / <kbd>Ctrl/Cmd+Shift+Z</kbd>.
+                  </p>
+                ) : (
+                  <p style={{ margin: 0 }}>
+                    <strong style={{ color: C.tp }}>Planta:</strong> cotas en gris grafito = perímetro libre y longitud en cada encuentro; la cadena de cotas en mm bajo el borde inferior = paños según el ancho útil (AU) del panel. Arrastrá las zonas para ubicarlas
+                    correctamente antes de bordes y estructura. <strong>Deshacer / Rehacer</strong> en la barra o <kbd>Ctrl/Cmd+Z</kbd> y <kbd>Ctrl/Cmd+Shift+Z</kbd> (o <kbd>Ctrl+Y</kbd> en Windows).
+                  </p>
+                )}
+              </section>
+              <section style={{ fontSize: 12, color: C.ts, lineHeight: 1.45 }}>
+                <div style={{ fontWeight: 800, color: C.tp, marginBottom: 6, fontSize: 12 }}>Zonas del techo</div>
+                <p style={{ margin: 0 }}>
+                  Cada rectángulo es una zona: arrastrá con libertad en planta; se imantan aristas (L / T / U) y aparecen guías punteadas.
+                  Al tocar un encuentro nuevo, elegí tipo (continuo, pretil, cumbrera, desnivel); tocá la línea del encuentro para reabrir. Con encuentro ya definido: podés partir en tramos, marcar si cada tramo entra al BOM y elegir perfil del catálogo por tramo (laterales o frente/fondo según el eje del encuentro).
+                  Doble clic en la superficie: pendiente visual. <strong style={{ color: C.tp }}>+ Otra medida</strong> en cada tarjeta suma tramo lateral (mismo cuerpo).{" "}
+                  <strong style={{ color: C.tp }}>Otro cuerpo de techo</strong> arriba suma una zona independiente en planta.
+                </p>
+              </section>
+              {bordesPlantaAssign && bordesPlantaHandlersOk ? (
+                <section style={{ fontSize: 12, color: C.ts, lineHeight: 1.45 }}>
+                  <div style={{ fontWeight: 800, color: C.tp, marginBottom: 6, fontSize: 12 }}>Accesorios perimetrales</div>
+                  <p style={{ margin: 0 }}>
+                    <strong style={{ color: C.tp }}>Planta:</strong> tocá los bordes resaltados de cada zona; misma convención que el 3D (frente = borde inferior del rectángulo en 2D). Los lados totalmente compartidos entre zonas no se eligen aquí.
+                  </p>
+                </section>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

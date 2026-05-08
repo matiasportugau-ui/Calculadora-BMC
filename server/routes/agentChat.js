@@ -3,7 +3,7 @@
  *
  * Provider chain: default claude → grok → gemini → openai; optional `aiProvider` + `aiModel` (see GET /api/agent/ai-options).
  *
- * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string }
+ * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string, surface?: "panelin_chat"|"mercado_libre"|"whatsapp"|"email"|"wolfboard" }
  * Response: text/event-stream, events:
  *   {"type":"text","delta":"..."}
  *   {"type":"action","action":{"type":"setTecho","payload":{...}}}
@@ -26,7 +26,9 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit, resolveTrainingAnswer } from "../lib/trainingKB.js";
+import { normalizeSurface as kbSurfaceForTraining } from "../lib/kbSurface.js";
+import { normalizeSurface as canonicalBrandSurface, surfaceToChannel, SURFACES } from "../lib/surface.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
@@ -43,7 +45,9 @@ import { getToolStats } from "../lib/toolStats.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
-import { normalizeSurface, surfaceToChannel } from "../lib/surface.js";
+import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
+import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
+import { getIvaPct } from "../lib/policyLoader.js";
 
 const router = Router();
 
@@ -483,14 +487,23 @@ router.post("/agent/chat", async (req, res) => {
     channel: rawChannel,
     surface: rawSurface,
   } = req.body || {};
-  // Channel selects which KB override the example renderer prefers
-  // (chat → goodAnswer raw; ml → goodAnswerML, capped 350; wa → goodAnswerWA, capped 800).
-  // Body accepts either `channel` (legacy / direct) or `surface` (canonical brand
-  // label, normalized via lib/surface.js). `surface` wins when present.
-  const surfaceCanonical = normalizeSurface(rawSurface);
-  const channelFromSurface = surfaceCanonical ? surfaceToChannel(surfaceCanonical) : null;
-  const channel = channelFromSurface
-    ?? (["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat");
+  // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
+  // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
+  const brandHints =
+    rawSurface != null && String(rawSurface).trim() !== ""
+      ? rawSurface
+      : { channel: rawChannel, origen: req.body?.origen, observaciones: req.body?.observaciones };
+  const brandCanonical = canonicalBrandSurface(brandHints);
+  const channel = brandCanonical
+    ? surfaceToChannel(brandCanonical)
+    : (["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat");
+  const surface = brandCanonical
+    ? kbSurfaceForTraining(
+        brandCanonical === SURFACES.INSTAGRAM || brandCanonical === SURFACES.FACEBOOK
+          ? "whatsapp"
+          : brandCanonical,
+      )
+    : kbSurfaceForTraining(rawSurface);
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
@@ -521,6 +534,30 @@ router.post("/agent/chat", async (req, res) => {
 
   // Check if rate limiter already sent a response
   if (res.headersSent) return;
+
+  // 0.15 — Soft budget (per-conversation/IP). Default OFF: see config.budgetEnabled.
+  // Independent from express-rate-limit: limiter caps per-IP/min; budget caps
+  // per-session and per-day, including a future token cap. See runbook §4.
+  if (config.budgetEnabled) {
+    const identity = (typeof rawConvId === "string" && rawConvId) || rateLimitClientKey(req);
+    const verdict = budgetCheckAndCount({
+      identity,
+      caps: {
+        turnsPerMin: config.budgetTurnsPerMin,
+        turnsPer5Min: config.budgetTurnsPer5Min,
+        turnsPer24h: config.budgetTurnsPer24h,
+        tokensPer24h: config.budgetTokensPer24h,
+      },
+    });
+    if (!verdict.ok) {
+      res.setHeader("Retry-After", String(verdict.retryAfterSec));
+      return res.status(429).json({
+        ok: false,
+        error: "Llegaste al límite de la sesión. Volvé en un rato o iniciá una nueva conversación.",
+        scope: verdict.scope,
+      });
+    }
+  }
 
   // 0.2 — Input validation
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -662,10 +699,17 @@ router.post("/agent/chat", async (req, res) => {
   // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
   await ensureGcsInit();
 
-  // Always use KB — not just devMode
-  const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  // Always use KB — not just devMode.
+  // Multi-canal (Brief §6.5): resolve the per-surface answer for each match
+  // BEFORE handing them to buildSystemPrompt, so the rendering layer (which
+  // serializes entry.goodAnswer) doesn't need to know about surfaces.
+  const rawTrainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  const trainingExamples = rawTrainingExamples.map((entry) => ({
+    ...entry,
+    goodAnswer: resolveTrainingAnswer(entry, surface) || entry.goodAnswer || "",
+  }));
   if (devMode) {
-    send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
+    send({ type: "kb_match", count: trainingExamples.length, surface, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
 
   // Extract last 3 assistant openings for anti-repetition guidance
@@ -867,6 +911,21 @@ router.post("/agent/chat", async (req, res) => {
             const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
+
+            // Trust UI: emit verified_quote when an eligible calc tool succeeded.
+            // Pure helper decides eligibility + extracts the public-safe payload.
+            // Wolfboard suggestions (below) parse the result independently so a
+            // failure here cannot block them.
+            if (!aborted) {
+              try {
+                const parsedTool = JSON.parse(result);
+                const verified = buildVerifiedQuotePayload(tc.name, parsedTool, { ivaPct: getIvaPct() });
+                if (verified) send({ type: "verified_quote", payload: verified });
+              } catch {
+                /* tool result not JSON — skip trust emit */
+              }
+            }
+
             // Wolfboard: deterministic quick replies (devMode only — tools are auth-gated)
             if (devMode && !aborted) {
               try {

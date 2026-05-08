@@ -22,6 +22,7 @@ import {
   cancelQuotation as cancelQuotationInRegistry,
 } from "./quoteRegistry.js";
 import { searchCrmClients } from "./crmSearch.js";
+import { readCrmRowTaxonomy, writeCrmRowTaxonomy } from "./crmTaxonomy.js";
 import { sendWhatsAppText } from "./whatsappOutbound.js";
 import {
   loadStore as loadFollowupStore,
@@ -611,6 +612,48 @@ export const AGENT_TOOLS = [
         limite:  { type: "number", description: "Máx filas/cotizaciones por sección. Default 10." },
       },
       required: ["cliente"],
+    },
+  },
+
+  {
+    name: "leer_crm_taxonomia",
+    description:
+      "Lee la taxonomía de clasificación de una fila de CRM_Operativo (cols AL–AN): tipo de contacto " +
+      "(cliente/proveedor/lead/interno/otro), tags y notas, más datos base de la misma fila (cliente, consulta). " +
+      "Usar después de buscar_cliente_crm cuando el usuario dio un número de fila o querés verificar etiquetas en Sheets.",
+    input_schema: {
+      type: "object",
+      properties: {
+        row: { type: "number", description: "Número de fila en CRM_Operativo (≥4, misma convención que buscar_cliente_crm.row)" },
+      },
+      required: ["row"],
+    },
+  },
+
+  {
+    name: "escribir_crm_taxonomia",
+    description:
+      "Escribe en CRM_Operativo las columnas AL–AN: tipo de contacto, tags (texto o lista) y notas libres. " +
+      "Solo actualiza los campos que pasás (no borra el resto). " +
+      "REQUIERE confirmación explícita del usuario (user_confirmed=true o frase autorizada en el mensaje). " +
+      "Usar cuando el operador pide clasificar la fila (proveedor vs cliente, tags de obra, etc.).",
+    input_schema: {
+      type: "object",
+      properties: {
+        row: { type: "number", description: "Fila CRM (≥4)" },
+        tipo_contacto: {
+          type: "string",
+          enum: ["cliente", "proveedor", "lead", "interno", "otro"],
+          description: "Opcional si solo actualizás tags/notas",
+        },
+        tags: {
+          anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+          description: "Tags separados por coma y/o array de strings",
+        },
+        notas: { type: "string", description: "Notas de clasificación (col AN)" },
+        user_confirmed: { type: "boolean", description: "OBLIGATORIO=true salvo que el mensaje del usuario ya autorizó la herramienta." },
+      },
+      required: ["row", "user_confirmed"],
     },
   },
 
@@ -1344,6 +1387,31 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const result = await searchCrmClients({
         query: input?.query,
         limite: input?.limite,
+      });
+      return JSON.stringify(result);
+    }
+
+    if (name === "leer_crm_taxonomia") {
+      const row = Number(input?.row);
+      if (!row || row < 4) return JSON.stringify({ ok: false, error: "row debe ser un número >= 4" });
+      const result = await readCrmRowTaxonomy(row);
+      return JSON.stringify(result);
+    }
+
+    if (name === "escribir_crm_taxonomia") {
+      { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
+      const row = Number(input?.row);
+      if (!row || row < 4) return JSON.stringify({ ok: false, error: "row debe ser un número >= 4" });
+      const hasTipo = input?.tipo_contacto !== undefined && input?.tipo_contacto !== null && String(input.tipo_contacto).trim() !== "";
+      const hasTags = input?.tags !== undefined && input?.tags !== null && (Array.isArray(input.tags) ? input.tags.length > 0 : String(input.tags).trim() !== "");
+      const hasNotas = input?.notas !== undefined && input?.notas !== null && String(input.notas).trim() !== "";
+      if (!hasTipo && !hasTags && !hasNotas) {
+        return JSON.stringify({ ok: false, error: "Pasá al menos uno de: tipo_contacto, tags, notas" });
+      }
+      const result = await writeCrmRowTaxonomy(row, {
+        tipoContacto: hasTipo ? input.tipo_contacto : undefined,
+        tags: hasTags ? input.tags : undefined,
+        notas: hasNotas ? input.notas : undefined,
       });
       return JSON.stringify(result);
     }
