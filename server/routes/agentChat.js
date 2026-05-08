@@ -44,6 +44,8 @@ import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
 import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
+import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
+import { getIvaPct } from "../lib/policyLoader.js";
 
 const router = Router();
 
@@ -881,6 +883,21 @@ router.post("/agent/chat", async (req, res) => {
             const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
+
+            // Trust UI: emit verified_quote when an eligible calc tool succeeded.
+            // Pure helper decides eligibility + extracts the public-safe payload.
+            // Wolfboard suggestions (below) parse the result independently so a
+            // failure here cannot block them.
+            if (!aborted) {
+              try {
+                const parsedTool = JSON.parse(result);
+                const verified = buildVerifiedQuotePayload(tc.name, parsedTool, { ivaPct: getIvaPct() });
+                if (verified) send({ type: "verified_quote", payload: verified });
+              } catch {
+                /* tool result not JSON — skip trust emit */
+              }
+            }
+
             // Wolfboard: deterministic quick replies (devMode only — tools are auth-gated)
             if (devMode && !aborted) {
               try {

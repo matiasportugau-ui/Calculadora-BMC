@@ -337,6 +337,18 @@ export function useChat({
                   const toolCalls = [...(last.toolCalls || []), { tool: evt.tool, input: evt.input }];
                   return prev.map((m, i) => (i === prev.length - 1 ? { ...m, toolCalls } : m));
                 });
+              } else if (evt.type === "verified_quote") {
+                // Trust UI: payload extracted from a calc tool result, server-built.
+                // We attach the latest verified quote to the assistant message; if
+                // the model called calcular_cotizacion + comparar_listas in the
+                // same turn, the comparison wins (last write).
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (!last || last.role !== "assistant") return prev;
+                  return prev.map((m, i) => (
+                    i === prev.length - 1 ? { ...m, verifiedQuote: evt.payload } : m
+                  ));
+                });
               } else if (evt.type === "kb_match") {
                 setDevMeta((prev) => ({ ...prev, kbMatches: Number(evt.count || 0) }));
               } else if (evt.type === "calc_validation") {

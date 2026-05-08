@@ -384,20 +384,36 @@ async function handleSla(cmd, _rest, flags) {
        from wa_sla_breaches`,
   );
   const { startWaSlaWorker } = await import("../server/lib/waSlaWorker.js");
-  // Forzamos un intervalo corto y un solo tick: arrancamos, esperamos un tick,
-  // detenemos. El worker ya respeta el flag slaTracking.enabled internamente.
-  await setSetting("sla.workerIntervalMs", 100, { actor: "cli-admin" });
-  const stop = startWaSlaWorker({
-    pool,
-    logger: verbose ? console : { info() {}, warn() {}, error() {} },
-  });
-  await new Promise((r) => setTimeout(r, 350)); // ~3 ticks de margen
-  stop();
-  const after = await pool.query(
-    `select count(*) filter (where resolved_at is null)::int as open,
-            count(*) filter (where resolved_at is not null)::int as resolved
-       from wa_sla_breaches`,
-  );
+  // Snapshot el valor actual ANTES de mutarlo, restauramos en finally.
+  // Sin esto el worker queda permanente con interval=100ms (regresión).
+  const prevIntervalMs = getSetting("sla.workerIntervalMs");
+  let stop = null;
+  let after;
+  try {
+    // Forzamos un intervalo corto y un solo tick: arrancamos, esperamos un tick,
+    // detenemos. El worker ya respeta el flag slaTracking.enabled internamente.
+    await setSetting("sla.workerIntervalMs", 100, { actor: "cli-admin" });
+    stop = startWaSlaWorker({
+      pool,
+      logger: verbose ? console : { info() {}, warn() {}, error() {} },
+    });
+    await new Promise((r) => setTimeout(r, 350)); // ~3 ticks de margen
+    stop();
+    stop = null;
+    after = await pool.query(
+      `select count(*) filter (where resolved_at is null)::int as open,
+              count(*) filter (where resolved_at is not null)::int as resolved
+         from wa_sla_breaches`,
+    );
+  } finally {
+    if (stop) stop();
+    // Restaurar valor previo, incluso si el tick falló.
+    if (prevIntervalMs !== undefined && prevIntervalMs !== 100) {
+      await setSetting("sla.workerIntervalMs", prevIntervalMs, { actor: "cli-admin-restore" }).catch((e) => {
+        console.warn(`[sla check] no pude restaurar workerIntervalMs (era ${prevIntervalMs}):`, e.message);
+      });
+    }
+  }
   console.log("SLA breaches snapshot:");
   console.log("  antes:   open=" + before.rows[0].open + " resolved=" + before.rows[0].resolved);
   console.log("  después: open=" + after.rows[0].open + " resolved=" + after.rows[0].resolved);
