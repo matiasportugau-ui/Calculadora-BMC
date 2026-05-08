@@ -37,7 +37,30 @@ La run se considera **completa y exitosa** cuando se cumplen todos estos criteri
 | D10 | Deploy a Cloud Run + Vercel sin regresión en chat Panelin existente. | Smoke tests post-deploy |
 | D11 | KB con al menos 5 entries que tengan override `mercado_libre` y 5 con `whatsapp` (poblado vía Auto-ML/Auto-WA). | Stats Admin + KB Score ≥ 80 |
 
-**Estado actual:** D1-D11 todos en ❌ pending excepto la base que ya existe (CRUD, persistencia, health partial).
+**Estado actual (2026-05-08):**
+
+| DoD | Estado | Dónde vive |
+|-----|--------|------------|
+| D1 — `resolveTrainingAnswer` exportado | ✅ EN MAIN | PR #186 mergeado (commit `5f6dfb1`) |
+| D2 — `tests/kbSurfaceResolve.test.js` 5 casos green | ✅ EN MAIN | 78 asserts (52 base + 26 mapOrigenToSurface) |
+| D3 — `agentChat.js` acepta `surface` | 🟡 PR #187 OPEN | branch `feat/kb-multicanal-f32-remaining` |
+| D4 — `/crm/suggest-response` con KB block | 🟡 PR #187 OPEN | mismo PR |
+| D5 — `GET /agent/training-kb/analytics` | 🟡 PR #188 OPEN | branch `feat/kb-multicanal-f4-analytics`, 94 asserts green, fixes UTC midnight de Copilot review aplicados |
+| D6 — Admin UI matriz cobertura + Auto-WA | ❌ PENDING | F5 — próxima fase a arrancar |
+| D7 — `KB-MULTICANAL-OPERATIVA.md` publicado | ❌ PENDING | F6 |
+| D8 — Endpoints CRM migrados a AI Gateway | 🟡 PR #187 OPEN | helper `aiGatewayClient.js` + 3 endpoints. Auth OIDC + fallback legacy preservado |
+| D9 — `npm run gate:local:full` verde | ⚠️ PARCIAL | drift pre-existente en `agentTools / toolStats / userIntentClassifier` (28 vs 30 tools), parqueado y ajeno a esta run |
+| D10 — Deploy Cloud Run + Vercel sin regresión | ❌ PENDING | tras merge de #187 + #188 |
+| D11 — KB con ≥5 entries override ML y ≥5 WA | ❌ PENDING | F7 — Auto-ML/Auto-WA en producción |
+
+**PRs abiertos pendientes de merge:**
+- **#187** — F2 + F3.1 + F3.2 (chat surface, suggest-response KB block, AI Gateway en 4 endpoints).
+- **#188** — F4 (analytics endpoint + helpers de cobertura por canal).
+
+**Side-effects observados:**
+- Branch `feat/kb-multicanal-f4-analytics` recibió un commit ajeno (`bb834de feat(driveClient)`, autor `matiasportugau-ui`) de otro workflow. No es destructivo pero se cuela en el changelog de PR #188.
+- PR #189 (`goldens runner`) se mergeó a main de forma independiente — no impacta esta run.
+- Copilot review aplicó 3 fixes legítimos a F4 (UTC midnight snap, `MS_PER_DAY` constant) — adoptados.
 
 ---
 
