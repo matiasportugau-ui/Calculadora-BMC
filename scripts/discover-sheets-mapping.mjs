@@ -33,10 +33,13 @@ const WORKBOOKS = [
 ];
 
 // Tabs the codebase already references (aligned with scripts/accessible-base-sync.js).
+// NOTE: WOLFB_CRM_MAIN_TAB is intentionally reused for compatibility with
+// accessible-base-sync's registry override on BMC_SHEET_ID.
 const CODE_REFS = [
   { envId: 'BMC_SHEET_ID',         tab: process.env.WOLFB_CRM_MAIN_TAB || 'CRM_Operativo', key: 'crm_operativo', optional: false },
   { envId: 'BMC_SHEET_ID',         tab: 'Master_Cotizaciones',  key: 'master_cotizaciones',   optional: false },
   { envId: 'BMC_SHEET_ID',         tab: 'Metas_Ventas',          key: 'metas_ventas',          optional: true  },
+  // audit_log is optional in accessible-base-sync (reduced workbook compatibility).
   { envId: 'BMC_SHEET_ID',         tab: 'AUDIT_LOG',             key: 'audit_log',             optional: true  },
   { envId: 'BMC_PAGOS_SHEET_ID',   tab: null /* first tab */,    key: 'pagos_pendientes',      optional: false },
   { envId: 'BMC_VENTAS_SHEET_ID',  tab: null /* all tabs */,     key: 'ventas',                optional: false },
