@@ -40,6 +40,10 @@ group("normalizePhoneE164UY", () => {
   assertEq(normalizePhoneE164UY("+598 99 123 456"), "59899123456", "E.164 with spaces");
   assertEq(normalizePhoneE164UY("0059899123456"), "59899123456", "international 00 prefix dropped");
   assertEq(normalizePhoneE164UY("(099) 123-456"), "59899123456", "punctuation stripped");
+  // Codex P1 — country code + trunk zero must canonicalize like the local form:
+  assertEq(normalizePhoneE164UY("+598 099 123 456"), "59899123456", "+598 + trunk-0 → drop trunk-0");
+  assertEq(normalizePhoneE164UY("598099123456"), "59899123456", "598 + trunk-0 (no plus) → drop trunk-0");
+  assertEq(normalizePhoneE164UY("00598099123456"), "59899123456", "00598 + trunk-0 → strip 00 + drop trunk-0");
   assertEq(normalizePhoneE164UY(""), null, "empty → null");
   assertEq(normalizePhoneE164UY(null), null, "null → null");
   assertEq(normalizePhoneE164UY(undefined), null, "undefined → null");

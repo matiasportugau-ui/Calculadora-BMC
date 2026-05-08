@@ -31,6 +31,15 @@ export function normalizePhoneE164UY(input) {
   if (!digits) return null;
   // Drop international dial prefix '00' (e.g. '0059899...')
   if (digits.startsWith("00")) digits = digits.slice(2);
+  // Country code present + trunk zero present (12 digits, '598' + '0' + 8) →
+  // drop the trunk zero so '+598 099 123 456' canonicalizes the same as '099123456'.
+  if (
+    digits.startsWith(UY_COUNTRY_CODE) &&
+    digits.length === 12 &&
+    digits[UY_COUNTRY_CODE.length] === "0"
+  ) {
+    return UY_COUNTRY_CODE + digits.slice(UY_COUNTRY_CODE.length + 1);
+  }
   // Already E.164 with UY country code: keep
   if (digits.startsWith(UY_COUNTRY_CODE) && digits.length === 11) {
     return digits;
