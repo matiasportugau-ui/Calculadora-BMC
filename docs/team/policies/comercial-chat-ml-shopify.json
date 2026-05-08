@@ -1,0 +1,42 @@
+{
+  "$schema": "./comercial-chat-ml-shopify.schema.json",
+  "version": "2026-05-07",
+  "currency": "USD",
+  "iva": {
+    "pct": 22,
+    "exhibicion": "siempre IVA discriminado",
+    "redondeo_dec": 2
+  },
+  "listas": {
+    "publicar_nombre_publico": false,
+    "internas": ["web", "venta"],
+    "default": "web"
+  },
+  "disclaimers": {
+    "validez_horas": 48,
+    "flete_incluido_default": false,
+    "flete_nota": "El flete no está incluido salvo aclaración explícita.",
+    "stock_nota": "Sujeto a disponibilidad al momento de la confirmación."
+  },
+  "tono": {
+    "panelin": {
+      "estilo": "consultivo, español rioplatense, sin muletillas tipo 'entiendo'",
+      "max_chars": null
+    },
+    "ml": {
+      "estilo": "directo, sin jerga interna, foco en respuesta concreta",
+      "max_chars": 600
+    },
+    "shopify": {
+      "estilo": "informativo, sin presión comercial",
+      "max_chars": 800
+    }
+  },
+  "checklist_pre_release": [
+    "¿La respuesta incluye IVA discriminado en USD?",
+    "¿Se evita mencionar 'lista web' / 'lista venta' / 'lista BMC' al cliente?",
+    "¿Se aclara si flete está o no incluido?",
+    "¿Se enuncia validez de la cotización (horas)?",
+    "¿Se aclara que stock está sujeto a confirmación?"
+  ]
+}

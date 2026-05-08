@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { normalizeSurface, SURFACE_LIMITS } from "./kbSurface.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -363,6 +364,49 @@ export function hasSimilarQuestion(question, { threshold = 4 } = {}) {
       for (const t of qTokens) { if (String(e.question || "").toLowerCase().includes(t)) score++; }
       return score >= threshold;
     });
+}
+
+/**
+ * Resolves the answer text for an entry on a given surface (channel).
+ *
+ * Fallback chain (per Brief §6.4):
+ *   1. entry.responses[surface]    (new shape, per-surface override)
+ *   2. legacy fields               (goodAnswerML for mercado_libre, goodAnswerWA for whatsapp)
+ *   3. entry.responses.default     (new shape, canonical)
+ *   4. entry.goodAnswer            (legacy canonical)
+ *   5. "" (empty — caller should treat as "no entry to inject")
+ *
+ * The result is truncated to SURFACE_LIMITS[surface] with an ellipsis suffix.
+ * Empty strings in any layer are skipped (treated as missing).
+ *
+ * @param {object|null|undefined} entry — KB entry or null.
+ * @param {string} [surface] — one of KB_SURFACES; invalid values fall back to "panelin_chat".
+ * @returns {string}
+ */
+export function resolveTrainingAnswer(entry, surface) {
+  if (!entry || typeof entry !== "object") return "";
+  const s = normalizeSurface(surface);
+  const responses = entry.responses && typeof entry.responses === "object" ? entry.responses : null;
+
+  const LEGACY_BY_SURFACE = {
+    mercado_libre: entry.goodAnswerML,
+    whatsapp: entry.goodAnswerWA,
+  };
+
+  const candidates = [
+    responses ? responses[s] : null,
+    LEGACY_BY_SURFACE[s],
+    responses ? responses.default : null,
+    entry.goodAnswer,
+  ];
+
+  let text = "";
+  for (const c of candidates) {
+    if (typeof c === "string" && c.length > 0) { text = c; break; }
+  }
+
+  const max = SURFACE_LIMITS[s] ?? SURFACE_LIMITS.panelin_chat;
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
 
 export function findRelevantExamples(query, { limit = 5, scoringConfig, track = true } = {}) {

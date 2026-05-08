@@ -43,6 +43,9 @@ import { getToolStats } from "../lib/toolStats.js";
 import { classifyIntents } from "../lib/userIntentClassifier.js";
 import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
 import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
+import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
+import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
+import { getIvaPct } from "../lib/policyLoader.js";
 
 const router = Router();
 
@@ -511,6 +514,30 @@ router.post("/agent/chat", async (req, res) => {
   // Check if rate limiter already sent a response
   if (res.headersSent) return;
 
+  // 0.15 — Soft budget (per-conversation/IP). Default OFF: see config.budgetEnabled.
+  // Independent from express-rate-limit: limiter caps per-IP/min; budget caps
+  // per-session and per-day, including a future token cap. See runbook §4.
+  if (config.budgetEnabled) {
+    const identity = (typeof rawConvId === "string" && rawConvId) || rateLimitClientKey(req);
+    const verdict = budgetCheckAndCount({
+      identity,
+      caps: {
+        turnsPerMin: config.budgetTurnsPerMin,
+        turnsPer5Min: config.budgetTurnsPer5Min,
+        turnsPer24h: config.budgetTurnsPer24h,
+        tokensPer24h: config.budgetTokensPer24h,
+      },
+    });
+    if (!verdict.ok) {
+      res.setHeader("Retry-After", String(verdict.retryAfterSec));
+      return res.status(429).json({
+        ok: false,
+        error: "Llegaste al límite de la sesión. Volvé en un rato o iniciá una nueva conversación.",
+        scope: verdict.scope,
+      });
+    }
+  }
+
   // 0.2 — Input validation
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ ok: false, error: "messages array required" });
@@ -856,6 +883,21 @@ router.post("/agent/chat", async (req, res) => {
             const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
+
+            // Trust UI: emit verified_quote when an eligible calc tool succeeded.
+            // Pure helper decides eligibility + extracts the public-safe payload.
+            // Wolfboard suggestions (below) parse the result independently so a
+            // failure here cannot block them.
+            if (!aborted) {
+              try {
+                const parsedTool = JSON.parse(result);
+                const verified = buildVerifiedQuotePayload(tc.name, parsedTool, { ivaPct: getIvaPct() });
+                if (verified) send({ type: "verified_quote", payload: verified });
+              } catch {
+                /* tool result not JSON — skip trust emit */
+              }
+            }
+
             // Wolfboard: deterministic quick replies (devMode only — tools are auth-gated)
             if (devMode && !aborted) {
               try {
