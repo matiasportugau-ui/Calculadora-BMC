@@ -549,28 +549,35 @@ export function getTrainingStats() {
  */
 export function getSurfaceCoverage() {
   const kb = loadTrainingKB();
-  const active = kb.entries.filter((e) => !e.archived && (e.status == null || e.status === "active"));
+  // Exclude archived, permanent, and non-active entries — permanent entries
+  // don't need surface overrides so they are excluded from eligibility, matching
+  // the JSDoc contract ("active + non-permanent + canonical answer too long").
+  const active = kb.entries.filter(
+    (e) => !e.archived && !e.permanent && (e.status == null || e.status === "active")
+  );
 
   const SURFACE_TO_LEGACY = {
     mercado_libre: "goodAnswerML",
     whatsapp: "goodAnswerWA",
     email: null,
   };
-  const SURFACE_LIMIT = { mercado_libre: 350, whatsapp: 700, email: 2000 };
 
   const out = {};
   for (const surface of Object.keys(SURFACE_TO_LEGACY)) {
     const legacyField = SURFACE_TO_LEGACY[surface];
-    const limit = SURFACE_LIMIT[surface];
+    // Use the shared constant from kbSurface.js to avoid duplication and drift.
+    const limit = SURFACE_LIMITS[surface];
 
     let withOverride = 0;
     let eligible = 0;
     for (const e of active) {
+      const isLong = (e.goodAnswer || "").length > limit;
+      if (!isLong) continue;
+      // Only count eligible entries — prevents coverage_pct from exceeding 100.
+      eligible++;
       const hasMapOverride = !!(e.responses && typeof e.responses === "object" && e.responses[surface]);
       const hasLegacy = !!(legacyField && e[legacyField]);
-      const isLong = (e.goodAnswer || "").length > limit;
       if (hasMapOverride || hasLegacy) withOverride++;
-      if (isLong) eligible++;
     }
     const gap = Math.max(0, eligible - withOverride);
     const coveragePct = eligible === 0 ? 100 : Math.round((withOverride / eligible) * 100);
@@ -598,10 +605,11 @@ export function getSurfaceCoverage() {
 export function getRetrievalTrend({ days = 14 } = {}) {
   const kb = loadTrainingKB();
   const buckets = new Map(); // YYYY-MM-DD → count
-  const now = new Date();
-  // Seed buckets so missing days render as 0.
+  const nowMs = Date.now();
+  // Seed buckets in UTC so bucket keys and lastRetrievedAt ISO slices stay
+  // consistent regardless of the server's local timezone.
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    const d = new Date(nowMs - i * 86_400_000);
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
   for (const e of kb.entries) {
@@ -630,7 +638,15 @@ export function getTopQueries({ days = 14, limit = 20 } = {}) {
   const counts = new Map(); // normalizedQuery → { raw, count, hasMatch }
 
   let files;
-  try { files = fs.readdirSync(sessionsDir).filter((f) => f.startsWith("SESSION-") && f.endsWith(".jsonl")); }
+  try {
+    // Only load files whose date portion falls within the requested window.
+    // Session files are named SESSION-YYYY-MM-DD.jsonl, so we can derive the
+    // earliest expected date and skip files older than the window entirely.
+    const cutoffFileDate = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    files = fs.readdirSync(sessionsDir).filter(
+      (f) => f.startsWith("SESSION-") && f.endsWith(".jsonl") && f.slice(8, 18) >= cutoffFileDate
+    );
+  }
   catch { return []; }
 
   for (const f of files) {

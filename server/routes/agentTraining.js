@@ -288,8 +288,10 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
 router.get("/agent/training-kb/analytics", requireDevModeAuth, async (req, res) => {
   try {
     await ensureGcsInit();
-    const days = Math.max(1, Math.min(90, Number(req.query?.days) || 14));
-    const topQueriesLimit = Math.max(1, Math.min(100, Number(req.query?.topQueriesLimit) || 20));
+    const rawDays = Number(req.query?.days);
+    const days = Math.max(1, Math.min(90, Number.isFinite(rawDays) ? rawDays : 14));
+    const rawLimit = Number(req.query?.topQueriesLimit);
+    const topQueriesLimit = Math.max(1, Math.min(100, Number.isFinite(rawLimit) ? rawLimit : 20));
     const data = getTrainingAnalytics({ days, topQueriesLimit });
     res.json({ ok: true, ...data, window: { days, topQueriesLimit } });
   } catch (err) {
