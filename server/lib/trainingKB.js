@@ -531,6 +531,162 @@ export function getTrainingStats() {
   };
 }
 
+/**
+ * Per-surface coverage metrics (F4 / Brief §6.6).
+ *
+ * For each non-default surface, count entries that:
+ *   - have an override (responses[surface] or legacy goodAnswer{ML,WA})
+ *   - are eligible for an override (active + non-permanent + canonical
+ *     answer too long for the surface limit)
+ *
+ * The result lets the Admin compute coverage_pct = with_override / eligible.
+ *
+ * @returns {{
+ *   mercado_libre: { total_with_override: number, gap_count: number, eligible: number, coverage_pct: number },
+ *   whatsapp:      { total_with_override: number, gap_count: number, eligible: number, coverage_pct: number },
+ *   email:         { total_with_override: number, gap_count: number, eligible: number, coverage_pct: number }
+ * }}
+ */
+export function getSurfaceCoverage() {
+  const kb = loadTrainingKB();
+  const active = kb.entries.filter((e) => !e.archived && (e.status == null || e.status === "active"));
+
+  const SURFACE_TO_LEGACY = {
+    mercado_libre: "goodAnswerML",
+    whatsapp: "goodAnswerWA",
+    email: null,
+  };
+  const SURFACE_LIMIT = { mercado_libre: 350, whatsapp: 700, email: 2000 };
+
+  const out = {};
+  for (const surface of Object.keys(SURFACE_TO_LEGACY)) {
+    const legacyField = SURFACE_TO_LEGACY[surface];
+    const limit = SURFACE_LIMIT[surface];
+
+    let withOverride = 0;
+    let eligible = 0;
+    for (const e of active) {
+      const hasMapOverride = !!(e.responses && typeof e.responses === "object" && e.responses[surface]);
+      const hasLegacy = !!(legacyField && e[legacyField]);
+      const isLong = (e.goodAnswer || "").length > limit;
+      if (hasMapOverride || hasLegacy) withOverride++;
+      if (isLong) eligible++;
+    }
+    const gap = Math.max(0, eligible - withOverride);
+    const coveragePct = eligible === 0 ? 100 : Math.round((withOverride / eligible) * 100);
+
+    out[surface] = {
+      total_with_override: withOverride,
+      gap_count: gap,
+      eligible,
+      coverage_pct: coveragePct,
+    };
+  }
+  return out;
+}
+
+/**
+ * Daily retrieval trend over the last `days` days, as `[{ date, count }]`
+ * sorted oldest → newest. Counts are based on `entry.lastRetrievedAt` only,
+ * so the series only reflects ONE retrieval per entry per period (the
+ * latest). For full per-turn aggregation we'd need session JSONLs — see
+ * getTopQueries for that path.
+ *
+ * @param {{ days?: number }} [opts]
+ * @returns {Array<{ date: string, count: number }>}
+ */
+export function getRetrievalTrend({ days = 14 } = {}) {
+  const kb = loadTrainingKB();
+  const buckets = new Map(); // YYYY-MM-DD → count
+  const now = new Date();
+  // Seed buckets so missing days render as 0.
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const e of kb.entries) {
+    if (!e.lastRetrievedAt) continue;
+    const day = String(e.lastRetrievedAt).slice(0, 10);
+    if (buckets.has(day)) buckets.set(day, buckets.get(day) + 1);
+  }
+  return [...buckets.entries()].map(([date, count]) => ({ date, count }));
+}
+
+/**
+ * Aggregated top user queries from session JSONL files over the last `days`
+ * days. Each row is a query string + occurrence count + a `hasMatch` flag
+ * derived from whether ANY session event for that query reported at least
+ * one matched KB entry.
+ *
+ * Falls back to an empty array if no sessions are available (sessionsDir
+ * missing or unreadable). Never throws.
+ *
+ * @param {{ days?: number, limit?: number }} [opts]
+ * @returns {Array<{ query: string, count: number, hasMatch: boolean }>}
+ */
+export function getTopQueries({ days = 14, limit = 20 } = {}) {
+  if (!fs.existsSync(sessionsDir)) return [];
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  const counts = new Map(); // normalizedQuery → { raw, count, hasMatch }
+
+  let files;
+  try { files = fs.readdirSync(sessionsDir).filter((f) => f.startsWith("SESSION-") && f.endsWith(".jsonl")); }
+  catch { return []; }
+
+  for (const f of files) {
+    let content;
+    try { content = fs.readFileSync(path.join(sessionsDir, f), "utf8"); }
+    catch { continue; }
+    const lines = content.split(/\r?\n/);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      let row;
+      try { row = JSON.parse(trimmed); }
+      catch { continue; }
+      if (!row.ts || row.ts < cutoff) continue;
+      const q = row.query || row.question || row.user_message;
+      if (typeof q !== "string" || !q.trim()) continue;
+      const norm = q.trim().toLowerCase().slice(0, 200);
+      const matchedCount = Number(row.matchedCount ?? row.matches?.length ?? 0);
+      const prev = counts.get(norm);
+      if (prev) {
+        prev.count++;
+        if (matchedCount > 0) prev.hasMatch = true;
+      } else {
+        counts.set(norm, { raw: q.trim().slice(0, 200), count: 1, hasMatch: matchedCount > 0 });
+      }
+    }
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map((row) => ({ query: row.raw, count: row.count, hasMatch: row.hasMatch }));
+}
+
+/**
+ * Bundles all analytics for the GET /agent/training-kb/analytics endpoint.
+ * Composed from existing helpers + the F4 additions above.
+ *
+ * @param {{ days?: number, topQueriesLimit?: number }} [opts]
+ */
+export function getTrainingAnalytics({ days = 14, topQueriesLimit = 20 } = {}) {
+  const stats = getTrainingStats();
+  return {
+    byCategory: stats.byCategory,
+    bySource: stats.bySource,
+    bySurface: getSurfaceCoverage(),
+    retrievalTrend: getRetrievalTrend({ days }),
+    topQueries: getTopQueries({ days, limit: topQueriesLimit }),
+    conflicts: { count: findAllConflicts().length },
+    health: stats.health,
+    total: stats.total,
+    pending: stats.pending,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function loadPromptSections() {
   const source = fs.readFileSync(chatPromptsPath, "utf8");
   const sections = {};
