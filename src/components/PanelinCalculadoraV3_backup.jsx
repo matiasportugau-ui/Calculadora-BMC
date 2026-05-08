@@ -2636,17 +2636,7 @@ export default function PanelinCalculadoraV3() {
 
   /** Siguiente paso (solo_techo): con >1 zona de techo se omite el paso global "Pendiente" (pendiente por zona en Dimensiones). */
   const advanceWizardStep = useCallback(() => {
-    // Identity gate — block at step 5 (Pendiente → Estructura) if anonymous.
-    // Master plan §Phase D. The modal listens to bmc-auth-gate-required and
-    // re-emits bmc-wizard-next on successful login so we resume here.
-    if (
-      scenario === "solo_techo" &&
-      wizardStep === SOLO_TECHO_PENDIENTE_STEP_INDEX &&
-      bmcAuth.status === "anonymous"
-    ) {
-      requestAuthGate("wizard-step-5");
-      return;
-    }
+    // Identity gate disabled — calculator is fully usable without login.
     setWizardStep((s) => {
       if (s >= SOLO_TECHO_STEPS.length - 1) return s;
       let next = s + 1;
