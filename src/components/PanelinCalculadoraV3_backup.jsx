@@ -10,11 +10,11 @@ import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
-  ChevronDown, ChevronUp, ChevronLeft, Printer, Trash2, Copy, Check,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Printer, Trash2, Copy, Check,
   AlertTriangle, CheckCircle, Info, Minus, Plus, FileText,
   RotateCcw, Edit3, X, RefreshCw, ClipboardList,
   Download, Save, Archive, Cloud, Settings,
-  Table, LayoutTemplate, CircleDollarSign, MoreHorizontal, Upload,
+  Table, LayoutTemplate, CircleDollarSign, MoreHorizontal, Menu, Upload,
 } from "lucide-react";
 
 import { PANELIN_VERSION_BADGE } from "../appSemver.js";
@@ -2364,6 +2364,8 @@ export default function PanelinCalculadoraV3() {
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
   const toolsMenuRef = useRef(null);
+  const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
+  const mobileHeaderMenuRef = useRef(null);
   const [chatOpen, setChatOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
@@ -2934,10 +2936,14 @@ export default function PanelinCalculadoraV3() {
     [techo.zonas],
   );
 
+  // 2D planta (SVG) debe verse también en phone para pasos Estructura / Bordes / etc.;
+  // el bloque 3D WebGL sigue limitado a viewports no-phone por peso y UX táctil.
   const roofQuoteVisor2dEligible = Boolean(
-    scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0 && !isPhone,
+    scenarioDef?.hasTecho && validRoofZonasFor3D.length > 0,
   );
-  const showRoof3DHost = Boolean(ENABLE_ROOF_3D_VISOR && roofQuoteVisor2dEligible);
+  const showRoof3DHost = Boolean(
+    ENABLE_ROOF_3D_VISOR && roofQuoteVisor2dEligible && !isPhone,
+  );
   const showRoof2dInQuoteVisor = Boolean(
     roofQuoteVisor2dEligible && activeWizardStepId && ROOF_2D_QUOTE_VISOR_STEP_IDS.has(activeWizardStepId),
   );
@@ -4011,6 +4017,10 @@ export default function PanelinCalculadoraV3() {
     setTecho,
   ]);
 
+  /** Con panel apilado (≤1023px), la planta 2D se muestra en el flujo del wizard; el visor derecho queda en cotización / carrusel. */
+  const inlineRoof2DInWizard = Boolean(isCompactLayout && showRoof2dInQuoteVisor);
+  const quoteVisorRoof2DPreview = inlineRoof2DInWizard ? null : roof2DPreviewForVisor;
+
   const uP = (k, v) => setPared(pd => ({ ...pd, [k]: v }));
   const uPr = (k, v) => setProyecto(pr => ({ ...pr, [k]: v }));
 
@@ -4156,6 +4166,17 @@ export default function PanelinCalculadoraV3() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showToolsMenu]);
+
+  useEffect(() => {
+    if (!mobileHeaderMenuOpen) return;
+    const handler = (e) => {
+      if (mobileHeaderMenuRef.current && !mobileHeaderMenuRef.current.contains(e.target)) {
+        setMobileHeaderMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [mobileHeaderMenuOpen]);
 
   const handleDriveRefresh = useCallback(async () => {
     setDriveLoading(true);
@@ -4434,61 +4455,269 @@ export default function PanelinCalculadoraV3() {
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", width: isCompactLayout ? "100%" : "auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
-            <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
-            <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
-          </div>
-          <div ref={toolsMenuRef} style={{ position: "relative" }}>
-            <button
-              type="button"
-              onClick={() => setShowToolsMenu(o => !o)}
-              style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${showToolsMenu ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)"}`, background: showToolsMenu ? "rgba(255,255,255,0.15)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-              title="Herramientas adicionales"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {showToolsMenu && (
-              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60, background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.18)", overflow: "hidden", minWidth: 190 }}>
-                <button
-                  type="button"
-                  onClick={() => { navigate("/especificaciones"); setShowToolsMenu(false); }}
-                  style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
-                  title="Simulacro de gestión de especificaciones y PDF de práctica"
+          {isPhone ? (
+            <div ref={mobileHeaderMenuRef} style={{ position: "relative" }}>
+              <button
+                type="button"
+                aria-expanded={mobileHeaderMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => setMobileHeaderMenuOpen((o) => !o)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${mobileHeaderMenuOpen ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)"}`,
+                  background: mobileHeaderMenuOpen ? "rgba(255,255,255,0.15)" : "transparent",
+                  color: "#fff",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Menu size={18} strokeWidth={2} aria-hidden />
+                Más
+              </button>
+              {mobileHeaderMenuOpen ? (
+                <div
+                  role="menu"
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    left: 0,
+                    zIndex: 70,
+                    background: "#fff",
+                    borderRadius: 12,
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.18)",
+                    minWidth: 228,
+                    maxWidth: "min(92vw, 300px)",
+                    maxHeight: "min(72vh, 480px)",
+                    overflowY: "auto",
+                  }}
                 >
-                  <ClipboardList size={14} color="#555" />Especificaciones
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { navigate("/presentacion-licitacion"); setShowToolsMenu(false); }}
-                  style={{ width: "100%", padding: "10px 14px", border: "none", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
-                  title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
-                >
-                  <FileText size={14} color="#555" />Presentación
-                </button>
+                  <div style={{ padding: "8px 14px 4px", fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Modo</div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setModoVendedor(true);
+                      setTecho({ ...TECHO_INITIAL_VENDEDOR });
+                      setWizardStep(0);
+                      setLP(getListaDefault());
+                      setMobileHeaderMenuOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "none",
+                      borderBottom: "1px solid #f0f0f5",
+                      background: modoVendedor ? "#f0f9ff" : "transparent",
+                      color: "#1d1d1f",
+                      fontSize: 13,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      textAlign: "left",
+                      fontWeight: modoVendedor ? 700 : 400,
+                    }}
+                  >
+                    Modo vendedor
+                    {modoVendedor ? <span style={{ color: C.primary, fontSize: 12 }}>✓</span> : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setModoVendedor(false);
+                      if (!listaPrecios) setLP(getListaDefault());
+                      setMobileHeaderMenuOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "none",
+                      borderBottom: "1px solid #f0f0f5",
+                      background: !modoVendedor ? "#f0f9ff" : "transparent",
+                      color: "#1d1d1f",
+                      fontSize: 13,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      textAlign: "left",
+                      fontWeight: !modoVendedor ? 700 : 400,
+                    }}
+                  >
+                    Modo cliente
+                    {!modoVendedor ? <span style={{ color: C.primary, fontSize: 12 }}>✓</span> : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setShowConfigPanel(true); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    <Settings size={14} color="#555" />Config
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setShowLogPanel(true); fetchGptQuotations(); setMobileHeaderMenuOpen(false); }}
+                    style={{ position: "relative", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    <Archive size={14} color="#555" />Presupuestos
+                    {(logEntries.length + gptQuotations.length) > 0 ? (
+                      <span style={{ marginLeft: "auto", background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { handleReset(); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    <Trash2 size={14} color="#555" />Limpiar
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { handlePrint(); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: C.primarySoft, color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    <Printer size={14} color={C.primary} />Imprimir
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { navigate("/hub"); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    Hub
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { navigate("/logistica"); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    Logística
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { navigate("/especificaciones"); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    <ClipboardList size={14} color="#555" />Especificaciones
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { navigate("/presentacion-licitacion"); setMobileHeaderMenuOpen(false); }}
+                    style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: devMode ? "1px solid #f0f0f5" : "none", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                  >
+                    <FileText size={14} color="#555" />Presentación
+                  </button>
+                  {devMode ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { toggleDevMode(); setMobileHeaderMenuOpen(false); }}
+                      style={{ width: "100%", padding: "10px 14px", border: "none", background: "#fff7ed", color: "#9a3412", fontSize: 13, fontWeight: 700, cursor: "pointer", textAlign: "left" }}
+                      title="Developer mode · Ctrl/Cmd + Shift + D"
+                    >
+                      Salir de DEV
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
+                <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
+                <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
               </div>
-            )}
-          </div>
-          <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <Settings size={14} />Config
-          </button>
+              <div ref={toolsMenuRef} style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowToolsMenu(o => !o)}
+                  style={{ padding: "6px 10px", borderRadius: 8, border: `1px solid ${showToolsMenu ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)"}`, background: showToolsMenu ? "rgba(255,255,255,0.15)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                  title="Herramientas adicionales"
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+                {showToolsMenu && (
+                  <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60, background: "#fff", borderRadius: 12, boxShadow: "0 4px 24px rgba(0,0,0,0.18)", overflow: "hidden", minWidth: 190 }}>
+                    <button
+                      type="button"
+                      onClick={() => { navigate("/especificaciones"); setShowToolsMenu(false); }}
+                      style={{ width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                      title="Simulacro de gestión de especificaciones y PDF de práctica"
+                    >
+                      <ClipboardList size={14} color="#555" />Especificaciones
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { navigate("/presentacion-licitacion"); setShowToolsMenu(false); }}
+                      style={{ width: "100%", padding: "10px 14px", border: "none", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                      title="PDF presentación benchmark licitación (PIR 50 mm vs referencia)"
+                    >
+                      <FileText size={14} color="#555" />Presentación
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setShowConfigPanel(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                <Settings size={14} />Config
+              </button>
+            </>
+          )}
           <button onClick={() => setShowPlanModal(true)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
             <Upload size={14} />Plano
           </button>
+          {isPhone ? (
+            <button
+              type="button"
+              onClick={handleManualSave}
+              disabled={groups.length === 0}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.3)",
+                background: "transparent",
+                color: "#fff",
+                fontSize: 13,
+                cursor: groups.length > 0 ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                opacity: groups.length > 0 ? 1 : 0.45,
+              }}
+            >
+              <Save size={14} />Guardar
+            </button>
+          ) : null}
           <button onClick={() => { setShowDrivePanel(true); if (driveAuth) handleDriveRefresh(); }} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: driveAuth ? "rgba(66,133,244,0.25)" : "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: TR }}>
             <Cloud size={14} />Drive
           </button>
-          <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-            <Archive size={14} />Presupuestos
-            {(logEntries.length + gptQuotations.length) > 0 && (
-              <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
-            )}
-          </button>
-          {groups.length > 0 && (
-            <button onClick={handleManualSave} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Save size={14} />Guardar</button>
-          )}
-          <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
-          <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {!isPhone ? (
+            <>
+              <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                <Archive size={14} />Presupuestos
+                {(logEntries.length + gptQuotations.length) > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
+                )}
+              </button>
+              {groups.length > 0 && (
+                <button onClick={handleManualSave} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Save size={14} />Guardar</button>
+              )}
+              <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Trash2 size={14} />Limpiar</button>
+              <button onClick={handlePrint} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Printer size={14} />Imprimir</button>
+            </>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: isPhone ? "auto" : undefined }}>
             <video
               src={PANELIN_AGENT_VIDEO_SRC}
               autoPlay
@@ -4515,7 +4744,7 @@ export default function PanelinCalculadoraV3() {
               💬 Panelin
             </button>
           </div>
-          {devMode && (
+          {!isPhone && devMode ? (
             <button
               onClick={toggleDevMode}
               style={{
@@ -4533,7 +4762,7 @@ export default function PanelinCalculadoraV3() {
             >
               DEV
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -5233,9 +5462,15 @@ export default function PanelinCalculadoraV3() {
                       </div>
                       {techo.inclAccesorios !== false ? (
                         <>
-                          <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
-                            <strong style={{ color: C.tp }}>Planta 2D en el panel derecho:</strong> tocá las bandas resaltadas en el perímetro de cada zona para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
-                          </div>
+                          {isPhone ? (
+                            <CollapsibleHint title="Ayuda · selección en planta" defaultOpen={false}>
+                              <strong style={{ color: C.tp }}>Planta 2D:</strong> tocá las bandas resaltadas en el perímetro de cada zona para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
+                            </CollapsibleHint>
+                          ) : (
+                            <div style={{ fontSize: 12, color: C.ts, lineHeight: 1.5, padding: "12px 14px", background: C.surfaceAlt, borderRadius: 10, border: `1px solid ${C.border}` }}>
+                              <strong style={{ color: C.tp }}>Planta 2D en el panel derecho:</strong> tocá las bandas resaltadas en el perímetro de cada zona para elegir goteros, babetas, canalón y perfiles. En multi-zona, usá las pastillas de encuentro (⟷) para continuo / pretil / cumbrera / desnivel.
+                            </div>
+                          )}
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                             <Toggle
                               label="Mostrar todos (esta familia)"
@@ -5450,22 +5685,90 @@ export default function PanelinCalculadoraV3() {
                       )}
                     </div>
                   )}
-                  <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}` }}>
-                    {canPrev && (
-                      <button type="button" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
-                        Anterior
-                      </button>
-                    )}
-                    <div style={{ flex: 1 }} />
-                    {canNext ? (
-                      <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
-                        Siguiente
-                      </button>
+                  {inlineRoof2DInWizard && roof2DPreviewForVisor ? (
+                    <div style={{ marginTop: 20, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ ...labelS, marginBottom: 10 }}>Planta 2D</div>
+                      <div
+                        style={{
+                          borderRadius: 12,
+                          border: `1px solid ${C.border}`,
+                          background: C.surface,
+                          overflow: "visible",
+                        }}
+                      >
+                        {roof2DPreviewForVisor}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.ts, marginTop: 8, lineHeight: 1.45 }}>
+                        {isPhone ? (
+                          <CollapsibleHint title="Nota · cotización y panel derecho" defaultOpen={false}>
+                            Interactuá con la planta según el paso (dimensiones, estructura, accesorios). El panel derecho muestra referencias y totales.
+                          </CollapsibleHint>
+                        ) : (
+                          <>Interactuá con la planta según el paso (dimensiones, estructura, accesorios). El panel derecho muestra referencias y totales.</>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div style={{ display: "flex", gap: 12, marginTop: 28, paddingTop: 20, borderTop: `1.5px solid ${C.border}`, alignItems: "center", justifyContent: isPhone ? "center" : "flex-start", flexWrap: "wrap", paddingLeft: isPhone ? 30 : undefined, paddingRight: isPhone ? 30 : undefined }}>
+                    {isPhone ? (
+                      <>
+                        {!canNext && (
+                          <span style={{ fontSize: 14, color: C.success, fontWeight: 700, textAlign: "center" }}>✓ Cotización lista</span>
+                        )}
+                        {canNext && !isValid && (
+                          <span style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.35 }}>Completá este paso para avanzar</span>
+                        )}
+                        {canNext && isValid && (
+                          <span style={{ fontSize: 11, color: C.ts, textAlign: "center", lineHeight: 1.35 }}>Navegación: flechas a los costados</span>
+                        )}
+                      </>
                     ) : (
-                      <span style={{ fontSize: 14, color: C.success, fontWeight: 700 }}>✓ Cotización lista</span>
+                      <>
+                        {canPrev && (
+                          <button type="button" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
+                            Anterior
+                          </button>
+                        )}
+                        <div style={{ flex: 1 }} />
+                        {canNext ? (
+                          <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
+                            Siguiente
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 14, color: C.success, fontWeight: 700 }}>✓ Cotización lista</span>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
+                {isPhone ? (
+                  <>
+                    <button
+                      type="button"
+                      className="bmc-wizard-edge-nav bmc-wizard-edge-nav--prev"
+                      aria-label="Paso anterior"
+                      title={canPrev ? "Anterior" : "Primer paso"}
+                      onClick={() => {
+                        if (canPrev) goPrevWizardSoloTecho();
+                      }}
+                      disabled={!canPrev}
+                    >
+                      <ChevronLeft size={26} strokeWidth={2} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="bmc-wizard-edge-nav bmc-wizard-edge-nav--next"
+                      aria-label={canNext ? "Paso siguiente" : "Último paso"}
+                      title={canNext ? (isValid ? "Siguiente" : "Completá el paso") : "Cotización lista"}
+                      onClick={() => {
+                        if (canNext && isValid) advanceWizardStep();
+                      }}
+                      disabled={!canNext || !isValid}
+                    >
+                      <ChevronRight size={26} strokeWidth={2} aria-hidden />
+                    </button>
+                  </>
+                ) : null}
                 {stepId === "espesor" && (
                   <div
                     className="bmc-espesor-advisor-wrap"
@@ -6276,7 +6579,7 @@ export default function PanelinCalculadoraV3() {
             techoBorders={techo.borders}
             techoZonasBorders={techo.zonas?.map((z) => z.preview?.borders ?? {})}
             dimensionSummary={quoteVisorDimensionSummary}
-            roof2DPreview={roof2DPreviewForVisor}
+            roof2DPreview={quoteVisorRoof2DPreview}
             onSelectAgua={null}
             onNext={null}
           />

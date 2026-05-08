@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-08
+**Última actualización:** 2026-05-09
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-09 (UX / bugfix — Admin KB en `/hub/agent-admin`):** La pestaña **Base de conocimiento** enviaba `answer` pero la API persiste `goodAnswer`, por lo que altas/ediciones podían fallar y la lista mostraba respuestas vacías. Corregido en [`AgentAdminModule.jsx`](../../src/components/AgentAdminModule.jsx) (`goodAnswer`, helper `kbAnswer`, búsqueda e import JSON con `goodAnswer`/`answer`). Servidor: alias `answer` → `goodAnswer` en [`server/lib/trainingKB.js`](../../server/lib/trainingKB.js). UI reorganizada (objetivo del módulo, secciones, **Exportar KB** JSON, test de matching con `matchScore` + preview). Convén revisar en [Admin IA](https://calculadora-bmc.vercel.app/hub/agent-admin) con `VITE_API_AUTH_TOKEN` en build.
 
 **2026-05-08 (Deploy — chat chips en producción):** Cloud Run `panelin-calc` (script [`deploy-cloud-run.sh`](../../scripts/deploy-cloud-run.sh); nueva revisión sirviendo 100% tráfico; URL canónica `gcloud describe` = `https://panelin-calc-q74zutv7dq-uc.a.run.app`) + Vercel producción ([`deploy-vercel.sh --prod`](../../scripts/deploy-vercel.sh), alias `https://calculadora-bmc.vercel.app`). **`npm run smoke:prod`** OK inmediatamente después (health, capabilities, CSV MATRIZ, ML status, WhatsApp probe, `suggest-response`). Cubre API con SSE `type: "suggestions"` + SPA con chips Panelin.
 

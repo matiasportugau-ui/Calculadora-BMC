@@ -6,12 +6,12 @@
 # Run:   docker run -e PORT=3001 -p 3001:3001 --env-file .env bmc-dashboard
 # Cloud Run sets PORT (default 8080); do not bake PORT=3001 into the image.
 
-FROM node:20-slim AS deps
+FROM node:24-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev --legacy-peer-deps
 
-FROM node:20-alpine AS calc-build
+FROM node:24-alpine AS calc-build
 WORKDIR /app
 # prebuild runs bash scripts/disk-space-precheck.sh (not in minimal alpine)
 RUN apk add --no-cache bash
@@ -29,7 +29,7 @@ ENV VITE_BASE=/calculadora/ \
     BMC_DISK_PRECHECK_SKIP=1
 RUN npm run build
 
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="BMC Dashboard — Finanzas, Operaciones, Calculadora, KPI, Sheets API"
 WORKDIR /app

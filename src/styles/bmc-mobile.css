@@ -92,6 +92,49 @@
 /* ── Phone-only: hide desktop actions (< 640px) ──────────────────────── */
 @media (max-width: 639px) {
   .bmc-desktop-actions { display: none !important; }
+
+  /**
+   * Wizard solo_techo — navegación lateral (Anterior / Siguiente).
+   * Flecha liviana, vidrio suave; se oscurece al tocar (:active).
+   */
+  button.bmc-wizard-edge-nav {
+    position: fixed;
+    z-index: 38;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 76px;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    background: rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: rgba(26, 26, 46, 0.42);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button.bmc-wizard-edge-nav--prev {
+    left: max(2px, env(safe-area-inset-left, 0px));
+    border-radius: 0 11px 11px 0;
+  }
+  button.bmc-wizard-edge-nav--next {
+    right: max(2px, env(safe-area-inset-right, 0px));
+    border-radius: 11px 0 0 11px;
+  }
+  button.bmc-wizard-edge-nav:active:not(:disabled) {
+    background: rgba(26, 26, 46, 0.14);
+    color: rgba(26, 26, 46, 0.95);
+  }
+  button.bmc-wizard-edge-nav:disabled {
+    opacity: 0.22;
+    cursor: default;
+  }
 }
 
 /* ── Tablet: wrap action buttons for narrower widths (640–1023px) ─────── */

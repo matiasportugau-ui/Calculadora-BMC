@@ -4,7 +4,7 @@
  * Used by `buscar_cliente_crm` to prevent duplicate rows when the agent
  * is about to call `guardar_en_crm`. Reads B4:AH500 once and matches the
  * query against cliente (col C), telefono (col D, digit-only), and
- * observaciones (col W).
+ * observaciones (col W), tipo/tags taxonomía (cols AL–AM relativas al rango).
  *
  * Returns { ok, count, matches[], sheetId } on success, or
  * { ok:false, error } if BMC_SHEET_ID / Google creds aren't configured.
@@ -51,11 +51,11 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
   }
 
   try {
-    // B = timestamp, C = cliente, D = telefono, E = ubicacion, ..., W = observaciones
-    // AH = link presupuesto. Read B:AH so we cover all relevant columns.
+    // B = timestamp, C = cliente, D = telefono, … W = observaciones, AH = link;
+    // AL–AM = taxonomía (índices 36–37 desde col B).
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: "'CRM_Operativo'!B4:AH500",
+      range: "'CRM_Operativo'!B4:AN500",
     });
     const rows = resp.data.values || [];
     const cap = Math.max(1, Math.min(50, Number(limite || 10)));
@@ -74,13 +74,15 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
     for (let i = 0; i < rows.length && matches.length < cap; i++) {
       const r = rows[i];
       if (!r || r.length === 0) continue;
-      // Index relative to col B: C is index 1, D is index 2, W is index 21, AH is index 32.
+      // Index relative to col B: C is index 1, D is index 2, W is index 21, AH is index 32, AL is index 36, AM is index 37.
       const cliente = String(r[1] || "").trim();
       if (!cliente) continue;
       const telefono = String(r[2] || "").trim();
       const ubicacion = String(r[3] || "").trim();
       const observaciones = String(r[21] || "").trim();
       const linkPresupuesto = String(r[32] || "").trim();
+      const tipoContacto = String(r[36] || "").trim();
+      const tagsTaxonomia = String(r[37] || "").trim();
       const timestamp = String(r[0] || "").trim();
 
       const clienteHit = cliente.toLowerCase().includes(qLower);
@@ -101,6 +103,8 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
           ubicacion,
           link_presupuesto: linkPresupuesto || null,
           observaciones: observaciones.slice(0, 200) || null,
+          tipo_contacto: tipoContacto || null,
+          tags_taxonomia: tagsTaxonomia || null,
           timestamp: timestamp || null,
           match_via: rutHit ? "rut" : phoneHit ? "telefono" : (clienteHit ? "cliente" : "observaciones"),
         });

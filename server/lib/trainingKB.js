@@ -191,12 +191,13 @@ function scoreOverlap(query, text) {
 
 export function addTrainingEntry(payload = {}) {
   const kb = loadTrainingKB();
+  const goodAnswerRaw = payload.goodAnswer ?? payload.answer;
   const entry = {
     id: crypto.randomUUID(),
     category: normalizeCategory(payload.category),
     question: String(payload.question || "").trim(),
     badAnswer: String(payload.badAnswer || "").trim(),
-    goodAnswer: String(payload.goodAnswer || "").trim(),
+    goodAnswer: String(goodAnswerRaw || "").trim(),
     context: String(payload.context || "").trim(),
     source: String(payload.source || "manual"),
     permanent: Boolean(payload.permanent),
@@ -244,12 +245,18 @@ export function updateTrainingEntry(entryId, patch = {}) {
   const idx = kb.entries.findIndex((e) => e.id === entryId);
   if (idx < 0) throw new Error("entry not found");
   const prev = kb.entries[idx];
+  let nextGood = prev.goodAnswer;
+  if (Object.prototype.hasOwnProperty.call(patch, "goodAnswer")) {
+    nextGood = String(patch.goodAnswer ?? "").trim();
+  } else if (Object.prototype.hasOwnProperty.call(patch, "answer")) {
+    nextGood = String(patch.answer ?? "").trim();
+  }
   const next = {
     ...prev,
     category: patch.category ? normalizeCategory(patch.category) : prev.category,
     question: patch.question != null ? String(patch.question).trim() : prev.question,
     badAnswer: patch.badAnswer != null ? String(patch.badAnswer).trim() : prev.badAnswer,
-    goodAnswer: patch.goodAnswer != null ? String(patch.goodAnswer).trim() : prev.goodAnswer,
+    goodAnswer: nextGood,
     context: patch.context != null ? String(patch.context).trim() : prev.context,
     permanent: patch.permanent != null ? Boolean(patch.permanent) : prev.permanent,
     status: patch.status && ["active", "pending", "rejected"].includes(patch.status) ? patch.status : prev.status ?? "active",

@@ -16,6 +16,7 @@ import {
   Col,
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
+import { writeCrmRowTaxonomy } from "../lib/crmTaxonomy.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
@@ -2688,7 +2689,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const sheets = await getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `'${CRM_TAB}'!A${rowNum}:AK${rowNum}`,
+        range: `'${CRM_TAB}'!A${rowNum}:AN${rowNum}`,
       });
       const parsed = parseCrmRowAtoAK(r.data.values || []);
       return res.json({ ok: true, row: rowNum, parsed });
@@ -2752,6 +2753,32 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         requestBody: { values: [[sentAt]] },
       });
       return res.json({ ok: true, row, enviadoEl: sentAt });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  /**
+   * Escribe taxonomía (cols AL–AN): tipo de contacto, tags, notas.
+   * Body: { row, tipoContacto?, tags?, notas? } — solo actualiza campos presentes.
+   */
+  router.post("/crm/cockpit/taxonomy-row", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    if (!row || row < FIRST_DATA_ROW) {
+      return res.status(400).json({ ok: false, error: `Invalid row (>= ${FIRST_DATA_ROW})` });
+    }
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    const tipoContacto = req.body?.tipoContacto ?? req.body?.tipo_contacto;
+    const tags = req.body?.tags;
+    const notas = req.body?.notas;
+    try {
+      const result = await writeCrmRowTaxonomy(row, {
+        tipoContacto: tipoContacto !== undefined && tipoContacto !== null ? tipoContacto : undefined,
+        tags: tags !== undefined && tags !== null ? tags : undefined,
+        notas: notas !== undefined && notas !== null ? notas : undefined,
+      });
+      if (!result.ok) return res.status(400).json(result);
+      return res.json(result);
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
