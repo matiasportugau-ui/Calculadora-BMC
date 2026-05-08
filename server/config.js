@@ -157,6 +157,10 @@ export const config = {
       ? process.env.INTERNAL_SUPERADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
       : []
   ),
+  /** KB Analytics — log missed questions for human review (opt-in; default off) */
+  kbAnalyticsLogMissQuestion: bool(process.env.KB_ANALYTICS_LOG_MISS_QUESTION, false),
+  /** KB Analytics — window size in days for metrics (default 30, max 365) */
+  kbAnalyticsWindowMaxDays: Math.max(1, Math.min(Number(process.env.KB_ANALYTICS_WINDOW_MAX_DAYS || 90), 365)),
 };
 
 export const redirectUri = () => {

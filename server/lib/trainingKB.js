@@ -11,7 +11,7 @@ const sessionsDir = path.join(dataDir, "training-sessions");
 const backupsDir = path.join(dataDir, "prompt-backups");
 const chatPromptsPath = path.join(repoRoot, "server/lib/chatPrompts.js");
 
-const KB_VERSION = "1.0.0";
+const KB_VERSION = "1.1.0";
 
 // ─── GCS persistence (Cloud Run) ─────────────────────────────────────────────
 // Cloud Run filesystem is ephemeral — every deploy loses local writes.
@@ -438,6 +438,7 @@ export function getHealthEntries() {
     stale: active.filter((e) => e.reviewDueAt && e.reviewDueAt < now),
     zeroRetrieval: active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && (e.createdAt || "") < thirtyDaysAgo),
     mlGap: active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML),
+    waGap: active.filter((e) => (e.goodAnswer || "").length > 800 && !e.goodAnswerWA),
   };
 }
 
@@ -463,6 +464,7 @@ export function getTrainingStats() {
   const stale = active.filter((e) => e.reviewDueAt && e.reviewDueAt < new Date().toISOString()).length;
   const zeroRetrieval = active.filter((e) => !e.permanent && (e.retrievalCount ?? 0) === 0 && e.createdAt < thirtyDaysAgo).length;
   const mlGap = active.filter((e) => (e.goodAnswer || "").length > 350 && !e.goodAnswerML).length;
+  const waGap = active.filter((e) => (e.goodAnswer || "").length > 800 && !e.goodAnswerWA).length;
   const pending = all.filter((e) => e.status === "pending").length;
 
   return {
@@ -474,7 +476,8 @@ export function getTrainingStats() {
       stale,           // have reviewDueAt in the past
       zeroRetrieval,   // never retrieved, older than 30 days
       mlGap,           // goodAnswer too long for ML channel, no override
-      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3),
+      waGap,           // goodAnswer too long for WA/IG/FB channels, no override
+      score: Math.max(0, 100 - stale * 5 - zeroRetrieval * 2 - mlGap * 3 - waGap * 3),
     },
     updatedAt: new Date().toISOString(),
   };
