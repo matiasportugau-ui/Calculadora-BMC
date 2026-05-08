@@ -97,7 +97,7 @@ async function main() {
     }
     if (wb.spreadsheetId && process.env[wb.envId] && process.env[wb.envId] !== wb.spreadsheetId) {
       console.warn(
-        `WARN ${wb.envId} mapping spreadsheetId differs from current env. Using mapping spreadsheetId from discovery output for reproducibility.`,
+        `WARN ${wb.envId}: mapping spreadsheetId (${wb.spreadsheetId}) differs from env var (${process.env[wb.envId]}). Using mapping value for reproducibility across environments.`,
       );
     }
     for (const tab of wb.tabs) {
