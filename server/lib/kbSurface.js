@@ -32,3 +32,23 @@ export function normalizeSurface(value) {
   if (typeof value !== "string" || !value) return DEFAULT_SURFACE;
   return KB_SURFACES.includes(value) ? value : DEFAULT_SURFACE;
 }
+
+/**
+ * Maps a CRM `origen` free-form string (e.g. "ML", "Mercado Libre", "WA",
+ * "WhatsApp", "Email", "Gmail", "Web", "CRM") to a canonical KB surface.
+ * Case-insensitive. Mirrors patterns already used in bmcDashboard.js
+ * (send-approved branches) for consistent classification across the route.
+ *
+ * @param {unknown} origen
+ * @returns {typeof KB_SURFACES[number]}
+ */
+export function mapOrigenToSurface(origen) {
+  if (typeof origen !== "string" || !origen) return DEFAULT_SURFACE;
+  const s = origen.trim();
+  if (!s) return DEFAULT_SURFACE;
+  if (/\b(ml|mercado\s*libre|mercadolibre)\b/i.test(s)) return "mercado_libre";
+  if (/\b(wa|whats?app)\b/i.test(s)) return "whatsapp";
+  if (/\b(email|e-?mail|gmail|imap|correo)\b/i.test(s)) return "email";
+  if (/\b(wolfboard|wolf\s*board)\b/i.test(s)) return "wolfboard";
+  return DEFAULT_SURFACE;
+}

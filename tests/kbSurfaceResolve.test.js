@@ -8,6 +8,7 @@ import {
   KB_SURFACES,
   SURFACE_LIMITS,
   normalizeSurface,
+  mapOrigenToSurface,
 } from "../server/lib/kbSurface.js";
 import { resolveTrainingAnswer } from "../server/lib/trainingKB.js";
 
@@ -54,6 +55,49 @@ group("normalizeSurface", () => {
   assert(normalizeSurface(undefined) === "panelin_chat", "undefined → default");
   assert(normalizeSurface("") === "panelin_chat", "empty → default");
   assert(normalizeSurface(123) === "panelin_chat", "non-string → default");
+});
+
+// ─── mapOrigenToSurface — CRM origen → canonical surface ────────────────────
+
+group("mapOrigenToSurface — Mercado Libre patterns", () => {
+  assert(mapOrigenToSurface("ML") === "mercado_libre", "ML → ml");
+  assert(mapOrigenToSurface("ml") === "mercado_libre", "ml lowercase → ml");
+  assert(mapOrigenToSurface("Mercado Libre") === "mercado_libre", "full name → ml");
+  assert(mapOrigenToSurface("MERCADOLIBRE") === "mercado_libre", "concat → ml");
+  assert(mapOrigenToSurface("mercado libre uy") === "mercado_libre", "with suffix → ml");
+});
+
+group("mapOrigenToSurface — WhatsApp patterns", () => {
+  assert(mapOrigenToSurface("WA") === "whatsapp", "WA → wa");
+  assert(mapOrigenToSurface("wa") === "whatsapp", "wa lowercase → wa");
+  assert(mapOrigenToSurface("WhatsApp") === "whatsapp", "WhatsApp → wa");
+  assert(mapOrigenToSurface("whatsapp") === "whatsapp", "lowercase → wa");
+  assert(mapOrigenToSurface("Whatsapp Business") === "whatsapp", "with suffix → wa");
+});
+
+group("mapOrigenToSurface — Email patterns", () => {
+  assert(mapOrigenToSurface("Email") === "email", "Email → email");
+  assert(mapOrigenToSurface("email") === "email", "lowercase → email");
+  assert(mapOrigenToSurface("e-mail") === "email", "hyphenated → email");
+  assert(mapOrigenToSurface("Gmail") === "email", "Gmail → email");
+  assert(mapOrigenToSurface("IMAP") === "email", "IMAP → email");
+  assert(mapOrigenToSurface("Correo") === "email", "Correo (es) → email");
+});
+
+group("mapOrigenToSurface — Wolfboard pattern", () => {
+  assert(mapOrigenToSurface("Wolfboard") === "wolfboard", "Wolfboard → wolfboard");
+  assert(mapOrigenToSurface("wolf board") === "wolfboard", "wolf board → wolfboard");
+});
+
+group("mapOrigenToSurface — defaults to panelin_chat", () => {
+  assert(mapOrigenToSurface("CRM") === "panelin_chat", "CRM → default");
+  assert(mapOrigenToSurface("Web") === "panelin_chat", "Web → default");
+  assert(mapOrigenToSurface("Otro") === "panelin_chat", "Otro → default");
+  assert(mapOrigenToSurface("") === "panelin_chat", "empty → default");
+  assert(mapOrigenToSurface(null) === "panelin_chat", "null → default");
+  assert(mapOrigenToSurface(undefined) === "panelin_chat", "undefined → default");
+  assert(mapOrigenToSurface(123) === "panelin_chat", "non-string → default");
+  assert(mapOrigenToSurface("   ") === "panelin_chat", "whitespace only → default");
 });
 
 // ─── resolveTrainingAnswer — fallback chain ─────────────────────────────────
