@@ -78,7 +78,8 @@ import {
  */
 export async function resolveCustomer(input, store, opts = {}) {
   const { channel, externalId, displayName, contactHint } = _validateInput(input);
-  _validateStore(store);
+  const enableFuzzy = !!opts.enableFuzzy;
+  _validateStore(store, { enableFuzzy });
 
   // 1. Manual override.
   const alias = await store.findAlias(channel, externalId);
@@ -119,7 +120,6 @@ export async function resolveCustomer(input, store, opts = {}) {
   }
 
   // 4. Fuzzy match — Phase 2 (gated by opts.enableFuzzy).
-  const enableFuzzy = !!opts.enableFuzzy;
   const maxDistance = Number.isFinite(opts.fuzzyMaxDistance) ? opts.fuzzyMaxDistance : 2;
   if (enableFuzzy && displayName) {
     const candidates = await _findFuzzyCandidates({
@@ -209,18 +209,24 @@ const REQUIRED_STORE_METHODS = [
   "findCustomerByPhone",
   "findCustomerByEmail",
   "findCustomerByRut",
-  "findCustomersByName",
-  "findCustomersByPhonePrefix",
   "createCustomer",
   "createIdentity",
+];
+
+const REQUIRED_FUZZY_STORE_METHODS = [
+  "findCustomersByName",
+  "findCustomersByPhonePrefix",
   "enqueueManualReview",
 ];
 
-function _validateStore(store) {
+function _validateStore(store, { enableFuzzy = false } = {}) {
   if (!store || typeof store !== "object") {
     throw new TypeError("resolveCustomer: store must be an object");
   }
-  for (const m of REQUIRED_STORE_METHODS) {
+  const required = enableFuzzy
+    ? REQUIRED_STORE_METHODS.concat(REQUIRED_FUZZY_STORE_METHODS)
+    : REQUIRED_STORE_METHODS;
+  for (const m of required) {
     if (typeof store[m] !== "function") {
       throw new TypeError(`resolveCustomer: store.${m} must be a function`);
     }

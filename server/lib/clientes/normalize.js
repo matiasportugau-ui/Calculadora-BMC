@@ -20,7 +20,7 @@ const UY_COUNTRY_CODE = "598";
  *   - If already starts with country code 598 and length 11-12 → keep.
  *   - If 8-9 digits → prepend 598 (typical UY local format).
  *   - If has leading '00598...' (international dial prefix) → drop the '00'.
- *   - Otherwise return the digits as-is (foreign number, not UY).
+ *   - Otherwise, keep plausible foreign E.164 lengths (8-15 digits), else null.
  *
  * @param {string|null|undefined} input
  * @returns {string|null} E.164 digits without '+', or null if invalid.
@@ -52,8 +52,9 @@ export function normalizePhoneE164UY(input) {
   if (digits.length === 8) {
     return UY_COUNTRY_CODE + digits;
   }
-  // Anything else: foreign number or invalid length — return digits as-is
-  return digits;
+  // Keep plausible foreign numbers; reject clearly invalid short/long values.
+  if (digits.length >= 8 && digits.length <= 15) return digits;
+  return null;
 }
 
 /**
@@ -95,7 +96,7 @@ export function normalizeDisplayName(input) {
   if (input == null) return "";
   return String(input)
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9 ]+/g, " ")
     .replace(/\s+/g, " ")

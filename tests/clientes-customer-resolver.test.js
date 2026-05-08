@@ -18,6 +18,7 @@ import { resolveCustomer } from "../server/lib/clientes/customerResolver.js";
 
 let passed = 0;
 let failed = 0;
+let testQueue = Promise.resolve();
 
 function assert(cond, label) {
   if (cond) { passed += 1; }
@@ -28,7 +29,18 @@ function assertEq(actual, expected, label) {
   if (ok) { passed += 1; }
   else { failed += 1; console.error(`  ✗ ${label}\n     expected: ${JSON.stringify(expected)}\n     actual:   ${JSON.stringify(actual)}`); }
 }
-function group(name, fn) { console.log(`\n— ${name}`); return fn(); }
+function group(name, fn) {
+  testQueue = testQueue.then(async () => {
+    console.log(`\n— ${name}`);
+    try {
+      await fn();
+    } catch (err) {
+      failed += 1;
+      console.error(`  ✗ ${name} threw: ${err?.message || String(err)}`);
+    }
+  });
+  return testQueue;
+}
 
 // ═════════════════════════════════════════════════════════════════════════
 // 1. normalize.js
@@ -48,6 +60,8 @@ group("normalizePhoneE164UY", () => {
   assertEq(normalizePhoneE164UY(null), null, "null → null");
   assertEq(normalizePhoneE164UY(undefined), null, "undefined → null");
   assertEq(normalizePhoneE164UY("abc"), null, "no digits → null");
+  assertEq(normalizePhoneE164UY("1234567"), null, "<8 digits → null");
+  assertEq(normalizePhoneE164UY("1234567890123456"), null, ">15 digits → null");
   assertEq(normalizePhoneE164UY("5491155667788"), "5491155667788", "Argentina E.164 untouched");
 });
 
@@ -388,6 +402,33 @@ group("resolveCustomer — input validation", async () => {
   threw = false;
   try { await resolveCustomer({ channel: "ml", externalId: "x" }, { findAlias: () => null }); } catch { threw = true; }
   assert(threw, "throws when store missing required methods");
+
+  const nonFuzzyStore = {
+    findAlias: async () => null,
+    findIdentity: async () => null,
+    findCustomerByPhone: async () => null,
+    findCustomerByEmail: async () => null,
+    findCustomerByRut: async () => null,
+    createCustomer: async () => ({ id: "nf-1" }),
+    createIdentity: async () => {},
+  };
+  const nonFuzzyResult = await resolveCustomer(
+    { channel: "ml", externalId: "x" },
+    nonFuzzyStore,
+  );
+  assertEq(nonFuzzyResult.source, "new", "fuzzy store methods not required when fuzzy disabled");
+
+  threw = false;
+  try {
+    await resolveCustomer(
+      { channel: "ml", externalId: "x", displayName: "Acme" },
+      nonFuzzyStore,
+      { enableFuzzy: true },
+    );
+  } catch {
+    threw = true;
+  }
+  assert(threw, "throws when fuzzy is enabled and fuzzy store methods are missing");
 });
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -395,8 +436,7 @@ group("resolveCustomer — input validation", async () => {
 // ═════════════════════════════════════════════════════════════════════════
 
 (async () => {
-  // resolveCustomer groups are async — wait for any pending microtasks.
-  await new Promise((r) => setImmediate(r));
+  await testQueue;
   console.log(`\n════════════════════════════════════════════════════════════`);
   console.log(`clientes-customer-resolver tests — passed: ${passed}, failed: ${failed}`);
   console.log(`════════════════════════════════════════════════════════════`);
