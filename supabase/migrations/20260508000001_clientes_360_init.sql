@@ -100,7 +100,7 @@ create table if not exists clientes.customer_events (
   event_type  text not null,                     -- 'message'|'quote'|'purchase'|'visit'|'call'|'login'|'status_change'|'sla_breach'
   payload     jsonb not null default '{}'::jsonb,
   occurred_at timestamptz not null,
-  source_ref  text,
+  source_ref  text not null,                     -- ingestor must provide a stable per-channel ref (deterministic when source has no native ID); NOT NULL so UNIQUE actually enforces idempotency (Postgres allows multiple NULLs in UNIQUE otherwise)
   ingested_at timestamptz not null default now(),
   primary key (id, occurred_at),
   unique (channel, source_ref, occurred_at)      -- includes occurred_at because partition key must be in unique
