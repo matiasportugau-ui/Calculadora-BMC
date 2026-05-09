@@ -15,6 +15,20 @@ npx promptfoo eval           # run evals
 npx promptfoo view           # open web UI on :15500
 ```
 
+## Loading .env
+
+promptfoo does NOT auto-load `.env`. Run via:
+
+```bash
+npx -y dotenv-cli -e .env -- npx promptfoo eval
+```
+
+## When NOT to use
+
+- Unit-testing calculation logic — use `tests/validation.js`.
+- API contract checks — use `npm run test:contracts` (bmc-api-contract agent).
+- Model latency/perf benchmarks — promptfoo eval is functional, not perf.
+
 ## BMC conventions
 
 - Configs live in `evals/promptfoo/` (create if missing).
@@ -28,10 +42,14 @@ npx promptfoo view           # open web UI on :15500
 ```yaml
 description: Panelin chat regression
 prompts:
-  - file://server/routes/agentChat.prompts/system.md
+  # Extract system prompt from server/routes/agentChat.js (or chatPrompts.js)
+  # into evals/promptfoo/prompts/<surface>.md before running.
+  - file://evals/promptfoo/prompts/panelin-chat.md
 providers:
   - anthropic:messages:claude-opus-4-7
   - anthropic:messages:claude-sonnet-4-6
+  # cheap smoke runs:
+  # - anthropic:messages:claude-haiku-4-5-20251001
 tests:
   - vars: { user: "Cotizame 100m2 techo aislado" }
     assert:
@@ -43,4 +61,4 @@ tests:
 
 ## CI gate
 
-Add `npx promptfoo eval --no-cache --output evals/results.json` to a manual workflow before promoting prompt changes. Do not block `gate:local` with it (network + cost).
+Add `npx promptfoo eval --no-cache --output evals/promptfoo/results/<surface>.json` to a manual workflow before promoting prompt changes. Do not block `gate:local` with it (network + cost).

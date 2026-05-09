@@ -1,6 +1,6 @@
 ---
 name: remotion-best-practices
-description: Best practices for Remotion - Video creation in React
+description: Remotion video creation expertise — compositions, useCurrentFrame, interpolate, Sequences, assets via staticFile, render CLI, captions, audio, FFmpeg. Use when working with .tsx files importing from "remotion" or "@remotion/*", building video compositions in React, configuring Root.tsx, rendering frames/stills, adding audio/video/captions, or when the user mentions Remotion, Remotion Studio, or video composition. Do NOT use for general React UI work, non-video animation, or pure ffmpeg pipelines without React.
 metadata:
   tags: remotion, video, react, animation, composition
 ---
@@ -24,7 +24,7 @@ Replace `my-video` with a suitable project name.
 Animate properties using `useCurrentFrame()` and `interpolate()`. Use Easing to customize the timing of the animation.
 
 ```tsx
-import { useCurrentFrame, Easing } from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
 
 export const FadeIn = () => {
   const frame = useCurrentFrame();
