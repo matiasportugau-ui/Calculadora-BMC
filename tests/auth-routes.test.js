@@ -15,6 +15,7 @@ const TOKEN = process.env.API_AUTH_TOKEN;
 const { default: express } = await import("express");
 const { default: calcRouter } = await import("../server/routes/calc.js");
 const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.js");
+const { default: deepResearchRouter } = await import("../server/routes/deepResearch.js");
 const { config } = await import("../server/config.js");
 const { createSuperAgentRouter } = await import("../server/routes/superAgent.js");
 const { createWolfboardRouter } = await import("../server/routes/wolfboard.js");
@@ -39,6 +40,7 @@ async function run() {
   app.use(express.json({ limit: "1mb" }));
   app.use("/calc", calcRouter);
   app.use("/api", agentVoiceRouter);
+  app.use("/api", deepResearchRouter);
   app.use("/api/agent", createSuperAgentRouter(config));
   app.use("/api/wolfboard", createWolfboardRouter(config));
 
@@ -113,6 +115,54 @@ async function run() {
       r.status,
       401
     );
+
+    // ── /api/research/deep wraps billable OpenAI background jobs ─────────────
+    r = await fetch(`${base}/api/research/deep`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: "investigar precios de paneles" }),
+    });
+    assert(
+      "POST /api/research/deep without auth → 401",
+      r.status === 401,
+      r.status,
+      401
+    );
+
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, opts) => {
+      if (String(url).startsWith("https://api.openai.com/v1/responses")) {
+        assert(
+          "POST /api/research/deep with auth forwards OpenAI bearer",
+          opts?.headers?.Authorization === `Bearer ${process.env.OPENAI_API_KEY}`,
+          opts?.headers?.Authorization,
+          `Bearer ${process.env.OPENAI_API_KEY}`
+        );
+        return new Response(JSON.stringify({
+          id: "resp_test",
+          status: "queued",
+          model: "o4-mini-deep-research",
+          created_at: 123,
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(url, opts);
+    };
+    try {
+      r = await fetch(`${base}/api/research/deep`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": TOKEN },
+        body: JSON.stringify({ query: "investigar precios de paneles" }),
+      });
+      body = await r.json().catch(() => ({}));
+      assert(
+        "POST /api/research/deep with x-api-key → 200",
+        r.status === 200 && body.id === "resp_test",
+        { status: r.status, id: body.id },
+        { status: 200, id: "resp_test" }
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
 
     // ── Legacy routers must fail closed if service token is not configured ──
     const previousToken = config.apiAuthToken;
