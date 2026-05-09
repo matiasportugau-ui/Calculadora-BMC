@@ -2347,7 +2347,13 @@ export default function PanelinCalculadoraV3() {
   const [maxReachedStep, setMaxReachedStep] = useState(0);
   /** Zona seleccionada en planta 2D: sincroniza SVG (visor) y métricas en columna izquierda (paso Estructura). */
   const [estructuraMetricsSelectedGi, setEstructuraMetricsSelectedGi] = useState(0);
-  const [listaPrecios, _setLP] = useState(() => (typeof window !== "undefined" ? getListaDefault() : ""));
+  const [listaPrecios, _setLP] = useState(() => {
+    const initialLista = typeof window !== "undefined" ? getListaDefault() : "web";
+    // Sincronizar el singleton LISTA_ACTIVA antes del primer render para que p() use la lista correcta.
+    // No mutar dentro de useMemo — esta inicialización es síncrona y ocurre una sola vez en mount.
+    setListaPrecios(initialLista);
+    return initialLista;
+  });
   const [scenario, _setScenario] = useState("solo_techo");
   const [proyecto, _setProyecto] = useState({ tipoCliente: "empresa", nombre: "", rut: "", razonSocial: "", telefono: "", direccion: "", nombreRefCliente: "", descripcion: "", refInterna: "", fecha: new Date().toLocaleDateString("es-UY", { day: "2-digit", month: "2-digit", year: "numeric" }) });
   const [techo, _setTecho] = useState(() => ({ ...TECHO_INITIAL_VENDEDOR }));
@@ -3297,7 +3303,6 @@ export default function PanelinCalculadoraV3() {
 
   // ── Calculate results ──
   const results = useMemo(() => {
-    setListaPrecios(listaPrecios || "web"); // sync global LISTA_ACTIVA before any p() call
     const sc = scenario;
     try {
       if (sc === "presupuesto_libre") {
