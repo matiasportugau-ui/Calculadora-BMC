@@ -4,7 +4,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 
-// Public endpoint — no auth required (chat users are not authenticated)
+// Public endpoint — no auth required (chat users are not authenticated).
+// It only records review signals; KB promotion must happen through trusted flows.
 router.post("/agent/feedback", (req, res) => {
   try {
     const { channel, question, generatedText, rating, correction, comment, convId, rowId } = req.body || {};
