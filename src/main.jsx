@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './styles/applied-ai.css';
 import './styles/bmc-mobile.css';
 
 function showError(msg, stack = '') {

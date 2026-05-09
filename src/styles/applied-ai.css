@@ -1,0 +1,30 @@
+/* Applied AI design tokens — Anthropic-inspired visual language for BMC.
+   See .claude/skills/applied-ai-design/SKILL.md */
+
+:root {
+  --aa-bg:        #FAF9F6;
+  --aa-surface:   #FFFFFF;
+  --aa-surface-2: #F2EEE7;
+  --aa-border:    #E8E4DD;
+  --aa-text:      #1F1B16;
+  --aa-text-mute: #6B645B;
+  --aa-accent:    #C96442;
+  --aa-accent-ink:#FFFFFF;
+
+  --aa-radius:    14px;
+  --aa-radius-sm: 8px;
+  --aa-shadow:    0 1px 2px rgba(0, 0, 0, 0.04);
+
+  --aa-font-serif: "Source Serif 4", "Charter", Georgia, serif;
+  --aa-font-sans:  "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --aa-space-1: 4px;
+  --aa-space-2: 8px;
+  --aa-space-3: 12px;
+  --aa-space-4: 16px;
+  --aa-space-5: 24px;
+  --aa-space-6: 32px;
+  --aa-space-7: 48px;
+  --aa-space-8: 64px;
+  --aa-space-9: 80px;
+}

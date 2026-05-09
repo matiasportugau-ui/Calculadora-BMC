@@ -15,6 +15,7 @@ import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
+import deepResearchRouter from "./routes/deepResearch.js";
 import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
@@ -872,6 +873,7 @@ app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
+app.use("/api", deepResearchRouter);
 app.use("/api", planInterpretRouter);
 // ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
 app.use(createMlSearchRouter({ ml, config, logger }));

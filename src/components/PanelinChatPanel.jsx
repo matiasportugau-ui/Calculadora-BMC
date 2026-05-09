@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio } from "lucide-react";
+import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio, Search } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
 import TrustBlock from "./panelin/TrustBlock.jsx";
@@ -17,6 +17,23 @@ const SUBTEXT = "#6e6e73";
 const STORAGE_SELECTED_SKIN = "panelin-chat-selected-skin-v1";
 const STORAGE_CUSTOM_SKINS = "panelin-chat-custom-skins-v1";
 const BUILTIN_SKINS = [
+  {
+    id: "applied-ai",
+    name: "Applied AI",
+    tokens: {
+      brand: "#1F1B16",
+      primary: "#C96442",
+      surface: "#FAF9F6",
+      border: "#E8E4DD",
+      text: "#1F1B16",
+      subtext: "#6B645B",
+      drawerBg: "#FFFFFF",
+      backdrop: "rgba(31,27,22,0.32)",
+      headerText: "#1F1B16",
+      userBubbleText: "#1F1B16",
+      assistantBubbleText: "#1F1B16",
+    },
+  },
   {
     id: "classic",
     name: "Classic BMC",
@@ -259,7 +276,7 @@ export default function PanelinChatPanel({
   const [skinDraft, setSkinDraft] = useState(() => makeSkinDraftFromTokens(BUILTIN_SKINS[0].tokens));
   const [selectedSkinId, setSelectedSkinId] = useState(() => {
     if (typeof window === "undefined") return "classic";
-    return localStorage.getItem(STORAGE_SELECTED_SKIN) || "classic";
+    return localStorage.getItem(STORAGE_SELECTED_SKIN) || "applied-ai";
   });
   const [input, setInput] = useState("");
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
@@ -296,7 +313,7 @@ export default function PanelinChatPanel({
   }, [customSkins]);
 
   const skinOptions = useMemo(() => Array.from(skinMap.values()), [skinMap]);
-  const activeSkin = skinMap.get(selectedSkinId) || skinMap.get("classic") || BUILTIN_SKINS[0];
+  const activeSkin = skinMap.get(selectedSkinId) || skinMap.get("applied-ai") || BUILTIN_SKINS[0];
   const activeTokens = skinEditorOpen ? { ...activeSkin.tokens, ...skinDraft } : activeSkin.tokens;
   const {
     brand: BRAND_COLOR,
@@ -505,6 +522,55 @@ export default function PanelinChatPanel({
     setInput("");
     send(text);
   }, [input, isStreaming, send]);
+
+  const [deepResearch, setDeepResearch] = useState({ status: "idle", id: null, error: null });
+  const deepResearchPollRef = useRef(null);
+  useEffect(() => () => {
+    if (deepResearchPollRef.current) clearInterval(deepResearchPollRef.current);
+  }, []);
+
+  const handleDeepResearch = useCallback(async () => {
+    const query = input.trim();
+    if (!query || deepResearch.status === "running") return;
+    setDeepResearch({ status: "running", id: null, error: null });
+    try {
+      const res = await fetch("/api/research/deep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      const id = data.id;
+      setDeepResearch({ status: "running", id, error: null });
+      deepResearchPollRef.current = setInterval(async () => {
+        try {
+          const pr = await fetch(`/api/research/deep/${encodeURIComponent(id)}`);
+          const pdata = await pr.json();
+          if (pdata.status === "completed") {
+            clearInterval(deepResearchPollRef.current);
+            deepResearchPollRef.current = null;
+            const cites = (pdata.citations || [])
+              .map((c, i) => `[${i + 1}] ${c.title || c.url} — ${c.url}`)
+              .join("\n");
+            const body = `🔎 Deep Research: "${query}"\n\n${pdata.text || "(sin texto)"}${cites ? `\n\nFuentes:\n${cites}` : ""}`;
+            setInput(body);
+            setDeepResearch({ status: "done", id, error: null });
+          } else if (pdata.status === "failed" || pdata.status === "cancelled") {
+            clearInterval(deepResearchPollRef.current);
+            deepResearchPollRef.current = null;
+            setDeepResearch({ status: "error", id, error: pdata.error?.message || pdata.status });
+          }
+        } catch (err) {
+          clearInterval(deepResearchPollRef.current);
+          deepResearchPollRef.current = null;
+          setDeepResearch({ status: "error", id, error: err.message });
+        }
+      }, 5000);
+    } catch (err) {
+      setDeepResearch({ status: "error", id: null, error: err.message });
+    }
+  }, [input, deepResearch.status]);
 
   const saveCurrentSkin = () => {
     const name = typeof window !== "undefined" ? window.prompt("Nombre de la skin:") : "";
@@ -1480,6 +1546,26 @@ export default function PanelinChatPanel({
               overflowY: "auto",
             }}
           />
+          <button
+            onClick={handleDeepResearch}
+            disabled={!input.trim() || deepResearch.status === "running"}
+            title={
+              deepResearch.status === "running"
+                ? "Investigando…"
+                : deepResearch.status === "error"
+                  ? `Error: ${deepResearch.error}`
+                  : "Deep Research (OpenAI)"
+            }
+            style={{
+              ...iconBtn,
+              background: deepResearch.status === "running" ? "#f59e0b" : BORDER,
+              color: deepResearch.status === "running" ? "#fff" : SUBTEXT,
+              cursor: input.trim() && deepResearch.status !== "running" ? "pointer" : "not-allowed",
+            }}
+            aria-label="Deep Research"
+          >
+            <Search size={14} />
+          </button>
           {isStreaming ? (
             <button
               onClick={stop}

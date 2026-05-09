@@ -192,6 +192,7 @@
     "@react-three/fiber": "^8.17.10",
     "@sparticuz/chromium": "^147.0.2",
     "ai": "^6.0.176",
+    "canvas": "^3.2.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
@@ -231,6 +232,7 @@
     "nodemailer": "^8.0.5",
     "picomatch": "^4.0.4",
     "playwright": "^1.59.1",
+    "promptfoo": "^0.121.11",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.2.0"
   },
