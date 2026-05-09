@@ -94,6 +94,9 @@ data/transportista-evidence/
 data/training-kb.json
 data/training-sessions/
 
+# Shadow training harness — cotizaciones históricas normalizadas (PII clientes reales)
+data/training/
+
 # UX — sesiones de vídeo locales (pesadas / posible PII; ver docs/team/ux-feedback/sessions/README.md)
 docs/team/ux-feedback/sessions/**/*.mp4
 docs/team/ux-feedback/sessions/**/*.mov
