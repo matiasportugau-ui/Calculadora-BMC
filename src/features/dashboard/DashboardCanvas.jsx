@@ -1,8 +1,6 @@
 import React, { useMemo } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import { Responsive, useContainerWidth } from 'react-grid-layout';
 import { WidgetRegistry } from './widgets/registry.js';
-
-const ResponsiveGrid = WidthProvider(Responsive);
 
 /**
  * DashboardCanvas — renderiza widgets en un grid editable (drag & drop).
@@ -14,6 +12,7 @@ const ResponsiveGrid = WidthProvider(Responsive);
  * @param {(layouts) => void} props.onLayoutChange
  */
 export default function DashboardCanvas({ layouts, widgets, editable, onLayoutChange }) {
+  const [containerRef, width] = useContainerWidth();
   const items = useMemo(
     () =>
       Object.entries(widgets).map(([id, w]) => {
@@ -34,19 +33,22 @@ export default function DashboardCanvas({ layouts, widgets, editable, onLayoutCh
   );
 
   return (
-    <ResponsiveGrid
-      className="layout"
-      layouts={layouts}
-      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
-      cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
-      rowHeight={60}
-      margin={[12, 12]}
-      isDraggable={editable}
-      isResizable={editable}
-      onLayoutChange={(_current, all) => onLayoutChange?.(all)}
-      draggableCancel="button, a, input, select, textarea, .no-drag"
-    >
-      {items}
-    </ResponsiveGrid>
+    <div ref={containerRef} style={{ width: '100%' }}>
+      <Responsive
+        className="layout"
+        layouts={layouts}
+        width={width || 1200}
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
+        cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
+        rowHeight={60}
+        margin={[12, 12]}
+        isDraggable={editable}
+        isResizable={editable}
+        onLayoutChange={(_current, all) => onLayoutChange?.(all)}
+        draggableCancel="button, a, input, select, textarea, .no-drag"
+      >
+        {items}
+      </Responsive>
+    </div>
   );
 }
