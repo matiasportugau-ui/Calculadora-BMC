@@ -177,6 +177,16 @@ export const config = {
   kbAnalyticsLogMissQuestion: bool(process.env.KB_ANALYTICS_LOG_MISS_QUESTION, false),
   /** KB Analytics — window size in days for metrics (default 30, max 365) */
   kbAnalyticsWindowMaxDays: Math.max(1, Math.min(Number(process.env.KB_ANALYTICS_WINDOW_MAX_DAYS || 90), 365)),
+  /**
+   * RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
+   * Default OFF: activar solo después de correr la migración 0001 y embedQuotes.js.
+   * Ver docs/sprint-mayo/RAG-V1.md § Checklist de activación.
+   */
+  ragEnabled: bool(process.env.RAG_ENABLED, false),
+  /** Número de cotizaciones similares a recuperar por turno (default 5). */
+  ragTopK: Math.max(1, Math.min(10, Number(process.env.RAG_TOP_K || 5))),
+  /** Similitud mínima coseno para incluir un caso (0-1, default 0.70). */
+  ragThreshold: Math.max(0, Math.min(1, Number(process.env.RAG_THRESHOLD || 0.70))),
 };
 
 export const redirectUri = () => {

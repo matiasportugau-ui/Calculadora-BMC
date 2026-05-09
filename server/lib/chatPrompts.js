@@ -421,7 +421,7 @@ Reglas de salida ESTRICTAS (override de cualquier otra instrucción de formato):
 
 /**
  * @param {object} calcState
- * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa" }} options
+ * @param {{ trainingExamples?: Array<object>, devMode?: boolean, recentAssistantMessages?: string[], preferences?: object, channel?: "chat"|"ml"|"wa", ragContext?: string }} options
  * @returns {string}
  */
 export function buildSystemPrompt(calcState = {}, options = {}) {
@@ -431,6 +431,7 @@ export function buildSystemPrompt(calcState = {}, options = {}) {
     recentAssistantMessages = [],
     preferences = null,
     channel = "chat",
+    ragContext = "",
   } = options;
   const {
     scenario = "sin seleccionar",
@@ -604,7 +605,7 @@ Sos experto en extraer datos de cotización en tono conversacional. Aplicá este
 - ❌ Llamar \`guardar_en_crm\` sin confirmación explícita del usuario.
 - ❌ Re-preguntar la familia si \`calcState.techo.familia\` ya está seteado.`;
 
-  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, devModeRules]
+  return [IDENTITY, CONSTRUCTION_SYSTEM, CATALOG, WORKFLOW, ACTIONS_DOC, SUGGESTIONS_DOC, canonicalPrices, knowledgeBlock, toolsBlock, extractionProtocol, antiRepBlock, variationBlock, prefsBlock, currentState, examplesBlock, ragContext, devModeRules]
     .filter(Boolean)
     .join("\n\n");
 }

@@ -48,6 +48,7 @@ import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.j
 import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
 import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
 import { getIvaPct } from "../lib/policyLoader.js";
+import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
 
 const router = Router();
 
@@ -712,13 +713,43 @@ router.post("/agent/chat", async (req, res) => {
     send({ type: "kb_match", count: trainingExamples.length, surface, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
   }
 
+  // RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
+  // Feature flag: RAG_ENABLED (default false). Si el retriever falla (DB caída,
+  // embedding service caído), se loggea y se continúa SIN RAG — el chat no se rompe.
+  let ragContextBlock = "";
+  if (config.ragEnabled) {
+    try {
+      const ragQuotes = await retrieveSimilarQuotes(
+        lastUserMessage,
+        config.ragTopK,
+        config.ragThreshold,
+      );
+      ragContextBlock = formatRetrievedContextForPrompt(ragQuotes);
+      if (devMode && ragQuotes.length > 0) {
+        send({
+          type: "rag_match",
+          count: ragQuotes.length,
+          scores: ragQuotes.map((q) => ({ lead_id: q.lead_id, similarity: q.similarity })),
+        });
+      }
+      if (ragQuotes.length > 0) {
+        req.log?.info({ rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity }, "rag: retrieved quotes");
+      } else {
+        req.log?.debug("rag: no quotes above threshold");
+      }
+    } catch (ragErr) {
+      // Fallo no-fatal: continuar sin RAG
+      req.log?.warn({ err: ragErr }, "rag: retriever falló, continuando sin contexto histórico");
+    }
+  }
+
   // Extract last 3 assistant openings for anti-repetition guidance
   const recentAssistantMessages = messages
     .filter((m) => m.role === "assistant")
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel });
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel, ragContext: ragContextBlock });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
