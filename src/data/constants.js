@@ -119,7 +119,9 @@ export const PANELS_TECHO = {
     },
     col: ["Blanco", "Gris", "Rojo"],
     colNotes: { _all: "PLUS: Mínimo 800 m²" },
-    colMinArea: {}, colMax: {},
+    // Restricción de proveedor: pedido mínimo 800 m² independiente del color.
+    // Si el proveedor diferencia por color en el futuro, actualizar aquí y en los tests.
+    colMinArea: { Blanco: 800, Gris: 800, Rojo: 800 }, colMax: {},
   },
 };
 

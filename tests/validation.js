@@ -2754,6 +2754,70 @@ console.log("\n═══ SUITE: fiscal contract shapes ═══");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SUITE 36: ISOROOF PLUS — validación mínimo 800 m² (P0-2 sprint mayo 2026)
+// ═══════════════════════════════════════════════════════════════════════════
+console.log("\n═══ SUITE 36: ISOROOF PLUS — mínimo 800 m² ═══");
+{
+  // 36.1 constants.js: colMinArea tiene los tres colores con 800
+  const plus = PANELS_TECHO.ISOROOF_PLUS;
+  assert(
+    "ISOROOF_PLUS colMinArea.Blanco === 800",
+    plus?.colMinArea?.Blanco === 800,
+    plus?.colMinArea?.Blanco,
+    800,
+  );
+  assert(
+    "ISOROOF_PLUS colMinArea.Gris === 800",
+    plus?.colMinArea?.Gris === 800,
+    plus?.colMinArea?.Gris,
+    800,
+  );
+  assert(
+    "ISOROOF_PLUS colMinArea.Rojo === 800",
+    plus?.colMinArea?.Rojo === 800,
+    plus?.colMinArea?.Rojo,
+    800,
+  );
+}
+{
+  // 36.2 calcTechoCompleto con área muy inferior a 800 m² debe emitir warning con "800"
+  const r = calcTechoCompleto({
+    familia: "ISOROOF_PLUS", espesor: 50,
+    ancho: 5, largo: 8, pendiente: 5, // área ≈ 40 m²
+    color: "Gris",
+    tipoEst: "caballete",
+  });
+  assert(
+    "ISOROOF_PLUS 40 m² → warnings contiene aviso de mínimo 800",
+    Array.isArray(r?.warnings) && r.warnings.some(w => String(w).includes("800")),
+    r?.warnings,
+    "warning con '800'",
+  );
+  assert(
+    "ISOROOF_PLUS 40 m² → mensaje menciona la familia (no solo el color)",
+    Array.isArray(r?.warnings) && r.warnings.some(w => String(w).toLowerCase().includes("plus") || String(w).toLowerCase().includes("isoroof")),
+    r?.warnings,
+    "warning menciona PLUS o ISOROOF",
+  );
+}
+{
+  // 36.3 calcTechoCompleto con área ≥ 800 m² NO debe emitir warning de mínimo
+  const r = calcTechoCompleto({
+    familia: "ISOROOF_PLUS", espesor: 50,
+    ancho: 20, largo: 50, pendiente: 5, // área ≈ 1000 m²
+    color: "Blanco",
+    tipoEst: "caballete",
+  });
+  const tieneWarnMin = Array.isArray(r?.warnings) && r.warnings.some(w => String(w).includes("800"));
+  assert(
+    "ISOROOF_PLUS 1000 m² → sin warning de mínimo 800",
+    !tieneWarnMin,
+    tieneWarnMin ? r.warnings.find(w => String(w).includes("800")) : "sin warning",
+    "sin warning",
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SUMMARY
 // ═══════════════════════════════════════════════════════════════════════════
 console.log(`\n${"═".repeat(60)}`);

@@ -778,7 +778,16 @@ export function calcTechoCompleto(inputs) {
   const paneles = calcPanelesTecho(panel, espesor, largoReal, ancho);
   if (!paneles) return { error: "Error calculando paneles" };
   if (color && panel.colMinArea && panel.colMinArea[color] && paneles.areaTotal < panel.colMinArea[color]) {
-    warnings.push(`Color ${color} requiere mín. ${panel.colMinArea[color]} m² (cotizado: ${paneles.areaTotal.toFixed(1)} m²)`);
+    const minArea = panel.colMinArea[color];
+    const cotizado = paneles.areaTotal.toFixed(1);
+    // Si todos los colores tienen el mismo mínimo, la restricción es de familia, no de color.
+    const colores = panel.col || [];
+    const todosIgual = colores.length > 1 && colores.every(c => panel.colMinArea[c] === minArea);
+    if (todosIgual) {
+      warnings.push(`${panel.label} requiere mínimo ${minArea} m² — la cotización actual es de ${cotizado} m²`);
+    } else {
+      warnings.push(`Color ${color} requiere mín. ${minArea} m² (cotizado: ${cotizado} m²)`);
+    }
   }
   const autoportancia = calcAutoportancia(panel, espesor, largo);
   if (!autoportancia.ok) warnings.push(`Largo ${largo}m excede autoportancia máx ${autoportancia.maxSpan}m. Requiere ${autoportancia.apoyos} apoyos.`);
