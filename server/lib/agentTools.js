@@ -16,6 +16,7 @@ import { config } from "../config.js";
 import { getPdf } from "../routes/calc.js";
 import { postCotizar, postCotizarPdf, postPresupuestoLibre } from "./calcLoopbackClient.js";
 import { appendQuoteToCrm } from "./crmAppend.js";
+import { dualWriteQuote } from "./quoteDualWrite.js";
 import {
   getQuotation as getQuotationFromRegistry,
   listQuotations as listQuotationsFromRegistry,
@@ -1365,12 +1366,14 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
 
     if (name === "guardar_en_crm") {
       { const _conf = requireConfirmedAction(name, input, opts); if (_conf) return _conf; }
-      const result = await appendQuoteToCrm({
+      const dualResult = await dualWriteQuote({
+        cliente_nombre: input?.cliente,
         cliente: input?.cliente,
         telefono: input?.telefono,
         ubicacion: input?.ubicacion,
         scenario: input?.scenario,
         lista: input?.lista,
+        total_con_iva_usd: input?.total,
         total: input?.total,
         pdf_url: input?.pdf_url,
         drive_url: input?.drive_url,
@@ -1379,8 +1382,10 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
         urgencia: input?.urgencia,
         probabilidad_cierre: input?.probabilidad_cierre,
         observaciones: input?.observaciones,
+        canal_origen: "panelin_chat",
       });
-      return JSON.stringify(result);
+      // El agente solo necesita ver el resultado del CRM canónico
+      return JSON.stringify(dualResult.crm);
     }
 
     if (name === "buscar_cliente_crm") {

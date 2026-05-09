@@ -59,6 +59,9 @@ export const config = {
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
   wolfbCrmSheetId: process.env.WOLFB_CRM_SHEET_ID || "",
   wolfbCrmEnviadosTab: process.env.WOLFB_CRM_ENVIADOS_TAB || "Enviados",
+  /** Dual-write Lead → Admin Cotizaciones tab "Enviados" (opt-in; default off). */
+  wolfbAdminCotDualWriteEnabled: bool(process.env.WOLFB_ADMIN_COT_DUAL_WRITE, false),
+  wolfbAdminCotEnviadosTab: process.env.WOLFB_ADMIN_COT_ENVIADOS_TAB || "Enviados",
   wolfbDryRun: process.env.WOLFB_DRY_RUN === "1",
   wolfbRitualLog: process.env.WOLFB_RITUAL_LOG === "1",
   wolfbCalcApiBase: process.env.WOLFB_CALC_API_BASE || "",
