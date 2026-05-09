@@ -280,8 +280,8 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
 
 router.get("/agent/training-kb/health", requireDevModeAuth, (req, res) => {
   try {
-    const { stale, zeroRetrieval, mlGap } = getHealthEntries();
-    res.json({ ok: true, stale, zeroRetrieval, mlGap });
+    const { stale, zeroRetrieval, mlGap, waGap } = getHealthEntries();
+    res.json({ ok: true, stale, zeroRetrieval, mlGap, waGap });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message || String(err) });
   }

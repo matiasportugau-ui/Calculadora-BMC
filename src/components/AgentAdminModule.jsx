@@ -1041,31 +1041,70 @@ function ConversationsTab() {
   );
 }
 
+// ── KB ANALYTICS MINI-COMPONENTS ──────────────────────────────────────────
+function KBStatCard({ label, value, suffix = "", accent = null }) {
+  return (
+    <Card style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: accent || C.navy, fontFamily: C.ff }}>
+        {value ?? "—"}{value != null ? suffix : ""}
+      </div>
+      <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, marginTop: 2 }}>{label}</div>
+    </Card>
+  );
+}
+
+function KBBar({ label, pct }) {
+  const safePct = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0));
+  return (
+    <div>
+      <div style={{ fontSize: 12, fontFamily: C.ff, marginBottom: 3, display: "flex", justifyContent: "space-between" }}>
+        <span>{label}</span><span style={{ color: C.sub }}>{safePct}%</span>
+      </div>
+      <div style={{ background: "#f3f4f6", borderRadius: 4, height: 8, overflow: "hidden" }}>
+        <div style={{ width: `${safePct}%`, height: "100%", background: C.primary, transition: "width 0.3s" }} />
+      </div>
+    </div>
+  );
+}
+
+function KBSparkline({ byDay, width = 320, height = 40 }) {
+  const days = Object.keys(byDay || {}).sort();
+  const values = days.map((d) => byDay[d]?.events || 0);
+  if (values.length < 2) {
+    return <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff }}>Sin datos suficientes</div>;
+  }
+  const max = Math.max(...values, 1);
+  const points = values.map((v, i) =>
+    `${(i / (values.length - 1)) * width},${height - (v / max) * (height - 4) - 2}`
+  ).join(" ");
+  return (
+    <svg width={width} height={height} style={{ display: "block" }}>
+      <polyline points={points} fill="none" stroke={C.primary} strokeWidth="2" />
+    </svg>
+  );
+}
+
 // ── STATS TAB ──────────────────────────────────────────────────────────────
 function StatsTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [days, setDays] = useState(1);
+  const [days, setDays] = useState(30);
 
   const load = useCallback(async () => {
     setLoading(true); setErr("");
-    const r = await apiFetch(`/api/agent/stats?days=${days}`);
-    if (r.ok) setData(r);
-    else setErr(r.error || "Error al cargar stats");
+    const r = await apiFetch(`/api/agent/training-kb/analytics?days=${days}&include=knowledge_events`);
+    if (r && r.kb) setData(r);
+    else setErr((r && r.error) || "Error al cargar analytics");
     setLoading(false);
   }, [days]);
 
   useEffect(() => { load(); }, [load]);
 
-  const rows = [
-    ["Conversaciones", data?.conversations],
-    ["Turnos totales", data?.turns],
-    ["Activas última hora", data?.active_last_hour],
-    ["Turnos promedio/conv", data?.avg_turns_per_conv],
-    ["Hedge rate %", data?.hedge_rate_pct],
-    ["Latencia promedio (ms)", data?.avg_latency_ms],
-  ];
+  const kb = data?.kb;
+  const env = data?.knowledgeEnv;
+  const cov = kb?.coverageByChannel || {};
+  const trends = env?.trends?.byDay || {};
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1073,128 +1112,90 @@ function StatsTab() {
         <Select
           value={String(days)}
           onChange={(v) => setDays(Number(v))}
-          options={[1, 3, 7].map((d) => ({ value: String(d), label: `${d} día${d > 1 ? "s" : ""}` }))}
+          options={[7, 30, 60, 90].map((d) => ({ value: String(d), label: `${d} días` }))}
           style={{ width: "auto" }}
         />
         <Btn onClick={load} disabled={loading}>{loading ? "Cargando…" : "↺ Actualizar"}</Btn>
-      </div>
-      <Alert msg={err} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-        {rows.map(([label, val]) => (
-          <Card key={label} style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: C.navy, fontFamily: C.ff }}>{val ?? "—"}</div>
-            <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, marginTop: 2 }}>{label}</div>
-          </Card>
-        ))}
-      </div>
-      {data?.providers && (
-        <Card>
-          <SectionLabel>Proveedores IA</SectionLabel>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {Object.entries(data.providers).map(([prov, count]) => (
-              <div key={prov} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, fontFamily: C.ff }}>
-                <Pill color={C.primary}>{prov}</Pill>
-                <span style={{ fontWeight: 700 }}>{count}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// ── ANALYTICS TAB ──────────────────────────────────────────────────────────
-function AnalyticsTab() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [days, setDays] = useState(60);
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr("");
-    const r = await apiFetch(`/api/ai-analytics/trends?days=${days}`);
-    if (r.ok !== false) setData(r);
-    else setErr(r.error || "Error al cargar analytics");
-    setLoading(false);
-  }, [days]);
-
-  useEffect(() => { load(); }, [load]);
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <Select
-          value={String(days)}
-          onChange={(v) => setDays(Number(v))}
-          options={[7, 30, 60, 90, 120, 180, 365].map((d) => ({ value: String(d), label: `${d} días` }))}
-          style={{ width: "auto" }}
-        />
-        <Btn onClick={load} disabled={loading}>{loading ? "Cargando…" : "↺ Actualizar"}</Btn>
-        {data?.parsedInWindow != null && (
+        {data?.computedAt && (
           <span style={{ fontSize: 12, color: C.sub, fontFamily: C.ff }}>
-            {data.parsedInWindow} eventos en ventana
+            Calculado: {new Date(data.computedAt).toLocaleString()}
           </span>
         )}
       </div>
       <Alert msg={err} />
-      {data?.filePath && (
-        <div style={{ fontSize: 11, color: C.sub, fontFamily: "monospace", wordBreak: "break-all" }}>
-          Archivo: {data.filePath}
-        </div>
-      )}
-      {data?.trends?.length > 0 && (
+
+      {/* Row 1 — 5 KBStatCards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+        <KBStatCard label="KB total" value={kb?.summary?.total} />
+        <KBStatCard label="Score salud" value={kb?.health?.score} suffix="/100" />
+        <KBStatCard label="Stale" value={kb?.health?.stale} accent={kb?.health?.stale > 0 ? "#dc2626" : null} />
+        <KBStatCard label="Gap ML" value={kb?.health?.mlGap} accent={kb?.health?.mlGap > 0 ? "#d97706" : null} />
+        <KBStatCard label="Gap WA" value={kb?.health?.waGap} accent={kb?.health?.waGap > 0 ? "#06b6d4" : null} />
+      </div>
+
+      {/* Row 2 — Sparkline of daily events */}
+      {Object.keys(trends).length > 0 && (
         <Card>
-          <SectionLabel>Tendencias detectadas</SectionLabel>
-          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6 }}>
-            {data.trends.map((t, i) => (
-              <li key={i} style={{ fontSize: 13, color: C.text, fontFamily: C.ff, lineHeight: 1.45 }}>{t}</li>
-            ))}
-          </ul>
+          <SectionLabel>Eventos KB por día ({days}d)</SectionLabel>
+          <KBSparkline byDay={trends} />
+          {env?.parsedInWindow != null && (
+            <div style={{ fontSize: 11, color: C.sub, fontFamily: C.ff, marginTop: 6 }}>
+              {env.parsedInWindow} eventos analizados en la ventana
+            </div>
+          )}
         </Card>
       )}
+
+      {/* Row 3 — Coverage by channel */}
+      {kb && (
+        <Card>
+          <SectionLabel>Cobertura por canal (overrides disponibles)</SectionLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {["chat", "ml", "wa"].map((ch) => {
+              const c = cov[ch] || { total: 0, hasOverride: 0 };
+              const pct = c.total > 0 ? Math.round((c.hasOverride / c.total) * 100) : 0;
+              return <KBBar key={ch} label={`${ch.toUpperCase()} — ${c.hasOverride}/${c.total}`} pct={pct} />;
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Row 4 — Top retrieved + Recent misses */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {data?.byTag?.length > 0 && (
+        {kb?.topAndNever?.top?.length > 0 && (
           <Card>
-            <SectionLabel>Por tag</SectionLabel>
+            <SectionLabel>Top entradas (más recuperadas)</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflowY: "auto" }}>
-              {data.byTag.slice(0, 20).map((row) => (
-                <div key={row.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: C.ff }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
-                  <span style={{ color: C.sub, flexShrink: 0, marginLeft: 8 }}>{row.count}</span>
+              {kb.topAndNever.top.map((t, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, fontFamily: C.ff }}>
+                  <Pill color={C.primary}>{t.retrievalCount}</Pill>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{t.question}</span>
                 </div>
               ))}
             </div>
           </Card>
         )}
-        {data?.bySource?.length > 0 && (
+        {env?.missAnalysis?.recentMisses?.length > 0 && (
           <Card>
-            <SectionLabel>Por fuente</SectionLabel>
+            <SectionLabel>Misses recientes (sin match)</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflowY: "auto" }}>
-              {data.bySource.slice(0, 20).map((row) => (
-                <div key={row.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: C.ff }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
-                  <span style={{ color: C.sub, flexShrink: 0, marginLeft: 8 }}>{row.count}</span>
+              {env.missAnalysis.recentMisses.slice(0, 12).map((m, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, fontFamily: C.ff }}>
+                  <Pill color="#9ca3af">{m.channel}</Pill>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                    {m.question || <em style={{ color: C.sub }}>(captura desactivada)</em>}
+                  </span>
                 </div>
               ))}
             </div>
           </Card>
         )}
       </div>
-      {data?.scoreStats && (
-        <Card>
-          <SectionLabel>Score eventos</SectionLabel>
-          <div style={{ display: "flex", gap: 20, fontSize: 13, fontFamily: C.ff }}>
-            <span>Promedio: <b style={{ color: C.navy }}>{data.scoreStats.avg}</b></span>
-            <span>Mín: {data.scoreStats.min}</span>
-            <span>Máx: {data.scoreStats.max}</span>
-            <span>n: {data.scoreStats.n}</span>
-          </div>
-        </Card>
-      )}
+
+      {/* Empty state */}
       {!data && !loading && !err && (
         <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, textAlign: "center", padding: 24 }}>
-          Sin datos de analytics. Verificá que exista el archivo de eventos de knowledge.
+          Sin datos. Verificá la configuración del endpoint de analytics.
         </div>
       )}
     </div>
@@ -1321,6 +1322,7 @@ function HealthTab() {
   const [busy, setBusy] = useState({});
   const [msg, setMsg] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [generatingWA, setGeneratingWA] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -1355,6 +1357,19 @@ function HealthTab() {
     setGenerating(false);
     if (d.ok) { setMsg(`✓ ${d.generated} overrides ML generados`); load(); }
     else setMsg("Error: " + (d.error || "desconocido"));
+    setTimeout(() => setMsg(null), 5000);
+  }
+
+  async function autoFixWAGaps() {
+    setGeneratingWA(true);
+    const d = await apiFetch("/api/agent/training-kb/generate-wa-overrides", { method: "POST", body: JSON.stringify({}) });
+    setGeneratingWA(false);
+    if (d.ok) { setMsg(`✓ ${d.generated} overrides WA generados`); load(); }
+    else if (d.error?.includes("404") || d.error?.includes("not found")) {
+      setMsg("Endpoint WA en preparación — disponible en próximo deploy.");
+    } else {
+      setMsg("Error: " + (d.error || "desconocido"));
+    }
     setTimeout(() => setMsg(null), 5000);
   }
 
@@ -1402,6 +1417,20 @@ function HealthTab() {
         </button>
       ) : null,
     },
+    {
+      key: "waGap",
+      label: "Gap canal WA",
+      color: "#06b6d4",
+      hint: "goodAnswer >800 chars sin override WA — muy largo para WhatsApp/IG/FB.",
+      entries: data.waGap || [],
+      action: null,
+      headerAction: data.waGap?.length > 0 ? (
+        <button onClick={autoFixWAGaps} disabled={generatingWA}
+          style={{ padding: "5px 14px", borderRadius: 7, border: "none", background: "#06b6d4", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          {generatingWA ? "Generando…" : `⚡ Auto-generar ${data.waGap.length} overrides`}
+        </button>
+      ) : null,
+    },
   ];
 
   return (
@@ -1433,6 +1462,7 @@ function HealthTab() {
                     {sec.key === "stale" && `Vence: ${e.reviewDueAt?.slice(0, 10)} | cat: ${e.category}`}
                     {sec.key === "zeroRetrieval" && `Creada: ${e.createdAt?.slice(0, 10)} | src: ${e.source || "manual"}`}
                     {sec.key === "mlGap" && `${(e.goodAnswer || "").length} chars | cat: ${e.category}`}
+                    {sec.key === "waGap" && `${(e.goodAnswer || "").length} chars | cat: ${e.category}`}
                   </div>
                 </div>
                 {sec.action && sec.action(e)}
@@ -2030,7 +2060,6 @@ const TABS = [
   { id: "prompt", label: "System prompt", icon: "✏️" },
   { id: "conversations", label: "Conversaciones", icon: "💬" },
   { id: "stats", label: "Estadísticas", icon: "📊" },
-  { id: "analytics", label: "Analytics IA", icon: "🔍" },
   { id: "feedback", label: "Feedback", icon: "💬" },
   { id: "health", label: "Salud KB", icon: "🩺" },
   { id: "autolearn", label: "Cola IA", icon: "🧠" },
@@ -2131,7 +2160,6 @@ export default function AgentAdminModule() {
           {tab === "prompt" && <PromptTab />}
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}
-          {tab === "analytics" && <AnalyticsTab />}
           {tab === "feedback" && <FeedbackTab />}
           {tab === "health" && <HealthTab />}
           {tab === "autolearn" && <AutoLearnTab />}
