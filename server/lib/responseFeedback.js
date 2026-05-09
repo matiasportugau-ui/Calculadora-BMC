@@ -5,9 +5,12 @@
  * high-signal ones (corrections, confirmations) to KB entries.
  *
  * Ratings:
- *   "good"   → confirms the response was correct → KB active entry
- *   "bad"    → marks it wrong without correction → KB pending entry (queue for review)
- *   "edit"   → provides the correct version → KB active entry with badAnswer=original
+ *   "good"   → confirms the response was correct
+ *   "bad"    → marks it wrong without correction
+ *   "edit"   → provides the correct version
+ *
+ * Public feedback is stored for review only. Promotion to the training KB is
+ * opt-in so unauthenticated clients cannot poison active agent knowledge.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -45,9 +48,20 @@ function appendEvent(event) {
  * @param {string} [opts.comment]     — free-text note from reviewer
  * @param {string} [opts.convId]      — conversation ID (for traceability)
  * @param {string} [opts.rowId]       — CRM row / ML question ID
- * @returns {{ ok: boolean, feedbackId: string, kbEntryId?: string }}
+ * @param {boolean} [opts.promoteToKb=false] — trusted caller can promote immediately
+ * @returns {{ ok: boolean, feedbackId: string, kbEntryId?: string, promoted: boolean }}
  */
-export function saveFeedback({ channel, question, generatedText, rating, correction, comment, convId, rowId }) {
+export function saveFeedback({
+  channel,
+  question,
+  generatedText,
+  rating,
+  correction,
+  comment,
+  convId,
+  rowId,
+  promoteToKb = false,
+}) {
   const feedbackId = crypto.randomUUID();
   const ts = new Date().toISOString();
 
@@ -66,7 +80,7 @@ export function saveFeedback({ channel, question, generatedText, rating, correct
 
   let kbEntryId = null;
 
-  if (rating === "good" && event.question && event.generatedText) {
+  if (promoteToKb && rating === "good" && event.question && event.generatedText) {
     try {
       const entry = addTrainingEntry({
         question: event.question,
@@ -82,7 +96,7 @@ export function saveFeedback({ channel, question, generatedText, rating, correct
     } catch { /* non-critical */ }
   }
 
-  if (rating === "edit" && event.question && event.correction) {
+  if (promoteToKb && rating === "edit" && event.question && event.correction) {
     try {
       const entry = addTrainingEntry({
         question: event.question,
@@ -99,7 +113,7 @@ export function saveFeedback({ channel, question, generatedText, rating, correct
     } catch { /* non-critical */ }
   }
 
-  if (rating === "bad" && event.question && event.generatedText) {
+  if (promoteToKb && rating === "bad" && event.question && event.generatedText) {
     try {
       const entry = addTrainingEntry({
         question: event.question,
@@ -116,7 +130,7 @@ export function saveFeedback({ channel, question, generatedText, rating, correct
     } catch { /* non-critical */ }
   }
 
-  return { ok: true, feedbackId, kbEntryId };
+  return { ok: true, feedbackId, kbEntryId, promoted: Boolean(kbEntryId) };
 }
 
 /**
