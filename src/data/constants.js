@@ -92,7 +92,7 @@ export const PANELS_TECHO = {
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
       30: { venta: 33.2695, web: 40.502,  costo: 28.93,  ap: 2.8 },
-      50: { venta: 37.7856, web: 46.00,   costo: 32.857, ap: 3.3 },
+      50: { venta: 37.7856, web: 36.69,   costo: 32.857, ap: 3.3 },
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
   },
@@ -386,7 +386,7 @@ export const PERFIL_PARED = {
 };
 
 export const SERVICIOS = {
-  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 186.03, unidad: "servicio" },
+  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 180.00, unidad: "servicio" },
 };
 
 // ── §4 UI CONFIGURATION ──────────────────────────────────────────────────────
