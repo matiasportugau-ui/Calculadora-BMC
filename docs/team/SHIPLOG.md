@@ -20,6 +20,8 @@ Run de 5h con 8 deploys consecutivos. Foco: estabilizar Calculadora-BMC para que
 | 6 | `d5f40a8` | fix(calc) | P1 bugs: warning ISODEC PIR 50mm visible, perfil U 250mm documentado, color resetea al cambiar familia pared |
 | 7 | `9a5cdcd` | feat(crm) | Dual-write CRM_Operativo + Admin Cotizaciones (feature-flag, default off) — falta solo activar tras verificar layout en planilla |
 | 8 | `398c30d` | feat(training) | Shadow harness v1 — ingest 11.8k cotizaciones .ods históricas de Dropbox a JSONL normalizado, 26 tests |
+| 9 | `bf4fd47` | docs(team) | SHIPLOG.md inicial — protocolo daily-ship |
+| 10 | `e1f5a3b` | feat(rag) | RAG v1 — pgvector + embeddings provider-agnostic + retrieve top-K + Panelin integration (flag off, default seguro) |
 
 ### Pendientes que quedaron al cierre
 
