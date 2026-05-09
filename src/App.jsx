@@ -29,6 +29,7 @@ const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotiz
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
+const DashboardShell = lazy(() => import("./features/dashboard/DashboardShell.jsx"));
 
 const suspenseFallback = (
   <div
@@ -214,6 +215,14 @@ export default function App() {
           element={
             <Suspense fallback={suspenseFallback}>
               <FichasPreview />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/dashboard/*"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <DashboardShell />
             </Suspense>
           }
         />
