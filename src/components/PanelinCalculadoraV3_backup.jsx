@@ -4090,7 +4090,13 @@ export default function PanelinCalculadoraV3() {
     const pd = PANELS_PARED[fam];
     if (!pd) return;
     const firstEsp = Number(Object.keys(pd.esp)[0]);
-    setPared(pd2 => ({ ...pd2, familia: fam, espesor: firstEsp }));
+    setPared(pd2 => ({
+      ...pd2,
+      familia: fam,
+      espesor: firstEsp,
+      // Si el color actual existe en la nueva familia se conserva; si no, se usa el primero disponible.
+      color: pd.col.includes(pd2.color) ? pd2.color : (pd.col[0] || ""),
+    }));
   };
 
   // ── Budget log state ──
@@ -5072,6 +5078,9 @@ export default function PanelinCalculadoraV3() {
                           );
                         })}
                       </div>
+                      {techoPanelData?.notas?.[Number(techo.espesor)] && (
+                        <AlertBanner type="warning" message={techoPanelData.notas[Number(techo.espesor)]} />
+                      )}
                     </div>
                   )}
                   {stepId === "color" && techoPanelData && (
@@ -5979,6 +5988,11 @@ export default function PanelinCalculadoraV3() {
             <div style={{ marginTop: 12 }}>
               <CustomSelect label="Espesor" value={techo.espesor} options={techoEspesorOptions} onChange={v => uT("espesor", v)} showBadge />
             </div>
+            {techoPanelData?.notas?.[Number(techo.espesor)] && (
+              <div style={{ marginTop: 8 }}>
+                <AlertBanner type="warning" message={techoPanelData.notas[Number(techo.espesor)]} />
+              </div>
+            )}
             {techoPanelData && <div style={{ marginTop: 12 }}>
               <div style={labelS}>Color</div>
               <ColorChips colors={techoPanelData.col} value={techo.color} onChange={c => uT("color", c)} onHover={setHoverTechoColor} notes={techoPanelData.colNotes || {}} familia={techo.familia} />

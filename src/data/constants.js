@@ -353,6 +353,9 @@ export const PERFIL_PARED = {
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
+      // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
+      // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
       250: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
     ISOWALL: {
