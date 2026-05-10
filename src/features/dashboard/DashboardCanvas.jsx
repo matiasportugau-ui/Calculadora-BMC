@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Responsive, useContainerWidth } from 'react-grid-layout';
 import { WidgetRegistry } from './widgets/registry.js';
 
@@ -9,10 +9,28 @@ import { WidgetRegistry } from './widgets/registry.js';
  * @param {Object} props.layouts - { lg: [...], md: [...] } react-grid-layout
  * @param {Object} props.widgets - { [id]: { type, props } }
  * @param {boolean} props.editable - si true, widgets son arrastrables/redimensionables
- * @param {(layouts) => void} props.onLayoutChange
+ * @param {(layouts) => void} props.onLayoutChange - called only on drag/resize stop (for persistence)
  */
-export default function DashboardCanvas({ layouts, widgets, editable, onLayoutChange }) {
+export default function DashboardCanvas({ layouts: layoutsProp, widgets, editable, onLayoutChange }) {
   const [containerRef, width] = useContainerWidth();
+  const [layouts, setLayouts] = useState(layoutsProp);
+  const layoutsRef = useRef(layoutsProp);
+
+  // Sync when parent resets layout (e.g., after "Restaurar" button)
+  useEffect(() => {
+    setLayouts(layoutsProp);
+    layoutsRef.current = layoutsProp;
+  }, [layoutsProp]);
+
+  const handleLayoutChange = useCallback((_current, all) => {
+    setLayouts(all);
+    layoutsRef.current = all;
+  }, []);
+
+  const handleStop = useCallback(() => {
+    onLayoutChange?.(layoutsRef.current);
+  }, [onLayoutChange]);
+
   const items = useMemo(
     () =>
       Object.entries(widgets).map(([id, w]) => {
@@ -44,7 +62,9 @@ export default function DashboardCanvas({ layouts, widgets, editable, onLayoutCh
         margin={[12, 12]}
         isDraggable={editable}
         isResizable={editable}
-        onLayoutChange={(_current, all) => onLayoutChange?.(all)}
+        onLayoutChange={handleLayoutChange}
+        onDragStop={handleStop}
+        onResizeStop={handleStop}
         draggableCancel="button, a, input, select, textarea, .no-drag"
       >
         {items}

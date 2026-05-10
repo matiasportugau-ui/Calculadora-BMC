@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
-import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { Routes, Route, NavLink, Navigate, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Wrench, RotateCcw, Pencil, Save } from 'lucide-react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import '../../styles/dashboard.css';
 import { Button } from '../../components/ui/button.jsx';
 import { Badge } from '../../components/ui/badge.jsx';
 import ComercialDashboard from './pages/ComercialDashboard.jsx';
 import CrmDashboard from './pages/CrmDashboard.jsx';
 import DevopsDashboard from './pages/DevopsDashboard.jsx';
 import { useDashboardLayout } from './useDashboardLayout.js';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
+  },
+});
 
 const SECTIONS = [
   { path: 'comercial', label: 'Comercial', icon: LayoutDashboard, description: 'KPIs, ventas, márgenes' },
@@ -49,12 +57,12 @@ function Sidebar() {
         ))}
       </nav>
       <div className="p-3 border-t border-stone-100">
-        <a
-          href="/"
+        <Link
+          to="/"
           className="flex items-center gap-2 text-xs text-stone-500 hover:text-stone-900"
         >
           ← Volver a la calculadora
-        </a>
+        </Link>
       </div>
     </aside>
   );
@@ -84,11 +92,17 @@ function Topbar({ editable, onToggleEdit, onReset, scope }) {
   );
 }
 
-export default function DashboardShell() {
+function DashboardContent() {
   const location = useLocation();
   const scope = currentScopeFromPath(location.pathname);
   const [editable, setEditable] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const { reset } = useDashboardLayout(scope);
+
+  const handleReset = useCallback(() => {
+    reset();
+    setResetKey((k) => k + 1);
+  }, [reset]);
 
   return (
     <div className="dashboard-root flex h-screen w-full overflow-hidden">
@@ -98,18 +112,26 @@ export default function DashboardShell() {
           scope={scope}
           editable={editable}
           onToggleEdit={() => setEditable((v) => !v)}
-          onReset={reset}
+          onReset={handleReset}
         />
         <div className="flex-1 overflow-auto p-4 bg-stone-50">
           <Routes>
             <Route index element={<Navigate to="comercial" replace />} />
-            <Route path="comercial" element={<ComercialDashboard editable={editable} />} />
-            <Route path="crm" element={<CrmDashboard editable={editable} />} />
-            <Route path="devops" element={<DevopsDashboard editable={editable} />} />
+            <Route path="comercial" element={<ComercialDashboard key={`comercial-${resetKey}`} editable={editable} />} />
+            <Route path="crm"       element={<CrmDashboard       key={`crm-${resetKey}`}       editable={editable} />} />
+            <Route path="devops"    element={<DevopsDashboard    key={`devops-${resetKey}`}    editable={editable} />} />
             <Route path="*" element={<Navigate to="comercial" replace />} />
           </Routes>
         </div>
       </main>
     </div>
+  );
+}
+
+export default function DashboardShell() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DashboardContent />
+    </QueryClientProvider>
   );
 }

@@ -2,7 +2,7 @@
  * Dashboard CSS — Tailwind v4 scoped to .dashboard-root
  * Coexists with Applied AI design system (no global utility leak).
  */
-@import "tailwindcss";
+@import "tailwindcss/utilities";
 
 /* react-grid-layout base styles */
 @import "react-grid-layout/css/styles.css";

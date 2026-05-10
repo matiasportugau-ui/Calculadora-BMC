@@ -48,7 +48,7 @@ export default function HealthCheckGrid() {
     },
     {
       name: 'Frontend Vercel',
-      status: typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') ? 'ok' : 'ok',
+      status: typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') ? 'ok' : 'warn',
       detail: typeof window !== 'undefined' ? window.location.hostname : '',
     },
   ];

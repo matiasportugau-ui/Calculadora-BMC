@@ -27,7 +27,11 @@ export function useDashboardLayout(scope) {
   );
 
   const reset = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY(scope));
+    try {
+      localStorage.removeItem(STORAGE_KEY(scope));
+    } catch (e) {
+      console.warn('Failed to clear dashboard layout', e);
+    }
     setLayouts(defaultLayouts[scope] || { lg: [] });
   }, [scope]);
 
