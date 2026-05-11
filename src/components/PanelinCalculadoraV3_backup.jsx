@@ -6839,6 +6839,7 @@ export default function PanelinCalculadoraV3() {
         onLoadConversationAnalysis={chat.loadConversationAnalysis}
         calcState={calcState}
         onChatAction={handleChatAction}
+        authHeader={devMode && devAuthToken ? `Bearer ${devAuthToken}` : ""}
       />
 
       <Toast message={toast} visible={!!toast} />

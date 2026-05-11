@@ -10,6 +10,7 @@
  */
 import { Router } from "express";
 import { config } from "../config.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const DEFAULT_MODEL = "o4-mini-deep-research";
 const ALLOWED_MODELS = new Set(["o4-mini-deep-research", "o3-deep-research"]);
@@ -72,7 +73,7 @@ function extractCitations(response) {
 
 const router = Router();
 
-router.post("/research/deep", async (req, res) => {
+router.post("/research/deep", requireAuth, async (req, res) => {
   try {
     const { query, model, system, tools } = req.body || {};
     const q = typeof query === "string" ? query.trim() : "";
@@ -112,7 +113,7 @@ router.post("/research/deep", async (req, res) => {
   }
 });
 
-router.get("/research/deep/:id", async (req, res) => {
+router.get("/research/deep/:id", requireAuth, async (req, res) => {
   try {
     const r = await openaiFetch(`/responses/${encodeURIComponent(req.params.id)}`);
     const done = r.status === "completed";
@@ -135,7 +136,7 @@ router.get("/research/deep/:id", async (req, res) => {
   }
 });
 
-router.post("/research/deep/:id/cancel", async (req, res) => {
+router.post("/research/deep/:id/cancel", requireAuth, async (req, res) => {
   try {
     const r = await openaiFetch(`/responses/${encodeURIComponent(req.params.id)}/cancel`, {
       method: "POST",
