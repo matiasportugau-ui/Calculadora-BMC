@@ -114,7 +114,13 @@ export const QUOTE_TERMS = [
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
-export const fmtPrice = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Top-20 run 2026-05-11 (#F8): si n es undefined/null/NaN, devolvemos "0.00" en vez de "NaN" literal.
+// Locale en-US es intencional: USD se muestra con punto decimal (1,234.56), no con coma (es-UY).
+export const fmtPrice = n => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0.00";
+  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -826,7 +832,9 @@ export function revokePreviewUrl(url) {
 export function buildWhatsAppText(data) {
   const { client, project, scenario, panel, totals, listaLabel } = data;
   const scenarioLabel = { solo_techo: "Solo techo", solo_fachada: "Solo fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
-  const panelStr = panel.espesor ? `${panel.label} ${panel.espesor}mm · Color: ${panel.color}` : panel.label;
+  // Top-20 run 2026-05-11 (#F5): fallback explícito si panel.color es null/undefined ("—" en vez de "undefined").
+  const colorStr = panel.color || "—";
+  const panelStr = panel.espesor ? `${panel.label} ${panel.espesor}mm · Color: ${colorStr}` : panel.label;
   let txt = `*Cotización ${COMPANY.name}*\n📅 ${project.fecha} · Ref: ${project.refInterna || "—"}\n🏗 Cliente: ${client.nombre}${client.rut ? " · " + client.rut : ""}\n📐 Obra: ${project.descripcion || "—"} · ${client.direccion || "—"}\n💲 Lista: ${listaLabel}\n\n*Escenario:* ${scenarioLabel}\n*Panel:* ${panelStr}\n`;
   txt += `\n💰 *Subtotal s/IVA:* USD ${fmtPrice(totals.subtotalSinIVA)}\n💰 *IVA 22%:* USD ${fmtPrice(totals.iva)}\n✅ *TOTAL USD: ${fmtPrice(totals.totalFinal)}*\n\n_Entrega 10-15d · Seña 60%_\n_${COMPANY.phone} · ${COMPANY.website}_`;
   return txt;
