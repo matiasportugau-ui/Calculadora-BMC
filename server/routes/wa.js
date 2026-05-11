@@ -26,8 +26,13 @@ function requireWaAuth(config) {
   return (req, res, next) => {
     const token = config.apiAuthToken;
     if (!token) {
+      // Top-10 run 2026-05-11 (item #9): shape estructurado para que el frontend pueda surfacear el nombre exacto del env var.
       return res.status(503).json({
         ok: false,
+        code: "ENV_MISSING",
+        envVar: "API_AUTH_TOKEN",
+        where: "Cloud Run env / .env local",
+        docs: "AGENTS.md#env",
         error: "API_AUTH_TOKEN not configured — wa cockpit disabled",
       });
     }

@@ -252,10 +252,23 @@ function mapCrmRowsForWolfboardMatch(values) {
   }));
 }
 
+// Top-10 run 2026-05-11 (item #9): helper para 503 ENV_MISSING con shape estructurado (envVar, where, docs).
+// `error` se mantiene en formato `<EnvVar> not configured` por compat (auth-routes.test.js parsea este string).
+function envMissing503(res, envVar, where = "Cloud Run env / .env local") {
+  return res.status(503).json({
+    ok: false,
+    code: "ENV_MISSING",
+    envVar,
+    where,
+    docs: "AGENTS.md#env",
+    error: `${envVar} not configured`,
+  });
+}
+
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
   if (!expected) {
-    res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+    envMissing503(res, "API_AUTH_TOKEN");
     return false;
   }
   const header =
@@ -328,7 +341,7 @@ export function createWolfboardRouter(config) {
     if (!requireAuth(config, req, res)) return;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     const scopeRaw = String(req.query.scope || "consulta").trim().toLowerCase();
     const scope = scopeRaw === "admin" || scopeRaw === "all" || scopeRaw === "sheet" ? "admin" : "consulta";
@@ -369,7 +382,7 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
     const crmTab = config.wolfbCrmMainTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -446,7 +459,7 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
     const crmTab = config.wolfbCrmMainTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -527,7 +540,7 @@ export function createWolfboardRouter(config) {
     const adminTab = config.wolfbAdminTab;
     const crmSheetId = config.bmcSheetId;
     const enviadosTab = config.wolfbCrmEnviadosTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     let sheets;
     try { sheets = await getSheetsClient(); }
@@ -609,7 +622,7 @@ export function createWolfboardRouter(config) {
     if (!requireAuth(config, req, res)) return;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
-    if (!adminSheetId) return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
     const scopeRaw = String(req.query.scope || "consulta").trim().toLowerCase();
     const scope = scopeRaw === "admin" || scopeRaw === "all" || scopeRaw === "sheet" ? "admin" : "consulta";
@@ -660,10 +673,10 @@ export function createWolfboardRouter(config) {
     const crmTab = config.wolfbCrmMainTab;
 
     if (!adminSheetId) {
-      return res.status(503).json({ ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado" });
+      return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
     }
     if (!config.anthropicApiKey) {
-      return res.status(503).json({ ok: false, error: "ANTHROPIC_API_KEY no configurado" });
+      return envMissing503(res, "ANTHROPIC_API_KEY", "Cloud Run secret / .env local");
     }
     if (!config.googleApplicationCredentials && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       return res.status(503).json({ ok: false, error: "GOOGLE_APPLICATION_CREDENTIALS no configurado" });

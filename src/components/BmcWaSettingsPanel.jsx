@@ -1,25 +1,24 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
-import { 
-  Settings, 
-  Flag, 
-  Cpu, 
-  Calculator, 
-  Clock, 
-  GitBranch, 
-  Bell, 
-  Send, 
-  Users, 
-  Webhook, 
-  MessageSquare, 
-  History, 
-  Download, 
-  ChevronRight,
+// Top-10 run 2026-05-11 (item #10): cleanup imports muertos + wire de loading/error/saving.
+import { useCallback, useEffect, useState } from "react";
+import {
+  Settings,
+  Flag,
+  Cpu,
+  Calculator,
+  Clock,
+  GitBranch,
+  Bell,
+  Send,
+  Users,
+  Webhook,
+  MessageSquare,
+  History,
+  Download,
   Save,
   Trash2,
   Plus,
   RefreshCw,
   AlertCircle,
-  CheckCircle2,
   Calendar
 } from "lucide-react";
 
@@ -261,6 +260,18 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
     return <div style={{ padding: 40, color: "#86868b" }}>Cargando configuración...</div>;
   }
 
+  // Top-10 run 2026-05-11 (item #10): mostrar errores de fetch y estado "Guardando…" en lugar de silenciarlos.
+  const statusBanner = error ? (
+    <div style={{ margin: "12px 24px", padding: "10px 14px", background: "#fff1f0", border: "1px solid #ffa39e", borderRadius: 8, color: "#cf1322", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+      <AlertCircle size={16} /> Error cargando configuración: {error}
+      <button onClick={() => { setError(""); fetchConfig(); }} style={{ marginLeft: "auto", padding: "4px 10px", border: "1px solid #cf1322", background: "transparent", color: "#cf1322", borderRadius: 6, cursor: "pointer", fontSize: 12 }}>Reintentar</button>
+    </div>
+  ) : saving ? (
+    <div style={{ margin: "12px 24px", padding: "8px 12px", background: "#f0f9ff", border: "1px solid #91d5ff", borderRadius: 8, color: "#0958d9", fontSize: 12 }}>
+      Guardando cambios…
+    </div>
+  ) : null;
+
   return (
     <div style={styles.container}>
       <div style={styles.sidebar}>
@@ -280,6 +291,7 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
       </div>
       
       <div style={styles.main}>
+        {statusBanner}
         {activeSection === "flags" && <FlagsSection config={config} onToggle={handleToggleFlag} />}
         {activeSection === "general" && <GeneralSection config={config} onUpdate={handleUpdateSetting} />}
         {activeSection === "ai" && <AiSection config={config} onUpdate={handleUpdateSetting} apiBase={apiBase} token={token} />}
@@ -904,6 +916,11 @@ function OperatorsSection({ token, apiBase }) {
 
   useEffect(() => { fetchOperators(); }, [fetchOperators]);
 
+  if (loading && operators.length === 0) {
+    // Top-10 run 2026-05-11 (item #10): hint visible mientras carga.
+    return <div style={{ padding: 24, color: "#86868b" }}>Cargando operadores…</div>;
+  }
+
   return (
     <div>
       <h2 style={styles.sectionTitle}>Operadores</h2>
@@ -943,7 +960,8 @@ function OperatorsSection({ token, apiBase }) {
   );
 }
 
-function WebhooksSection({ token, apiBase }) {
+// Top-10 run 2026-05-11 (item #10): la sección Webhooks es placeholder; los props token/apiBase no se usan acá.
+function WebhooksSection() {
   return (
     <div>
       <h2 style={styles.sectionTitle}>Webhooks</h2>
