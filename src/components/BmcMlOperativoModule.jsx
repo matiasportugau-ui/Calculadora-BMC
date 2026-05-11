@@ -799,7 +799,18 @@ export default function BmcMlOperativoModule() {
             </div>
           </div>
 
-          {items.length === 0 && !loading ? (
+          {items.length === 0 && loading ? (
+            // Top-10 run 2026-05-11 (item #3): loading state visible para que el usuario sepa que está descargando, no que "no hay datos".
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", fontSize: 13, color: "#6e6e73", fontFamily: FF }}>
+              <span style={{
+                display: "inline-block", width: 14, height: 14, borderRadius: "50%",
+                border: "2px solid #d0d7e2", borderTopColor: "#0071e3",
+                animation: "bmc-spin 0.8s linear infinite",
+              }} />
+              <style>{`@keyframes bmc-spin { to { transform: rotate(360deg); } }`}</style>
+              Cargando preguntas desde CRM / Mercado Libre…
+            </div>
+          ) : items.length === 0 && !loading ? (
             <p style={{ margin: 0, fontSize: 13, color: "#6e6e73", fontFamily: FF }}>
               Sin ítems. Usá <strong>PULL ML</strong> para traer preguntas nuevas de MercadoLibre, o <strong>PULL CRM</strong> para recargar.
             </p>
