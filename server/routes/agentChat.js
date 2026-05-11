@@ -693,7 +693,10 @@ router.post("/agent/chat", async (req, res) => {
     setImmediate(() => {
       try {
         if (!aborted) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
-      } catch { /* ignore */ }
+      } catch (err) {
+        // Top-20 run 2026-05-11 (#F6): error de SSE write — logueamos en vez de silenciar.
+        if (req.log) req.log.warn({ err: err?.message || String(err) }, "approved_actions SSE write failed");
+      }
     });
   }
 
@@ -1036,7 +1039,9 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         const latencyMs = Date.now() - tStart;
-        console.log(JSON.stringify({
+        // Top-20 run 2026-05-11 (#F1): structured log via pino (req.log) en lugar de console.log
+        // para que Cloud Run capture el evento con request id correlation.
+        const turnLog = {
           event: "chat_turn",
           provider,
           model: resolvedModel,
@@ -1045,7 +1050,9 @@ router.post("/agent/chat", async (req, res) => {
           outputTokens,
           kbMatchCount: trainingExamples.length,
           devMode: devMode || undefined,
-        }));
+        };
+        if (req.log) req.log.info(turnLog, "chat_turn");
+        else console.log(JSON.stringify(turnLog));
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {
