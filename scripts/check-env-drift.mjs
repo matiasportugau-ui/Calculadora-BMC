@@ -77,7 +77,9 @@ function scanDocumented() {
   const documented = new Set();
   if (!fs.existsSync(ENV_EXAMPLE)) return documented;
   for (const line of fs.readFileSync(ENV_EXAMPLE, "utf8").split("\n")) {
-    const m = line.match(/^\s*([A-Z][A-Z0-9_]+)\s*=/);
+    // Accept both active (`VAR=value`) and commented (`# VAR=value`) forms —
+    // documenting an optional var with a default is valid documentation.
+    const m = line.match(/^\s*#?\s*([A-Z][A-Z0-9_]+)\s*=/);
     if (m) documented.add(m[1]);
   }
   return documented;
