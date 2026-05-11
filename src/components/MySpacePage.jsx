@@ -5,7 +5,7 @@
 // Master plan §Phase F. Minimal first-pass styling, no Tailwind dependency.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 
