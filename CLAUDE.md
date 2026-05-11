@@ -17,11 +17,12 @@
 |--------|---------|
 | `npm run dev` | Vite frontend only (runs `version:data` + Vite) |
 | `npm run dev:full` | API (`start:api`) + Vite via `concurrently` |
+| `npm run dev:api` | Express API only with `node --watch` (server-side hot reload). |
 | `npm run lint` | ESLint on `src/` |
 | `npm test` | `tests/validation.js` + `tests/roofVisualQuoteConsistency.js` |
 | `npm run test:api` | API route tests |
 | `npm run build` | Production Vite build |
-| `npm run gate:local` | **lint** + **test** |
+| `npm run gate:local` | **lint** + **test** + **test:api** (matches `package.json`) |
 | `npm run gate:local:full` | **lint** + **test** + **build** |
 
 **Pre-commit:** run `npm run gate:local` (or `gate:local:full` before larger UI/build changes).
@@ -57,13 +58,14 @@
 
 ## Agent ecosystem (Claude Code)
 
-Eleven agent definitions live under **`.claude/agents/`**:
+Twelve agent definitions live under **`.claude/agents/`**:
 
 | Agent | Role |
 |-------|------|
 | `bmc-orchestrator` | Coordinates full team runs |
 | `bmc-calc-specialist` | Pricing, BOM, panel calculations |
 | `bmc-panelin-chat` | Chat UI, training KB, dev mode |
+| `bmc-panelin-mcp` | External MCP surface exposing calculator tools to other agents/clients |
 | `bmc-api-contract` | API response drift detection |
 | `bmc-security` | OAuth, CORS, credential audits |
 | `bmc-deployment` | Vercel + Cloud Run deploy/rollback |
@@ -81,6 +83,8 @@ Canonical human/agent instructions also live in **`AGENTS.md`**.
 - **Secrets:** see **`.env.example`** for variable names — **never** commit `.env` or paste credentials into docs or chat.
 - **Sheet IDs / tokens:** do not hardcode; read from `config` / `process.env` (see `AGENTS.md`).
 - Commit messages: concise, in English, prefixed with type (feat/fix/refactor/docs).
+- **Language:** when the user writes in Spanish (or asks for it), reply in Spanish; keep code, file paths, symbol names, CLI commands, and entrenched technical terms (`deploy`, `PR`, `API`, `OAuth`, `lint`, `build`) in English; do not translate product/repo names. Source: `.cursor/rules/spanish-replies-technical-en.mdc`.
+- **Human gates (cm-0 / cm-1 / cm-2, WhatsApp/Meta, Mercado Libre OAuth, email ingest):** never mark these `done` in `docs/team/orientation/programs/bmc-panelin-master.json` without evidence per the "Listo cuando" section of `docs/team/HUMAN-GATES-ONE-BY-ONE.md`. Before asking the user for manual steps, try `npm run channels:automated` (or read `.channels/last-pipeline.json`) and `humanGate.firstBlockingTask`. Secrets stay as variable names — never paste values in chat. Source: `.cursor/rules/human-gates-bmc.mdc`.
 
 ## Session bootstrap
 
