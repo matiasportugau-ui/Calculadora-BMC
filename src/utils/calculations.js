@@ -67,7 +67,10 @@ export function calcPanelesTecho(panel, espesor, largo, ancho) {
   const costoPaneles = +(precioM2 * areaTotal).toFixed(2);
   const descarteAncho = +(anchoTotal - ancho).toFixed(2);
   const descarteArea = +(descarteAncho * largo).toFixed(2);
-  const descartePct = ancho > 0 ? +((descarteAncho / ancho) * 100).toFixed(1) : 0;
+  // Top-10 run 2026-05-11 (item #4): para descartes chicos (<0.5 m) usar 2 decimales; si no, 1 decimal histórico.
+  const descartePct = ancho > 0
+    ? +((descarteAncho / ancho) * 100).toFixed(descarteAncho < 0.5 ? 2 : 1)
+    : 0;
   return {
     cantPaneles, areaTotal, anchoTotal, costoPaneles, precioM2,
     descarte: { anchoM: descarteAncho, areaM2: descarteArea, porcentaje: descartePct }

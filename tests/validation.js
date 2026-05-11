@@ -517,6 +517,14 @@ assert("calcTechoCompleto(descarte>0): descarte.anchoM ≈ 0.60", approx(techoRe
 assert("calcTechoCompleto(descarte>0): descarte.areaM2 ≈ 3.00", approx(techoResultDescarte.paneles?.descarte?.areaM2, 3.00), techoResultDescarte.paneles?.descarte?.areaM2, 3.00);
 assert("calcTechoCompleto(descarte>0): descarte.porcentaje ≈ 12.0", approx(techoResultDescarte.paneles?.descarte?.porcentaje, 12.0), techoResultDescarte.paneles?.descarte?.porcentaje, 12.0);
 
+// --- descarte: small discard (<0.5m) → 2 decimal precision (top-10 run 2026-05-11 item #4) ---
+// ancho=2.2 → 2 panels × 1.12 = 2.24m, descarte = 0.04m (< 0.5m → toFixed(2))
+// Expected: porcentaje = +(0.04/2.2 * 100).toFixed(2) = 1.82 (was 1.8 with old toFixed(1))
+const techoInputSmall = { ...techoInput, ancho: 2.2 };
+const techoResultSmall = calcTechoCompleto(techoInputSmall);
+assert("calcTechoCompleto(descarte<0.5m): descarte.anchoM ≈ 0.04", approx(techoResultSmall.paneles?.descarte?.anchoM, 0.04), techoResultSmall.paneles?.descarte?.anchoM, 0.04);
+assert("calcTechoCompleto(descarte<0.5m): descarte.porcentaje = 1.82 (2 decimals)", techoResultSmall.paneles?.descarte?.porcentaje === 1.82, techoResultSmall.paneles?.descarte?.porcentaje, 1.82);
+
 // --- calcParedCompleto ---
 const paredInput = {
   familia: "ISOPANEL_EPS", espesor: 100,

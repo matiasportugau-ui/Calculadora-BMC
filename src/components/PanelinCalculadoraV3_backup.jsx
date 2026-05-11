@@ -2714,7 +2714,17 @@ export default function PanelinCalculadoraV3() {
       case "familia": return !!techo.familia;
       case "espesor": return !!techo.espesor;
       case "color": return !!techo.color;
-      case "dimensiones": return techo.zonas?.length > 0 && techo.zonas.every(z => z.largo > 0 && z.ancho > 0);
+      case "dimensiones": {
+        if (!(techo.zonas?.length > 0 && techo.zonas.every(z => z.largo > 0 && z.ancho > 0))) return false;
+        // Top-10 run 2026-05-11 (item #8): bloquear "Siguiente" si el área total no llega al mínimo del color (p. ej. ISOROOF_PLUS ≥ 800 m²).
+        const panelForMin = PANELS_TECHO[techo.familia];
+        const minArea = panelForMin?.colMinArea?.[techo.color];
+        if (minArea) {
+          const totalArea = techo.zonas.reduce((sum, z) => sum + ((Number(z.largo) || 0) * (Number(z.ancho) || 0)), 0);
+          if (totalArea < minArea) return false;
+        }
+        return true;
+      }
       case "pendiente": return typeof techo.pendiente === "number" && techo.pendiente >= 0;
       case "estructura": {
         if (!techo.tipoEst) return false;
@@ -5119,6 +5129,19 @@ export default function PanelinCalculadoraV3() {
                         }
                         disabled={false}
                       />
+                      {/* Top-10 run 2026-05-11 (item #8): aviso bloqueante de pedido mínimo por color (ISOROOF_PLUS ≥ 800 m²). */}
+                      {(() => {
+                        const minArea = techoPanelData?.colMinArea?.[techo.color];
+                        if (!minArea) return null;
+                        const total = (techo.zonas || []).reduce((sum, z) => sum + ((Number(z.largo) || 0) * (Number(z.ancho) || 0)), 0);
+                        if (total === 0 || total >= minArea) return null;
+                        return (
+                          <AlertBanner
+                            type="danger"
+                            message={`Pedido mínimo ${minArea} m² para color ${techo.color}. Cotización actual: ${total.toFixed(1)} m². Aumentá las medidas o cambiá de color para continuar.`}
+                          />
+                        );
+                      })()}
                       {(techo.zonas?.length ? techo.zonas : [{ largo: 0, ancho: 0 }]).map((zona, idx) => (
                         <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, background: C.surfaceAlt, borderRadius: 12, border: `1.5px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
