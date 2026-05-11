@@ -358,6 +358,9 @@ function KBTab() {
   const [matchResults, setMatchResults] = useState(null);
   const [generatingML, setGeneratingML] = useState(false);
   const [mlGenMsg, setMlGenMsg] = useState("");
+  // Top-10 run 2026-05-11 (item #6): feedback visible para "Exportar KB" para evitar doble-click.
+  const [exportingKb, setExportingKb] = useState(false);
+  const [exportMsg, setExportMsg] = useState("");
   const fileRef = useRef();
 
   const PAGE_SIZE = 30;
@@ -480,31 +483,45 @@ function KBTab() {
   }
 
   function exportKbJson() {
-    const payload = {
-      exportVersion: 1,
-      exportedAt: new Date().toISOString(),
-      note: "Panelin training KB — importar desde Admin con ↑ Importar JSON (máx. 50 filas por archivo en UI; usá script o API para lotes mayores).",
-      stats: stats || null,
-      entries: entries.map((e) => ({
-        id: e.id,
-        category: e.category,
-        question: e.question,
-        goodAnswer: kbAnswer(e),
-        answer: kbAnswer(e),
-        context: e.context || "",
-        permanent: !!e.permanent,
-        status: e.status,
-        goodAnswerML: e.goodAnswerML ?? null,
-        goodAnswerWA: e.goodAnswerWA ?? null,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-    const a = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    a.href = url;
-    a.download = `panelin-kb-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (exportingKb) return; // guard: el botón también está disabled pero por las dudas.
+    setExportingKb(true);
+    setExportMsg("");
+    // Yield al render loop para que el botón cambie a "Generando…" antes de bloquear el thread con la serialización.
+    setTimeout(() => {
+      try {
+        const payload = {
+          exportVersion: 1,
+          exportedAt: new Date().toISOString(),
+          note: "Panelin training KB — importar desde Admin con ↑ Importar JSON (máx. 50 filas por archivo en UI; usá script o API para lotes mayores).",
+          stats: stats || null,
+          entries: entries.map((e) => ({
+            id: e.id,
+            category: e.category,
+            question: e.question,
+            goodAnswer: kbAnswer(e),
+            answer: kbAnswer(e),
+            context: e.context || "",
+            permanent: !!e.permanent,
+            status: e.status,
+            goodAnswerML: e.goodAnswerML ?? null,
+            goodAnswerWA: e.goodAnswerWA ?? null,
+          })),
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+        const a = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = `panelin-kb-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportMsg(`✓ KB exportada (${payload.entries.length} entradas)`);
+      } catch (ex) {
+        setExportMsg(`Error: ${String(ex.message || ex)}`);
+      } finally {
+        setExportingKb(false);
+        setTimeout(() => setExportMsg(""), 4000);
+      }
+    }, 0);
   }
 
   async function generateMLOverrides() {
@@ -595,8 +612,9 @@ function KBTab() {
             {uploading ? "Importando…" : "↑ Importar JSON"}
             <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleFileUpload} disabled={uploading} />
           </label>
-          <Btn onClick={exportKbJson} disabled={!entries.length} variant="navy" title="Descargar snapshot JSON de las entradas cargadas">
-            ⬇ Exportar KB
+          {exportMsg && <span style={{ fontSize: 12, color: exportMsg.startsWith("Error") ? "#dc2626" : "#16a34a", fontWeight: 600 }}>{exportMsg}</span>}
+          <Btn onClick={exportKbJson} disabled={!entries.length || exportingKb} variant="navy" title="Descargar snapshot JSON de las entradas cargadas">
+            {exportingKb ? "Generando…" : "⬇ Exportar KB"}
           </Btn>
         </div>
         {uploadErr && <div style={{ fontSize: 12, color: uploadErr.includes("Importadas") ? C.success : C.danger, marginTop: 8, fontFamily: C.ff }}>{uploadErr}</div>}
@@ -1508,7 +1526,7 @@ function AutoLearnTab() {
                 </div>
               </div>
               <div style={{ fontSize: 13, color: C.text, background: "#f8fafc", borderRadius: 8, padding: "10px 12px", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                {e.goodAnswer}
+                {kbAnswer(e)}
               </div>
               {e.context && (
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, fontStyle: "italic" }}>Contexto: {e.context}</div>
@@ -1598,7 +1616,7 @@ function ConflictsTab() {
                 {[{ label: "A", entry: p.a }, { label: "B", entry: p.b }].map(({ label, entry }) => (
                   <div key={entry.id} style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 4 }}>[{label}] {entry.question}</div>
-                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>{entry.goodAnswer}</div>
+                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>{kbAnswer(entry)}</div>
                     <div style={{ marginTop: 8 }}>
                       <button
                         onClick={() => resolve(entry.id, label === "A" ? p.b.id : p.a.id)}
