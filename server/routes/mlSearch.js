@@ -19,6 +19,7 @@
 
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
+import crypto from "node:crypto";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const DEFAULT_LIMIT = 20;
@@ -118,7 +119,10 @@ export default function createMlSearchRouter({ ml, config, logger }) {
       const offset = Math.max(0, Number(req.query.offset) || 0);
       const noCache = String(req.query.nocache || "") === "1";
 
-      const cacheKey = `${siteId}|${q.toLowerCase()}|${limit}|${offset}`;
+      // Server run 2026-05-12: hash SHA-256 del cacheKey para evitar colisiones cuando `q` contiene `|`.
+      // Antes: `${siteId}|${q.toLowerCase()}|${limit}|${offset}` colisionaba si q="foo|50|0&limit=20&offset=50" parseaba mal.
+      const cacheKeyRaw = `${siteId}|${q.toLowerCase()}|${limit}|${offset}`;
+      const cacheKey = crypto.createHash("sha256").update(cacheKeyRaw).digest("hex");
       if (!noCache) {
         const cached = getCached(cacheKey);
         if (cached) {
