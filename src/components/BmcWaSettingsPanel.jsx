@@ -267,7 +267,7 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
       <button onClick={() => { setError(""); fetchConfig(); }} style={{ marginLeft: "auto", padding: "4px 10px", border: "1px solid #cf1322", background: "transparent", color: "#cf1322", borderRadius: 6, cursor: "pointer", fontSize: 12 }}>Reintentar</button>
     </div>
   ) : saving ? (
-    <div style={{ margin: "12px 24px", padding: "8px 12px", background: "#f0f9ff", border: "1px solid #91d5ff", borderRadius: 8, color: "#0958d9", fontSize: 12 }}>
+    <div style={{ margin: "12px 24px", padding: "8px 12px", background: "#f0f9ff", border: "1px solid #91d5ff", borderRadius: 8, color: "#0958d9", fontSize: 13 }}>
       Guardando cambios…
     </div>
   ) : null;
