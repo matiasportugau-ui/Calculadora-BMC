@@ -257,7 +257,18 @@ export default function BmcWaSettingsPanel({ token, apiBase }) {
   };
 
   if (loading && !config) {
-    return <div style={{ padding: 40, color: "#86868b" }}>Cargando configuración...</div>;
+    // Frontend run 2026-05-12 (#FE11): spinner CSS para que se vea que está activamente cargando.
+    return (
+      <div style={{ padding: 40, color: "#86868b", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{
+          display: "inline-block", width: 16, height: 16, borderRadius: "50%",
+          border: "2px solid #d0d7e2", borderTopColor: "#0071e3",
+          animation: "bmc-spin-settings 0.8s linear infinite",
+        }} />
+        <style>{`@keyframes bmc-spin-settings { to { transform: rotate(360deg); } }`}</style>
+        Cargando configuración…
+      </div>
+    );
   }
 
   // Top-10 run 2026-05-11 (item #10): mostrar errores de fetch y estado "Guardando…" en lugar de silenciarlos.
