@@ -22,7 +22,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 export function createFollowupsRouter() {
   const router = Router();
 
-  router.get("/followups", (req, res) => {
+  // Top-30 run 2026-05-12 (#A10): GET necesita el mismo gate que POST/PATCH/DELETE — antes era leak de PII (titles, detail, tags).
+  router.get("/followups", requireAuth, (req, res) => {
     const store = loadStore();
     const status = req.query.status || "open";
     let items = store.items;
@@ -50,7 +51,8 @@ export function createFollowupsRouter() {
     res.status(201).json({ ok: true, item });
   });
 
-  router.get("/followups/:id", (req, res) => {
+  // Top-30 run 2026-05-12 (#A10): GET /:id también requiere auth (mismo principio).
+  router.get("/followups/:id", requireAuth, (req, res) => {
     const store = loadStore();
     const item = findItem(store, req.params.id);
     if (!item) return res.status(404).json({ ok: false, error: "Not found" });
