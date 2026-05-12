@@ -15,11 +15,14 @@ import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 export default function AuthGateModal() {
   const { user, login, isAuthenticated } = useBmcAuth();
   const [open, setOpen] = useState(false);
+  // Top-30 run 2026-05-12 (#A12): setReason no se setea hoy pero `reason` se lee en JSX (línea 132).
+  // eslint-disable-next-line no-unused-vars
   const [reason, setReason] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line no-unused-vars
     function onGate(_e) {
       // Auth gate disabled app-wide — never block. Immediately resume any
       // wizard flow that was awaiting the gate to close.
@@ -140,6 +143,8 @@ export default function AuthGateModal() {
  * caller should abort their action (i.e. user is anonymous and we triggered
  * the modal); false if the user is already authenticated.
  */
+// Top-30 run 2026-05-12 (#A13/extension): `requestAuthGate` no es componente pero el helper convive con el modal por razones históricas; mover a archivo aparte rompería 4 imports. eslint-disable acotado.
+// eslint-disable-next-line react-refresh/only-export-components
 export function requestAuthGate(reason = "wizard") {
   // We cannot read context here; let the modal decide based on its own state.
   window.dispatchEvent(

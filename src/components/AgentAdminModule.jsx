@@ -1660,6 +1660,9 @@ function FeedbackTab() {
     setLoading(false);
   }
 
+  // Top-30 run 2026-05-12 (#A14): `load` no está en `useCallback`; agregarlo a deps causa loop infinito.
+  // El intent es disparar reload cuando cambian filtros (`days`/`chanFilter`), no cuando `load` se recrea.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [days, chanFilter]);
 
   return (
