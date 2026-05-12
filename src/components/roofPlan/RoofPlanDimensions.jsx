@@ -5,6 +5,14 @@
 
 import { FONT } from "../../data/constants.js";
 import { fmtArchMeters, fmtDimMm, fmtDimOverall, CHAR_WIDTH_RATIO_EST } from "../../utils/roofPlanSvgTypography.js";
+
+// Frontend run 2026-05-12 (#FE12): halo blanco para legibilidad de cotas cuando solapan con bordes del techo.
+// `paint-order: stroke fill` dibuja el stroke (halo) ANTES del fill (texto), creando un fondo claro detrás de cada letra.
+const DIM_HALO_PROPS = {
+  stroke: "white",
+  strokeWidth: 0.06,
+  paintOrder: "stroke fill",
+};
 import {
   ROOF_PLAN_DIM_STROKE,
   ROOF_PLAN_DIM_STROKE_PROPS,
@@ -56,7 +64,7 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
           fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
-          stroke="none"
+          {...DIM_HALO_PROPS}
         >
           {label}
         </text>
@@ -91,7 +99,7 @@ function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
           fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
-          stroke="none"
+          {...DIM_HALO_PROPS}
         >
           {label}
         </text>
@@ -127,7 +135,7 @@ function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
           fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
-          stroke="none"
+          {...DIM_HALO_PROPS}
           transform={`rotate(-90 ${tx} ${ym})`}
         >
           {label}
@@ -164,7 +172,7 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
           fontSize={df}
           fontWeight={500}
           fontFamily={FONT}
-          stroke="none"
+          {...DIM_HALO_PROPS}
           transform={`rotate(-90 ${tx} ${ym})`}
         >
           {label}
