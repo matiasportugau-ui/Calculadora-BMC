@@ -402,6 +402,8 @@ export function createWolfboardRouter(config) {
         respuesta: String(row[9] ?? "").trim(),
       })).filter(r => r.consulta && r.respuesta && !r.respuesta.startsWith("⚠"));
     } catch (e) {
+      // Top-30 run 2026-05-12 (#A9): log estructurado antes del 503 para visibilizar el origen.
+      if (req.log) req.log.error({ err: e?.message || String(e), adminSheetId, adminTab }, "wolfboard sync — read Admin failed");
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
@@ -417,7 +419,10 @@ export function createWolfboardRouter(config) {
         valueRenderOption: "FORMATTED_VALUE",
       });
       crmRows = mapCrmRowsForWolfboardMatch(crmResp.data.values || []);
-    } catch { /* best-effort */ }
+    } catch (e) {
+      // Top-30 run 2026-05-12 (#A9): el read de CRM era best-effort; ahora al menos lo logueamos para no perder señal.
+      if (req.log) req.log.warn({ err: e?.message || String(e), crmSheetId, crmTab }, "wolfboard sync — read CRM best-effort failed");
+    }
 
     const crmUpdates = [];
     let skipped = 0;
@@ -441,6 +446,8 @@ export function createWolfboardRouter(config) {
           requestBody: { valueInputOption: "USER_ENTERED", data: crmUpdates },
         });
       } catch (e) {
+        // Top-30 run 2026-05-12 (#A9): log estructurado antes del 503 — write CRM falló, este es el origen del 503 más opaco antes.
+        if (req.log) req.log.error({ err: e?.message || String(e), crmSheetId, crmTab, updates: crmUpdates.length }, "wolfboard sync — batchUpdate CRM failed");
         return res.status(503).json({ ok: false, error: "Error al escribir en CRM: " + e.message });
       }
     }

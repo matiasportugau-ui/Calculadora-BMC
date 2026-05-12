@@ -149,7 +149,9 @@ export default function createMlSearchRouter({ ml, config, logger }) {
 
       setCached(cacheKey, response);
 
-      logger?.info?.(
+      // Top-30 run 2026-05-12 (#A8): preferir req.log (pino-http) sobre logger module-level para correlation con request id.
+      const log = req.log || logger;
+      log?.info?.(
         {
           msg: "ml-search",
           q,
@@ -159,6 +161,7 @@ export default function createMlSearchRouter({ ml, config, logger }) {
           total: payload?.paging?.total ?? null,
           returned: results.length,
           ms: Date.now() - t0,
+          cache: "MISS",
         },
         "ml-search ok",
       );
