@@ -114,9 +114,12 @@ function QuotesTab({ token }) {
     <Empty>
       Aún no tenés cotizaciones guardadas.
       <div style={{ marginTop: 12 }}>
+        {/* Frontend run 2026-05-12 (#FE4): hover state — opacidad reducida + transition para feedback visual. */}
         <a
           href="/"
-          style={{ display: "inline-block", padding: "8px 16px", borderRadius: 8, background: "#0071e3", color: "#fff", textDecoration: "none", fontSize: 13, fontWeight: 600 }}
+          style={{ display: "inline-block", padding: "8px 16px", borderRadius: 8, background: "#0071e3", color: "#fff", textDecoration: "none", fontSize: 13, fontWeight: 600, transition: "opacity 150ms" }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
         >
           Crear nueva cotización →
         </a>

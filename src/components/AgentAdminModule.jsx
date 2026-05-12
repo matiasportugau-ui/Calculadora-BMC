@@ -1176,9 +1176,10 @@ function AnalyticsTab() {
           <Card>
             <SectionLabel>Por tag</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflowY: "auto" }}>
+              {/* Frontend run 2026-05-12 (#FE14): title tooltip muestra el texto completo cuando se trunca. */}
               {data.byTag.slice(0, 20).map((row) => (
                 <div key={row.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: C.ff }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
+                  <span title={row.key} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
                   <span style={{ color: C.sub, flexShrink: 0, marginLeft: 8 }}>{row.count}</span>
                 </div>
               ))}
@@ -1189,9 +1190,10 @@ function AnalyticsTab() {
           <Card>
             <SectionLabel>Por fuente</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 240, overflowY: "auto" }}>
+              {/* Frontend run 2026-05-12 (#FE14): title tooltip para texto truncado. */}
               {data.bySource.slice(0, 20).map((row) => (
                 <div key={row.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: C.ff }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
+                  <span title={row.key} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
                   <span style={{ color: C.sub, flexShrink: 0, marginLeft: 8 }}>{row.count}</span>
                 </div>
               ))}

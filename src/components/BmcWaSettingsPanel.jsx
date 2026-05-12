@@ -442,8 +442,9 @@ function AiSection({ config, onUpdate, apiBase, token }) {
                   {task === "quoteParse" && "Parsing de Cotización"}
                   {task === "followupText" && "Texto de Follow-up"}
                 </h3>
-                <button 
-                  style={{ ...styles.btnGhost, padding: "4px 8px", fontSize: 11 }}
+                <button
+                  // Frontend run 2026-05-12 (#FE6): opacity visible mientras testing.
+                  style={{ ...styles.btnGhost, padding: "4px 8px", fontSize: 11, opacity: testing[task] ? 0.5 : 1 }}
                   onClick={() => handleTest(task)}
                   disabled={testing[task]}
                 >
@@ -782,7 +783,8 @@ function RuleEditor({ rule, onSave, onCancel }) {
               value={data.when_conditions.intent || ""} 
               onChange={e => updateCondition("intent", e.target.value)}
             >
-              <option value="">(cualquiera)</option>
+              {/* Frontend run 2026-05-12 (#FE9): placeholder grisado para diferenciarlo de selecciones válidas. */}
+              <option value="" style={{ color: "#aeaeb2" }}>(cualquiera)</option>
               <option value="quote">Cotización</option>
               <option value="technical">Técnica</option>
               <option value="followup">Seguimiento</option>
@@ -918,7 +920,8 @@ function OperatorsSection({ token, apiBase }) {
 
   if (loading && operators.length === 0) {
     // Top-10 run 2026-05-11 (item #10): hint visible mientras carga.
-    return <div style={{ padding: 24, color: "#86868b" }}>Cargando operadores…</div>;
+    // Frontend run 2026-05-12 (#FE2): padding aumentado a 24×32 para no pegarse al borde.
+    return <div style={{ padding: "24px 32px", color: "#86868b" }}>Cargando operadores…</div>;
   }
 
   return (
@@ -1059,13 +1062,16 @@ function ExportSection({ token, apiBase }) {
       <div style={{ display: "flex", gap: 16 }}>
         <div style={{ ...styles.card, flex: 1 }}>
           <h3 style={styles.cardTitle}><Download size={16} /> Exportar</h3>
-          <p style={{ fontSize: 13, color: "#86868b", marginBottom: 20 }}>Descarga toda la configuración actual en formato JSON.</p>
+          {/* Frontend run 2026-05-12 (#FE15): aviso de seguridad sobre el contenido del JSON. */}
+          <p style={{ fontSize: 13, color: "#86868b", marginBottom: 8 }}>Descarga toda la configuración actual en formato JSON.</p>
+          <p style={{ fontSize: 11, color: "#a35900", marginBottom: 16 }}>⚠ Contiene secrets/tokens — no compartir el archivo por canales públicos.</p>
           <button style={styles.btnPrimary} onClick={handleExport}><Download size={16} /> Descargar JSON</button>
         </div>
         <div style={{ ...styles.card, flex: 1 }}>
           <h3 style={styles.cardTitle}><Plus size={16} /> Importar</h3>
           <p style={{ fontSize: 13, color: "#86868b", marginBottom: 20 }}>Sube un archivo JSON para sobrescribir la configuración.</p>
-          <button style={styles.btnGhost} disabled><Plus size={16} /> Subir archivo</button>
+          {/* Frontend run 2026-05-12 (#FE3): title explícito en el botón disabled. */}
+          <button style={styles.btnGhost} disabled title="Próximamente — por ahora la importación se hace por API o consola"><Plus size={16} /> Subir archivo</button>
         </div>
       </div>
     </div>
