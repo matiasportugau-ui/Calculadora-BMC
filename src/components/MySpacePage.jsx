@@ -5,7 +5,7 @@
 // Master plan §Phase F. Minimal first-pass styling, no Tailwind dependency.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
 
@@ -109,7 +109,20 @@ function QuotesTab({ token }) {
   }, [token]);
   if (error) return <Empty>Error: {error}</Empty>;
   if (!items) return <Empty>Cargando…</Empty>;
-  if (!items.length) return <Empty>Aún no tenés cotizaciones guardadas.</Empty>;
+  if (!items.length) return (
+    // Top-20 run 2026-05-11 (#L6): empty state con call-to-action al cotizador.
+    <Empty>
+      Aún no tenés cotizaciones guardadas.
+      <div style={{ marginTop: 12 }}>
+        <a
+          href="/"
+          style={{ display: "inline-block", padding: "8px 16px", borderRadius: 8, background: "#0071e3", color: "#fff", textDecoration: "none", fontSize: 13, fontWeight: 600 }}
+        >
+          Crear nueva cotización →
+        </a>
+      </div>
+    </Empty>
+  );
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {items.map((q) => (

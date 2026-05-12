@@ -203,7 +203,18 @@ export default function BmcWaOperativoModule() {
     const { ok, status, data } = await cockpitFetch(token, "/api/crm/cockpit/wa-queue");
     setLoading(false);
     if (!ok) {
-      setError(data?.error || `HTTP ${status}`);
+      // Top-20 run 2026-05-11 (#L4): mensajes accionables para 401/403/503.
+      let msg;
+      if (status === 401) {
+        msg = "Token inválido o expirado. Revisalo abajo o pedí uno nuevo en /hub/admin → Cockpit token.";
+      } else if (status === 403) {
+        msg = "El token no tiene permisos para esta cola. Avisá a Matías para revisar el alcance.";
+      } else if (status === 503 && data?.code === "ENV_MISSING") {
+        msg = `Servidor sin configurar (${data.envVar}). Revisá Cloud Run env o .env local.`;
+      } else {
+        msg = data?.error || `HTTP ${status}`;
+      }
+      setError(msg);
       setItems([]);
       return;
     }

@@ -737,7 +737,11 @@ async function fetchVentasRowsAllTabsBatched(sheetId, tabNames) {
         );
         merged.push(...filtered.map((r) => mapVentas2026ToCanonical(r, tabName)));
       }
-    } catch {
+    } catch (err) {
+      // Top-20 run 2026-05-11 (#F2): el batchGet falló — loguear antes del fallback por-tab.
+      // Sin esto la degradación de Sheets era silenciosa. Usamos console.error (pino-http stderr capture)
+      // porque esta función helper no es route handler y no tiene req.log a mano.
+      console.error(JSON.stringify({ level: "warn", event: "sheets_batchget_fallback", err: err?.message || String(err), chunkSize: chunk?.length }));
       merged.push(...(await fallbackPerTab(chunk)));
     }
   }

@@ -116,7 +116,15 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
-  /** Postgres — Modo Transportista (viajes / eventos / outbox) */
+  /**
+   * Postgres connection string. Usado por:
+   * - Modo Transportista (viajes / eventos / outbox) — `transportista-cursor-package/migrations/`.
+   * - WA Cockpit (`wa_conversations`, `wa_messages`, `wa_suggestions`) — `wa-package/migrations/`.
+   *
+   * Si falta: ambos módulos devuelven 503 en sus endpoints; el resto del API (calc, Sheets, ML) sigue funcionando.
+   * En Cloud Run: secret manager (no env-var directa). En local: `.env` (ver `.env.example`).
+   * (Top-20 run 2026-05-11 #L10: doc ampliado para reflejar el doble uso.)
+   */
   databaseUrl: process.env.DATABASE_URL || "",
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",

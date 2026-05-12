@@ -17,7 +17,9 @@ import {
   countVarillasRoscadasDesdeBarras1m,
   perimetroVerticalInteriorPuntosDesdePlanta,
   calcTotalesSinIVA,
+  calcPerfilesParedExtra,
 } from "../src/utils/calculations.js";
+import { getDimensioningParam } from "../src/utils/dimensioningFormulas.js";
 import { deserializeProject } from "../src/utils/projectFile.js";
 import { bomToGroups, applyOverrides, createLineId } from "../src/utils/helpers.js";
 import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../src/utils/presupuestoLibreCatalogo.js";
@@ -430,6 +432,36 @@ assert("G2: 1 junta × 2 barras = 2 para 2 paneles 3.5m", juntasG2_2p === 2, jun
 // G2 for 1 panel: no joints (cantP - 1 = 0)
 const juntasG2_1p = (1 - 1) * Math.ceil(3.5 / largo_perfil);
 assert("G2: 0 juntas para 1 panel (sin juntas interiores)", juntasG2_1p === 0, juntasG2_1p, 0);
+
+// ── Top-20 run 2026-05-11 (#L3): calcPerfilesParedExtra edge cases ───────────
+// La función NO se llamaba directamente desde tests; ahora se cubren los caminos:
+// (a) cantP=1 sin opts.incl5852 → items=[] (sin K2 ni G2)
+// (b) cantP=1 con opts.incl5852=true → solo 5852 aparece
+// (c) cantP=50 con opts.apoyo5852doble=true → cant5852 = ceil(anchoTotal/largo) × 2
+const paredEPS = PANELS_PARED.ISOPANEL_EPS;
+const _resPerf1 = calcPerfilesParedExtra(paredEPS, 100, 1, 3.5, {});
+assert("calcPerfilesParedExtra cantP=1 sin 5852 → items=[]", _resPerf1.items.length === 0, _resPerf1.items.length, 0);
+assert("calcPerfilesParedExtra cantP=1 sin 5852 → total=0", _resPerf1.total === 0, _resPerf1.total, 0);
+
+const _resPerf1plus = calcPerfilesParedExtra(paredEPS, 100, 1, 3.5, { incl5852: true });
+// Perfil 5852 tiene sku "PLECHU98" en constants.js:387; identificarlo por label "5852".
+const _is5852 = (i) => i.label && /5852/.test(i.label);
+const _isK2G2 = (i) => i.sku && (i.sku.includes("K2") || i.sku.includes("G2"));
+const _has5852 = _resPerf1plus.items.some(_is5852);
+const _hasK2orG2 = _resPerf1plus.items.some(_isK2G2);
+assert("calcPerfilesParedExtra cantP=1 con incl5852 → 5852 presente", _has5852, _has5852, true);
+assert("calcPerfilesParedExtra cantP=1 con incl5852 → sin K2/G2", !_hasK2orG2, _hasK2orG2, false);
+
+const _resPerf50d = calcPerfilesParedExtra(paredEPS, 100, 50, 3.5, { incl5852: true, apoyo5852doble: true });
+const _item5852d = _resPerf50d.items.find(_is5852);
+assert("calcPerfilesParedExtra cantP=50 apoyo doble → 5852 cant > 0", !!_item5852d && _item5852d.cant > 0, _item5852d?.cant, ">0");
+assert("calcPerfilesParedExtra cantP=50 apoyo doble → 5852 cant es par (×2)", _item5852d ? (_item5852d.cant % 2 === 0) : false, _item5852d?.cant % 2, 0);
+
+// ── Top-20 run 2026-05-11 (#L2): silicona 300→600 ratio (default centralizado) ─
+// El ratio aplica a TECHO, PARED y kit comercial (ver dimensioningFormulas.js:36-43).
+// Default = 2 unidades de 300ml por cada unidad de 600ml.
+const _ratio300_default = getDimensioningParam("SELLADORES_TECHO.silicona_300_por_unid_600", 2);
+assert("Silicona 300/600 ratio default = 2", _ratio300_default === 2, _ratio300_default, 2);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TEST SUITE 13: Flete BOM (BUG-01 fix validation)
