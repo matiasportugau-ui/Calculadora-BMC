@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { FONT } from "../../data/constants.js";
-import { fmtArchMeters, fmtDimMm, fmtDimOverall } from "../../utils/roofPlanSvgTypography.js";
+import { fmtArchMeters, fmtDimMm, fmtDimOverall, CHAR_WIDTH_RATIO_EST } from "../../utils/roofPlanSvgTypography.js";
 import {
   ROOF_PLAN_DIM_STROKE,
   ROOF_PLAN_DIM_STROKE_PROPS,
@@ -23,7 +23,7 @@ function ArchDimHorizontal({ x0, yBottom, widthM, yDimLine, svgTy }) {
   const overshoot = svgTy.extOvershoot;
   const df = svgTy.dimFontSecondary;
   const label = `${fmtArchMeters(w)} m`;
-  const labelWidthEst = label.length * df * 0.62;
+  const labelWidthEst = label.length * df * CHAR_WIDTH_RATIO_EST;
   const showLabel = w >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
@@ -72,7 +72,7 @@ function ArchDimHorizontalTop({ x0, yEdge, widthM, yDimLine, svgTy }) {
   const overshoot = svgTy.extOvershoot;
   const df = svgTy.dimFontSecondary;
   const label = `${fmtArchMeters(w)} m`;
-  const labelWidthEst = label.length * df * 0.62;
+  const labelWidthEst = label.length * df * CHAR_WIDTH_RATIO_EST;
   const showLabel = w >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
@@ -108,7 +108,7 @@ function ArchDimVerticalSegmentRight({ xRef, xDim, y1, y2, spanM, svgTy }) {
   const ym = (y1 + y2) / 2;
   const label = `${fmtArchMeters(spanM)} m`;
   const tx = xDim + df * 0.85;
-  const labelWidthEst = label.length * df * 0.62;
+  const labelWidthEst = label.length * df * CHAR_WIDTH_RATIO_EST;
   const showLabel = (y2 - y1) >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
@@ -145,7 +145,7 @@ function ArchDimVerticalSegment({ xRef, xDim, y1, y2, spanM, svgTy }) {
   const ym = (y1 + y2) / 2;
   const label = `${fmtArchMeters(spanM)} m`;
   const tx = xDim - df * 0.85;
-  const labelWidthEst = label.length * df * 0.62;
+  const labelWidthEst = label.length * df * CHAR_WIDTH_RATIO_EST;
   const showLabel = (y2 - y1) >= labelWidthEst * 0.75;
   return (
     <g pointerEvents="none" stroke={ROOF_PLAN_DIM_STROKE} fill={ROOF_PLAN_DIM_STROKE} {...ROOF_PLAN_DIM_STROKE_PROPS}>
@@ -352,7 +352,7 @@ export function PanelChainDimensions({ strips, x0, yEdge, svgTy, au: auProp, obs
         const label = fmtDimMm(strip.width);
         const isCut = strip.isCut != null ? strip.isCut : strip.width < au - 1e-9;
         const color = isCut ? DIM_THEME.warningColor : DIM_THEME.chainColor;
-        let showLabel = strip.width >= label.length * svgTy.dimFontTertiary * 0.62 * 0.75;
+        let showLabel = strip.width >= label.length * svgTy.dimFontTertiary * CHAR_WIDTH_RATIO_EST * 0.75;
         if (showLabel && obstacleRects.length > 0) {
           const lw = label.length * labelFontSz * 0.52;
           const lh = labelFontSz * 1.2;
@@ -408,7 +408,7 @@ export function PanelLabels({ strips, x0, y0, h, svgTy, zoneGi = null, focusPick
           Number.isFinite(zoneGi) &&
           focusPickKey === `${zoneGi}:${strip.idx}`;
         const fontSize = focused ? baseFs * 1.12 : baseFs;
-        const showLabel = strip.width >= id.length * fontSize * 0.62 * 0.6;
+        const showLabel = strip.width >= id.length * fontSize * CHAR_WIDTH_RATIO_EST * 0.6;
         if (!showLabel) return null;
         const opacity = focused ? 1 : 0.65;
         const fillMain = isCut ? DIM_THEME.warningColor : DIM_THEME.textColor;

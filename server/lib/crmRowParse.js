@@ -35,6 +35,12 @@ export function parseCrmRowAtoAK(values) {
     aprobadoEnviar: get(34), // AI
     enviadoEl: get(35), // AJ
     bloquearAuto: get(36), // AK
+    /** AL — cliente | proveedor | lead | interno | otro (convención Panelin). */
+    tipoContacto: get(37),
+    /** AM — tags separados por coma. */
+    tagsTaxonomia: get(38),
+    /** AN — notas de clasificación. */
+    notasTaxonomia: get(39),
   };
 }
 

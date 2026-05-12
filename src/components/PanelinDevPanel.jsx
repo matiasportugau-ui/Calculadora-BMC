@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { Fragment, useMemo, useState, useCallback, useEffect } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 function analyticsHeaders() {
@@ -126,6 +126,28 @@ export default function PanelinDevPanel({
     const id = setInterval(loadStats, 60_000);
     return () => clearInterval(id);
   }, [activeTab, loadStats]);
+
+  // ── Tool Stats widget (per-tool latency / errors over the last 24h) ───────
+  const [toolStats, setToolStats] = useState(null);
+  const [toolStatsLoading, setToolStatsLoading] = useState(false);
+  const loadToolStats = useCallback(async () => {
+    setToolStatsLoading(true);
+    try {
+      const base = getCalcApiBase();
+      const res = await fetch(`${base}/api/agent/tool-stats?windowMinutes=1440`);
+      setToolStats(res.ok ? await res.json().catch(() => null) : null);
+    } catch {
+      setToolStats(null);
+    } finally {
+      setToolStatsLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (activeTab !== "tools") return;
+    loadToolStats();
+    const id = setInterval(loadToolStats, 30_000);
+    return () => clearInterval(id);
+  }, [activeTab, loadToolStats]);
 
   // ── Analytic mode (Panelin Knowledge / events-log trends) ─────────────────
   const [analyticsDays, setAnalyticsDays] = useState(60);
@@ -300,14 +322,14 @@ export default function PanelinDevPanel({
     <div style={{ borderTop: `1px solid ${BD}`, background: BG, flexShrink: 0 }}>
       {/* ── Tab bar ── */}
       <div style={{ display: "flex", gap: 2, padding: "0 8px", borderBottom: `1px solid ${BD}`, overflowX: "auto" }}>
-        {["train", "kb", "prompt", "sessions", "analytics", "stats"].map((tab) => (
+        {["train", "kb", "prompt", "sessions", "analytics", "stats", "tools"].map((tab) => (
           <button
             key={tab}
             type="button"
             style={tabButton(activeTab === tab, P, ST)}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === "train" ? "Train" : tab === "kb" ? "KB" : tab === "prompt" ? "Prompt" : tab === "sessions" ? "Sessions" : tab === "stats" ? "Stats" : "Analytic"}
+            {tab === "train" ? "Train" : tab === "kb" ? "KB" : tab === "prompt" ? "Prompt" : tab === "sessions" ? "Sessions" : tab === "stats" ? "Stats" : tab === "tools" ? "Tools" : "Analytic"}
             {tab === "kb" && trainingStats?.total ? ` (${trainingStats.total})` : ""}
           </button>
         ))}
@@ -716,6 +738,48 @@ export default function PanelinDevPanel({
                 <span>{stats ? (stats[key] ?? "—") : "—"}</span>
               </div>
             ))}
+          </div>
+        )}
+        {/* ── TOOLS TAB — per-tool agent telemetry (last 24h) ── */}
+        {activeTab === "tools" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: ST, fontFamily: "monospace" }}>
+                GET /api/agent/tool-stats (last 24h, in-memory)
+              </span>
+              <button type="button" onClick={loadToolStats} disabled={toolStatsLoading} style={btn({ disabled: toolStatsLoading })}>
+                {toolStatsLoading ? "…" : "↺"}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: ST, fontFamily: "monospace" }}>
+              {toolStats
+                ? `${toolStats.total_calls ?? 0} call${(toolStats.total_calls ?? 0) === 1 ? "" : "s"} across ${toolStats.tools?.length ?? 0} tool${(toolStats.tools?.length ?? 0) === 1 ? "" : "s"}`
+                : "—"}
+            </div>
+            {toolStats?.tools?.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 50px 60px 60px 60px", gap: 6, fontSize: 11, fontFamily: "monospace", color: TX }}>
+                <div style={{ color: ST, fontWeight: 600 }}>tool</div>
+                <div style={{ color: ST, textAlign: "right" }}>n</div>
+                <div style={{ color: ST, textAlign: "right" }}>err%</div>
+                <div style={{ color: ST, textAlign: "right" }}>p50</div>
+                <div style={{ color: ST, textAlign: "right" }}>p95</div>
+                {toolStats.tools.map((t) => (
+                  <Fragment key={t.tool}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.tool}</div>
+                    <div style={{ textAlign: "right" }}>{t.count}</div>
+                    <div style={{ textAlign: "right", color: t.error_rate > 0.1 ? "#ff453a" : t.error_rate > 0 ? "#ff9f0a" : ST }}>
+                      {(t.error_rate * 100).toFixed(0)}%
+                    </div>
+                    <div style={{ textAlign: "right" }}>{t.latency_p50_ms}</div>
+                    <div style={{ textAlign: "right" }}>{t.latency_p95_ms}</div>
+                  </Fragment>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: ST, fontFamily: "monospace" }}>
+                {toolStatsLoading ? "Cargando…" : "Sin llamadas en las últimas 24h. Hablá con Panelin para que aparezcan."}
+              </div>
+            )}
           </div>
         )}
 

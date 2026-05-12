@@ -64,9 +64,10 @@ function ActionBtn({ label, icon, desc, color, textColor = "#fff", onClick, disa
       onClick={onClick}
       disabled={disabled || busy}
       title={desc}
-      onMouseDown={e => { if (!disabled && !busy) e.currentTarget.style.transform = "translateY(2px)"; }}
-      onMouseUp={e => { e.currentTarget.style.transform = ""; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = ""; }}
+      onPointerDown={e => { if (!disabled && !busy) e.currentTarget.style.transform = "translateY(2px)"; }}
+      onPointerUp={e => { e.currentTarget.style.transform = ""; }}
+      onPointerLeave={e => { e.currentTarget.style.transform = ""; }}
+      onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
     >
       <span style={{ fontSize: 18, lineHeight: 1 }}>{busy ? "⏳" : icon}</span>
       <span style={{ fontSize: 11, fontWeight: 700, color: textColor, letterSpacing: 0.5 }}>{busy ? "…" : label}</span>
@@ -247,10 +248,11 @@ function EjectButton({ onEject }) {
       }}>
         <button
           type="button"
-          onMouseDown={() => setPressed(true)}
-          onMouseUp={() => { setPressed(false); onEject(); }}
-          onMouseLeave={() => { setPressed(false); setHovered(false); }}
-          onMouseEnter={() => setHovered(true)}
+          onPointerDown={() => setPressed(true)}
+          onPointerUp={() => { setPressed(false); onEject(); }}
+          onPointerLeave={() => { setPressed(false); setHovered(false); }}
+          onPointerCancel={() => setPressed(false)}
+          onPointerEnter={() => setHovered(true)}
           style={{
             width: 58, height: 58, borderRadius: "50%",
             background: pressed ? "#b91c1c" : hovered ? "#ef4444" : "#dc2626",
@@ -797,7 +799,18 @@ export default function BmcMlOperativoModule() {
             </div>
           </div>
 
-          {items.length === 0 && !loading ? (
+          {items.length === 0 && loading ? (
+            // Top-10 run 2026-05-11 (item #3): loading state visible para que el usuario sepa que está descargando, no que "no hay datos".
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", fontSize: 13, color: "#6e6e73", fontFamily: FF }}>
+              <span style={{
+                display: "inline-block", width: 14, height: 14, borderRadius: "50%",
+                border: "2px solid #d0d7e2", borderTopColor: "#0071e3",
+                animation: "bmc-spin 0.8s linear infinite",
+              }} />
+              <style>{`@keyframes bmc-spin { to { transform: rotate(360deg); } }`}</style>
+              Cargando preguntas desde CRM / Mercado Libre…
+            </div>
+          ) : items.length === 0 && !loading ? (
             <p style={{ margin: 0, fontSize: 13, color: "#6e6e73", fontFamily: FF }}>
               Sin ítems. Usá <strong>PULL ML</strong> para traer preguntas nuevas de MercadoLibre, o <strong>PULL CRM</strong> para recargar.
             </p>

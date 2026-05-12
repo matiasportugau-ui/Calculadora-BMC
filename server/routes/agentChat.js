@@ -3,10 +3,12 @@
  *
  * Provider chain: default claude → grok → gemini → openai; optional `aiProvider` + `aiModel` (see GET /api/agent/ai-options).
  *
- * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string }
+ * Request:  { messages: [{role, content}], calcState: {...}, aiProvider?: "auto"|"claude"|"openai"|"grok"|"gemini", aiModel?: string, surface?: "panelin_chat"|"mercado_libre"|"whatsapp"|"email"|"wolfboard" }
  * Response: text/event-stream, events:
  *   {"type":"text","delta":"..."}
  *   {"type":"action","action":{"type":"setTecho","payload":{...}}}
+ *   {"type":"suggestions","suggestions":{"groups":[{"title":"…","items":[{"label":"…","send":"…"}]}]}}
+ *        (model SUGGEST_JSON:… lines, or server-injected after Wolfboard tools in devMode)
  *   {"type":"done"}
  *   {"type":"error","message":"..."}
  */
@@ -24,7 +26,9 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { PANELS_TECHO, setListaPrecios } from "../../src/data/constants.js";
-import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit } from "../lib/trainingKB.js";
+import { appendTrainingSessionEvent, findRelevantExamples, addTrainingEntry, ensureGcsInit, resolveTrainingAnswer } from "../lib/trainingKB.js";
+import { normalizeSurface as kbSurfaceForTraining } from "../lib/kbSurface.js";
+import { normalizeSurface as canonicalBrandSurface, surfaceToChannel, SURFACES } from "../lib/surface.js";
 import { extractLearnablePairs } from "../lib/autoLearnExtractor.js";
 import {
   logConversationMeta,
@@ -37,6 +41,14 @@ import { estimateTokensSystem, estimateTokensText, CHAT_MAX_TOKENS, TOKEN_BUDGET
 import { summarizeHistory } from "../lib/chatSummarizer.js";
 import { validateAndPreviewQuote } from "../lib/quotePayloadValidator.js";
 import { AGENT_TOOLS, executeTool } from "../lib/agentTools.js";
+import { getToolStats } from "../lib/toolStats.js";
+import { classifyIntents } from "../lib/userIntentClassifier.js";
+import { normalizeSuggestionsPayload } from "../lib/suggestionsNormalize.js";
+import { wolfboardSuggestionsAfterTool } from "../lib/wolfboardChatSuggestions.js";
+import { checkAndCount as budgetCheckAndCount } from "../lib/budget.js";
+import { buildVerifiedQuotePayload } from "../lib/verifiedQuotePayload.js";
+import { getIvaPct } from "../lib/policyLoader.js";
+import { retrieveSimilarQuotes, formatRetrievedContextForPrompt } from "../lib/rag.js";
 
 const router = Router();
 
@@ -132,6 +144,135 @@ router.get("/agent/ai-options", (_req, res) => {
     autoOrder: ["claude", "grok", "gemini", "openai"].filter((p) => keys[p]),
     providers,
   });
+});
+
+/**
+ * GET /api/agent/tool-stats — per-tool aggregates (count, p50/p95 latency,
+ * error rate, error buckets) over the last `windowMinutes` minutes (default 1440 = 24h).
+ * Used by the dev panel "Tool Stats" tab. No secrets; safe to expose without auth.
+ */
+router.get("/agent/tool-stats", (req, res) => {
+  const minutes = Math.max(1, Math.min(7 * 24 * 60, Number(req.query?.windowMinutes || 24 * 60)));
+  const stats = getToolStats({ windowMs: minutes * 60 * 1000 });
+  res.json({ ok: true, ...stats });
+});
+
+/**
+ * GET /api/agent/tools-manifest — list of all AGENT_TOOLS for external clients
+ * (e.g. the Panelin MCP server). Returns the same Anthropic input_schema format
+ * that the in-process tool-use loop receives.
+ */
+router.get("/agent/tools-manifest", (_req, res) => {
+  res.json({
+    ok: true,
+    count: AGENT_TOOLS.length,
+    tools: AGENT_TOOLS.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.input_schema,
+      requires_auth: TOOLS_REQUIRING_AUTH.has(t.name),
+    })),
+  });
+});
+
+/**
+ * POST /api/agent/exec-tool — execute a single tool by name. Auth-gated for
+ * write tools (those that mutate Sheets / WhatsApp / followups / quote registry).
+ * Used by the MCP server to surface every tool to external agents.
+ *
+ * Body: { name: string, input: object, calcState?: object }
+ * Auth: write tools AND CRM-read tools require Authorization: Bearer ${API_AUTH_TOKEN}.
+ *       Pure calculator / catalog reads are open.
+ */
+export const TOOLS_REQUIRING_AUTH = new Set([
+  // Customer-facing writes
+  "guardar_en_crm",
+  "enviar_whatsapp_link",
+  "cancelar_cotizacion",
+  "programar_seguimiento",
+  // CRM read tools — return customer PII (names, phones, quote links, notes)
+  // from CRM_Operativo; must not be open to unauthenticated callers.
+  "buscar_cliente_crm",
+  "historial_cliente",
+  // Quote registry / PDF read tools — return customer + quote metadata and
+  // full quote HTML. Cursor + Copilot security review flagged these as
+  // exposing business data through unauthenticated /api/agent/exec-tool.
+  "listar_cotizaciones_recientes",
+  "obtener_cotizacion_por_id",
+  "obtener_pdf_html",
+  // Wolfboard hub — all routes are admin-only and the underlying router
+  // already enforces requireAuth. We mirror that gate at the MCP entry
+  // so external clients can't poll pendientes / export without the token.
+  "wolfboard_pendientes",
+  "wolfboard_export",
+  "wolfboard_sync",
+  "wolfboard_actualizar_fila",
+  "wolfboard_marcar_enviado",
+  "wolfboard_quote_batch",
+]);
+
+/**
+ * Returns true if the chat tool loop should refuse to execute `toolName`
+ * for the current session. Public (non-devMode) chat sessions may not
+ * invoke any tool in TOOLS_REQUIRING_AUTH — same gate that protects
+ * /api/agent/exec-tool. devMode chats are pre-authenticated by
+ * API_AUTH_TOKEN at the route entry, so they pass.
+ *
+ * Exported for unit testing the regression Cursor flagged: prior to this
+ * gate, an unauthenticated chat could prompt the model to call
+ * `listar_cotizaciones_recientes` etc. and receive customer data.
+ *
+ * @param {string} toolName
+ * @param {boolean} isDevModeAuthenticated
+ * @returns {boolean}
+ */
+export function shouldBlockToolForUnauthenticatedChat(toolName, isDevModeAuthenticated) {
+  if (isDevModeAuthenticated) return false;
+  return TOOLS_REQUIRING_AUTH.has(toolName);
+}
+
+// Bound the MCP / external write surface. The chat endpoint already has
+// 10/min public + 30/min dev rate limits; exec-tool inherits nothing
+// without this. 60/min is generous for legitimate MCP clients while
+// preventing runaway loops or abuse.
+const execToolLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitClientKey,
+  message: { ok: false, error: "Demasiadas invocaciones de tool. Esperá un momento." },
+});
+
+router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
+  try {
+    const { name, input, calcState = {} } = req.body || {};
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({ ok: false, error: "name (string) requerido" });
+    }
+    const tool = AGENT_TOOLS.find((t) => t.name === name);
+    if (!tool) {
+      return res.status(404).json({ ok: false, error: `Tool "${name}" no existe en AGENT_TOOLS` });
+    }
+    if (TOOLS_REQUIRING_AUTH.has(name)) {
+      const auth = String(req.headers.authorization || "");
+      const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      const xKey = String(req.headers["x-api-key"] || "");
+      if (!config.apiAuthToken) {
+        return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN no configurado en el server" });
+      }
+      if (bearer !== config.apiAuthToken && xKey !== config.apiAuthToken) {
+        return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
+      }
+    }
+    const raw = await executeTool(name, input || {}, calcState || {});
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+    res.json({ ok: true, name, result: parsed });
+  } catch (err) {
+    req.log?.error({ err }, "agent/exec-tool failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // 0.4 — Allowed origins (CSRF guard)
@@ -344,7 +485,26 @@ router.post("/agent/chat", async (req, res) => {
     aiModel: rawAiModel,
     conversationId: rawConvId,
     thinkingMode = false,
+    channel: rawChannel,
+    surface: rawSurface,
   } = req.body || {};
+  // Canonical brand surface (lib/surface.js) + KB training surface (lib/kbSurface.js).
+  // Body accepts `surface` and/or legacy `channel`; `surface` string wins when non-empty.
+  const brandHints =
+    rawSurface != null && String(rawSurface).trim() !== ""
+      ? rawSurface
+      : { channel: rawChannel, origen: req.body?.origen, observaciones: req.body?.observaciones };
+  const brandCanonical = canonicalBrandSurface(brandHints);
+  const channel = brandCanonical
+    ? surfaceToChannel(brandCanonical)
+    : (["chat", "ml", "wa"].includes(rawChannel) ? rawChannel : "chat");
+  const surface = brandCanonical
+    ? kbSurfaceForTraining(
+        brandCanonical === SURFACES.INSTAGRAM || brandCanonical === SURFACES.FACEBOOK
+          ? "whatsapp"
+          : brandCanonical,
+      )
+    : kbSurfaceForTraining(rawSurface);
   const _convLoggingEnabled = devMode || config.chatLogConversations;
   const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[a-f0-9-]{36}$/i.test(rawConvId)
     ? rawConvId
@@ -375,6 +535,30 @@ router.post("/agent/chat", async (req, res) => {
 
   // Check if rate limiter already sent a response
   if (res.headersSent) return;
+
+  // 0.15 — Soft budget (per-conversation/IP). Default OFF: see config.budgetEnabled.
+  // Independent from express-rate-limit: limiter caps per-IP/min; budget caps
+  // per-session and per-day, including a future token cap. See runbook §4.
+  if (config.budgetEnabled) {
+    const identity = (typeof rawConvId === "string" && rawConvId) || rateLimitClientKey(req);
+    const verdict = budgetCheckAndCount({
+      identity,
+      caps: {
+        turnsPerMin: config.budgetTurnsPerMin,
+        turnsPer5Min: config.budgetTurnsPer5Min,
+        turnsPer24h: config.budgetTurnsPer24h,
+        tokensPer24h: config.budgetTokensPer24h,
+      },
+    });
+    if (!verdict.ok) {
+      res.setHeader("Retry-After", String(verdict.retryAfterSec));
+      return res.status(429).json({
+        ok: false,
+        error: "Llegaste al límite de la sesión. Volvé en un rato o iniciá una nueva conversación.",
+        scope: verdict.scope,
+      });
+    }
+  }
 
   // 0.2 — Input validation
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -437,7 +621,7 @@ router.post("/agent/chat", async (req, res) => {
     }
   }
 
-  /** Process buffered text: emit text events, extract ACTION_JSON directives. Returns leftover tail. */
+  /** Process buffered text: emit text events, extract ACTION_JSON / SUGGEST_JSON directives. Returns leftover tail. */
   function flushLines(buf) {
     const lines = buf.split("\n");
     const tail = lines.pop(); // keep incomplete last line
@@ -453,6 +637,14 @@ router.post("/agent/chat", async (req, res) => {
           }
         } catch {
           if (line) send({ type: "text", delta: line + "\n" });
+        }
+      } else if (trimmed.startsWith("SUGGEST_JSON:")) {
+        try {
+          const parsed = JSON.parse(trimmed.slice("SUGGEST_JSON:".length).trim());
+          const normalized = normalizeSuggestionsPayload(parsed);
+          if (normalized) send({ type: "suggestions", suggestions: normalized });
+        } catch {
+          /* ignore malformed suggestion line — never surface raw directive */
         }
       } else if (line !== "") {
         send({ type: "text", delta: line + "\n" });
@@ -476,6 +668,14 @@ router.post("/agent/chat", async (req, res) => {
       } catch {
         send({ type: "text", delta: trimmed });
       }
+    } else if (trimmed.startsWith("SUGGEST_JSON:")) {
+      try {
+        const parsed = JSON.parse(trimmed.slice("SUGGEST_JSON:".length).trim());
+        const normalized = normalizeSuggestionsPayload(parsed);
+        if (normalized) send({ type: "suggestions", suggestions: normalized });
+      } catch {
+        /* ignore */
+      }
     } else {
       send({ type: "text", delta: trimmed });
       visibleAssistantText += trimmed;
@@ -484,13 +684,66 @@ router.post("/agent/chat", async (req, res) => {
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
+  // Server-side intent classification — the only signal the model can't fabricate.
+  // Write tools (guardar_en_crm, enviar_whatsapp_link, etc.) check this set, not
+  // the model-set user_confirmed flag. See server/lib/userIntentClassifier.js.
+  const approvedActions = classifyIntents(lastUserMessage);
+  if (devMode && approvedActions.size > 0) {
+    // Surface to dev panel for transparency
+    setImmediate(() => {
+      try {
+        if (!aborted) res.write(`data: ${JSON.stringify({ type: "approved_actions", actions: [...approvedActions] })}\n\n`);
+      } catch (err) {
+        // Top-20 run 2026-05-11 (#F6): error de SSE write — logueamos en vez de silenciar.
+        if (req.log) req.log.warn({ err: err?.message || String(err) }, "approved_actions SSE write failed");
+      }
+    });
+  }
+
   // Ensure GCS KB is loaded before reading (Cloud Run cold-start guard)
   await ensureGcsInit();
 
-  // Always use KB — not just devMode
-  const trainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  // Always use KB — not just devMode.
+  // Multi-canal (Brief §6.5): resolve the per-surface answer for each match
+  // BEFORE handing them to buildSystemPrompt, so the rendering layer (which
+  // serializes entry.goodAnswer) doesn't need to know about surfaces.
+  const rawTrainingExamples = findRelevantExamples(lastUserMessage, { limit: 5 });
+  const trainingExamples = rawTrainingExamples.map((entry) => ({
+    ...entry,
+    goodAnswer: resolveTrainingAnswer(entry, surface) || entry.goodAnswer || "",
+  }));
   if (devMode) {
-    send({ type: "kb_match", count: trainingExamples.length, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
+    send({ type: "kb_match", count: trainingExamples.length, surface, examples: trainingExamples.map((e) => ({ id: e.id, category: e.category, score: e.matchScore })) });
+  }
+
+  // RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
+  // Feature flag: RAG_ENABLED (default false). Si el retriever falla (DB caída,
+  // embedding service caído), se loggea y se continúa SIN RAG — el chat no se rompe.
+  let ragContextBlock = "";
+  if (config.ragEnabled) {
+    try {
+      const ragQuotes = await retrieveSimilarQuotes(
+        lastUserMessage,
+        config.ragTopK,
+        config.ragThreshold,
+      );
+      ragContextBlock = formatRetrievedContextForPrompt(ragQuotes);
+      if (devMode && ragQuotes.length > 0) {
+        send({
+          type: "rag_match",
+          count: ragQuotes.length,
+          scores: ragQuotes.map((q) => ({ lead_id: q.lead_id, similarity: q.similarity })),
+        });
+      }
+      if (ragQuotes.length > 0) {
+        req.log?.info({ rag_count: ragQuotes.length, top_score: ragQuotes[0].similarity }, "rag: retrieved quotes");
+      } else {
+        req.log?.debug("rag: no quotes above threshold");
+      }
+    } catch (ragErr) {
+      // Fallo no-fatal: continuar sin RAG
+      req.log?.warn({ err: ragErr }, "rag: retriever falló, continuando sin contexto histórico");
+    }
   }
 
   // Extract last 3 assistant openings for anti-repetition guidance
@@ -499,7 +752,7 @@ router.post("/agent/chat", async (req, res) => {
     .slice(-3)
     .map((m) => String(m.content || "").slice(0, 120));
 
-  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages });
+  const systemPrompt = buildSystemPrompt(calcState, { trainingExamples, devMode, recentAssistantMessages, channel, ragContext: ragContextBlock });
 
   // Use a monotonically increasing global index so user and assistant turns never collide.
   // messages includes the current user message, so all-messages-count - 1 = new user global index.
@@ -628,9 +881,10 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         let cacheReadTokens = 0;
-        // Tool-use loop: model may call tools up to 5 times before final response
+        // Tool-use loop: model may call tools up to 8 times before final response.
+        // Higher cap accommodates the slot-fill → calc → pdf → crm-format → crm-save chain.
         const toolMsgs = [...msgs];
-        for (let toolRound = 0; toolRound < 5; toolRound++) {
+        for (let toolRound = 0; toolRound < 8; toolRound++) {
           const stream = anthropic.messages.stream({ ...claudeOpts, messages: toolMsgs });
           const toolCalls = [];
           let roundText = "";
@@ -669,10 +923,53 @@ router.post("/agent/chat", async (req, res) => {
           for (const tc of toolCalls) {
             let toolInput = {};
             try { toolInput = JSON.parse(tc.inputRaw || "{}"); } catch { /* ignore malformed */ }
+            // Auth gate for the chat tool loop: same TOOLS_REQUIRING_AUTH set
+            // that protects /api/agent/exec-tool. Without this, an
+            // unauthenticated chat session can prompt the model to fire
+            // sensitive registry/CRM/PDF reads (Cursor finding) — the chat
+            // route is public, but devMode chat is auth-gated by API_AUTH_TOKEN
+            // (lines 472-484 above), so devMode === true is our authenticated
+            // signal. Public chat must not be able to execute auth-required
+            // tools regardless of what the model decides to call.
+            if (shouldBlockToolForUnauthenticatedChat(tc.name, devMode)) {
+              const blockedResult = JSON.stringify({
+                ok: false,
+                error: `Esta tool (${tc.name}) requiere autenticación. El operador debe conectarse en modo desarrollador (Ctrl+Shift+D + token API) antes de ejecutar lecturas de CRM / registry / PDF o escrituras.`,
+              });
+              send({ type: "tool_call", tool: tc.name, input: toolInput, blocked: "auth_required" });
+              req.log?.warn({ tool: tc.name }, "chat tool blocked: requires auth");
+              toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: blockedResult, is_error: true });
+              continue;
+            }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState);
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
+
+            // Trust UI: emit verified_quote when an eligible calc tool succeeded.
+            // Pure helper decides eligibility + extracts the public-safe payload.
+            // Wolfboard suggestions (below) parse the result independently so a
+            // failure here cannot block them.
+            if (!aborted) {
+              try {
+                const parsedTool = JSON.parse(result);
+                const verified = buildVerifiedQuotePayload(tc.name, parsedTool, { ivaPct: getIvaPct() });
+                if (verified) send({ type: "verified_quote", payload: verified });
+              } catch {
+                /* tool result not JSON — skip trust emit */
+              }
+            }
+
+            // Wolfboard: deterministic quick replies (devMode only — tools are auth-gated)
+            if (devMode && !aborted) {
+              try {
+                const parsedTool = JSON.parse(result);
+                const sug = wolfboardSuggestionsAfterTool(tc.name, parsedTool);
+                if (sug) send({ type: "suggestions", suggestions: sug });
+              } catch {
+                /* ignore malformed tool JSON */
+              }
+            }
           }
 
           toolMsgs.push({ role: "assistant", content: assistantContent });
@@ -742,7 +1039,9 @@ router.post("/agent/chat", async (req, res) => {
         }
 
         const latencyMs = Date.now() - tStart;
-        console.log(JSON.stringify({
+        // Top-20 run 2026-05-11 (#F1): structured log via pino (req.log) en lugar de console.log
+        // para que Cloud Run capture el evento con request id correlation.
+        const turnLog = {
           event: "chat_turn",
           provider,
           model: resolvedModel,
@@ -751,7 +1050,9 @@ router.post("/agent/chat", async (req, res) => {
           outputTokens,
           kbMatchCount: trainingExamples.length,
           devMode: devMode || undefined,
-        }));
+        };
+        if (req.log) req.log.info(turnLog, "chat_turn");
+        else console.log(JSON.stringify(turnLog));
 
         // Log assistant turn (include per-turn hedgeCount so buildConversationFromEvents can sum)
         if (conversationId) {

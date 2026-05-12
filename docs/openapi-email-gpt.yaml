@@ -10,6 +10,10 @@ info:
     `conexion-cuentas-email-agentes-bmc` en disco (`BMC_EMAIL_INBOX_REPO` o carpeta hermana).
     Cloud Run estándar sin volumen suele devolver `email_repo_missing`.
 
+    **Ingest CRM:** `POST /api/crm/ingest-email` requiere el mismo esquema Bearer que esta spec;
+    el servidor acepta `API_AUTH_TOKEN` y, si está definido, `EMAIL_INGEST_TOKEN` (bridge IMAP).
+    No está expuesto como Action en el GPT solo-correo por defecto; uso operativo vía script o orquestación.
+
 servers:
   - url: https://REPLACE_WITH_YOUR_API_HOST
     description: Ej. https://xxx.ngrok-free.app o http://localhost:3001 (solo si OpenAI alcanza tu red)
@@ -97,9 +101,52 @@ paths:
         "503":
           description: Sin API_AUTH_TOKEN o todos los proveedores IA fallaron
 
+  /api/crm/ingest-email:
+    post:
+      operationId: ingest_email_crm
+      summary: Ingest email parseado a CRM_Operativo (operativo)
+      description: |
+        Parsea cuerpo/asunto con IA y escribe fila en Sheets cuando hay credenciales.
+        **Auth:** Bearer `API_AUTH_TOKEN` o `EMAIL_INGEST_TOKEN` (si el servidor lo define).
+        Sin token válido → 401; sin ningún secreto configurado → 503.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cuerpo
+              properties:
+                asunto:
+                  type: string
+                cuerpo:
+                  type: string
+                remitente:
+                  type: string
+                messageId:
+                  type: string
+      responses:
+        "200":
+          description: ok, datos parseados y opcionalmente crmRow
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Falta cuerpo
+        "401":
+          description: Token inválido o ausente
+        "503":
+          description: Sin API_AUTH_TOKEN ni EMAIL_INGEST_TOKEN, o proveedores IA / Sheets no disponibles
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+      description: API_AUTH_TOKEN del servidor; en ingest también válido EMAIL_INGEST_TOKEN si está configurado.
       bearerFormat: API_AUTH_TOKEN

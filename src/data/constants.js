@@ -92,7 +92,9 @@ export const PANELS_TECHO = {
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
       30: { venta: 33.2695, web: 40.502,  costo: 28.93,  ap: 2.8 },
-      50: { venta: 37.7856, web: 46.00,   costo: 32.857, ap: 3.3 },
+      // REVIEW (top-10 run 2026-05-11): web 36.69 < venta 37.7856 invierte la jerarquía típica (web debería ser ≥ venta por flete/markup).
+      // Patch reciente fab69b0 tocó este SKU. Comparar contra MATRIZ y ISOROOF_3G 50mm (web: 55.062). Si MATRIZ confirma valor, dejar razón aquí y borrar este TODO. Si es error, ajustar el número.
+      50: { venta: 37.7856, web: 36.69,   costo: 32.857, ap: 3.3 },
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
   },
@@ -119,7 +121,9 @@ export const PANELS_TECHO = {
     },
     col: ["Blanco", "Gris", "Rojo"],
     colNotes: { _all: "PLUS: Mínimo 800 m²" },
-    colMinArea: {}, colMax: {},
+    // Restricción de proveedor: pedido mínimo 800 m² independiente del color.
+    // Si el proveedor diferencia por color en el futuro, actualizar aquí y en los tests.
+    colMinArea: { Blanco: 800, Gris: 800, Rojo: 800 }, colMax: {},
   },
 };
 
@@ -351,6 +355,9 @@ export const PERFIL_PARED = {
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
       150: { sku: "PU150MM", venta: 13.97, web: 17.04, costo: 12.57, largo: 3.0 },
       200: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
+      // 250mm usa intencionalmente el mismo SKU y precio que 200mm (PU200MM).
+      // El proveedor (Bromyros) no diferencia perfil U entre 200 y 250mm en su lista de precios;
+      // ambos espesores usan el mismo perfil comercial. Verificar en MATRIZ si esto cambia.
       250: { sku: "PU200MM", venta: 17.43, web: 21.26, costo: 15.69, largo: 3.0 },
     },
     ISOWALL: {
@@ -384,7 +391,7 @@ export const PERFIL_PARED = {
 };
 
 export const SERVICIOS = {
-  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 186.03, unidad: "servicio" },
+  flete: { label: "Flete con entrega en obra", venta: 240.00, web: 252.00, costo: 180.00, unidad: "servicio" },
 };
 
 // ── §4 UI CONFIGURATION ──────────────────────────────────────────────────────

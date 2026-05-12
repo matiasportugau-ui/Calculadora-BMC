@@ -40,7 +40,10 @@ const RESPONSE_PROMPT = `Sos Panelin, asistente comercial de BMC Uruguay. Dado u
 
 function requireAuth(config, req, res) {
   const expected = config.apiAuthToken;
-  if (!expected) return true;
+  if (!expected) {
+    res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
+    return false;
+  }
   const header =
     req.headers["x-api-key"] ||
     (req.headers.authorization

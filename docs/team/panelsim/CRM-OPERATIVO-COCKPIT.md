@@ -19,8 +19,11 @@
 | **AI** | **Aprobado enviar** | `Sí` \| `No` — gate antes de envío automático (futuro) |
 | **AJ** | **Enviado el** | Vacío hasta que exista envío automático; luego ISO o fecha/hora |
 | **AK** | **Bloquear auto** | `Sí` \| `No` — si `Sí`, scripts no modifican la fila |
+| **AL** | **Tipo contacto** | Convención Panelin: `cliente` \| `proveedor` \| `lead` \| `interno` \| `otro` (minúsculas en escritura API) |
+| **AM** | **Tags taxonomía** | Lista separada por comas (ej. `obra, urgente, materia-prima`) |
+| **AN** | **Notas taxonomía** | Texto libre — contexto de clasificación para operador / agente |
 
-**Defaults al crear fila nueva (código):** AG vacío, AH vacío, AI=`No`, AJ vacío, AK=`No` (salvo WA que solo escribe **AH–AK** tras **AF:AG** con los mismos defaults en AH–AK).
+**Defaults al crear fila nueva (código):** AG vacío, AH vacío, AI=`No`, AJ vacío, AK=`No` (salvo WA que solo escribe **AH–AK** tras **AF:AG** con los mismos defaults en AH–AK). **AL–AN** no las rellenan los pipelines ML/WA/email por defecto; el operador, el viewer de clasificación o el agente pueden escribirlas vía `POST /api/crm/cockpit/taxonomy-row`.
 
 ---
 
@@ -62,6 +65,7 @@ Si el token no está configurado, las mutaciones devuelven **503**.
 | POST | `/api/crm/cockpit/approval` | `{ "row": 12, "approved": true }` | Escribe **AI** (`Sí` / `No`). |
 | POST | `/api/crm/cockpit/mark-sent` | `{ "row": 12, "sentAt": "2026-03-24T12:00:00.000Z" }` | Escribe **AJ** (opcional `sentAt`, default ahora ISO). |
 | POST | `/api/crm/cockpit/send-approved` | `{ "row": 12 }` | Si **AI** = Sí, **AJ** vacío, **AK** ≠ Sí, y **F/W** indican ML con `Q:id` en W o WA: envía respuesta (ML API o WhatsApp Cloud) y rellena **AJ**. |
+| POST | `/api/crm/cockpit/taxonomy-row` | `{ "row": 12, "tipoContacto": "proveedor", "tags": "ladrillos, obra", "notas": "…" }` | Actualiza solo los campos enviados en **AL–AN** (`tipoContacto` ∈ cliente/proveedor/lead/interno/otro). |
 
 **send-approved — reglas:** Texto enviado = **AF** (o **G** si AF vacío). **ML:** `Q:<id>` en observaciones (W) y OAuth ML válido en el servidor. **WhatsApp:** **F** debe sugerir WA y **D** = teléfono; requiere `WHATSAPP_ACCESS_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`. Llamada ML interna usa `PUBLIC_BASE_URL` o `http://127.0.0.1:PORT` en local.
 
@@ -71,7 +75,7 @@ Si el token no está configurado, las mutaciones devuelven **503**.
 
 ## 5. Pendientes / mejoras
 
-1. **Planilla:** Títulos en **fila 3** para **AG–AK** si aún no están.
+1. **Planilla:** Títulos en **fila 3** para **AG–AK** si aún no están; añadir **AL–AN** con los nombres sugeridos arriba para taxonomía.
 2. **Contrato:** `GET /api/crm/cockpit/ml-queue` está incluido en `scripts/validate-api-contracts.js` cuando `API_AUTH_TOKEN` está definido y el servidor responde 200.
 3. **Generación de cotización:** Automatizar rellenado de **AH** desde `/calc` o Drive (además del POST manual `quote-link`).
 

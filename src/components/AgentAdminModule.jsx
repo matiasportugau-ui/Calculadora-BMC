@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import AgentClassificationViewerTab from "./AgentClassificationViewerTab.jsx";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import BmcModuleNav from "./BmcModuleNav.jsx";
 
@@ -203,6 +204,12 @@ const CATEGORIES = [
   { value: "conversational", label: "Conversacional" },
 ];
 
+/** API persiste `goodAnswer`; algunos JSON/import usan `answer`. */
+function kbAnswer(entry) {
+  if (!entry) return "";
+  return String(entry.goodAnswer || entry.answer || "").trim();
+}
+
 function KBEntry({ entry, onEdit, onDelete, selected, onToggle }) {
   const catColor = { sales: C.primary, product: C.success, math: C.warn, conversational: C.navy }[entry.category] || C.sub;
   return (
@@ -228,7 +235,7 @@ function KBEntry({ entry, onEdit, onDelete, selected, onToggle }) {
           <Pill color={catColor}>{entry.category}</Pill>
           {entry.permanent && <Pill color={C.success}>permanente</Pill>}
           {entry.tags?.map((t) => <Pill key={t} color={C.sub}>{t}</Pill>)}
-          {(entry.goodAnswer || entry.answer || "").length > 350 && !entry.goodAnswerML && (
+          {kbAnswer(entry).length > 350 && !entry.goodAnswerML && (
             <Pill color="#dc2626" title="goodAnswer >350 chars sin override ML — truncación automática activa">⚠ ML gap</Pill>
           )}
           {entry.reviewDueAt && entry.reviewDueAt < new Date().toISOString() && (
@@ -247,7 +254,7 @@ function KBEntry({ entry, onEdit, onDelete, selected, onToggle }) {
           {entry.question}
         </div>
         <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>
-          {entry.answer}
+          {kbAnswer(entry)}
         </div>
         {entry.context && (
           <div style={{ fontSize: 11, color: C.sub, marginTop: 4, fontStyle: "italic", fontFamily: C.ff }}>
@@ -265,7 +272,7 @@ function KBEntry({ entry, onEdit, onDelete, selected, onToggle }) {
 
 function KBEditModal({ entry, onClose, onSaved }) {
   const [q, setQ] = useState(entry?.question || "");
-  const [a, setA] = useState(entry?.answer || "");
+  const [a, setA] = useState(kbAnswer(entry));
   const [cat, setCat] = useState(entry?.category || "conversational");
   const [ctx, setCtx] = useState(entry?.context || "");
   const [permanent, setPermanent] = useState(entry?.permanent || false);
@@ -277,7 +284,7 @@ function KBEditModal({ entry, onClose, onSaved }) {
     if (!q.trim() || !a.trim()) { setErr("Pregunta y respuesta son obligatorias."); return; }
     setSaving(true); setErr("");
     try {
-      const body = { question: q.trim(), answer: a.trim(), category: cat, context: ctx.trim(), permanent };
+      const body = { question: q.trim(), goodAnswer: a.trim(), category: cat, context: ctx.trim(), permanent };
       const path = isNew ? "/api/agent/train" : `/api/agent/train/${entry.id}`;
       const method = isNew ? "POST" : "PUT";
       const data = await apiFetch(path, { method, body: JSON.stringify(body) });
@@ -351,6 +358,9 @@ function KBTab() {
   const [matchResults, setMatchResults] = useState(null);
   const [generatingML, setGeneratingML] = useState(false);
   const [mlGenMsg, setMlGenMsg] = useState("");
+  // Top-10 run 2026-05-11 (item #6): feedback visible para "Exportar KB" para evitar doble-click.
+  const [exportingKb, setExportingKb] = useState(false);
+  const [exportMsg, setExportMsg] = useState("");
   const fileRef = useRef();
 
   const PAGE_SIZE = 30;
@@ -377,9 +387,10 @@ function KBTab() {
   const filtered = entries.filter((e) => {
     if (!query) return true;
     const q = query.toLowerCase();
+    const ans = kbAnswer(e).toLowerCase();
     return (
       (e.question || "").toLowerCase().includes(q) ||
-      (e.answer || "").toLowerCase().includes(q) ||
+      ans.includes(q) ||
       (e.context || "").toLowerCase().includes(q)
     );
   });
@@ -436,13 +447,13 @@ function KBTab() {
       try { parsed = JSON.parse(text); } catch { setUploadErr("Archivo JSON inválido."); return; }
       const items = Array.isArray(parsed) ? parsed : parsed.entries;
       if (!Array.isArray(items)) { setUploadErr("El JSON debe ser un array o tener campo 'entries'."); return; }
-      const valid = items.filter((it) => it.question && it.answer).slice(0, 50);
-      if (!valid.length) { setUploadErr("Sin entradas válidas (necesitan question + answer)."); return; }
+      const valid = items.filter((it) => it.question && (it.goodAnswer || it.answer)).slice(0, 50);
+      if (!valid.length) { setUploadErr("Sin entradas válidas (necesitan question + goodAnswer o answer)."); return; }
       let ok = 0;
       for (const it of valid) {
         const body = {
           question: String(it.question || "").trim(),
-          answer: String(it.answer || "").trim(),
+          goodAnswer: String(it.goodAnswer || it.answer || "").trim(),
           category: String(it.category || "conversational"),
           context: String(it.context || ""),
           permanent: !!it.permanent,
@@ -463,7 +474,54 @@ function KBTab() {
   async function testMatch() {
     if (!matchQuery.trim()) return;
     const data = await apiFetch(`/api/agent/training-kb/match?q=${encodeURIComponent(matchQuery)}&limit=5`);
+    if (!data.ok) {
+      setMatchResults([]);
+      setErr(data.error || "Error en test de matching");
+      return;
+    }
     setMatchResults(data.matches || []);
+  }
+
+  function exportKbJson() {
+    if (exportingKb) return; // guard: el botón también está disabled pero por las dudas.
+    setExportingKb(true);
+    setExportMsg("");
+    // Yield al render loop para que el botón cambie a "Generando…" antes de bloquear el thread con la serialización.
+    setTimeout(() => {
+      try {
+        const payload = {
+          exportVersion: 1,
+          exportedAt: new Date().toISOString(),
+          note: "Panelin training KB — importar desde Admin con ↑ Importar JSON (máx. 50 filas por archivo en UI; usá script o API para lotes mayores).",
+          stats: stats || null,
+          entries: entries.map((e) => ({
+            id: e.id,
+            category: e.category,
+            question: e.question,
+            goodAnswer: kbAnswer(e),
+            answer: kbAnswer(e),
+            context: e.context || "",
+            permanent: !!e.permanent,
+            status: e.status,
+            goodAnswerML: e.goodAnswerML ?? null,
+            goodAnswerWA: e.goodAnswerWA ?? null,
+          })),
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+        const a = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = `panelin-kb-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportMsg(`✓ KB exportada (${payload.entries.length} entradas)`);
+      } catch (ex) {
+        setExportMsg(`Error: ${String(ex.message || ex)}`);
+      } finally {
+        setExportingKb(false);
+        setTimeout(() => setExportMsg(""), 4000);
+      }
+    }, 0);
   }
 
   async function generateMLOverrides() {
@@ -481,6 +539,21 @@ function KBTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card style={{ background: "#f0f7ff", borderColor: "#b6d4fe" }}>
+        <SectionLabel>Qué es esta pestaña</SectionLabel>
+        <p style={{ margin: "0 0 10px", fontSize: 13, color: C.text, lineHeight: 1.55, fontFamily: C.ff }}>
+          Gestionás la <b>training KB</b>: pares pregunta → respuesta modelo que el chat Panelin recupera por similitud y mezcla en el system prompt.
+          No reemplaza el prompt completo ni los <code>data/knowledge/*.md</code> del repo: eso se edita en <b>System prompt</b> y archivos en git.
+          En producción la KB suele persistir en GCS; en local, en <code>data/training-kb.json</code>.
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.sub, lineHeight: 1.5, fontFamily: C.ff }}>
+          <li><b>Objetivo:</b> corregir respuestas recurrentes, políticas comerciales y FAQs sin redeploy.</li>
+          <li><b>Flujo:</b> alta / edición → aparece en “Test de matching” → el agente usa las entradas activas al chatear.</li>
+          <li><b>Import / export:</b> JSON para trabajar lotes fuera del admin (máx. 50 ítems por import en UI).</li>
+        </ul>
+      </Card>
+
+      <SectionLabel>Salud y volumen</SectionLabel>
       {/* Stats bar */}
       {stats && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -508,6 +581,7 @@ function KBTab() {
         </div>
       )}
 
+      <SectionLabel>Lista y mantenimiento</SectionLabel>
       {/* Controls */}
       <Card>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -538,13 +612,17 @@ function KBTab() {
             {uploading ? "Importando…" : "↑ Importar JSON"}
             <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleFileUpload} disabled={uploading} />
           </label>
+          {exportMsg && <span style={{ fontSize: 12, color: exportMsg.startsWith("Error") ? "#dc2626" : "#16a34a", fontWeight: 600 }}>{exportMsg}</span>}
+          <Btn onClick={exportKbJson} disabled={!entries.length || exportingKb} variant="navy" title="Descargar snapshot JSON de las entradas cargadas">
+            {exportingKb ? "Generando…" : "⬇ Exportar KB"}
+          </Btn>
         </div>
         {uploadErr && <div style={{ fontSize: 12, color: uploadErr.includes("Importadas") ? C.success : C.danger, marginTop: 8, fontFamily: C.ff }}>{uploadErr}</div>}
       </Card>
 
+      <SectionLabel>Diagnóstico retrieval</SectionLabel>
       {/* Test matching */}
       <Card>
-        <SectionLabel>Test de matching KB</SectionLabel>
         <div style={{ display: "flex", gap: 8 }}>
           <Input value={matchQuery} onChange={setMatchQuery} placeholder="Escribí una pregunta para ver qué entradas matchean…" />
           <Btn onClick={testMatch} variant="navy">Testear</Btn>
@@ -553,11 +631,23 @@ function KBTab() {
           <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
             {matchResults.length === 0
               ? <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff }}>Sin matches encontrados.</div>
-              : matchResults.map((m, i) => (
-                <div key={i} style={{ fontSize: 12, color: C.text, fontFamily: C.ff, borderLeft: `3px solid ${C.primary}`, paddingLeft: 8 }}>
-                  <b>Score {m.score?.toFixed ? m.score.toFixed(2) : m.score}</b> · {m.question}
-                </div>
-              ))
+              : matchResults.map((m, i) => {
+                const rawScore = m.matchScore ?? m.score;
+                const scoreLabel =
+                  typeof rawScore === "number" && Number.isFinite(rawScore) ? rawScore.toFixed(2) : String(rawScore ?? "—");
+                const preview = kbAnswer(m);
+                return (
+                  <div key={i} style={{ fontSize: 12, color: C.text, fontFamily: C.ff, borderLeft: `3px solid ${C.primary}`, paddingLeft: 8 }}>
+                    <b>Score {scoreLabel}</b> · {m.question}
+                    {preview ? (
+                      <div style={{ fontSize: 11, color: C.sub, marginTop: 4, maxHeight: 48, overflow: "hidden", opacity: 0.92 }}>
+                        {preview.slice(0, 220)}
+                        {preview.length > 220 ? "…" : ""}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
             }
           </div>
         )}
@@ -575,6 +665,7 @@ function KBTab() {
 
       <Alert msg={err} />
 
+      <SectionLabel>Entradas</SectionLabel>
       {/* Entry list */}
       {!selectedIds.size && pageEntries.length > 0 && (
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -1435,7 +1526,7 @@ function AutoLearnTab() {
                 </div>
               </div>
               <div style={{ fontSize: 13, color: C.text, background: "#f8fafc", borderRadius: 8, padding: "10px 12px", marginBottom: 10, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-                {e.goodAnswer}
+                {kbAnswer(e)}
               </div>
               {e.context && (
                 <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, fontStyle: "italic" }}>Contexto: {e.context}</div>
@@ -1525,7 +1616,7 @@ function ConflictsTab() {
                 {[{ label: "A", entry: p.a }, { label: "B", entry: p.b }].map(({ label, entry }) => (
                   <div key={entry.id} style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: C.navy, marginBottom: 4 }}>[{label}] {entry.question}</div>
-                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>{entry.goodAnswer}</div>
+                    <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>{kbAnswer(entry)}</div>
                     <div style={{ marginTop: 8 }}>
                       <button
                         onClick={() => resolve(entry.id, label === "A" ? p.b.id : p.a.id)}
@@ -1744,6 +1835,8 @@ function VoiceTab() {
   const [testResult, setTestResult] = useState(null);
   const [errors, setErrors] = useState([]);
   const [errorsLoading, setErrorsLoading] = useState(false);
+  const [checkingKey, setCheckingKey] = useState(false);
+  const [keyHealth, setKeyHealth] = useState(null);
 
   async function loadProviders() {
     try {
@@ -1790,6 +1883,19 @@ function VoiceTab() {
       setTesting(false);
     }
     loadErrors();
+  }
+
+  async function checkKey() {
+    setCheckingKey(true);
+    setKeyHealth(null);
+    try {
+      const r = await apiFetch("/api/agent/voice/health");
+      setKeyHealth(r);
+    } catch (err) {
+      setKeyHealth({ ok: false, error: err?.message || "Network error" });
+    } finally {
+      setCheckingKey(false);
+    }
   }
 
   useEffect(() => {
@@ -1839,9 +1945,43 @@ function VoiceTab() {
         <div style={{ fontSize: 12, color: C.sub, fontFamily: C.ff, marginBottom: 12, lineHeight: 1.5 }}>
           Mintea un token efímero de OpenAI Realtime. Requiere OPENAI_API_KEY en el servidor.
         </div>
-        <Btn onClick={testSession} disabled={testing || !voiceAvailable} variant="primary">
-          {testing ? "Minteando…" : "Testear sesión de voz"}
-        </Btn>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Btn onClick={testSession} disabled={testing || !voiceAvailable} variant="primary">
+            {testing ? "Minteando…" : "Testear sesión de voz"}
+          </Btn>
+          <Btn onClick={checkKey} disabled={checkingKey} variant="secondary">
+            {checkingKey ? "Verificando…" : "Verificar clave"}
+          </Btn>
+        </div>
+        {keyHealth && (
+          <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: keyHealth.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${keyHealth.ok ? "#bbf7d0" : "#fecaca"}` }}>
+            <div style={{ fontSize: 12, color: keyHealth.ok ? "#166534" : "#991b1b", fontFamily: C.ff }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                {keyHealth.ok ? "Clave activa" : keyHealth.configured === false ? "Clave no configurada" : "Clave inactiva"}
+              </div>
+              {keyHealth.configured !== false && (keyHealth.keyPrefix || keyHealth.keySuffix) && (
+                <div>
+                  fingerprint: <code>{keyHealth.keyPrefix || ""}…{keyHealth.keySuffix || ""}</code>
+                  {typeof keyHealth.keyLength === "number" ? ` · len ${keyHealth.keyLength}` : ""}
+                </div>
+              )}
+              {typeof keyHealth.status === "number" && (
+                <div>
+                  HTTP {keyHealth.status}
+                  {typeof keyHealth.latencyMs === "number" ? ` · ${keyHealth.latencyMs} ms` : ""}
+                </div>
+              )}
+              {keyHealth.model && (
+                <div>model: <code>{keyHealth.model}</code></div>
+              )}
+              {!keyHealth.ok && keyHealth.error && (
+                <div style={{ marginTop: 4 }}>
+                  <span style={{ fontWeight: 700 }}>Detalle: </span>{keyHealth.error}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {testResult && (
           <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: testResult.ok ? "#f0fdf4" : "#fef2f2", border: `1px solid ${testResult.ok ? "#bbf7d0" : "#fecaca"}` }}>
             {testResult.ok ? (
@@ -1904,6 +2044,7 @@ function VoiceTab() {
 // ── MAIN MODULE ─────────────────────────────────────────────────────────────
 const TABS = [
   { id: "kb", label: "Base de conocimiento", icon: "📚" },
+  { id: "classify", label: "Clasificación", icon: "🏷️" },
   { id: "prompt", label: "System prompt", icon: "✏️" },
   { id: "conversations", label: "Conversaciones", icon: "💬" },
   { id: "stats", label: "Estadísticas", icon: "📊" },
@@ -1918,10 +2059,24 @@ const TABS = [
 ];
 
 export default function AgentAdminModule() {
-  const [tab, setTab] = useState("kb");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const initialTab =
+    tabFromUrl && TABS.some((t) => t.id === tabFromUrl) ? tabFromUrl : "kb";
+  const [tab, setTab] = useState(initialTab);
   const hasToken = typeof import.meta !== "undefined"
     ? !!(import.meta.env?.VITE_API_AUTH_TOKEN || "")
     : false;
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && TABS.some((x) => x.id === t) && t !== tab) setTab(t);
+  }, [searchParams, tab]);
+
+  function selectTab(id) {
+    setTab(id);
+    setSearchParams({ tab: id }, { replace: true });
+  }
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg, fontFamily: C.ff }}>
@@ -1940,7 +2095,7 @@ export default function AgentAdminModule() {
               <button
                 key={id}
                 type="button"
-                onClick={() => setTab(id)}
+                onClick={() => selectTab(id)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -1990,6 +2145,7 @@ export default function AgentAdminModule() {
           </div>
 
           {tab === "kb" && <KBTab />}
+          {tab === "classify" && <AgentClassificationViewerTab />}
           {tab === "prompt" && <PromptTab />}
           {tab === "conversations" && <ConversationsTab />}
           {tab === "stats" && <StatsTab />}

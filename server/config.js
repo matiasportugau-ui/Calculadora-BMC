@@ -39,6 +39,11 @@ export const config = {
   maxRetries: Number(process.env.ML_HTTP_MAX_RETRIES || 3),
   requestTimeoutMs: Number(process.env.ML_HTTP_TIMEOUT_MS || 15000),
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
+  /**
+   * Opcional — POST /api/crm/ingest-email: si está definido, el bridge IMAP puede usar solo este secreto
+   * (además de API_AUTH_TOKEN). Ver docs/team/panelsim/EMAIL-ADMINISTRATOR.md
+   */
+  emailIngestToken: process.env.EMAIL_INGEST_TOKEN || "",
   /** Repo hermano IMAP / PANELSIM (opcional; default = carpeta hermana) */
   bmcEmailInboxRepo: process.env.BMC_EMAIL_INBOX_REPO || "",
   // BMC Finanzas dashboard (Google Sheets)
@@ -54,6 +59,9 @@ export const config = {
   /** Libro CRM (crm_automatizado). Vacío = mismo que bmcSheetId. */
   wolfbCrmSheetId: process.env.WOLFB_CRM_SHEET_ID || "",
   wolfbCrmEnviadosTab: process.env.WOLFB_CRM_ENVIADOS_TAB || "Enviados",
+  /** Dual-write Lead → Admin Cotizaciones tab "Enviados" (opt-in; default off). */
+  wolfbAdminCotDualWriteEnabled: bool(process.env.WOLFB_ADMIN_COT_DUAL_WRITE, false),
+  wolfbAdminCotEnviadosTab: process.env.WOLFB_ADMIN_COT_ENVIADOS_TAB || "Enviados",
   wolfbDryRun: process.env.WOLFB_DRY_RUN === "1",
   wolfbRitualLog: process.env.WOLFB_RITUAL_LOG === "1",
   wolfbCalcApiBase: process.env.WOLFB_CALC_API_BASE || "",
@@ -79,10 +87,23 @@ export const config = {
   anthropicChatModel: process.env.ANTHROPIC_CHAT_MODEL || "claude-opus-4-7",
   /** Set CHAT_LOG_CONVERSATIONS=true to persist conversation turns to disk in production. Default: off (devMode always logs). */
   chatLogConversations: bool(process.env.CHAT_LOG_CONVERSATIONS, false),
+  // Soft per-session budget for /api/agent/chat. Default OFF — see docs/team/runbooks/PANELIN-IA-OPS.md §4.
+  budgetEnabled: bool(process.env.BUDGET_ENABLED, false),
+  budgetTurnsPerMin: process.env.BUDGET_TURNS_PER_MIN ? Number(process.env.BUDGET_TURNS_PER_MIN) : null,
+  budgetTurnsPer5Min: process.env.BUDGET_TURNS_PER_5MIN ? Number(process.env.BUDGET_TURNS_PER_5MIN) : null,
+  budgetTurnsPer24h: process.env.BUDGET_TURNS_PER_24H ? Number(process.env.BUDGET_TURNS_PER_24H) : null,
+  budgetTokensPer24h: process.env.BUDGET_TOKENS_PER_24H ? Number(process.env.BUDGET_TOKENS_PER_24H) : null,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   geminiChatModel: process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash",
   grokApiKey: process.env.GROK_API_KEY || "",
   grokChatModel: process.env.GROK_CHAT_MODEL || "grok-3-mini",
+  // Vercel AI Gateway (unified multi-provider).
+  // Set AI_GATEWAY_API_KEY (or rely on VERCEL_OIDC_TOKEN populated via `vercel env pull`)
+  // to route /crm/suggest-response, /crm/parse-email, /crm/ingest-email, and
+  // /agent/training-kb/generate-ml-overrides through the gateway. When unset,
+  // the legacy 4-SDK chain (Anthropic / OpenAI / Grok / Gemini) keeps working
+  // unchanged so deploys without env wiring don't regress.
+  aiGatewayApiKey: process.env.AI_GATEWAY_API_KEY || "",
   // WhatsApp Business Cloud API
   whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
@@ -95,7 +116,15 @@ export const config = {
     "read_products,write_products,read_orders,write_orders,read_customers,read_draft_orders,write_draft_orders",
   shopifyWebhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET || "",
   shopifyQuestionsSheetTab: process.env.SHOPIFY_QUESTIONS_SHEET_TAB || "Shopify_Preguntas",
-  /** Postgres — Modo Transportista (viajes / eventos / outbox) */
+  /**
+   * Postgres connection string. Usado por:
+   * - Modo Transportista (viajes / eventos / outbox) — `transportista-cursor-package/migrations/`.
+   * - WA Cockpit (`wa_conversations`, `wa_messages`, `wa_suggestions`) — `wa-package/migrations/`.
+   *
+   * Si falta: ambos módulos devuelven 503 en sus endpoints; el resto del API (calc, Sheets, ML) sigue funcionando.
+   * En Cloud Run: secret manager (no env-var directa). En local: `.env` (ver `.env.example`).
+   * (Top-20 run 2026-05-11 #L10: doc ampliado para reflejar el doble uso.)
+   */
   databaseUrl: process.env.DATABASE_URL || "",
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
@@ -104,6 +133,14 @@ export const config = {
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
+  /** WA Cockpit (F2 enricher) — flags */
+  waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
+  waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
+  waEnricherBatchSize: Number(process.env.WA_ENRICHER_BATCH_SIZE || 5),
+  /** WA Cockpit (F4 outbound) — rate limit */
+  waOutboundRateLimitPerMin: Number(process.env.WA_OUTBOUND_RATE_LIMIT || 6),
+  /** WA Cockpit (F5 purge) — TTL días para wa_messages.text */
+  waTtlDays: Number(process.env.WA_TTL_DAYS || 180),
   /** GCS bucket for persistent quote PDFs — allUsers:objectViewer required. Default: bmc-cotizaciones */
   gcsQuotesBucket: process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
   /** Drive folder for uploaded quote HTML files (server/lib/driveUpload.js) */
@@ -114,6 +151,50 @@ export const config = {
       ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
       : ["https://calculadora-bmc.vercel.app", "http://localhost:5173", "http://localhost:3001"]
   ),
+  /** Comprador identity (Phase A+) — JWT signing + cookie domain + Google OAuth aud */
+  identityJwtSecret: process.env.IDENTITY_JWT_SECRET || "",
+  identityCookieDomain: process.env.IDENTITY_COOKIE_DOMAIN || "",
+  identityCookieName: process.env.IDENTITY_COOKIE_NAME || "bmc_sess",
+  googleOauthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID || "",
+  /** Sheets sync — opt-in admin sync to «Base de datos cotis de clientes» */
+  sheetsClientQuotesEnabled: bool(process.env.SHEETS_CLIENT_QUOTES_ENABLED, false),
+  sheetsClientQuotesTab: process.env.SHEETS_CLIENT_QUOTES_TAB || "Base de datos cotis de clientes",
+  /**
+   * Comma-separated emails seeded as superadmin (Phase G).
+   *
+   * **NEVER consult this list at runtime**: the privilege check in
+   * `identityAuth.requireUser` reads `identity.role_grants` from the DB
+   * exclusively. This array is consumed ONLY by the operator running
+   *
+   *     psql -v admins="$INTERNAL_SUPERADMIN_EMAILS" \
+   *          -f supabase/migrations/20260601000002_identity_seed_superadmins.sql
+   *
+   * cursor[bot] round-7 W-3 invariant: a misconfigured env var (e.g.
+   * trailing comma → empty entry → match-all) MUST NOT silently grant
+   * superadmin. Bypassing the DB grant check from this list would create
+   * a privilege-escalation window. Keep this array unused at request
+   * time; if you need a runtime check, add a separate function that
+   * reads role_grants from the DB.
+   */
+  internalSuperadminEmails: (
+    process.env.INTERNAL_SUPERADMIN_EMAILS
+      ? process.env.INTERNAL_SUPERADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : []
+  ),
+  /** KB Analytics — log missed questions for human review (opt-in; default off) */
+  kbAnalyticsLogMissQuestion: bool(process.env.KB_ANALYTICS_LOG_MISS_QUESTION, false),
+  /** KB Analytics — window size in days for metrics (default 30, max 365) */
+  kbAnalyticsWindowMaxDays: Math.max(1, Math.min(Number(process.env.KB_ANALYTICS_WINDOW_MAX_DAYS || 90), 365)),
+  /**
+   * RAG v1 — recuperación de cotizaciones históricas similares vía pgvector.
+   * Default OFF: activar solo después de correr la migración 0001 y embedQuotes.js.
+   * Ver docs/sprint-mayo/RAG-V1.md § Checklist de activación.
+   */
+  ragEnabled: bool(process.env.RAG_ENABLED, false),
+  /** Número de cotizaciones similares a recuperar por turno (default 5). */
+  ragTopK: Math.max(1, Math.min(10, Number(process.env.RAG_TOP_K || 5))),
+  /** Similitud mínima coseno para incluir un caso (0-1, default 0.70). */
+  ragThreshold: Math.max(0, Math.min(1, Number(process.env.RAG_THRESHOLD || 0.70))),
 };
 
 export const redirectUri = () => {

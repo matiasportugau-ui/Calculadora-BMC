@@ -15,6 +15,9 @@ import {
   perimetroVerticalInteriorPuntosDesdePlanta,
 } from "../../src/utils/calculations.js";
 import { bomToGroups, buildWhatsAppText, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
+import { upsertQuote } from "../lib/quoteStore.js";
+import { enqueue as sheetEnqueue, isSheetSyncEnabled } from "../lib/clientQuotesSheetSync.js";
+import { requireUser } from "../lib/identityAuth.js";
 import {
   setListaPrecios,
   PANELS_TECHO,
@@ -37,6 +40,13 @@ import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
 import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import {
+  registerQuotation as registerQuotationStore,
+  getQuotation,
+  listQuotations,
+  cancelQuotation,
+  recordCalcEvent,
+} from "../lib/quoteRegistry.js";
 
 const router = Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -153,32 +163,29 @@ function getPdf(id) {
   return entry.html;
 }
 
+// .unref() so the timer doesn't keep the process alive in test contexts
+// where calc.js is imported as a module (e.g. tests/agentTools.test.js
+// pulling in runCalculation directly).
 setInterval(() => {
   const now = Date.now();
   for (const [id, entry] of pdfStore) {
     if (now - entry.createdAt > PDF_TTL_MS) pdfStore.delete(id);
   }
-  for (const [id, entry] of quotationRegistry) {
-    if (now - entry.createdAt > PDF_TTL_MS) quotationRegistry.delete(id);
-  }
-}, 60 * 60 * 1000);
+  // Quotation registry is now persisted to GCS via server/lib/quoteRegistry.js;
+  // no in-process TTL needed — quotes are kept indefinitely.
+}, 60 * 60 * 1000).unref();
 
 // ── Quotation registry (tracks GPT-generated quotations) ────────────────────
+// Implementation moved to server/lib/quoteRegistry.js — it writes one JSON
+// per quote to GCS (`registry/{pdfId}.json`) so recall survives Cloud Run
+// cold-starts. Helper below preserves the existing call signature.
 
-const quotationRegistry = new Map();
-
-function registerQuotation({ pdfId, pdfUrl, code, client, scenario, total, lista }) {
-  quotationRegistry.set(pdfId, {
-    id: pdfId,
-    code: code || null,
-    client: client || "—",
-    scenario: scenario || "",
-    total: total || 0,
-    lista: lista || "web",
-    pdfUrl,
-    createdAt: Date.now(),
-    timestamp: new Date().toISOString(),
-  });
+async function registerQuotation(input) {
+  try {
+    await registerQuotationStore(input);
+  } catch (err) {
+    console.warn(`[calc] registerQuotation failed: ${err.message}`);
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -443,12 +450,34 @@ router.post("/cotizar/presupuesto-libre", (req, res) => {
 
 router.post("/cotizar", (req, res) => {
   try {
-    const { lista = "web", escenario, techo, pared, camara, flete = 0 } = req.body;
+    const { lista = "web", escenario, techo, pared, camara, flete = 0, source: sourceRaw } = req.body;
+    const source = sourceRaw === "ae_agent" ? "ae_agent" : null;
     const results = runCalculation({ escenario, lista, techo, pared, camara });
     if (results.error && !results.allItems) {
       return res.status(400).json({ ok: false, error: results.error });
     }
-    return res.json(buildGptResponse(escenario, lista, results, flete));
+    const gpt = buildGptResponse(escenario, lista, results, flete);
+    // Provenance archive: when an AE-agent quote runs without a follow-up
+    // PDF call, record a thin "calc_only" entry in the registry. Best-effort
+    // — any failure here is logged inside recordCalcEvent and never affects
+    // the calc response itself.
+    if (source === "ae_agent" && gpt?.ok) {
+      const requestHash = crypto
+        .createHash("sha1")
+        .update(JSON.stringify({ escenario, lista, techo, pared, camara }))
+        .digest("hex");
+      Promise.resolve(recordCalcEvent({
+        source,
+        scenario: escenario,
+        lista,
+        summary: gpt.resumen,
+        requestHash,
+        sessionId: req.headers["x-session-id"] || null,
+      })).catch((err) => {
+        console.warn(`[calc/cotizar] recordCalcEvent failed: ${err?.message || err}`);
+      });
+    }
+    return res.json(gpt);
   } catch (err) {
     req.log.error({ err }, "calc/cotizar failed");
     return res.status(500).json({ ok: false, error: err.message });
@@ -457,9 +486,12 @@ router.post("/cotizar", (req, res) => {
 
 // ── POST /cotizar/pdf ───────────────────────────────────────────────────────
 
-router.post("/cotizar/pdf", async (req, res) => {
+router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) => {
   try {
-    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente } = req.body;
+    const { lista = "web", escenario, techo, pared, camara, flete = 0, cliente, source: sourceRaw } = req.body;
+    // Provenance marker — distinguishes agent-generated quotes from human-driven ones
+    // in the registry. Defaults to "calculator"; agent path passes "ae_agent".
+    const source = sourceRaw === "ae_agent" ? "ae_agent" : "calculator";
     const results = runCalculation({ escenario, lista, techo, pared, camara });
     if (results.error && !results.allItems) {
       return res.status(400).json({ ok: false, error: results.error });
@@ -562,7 +594,7 @@ router.post("/cotizar/pdf", async (req, res) => {
     const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
 
-    registerQuotation({
+    await registerQuotation({
       pdfId,
       pdfUrl: gcsUrl || pdfUrl,
       code: clientInfo.quote_code || null,
@@ -570,7 +602,48 @@ router.post("/cotizar/pdf", async (req, res) => {
       scenario: escenario,
       total: gptResp.resumen.total_usd,
       lista,
+      source,
     });
+
+    // Per-user quote persistence (best-effort — must not regress PDF flow).
+    // Identity master plan §Phase F. req.user is populated when the caller
+    // presents `Authorization: Bearer <access JWT>` (typical for the
+    // server-to-server chat agent in agentTools.js and GPT Actions). The
+    // React wizard generates PDFs client-side and uses POST /api/me/quotes
+    // directly — this hook covers the agent paths.
+    //
+    // Anonymous (no req.user) but with clientQuoteId: row lands with
+    // user_id=null; claimAnonymousQuotes() reattaches it on first login.
+    const clientQuoteId =
+      typeof req.body?.clientQuoteId === "string" ? req.body.clientQuoteId : null;
+    if (req.user?.id || clientQuoteId) {
+      try {
+        const stored = await upsertQuote({
+          userId: req.user?.id || null,
+          clientQuoteId,
+          payload: {
+            scenario: escenario,
+            lista,
+            client: clientInfo,
+            resumen: gptResp.resumen,
+            quote_code: clientInfo.quote_code || null,
+          },
+          pdfId,
+          pdfUrl: gcsUrl || pdfUrl,
+          gcsUri: gcsUrl || null,
+          driveFileId: driveUrl || null,
+          status: "completed",
+          wizardStep: typeof req.body?.wizardStep === "number" ? req.body.wizardStep : null,
+        });
+        // Phase I trigger: enqueue Sheets sync (debounced 60s) when authenticated.
+        if (req.user?.id && stored?.quote_id && isSheetSyncEnabled()) {
+          try { sheetEnqueue(stored.quote_id); } catch (e) { req.log.warn?.({ err: e }, "sheet enqueue failed"); }
+        }
+      } catch (err) {
+        // Best-effort: do not surface DB errors to the calc consumer.
+        req.log.warn?.({ err }, "identity.quotes upsert failed (non-fatal)");
+      }
+    }
 
     return res.json({
       ok: true,
@@ -603,10 +676,54 @@ router.get("/pdf/:id", (req, res) => {
 
 // ── GET /cotizaciones ────────────────────────────────────────────────────────
 
-router.get("/cotizaciones", (req, res) => {
-  const entries = Array.from(quotationRegistry.values())
-    .sort((a, b) => b.createdAt - a.createdAt);
-  res.json({ ok: true, count: entries.length, cotizaciones: entries });
+// Persistent registry routes — gate behind requireAuth. Anonymous callers
+// could enumerate every quote via GET, exfiltrate customer data via /:id, or
+// soft-delete arbitrary quotes via /cancelar. The agent path bypasses this
+// gate by importing quoteRegistry helpers directly (in-process).
+router.get("/cotizaciones", requireAuth, async (req, res) => {
+  try {
+    const includeCancelled = String(req.query?.include_cancelled || "").toLowerCase() === "true";
+    const limit = Math.max(1, Math.min(500, Number(req.query?.limit || 50)));
+    const includeCalcOnly = String(req.query?.include_calc_only || "").toLowerCase() === "true";
+    const entries = await listQuotations({
+      limit,
+      includeCancelled,
+      omitCalcOnly: !includeCalcOnly,
+    });
+    res.json({ ok: true, count: entries.length, cotizaciones: entries });
+  } catch (err) {
+    req.log?.error({ err }, "calc/cotizaciones failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /cotizaciones/:id ───────────────────────────────────────────────────
+
+router.get("/cotizaciones/:id", requireAuth, async (req, res) => {
+  try {
+    const entry = await getQuotation(String(req.params.id || ""));
+    if (!entry) return res.status(404).json({ ok: false, error: "Cotización no encontrada" });
+    res.json({ ok: true, cotizacion: entry });
+  } catch (err) {
+    req.log?.error({ err }, "calc/cotizaciones/:id failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── POST /cotizaciones/:id/cancelar ─────────────────────────────────────────
+
+router.post("/cotizaciones/:id/cancelar", requireAuth, async (req, res) => {
+  try {
+    const result = await cancelQuotation(String(req.params.id || ""), {
+      reason: req.body?.motivo || req.body?.reason,
+      by: req.body?.by || "agent",
+    });
+    if (!result.ok) return res.status(404).json(result);
+    res.json(result);
+  } catch (err) {
+    req.log?.error({ err }, "calc/cotizaciones/:id/cancelar failed");
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ── GET /catalogo ────────────────────────────────────────────────────────────
@@ -862,6 +979,6 @@ router.get("/informe", (req, res) => {
   }
 });
 
-export { runCalculation, buildGptResponse };
+export { runCalculation, buildGptResponse, getPdf };
 export { GPT_ACTIONS } from "../gptActions.js";
 export default router;

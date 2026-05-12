@@ -228,6 +228,7 @@ export function mergeAdjacentEncounterPairSegments(pairRaw, segmentId) {
 export function resetEncounterPairSegments(pairRaw) {
   if (!pairRaw || typeof pairRaw !== "object") return pairRaw;
   const base = pairEncounterBaseRaw(pairRaw);
+  // eslint-disable-next-line no-unused-vars
   const { segments: _dropped, ...rest } = base;
   return rest;
 }

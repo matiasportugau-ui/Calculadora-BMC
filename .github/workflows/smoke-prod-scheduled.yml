@@ -1,0 +1,51 @@
+# Automated production API smoke (canonical default URL in scripts/smoke-prod-api.mjs).
+# No npm install — uses Node built-in fetch only.
+name: Smoke — prod API (scheduled)
+
+on:
+  schedule:
+    - cron: "0 8,20 * * *"
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: "Override BMC_API_BASE (optional)"
+        required: false
+        default: ""
+      skip_matriz:
+        description: "Set to 1 to skip MATRIZ CSV check"
+        required: false
+        default: "0"
+      skip_suggest:
+        description: "Set to 1 to skip POST suggest-response"
+        required: false
+        default: "0"
+
+jobs:
+  smoke-prod:
+    name: smoke-prod-api.mjs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (script only)
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run production smoke
+        env:
+          BMC_API_BASE: ${{ github.event.inputs.api_base || vars.BMC_SMOKE_API_BASE || '' }}
+          SMOKE_SKIP_MATRIZ: ${{ github.event.inputs.skip_matriz == '1' && '1' || '' }}
+          SMOKE_SKIP_SUGGEST: ${{ github.event.inputs.skip_suggest == '1' && '1' || '' }}
+        run: node scripts/smoke-prod-api.mjs -- --json
+
+      - name: Panelin chat ai-options (no secrets)
+        env:
+          BASE: ${{ github.event.inputs.api_base || vars.BMC_SMOKE_API_BASE || '' }}
+        run: |
+          set -e
+          B="${BASE:-https://panelin-calc-q74zutv7dq-uc.a.run.app}"
+          code=$(curl -sS -o /tmp/ai-options.json -w "%{http_code}" "$B/api/agent/ai-options")
+          test "$code" = "200"
+          node -e "const j=require('fs').readFileSync('/tmp/ai-options.json','utf8'); const o=JSON.parse(j); if(!o.ok) process.exit(1); if(!Array.isArray(o.autoOrder)) process.exit(1);"

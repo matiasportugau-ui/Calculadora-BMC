@@ -16,6 +16,8 @@ import {
   Col,
 } from "../lib/crmOperativoLayout.js";
 import { parseCrmRowAtoAK, extractMlQuestionId, isSi } from "../lib/crmRowParse.js";
+import { normalizeSurface, SURFACES } from "../lib/surface.js";
+import { writeCrmRowTaxonomy } from "../lib/crmTaxonomy.js";
 import { sendWhatsAppText } from "../lib/whatsappOutbound.js";
 import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
@@ -24,8 +26,11 @@ import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.j
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
-import { addTrainingEntry } from "../lib/trainingKB.js";
+import { addTrainingEntry, findRelevantExamples, resolveTrainingAnswer, ensureGcsInit } from "../lib/trainingKB.js";
+import { mapOrigenToSurface } from "../lib/kbSurface.js";
+import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, DEFAULT_PROVIDER_ORDER } from "../lib/aiGatewayClient.js";
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
+import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
 
 const SCOPE_READ = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -48,6 +53,45 @@ const SHEETS_VENTAS_MERGE_TTL_MS = parseSheetsCacheTtlMs(
 
 /** CRM IA fallback order (suggest-response, parse-email, etc.): quality first, then cost/speed. */
 const CRM_AI_PROVIDER_RANKING = ["claude", "openai", "grok", "gemini"];
+
+/**
+ * /crm/suggest-response routing flag.
+ *
+ * When true (default), delegates to server/lib/suggestResponse.js → callAgentOnce,
+ * which gives the CRM endpoint the full Panelin brain (KB retrieval, channelRenderer
+ * overrides for goodAnswerML/goodAnswerWA, canonical pricing block).
+ *
+ * When false, falls back to the legacy inline provider chain with a 1-line system
+ * prompt. Kept as a runtime rollback knob — flip in Cloud Run env without redeploy.
+ */
+const SUGGEST_RESPONSE_USE_AGENT_CORE =
+  String(process.env.SUGGEST_RESPONSE_USE_AGENT_CORE || "true").toLowerCase() === "true";
+
+/**
+ * Zod schema for /crm/parse-email and /crm/ingest-email structured extraction.
+ * Used by the AI Gateway path via `generateObjectViaGateway`. The legacy SDK
+ * chain returns the same shape via JSON.parse; both code paths pass through
+ * the same downstream consumers (Sheets writer, etc.).
+ *
+ * All fields are strings (possibly empty) to match the legacy contract.
+ */
+async function getEmailExtractionSchema() {
+  const { z } = await import("zod");
+  return z.object({
+    cliente: z.string().default(""),
+    telefono: z.string().default(""),
+    ubicacion: z.string().default(""),
+    email_remitente: z.string().default(""),
+    resumen_pedido: z.string().default(""),
+    categoria: z.string().default(""),
+    urgencia: z.string().default(""),
+    tipo_cliente: z.string().default(""),
+    cotizacion_formal: z.string().default(""),
+    validar_stock: z.string().default(""),
+    probabilidad_cierre: z.string().default(""),
+    observaciones: z.string().default(""),
+  });
+}
 
 const sheetsReadCache = new Map();
 
@@ -693,7 +737,11 @@ async function fetchVentasRowsAllTabsBatched(sheetId, tabNames) {
         );
         merged.push(...filtered.map((r) => mapVentas2026ToCanonical(r, tabName)));
       }
-    } catch {
+    } catch (err) {
+      // Top-20 run 2026-05-11 (#F2): el batchGet falló — loguear antes del fallback por-tab.
+      // Sin esto la degradación de Sheets era silenciosa. Usamos console.error (pino-http stderr capture)
+      // porque esta función helper no es route handler y no tiene req.log a mano.
+      console.error(JSON.stringify({ level: "warn", event: "sheets_batchget_fallback", err: err?.message || String(err), chunkSize: chunk?.length }));
       merged.push(...(await fallbackPerTab(chunk)));
     }
   }
@@ -1424,6 +1472,7 @@ async function pushMatrizPricingOverrides(matrizSheetId, overrides, credsPath, d
 
 export default function createBmcDashboardRouter(config) {
   const router = Router();
+  const requireEmailIngestAuth = makeRequireEmailIngestAuth(config);
   const sheetId = config.bmcSheetId || "";
   const schema = config.bmcSheetSchema || "Master_Cotizaciones";
   const { sheetName: cotizSheet, opts: cotizOpts } = getCotizacionesSheetOpts(schema);
@@ -2086,13 +2135,6 @@ export default function createBmcDashboardRouter(config) {
     const { consulta, origen, cliente, producto, observaciones, provider, itemId } = req.body || {};
     if (!consulta) return res.status(400).json({ ok: false, error: "Missing consulta" });
 
-    // Ranking: 1-Claude (best instruction following + rioplatense)
-    //          2-OpenAI gpt-4o-mini (reliable, good Spanish)
-    //          3-Grok grok-3-mini  (proven working, fast)
-    //          4-Gemini 2.0-flash  (fallback)
-    const RANKING = CRM_AI_PROVIDER_RANKING;
-    const chain = provider ? [provider] : RANKING;
-
     const apiKeys = {
       claude: config.anthropicApiKey,
       openai: config.openaiApiKey,
@@ -2110,7 +2152,7 @@ export default function createBmcDashboardRouter(config) {
       });
     }
 
-    // Look up previous Q&A from the same client on the same product
+    // Look up previous Q&A from the same client on the same product.
     let historyContext = "";
     if (cliente && itemId && checkSheetsAvailable(config)) {
       try {
@@ -2137,18 +2179,105 @@ export default function createBmcDashboardRouter(config) {
       } catch (_) { /* non-fatal — continue without history */ }
     }
 
+    const observacionesCombined = [observaciones, historyContext].filter(Boolean).join("\n\n");
+
+    if (SUGGEST_RESPONSE_USE_AGENT_CORE) {
+      try {
+        const { generateAiResponse } = await import("../lib/suggestResponse.js");
+        const result = await generateAiResponse({
+          consulta,
+          origen,
+          cliente,
+          producto,
+          observaciones: observacionesCombined,
+          provider,
+          apiKeys,
+        });
+        return res.json({
+          ok: true,
+          respuesta: result.text,
+          provider: result.provider,
+          model: result.model || null,
+        });
+      } catch (err) {
+        return res.status(503).json({
+          ok: false,
+          error: "All providers failed",
+          details: err.errors || [err.message],
+        });
+      }
+    }
+
+    // Legacy path: 1-line system prompt + manual provider chain. Kept for rollback
+    // (toggle SUGGEST_RESPONSE_USE_AGENT_CORE=false in Cloud Run env). The flag exists
+    // because the canonical Panelin prompt produces longer / different-toned answers
+    // than the legacy 1-line prompt; if a regression surfaces we can revert without
+    // redeploy.
+    const RANKING = CRM_AI_PROVIDER_RANKING;
+    const chain = provider ? [provider] : RANKING;
+
     const systemPrompt = `Sos el asistente de ventas de BMC Uruguay (METALOG SAS), empresa que vende paneles de aislamiento térmico: Isodec EPS/PIR (techos), Isopanel EPS/PIR (paredes/fachadas), Isoroof 3G/Plus/Foil. Precios en USD/m² IVA incluido. Cuando no tenés el precio exacto, pedí medidas y uso para cotizar. Respondés en español rioplatense, breve y profesional. Cerrás siempre con "Saludos BMC URUGUAY!"`;
+
+    // Multi-canal KB injection (Brief §6.5):
+    // - resolve surface from CRM `origen` (ML/WA/Email/CRM) → KB_SURFACES
+    // - retrieve top-3 KB matches by overlap scoring
+    // - drop weak matches (matchScore < 2) so ML/WA replies don't pick up
+    //   noise when the user query has no real overlap with the KB.
+    // The resolved per-surface text (ML override max 350 chars, WA 700, etc.)
+    // is prefixed to userMsg as a compact policies block.
+    let kbBlock = "";
+    try {
+      await ensureGcsInit();
+      const surface = mapOrigenToSurface(origen);
+      const matches = findRelevantExamples(consulta, { limit: 3 })
+        .filter((m) => (m.matchScore ?? 0) >= 2);
+      if (matches.length > 0) {
+        const items = matches
+          .map((m, i) => {
+            const text = resolveTrainingAnswer(m, surface);
+            return text ? `[${i + 1}] ${text}` : null;
+          })
+          .filter(Boolean);
+        if (items.length > 0) {
+          kbBlock = `Políticas / FAQs relevantes (usar como guía):\n${items.join("\n")}`;
+        }
+      }
+    } catch (_) { /* non-fatal — continue without KB block */ }
 
     const userMsg = [
       `Canal: ${origen || "desconocido"}`,
       `Cliente: ${cliente || "desconocido"}`,
       producto      ? `Producto/publicación: ${producto}`  : null,
-      observaciones ? `Observaciones: ${observaciones}`    : null,
-      historyContext || null,
+      observacionesCombined ? `Observaciones: ${observacionesCombined}` : null,
+      kbBlock || null,
       `Consulta: ${consulta}`,
     ].filter(Boolean).join("\n");
 
     const errors = [];
+
+    // F3.2 — Vercel AI Gateway path. When enabled, route through the unified
+    // gateway endpoint instead of the per-SDK chain below. Provider fallback
+    // is delegated to gateway (`providerOptions.gateway.order`). Brief §5.6.
+    if (isAiGatewayEnabled()) {
+      try {
+        // If the caller forced a provider, keep that as the only option;
+        // otherwise use the default ranking that matches the legacy chain.
+        const providerOrder = provider
+          ? [providerToGatewaySlug(provider)].filter(Boolean)
+          : DEFAULT_PROVIDER_ORDER;
+        const { text, provider: usedProvider } = await generateTextViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          maxTokens: 300,
+          providerOrder: providerOrder.length ? providerOrder : DEFAULT_PROVIDER_ORDER,
+        });
+        if (text) return res.json({ ok: true, respuesta: text, provider: usedProvider });
+        errors.push("gateway: empty response");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
 
     for (const p of chain) {
       const apiKey = apiKeys[p];
@@ -2247,6 +2376,25 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
 }`;
 
     const errors = [];
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const { object, provider: usedProvider } = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (object) return res.json({ ok: true, data: object, provider: usedProvider });
+        errors.push("gateway: empty object");
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+      return res.status(503).json({ ok: false, error: "AI Gateway failed", details: errors });
+    }
+
     for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
@@ -2288,8 +2436,8 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     res.status(503).json({ ok: false, error: "All providers failed", details: errors });
   });
 
-  // ── ingest-email: parsea email + escribe en CRM_Operativo ──
-  router.post("/crm/ingest-email", async (req, res) => {
+  // ── ingest-email: parsea email + escribe en CRM_Operativo — auth obligatoria (API_AUTH_TOKEN o EMAIL_INGEST_TOKEN)
+  router.post("/crm/ingest-email", requireEmailIngestAuth, async (req, res) => {
     const { asunto, cuerpo, remitente, messageId } = req.body || {};
     if (!cuerpo) return res.status(400).json({ ok: false, error: "Missing cuerpo" });
 
@@ -2319,7 +2467,30 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     let parsed = null;
     let provider = null;
     const errors = [];
-    for (const p of RANKING) {
+
+    // F3.2 — AI Gateway path with structured output (Zod schema).
+    // On success we continue to the Sheets writer below.
+    if (isAiGatewayEnabled()) {
+      try {
+        const schema = await getEmailExtractionSchema();
+        const result = await generateObjectViaGateway({
+          system: systemPrompt,
+          prompt: userMsg,
+          schema,
+          maxTokens: 500,
+        });
+        if (result?.object) {
+          parsed = result.object;
+          provider = result.provider;
+        } else {
+          errors.push("gateway: empty object");
+        }
+      } catch (e) {
+        errors.push(`gateway: ${String(e.message || e).slice(0, 120)}`);
+      }
+    }
+
+    if (!parsed) for (const p of RANKING) {
       const apiKey = apiKeys[p];
       if (!apiKey) { errors.push(`${p}: no key`); continue; }
       try {
@@ -2686,7 +2857,7 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
       const sheets = await getCrmSheetsWrite();
       const r = await sheets.spreadsheets.values.get({
         spreadsheetId: sheetId,
-        range: `'${CRM_TAB}'!A${rowNum}:AK${rowNum}`,
+        range: `'${CRM_TAB}'!A${rowNum}:AN${rowNum}`,
       });
       const parsed = parseCrmRowAtoAK(r.data.values || []);
       return res.json({ ok: true, row: rowNum, parsed });
@@ -2750,6 +2921,32 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
         requestBody: { values: [[sentAt]] },
       });
       return res.json({ ok: true, row, enviadoEl: sentAt });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  /**
+   * Escribe taxonomía (cols AL–AN): tipo de contacto, tags, notas.
+   * Body: { row, tipoContacto?, tags?, notas? } — solo actualiza campos presentes.
+   */
+  router.post("/crm/cockpit/taxonomy-row", requireCrmCockpitAuth, async (req, res) => {
+    const row = Number(req.body?.row);
+    if (!row || row < FIRST_DATA_ROW) {
+      return res.status(400).json({ ok: false, error: `Invalid row (>= ${FIRST_DATA_ROW})` });
+    }
+    if (!checkSheetsAvailable(config)) return noConfig(res);
+    const tipoContacto = req.body?.tipoContacto ?? req.body?.tipo_contacto;
+    const tags = req.body?.tags;
+    const notas = req.body?.notas;
+    try {
+      const result = await writeCrmRowTaxonomy(row, {
+        tipoContacto: tipoContacto !== undefined && tipoContacto !== null ? tipoContacto : undefined,
+        tags: tags !== undefined && tags !== null ? tags : undefined,
+        notas: notas !== undefined && notas !== null ? notas : undefined,
+      });
+      if (!result.ok) return res.status(400).json(result);
+      return res.json(result);
     } catch (e) {
       return res.status(500).json({ ok: false, error: e.message });
     }
@@ -2996,16 +3193,23 @@ Respondé SOLO JSON válido, sin markdown, con esta forma exacta:
     return Math.floor(row);
   }
 
-  /** Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada. */
+  /**
+   * Clasifica fila CRM por canal (ML, WA, Meta) para cola unificada.
+   * Delegates to normalizeSurface but preserves the legacy string output
+   * ("mercadolibre" | "whatsapp" | ...) consumed by /unified-queue.
+   */
   function classifyCrmChannel(parsed) {
-    const origen = String(parsed?.origen || "");
-    const obs = String(parsed?.observaciones || "");
-    const qid = extractMlQuestionId(obs);
-    if (qid || /ML/i.test(origen) || /\bQ:\d+/i.test(obs)) return "mercadolibre";
-    if (/WA|WhatsApp/i.test(origen)) return "whatsapp";
-    if (/instagram|(^|\s)ig(\s|$)|IG-/i.test(origen)) return "instagram";
-    if (/facebook|messenger|\bfb\b/i.test(origen)) return "facebook";
-    return null;
+    const surface = normalizeSurface({
+      origen: parsed?.origen,
+      observaciones: parsed?.observaciones,
+    });
+    switch (surface) {
+      case SURFACES.MERCADO_LIBRE: return "mercadolibre";
+      case SURFACES.WHATSAPP:      return "whatsapp";
+      case SURFACES.INSTAGRAM:     return "instagram";
+      case SURFACES.FACEBOOK:      return "facebook";
+      default:                     return null;
+    }
   }
 
   /**

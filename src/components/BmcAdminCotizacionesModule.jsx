@@ -5,6 +5,36 @@ import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import BmcFiscalCard from "./BmcFiscalCard.jsx";
 
 const STORAGE_KEY = "bmc_cockpit_token";
+/** Persisted Wolfboard POST /quote-batch flags (matches server defaults when all true / force false). */
+const STORAGE_BATCH_OPTS = "bmc_admin_quote_batch_opts";
+
+function loadQuoteBatchOpts() {
+  const defaults = {
+    force: false,
+    syncToCrm: true,
+    createCrmRows: true,
+    syncQuoteLink: true,
+  };
+  try {
+    const raw = localStorage.getItem(STORAGE_BATCH_OPTS);
+    if (!raw) return defaults;
+    const o = JSON.parse(raw);
+    return {
+      force: Boolean(o.force),
+      syncToCrm: o.syncToCrm !== false,
+      createCrmRows: o.createCrmRows !== false,
+      syncQuoteLink: o.syncQuoteLink !== false,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveQuoteBatchOpts(opts) {
+  try {
+    localStorage.setItem(STORAGE_BATCH_OPTS, JSON.stringify(opts));
+  } catch { /* ignore */ }
+}
 
 const wrap = {
   minHeight: "100vh",
@@ -68,7 +98,6 @@ const btnGhost = {
 };
 
 const btnGreen = { ...btnPrimary, background: "#2a7a2a" };
-const btnOrange = { ...btnPrimary, background: "#c86000" };
 
 const input = {
   width: "100%",
@@ -119,6 +148,25 @@ const pill = (color = "#e5e5ea", text = "#1d1d1f") => ({
   whiteSpace: "nowrap",
 });
 
+const toggleLabelStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 10,
+  fontSize: 13,
+  color: "#1d1d1f",
+  cursor: "pointer",
+  lineHeight: 1.45,
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif",
+};
+
+const toggleHintStyle = {
+  display: "block",
+  fontSize: 11,
+  color: "#86868b",
+  fontWeight: 400,
+  marginTop: 2,
+};
+
 const CANAL_COLORS = {
   WA:     ["#dcfce7", "#16a34a"],
   EM:     ["#dbeafe", "#1d4ed8"],
@@ -167,6 +215,8 @@ export default function BmcAdminCotizacionesModule() {
   const [error, setError]       = useState("");
   const [toast, setToast]       = useState("");
 
+  const [batchOpts, setBatchOpts] = useState(() => loadQuoteBatchOpts());
+
   const [detail, setDetail]     = useState(null); // { row }
   const [dRespuesta, setDRespuesta] = useState("");
   const [dLink, setDLink]       = useState("");
@@ -194,7 +244,25 @@ export default function BmcAdminCotizacionesModule() {
       .catch(() => setTokenLoadError("Error de red al pedir el token. Pegalo manualmente."));
   }, []);
 
+  useEffect(() => {
+    saveQuoteBatchOpts(batchOpts);
+  }, [batchOpts]);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3500); };
+
+  const setBatchOpt = (key, value) => {
+    setBatchOpts((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const resetBatchOptsDefaults = () => {
+    setBatchOpts({
+      force: false,
+      syncToCrm: true,
+      createCrmRows: true,
+      syncQuoteLink: true,
+    });
+    showToast("Opciones del batch: valores por defecto del servidor.");
+  };
 
   const loadPendientes = useCallback(async () => {
     if (!token) { setError("Guardá el token para cargar consultas."); return; }
@@ -237,18 +305,31 @@ export default function BmcAdminCotizacionesModule() {
     await loadPendientes();
   };
 
-  const runBatch = async (force = false) => {
+  const runBatch = async () => {
     if (!token) return;
     setBatching(true);
     setError("");
+    const body = {
+      force: batchOpts.force,
+      syncToCrm: batchOpts.syncToCrm,
+      createCrmRows: batchOpts.createCrmRows,
+      syncQuoteLink: batchOpts.syncQuoteLink,
+    };
     const { ok, status, data } = await apiFetch(token, "/api/wolfboard/quote-batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ force }),
+      body: JSON.stringify(body),
     });
     setBatching(false);
     if (!ok) { setError(data?.error || `Batch HTTP ${status}`); return; }
-    showToast(`IA batch: ${data.successful ?? 0} generadas · ${data.failed ?? 0} fallidas · ${data.skipped ?? 0} omitidas`);
+    const flags = [
+      body.force ? "force" : null,
+      !body.syncToCrm ? "sin CRM" : null,
+      !body.createCrmRows ? "sin filas nuevas" : null,
+      !body.syncQuoteLink ? "sin link AH" : null,
+    ].filter(Boolean);
+    const flagHint = flags.length ? ` (${flags.join(", ")})` : "";
+    showToast(`IA batch${flagHint}: ${data.successful ?? 0} generadas · ${data.failed ?? 0} fallidas · ${data.skipped ?? 0} omitidas`);
     await loadPendientes();
   };
 
@@ -368,11 +449,8 @@ export default function BmcAdminCotizacionesModule() {
             <button type="button" style={btnGhost} onClick={runSync} disabled={syncing}>
               {syncing ? "Sincronizando…" : "↕ Sincronizar"}
             </button>
-            <button type="button" style={btnGreen} onClick={() => runBatch(false)} disabled={batching}>
-              {batching ? "Generando…" : "✦ Generar cotizaciones IA"}
-            </button>
-            <button type="button" style={{ ...btnOrange, fontSize: 12 }} onClick={() => runBatch(true)} disabled={batching}>
-              {batching ? "…" : "Re-procesar errores (force)"}
+            <button type="button" style={btnGreen} onClick={runBatch} disabled={batching}>
+              {batching ? "Generando…" : "✦ Ejecutar batch IA"}
             </button>
             <button type="button" style={{ ...btnGhost, fontSize: 12 }} onClick={loadPendientes} disabled={loading}>
               {loading ? "Cargando…" : "↺ Recargar"}
@@ -401,6 +479,74 @@ export default function BmcAdminCotizacionesModule() {
                 )}
               </span>
             )}
+          </div>
+        )}
+
+        {token && (
+          <div style={card}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1a3a5c" }}>
+                Opciones del batch IA (<code style={{ fontSize: 12 }}>POST /api/wolfboard/quote-batch</code>)
+              </p>
+              <button type="button" style={{ ...btnGhost, fontSize: 12, padding: "6px 10px" }} onClick={resetBatchOptsDefaults}>
+                Restaurar defaults del servidor
+              </button>
+            </div>
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#6e6e73", lineHeight: 1.45 }}>
+              Activá o desactivá cada flag; se guardan en este navegador. Son las únicas opciones expuestas por el endpoint de batch (además del token).
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <label style={toggleLabelStyle}>
+                <input
+                  type="checkbox"
+                  checked={batchOpts.force}
+                  onChange={(e) => setBatchOpt("force", e.target.checked)}
+                  style={{ marginTop: 3, flexShrink: 0 }}
+                />
+                <span>
+                  <strong>Forzar reprocesar</strong> filas que ya tienen respuesta en J marcada con ⚠ (error manual).
+                  <span style={toggleHintStyle}>Si está desactivado, solo entran filas sin texto en J.</span>
+                </span>
+              </label>
+              <label style={toggleLabelStyle}>
+                <input
+                  type="checkbox"
+                  checked={batchOpts.syncToCrm}
+                  onChange={(e) => setBatchOpt("syncToCrm", e.target.checked)}
+                  style={{ marginTop: 3, flexShrink: 0 }}
+                />
+                <span>
+                  <strong>Sincronizar con CRM</strong> — leer CRM, escribir AF (respuesta) y operaciones relacionadas.
+                  <span style={toggleHintStyle}>Desactivá para solo actualizar columnas J/K/M del Admin.</span>
+                </span>
+              </label>
+              <label style={{ ...toggleLabelStyle, opacity: batchOpts.syncToCrm ? 1 : 0.55 }}>
+                <input
+                  type="checkbox"
+                  checked={batchOpts.createCrmRows}
+                  onChange={(e) => setBatchOpt("createCrmRows", e.target.checked)}
+                  disabled={!batchOpts.syncToCrm}
+                  style={{ marginTop: 3, flexShrink: 0 }}
+                />
+                <span>
+                  <strong>Crear fila nueva en CRM</strong> si no hay coincidencia por consulta (solo si el tab es CRM_Operativo).
+                  <span style={toggleHintStyle}>Desactivá en re-ejecuciones para evitar duplicados cuando ya existe la fila.</span>
+                </span>
+              </label>
+              <label style={{ ...toggleLabelStyle, opacity: batchOpts.syncToCrm ? 1 : 0.55 }}>
+                <input
+                  type="checkbox"
+                  checked={batchOpts.syncQuoteLink}
+                  onChange={(e) => setBatchOpt("syncQuoteLink", e.target.checked)}
+                  disabled={!batchOpts.syncToCrm}
+                  style={{ marginTop: 3, flexShrink: 0 }}
+                />
+                <span>
+                  <strong>Escribir link de presupuesto en CRM</strong> (columna AH cuando hay link).
+                  <span style={toggleHintStyle}>Desactivá si solo querés texto en AF sin tocar el link.</span>
+                </span>
+              </label>
+            </div>
           </div>
         )}
 

@@ -20,6 +20,15 @@ export const Col = {
   ENVIADO_EL: "AJ",
   /** Sí | No — evita que automatismos toquen la fila. */
   BLOQUEAR_AUTO: "AK",
+  /**
+   * Taxonomía operador / agente (fila 3: títulos sugeridos abajo). No forman parte del bloque gate AG–AK.
+   * @see docs/team/panelsim/CRM-OPERATIVO-COCKPIT.md
+   */
+  TIPO_CONTACTO: "AL",
+  /** Tags separados por coma (ej. obra, proveedor-madera). */
+  TAGS_TAXONOMIA: "AM",
+  /** Notas libres de clasificación (contexto para CRM / agente). */
+  NOTAS_TAXONOMIA: "AN",
 };
 
 /**
@@ -59,4 +68,12 @@ export function rangeAGAK(row) {
  */
 export function rangeAHAK(row) {
   return `'${CRM_TAB}'!${Col.LINK_PRESUPUESTO}${row}:${Col.BLOQUEAR_AUTO}${row}`;
+}
+
+/**
+ * Rango de taxonomía (AL:AN) para una fila de datos.
+ * @param {number} row — fila 1-based en Sheets
+ */
+export function rangeALAN(row) {
+  return `'${CRM_TAB}'!${Col.TIPO_CONTACTO}${row}:${Col.NOTAS_TAXONOMIA}${row}`;
 }

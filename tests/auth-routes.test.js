@@ -15,6 +15,9 @@ const TOKEN = process.env.API_AUTH_TOKEN;
 const { default: express } = await import("express");
 const { default: calcRouter } = await import("../server/routes/calc.js");
 const { default: agentVoiceRouter } = await import("../server/routes/agentVoice.js");
+const { config } = await import("../server/config.js");
+const { createSuperAgentRouter } = await import("../server/routes/superAgent.js");
+const { createWolfboardRouter } = await import("../server/routes/wolfboard.js");
 
 let passed = 0;
 let failed = 0;
@@ -36,6 +39,8 @@ async function run() {
   app.use(express.json({ limit: "1mb" }));
   app.use("/calc", calcRouter);
   app.use("/api", agentVoiceRouter);
+  app.use("/api/agent", createSuperAgentRouter(config));
+  app.use("/api/wolfboard", createWolfboardRouter(config));
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));
@@ -108,6 +113,35 @@ async function run() {
       r.status,
       401
     );
+
+    // ── Legacy routers must fail closed if service token is not configured ──
+    const previousToken = config.apiAuthToken;
+    config.apiAuthToken = "";
+    try {
+      r = await fetch(`${base}/api/wolfboard/pendientes`);
+      body = await r.json().catch(() => ({}));
+      assert(
+        "GET /api/wolfboard/pendientes with missing API_AUTH_TOKEN → 503",
+        r.status === 503 && body.error === "API_AUTH_TOKEN not configured",
+        { status: r.status, error: body.error },
+        { status: 503, error: "API_AUTH_TOKEN not configured" }
+      );
+
+      r = await fetch(`${base}/api/agent/quote-lead`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consulta: "Necesito cotizar un techo de 10 por 12 metros" }),
+      });
+      body = await r.json().catch(() => ({}));
+      assert(
+        "POST /api/agent/quote-lead with missing API_AUTH_TOKEN → 503",
+        r.status === 503 && body.error === "API_AUTH_TOKEN not configured",
+        { status: r.status, error: body.error },
+        { status: 503, error: "API_AUTH_TOKEN not configured" }
+      );
+    } finally {
+      config.apiAuthToken = previousToken;
+    }
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

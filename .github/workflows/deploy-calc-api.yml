@@ -1,25 +1,27 @@
 # Deploy Calculator API to Cloud Run
 #
-# Deploys the Express calculator API to Google Cloud Run when
-# server or calculation source files change on the main branch.
+# Gated on a successful run of the "CI — Panelin Calculadora BMC" workflow on main.
+# Replaces the prior `push: paths:` trigger so red-CI commits cannot ship to prod.
+# The original `paths:` filter is reproduced inside the job via `git diff` so a
+# main commit that touches only docs/scripts will skip the deploy steps.
 
 name: Deploy Calculator API to Cloud Run
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'server/**'
-      - 'src/utils/**'
-      - 'src/data/**'
-      - 'Dockerfile.bmc-dashboard'
-      - '.github/workflows/deploy-calc-api.yml'
+  workflow_run:
+    workflows: ["CI — Panelin Calculadora BMC"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
+  actions: read
+
+concurrency:
+  group: deploy-calc-api-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   PROJECT_ID: chatbot-bmc-live
@@ -31,12 +33,83 @@ jobs:
   deploy:
     name: Deploy Calculator API
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - name: Checkout code
+      - name: Resolve commit SHA to deploy
+        id: sha
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code at CI SHA
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Confirm SHA is still tip of main
+        # Defends against re-running an old successful CI run from the Actions UI,
+        # which would otherwise redeploy a stale SHA over current main. workflow_dispatch
+        # is intentionally exempt — it's the manual escape hatch for force-deploys.
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          set -e
+          git fetch origin main --depth=1
+          REMOTE_TIP=$(git rev-parse origin/main)
+          if [[ "${{ steps.sha.outputs.sha }}" != "$REMOTE_TIP" ]]; then
+            echo "::error::SHA ${{ steps.sha.outputs.sha }} is no longer the tip of origin/main ($REMOTE_TIP). Aborting deploy to prevent stale-rerun rollback."
+            exit 1
+          fi
+          echo "SHA matches origin/main tip: $REMOTE_TIP"
+
+      - name: Skip when no relevant paths changed
+        id: paths
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          # workflow_dispatch always deploys; otherwise replicate the original `paths:` filter.
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::workflow_dispatch — proceeding with deploy."
+            exit 0
+          fi
+
+          # Find the last successful deployment SHA on main to use as diff base.
+          # This ensures we don't miss changes from multi-commit pushes or rebase-merges.
+          PREV_SHA=$(gh run list --workflow "${{ github.workflow }}" --branch main --status success --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_SHA" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No previous successful deploy found. Proceeding with deploy to be safe."
+            exit 0
+          fi
+
+          if [ "$PREV_SHA" = "$(git rev-parse HEAD)" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Re-running successful commit. Proceeding with deploy."
+            exit 0
+          fi
+
+          BASE="$PREV_SHA"
+          echo "::notice::Comparing against last successful deploy: $BASE"
+
+          if ! git rev-parse "$BASE" >/dev/null 2>&1; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Base commit $BASE not found in history; deploying."
+            exit 0
+          fi
+
+          if git diff --name-only "$BASE" HEAD | grep -qE '^(server/|src/utils/|src/data/|Dockerfile\.bmc-dashboard$|\.github/workflows/deploy-calc-api\.yml$)'; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::No relevant paths changed since $BASE; skipping deploy."
+          fi
 
       - name: Authenticate to Google Cloud
+        if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/auth@v3
         with:
           project_id: ${{ env.PROJECT_ID }}
@@ -44,30 +117,30 @@ jobs:
           service_account: ${{ secrets.GCP_DEPLOY_SA_EMAIL }}
 
       - name: Set up Cloud SDK
+        if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+        if: steps.paths.outputs.skip != 'true'
+        run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
 
       - name: Build and Push Docker Image
+        if: steps.paths.outputs.skip != 'true'
         run: |
           IMAGE_NAME="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc"
           docker build \
             -f server/Dockerfile \
-            -t "${IMAGE_NAME}:${{ github.sha }}" \
-            -t "${IMAGE_NAME}:latest" \
+            -t "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}" \
             .
-          docker push "${IMAGE_NAME}:${{ github.sha }}"
-          docker push "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"
 
       - name: Deploy to Cloud Run
+        if: steps.paths.outputs.skip != 'true'
         uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc:${{ github.sha }}
-          service_account: ${{ secrets.GCP_RUNTIME_SA_EMAIL }}
+          image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc:${{ steps.sha.outputs.sha }}
           env_vars: |
             BMC_SHEET_ID=${{ secrets.BMC_SHEET_ID }}
             BMC_SHEET_SCHEMA=${{ secrets.BMC_SHEET_SCHEMA }}
@@ -77,22 +150,57 @@ jobs:
             BMC_CALENDARIO_SHEET_ID=${{ secrets.BMC_CALENDARIO_SHEET_ID }}
             PUBLIC_BASE_URL=${{ secrets.PUBLIC_BASE_URL }}
             GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/service-account.json
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ secrets.SMTP_PORT }}
+            SMTP_SECURE=${{ secrets.SMTP_SECURE }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASS=${{ secrets.SMTP_PASS }}
+            WA_AUTH_EMAIL_FROM=${{ secrets.WA_AUTH_EMAIL_FROM }}
+            WA_JWT_SECRET=${{ secrets.WA_JWT_SECRET }}
+            GOOGLE_OAUTH_CLIENT_ID=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+            IDENTITY_COOKIE_DOMAIN=${{ secrets.IDENTITY_COOKIE_DOMAIN }}
+            IDENTITY_COOKIE_NAME=${{ secrets.IDENTITY_COOKIE_NAME }}
+            INTERNAL_SUPERADMIN_EMAILS=${{ secrets.INTERNAL_SUPERADMIN_EMAILS }}
+            SHEETS_CLIENT_QUOTES_ENABLED=${{ secrets.SHEETS_CLIENT_QUOTES_ENABLED }}
+            SHEETS_CLIENT_QUOTES_TAB=${{ secrets.SHEETS_CLIENT_QUOTES_TAB }}
           flags: |
+            --service-account=${{ secrets.GCP_RUNTIME_SA_EMAIL }}
             --allow-unauthenticated
             --min-instances=0
             --max-instances=10
             --memory=512Mi
             --cpu=1
             --timeout=60
-            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest
+            --set-secrets=/run/secrets/service-account.json=panelin-service-account:latest,IDENTITY_JWT_SECRET=IDENTITY_JWT_SECRET:latest,MFA_KEK_HEX=MFA_KEK_HEX:latest
 
       - name: Show service URL
+        if: steps.paths.outputs.skip != 'true'
+        id: service_url
         run: |
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region=${{ env.REGION }} \
             --format='value(status.url)')
           echo "Calculator API deployed to: $SERVICE_URL"
+          echo "url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
           echo "Endpoints:"
           echo "  POST $SERVICE_URL/calc/cotizar"
           echo "  GET  $SERVICE_URL/calc/catalogo"
           echo "  GET  $SERVICE_URL/calc/escenarios"
+
+      - name: Setup Node.js (for smoke)
+        if: steps.paths.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies (smoke only)
+        if: steps.paths.outputs.skip != 'true'
+        run: npm ci --include=dev --ignore-scripts
+
+      - name: Smoke against just-deployed revision
+        if: steps.paths.outputs.skip != 'true'
+        env:
+          BMC_API_BASE: ${{ steps.service_url.outputs.url }}
+          SMOKE_SKIP_SUGGEST: '1'
+        run: npm run smoke:prod

@@ -12,6 +12,7 @@ Todo lo que sigue al **Agente Simulador (SIM)** y **PANELSIM** (mismo rol), más
 | [`biblioteca-tecnica-productos/README.md`](./biblioteca-tecnica-productos/README.md) | Índice del material técnico-comercial (flyers/fichas); assets enlazados desde `PDF Productos /`. |
 | [`CRM-OPERATIVO-COCKPIT.md`](./CRM-OPERATIVO-COCKPIT.md) | **Cockpit CRM** — columnas AG–AK (link presupuesto, aprobación envío), qué escribe ML/WA/email; `server/lib/crmOperativoLayout.js`. |
 | [`EMAIL-GPT-THUNDERBIRD-WORKFLOW.md`](./EMAIL-GPT-THUNDERBIRD-WORKFLOW.md) | **Correo + GPT + Thunderbird (mismo IMAP):** `GET /api/email/panelsim-summary`, `POST /api/email/draft-outbound`, ingest CRM, fase 2 control IMAP pendiente. |
+| [`EMAIL-ADMINISTRATOR.md`](./EMAIL-ADMINISTRATOR.md) | **Rol Email Administrator:** auth ingest (`EMAIL_INGEST_TOKEN` / `API_AUTH_TOKEN`), comandos bridge y Fase 3 (tabla operadores) diferida. |
 | [`GPT-EMAIL-AGENT-BUILDER.md`](./GPT-EMAIL-AGENT-BUILDER.md) | **Custom GPT solo correo:** instrucciones + starters; OpenAPI mínimo [`openapi-email-gpt.yaml`](../../openapi-email-gpt.yaml) (2 Actions, sin calculadora). |
 | [`matprompt/`](./matprompt/) | Plantillas MATPROMT (tema SIM, handoff PANELSIM). |
 | [`reports/`](./reports/) | Informes de situación Sheets, run KB, y futuros `SIM-REV-REVIEW-*.md`. |
