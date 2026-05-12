@@ -909,7 +909,7 @@ function EstructuraZonaOverlay({
                   aria-label={
                     combinadaAssign
                       ? (typeof onFijacionPaletteBulk === "function"
-                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: ${enabled ? "quitar" : "incluir"} del cómputo. Mayús+clic o pulsación larga: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"}.`
+                        ? `Material: ${mat}${enabled ? "" : " (no incluido)"}. Clic: elegir material. Clic derecho: ${enabled ? "quitar" : "incluir"}.`
                         : `Material: ${mat}${enabled ? "" : " (removido)"}. Clic para cambiar material. Clic derecho para ${enabled ? "remover" : "restaurar"}.`)
                       : canToggleDots
                         ? `Fijación (${mat})${enabled ? "" : " — no incluida"}. Clic para ${enabled ? "quitar" : "incluir"} del cómputo.`
@@ -927,36 +927,13 @@ function EstructuraZonaOverlay({
                     ev.preventDefault();
                     setApoyoMatPick(null);
                     if (typeof onFijacionPaletteBulk === "function" && typeof onDotToggleEnabled === "function") {
-                      if (ev.shiftKey) {
-                        clearDotPointerTimer();
-                        setFijPalette({
-                          left: ev.clientX + 10,
-                          top: ev.clientY + 6,
-                          keys: [d.key],
-                          title: "Punto de fijación",
-                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
-                        });
-                        return;
-                      }
-                      clearDotPointerTimer();
-                      const dotKeyFull = `${r.gi}:${d.key}`;
-                      dotPointerRef.current.key = dotKeyFull;
-                      dotPointerRef.current.longFired = false;
-                      dotPointerRef.current.timer = window.setTimeout(() => {
-                        dotPointerRef.current.longFired = true;
-                        dotPointerRef.current.timer = null;
-                        dotPointerRef.current.key = null;
-                        setFijPalette({
-                          left: ev.clientX + 10,
-                          top: ev.clientY + 6,
-                          keys: [d.key],
-                          title: "Punto de fijación",
-                          subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
-                        });
-                      }, 450);
-                      try {
-                        ev.currentTarget.setPointerCapture(ev.pointerId);
-                      } catch { /* ignore */ }
+                      setFijPalette({
+                        left: ev.clientX + 10,
+                        top: ev.clientY + 6,
+                        keys: [d.key],
+                        title: "Punto de fijación",
+                        subtitle: `Zona ${(typeof r.gi === "number" ? r.gi : 0) + 1}`,
+                      });
                       return;
                     }
                     if (typeof onFijacionPaletteBulk === "function") {
@@ -978,31 +955,6 @@ function EstructuraZonaOverlay({
                         return next;
                       });
                     }
-                  }}
-                  onPointerUp={(ev) => {
-                    if (!combinadaAssign || typeof onFijacionPaletteBulk !== "function" || typeof onDotToggleEnabled !== "function") return;
-                    const dotKeyFull = `${r.gi}:${d.key}`;
-                    if (dotPointerRef.current.key !== dotKeyFull) return;
-                    dotPointerRef.current.key = null;
-                    if (dotPointerRef.current.timer != null) {
-                      window.clearTimeout(dotPointerRef.current.timer);
-                      dotPointerRef.current.timer = null;
-                      if (!dotPointerRef.current.longFired) onDotToggleEnabled(r.gi, d.key);
-                    }
-                    dotPointerRef.current.longFired = false;
-                    try {
-                      if (ev.currentTarget.hasPointerCapture?.(ev.pointerId)) {
-                        ev.currentTarget.releasePointerCapture(ev.pointerId);
-                      }
-                    } catch { /* ignore */ }
-                  }}
-                  onPointerCancel={(ev) => {
-                    clearDotPointerTimer();
-                    try {
-                      if (ev.currentTarget.hasPointerCapture?.(ev.pointerId)) {
-                        ev.currentTarget.releasePointerCapture(ev.pointerId);
-                      }
-                    } catch { /* ignore */ }
                   }}
                   onContextMenu={(ev) => {
                     if ((!combinadaAssign && !canToggleDots) || typeof onDotToggleEnabled !== "function") return;
@@ -2797,6 +2749,7 @@ export default function RoofPreview({
           const encs = findEncounters(layout.entries);
           const missing = encs.filter((enc) => {
             const [a, b] = enc.zoneIndices;
+            if (getLateralAnnexRootBodyGi(zonas, a) === getLateralAnnexRootBodyGi(zonas, b)) return false;
             const pk = encounterPairKey(a, b);
             const low = Math.min(a, b);
             return zonas[low]?.preview?.encounterByPair?.[pk] == null;
@@ -3544,6 +3497,7 @@ export default function RoofPreview({
             )}
             {encounters.flatMap((enc) => {
               const [ga, gb] = enc.zoneIndices;
+              const isSameBody = getLateralAnnexRootBodyGi(zonas, ga) === getLateralAnnexRootBodyGi(zonas, gb);
               const pk = encounterPairKey(ga, gb);
               const low = Math.min(ga, gb);
               const rawPair = zonas[low]?.preview?.encounterByPair?.[pk];
@@ -3554,11 +3508,13 @@ export default function RoofPreview({
                 const isContinuo = run.normalized.modo === "continuo";
                 const isActive = encounterPrompt?.pairKey === pk && encounterPrompt?.segmentId === run.id;
                 const showContinuoEditGuide = isContinuo && isActive;
-                const stroke = showContinuoEditGuide
-                  ? C.primary
-                  : isContinuo
-                    ? "rgba(0,0,0,0)"
-                    : encounterStrokeForModo(run.normalized.modo);
+                const stroke = isSameBody
+                  ? "#9ca3af"
+                  : showContinuoEditGuide
+                    ? C.primary
+                    : isContinuo
+                      ? "rgba(0,0,0,0)"
+                      : encounterStrokeForModo(run.normalized.modo);
                 const baseW = (isActive ? 2.2 : 1) * LINE_WEIGHTS.encounter * svgTy.m;
                 const lineEl = (
                   <line
@@ -3570,12 +3526,14 @@ export default function RoofPreview({
                     stroke={stroke}
                     strokeWidth={isContinuo && !showContinuoEditGuide ? Math.max(baseW * 2.4, 0.22 * svgTy.m) : baseW}
                     strokeDasharray={
-                      isContinuo && !showContinuoEditGuide ? "none" : `${0.16 * svgTy.m} ${0.1 * svgTy.m}`
+                      isSameBody ? undefined
+                        : isContinuo && !showContinuoEditGuide ? "none"
+                          : `${0.16 * svgTy.m} ${0.1 * svgTy.m}`
                     }
-                    pointerEvents="stroke"
-                    opacity={isContinuo && !showContinuoEditGuide ? 1 : run.includeInBom ? 0.95 : 0.35}
-                    style={{ cursor: onEncounterPairChange ? "pointer" : undefined }}
-                    onPointerDown={(ev) => {
+                    pointerEvents={isSameBody ? "none" : "stroke"}
+                    opacity={isSameBody ? 0.3 : isContinuo && !showContinuoEditGuide ? 1 : run.includeInBom ? 0.95 : 0.35}
+                    style={{ cursor: (!isSameBody && onEncounterPairChange) ? "pointer" : undefined }}
+                    onPointerDown={isSameBody ? undefined : (ev) => {
                       if (!onEncounterPairChange) return;
                       ev.stopPropagation();
                       setEncounterPrompt({
@@ -3590,7 +3548,7 @@ export default function RoofPreview({
                   />
                 );
                 // Per-tramo profile label: shown inline on each non-continuo segment.
-                const perfilLabel = !isContinuo ? encounterPerfilLabel(run.normalized) : null;
+                const perfilLabel = (!isSameBody && !isContinuo) ? encounterPerfilLabel(run.normalized) : null;
                 const segLenM = enc.length * (run.t1 - run.t0);
                 const labelFs = svgTy.encFont * 0.82;
                 const minSegForLabel = perfilLabel ? labelFs * perfilLabel.length * 0.52 : 0;
@@ -3624,8 +3582,8 @@ export default function RoofPreview({
                 })() : null;
                 return labelEl ? [lineEl, labelEl] : [lineEl];
               });
-              // Boundary markers between segments (skip t=0 and t=1 endpoints)
-              const markers = runs.length > 1
+              // Boundary markers between segments (skip t=0 and t=1 endpoints; none for same-body joints)
+              const markers = !isSameBody && runs.length > 1
                 ? runs.slice(1).map((run) => {
                     const pt = encInterp(enc, run.t0);
                     return (
