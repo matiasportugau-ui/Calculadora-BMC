@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-05-01T13:55:56.931Z",
+  "updatedAt": "2026-05-07T13:00:15.193Z",
   "references": [
     {
       "id": "ref_198ba28c6d98e03a",
@@ -9212,6 +9212,1006 @@
       "rankHint": "tier-1",
       "eventIds": [
         "evt_7edfaed4d9ff03be"
+      ]
+    },
+    {
+      "id": "ref_cd7a4ffd2a9a5e65",
+      "sourceId": "vercel-releases",
+      "title": "vercel@53.1.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4053.1.0",
+      "summary": "### Minor Changes - 5cf1179: Use services orchestrator for single web services in local dev. ### Patch Changes - 3aa821e: Allow adding Development Environment Variables on teams that enforce sensitive Environment Variables.",
+      "publishedAt": "2026-05-01T22:29:30Z",
+      "firstSeenAt": "2026-05-02T13:00:10.846Z",
+      "lastSeenAt": "2026-05-02T13:00:10.846Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_0090a62ea133c318"
+      ]
+    },
+    {
+      "id": "ref_76f86f00b583eb13",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python-workers@0.0.21",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python-workers%400.0.21",
+      "summary": "### Patch Changes - 6935baa: Refactor Python queue sdk into `_queue/` - 574c9f1: [vercel-workers] Replaces retention_seconds and delay_seconds with retention and delay which support timedelta, e.g retention=timedelta(hours=6)",
+      "publishedAt": "2026-05-01T22:29:33Z",
+      "firstSeenAt": "2026-05-02T13:00:10.846Z",
+      "lastSeenAt": "2026-05-02T13:00:10.846Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_6172229634d29c50"
+      ]
+    },
+    {
+      "id": "ref_04fe409968f0ce9f",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.174",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.174",
+      "summary": "### Patch Changes - Updated dependencies [49f6d44] - @ai-sdk/gateway@3.0.109",
+      "publishedAt": "2026-05-01T19:37:08Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5de8ce515dce1d11"
+      ]
+    },
+    {
+      "id": "ref_f4d927da8ffd7efa",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@6.0.173",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%406.0.173",
+      "summary": "### Patch Changes - 7beadf0: feat(mcp): propagate the server name through dynamic tool parts - Updated dependencies [7beadf0] - @ai-sdk/provider-utils@4.0.26 - @ai-sdk/gateway@3.0.108",
+      "publishedAt": "2026-05-01T15:30:30Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_76c074667bc2f739"
+      ]
+    },
+    {
+      "id": "ref_7f2fe11b74075ac7",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@5.0.183",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%405.0.183",
+      "summary": "### Patch Changes - Updated dependencies [8dd759d] - @ai-sdk/gateway@2.0.86",
+      "publishedAt": "2026-05-01T18:53:05Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e7f2c57158f41b04"
+      ]
+    },
+    {
+      "id": "ref_0ecba43d16690237",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@3.0.87",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%403.0.87",
+      "summary": "### Patch Changes - Updated dependencies [6043d24] - @ai-sdk/openai-compatible@2.0.45",
+      "publishedAt": "2026-05-01T18:18:49Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9837cbfa31180ffd"
+      ]
+    },
+    {
+      "id": "ref_a9db4f22bb9abf97",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@3.0.86",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%403.0.86",
+      "summary": "### Patch Changes - Updated dependencies [7beadf0] - @ai-sdk/provider-utils@4.0.26 - @ai-sdk/openai-compatible@2.0.44",
+      "publishedAt": "2026-05-01T15:32:57Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_69bb3c3fcd942d19"
+      ]
+    },
+    {
+      "id": "ref_c2bda0ac36fb9e5a",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/xai@2.0.72",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/xai%402.0.72",
+      "summary": "### Patch Changes - Updated dependencies [cb61408] - @ai-sdk/openai-compatible@1.0.39",
+      "publishedAt": "2026-05-01T18:54:05Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1892fdc93853bab7"
+      ]
+    },
+    {
+      "id": "ref_8ca096d2c1237544",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.174",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.174",
+      "summary": "### Patch Changes - ai@6.0.174",
+      "publishedAt": "2026-05-01T19:37:41Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f161412109280904"
+      ]
+    },
+    {
+      "id": "ref_638a844e069137d0",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/vue@3.0.173",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/vue%403.0.173",
+      "summary": "### Patch Changes - Updated dependencies [7beadf0] - @ai-sdk/provider-utils@4.0.26 - ai@6.0.173",
+      "publishedAt": "2026-05-01T15:32:54Z",
+      "firstSeenAt": "2026-05-02T13:00:12.578Z",
+      "lastSeenAt": "2026-05-02T13:00:12.578Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_3300a522cddc4354"
+      ]
+    },
+    {
+      "id": "ref_f4ce708c215cb142",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Parloa builds service agents customers want to talk to]]>",
+      "url": "https://openai.com/index/parloa",
+      "summary": "",
+      "publishedAt": "2026-05-07T11:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_56ffdd0a9bb37c5d"
+      ]
+    },
+    {
+      "id": "ref_ee6dc225b81df8ba",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Introducing ChatGPT Futures: Class of 2026]]>",
+      "url": "https://openai.com/index/introducing-chatgpt-futures-class-of-2026",
+      "summary": "",
+      "publishedAt": "2026-05-06T00:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_aecde5aae3286fc6"
+      ]
+    },
+    {
+      "id": "ref_e177881c787cba4b",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Uber uses OpenAI to help people earn smarter and book faster]]>",
+      "url": "https://openai.com/index/uber",
+      "summary": "",
+      "publishedAt": "2026-05-06T00:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_7d32745050ecb969"
+      ]
+    },
+    {
+      "id": "ref_2df2a2b521ba1048",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[How frontier enterprises are building an AI advantage]]>",
+      "url": "https://openai.com/index/introducing-b2b-signals",
+      "summary": "",
+      "publishedAt": "2026-05-06T00:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9b4e42e2e2660ee8"
+      ]
+    },
+    {
+      "id": "ref_0ea557a506837b49",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Singular Bank helps bankers move fast with ChatGPT and Codex]]>",
+      "url": "https://openai.com/index/singular-bank",
+      "summary": "",
+      "publishedAt": "2026-05-06T00:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e98e5793c6c0c477"
+      ]
+    },
+    {
+      "id": "ref_d402a5b063cc752d",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[GPT-5.5 Instant: smarter, clearer, and more personalized]]>",
+      "url": "https://openai.com/index/gpt-5-5-instant",
+      "summary": "",
+      "publishedAt": "2026-05-05T10:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_33f7635ba1d28227"
+      ]
+    },
+    {
+      "id": "ref_ad58f9c7c962bdc3",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[Unlocking large scale AI training networks with MRC (Multipath Reliable Connection)]]>",
+      "url": "https://openai.com/index/mrc-supercomputer-networking",
+      "summary": "",
+      "publishedAt": "2026-05-05T10:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d8b2a530aa5c7817"
+      ]
+    },
+    {
+      "id": "ref_11eda102c97d6f7b",
+      "sourceId": "openai-news-rss",
+      "title": "<![CDATA[GPT-5.5 Instant System Card]]>",
+      "url": "https://openai.com/index/gpt-5-5-instant-system-card",
+      "summary": "",
+      "publishedAt": "2026-05-05T10:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:11.777Z",
+      "lastSeenAt": "2026-05-07T13:00:11.777Z",
+      "tags": [
+        "openai",
+        "models",
+        "api",
+        "agent"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_f6160a516bc0ab6e"
+      ]
+    },
+    {
+      "id": "ref_850db6b984d3ca04",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.95.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.95.0",
+      "summary": "## 0.95.0 (2026-05-06) Full Changelog: [sdk-v0.94.0...sdk-v0.95.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.94.0...sdk-v0.95.0) ### Features * **api:** add support for Managed Agents multiagents and outcomes, webhooks, vault validation ([e0c0e9b](https://github.com/anthropics/anthropic-sdk-typescript/commit/e0c0e9bef90b1919a5b806eb252e028981841e68)) ### Bug Fixes * **api:** Adjust webhook configuration ([deed3f6](https://github.com/anthropics/anthropic-sdk-typescript/commit/deed3f6290c0728dfc688e19117e1c01efb81a52))",
+      "publishedAt": "2026-05-06T15:07:56Z",
+      "firstSeenAt": "2026-05-07T13:00:11.918Z",
+      "lastSeenAt": "2026-05-07T13:00:11.918Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_997fe0256c384a11"
+      ]
+    },
+    {
+      "id": "ref_eb4e9d525b6c4123",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.94.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.94.0",
+      "summary": "## 0.94.0 (2026-05-05) Full Changelog: [sdk-v0.93.0...sdk-v0.94.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.93.0...sdk-v0.94.0) ### Features * **client:** allow targeting a workspace for OIDC federation token exchange ([bde6620](https://github.com/anthropics/anthropic-sdk-typescript/commit/bde6620d68c2dd9e8e641b4cfed8847486ff046f))",
+      "publishedAt": "2026-05-05T16:02:17Z",
+      "firstSeenAt": "2026-05-07T13:00:11.918Z",
+      "lastSeenAt": "2026-05-07T13:00:11.918Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_2430a6614b71dd20"
+      ]
+    },
+    {
+      "id": "ref_3c9e3f622908f479",
+      "sourceId": "anthropic-news-rss",
+      "title": "sdk: v0.93.0",
+      "url": "https://github.com/anthropics/anthropic-sdk-typescript/releases/tag/sdk-v0.93.0",
+      "summary": "## 0.93.0 (2026-05-04) Full Changelog: [sdk-v0.92.0...sdk-v0.93.0](https://github.com/anthropics/anthropic-sdk-typescript/compare/sdk-v0.92.0...sdk-v0.93.0) ### Features * **client:** add Workload Identity Federation, interactive OAuth, and auth profiles ([d5d6abd](https://github.com/anthropics/anthropic-sdk-typescript/commit/d5d6abdb1976db389aca87553ffedab2414e0d77))",
+      "publishedAt": "2026-05-04T17:11:53Z",
+      "firstSeenAt": "2026-05-07T13:00:11.918Z",
+      "lastSeenAt": "2026-05-07T13:00:11.918Z",
+      "tags": [
+        "anthropic",
+        "llm",
+        "api",
+        "safety"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_8244b4a705a6136c"
+      ]
+    },
+    {
+      "id": "ref_d2e3c53d5cbb8c2a",
+      "sourceId": "vercel-releases",
+      "title": "vercel@53.2.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4053.2.0",
+      "summary": "### Minor Changes - 3898acb: Add `vercel firewall` command for managing project firewall configuration. Supports custom rules (add, edit, delete, enable, disable, reorder), IP blocking, system bypass rules, attack challenge mode, and system mitigations. ### Patch Changes - 0cf132c: `vercel connex create` now accepts a `--triggers` flag. When passed, the request body includes `triggers: { enabled: true }` so the server wires webhook triggers into the created client. Without the flag, `triggers: { enabled: false }` is sent. - 1d766af: Let `--yes` enable the browser recovery flow for `vercel connex token` even in non-TTY contexts (e.g., coding agents), so a single command can open the browser, poll, and return the token without round-tripping through the agent's chat. - dd27e25: Added `vercel deploy continue --error` to mark manual deployments as failed with an optional error message. - 2f2b3f1: Added `--filter`/`-f ` flag to `vercel project ls` for filtering projects by name (substring match). - b2c2541: Avoid resolving the configured default team before unscoped `vercel link --yes --project` cross-team search, so team-scoped tokens can still link projects they can access. - 5f3cf99: Skip SAML-protected (\"limited\") teams during `vercel link`'s cross-team auto-detect so it no longer forces device-code re-authentication for scopes the user did not explicitly choose. The project is still linked from any accessible team where it's found, and limited scopes remain available through the standard scope picker (`selectOrg`) or `--scope `. - @vercel/python@6.38.0",
+      "publishedAt": "2026-05-06T18:47:28Z",
+      "firstSeenAt": "2026-05-07T13:00:11.965Z",
+      "lastSeenAt": "2026-05-07T13:00:11.965Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_094111c4c0a58edd"
+      ]
+    },
+    {
+      "id": "ref_2ad3df6e5fc6e5e0",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python-runtime@0.13.2",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python-runtime%400.13.2",
+      "summary": "### Patch Changes - 2767cb8: Expose `VERCEL_OIDC_TOKEN` as the `x-vercel-oidc-token` request header when no request-scoped OIDC header is present.",
+      "publishedAt": "2026-05-06T18:47:31Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_bc145a9ea22428bb"
+      ]
+    },
+    {
+      "id": "ref_d2c37e17e908b5e6",
+      "sourceId": "vercel-releases",
+      "title": "vercel@53.1.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/vercel%4053.1.1",
+      "summary": "### Patch Changes - 4a5be0b: Fixed `vc env update` failing when updating sensitive environment variables. - 2ffd7bc: Tighten the `SdkKey` type so plaintext `keyValue`, `tokenValue`, and `connectionString` can no longer appear on list responses. `flags sdk-keys ls --json` already omitted these via an explicit allowlist; the type split makes the guarantee static. Create-time output from `flags sdk-keys add` is unaffected. - e6cb5bc: Hide `--token` from help output for commands that don't support it (`login`, `switch`). - 8a5aa6a: Ensure synthetic SPA fallbacks are merged after builder-produced routes. - bab5a60: Handle stale Claude Code Vercel plugin registry entries during plugin migration. - Updated dependencies [34e7b09] - Updated dependencies [8e29c9c] - Updated dependencies [2da36f3] - Updated dependencies [fa5f57a] - Updated dependencies [97f87f7] - @vercel/next@4.17.1 - @vercel/python@6.38.0 - @vercel/remix-builder@5.8.1 - @vercel/static-build@2.9.22",
+      "publishedAt": "2026-05-04T19:19:05Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_51901d3136f32669"
+      ]
+    },
+    {
+      "id": "ref_241e5c1489c5be86",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/remix-builder@5.8.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/remix-builder%405.8.1",
+      "summary": "### Patch Changes - 97f87f7: Emit `.data` function entries for React Router single-fetch routes so per-route function config is preserved. Also emits a `_root.data` entry for the root index route, which uses that URL (not `/index.data`) for its single-fetch document loader.",
+      "publishedAt": "2026-05-04T19:19:17Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_6410977bf091cd32"
+      ]
+    },
+    {
+      "id": "ref_31935fa17045ebce",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python@6.38.0",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python%406.38.0",
+      "summary": "### Minor Changes - fa5f57a: Enable Python build dependency caching by default. ### Patch Changes - 8e29c9c: Improve Python entrypoint error messages and documentation links. - 2da36f3: Show a `--functions-beta`-aware hint at the Hive-extended 1 GB size-limit error path.",
+      "publishedAt": "2026-05-04T19:19:14Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_89239e61f37dde28"
+      ]
+    },
+    {
+      "id": "ref_4f04a4ea5467d881",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/python-workers@0.0.22",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/python-workers%400.0.22",
+      "summary": "### Patch Changes - 9599101: [python/vercel-workers] Adds QueueClient and AsyncQueueClient",
+      "publishedAt": "2026-05-04T19:19:20Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_7cb3c483054a3c7c"
+      ]
+    },
+    {
+      "id": "ref_03f9ec29bf6da606",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/next@4.17.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/next%404.17.1",
+      "summary": "### Patch Changes - 34e7b09: Update to latest Next.js adapter",
+      "publishedAt": "2026-05-04T19:19:11Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_5567d1e899d280ce"
+      ]
+    },
+    {
+      "id": "ref_2f045338218f65f1",
+      "sourceId": "vercel-releases",
+      "title": "@vercel/fs-detectors@6.1.1",
+      "url": "https://github.com/vercel/vercel/releases/tag/%40vercel/fs-detectors%406.1.1",
+      "summary": "### Patch Changes - 8a5aa6a: Ensure synthetic SPA fallbacks are merged after builder-produced routes.",
+      "publishedAt": "2026-05-04T19:19:08Z",
+      "firstSeenAt": "2026-05-07T13:00:11.966Z",
+      "lastSeenAt": "2026-05-07T13:00:11.966Z",
+      "tags": [
+        "vercel",
+        "deployment",
+        "edge",
+        "ci-cd"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_a29399818bbe3c25"
+      ]
+    },
+    {
+      "id": "ref_f7064476eed73d34",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "CreativityBench: Evaluating Agent Creative Reasoning via Affordance-Based Tool Repurposing",
+      "url": "https://arxiv.org/abs/2605.02910",
+      "summary": "arXiv:2605.02910v2 Announce Type: new Abstract: Recent advances in large language models have led to strong performance on reasoning and environment-interaction tasks, yet their ability for creative problem-solving remains underexplored. We study this capability through the lens of creative tool use, where a model repurposes available objects by reasoning about their affordances and attributes rather than relying on canonical usage. As a first step, we introduce CreativityBench, a benchmark for evaluating affordance-based creativity in LLMs. To this end, we build a large-scale affordance knowledge base (KB) with 4K entities and 150K+ affordance annotations, explicitly linking objects, parts, attributes, and actionable uses. Building on this KB, we generate 14K grounded tasks that require identifying non-obvious yet physically plausible solutions under constraints. Evaluations across 10 state-of-the-art LLMs, including closed and open-source models, show that models can often select a plausible object, but fail to identify the correct parts, their affordances, and the underlying physical mechanism needed to solve the task, leading to a significant drop in performance. Furthermore, improvements from model scaling quickly saturate, strong general reasoning does not reliably translate to creative affordance discovery, and common inference-time strategies such as Chain-of-Thought yield limited gains. These results suggest that creative tool use remains a major challenge for current models, and that CreativityBench provides a useful testbed for studying this missing dimension of intelligence, with potential implications for planning and reasoning modules in future agents.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_6e5d22252a98afde"
+      ]
+    },
+    {
+      "id": "ref_66149f7ea85d1512",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Stable Agentic Control: Tool-Mediated LLM Architecture for Autonomous Cyber Defense",
+      "url": "https://arxiv.org/abs/2605.03034",
+      "summary": "arXiv:2605.03034v1 Announce Type: new Abstract: Agentic systems involved in high-stake decision-making under adversarial pressure need formal guarantees not offered by existing approaches. Motivated by the operational needs of security operations centers (SOCs) that must configure endpoint detection and response (EDR) policies under adversarial pressure, we present a tool-mediated architecture: LLM agents use deterministic tools (Stackelberg best-response, Bayesian observer updates, attack-graph primitives) and select from finite action catalogs enforced at the tool-output interface. A composite Lyapunov function machine-checked in Lean 4 with zero sorry certifies controllability, observability from asymmetric sensor data, and Input-to-State Stability (ISS) robustness under intelligent adversarial disturbance, with two corollaries extending the certificate to any controller or adversary from the catalogs. On 282 real enterprise attack graphs, the claims hold with margin. On paired offensive/defensive telemetry, a tool-mediated Claude Sonnet 4 controller reduces the attacker's expected payoff (game value) by 59% relative to a deterministic greedy baseline, with zero variance across 40 runs at four temperatures. A Claude Haiku 4.5 controller converges to suboptimal game values but stays catalog-bounded over an additional 40 runs, demonstrating that architectural stability is not dependent on the controller capability. The LLM agent's non-determinism furthers creative exploration of strategies, while the tool-mediated architecture ensures system stability.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_1ac8c929e005d62e"
+      ]
+    },
+    {
+      "id": "ref_63b7ff7b783d1685",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Computing Thiele Rules on Interval Elections and their Generalizations",
+      "url": "https://arxiv.org/abs/2605.03067",
+      "summary": "arXiv:2605.03067v1 Announce Type: new Abstract: Approval-based committee voting has received significant attention in the social choice community. Among the studied rules, Thiele rules, and especially Proportional Approval Voting (PAV), stand out for desirable properties such as proportional representation, Pareto optimality, and support monotonicity. Their main drawback is that computing a Thiele outcome is NP-hard in general. A glimpse of hope comes from the fact that Thiele rules are better behaved under structured preferences. On the candidate interval (CI) domain, they are computable in polynomial time via a linear program (LP) that has a totally unimodular constraint matrix. Surprisingly, this approach fails for the related voter interval (VI) domain, and the complexity of the problem has repeatedly been posed as an open question. Our main result resolves this question: although the relevant matrix is not totally unimodular, the ``standard'' LP still admits at least one optimal integral solution, and we provide a fast algorithm for finding it. Our technique naturally extends to the voter-candidate interval (VCI) domain, also known as the 1-dimensional voter-candidate range (1D-VCR) domain, and to the linearly consistent (LC) domain, both of which generalize the candidate and voter interval domains. Although both the VCI and LC domains have been studied in social choice, their relationship was unknown. We show, through connections to graph theory, that LC strictly contains VCI. We also provide an alternative definition of LC that is closer in spirit to VCI and has a natural interpretation in approval elections; this equivalence may be of independent interest. Finally, we study an alternative tree-based generalization of VCI and show that Thiele rules become NP-hard to compute on this domain.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_8c76fa2222d7b591"
+      ]
+    },
+    {
+      "id": "ref_5b7f2f6eafc1a44d",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Making the Invisible Visible: Understanding the Mismatch Between Organizational Goals and Worker Experiences in AI Adoption",
+      "url": "https://arxiv.org/abs/2605.03078",
+      "summary": "arXiv:2605.03078v1 Announce Type: new Abstract: While AI is often introduced into organizations to drive innovation and efficiency, many adoption efforts fail as workers resist and struggle to integrate these systems. These failures point to a deeper issue: workers, the very people expected to collaborate with AI, are often invisible in decisions about how AI is designed and used. Drawing on interviews with professionals who interact with AI systems daily in healthcare, finance, and management, we examine the disconnect between organizational expectations and worker experiences. We identify key barriers, including poor usability and interoperability, misaligned expectations, limited control, and insufficient communication. These challenges highlight a gap between how organizations implement AI and the evolving worker needs, tasks, and workflows that it fails to support. We argue that successful adoption requires recognizing workers as central to AI integration and propose adaptation strategies at the individual, task, and organizational levels to better align AI systems with real-world practices.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_1e348583f07fb2aa"
+      ]
+    },
+    {
+      "id": "ref_c18da7f71d05db94",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Programmatic Context Augmentation for LLM-based Symbolic Regression",
+      "url": "https://arxiv.org/abs/2605.03101",
+      "summary": "arXiv:2605.03101v1 Announce Type: new Abstract: Symbolic regression (SR), the task of discovering mathematical expressions that best describe a given dataset, remains a fundamental challenge in scientific discovery. Traditional approaches, primarily based on genetic algorithms and related evolutionary methods, have proven useful but suffer from scalability and expressivity limitations. Recently, large language model (LLM)-based evolutionary search methods have been introduced into SR and show promise. However, existing LLM-based approaches typically rely on scalar evaluation metrics, such as mean squared error, as the sole source of feedback during the search process, thereby overlooking the rich information embedded in the dataset. To address this limitation, we propose a novel LLM-based evolutionary search framework that incorporates programmatic context augmentation. By enabling code-based interactions with the dataset, our method can actively perform data analysis and extract informative signals, beyond aggregated evaluation scores. We evaluate our framework on advanced benchmarks, such as LLM-SRBench, and demonstrate superior efficiency and accuracy compared to strong baselines.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c2b17554c070cfe9"
+      ]
+    },
+    {
+      "id": "ref_8a93157ea175d617",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Are you with me? A Framework for Detecting Mental Model Discrepancies in Task-Based Team Dialogues",
+      "url": "https://arxiv.org/abs/2605.03149",
+      "summary": "arXiv:2605.03149v1 Announce Type: new Abstract: Humans typically use natural language to update teammates on task states. Since not all updates are communicated, discrepancies arise between the team members' mental models that negatively affect overall team performance. How can we categorize such discrepancies? Do misalignments detected in team dialogue predict future mental model misalignments? Traditional shared mental model (SMM) assessment methods rely on retrospective expert coding that cannot capture real-time coordination dynamics. We propose a framework to identify and categorize four types of mental model discrepancies: unsupported beliefs, false beliefs, belief contradictions, and omissions, all of which can naturally emerge in team dialogues. Using dialogues from twenty dyad teams performing collaborative object identification tasks across four sequential levels, we demonstrate that these discrepancy patterns contain predictive signals. Averaging historical discrepancy counts achieves meaningful prediction accuracy using uniform weighting as an exploratory baseline, with differential predictability across discrepancy types.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_3687b86d91147baa"
+      ]
+    },
+    {
+      "id": "ref_9a1f64c7caf5512c",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Learning Correct Behavior from Examples: Validating Sequential Execution in Autonomous Agents",
+      "url": "https://arxiv.org/abs/2605.03159",
+      "summary": "arXiv:2605.03159v1 Announce Type: new Abstract: As autonomous agents become increasingly sophisticated, validating their sequential behavior presents a significant challenge. Traditional testing approaches require manual specification, exact sequence matching, or thousands of training examples. We present a novel algorithm that automatically learns correct behavior from just 2-10 passing execution traces and validates new executions against this learned model. Our approach combines dominator analysis from compiler theory with multimodal large language model-powered semantic understanding to identify essential states and handle non-deterministic behavior. The system constructs a generalized ground truth model using Prefix Tree Acceptors, merges traces through multi-tiered equivalence detection, and validates new executions via topological subsequence matching. In controlled experiments, our system achieved high accuracy in detecting product bugs and false successes using only 3 training traces. This approach provides explainable validation results with coverage metrics and works across diverse domains including UI testing, code generation, and robotic processes.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c2936b4f2f580489"
+      ]
+    },
+    {
+      "id": "ref_c3d74f86f8480116",
+      "sourceId": "arxiv-cs-ai-rss",
+      "title": "Terminus-4B: Can a Smaller Model Replace Frontier LLMs at Agentic Execution Tasks?",
+      "url": "https://arxiv.org/abs/2605.03195",
+      "summary": "arXiv:2605.03195v1 Announce Type: new Abstract: Modern coding agents increasingly delegate specialized subtasks to subagents, which are smaller, focused agentic loops that handle narrow responsibilities like search, debugging or terminal execution. This architectural pattern keeps the main agent's context window clean by isolating verbose outputs (e.g. build logs, test results, etc.) within the subagent context. Typically when agents employ subagents for such tasks, they use frontier models as these subagents. In this paper, we investigate whether a finetuned small language model (SLM) can achieve comparable performance to frontier models in the task of agentic terminal execution. We present Terminus-4B, which is a post-trained Qwen3-4B model via Supervised Finetuning (SFT) and Reinforcement Learning (RL) using rubric-based LLM-as-judge reward, specifically for this task. In our extensive evaluation spanning various frontier models, training ablations and main agent configurations, we find that Terminus-4B is able to reduce the token usage of the main agent by up to ~30% compared to the No Subagent baseline with no impact to agent performance on benchmarks like SWE-Bench Pro and our internal SWE-Bench C# benchmark, which tends to be heavy in verbose execution tasks. Furthermore, Terminus-4B improves key metrics showing the main agent relying on the outputs of the subagent and doing fewer terminal execution tasks by itself. We see that our model not only closes the gap between the Vanilla Qwen model and frontier models like Claude Sonnet / Opus / GPT-5.3-Codex, but often even exceeds their performance.",
+      "publishedAt": "2026-05-07T04:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:13.602Z",
+      "lastSeenAt": "2026-05-07T13:00:13.602Z",
+      "tags": [
+        "research",
+        "papers",
+        "benchmarks"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_c41eedd049847c3e"
+      ]
+    },
+    {
+      "id": "ref_a94c049d288ea784",
+      "sourceId": "openai-node-releases",
+      "title": "v6.36.0",
+      "url": "https://github.com/openai/openai-node/releases/tag/v6.36.0",
+      "summary": "## 6.36.0 (2026-05-01) Full Changelog: [v6.35.0...v6.36.0](https://github.com/openai/openai-node/compare/v6.35.0...v6.36.0) ### Features * **api:** add group_type/user metadata fields, update types across admin resources ([cc52f97](https://github.com/openai/openai-node/commit/cc52f9755e3ce3b29ea2266482521c8d83ab88ad)) * **api:** add support for Admin API Keys per endpoint ([770d187](https://github.com/openai/openai-node/commit/770d187be1d6c0419002a9b01e7dec6a99761f94)) * **api:** admin API updates ([ee2bd2d](https://github.com/openai/openai-node/commit/ee2bd2d8e66a5b90f80e6ca8ab4544385d9a5de3)) * **api:** manual updates ([6af2b6d](https://github.com/openai/openai-node/commit/6af2b6dfd86e4d7e7a2cb5afb1275217fcd5d242)) * **api:** manual updates ([f2dceda](https://github.com/openai/openai-node/commit/f2dceda58fce6e44e740b56b9337597275d25e5b)) ### Bug Fixes * **api:** support admin api key auth ([e3862a3](https://github.com/openai/openai-node/commit/e3862a3d415ba3cedb178718e2c9bc0c2d09e01e)) * **api:** tighten auth header selection ([f1203bd](https://github.com/openai/openai-node/commit/f1203bd884fb4131c54d9d7b8f89e9db3f4fc57c)) ### Chores * **format:** run eslint and prettier separately ([104543a](https://github.com/openai/openai-node/commit/104543a4daa138698006b1785ef7845d5ae0be27)) * **internal:** codegen related update ([05d86da](https://github.com/openai/openai-node/commit/05d86dac705c75f8b8c6e6d5630973451f798e75)) * **internal:** codegen related update ([f184586](https://github.com/openai/openai-node/commit/f184586fbcb8c7c07bf439455d6317aba62719ec))",
+      "publishedAt": "2026-05-04T17:35:50Z",
+      "firstSeenAt": "2026-05-07T13:00:14.111Z",
+      "lastSeenAt": "2026-05-07T13:00:14.111Z",
+      "tags": [
+        "openai",
+        "sdk",
+        "api",
+        "typescript"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_bb25dfe09525d065"
+      ]
+    },
+    {
+      "id": "ref_6ca30f753f54c32a",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/openai@3.0.62",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/openai%403.0.62",
+      "summary": "### Patch Changes - 65edcca: feat: add allowedTools provider option for OpenAI Responses",
+      "publishedAt": "2026-05-06T17:15:55Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_e8dab72d10c9d544"
+      ]
+    },
+    {
+      "id": "ref_37806b1f0c208e5e",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/google@3.0.68",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/google%403.0.68",
+      "summary": "### Patch Changes - e0f8c9e: feat(provider/google): add support for the Gemini Interactions API",
+      "publishedAt": "2026-05-06T22:44:08Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_9322904814812101"
+      ]
+    },
+    {
+      "id": "ref_bff8cde255e3b572",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/google-vertex@4.0.122",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/google-vertex%404.0.122",
+      "summary": "### Patch Changes - Updated dependencies [e0f8c9e] - @ai-sdk/google@3.0.68",
+      "publishedAt": "2026-05-06T22:44:11Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_0693e7dd05829735"
+      ]
+    },
+    {
+      "id": "ref_7e65704e2b87ad5a",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/deepseek@2.0.33",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/deepseek%402.0.33",
+      "summary": "### Patch Changes - ee294d0: feat(provider/deepseek): add DeepSeek V4 reasoning effort support",
+      "publishedAt": "2026-05-06T19:11:37Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_03cf692a0ec2ea02"
+      ]
+    },
+    {
+      "id": "ref_3622d09752315829",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/deepseek@1.0.40",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/deepseek%401.0.40",
+      "summary": "### Patch Changes - 9fd0d1a: feat(provider/deepseek): add DeepSeek V4 reasoning effort support",
+      "publishedAt": "2026-05-06T20:32:32Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_7765175c3c645f79"
+      ]
+    },
+    {
+      "id": "ref_b49eedd0f4f19852",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "@ai-sdk/azure@3.0.63",
+      "url": "https://github.com/vercel/ai/releases/tag/%40ai-sdk/azure%403.0.63",
+      "summary": "### Patch Changes - Updated dependencies [65edcca] - @ai-sdk/openai@3.0.62",
+      "publishedAt": "2026-05-06T17:15:52Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_d4f12dd7ba052ddd"
+      ]
+    },
+    {
+      "id": "ref_a28622c5e3ff7077",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@7.0.0-canary.124",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%407.0.0-canary.124",
+      "summary": "### Patch Changes - 69aeb0e: feat: add deprecated tool call lifecycle callback aliases for AI SDK 6 compatibility. - 48e92f3: feat: make include stable",
+      "publishedAt": "2026-05-06T19:19:28Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_52b8faf22ece3f17"
+      ]
+    },
+    {
+      "id": "ref_ebed3c49aaf37cb8",
+      "sourceId": "vercel-ai-sdk-releases",
+      "title": "ai@7.0.0-canary.123",
+      "url": "https://github.com/vercel/ai/releases/tag/ai%407.0.0-canary.123",
+      "summary": "### Patch Changes - 7392266: feat: move includeRawChunks to include.rawChunks - 4bb4dbc: feat: introduce include.requestMessage option for step request message storage opt-in",
+      "publishedAt": "2026-05-06T18:24:59Z",
+      "firstSeenAt": "2026-05-07T13:00:14.479Z",
+      "lastSeenAt": "2026-05-07T13:00:14.479Z",
+      "tags": [
+        "vercel",
+        "ai-sdk",
+        "agents",
+        "tooling"
+      ],
+      "status": "active",
+      "rankHint": "tier-1",
+      "eventIds": [
+        "evt_1fc6f9bceecb3836"
+      ]
+    },
+    {
+      "id": "ref_2e59744bb63333d0",
+      "sourceId": "huggingface-blog-rss",
+      "title": "vLLM V0 to V1: Correctness Before Corrections in RL",
+      "url": "https://huggingface.co/blog/ServiceNow-AI/correctness-before-corrections",
+      "summary": "",
+      "publishedAt": "2026-05-06T19:06:55.000Z",
+      "firstSeenAt": "2026-05-07T13:00:15.192Z",
+      "lastSeenAt": "2026-05-07T13:00:15.192Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_4bb1cd3340315ef8"
+      ]
+    },
+    {
+      "id": "ref_ef1b5317e4542e3e",
+      "sourceId": "huggingface-blog-rss",
+      "title": "Adding Benchmaxxer Repellant to the Open ASR Leaderboard",
+      "url": "https://huggingface.co/blog/open-asr-leaderboard-private-data",
+      "summary": "",
+      "publishedAt": "2026-05-06T00:00:00.000Z",
+      "firstSeenAt": "2026-05-07T13:00:15.192Z",
+      "lastSeenAt": "2026-05-07T13:00:15.192Z",
+      "tags": [
+        "research",
+        "open-models",
+        "evaluation",
+        "tools"
+      ],
+      "status": "active",
+      "rankHint": "tier-2",
+      "eventIds": [
+        "evt_95374613b7da7ab4"
       ]
     }
   ]

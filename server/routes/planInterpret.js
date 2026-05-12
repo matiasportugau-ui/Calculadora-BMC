@@ -52,7 +52,9 @@ router.post("/plan/interpret", limiter, upload.single("file"), async (req, res) 
   if (req.body.hints) {
     try {
       hints = JSON.parse(req.body.hints);
-    } catch {
+    } catch (err) {
+      // Top-20 run 2026-05-11 (#F9): loguear contexto del parse fallido para debugging UI/mobile.
+      if (req.log) req.log.warn({ rawHints: String(req.body.hints).slice(0, 200), err: err?.message }, "plan/interpret hints JSON parse failed");
       return res.status(400).json({ ok: false, error: "El campo 'hints' debe ser JSON válido." });
     }
   }

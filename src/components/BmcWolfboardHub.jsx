@@ -149,9 +149,17 @@ export default function BmcWolfboardHub() {
             <p style={cardDesc}>
               Gestioná la base de conocimiento, editá el system prompt, revisá logs de conversaciones, estadísticas y configuración de scoring.
             </p>
-            <Link to="/hub/agent-admin" style={{ ...cta, background: "#1a3a5c" }}>
-              Abrir Admin IA
-            </Link>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <Link to="/hub/agent-admin" style={{ ...cta, background: "#1a3a5c" }}>
+                Abrir Admin IA
+              </Link>
+              <Link
+                to="/hub/agent-admin?tab=classify"
+                style={{ ...cta, background: "#fff", color: "#1a3a5c", border: "1.5px solid #1a3a5c" }}
+              >
+                Viewer clasificación
+              </Link>
+            </div>
           </div>
         </div>
 

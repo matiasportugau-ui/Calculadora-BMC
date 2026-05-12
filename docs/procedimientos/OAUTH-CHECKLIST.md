@@ -90,15 +90,40 @@ Dev / staging absolute URLs (use `ngrok`-style tunnel or a separate Cloud Run se
 |-----|----------|---------|
 | `GOOGLE_APPLICATION_CREDENTIALS` | yes | Path to JSON service account file — mounted in Cloud Run via `--set-secrets=/run/secrets/service-account.json=panelin-service-account:latest` |
 
-## Critical security gaps surfaced during this audit
+## Security gaps — status as of 2026-04-30 (security-hardening-202604)
 
-1. **Mercado Libre webhook signature is captured but NOT validated.** `server/index.js:460` reads `x-signature` but does not verify it. Anyone hitting `/webhooks/ml` with the right `WEBHOOK_VERIFY_TOKEN` (which itself is currently empty) can forge events. Follow-up: implement HMAC verification using `ML_CLIENT_SECRET` per Mercado Libre webhook signature spec.
+| # | Gap | Status |
+|---|-----|--------|
+| 1 | ML webhook signature not validated | ✅ **Fixed** — `server/lib/mlSignature.js` + handler updated |
+| 2 | WhatsApp HMAC conditional on missing `WHATSAPP_APP_SECRET` | ⏳ **Partially resolved** — secret exists in GSM, needs Cloud Run mount (see `WHATSAPP-HMAC-GAP.md`) |
+| 3 | `WEBHOOK_VERIFY_TOKEN` empty | ✅ **Fixed** — token generated and added to `.env`; must be added to GSM and registered in ML Developers → Notificaciones |
+| 4 | OAuth `state` stored in memory only | ⏳ **Patched** — Cloud Run session affinity enabled (see below); persistent solution tracked in `TODO-OAUTH-STATE-PERSIST.md` |
 
-2. **WhatsApp HMAC verification is conditional on `WHATSAPP_APP_SECRET`.** If the env var is missing, the route logs a warning and accepts the payload anyway (`server/index.js:710-711`). Tracked separately in `WHATSAPP-HMAC-GAP.md`. The provisioner script `scripts/provision-secrets.sh` should include `WHATSAPP_APP_SECRET` in `HIGH_SENS_KEYS` once the value is obtained from Meta App Dashboard → Settings → Basic.
+### Gap #1 — Mercado Libre webhook HMAC (resolved)
 
-3. **`WEBHOOK_VERIFY_TOKEN` is empty in `.env`** (skipped during the 2026-04-29 GSM provisioning). Either generate a value (`openssl rand -hex 32`), add it to both `.env` and Mercado Libre Notificaciones config, or remove the verification path if it's truly unused.
+`server/lib/mlSignature.js` implements HMAC-SHA256 verification following the ML spec:
+template `id:{data.id};request-id:{x-request-id};ts:{ts}`, signed with `ML_CLIENT_SECRET`.
+The handler rejects unsigned requests with 401 when `ML_CLIENT_SECRET` is set.
+When the secret is absent, it skips verification with a warning (same pattern as WhatsApp — dev-friendly).
 
-4. **OAuth `state` is stored in memory only** (Map with TTL). `server/index.js` (ML) and `server/routes/shopify.js:171` (Shopify). Cloud Run can scale to multiple instances or restart between OAuth start and callback, breaking the flow. Consider moving to Cloud Run sticky sessions or persisting state in GSM/Postgres.
+### Gap #3 — `WEBHOOK_VERIFY_TOKEN` (resolved)
+
+Generated value: stored in `.env`. **Required human steps:**
+1. Add to Secret Manager: `echo -n "TOKEN" | gcloud secrets versions add WEBHOOK_VERIFY_TOKEN --data-file=- --project=chatbot-bmc-live`
+   *(or create if missing: replace `versions add` with `create`)*
+2. Register in Mercado Libre Developers → your app → Notificaciones → campo "Verify Token"
+
+### Gap #4 — OAuth state persistence (patched — temporary)
+
+**Patch applied (2026-04-30):** Cloud Run session affinity enabled via:
+```bash
+gcloud run services update panelin-calc --region=us-central1 --session-affinity
+```
+This ensures OAuth start and callback land on the same instance, avoiding state loss on multi-instance deployments.
+
+**This is a temporary patch.** The definitive solution is to persist OAuth state in Postgres/Supabase
+so it survives instance restarts and scales correctly. See `docs/team/TODO-OAUTH-STATE-PERSIST.md`.
+Tracked in v1.4+ roadmap (ADR 0001 row: "OAuth state → Supabase `oauth_state` table OR Memorystore").
 
 ## What to verify in each external console
 

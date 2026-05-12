@@ -5,6 +5,16 @@
 import { ROOF_PLAN_DIM_FONT_BASE } from "./roofPlanDrawingTheme.js";
 
 /**
+ * Ratio aproximado de ancho de carácter / tamaño de fuente para sans-serif del plano.
+ * Se usa para estimar `labelWidth ≈ label.length * fontSize * CHAR_WIDTH_RATIO_EST`
+ * y decidir si una cota tiene espacio para renderizar su etiqueta sin truncarse.
+ * Valor empírico para la familia tipográfica del plano (system sans-serif).
+ * Si cambia FONT/fontFamily del plano, recalibrar contra muestras renderizadas.
+ * (Top-20 run 2026-05-11 #L1: extraído de RoofPlanDimensions.jsx para deduplicar el magic 0.62.)
+ */
+export const CHAR_WIDTH_RATIO_EST = 0.62;
+
+/**
  * Escala tipografía y grosores de cotas al **span del viewBox** para que sigan legibles en pantalla.
  * @param {{ vbW: number, vbH: number }|null|undefined} viewMetrics
  */

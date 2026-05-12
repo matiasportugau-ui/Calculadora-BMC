@@ -15,10 +15,12 @@ import { defaultTailAHAK, rangeAHAK } from "./lib/crmOperativoLayout.js";
 import { createTokenStore } from "./tokenStore.js";
 import { createMercadoLibreClient } from "./mercadoLibreClient.js";
 import calcRouter from "./routes/calc.js";
+import deepResearchRouter from "./routes/deepResearch.js";
 import agentChatRouter from "./routes/agentChat.js";
 import agentTrainingRouter from "./routes/agentTraining.js";
 import agentConversationsRouter from "./routes/agentConversations.js";
 import agentVoiceRouter from "./routes/agentVoice.js";
+import agentTranscribeRouter from "./routes/agentTranscribe.js";
 import agentFeedbackRouter from "./routes/agentFeedback.js";
 import legacyQuoteRouter from "./routes/legacyQuote.js";
 import createBmcDashboardRouter from "./routes/bmcDashboard.js";
@@ -28,6 +30,16 @@ import createMlSearchRouter from "./routes/mlSearch.js";
 import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
+import createWaRouter from "./routes/wa.js";
+import * as waConfigModule from "./lib/waConfig.js";
+const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
+import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
+import { initIdentityAuth } from "./lib/identityAuth.js";
+import cookieParser from "cookie-parser";
+import { setWaConfigModuleForQuoteParams } from "./lib/waQuoteParams.js";
+import { initWaWebhooks } from "./lib/waWebhooks.js";
+import { startWaSlaWorker } from "./lib/waSlaWorker.js";
+import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
@@ -35,9 +47,15 @@ import aiAnalyticsRouter from "./routes/aiAnalytics.js";
 import { createPdfRouter } from "./routes/pdf.js";
 import planInterpretRouter from "./routes/planInterpret.js";
 import authGoogleRouter from "./routes/authGoogle.js";
+import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
+import identityMeRouter from "./routes/identityMe.js";
+import quoteExportRouter from "./routes/quoteExport.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
+import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
+import { verifyMLSignature } from "./lib/mlSignature.js";
 import { normalizeMlAnswerCurrencyText } from "./lib/mlAnswerText.js";
 import { callAgentOnce } from "./lib/agentCore.js";
 import { extractLearnablePairs, } from "./lib/autoLearnExtractor.js";
@@ -51,11 +69,15 @@ const logger = pino({
 });
 
 const app = express();
+app.disable("x-powered-by"); // hide Express signature (defense in depth)
+app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy
 app.use(
   cors({
     origin: (origin, cb) => {
       // Allow non-browser requests (curl, Cloud Run health checks, server-to-server)
       if (!origin) return cb(null, true);
+      // Allow chrome-extension://* (BMC WA Cockpit extension and any sibling)
+      if (origin.startsWith("chrome-extension://")) return cb(null, true);
       if (config.corsOrigins.includes(origin)) return cb(null, true);
       cb(Object.assign(new Error(`CORS: origin not allowed — ${origin}`), { status: 403 }));
     },
@@ -81,6 +103,7 @@ app.use((req, res, next) => {
   if (req.path === "/webhooks/whatsapp" && req.method === "POST") return next();
   return express.json({ limit: "1mb" })(req, res, next);
 });
+app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,
@@ -442,6 +465,23 @@ app.get("/ml/orders/:id", asyncHandler(async (req, res) => {
 }));
 
 app.post("/webhooks/ml", asyncHandler(async (req, res) => {
+  // Layer 1: HMAC signature verification (Gap #1 fix)
+  // ML signs: "id:{data.id};request-id:{x-request-id};ts:{ts}" with ML_CLIENT_SECRET
+  const mlSigVerified = verifyMLSignature({
+    clientSecret: config.mlClientSecret,
+    signatureHeader: req.headers["x-signature"],
+    dataId: req.query.id ?? req.body?.id,
+    requestId: req.headers["x-request-id"],
+  });
+  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
+    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
+    return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
+  }
+  if (mlSigVerified.skipped && config.appEnv !== "test") {
+    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
+  }
+
+  // Layer 2: verify token (second layer — kept for defence in depth)
   if (config.webhookVerifyToken) {
     const received =
       req.query.verify_token ||
@@ -743,6 +783,50 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
 
     logger.info(`[WA] Message from ${contactName} (${chatId}), total: ${conv.messages.length}`);
 
+    // F4 — espejar inbound Cloud API en Postgres wa_messages para que el cockpit
+    // SPA tenga vista unificada con los mensajes scrapeados via extensión.
+    try {
+      const waPoolForWebhook = getWaPool(config.databaseUrl);
+      if (waPoolForWebhook) {
+        const phoneDigits = String(chatId || "").replace(/\D/g, "").slice(0, 32);
+        await waPoolForWebhook.query(
+          `insert into wa_conversations (chat_id, phone, contact_name)
+           values ($1, $2, $3)
+           on conflict (chat_id) do update
+             set phone = coalesce(wa_conversations.phone, excluded.phone),
+                 contact_name = coalesce(wa_conversations.contact_name, excluded.contact_name),
+                 updated_at = now()`,
+          [chatId, phoneDigits || null, contactName],
+        );
+        const tsIso = new Date(Number(msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now())).toISOString();
+        await waPoolForWebhook.query(
+          `insert into wa_messages
+             (msg_id, chat_id, ts, direction, type, text, source, raw, meta)
+           values ($1, $2, $3::timestamptz, 'in', $4, $5, 'cloud_api', $6::jsonb, $7::jsonb)
+           on conflict (msg_id) do nothing`,
+          [
+            String(msg.id || `cloud_in_${chatId}_${Date.now()}`),
+            chatId,
+            tsIso,
+            String(msg.type || "text"),
+            text,
+            JSON.stringify(msg),
+            JSON.stringify({ webhook: true }),
+          ],
+        );
+        await waPoolForWebhook.query(
+          `update wa_conversations
+             set last_msg_at = greatest(coalesce(last_msg_at, '1970-01-01'::timestamptz), $2::timestamptz),
+                 last_msg_in_at = greatest(coalesce(last_msg_in_at, '1970-01-01'::timestamptz), $2::timestamptz),
+                 updated_at = now()
+           where chat_id = $1`,
+          [chatId, tsIso],
+        );
+      }
+    } catch (e) {
+      logger.warn({ err: e?.message, chat_id: chatId }, "WA webhook → wa_messages mirror failed");
+    }
+
     // 🚀 = trigger manual inmediato (opcional, sigue funcionando)
     if (text.includes("🚀")) {
       logger.info(`[WA] 🚀 manual trigger for ${chatId}`);
@@ -755,15 +839,20 @@ app.use("/calc", calcRouter);
 // Asistente "equipo" (OpenAI) — /api/team-assist/* (antes del dashboard para no colisionar)
 app.use("/api/team-assist", teamAssistRouter);
 app.use("/api", authGoogleRouter);
+app.use("/api", authMfaRouter);
+app.use(identityMeRouter);
+app.use(quoteExportRouter);
 app.use("/api", agentChatRouter);
 app.use("/api", agentTrainingRouter);
 app.use("/api", agentConversationsRouter);
 app.use("/api", agentFeedbackRouter);
 app.use("/api", agentVoiceRouter);
+app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
+app.use("/api", createWaRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
@@ -802,6 +891,7 @@ app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 app.use("/api/wolfboard", createWolfboardRouter(config));
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
+app.use("/api", deepResearchRouter);
 app.use("/api", planInterpretRouter);
 // ML search (competitors lookup) — Bearer API_AUTH_TOKEN, 30-min TTL cache, 60 req/min
 app.use(createMlSearchRouter({ ml, config, logger }));
@@ -884,7 +974,8 @@ app.use((req, res) => {
 
 app.use((error, req, res, _next) => {
   const status = Number(error.status || 500);
-  req.log.error(
+  const logger = req.log || console;
+  logger.error(
     {
       err: error,
       path: error.path,
@@ -901,7 +992,14 @@ app.use((error, req, res, _next) => {
 
 const transportistaPool = getTransportistaPool(config.databaseUrl);
 
-app.listen(config.port, () => {
+// Cleanups capturados en el listen callback. Inicializados a noop para que
+// el shutdown handler sea seguro aunque la señal llegue antes del listen.
+let stopTransportista = () => {};
+let stopWaEnricher = () => {};
+let stopWaSla = () => {};
+let stopWaFollowups = () => {};
+
+const server = app.listen(config.port, async () => {
   logger.info(
     {
       port: config.port,
@@ -911,6 +1009,73 @@ app.listen(config.port, () => {
     "MercadoLibre connector server started"
   );
   if (transportistaPool) {
-    startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+    stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+  }
+  // WA Cockpit — F-A4: prime config (settings + flags + LISTEN/NOTIFY) y auth.
+  // Se hace ANTES de los workers para que lean ya el cache caliente.
+  const waPool = getWaPool(config.databaseUrl);
+  if (waPool) {
+    try {
+      await primeWaConfig({ pool: waPool, logger });
+      initWaOperatorAuth({ pool: waPool, logger });
+      // Comprador identity reuses the same Postgres pool.
+      initIdentityAuth({ pool: waPool, logger });
+      initAuthMfa({ pool: waPool, logger });
+      initWaWebhooks({ pool: waPool, logger });
+      setWaConfigModuleForQuoteParams(waConfigModule);
+    } catch (e) {
+      logger.warn({ err: e }, "WA config/auth prime failed (continúo sin runtime config)");
+    }
+  }
+
+  // WA Cockpit enricher (F2) — gobernado por flag enricher.enabled (DB) o el
+  // fallback histórico WA_ENRICHER_ENABLED=true (.env). El flag DB tiene prioridad.
+  const enricherFlagOn = (() => {
+    try { return getWaFlag("enricher.enabled"); } catch { return false; }
+  })();
+  if (waPool && (enricherFlagOn || config.waEnricherEnabled)) {
+    stopWaEnricher = startWaEnricherWorker({ config, logger, pool: waPool });
+    logger.info(
+      { source: enricherFlagOn ? "flag" : "env" },
+      "WA enricher worker started",
+    );
+  }
+
+  // WA Cockpit — SLA worker (Missive-style), governed by flag slaTracking.enabled.
+  // El worker mismo chequea el flag en cada tick → no duplicamos lógica acá.
+  if (waPool) {
+    stopWaSla = startWaSlaWorker({ logger, pool: waPool });
+    stopWaFollowups = startWaFollowupsWorker({ logger, pool: waPool });
+    logger.info("WA sla + followups workers started");
   }
 });
+
+// ── Graceful shutdown ──
+// Cloud Run otorga ~10s entre SIGTERM y SIGKILL. Disparamos los cleanups de
+// los workers (que abortan batches in-flight) y cerramos el HTTP server. Si
+// algo se cuelga, el setTimeout fuerza el exit a los 8s para no perder el
+// grace period.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, "shutdown signal received");
+
+  try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
+  try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
+  try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
+  try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }
+
+  server.close((err) => {
+    if (err) logger.error({ err: err?.message }, "server.close error");
+    logger.info("HTTP server closed, exiting");
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    logger.warn("forced exit after 8s grace");
+    process.exit(0);
+  }, 8000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

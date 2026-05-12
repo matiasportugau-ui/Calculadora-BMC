@@ -229,4 +229,50 @@ Sin eso, **POST/PATCH `/api/cotizaciones`** devuelven **501** (solo permitidos c
 
 ---
 
-**Última extracción desde código:** repo Calculadora-BMC — `server/routes/bmcDashboard.js` (lectura integral de mapeos y rutas).
+## 10. Dual-write Lead → CRM_Operativo + Admin Cotizaciones
+
+**Implementado en:** `server/lib/quoteDualWrite.js` (Sprint Mayo 2026).
+
+### Flujo
+1. `agentTools.js` handler `guardar_en_crm` → llama a `dualWriteQuote(input)`.
+2. `dualWriteQuote` siempre llama a `appendQuoteToCrm` (CRM_Operativo).
+3. Si `WOLFB_ADMIN_COT_DUAL_WRITE=true` (default `false`), también llama a `appendQuoteToAdminCot`.
+
+### Env vars del dual-write
+
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `WOLFB_ADMIN_COT_DUAL_WRITE` | `false` | Activa escritura en Admin Cotizaciones |
+| `WOLFB_ADMIN_COT_ENVIADOS_TAB` | `"Enviados"` | Tab destino en Admin Cotizaciones |
+| `WOLFB_ADMIN_SHEET_ID` | `1Ie0KCpgWhrGaAKGAS1giLo7xpqblOUOIHEg1QbOQuu0` | Workbook Admin Cotizaciones |
+
+### Layout tab "Enviados" — Admin Cotizaciones (A:M)
+
+Inferido de `wolfboard.js` mapAdminSheetRow (confirmado en código, no verificado live).
+
+| Col | Índice | Campo | Fuente en Lead |
+|-----|--------|-------|----------------|
+| A | 0 | ID correlación | `lead_id` / `correlation_id` |
+| B | 1 | Fecha | `timestamp` → DD/MM/YYYY |
+| C | 2 | ? desconocida | vacío |
+| D | 3 | Telefono | `telefono` |
+| E | 4 | Cliente | `cliente_nombre` |
+| F | 5 | Origen (WA/EM/CL/WEB) | `canal_origen` mapeado |
+| G | 6 | ? desconocida | vacío |
+| H | 7 | Zona | `ubicacion` |
+| I | 8 | Consulta | resumen scenario+familia+espesor+area+total |
+| J | 9 | Respuesta IA | vacío (lead automático) |
+| K | 10 | Link / PDF URL | `pdf_url` |
+| L | 11 | Estado | "Enviado" (fijo) |
+| M | 12 | Drive URL / ReplaySnapshotUrl | `drive_url` |
+
+**ADVERTENCIA:** El header live de la tab "Enviados" en Admin Cotizaciones no fue verificado en tiempo real (hook de seguridad bloquea en sandbox). Antes de activar `WOLFB_ADMIN_COT_DUAL_WRITE=true` en producción, verificar manualmente que el layout A:M coincide con la tabla arriba.
+
+### Estrategia de fallo
+- CRM_Operativo falla → loggea `[quoteDualWrite] ERROR` + detalle; retorna `{ ok: false }` al caller.
+- Admin Cotizaciones falla → loggea `[quoteDualWrite] WARN`; no bloquea.
+- Ambas fallan → el `lead_id` + error quedan en los logs para reconciliación manual.
+
+---
+
+**Última extracción desde código:** repo Calculadora-BMC — `server/routes/bmcDashboard.js` (lectura integral de mapeos y rutas). Dual-write: `server/lib/quoteDualWrite.js`, `server/lib/adminCotAppend.js` (Sprint Mayo 2026-05-09).

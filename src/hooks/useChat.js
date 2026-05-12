@@ -78,6 +78,7 @@ function saveHistory(messages) {
       role: m.role,
       content: m.content,
       actions: m.actions,
+      suggestions: m.suggestions,
     }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
   } catch {
@@ -336,6 +337,18 @@ export function useChat({
                   const toolCalls = [...(last.toolCalls || []), { tool: evt.tool, input: evt.input }];
                   return prev.map((m, i) => (i === prev.length - 1 ? { ...m, toolCalls } : m));
                 });
+              } else if (evt.type === "verified_quote") {
+                // Trust UI: payload extracted from a calc tool result, server-built.
+                // We attach the latest verified quote to the assistant message; if
+                // the model called calcular_cotizacion + comparar_listas in the
+                // same turn, the comparison wins (last write).
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (!last || last.role !== "assistant") return prev;
+                  return prev.map((m, i) => (
+                    i === prev.length - 1 ? { ...m, verifiedQuote: evt.payload } : m
+                  ));
+                });
               } else if (evt.type === "kb_match") {
                 setDevMeta((prev) => ({ ...prev, kbMatches: Number(evt.count || 0) }));
               } else if (evt.type === "calc_validation") {
@@ -349,6 +362,13 @@ export function useChat({
                       : m
                   ));
                 });
+              } else if (evt.type === "suggestions") {
+                const sug = evt.suggestions?.groups?.length ? evt.suggestions : null;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, suggestions: sug || undefined } : m
+                  )
+                );
               }
               // type === "done" → loop exits naturally when reader closes
             } catch {
@@ -609,6 +629,13 @@ export function useChat({
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }, []);
 
+  /** Hide quick-reply chips on an assistant bubble after the user taps one */
+  const clearSuggestionsForMessage = useCallback((messageId) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, suggestions: undefined } : m))
+    );
+  }, []);
+
   return {
     messages,
     isStreaming,
@@ -642,5 +669,6 @@ export function useChat({
     loadConversationAnalysis,
     conversationId,
     sendFeedback,
+    clearSuggestionsForMessage,
   };
 }

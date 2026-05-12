@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio } from "lucide-react";
+import { X, RotateCcw, Send, Mic, Volume2, VolumeX, Square, Radio, Search } from "lucide-react";
 import PanelinDevPanel from "./PanelinDevPanel.jsx";
 import PanelinVoicePanel from "./PanelinVoicePanel.jsx";
+import TrustBlock from "./panelin/TrustBlock.jsx";
+import { useDictation } from "../hooks/useDictation.js";
 import { PANELIN_AGENT_VIDEO_SRC } from "../utils/panelinAgentVideoSrc.js";
 
 const FONT =
@@ -15,6 +17,23 @@ const SUBTEXT = "#6e6e73";
 const STORAGE_SELECTED_SKIN = "panelin-chat-selected-skin-v1";
 const STORAGE_CUSTOM_SKINS = "panelin-chat-custom-skins-v1";
 const BUILTIN_SKINS = [
+  {
+    id: "applied-ai",
+    name: "Applied AI",
+    tokens: {
+      brand: "#1F1B16",
+      primary: "#C96442",
+      surface: "#FAF9F6",
+      border: "#E8E4DD",
+      text: "#1F1B16",
+      subtext: "#6B645B",
+      drawerBg: "#FFFFFF",
+      backdrop: "rgba(31,27,22,0.32)",
+      headerText: "#1F1B16",
+      userBubbleText: "#1F1B16",
+      assistantBubbleText: "#1F1B16",
+    },
+  },
   {
     id: "classic",
     name: "Classic BMC",
@@ -185,9 +204,10 @@ function Avatar({ size = 28 }) {
  * @param {{
  *   isOpen: boolean,
  *   onClose: () => void,
- *   messages: Array<{id:string, role:string, content:string, pending?:boolean}>,
+ *   messages: Array<{id:string, role:string, content:string, pending?:boolean, suggestions?: { groups?: Array<{ title?: string, items: Array<{ label: string, send?: string }> }> }}>,
  *   isStreaming: boolean,
  *   send: (text:string) => void,
+ *   clearSuggestionsForMessage?: (messageId: string) => void,
  *   clear: () => void,
  *   error: string|null,
  *   devMode?: boolean,
@@ -220,6 +240,7 @@ export default function PanelinChatPanel({
   messages,
   isStreaming,
   send,
+  clearSuggestionsForMessage,
   stop,
   retry,
   clear,
@@ -255,12 +276,11 @@ export default function PanelinChatPanel({
   const [skinDraft, setSkinDraft] = useState(() => makeSkinDraftFromTokens(BUILTIN_SKINS[0].tokens));
   const [selectedSkinId, setSelectedSkinId] = useState(() => {
     if (typeof window === "undefined") return "classic";
-    return localStorage.getItem(STORAGE_SELECTED_SKIN) || "classic";
+    return localStorage.getItem(STORAGE_SELECTED_SKIN) || "applied-ai";
   });
   const [input, setInput] = useState("");
   const [correctingMsgId, setCorrectingMsgId] = useState(null);
   const [correctionText, setCorrectionText] = useState("");
-  const [isListening, setIsListening] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -278,7 +298,6 @@ export default function PanelinChatPanel({
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const openerRef = useRef(null);
-  const recognitionRef = useRef(null);
   const prevMsgCountRef = useRef(0);
   const drawerResizeActiveRef = useRef(false);
   const inputLiftDragActiveRef = useRef(false);
@@ -294,7 +313,7 @@ export default function PanelinChatPanel({
   }, [customSkins]);
 
   const skinOptions = useMemo(() => Array.from(skinMap.values()), [skinMap]);
-  const activeSkin = skinMap.get(selectedSkinId) || skinMap.get("classic") || BUILTIN_SKINS[0];
+  const activeSkin = skinMap.get(selectedSkinId) || skinMap.get("applied-ai") || BUILTIN_SKINS[0];
   const activeTokens = skinEditorOpen ? { ...activeSkin.tokens, ...skinDraft } : activeSkin.tokens;
   const {
     brand: BRAND_COLOR,
@@ -404,15 +423,24 @@ export default function PanelinChatPanel({
     prevMsgCountRef.current = count;
   }, [messages, ttsEnabled]);
 
-  // Cleanup recognition on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
-      }
-    };
-  }, []);
+  // Whisper-backed dictation (cross-browser, replaces deprecated Web Speech API).
+  // The hook manages mic stream lifecycle internally; cleanup happens on unmount.
+  const dictation = useDictation({
+    onTranscript: (text) => {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) return;
+      // Append to existing input so the user can speak in pieces or edit between captures
+      setInput((prev) => (prev ? `${prev.trimEnd()} ${trimmed}` : trimmed));
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    },
+    onError: (msg) => {
+      // Surface error inline; the user can also see it in the mic-button title attribute
+      console.warn("[dictation]", msg);
+    },
+    language: "es",
+  });
+  const isListening = dictation.status === "recording";
+  const isTranscribing = dictation.status === "transcribing";
 
   useEffect(() => {
     if (typeof window === "undefined" || !devMode) return;
@@ -475,51 +503,18 @@ export default function PanelinChatPanel({
     else window.speechSynthesis.addEventListener("voiceschanged", speak, { once: true });
   }, []);
 
+  // Mic button toggles dictation: idle → record, record → stop+transcribe.
+  // Uses Whisper via /api/agent/transcribe — works in all modern browsers
+  // including Safari/Firefox (Web Speech API was Chrome/Edge only).
   const toggleListening = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Tu navegador no soporta reconocimiento de voz. Usá Chrome o Edge.");
-      return;
+    if (dictation.status === "recording") {
+      dictation.stop();
+    } else if (dictation.status === "idle" || dictation.status === "error") {
+      if (dictation.status === "error") dictation.reset();
+      dictation.start();
     }
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-      return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = "es-UY";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 1;
-    let finalTranscript = "";
-    recognition.onresult = (event) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += t;
-        } else {
-          interim += t;
-        }
-      }
-      setInput(finalTranscript || interim);
-    };
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-      if (finalTranscript) {
-        setInput(finalTranscript);
-      }
-    };
-    recognition.onerror = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [isListening]);
+    // While transcribing, the button is disabled (handled in the JSX below).
+  }, [dictation]);
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -527,6 +522,55 @@ export default function PanelinChatPanel({
     setInput("");
     send(text);
   }, [input, isStreaming, send]);
+
+  const [deepResearch, setDeepResearch] = useState({ status: "idle", id: null, error: null });
+  const deepResearchPollRef = useRef(null);
+  useEffect(() => () => {
+    if (deepResearchPollRef.current) clearInterval(deepResearchPollRef.current);
+  }, []);
+
+  const handleDeepResearch = useCallback(async () => {
+    const query = input.trim();
+    if (!query || deepResearch.status === "running") return;
+    setDeepResearch({ status: "running", id: null, error: null });
+    try {
+      const res = await fetch("/api/research/deep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      const id = data.id;
+      setDeepResearch({ status: "running", id, error: null });
+      deepResearchPollRef.current = setInterval(async () => {
+        try {
+          const pr = await fetch(`/api/research/deep/${encodeURIComponent(id)}`);
+          const pdata = await pr.json();
+          if (pdata.status === "completed") {
+            clearInterval(deepResearchPollRef.current);
+            deepResearchPollRef.current = null;
+            const cites = (pdata.citations || [])
+              .map((c, i) => `[${i + 1}] ${c.title || c.url} — ${c.url}`)
+              .join("\n");
+            const body = `🔎 Deep Research: "${query}"\n\n${pdata.text || "(sin texto)"}${cites ? `\n\nFuentes:\n${cites}` : ""}`;
+            setInput(body);
+            setDeepResearch({ status: "done", id, error: null });
+          } else if (pdata.status === "failed" || pdata.status === "cancelled") {
+            clearInterval(deepResearchPollRef.current);
+            deepResearchPollRef.current = null;
+            setDeepResearch({ status: "error", id, error: pdata.error?.message || pdata.status });
+          }
+        } catch (err) {
+          clearInterval(deepResearchPollRef.current);
+          deepResearchPollRef.current = null;
+          setDeepResearch({ status: "error", id, error: err.message });
+        }
+      }, 5000);
+    } catch (err) {
+      setDeepResearch({ status: "error", id: null, error: err.message });
+    }
+  }, [input, deepResearch.status]);
 
   const saveCurrentSkin = () => {
     const name = typeof window !== "undefined" ? window.prompt("Nombre de la skin:") : "";
@@ -1014,6 +1058,10 @@ export default function PanelinChatPanel({
                       ))}
                     </div>
                   )}
+                  {/* Trust UI: cifras verificadas por el cotizador */}
+                  {!isUser && msg.verifiedQuote && (
+                    <TrustBlock verifiedQuote={msg.verifiedQuote} />
+                  )}
                   {/* Action feedback badges */}
                   {!isUser && msg.actions?.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingLeft: 2 }}>
@@ -1026,6 +1074,54 @@ export default function PanelinChatPanel({
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  {/* Quick replies from SUGGEST_JSON (server SSE) */}
+                  {!isUser && Array.isArray(msg.suggestions?.groups) && msg.suggestions.groups.length > 0 && !msg.pending && (
+                    <div
+                      style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 2, maxWidth: "100%" }}
+                      role="group"
+                      aria-label="Respuestas sugeridas"
+                    >
+                      {msg.suggestions.groups.map((g, gi) => (
+                        <div key={gi}>
+                          {g.title && (
+                            <div style={{ fontSize: 11, color: SUBTEXT_COLOR, marginBottom: 4, fontWeight: 600, fontFamily: FONT }}>
+                              {g.title}
+                            </div>
+                          )}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {(g.items || []).map((it, ii) => (
+                              <button
+                                key={`${gi}-${ii}`}
+                                type="button"
+                                disabled={isStreaming}
+                                onClick={() => {
+                                  const text = String(it.send || it.label || "").trim();
+                                  if (!text) return;
+                                  clearSuggestionsForMessage?.(msg.id);
+                                  send(text);
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: 20,
+                                  border: `1px solid ${BORDER_COLOR}`,
+                                  background: SURFACE_COLOR,
+                                  color: TEXT_COLOR,
+                                  fontSize: 12,
+                                  cursor: isStreaming ? "not-allowed" : "pointer",
+                                  fontFamily: FONT,
+                                  opacity: isStreaming ? 0.55 : 1,
+                                  maxWidth: "100%",
+                                  textAlign: "left",
+                                }}
+                              >
+                                {it.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                   {/* TTS play button for assistant messages */}
@@ -1398,14 +1494,26 @@ export default function PanelinChatPanel({
           )}
           <button
             onClick={toggleListening}
-            title={isListening ? "Escuchando..." : "Hablar"}
+            disabled={isTranscribing}
+            title={
+              isTranscribing
+                ? "Transcribiendo…"
+                : isListening
+                  ? "Tocá para detener y transcribir"
+                  : dictation.error
+                    ? `Error: ${dictation.error}`
+                    : "Hablar (Whisper)"
+            }
             style={{
               ...iconBtn,
-              background: isListening ? "#ff3b30" : "transparent",
-              color: isListening ? "#fff" : SUBTEXT,
+              background: isListening ? "#ff3b30" : isTranscribing ? PRIMARY : "transparent",
+              color: isListening || isTranscribing ? "#fff" : SUBTEXT,
               animation: isListening ? "panelin-mic-pulse 1.5s infinite" : "none",
+              opacity: isTranscribing ? 0.7 : 1,
+              cursor: isTranscribing ? "wait" : "pointer",
             }}
-            aria-label={isListening ? "Detener grabación" : "Hablar"}
+            aria-label={isTranscribing ? "Transcribiendo" : isListening ? "Detener grabación" : "Hablar"}
+            aria-busy={isTranscribing}
           >
             <Mic size={18} />
           </button>
@@ -1438,6 +1546,26 @@ export default function PanelinChatPanel({
               overflowY: "auto",
             }}
           />
+          <button
+            onClick={handleDeepResearch}
+            disabled={!input.trim() || deepResearch.status === "running"}
+            title={
+              deepResearch.status === "running"
+                ? "Investigando…"
+                : deepResearch.status === "error"
+                  ? `Error: ${deepResearch.error}`
+                  : "Deep Research (OpenAI)"
+            }
+            style={{
+              ...iconBtn,
+              background: deepResearch.status === "running" ? "#f59e0b" : BORDER,
+              color: deepResearch.status === "running" ? "#fff" : SUBTEXT,
+              cursor: input.trim() && deepResearch.status !== "running" ? "pointer" : "not-allowed",
+            }}
+            aria-label="Deep Research"
+          >
+            <Search size={14} />
+          </button>
           {isStreaming ? (
             <button
               onClick={stop}

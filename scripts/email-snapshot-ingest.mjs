@@ -12,6 +12,8 @@
  * Variables:
  *   BMC_API_BASE (default http://localhost:3001)
  *   BMC_EMAIL_SNAPSHOT_PATH — ruta absoluta a snapshot-latest.json
+ *   EMAIL_INGEST_TOKEN — preferido para bridge machine→API (POST ingest)
+ *   API_AUTH_TOKEN / API_KEY — si no hay EMAIL_INGEST_TOKEN, mismo Bearer que cockpit
  *
  * Dedupe: .email-ingest/processed-ids.json (gitignored)
  */
@@ -79,11 +81,18 @@ function saveProcessed(set) {
   );
 }
 
-async function postIngest(base, body) {
+function resolveIngestBearer() {
+  const ingest = String(process.env.EMAIL_INGEST_TOKEN || "").trim();
+  const api = String(process.env.API_AUTH_TOKEN || process.env.API_KEY || "").trim();
+  return ingest || api || "";
+}
+
+async function postIngest(base, body, authHeader) {
   const url = `${base.replace(/\/$/, "")}/api/crm/ingest-email`;
+  const headers = { "Content-Type": "application/json", ...authHeader };
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
@@ -100,6 +109,14 @@ async function main() {
   }
 
   const base = process.env.BMC_API_BASE || "http://localhost:3001";
+  const bearer = resolveIngestBearer();
+  const authHeader = bearer ? { Authorization: `Bearer ${bearer}` } : {};
+
+  if (!args.dryRun && !bearer) {
+    console.error("POST /api/crm/ingest-email requiere auth: definí EMAIL_INGEST_TOKEN o API_AUTH_TOKEN (o API_KEY) en .env");
+    process.exit(1);
+  }
+
   const raw = fs.readFileSync(snapPath, "utf8");
   const snapshot = JSON.parse(raw);
 
@@ -132,7 +149,7 @@ async function main() {
       continue;
     }
 
-    const r = await postIngest(base, body);
+    const r = await postIngest(base, body, authHeader);
     if (r.status === 200 && r.data?.ok) {
       console.log(`✓ ${key.slice(0, 50)}…  crmRow=${r.data.crmRow ?? "?"}`);
       if (key) processed.add(key);

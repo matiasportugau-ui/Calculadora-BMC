@@ -11,6 +11,7 @@ import {
 } from "../lib/panelinInternalRbac.js";
 import { PANELIN_INTERNAL_TOOLS } from "../lib/panelinInternalToolCatalog.js";
 import { getInternalToolById, mayInvokeTool } from "../lib/panelinInternalInvoke.js";
+import { _internal as calcLoopbackInternal } from "../lib/calcLoopbackClient.js";
 
 /**
  * @param {import('../config.js').config} config
@@ -93,9 +94,8 @@ export default function createPanelinInternalRouter(config) {
       return res.status(500).json({ ok: false, error: "Tool path not allowed" });
     }
 
-    const port = Number(config.port || 3001);
-    const base = `http://127.0.0.1:${port}`;
-    const u = new URL(pathOnly, base);
+    const base = calcLoopbackInternal.loopbackBase();
+    const u = new URL(calcLoopbackInternal.joinUrl(base, pathOnly));
     const q = req.body?.query;
     if (q && typeof q === "object" && !Array.isArray(q)) {
       for (const [k, v] of Object.entries(q)) {

@@ -35,7 +35,18 @@ const SCENARIO_LABELS = {
 const ZONE_DESCS = ['Principal', 'Ext. lateral der.', 'Ext. lateral izq.', 'Ext. adicional'];
 
 export function buildQuotationModel(data) {
-  const { project, scenario, panel, groups, totals, appendix, snapshotImages } = data;
+  const {
+    client,
+    project,
+    scenario,
+    panel,
+    groups,
+    totals,
+    appendix,
+    snapshotImages,
+    bmcExtra: bmcExtraUser,
+  } = data;
+  const clienteSrc = client ?? project;
   const scenarioLabel = appendix?.scenarioLabel || SCENARIO_LABELS[scenario] || scenario;
   const zonas = appendix?.zonas || [];
   const roofBlocks = appendix?.roofBlocks || [];
@@ -88,6 +99,23 @@ export function buildQuotationModel(data) {
   const planTitle = `Planta Cubierta — ${aguasLabel} · ${zonaCount} Zona${zonaCount !== 1 ? 's' : ''}`;
   const planSummary = `${totalArea.toFixed(2)} m² · ${kpi.paneles ?? '—'} paneles${au > 0 ? ` · AU ${au.toFixed(2)} m` : ''}`;
 
+  /** BMC PDF técnico: cliente, perímetro y extras no expuestos en raíz del modelo */
+  const bmcExtra = {
+    client: {
+      nombre: clienteSrc?.nombre,
+      razonSocial: clienteSrc?.razonSocial || clienteSrc?.nombre,
+      direccion: clienteSrc?.direccion,
+      telefono: clienteSrc?.telefono,
+      nombreRefCliente: clienteSrc?.nombreContacto,
+    },
+    globalBorders: appendix?.globalBorders,
+    panelAu: appendix?.panelAu ?? au,
+    panel: panel && (panel.url || panel.photo || panel.detalle)
+      ? { url: panel.url, photo: panel.photo, detalle: panel.detalle }
+      : undefined,
+    ...(bmcExtraUser && typeof bmcExtraUser === 'object' ? bmcExtraUser : {}),
+  };
+
   return {
     ref: project?.refInterna || '—',
     fecha: project?.fecha || '—',
@@ -108,6 +136,7 @@ export function buildQuotationModel(data) {
     zoneRows,
     bomDetailGroups,
     conditionsText: 'Fabricación y entrega 10 a 45 días. Seña 60% al confirmar · saldo 40% previo a retiro de fábrica. Oferta válida 10 días. Precios en USD · IVA incluido.',
+    bmcExtra,
   };
 }
 

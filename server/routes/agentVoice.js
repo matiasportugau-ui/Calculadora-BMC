@@ -290,4 +290,51 @@ router.post("/agent/voice/errors/clear", errorClearLimiter, requireAuth, (req, r
   return res.json({ ok: true });
 });
 
+/**
+ * GET /api/agent/voice/health
+ * Pings OpenAI /v1/models with the configured key to confirm it is still active.
+ * Returns metadata (prefix, suffix, length) but never the full key. Admin-only.
+ */
+router.get("/agent/voice/health", requireAuth, async (req, res) => {
+  const key = config.openaiApiKey || "";
+  const meta = {
+    configured: Boolean(key),
+    keyLength: key.length,
+    keyPrefix: key.slice(0, 8),
+    keySuffix: key ? key.slice(-4) : "",
+    model: config.openaiRealtimeModel,
+  };
+  if (!key) {
+    return res.status(503).json({ ok: false, ...meta, error: "OPENAI_API_KEY not configured" });
+  }
+
+  const t0 = Date.now();
+  try {
+    const r = await fetch("https://api.openai.com/v1/models", {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    const latencyMs = Date.now() - t0;
+    if (r.ok) {
+      return res.json({ ok: true, status: r.status, latencyMs, ...meta });
+    }
+    let detail = "";
+    try { detail = (await r.json())?.error?.message || ""; } catch { /* ignore */ }
+    return res.status(502).json({
+      ok: false,
+      status: r.status,
+      latencyMs,
+      ...meta,
+      error: detail || `OpenAI ${r.status}`,
+    });
+  } catch (err) {
+    return res.status(502).json({
+      ok: false,
+      latencyMs: Date.now() - t0,
+      ...meta,
+      error: err?.message || "network error",
+    });
+  }
+});
+
 export default router;

@@ -23,14 +23,21 @@ Lee este archivo antes de cualquier tarea.
 | `npm run build` | Antes de hacer commit de cambios en `src/` |
 | `npm run start:api` | Para iniciar la API en puerto 3001 |
 | `npm run transportista:migrate` | Modo Transportista: aplica migraciones Postgres (`DATABASE_URL`) desde `transportista-cursor-package/migrations/` |
+| `npm run wa:migrate` | **WA Cockpit:** aplica migraciones SQL desde `wa-package/migrations/` (`wa_conversations`, `wa_messages`, `wa_suggestions`, `wa_quotes`, `wa_followups`, `wa_consent`, `wa_operator`, `wa_heartbeats`). Mismo `DATABASE_URL` que Transportista. Hub: [`docs/wa-cockpit/README.md`](docs/wa-cockpit/README.md). |
+| `npm run wa:reconcile` | **WA Cockpit:** reconciliador nocturno `wa_quotes.link` vs col AH `CRM_Operativo`; reporte `.runtime/wa-reconcile-<date>.json`. Requiere `DATABASE_URL` + `BMC_SHEET_ID` + `GOOGLE_APPLICATION_CREDENTIALS`. |
+| `npm run wa:purge-old` | **WA Cockpit (F5 TTL):** borra `wa_messages.text` y `raw` con `ts < now() - WA_TTL_DAYS` (default 180); mantiene metadata. `--dry-run` para preview. |
+| `npm run wa:ext:load` | **WA Cockpit:** abre Chrome con perfil dedicado (`.runtime/chrome-wa-profile/`) + extensión `calculadora-bmc-wa-extension/.output/chrome-mv3/` cargada + pestañas a `web.whatsapp.com` y `/hub/wa`. Sesión persistente entre runs. Variantes: `wa:ext:rebuild` (rebuild forzado), `wa:ext:watch` (HMR `wxt dev` en bg). |
+| `npm run wa:admin -- <args>` | **WA Module Pro Settings — Admin CLI** ([`scripts/wa-admin.mjs`](scripts/wa-admin.mjs)). Bootstrap del primer Owner sin magic link: `operator add --email <e> --name <n> --role owner`. Otros: `operator list/revoke --id`, `config get/set/dump --out file/import file [--dry-run]` (zod-validated), `flags list/get/toggle`, `webhook list/test --id`, `sla check [--verbose]`. Usa `DATABASE_URL`. Útil para emergencias y scripting CI. |
+| `npm run test:wa-pro` | **WA Module Pro Settings — integration tests** (requiere `DATABASE_URL` con migraciones aplicadas): corre en serie `wa-config`, `wa-operator-auth`, `wa-rules`, `wa-webhooks`, `wa-sla`. Cada test skipea limpio si la DB no está alcanzable. |
 | `npm run followup` | Follow-ups / recordatorios (CLI `scripts/followup.mjs`; almacén local `.followup/` o `FOLLOWUP_STORE_PATH`); API `GET/POST /api/followups` |
 | `npm run program:status` | Programa maestro multi-área: fase actual, progreso ~%, próximos pasos (`docs/team/orientation/programs/bmc-panelin-master.json`) |
 | `npm run project:compass` | **Seguimiento unificado:** `program:status` + follow-ups vencidos (`followup due`). Índice: `docs/team/PROJECT-SCHEDULE.md`. Alias: `npm run schedule` |
 | `npm run channels:onboarding` | **Arranque canales (orden WA → ML → Correo):** ejecuta `smoke:prod` + `project:compass` e indica el doc [`docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md`](docs/team/PROCEDIMIENTO-CANALES-WA-ML-CORREO.md). `-- --skip-smoke` / `--skip-compass` |
 | `npm run channels:automated` | **Solo máquina, máximo paralelo:** smoke prod + follow-ups + snapshot programa + `humanGate` (cm-0/1/2). JSON en stdout; `-- --write` → `.channels/last-pipeline.json`. Ver [`docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md`](docs/team/orientation/ASYNC-RUNBOOK-UNATTENDED.md). **CI:** job `channels_pipeline` en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) (push/PR `main`). |
 | `npm run smoke:prod` | Smoke contra API pública (URL canónica en script): `GET /health`, `/capabilities`, chequeo `public_base_url`, **`GET /api/actualizar-precios-calculadora` (CSV MATRIZ, crítico)**, `GET /auth/ml/status`, `POST /api/crm/suggest-response` (IA). `BMC_API_BASE` / `SMOKE_BASE_URL`; `-- --json`; omitir solo MATRIZ: `SMOKE_SKIP_MATRIZ=1` o `-- --skip-matriz` |
+| `npm run smoke:bmc-pdf` | Cotización de prueba (`solo_techo`, techo 2 zonas) + HTML en `.runtime/bmc-pdf-smoke.html`; si la API corre (`npm run start:api`), intenta `POST /api/pdf/generate` → `.runtime/bmc-pdf-smoke.pdf`. Var.: `BMC_PDF_SMOKE_API`, `--no-pdf`. Si el renderer devuelve `503` (Chromium), abrir el HTML e imprimir a PDF. |
 | `npm run capabilities:snapshot` | Regenera `docs/api/AGENT-CAPABILITIES.json` desde `server/agentCapabilitiesManifest.js` (base: `CAPABILITIES_SNAPSHOT_BASE` → `PUBLIC_BASE_URL` → host canónico Cloud Run). |
-| `npm run email:ingest-snapshot` | Bridge correo: lee `snapshot-latest.json` (repo IMAP hermano) y POST `/api/crm/ingest-email`. `--dry-run`, `--limit`, `--file`, `BMC_EMAIL_SNAPSHOT_PATH`. Dedupe `.email-ingest/` |
+| `npm run email:ingest-snapshot` | Bridge correo: lee `snapshot-latest.json` (repo IMAP hermano) y POST `/api/crm/ingest-email` (Bearer: `EMAIL_INGEST_TOKEN` si existe, si no `API_AUTH_TOKEN`). `--dry-run`, `--limit`, `--file`, `BMC_EMAIL_SNAPSHOT_PATH`. Dedupe `.email-ingest/`. Ver `docs/team/panelsim/EMAIL-ADMINISTRATOR.md` |
 | `GET /api/email/panelsim-summary` | Con API arriba y **`API_AUTH_TOKEN`**: lee `PANELSIM-STATUS.json` + `PANELSIM-ULTIMO-REPORTE.md` del repo IMAP (`BMC_EMAIL_INBOX_REPO`). Query opcional `reportMaxChars`. Ver [`docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md`](docs/team/panelsim/EMAIL-GPT-THUNDERBIRD-WORKFLOW.md) |
 | `POST /api/email/draft-outbound` | Borrador saliente proveedor/cliente (JSON `role`, `hechos`, opcional `tono`, `asunto_contexto`). **No envía** mail — copiar a Thunderbird. Misma auth Bearer que cockpit |
 | Custom GPT **solo correo** | OpenAPI mínimo [`docs/openapi-email-gpt.yaml`](docs/openapi-email-gpt.yaml); guía Builder [`docs/team/panelsim/GPT-EMAIL-AGENT-BUILDER.md`](docs/team/panelsim/GPT-EMAIL-AGENT-BUILDER.md) — 2 Actions, sin `/calc` ni ML |
@@ -65,6 +72,8 @@ Lee este archivo antes de cualquier tarea.
 | `npm run magazine:schedule:install` | macOS: LaunchAgent diario (~08:00 Montevideo) para `magazine:daily:send` |
 | `npm run local:stack:launchd:install` | macOS: LaunchAgent `com.bmc.calculadora-localstack` — al login levanta API `:3001` + Vite `:5173` si no están arriba; logs `.runtime/local-stack-launchd*.log` |
 | `npm run local:stack:launchd:uninstall` | Quita el LaunchAgent del stack local (`unload` + borra plist en `~/Library/LaunchAgents/`) |
+| `npm run wa:admin` | CLI de administración del módulo WhatsApp Pro (operadores, config, flags, webhooks, SLA). |
+| `npm run wa:gen-docs` | Regenera la documentación técnica de configuración desde el schema Zod. |
 
 **Loops de validación:**
 
@@ -126,6 +135,7 @@ Este proyecto usa un equipo de **agentes IA coordinados** cuyo listado canónico
 5. Consultar `docs/bmc-dashboard-modernization/DASHBOARD-INTERFACE-MAP.md` para estructura del dashboard.
 6. **Pedidos vagos o “quién hace esto”:** agente `.cursor/agents/bmc-team-liaison.md` y skill `.cursor/skills/bmc-team-liaison/SKILL.md` — brief + sugerencia de siguiente rol/skill y gates; modo refinamiento de input: `.cursor/skills/contribut-input-mode/SKILL.md`.
 7. **Panelin interno / orquestador en app (Claude u otro agente en terminal):** [`docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md`](docs/team/CLAUDE-PANELIN-ORQUESTADOR-RUNBOOK.md) — fases RBAC → tools → cola de aprobación; prompts listos para pegar en `claude "…"`.
+8. **AE-Agent × Calculadora — contrato de cotización:** [`docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md`](docs/team/panelsim/AE-AGENT-CALC-CONTRACT.md) — todas las tools de cotización (`calcular_cotizacion` / `presupuesto_libre` / `generar_pdf`) atraviesan `127.0.0.1:${config.port}/calc/*` vía [`server/lib/calcLoopbackClient.js`](server/lib/calcLoopbackClient.js); provenance `source: "ae_agent"` y archivado en `quoteRegistry`.
 
 En **full team run** («Invoque full team» / «Equipo completo»): tras el paso 0 del Orquestador, el rol **MATPROMT** (`matprompt`) ejecuta el **paso 0a** y publica prompts por rol en `docs/team/MATPROMT-FULL-RUN-PROMPTS.md` (o `docs/team/matprompt/MATPROMT-RUN-*.md`). Cada agente debe leer **su** subsección del bundle antes de su paso.
 
@@ -163,6 +173,7 @@ Standard lint/test/build commands are documented in the table at the top of this
 ### Non-obvious caveats
 
 - **`easymidi` native dependency:** `npm install` requires `libasound2-dev` (ALSA headers) on Linux. Without it, the `midi` native addon (pulled by `easymidi`) fails to compile. Install via `sudo apt-get install -y libasound2-dev` before `npm install`.
+- **Node.js:** `package.json` `engines.node` is **24.x** (alinea Vercel con `@sparticuz/chromium`, que exige `>=22.17.0`). Local: `nvm install 24 && nvm use 24` (o equivalente).
 - **Disk precheck:** `npm run dev` and `npm run build` both run `disk:precheck` as a pre-hook. In cloud/CI environments with ample disk, set `BMC_DISK_PRECHECK_SKIP=1` to skip it, or it may fail on unusual filesystem layouts.
 - **`.env` file:** `npm run env:ensure` creates `.env` from `.env.example` (non-destructive). Most features work without credentials, but Google Sheets integration, MercadoLibre OAuth, and AI-powered CRM features require secrets in `.env`.
 - **API health check:** `curl http://localhost:3001/health` — returns `{"ok":true,...}`. The `hasSheets` and `hasTokens` fields will be `false` without Google/ML credentials configured.
