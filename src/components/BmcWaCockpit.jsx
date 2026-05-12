@@ -692,6 +692,16 @@ export default function BmcWaCockpit() {
 
   return (
     <div style={wrap}>
+      {/* Frontend run 2026-05-12 (#FE13): focus-visible outline para keyboard nav. Aplica solo cuando navega con Tab, no afecta mouse. */}
+      <style>{`
+        .bmc-wa-cockpit button:focus-visible,
+        .bmc-wa-cockpit a:focus-visible,
+        .bmc-wa-cockpit [role="tab"]:focus-visible {
+          outline: 2px solid #0071e3;
+          outline-offset: 2px;
+        }
+      `}</style>
+      <div className="bmc-wa-cockpit" style={{ display: "contents" }}>
       <div style={header}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link to="/" style={{ color: "#0071e3", textDecoration: "none", fontSize: 12 }}>
@@ -1297,6 +1307,7 @@ export default function BmcWaCockpit() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
