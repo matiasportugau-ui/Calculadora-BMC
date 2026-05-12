@@ -829,6 +829,14 @@ export function revokePreviewUrl(url) {
 
 // ── WhatsApp ──────────────────────────────────────────────────────────────────
 
+/**
+ * Frontend run 2026-05-12 (#A6): el copy WhatsApp incluye emojis (📅 🏗 💰 ✅) que
+ * se ven bien en WhatsApp moderno (Android/iOS recientes, WhatsApp Web). Clientes legacy
+ * o copy/paste a SMS pueden mostrar códigos en lugar del emoji.
+ * REQUIRES REVIEW: si llegan reportes reales de incompatibilidad, agregar un toggle
+ * `useEmojis: false` que reemplace cada emoji por texto plano (📅 → "Fecha:", 💰 → "Subtotal:", etc.).
+ * Mientras no haya reporte concreto, mantener emojis (mejora la lectura del 99% de los clientes).
+ */
 export function buildWhatsAppText(data) {
   const { client, project, scenario, panel, totals, listaLabel } = data;
   const scenarioLabel = { solo_techo: "Solo techo", solo_fachada: "Solo fachada", techo_fachada: "Techo + Fachada", camara_frig: "Cámara Frigorífica" }[scenario] || scenario;
