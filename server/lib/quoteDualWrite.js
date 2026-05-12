@@ -111,5 +111,14 @@ export async function dualWriteQuote(input = {}) {
     );
   }
 
+  // Top-30 run 2026-05-12 (#S3): señal explícita cuando el dual-write quedó PARCIAL.
+  // crmResult ok + adminCotResult fail = inconsistencia que requiere reconciliación manual o replay.
+  // Sin esto el caller veía dos resultados separados; ahora hay un sentinel claro para alertas.
+  if (crmResult.ok && !adminCotResult.ok && !adminCotResult.skipped) {
+    console.error(
+      `[quoteDualWrite] PARTIAL_WRITE lead_id=${leadId || "(sin id)"} ts=${ts} — CRM_Operativo OK pero Admin Cotizaciones FALLÓ. Reconciliar manualmente o agregar replay automático.`
+    );
+  }
+
   return { crm: crmResult, adminCot: adminCotResult };
 }
