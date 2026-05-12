@@ -92,9 +92,9 @@ export const PANELS_TECHO = {
     au: 1.0, lmin: 3.5, lmax: 8.5, sist: "caballete_tornillo", fam: "ISOROOF",
     esp: {
       30: { venta: 33.2695, web: 40.502,  costo: 28.93,  ap: 2.8 },
-      // REVIEW (top-10 run 2026-05-11): web 36.69 < venta 37.7856 invierte la jerarquía típica (web debería ser ≥ venta por flete/markup).
-      // Patch reciente fab69b0 tocó este SKU. Comparar contra MATRIZ y ISOROOF_3G 50mm (web: 55.062). Si MATRIZ confirma valor, dejar razón aquí y borrar este TODO. Si es error, ajustar el número.
-      50: { venta: 37.7856, web: 36.69,   costo: 32.857, ap: 3.3 },
+      // 2026-05-12: ajustado web a 46.00 (= costo 32.857 × ×1.40, markup estándar de la familia ISOROOF).
+      // MATRIZ no trae venta/web para este SKU (solo costo 31.9); el commit 9ed59a5 había dejado web: 36.69, anómalo (web < venta).
+      50: { venta: 37.7856, web: 46.00,   costo: 32.857, ap: 3.3 },
     },
     col: ["Gris", "Rojo"], colNotes: {}, colMax: {},
   },
