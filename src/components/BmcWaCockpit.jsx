@@ -692,13 +692,20 @@ export default function BmcWaCockpit() {
 
   return (
     <div style={wrap}>
-      {/* Frontend run 2026-05-12 (#FE13): focus-visible outline para keyboard nav. Aplica solo cuando navega con Tab, no afecta mouse. */}
+      {/* Frontend run 2026-05-12 (#FE13): focus-visible outline para keyboard nav. */}
+      {/* Frontend run 2026-05-12 (#FE7): mobile responsive — grid 3-col se apila <640px. */}
       <style>{`
         .bmc-wa-cockpit button:focus-visible,
         .bmc-wa-cockpit a:focus-visible,
         .bmc-wa-cockpit [role="tab"]:focus-visible {
           outline: 2px solid #0071e3;
           outline-offset: 2px;
+        }
+        @media (max-width: 639px) {
+          .bmc-wa-cockpit-grid {
+            grid-template-columns: 1fr !important;
+            grid-auto-rows: auto;
+          }
         }
       `}</style>
       <div className="bmc-wa-cockpit" style={{ display: "contents" }}>
@@ -790,7 +797,7 @@ export default function BmcWaCockpit() {
           }}
         />
       ) : (
-        <div style={grid}>
+        <div className="bmc-wa-cockpit-grid" style={grid}>
           <div style={colLeft}>
             <div style={{ padding: 10, borderBottom: "1px solid #f0f0f3", display: "flex", flexDirection: "column", gap: 8 }}>
               <input
