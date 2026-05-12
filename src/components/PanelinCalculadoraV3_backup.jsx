@@ -202,6 +202,7 @@ function StepperInput({
   chainFocus = false,
   /** Ref al `<input>` interno (p. ej. autofocus al entrar a un paso del asistente). */
   inputRef = null,
+  testId = undefined,
 }) {
   const [draft, setDraft] = useState(null);
   const skipNextBlurCommitRef = useRef(false);
@@ -251,6 +252,7 @@ function StepperInput({
           type="text"
           inputMode="decimal"
           autoComplete="off"
+          data-testid={testId}
           data-stepper-chain={chainFocus ? "1" : undefined}
           value={show}
           onFocus={() => setDraft(formatNumDisplay(num, decimals))}
@@ -283,12 +285,12 @@ function StepperInput({
   );
 }
 
-function SegmentedControl({ value, onChange, options = [], disabledIds = [], onOptionDoubleClick }) {
+function SegmentedControl({ value, onChange, options = [], disabledIds = [], onOptionDoubleClick, testId = undefined }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", background: C.border, borderRadius: 12, padding: 4, gap: 4, fontFamily: FONT, width: "100%" }}>
       {options.map(opt => {
         const isD = disabledIds.includes(opt.id), isA = value === opt.id;
-        return <button key={opt.id} onClick={() => !isD && onChange(opt.id)} onDoubleClick={() => !isD && onOptionDoubleClick?.(opt.id)} style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.4 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal" }}>{opt.label}</button>;
+        return <button key={opt.id} data-testid={testId ? `${testId}-${opt.id}` : undefined} onClick={() => !isD && onChange(opt.id)} onDoubleClick={() => !isD && onOptionDoubleClick?.(opt.id)} style={{ flex: "1 1 140px", minWidth: 0, padding: "10px 16px", borderRadius: 10, border: "none", cursor: isD ? "not-allowed" : "pointer", background: isA ? C.surface : "transparent", boxShadow: isA ? "0 2px 6px rgba(0,0,0,0.1)" : "none", fontSize: 14, fontWeight: isA ? 600 : 500, color: isA ? C.tp : C.ts, opacity: isD ? 0.4 : 1, transition: TR, fontFamily: FONT, whiteSpace: "normal" }}>{opt.label}</button>;
       })}
     </div>
   );
@@ -4812,7 +4814,7 @@ export default function PanelinCalculadoraV3() {
               const proyectoStepIdx = SOLO_TECHO_STEPS.findIndex(s => s.id === "proyecto");
               return (
                 <>
-                <div style={sectionS}>
+                <div data-testid={stepId ? `wizard-step-${stepId}` : undefined} style={sectionS}>
                   {/* Step indicators — connected track */}
                   <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 10, flexWrap: "nowrap" }}>
                     {SOLO_TECHO_STEPS.map((s, i) => {
@@ -4911,6 +4913,7 @@ export default function PanelinCalculadoraV3() {
                         return (
                           <div
                             key={sc.id}
+                            data-testid={`scenario-card-${sc.id}`}
                             onMouseEnter={() => setScenarioHoverId(sc.id)}
                             onClick={() => {
                               setScenario(sc.id);
@@ -5173,11 +5176,11 @@ export default function PanelinCalculadoraV3() {
                             )}
                           </div>
                           <div data-stepper-group style={{ display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
-                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} />
+                            <StepperInput label="Largo (m)" value={zona.largo ?? 0} onChange={v => updateZona(idx, "largo", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_LARGO_M} unit="m" decimals={2} chainFocus inputRef={idx === 0 ? dimensionesLargoInputRef : undefined} testId={`dim-largo-${idx}`} />
                             {techoAnchoModo === "paneles" && techoPanelData ? (
-                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus />
+                              <StepperInput label="Paneles (ancho)" value={techoPanelesDesdeAnchoM(zona.ancho ?? 0, techoPanelData, derivedTipoAguas)} onChange={v => updateZona(idx, "ancho", techoAnchoMDesdePaneles(v, techoPanelData, derivedTipoAguas))} min={1} max={500} step={1} unit="pan." decimals={0} chainFocus testId={`dim-paneles-${idx}`} />
                             ) : (
-                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus />
+                              <StepperInput label="Ancho (m)" value={zona.ancho ?? 0} onChange={v => updateZona(idx, "ancho", v)} min={0} max={20} step={0.01} bumpStep={BUMP_STEP_METROS} unit="m" decimals={2} chainFocus testId={`dim-ancho-${idx}`} />
                             )}
                           </div>
                           {(techo.zonas?.length || 0) > 1 && (() => {
@@ -5752,13 +5755,13 @@ export default function PanelinCalculadoraV3() {
                     ) : (
                       <>
                         {canPrev && (
-                          <button type="button" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
+                          <button type="button" data-testid="wizard-btn-anterior" onClick={() => goPrevWizardSoloTecho()} style={{ padding: "12px 24px", borderRadius: 12, border: `2px solid ${C.border}`, background: C.surface, fontSize: 15, fontWeight: 600, cursor: "pointer", color: C.tp }}>
                             Anterior
                           </button>
                         )}
                         <div style={{ flex: 1 }} />
                         {canNext ? (
-                          <button type="button" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
+                          <button type="button" data-testid="wizard-btn-siguiente" onClick={() => isValid && advanceWizardStep()} disabled={!isValid} style={wizardPrimaryActionStyle(isValid)}>
                             Siguiente
                           </button>
                         ) : (
@@ -5835,7 +5838,7 @@ export default function PanelinCalculadoraV3() {
           {/* Lista precios + Escenario (Modo Cliente) */}
           <div style={sectionS}>
             <div style={labelS}>LISTA DE PRECIOS</div>
-            <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} />
+            <SegmentedControl value={listaPrecios || "web"} onChange={v => setLP(v)} options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]} testId="lista-precios" />
             <div style={{ marginTop: 16 }}>
               <div style={labelS}>ESCENARIO DE OBRA</div>
               <div
@@ -5844,7 +5847,7 @@ export default function PanelinCalculadoraV3() {
               >
                 {SCENARIOS_DEF.map(sc => {
                   const isS = scenario === sc.id;
-                  return <div key={sc.id} onMouseEnter={() => setScenarioHoverId(sc.id)} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
+                  return <div key={sc.id} data-testid={`scenario-card-${sc.id}`} onMouseEnter={() => setScenarioHoverId(sc.id)} onClick={() => { setScenario(sc.id); setTimeout(() => scrollToSection("panel"), 100); }} style={{ borderRadius: 16, padding: 16, cursor: "pointer", border: `2px solid ${isS ? C.primary : C.border}`, background: isS ? C.primarySoft : C.surface, transition: TR, boxShadow: isS ? `0 0 0 4px ${C.primarySoft}` : SHC }}>
                     <ScenarioStepIcon scenarioId={sc.id} size={28} selected={isS} color={isS ? C.primary : C.tp} />
                     <div style={{ fontSize: 14, fontWeight: 600, color: isS ? C.primary : C.tp, marginBottom: 2 }}>{sc.label}</div>
                     <div style={{ fontSize: 11, color: C.ts, lineHeight: 1.4 }}>{sc.description}</div>
@@ -6623,6 +6626,7 @@ export default function PanelinCalculadoraV3() {
                 value={listaPrecios || getListaDefault()}
                 onChange={v => setLP(v)}
                 options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
+                testId="lista-precios"
               />
             </div>
           )}
@@ -6715,6 +6719,7 @@ export default function PanelinCalculadoraV3() {
                 value={listaPrecios || "web"}
                 onChange={v => setLP(v)}
                 options={[{ id: "venta", label: "Precio BMC" }, { id: "web", label: "Precio Web" }]}
+                testId="lista-precios"
               />
             </div>
           )}

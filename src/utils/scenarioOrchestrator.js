@@ -16,6 +16,7 @@ import { buildEdgeBOM, encounterPairKey, getSharedSidesPerZona, layoutZonasLogic
 import {
   encounterEsContinuo,
   encounterBorderPerfil,
+  dominantEncounterPerfil,
   resolveNeighborSharedSide,
   listEncounterPairSegmentRuns,
 } from "./roofEncounterModel.js";
@@ -119,7 +120,7 @@ function computeTechoZonas(techo, useEncounterBorders) {
             const pk = neighborGi != null ? encounterPairKey(gi, neighborGi) : null;
             const rawPair = pk != null ? techo.zonas[Math.min(gi, neighborGi)]?.preview?.encounterByPair?.[pk] : null;
             const enc = rawPair ?? zona.preview?.encounters?.[k];
-            return [k, encounterEsContinuo(enc) ? "none" : encounterBorderPerfil(enc)];
+            return [k, rawPair ? dominantEncounterPerfil(rawPair) : (encounterEsContinuo(enc) ? "none" : encounterBorderPerfil(enc))];
           }))
         : mergedBorders;
     } else {
