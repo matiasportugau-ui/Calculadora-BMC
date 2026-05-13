@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 import { requireDevModeAuthMiddleware } from "../lib/devModeAuth.js";
 import { isAiGatewayEnabled, generateTextViaGateway } from "../lib/aiGatewayClient.js";
@@ -38,6 +39,13 @@ import { buildKbAnalytics, clearAnalyticsCache } from "../lib/kbAnalytics.js";
 const router = Router();
 
 const VALID_PROMPT_SECTIONS = new Set(["IDENTITY", "CATALOG", "WORKFLOW", "ACTIONS_DOC"]);
+const analyticsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: "rate_limited", retryAfterSec: 60 },
+});
 
 function validateSectionParam(req, res) {
   const section = String(req.params.section || "").toUpperCase();
@@ -426,7 +434,7 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuthMiddle
  *   - days=N (default 30, max 365)
  *   - include=kb,knowledge_events (comma-separated; default "kb")
  */
-router.get("/agent/training-kb/analytics", requireDevModeAuthMiddleware, async (req, res) => {
+router.get("/agent/training-kb/analytics", analyticsLimiter, requireDevModeAuthMiddleware, async (req, res) => {
   try {
     const daysBack = Math.max(1, Math.min(Number(req.query.days || 30), config.kbAnalyticsWindowMaxDays));
     const includeParam = String(req.query.include || "kb")
