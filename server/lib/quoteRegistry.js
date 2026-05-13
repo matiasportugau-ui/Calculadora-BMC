@@ -131,7 +131,10 @@ export async function listQuotations({ limit = 50, includeCancelled = false, cli
   if (b) {
     // Pull a wider GCS window when filters are active so post-filter results
     // can still satisfy `limit`. 500 covers ~6 months at typical volume.
-    const fetchLimit = (cliente || source) ? 500 : Math.max(limit * 2, 100);
+    // Only widen fetch if filters are actually non-empty after validation.
+    const hasClienteFilter = cliente && String(cliente).trim().length > 0;
+    const hasSourceFilter = source && (source === "ae_agent" || source === "calculator");
+    const fetchLimit = (hasClienteFilter || hasSourceFilter) ? 500 : Math.max(limit * 2, 100);
     const files = await listJsonInGcs({ bucket: b, prefix: PREFIX, limit: fetchLimit });
     const ids = files
       .map((f) => {
@@ -160,7 +163,10 @@ export async function listQuotations({ limit = 50, includeCancelled = false, cli
   }
   if (cliente) {
     const needle = String(cliente).trim().toLowerCase();
-    entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(needle));
+    // Short-circuit if needle is empty to avoid matching everything
+    if (needle.length > 0) {
+      entries = entries.filter((e) => String(e.client || "").toLowerCase().includes(needle));
+    }
   }
   if (source && (source === "ae_agent" || source === "calculator")) {
     entries = entries.filter((e) => (e.source || "calculator") === source);

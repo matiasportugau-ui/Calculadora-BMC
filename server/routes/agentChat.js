@@ -182,7 +182,8 @@ router.get("/agent/tools-manifest", (_req, res) => {
  * Used by the MCP server to surface every tool to external agents.
  *
  * Body: { name: string, input: object, calcState?: object }
- * Auth: write tools AND CRM-read tools require Authorization: Bearer ${API_AUTH_TOKEN}.
+ * Auth: write tools, CRM-read tools, quote registry read tools, and PDF read
+ *       tools require Authorization: Bearer ${API_AUTH_TOKEN}.
  *       Pure calculator / catalog reads are open.
  */
 export const TOOLS_REQUIRING_AUTH = new Set([

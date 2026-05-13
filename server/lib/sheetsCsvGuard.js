@@ -15,16 +15,20 @@
  * the same guard to `server/routes/wolfboard.js` `/row` writes.
  */
 
-const UNSAFE_LEADING = new Set(["=", "+", "-", "@", "\t", "\r"]);
+const UNSAFE_LEADING = new Set(["=", "+", "-", "@", "\t", "\r", "\n"]);
 
 /**
  * Sanitize a single cell value before writing with USER_ENTERED.
+ * Checks the first *non-whitespace* character to defeat the bypass where a
+ * leading space hides a formula trigger (e.g. " =HYPERLINK(...)" — Sheets
+ * trims display whitespace but still evaluates the formula).
  * @param {unknown} s — anything coercible to string
- * @returns {string} — original value, or apostrophe-prefixed if leading char is a formula trigger
+ * @returns {string} — original value, or apostrophe-prefixed if leading non-WS char is a formula trigger
  */
 export function sanitizeCellValue(s) {
   const v = String(s ?? "");
   if (!v) return "";
-  if (UNSAFE_LEADING.has(v.charAt(0))) return "'" + v;
+  const trimmed = v.trimStart();
+  if (trimmed && UNSAFE_LEADING.has(trimmed.charAt(0))) return "'" + v;
   return v;
 }
