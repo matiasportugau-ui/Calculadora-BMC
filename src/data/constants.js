@@ -158,9 +158,9 @@ export const PANELS_PARED = {
  * Pack/promo web = otra capa. Valores anclajes/remaches/tornillos exagonales: planillas usuario c/IVA ÷ 1,22.
  */
 export const FIJACIONES = {
-  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.945, web: 3.682, costo: 2.63, unidad: "unid" },
-  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.084, costo: 0.06, unidad: "unid" },
-  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.705, web: 0.658, costo: 0.47, unidad: "unid" },
+  varilla_38:         { label: 'Varilla roscada 3/8" (1m)', venta: 3.945, web: 4.3395, costo: 2.63, unidad: "unid" },
+  tuerca_38:          { label: 'Tuerca 3/8" galv.',         venta: 0.09, web: 0.099, costo: 0.06, unidad: "unid" },
+  arandela_carrocero: { label: 'Arandela carrocero 3/8"',   venta: 0.705, web: 0.7755, costo: 0.47, unidad: "unid" },
   /** Lado inferior del anclaje pasante (contra el panel); metal/madera. Sincronizar precios con MATRIZ (SKU ARPLA38). */
   arandela_plana:     { label: 'Arandela plana 3/8"',       venta: 0.102, web: 0.1122, costo: 0.068, unidad: "unid" },
   arandela_pp:        { label: 'Tortuga PVC (arand. PP)',   venta: 1.62, web: 1.782, costo: 1.08, unidad: "unid" },
@@ -362,7 +362,7 @@ export const PERFIL_PARED = {
     },
     ISOWALL: {
       50:  { sku: "PU50MM", venta: 10.00, web: 11.66, costo: 9.00, largo: 3.0 },
-      80:  { sku: "PU50MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
+      80:  { sku: "PU80MM", venta: 13.12, web: 16.01, costo: 11.81, largo: 3.0 },
       100: { sku: "PU100MM", venta: 12.42, web: 15.15, costo: 11.18, largo: 3.0 },
     },
   },
