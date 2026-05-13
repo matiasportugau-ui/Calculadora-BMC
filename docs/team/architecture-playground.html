@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calculadora BMC — Architecture Explorer</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #faf8f4;
+    --bg-card: #ffffff;
+    --text: #2d2a26;
+    --text-muted: #6e685e;
+    --border: #e7e3dc;
+    --accent: #8b5a3c;
+    --accent-soft: #f3e7d8;
+    --sand: #c9a779;
+    --critical: #b94a3c;
+    --ok: #4a7a5a;
+    --code-bg: #f5f1eb;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  header {
+    padding: 28px 32px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  header h1 {
+    font-family: "Tiempos Headline", "Times New Roman", Georgia, serif;
+    font-weight: 500;
+    font-size: 28px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  header .sub {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  header .sub b { color: var(--text); font-weight: 600; }
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 32px 80px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .toolbar .group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .toolbar .group + .group { margin-left: 14px; padding-left: 14px; border-left: 1px solid var(--border); }
+  .toolbar .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 4px;
+  }
+  button.chip {
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 18px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button.chip:hover { border-color: var(--accent); color: var(--accent); }
+  button.chip.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  button.chip.critical { color: var(--critical); border-color: rgba(185, 74, 60, 0.3); }
+  button.chip.critical.active { background: var(--critical); border-color: var(--critical); color: white; }
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-top: 18px;
+  }
+  .panel h2 {
+    font-family: "Tiempos Headline", "Times New Roman", Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+  }
+  .panel .description {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 18px;
+    max-width: 70ch;
+  }
+  .panel-tag {
+    display: inline-block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .panel-tag.actual { background: var(--accent-soft); color: var(--accent); }
+  .panel-tag.wanted { background: rgba(74, 122, 90, 0.12); color: var(--ok); }
+  .panel-tag.critical { background: rgba(185, 74, 60, 0.1); color: var(--critical); }
+  .split {
+    display: grid;
+    gap: 24px;
+  }
+  .split.cols-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 1024px) { .split.cols-2 { grid-template-columns: 1fr; } }
+  .split > section {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    background: var(--bg);
+  }
+  .split > section h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .split > section p.note {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 60ch;
+  }
+  .mermaid { background: transparent; text-align: center; }
+  .legend {
+    margin-top: 28px;
+    padding: 18px 24px;
+    background: var(--code-bg);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .legend ul { margin: 6px 0 0 18px; padding: 0; }
+  .legend li { margin: 2px 0; }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12.5px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  }
+  .actor-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 13.5px;
+  }
+  .actor-table th, .actor-table td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .actor-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+  .hidden { display: none !important; }
+  .sub-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .sub-tabs button {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .sub-tabs button.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  footer {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Calculadora BMC — Architecture Explorer</h1>
+  <div class="sub">
+    Interactive companion to <b>docs/team/ARCHITECTURE.md</b>. Pick a view: system context, containers, or one of four critical flows. Each flow shows <b>actual</b> (what runs in production today) and <b>wanted</b> (the target you've approved).
+    &nbsp;·&nbsp; Last sync: 2026-05-13.
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="group">
+      <span class="label">View</span>
+      <button class="chip view-btn active" data-view="context">System context</button>
+      <button class="chip view-btn" data-view="containers">Containers</button>
+    </div>
+    <div class="group">
+      <span class="label">Critical flows</span>
+      <button class="chip view-btn critical" data-view="4.1">4.1 Quote/PDF</button>
+      <button class="chip view-btn critical" data-view="4.2">4.2 Agent chat</button>
+      <button class="chip view-btn critical" data-view="4.3">4.3 WA</button>
+      <button class="chip view-btn critical" data-view="4.4">4.4 ML</button>
+    </div>
+    <div class="group" id="comparison-controls" style="display:none">
+      <span class="label">Compare</span>
+      <button class="chip cmp-btn active" data-cmp="side">Side-by-side</button>
+      <button class="chip cmp-btn" data-cmp="actual">Actual only</button>
+      <button class="chip cmp-btn" data-cmp="wanted">Wanted only</button>
+    </div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="legend">
+    <b>Reading the diagrams</b>
+    <ul>
+      <li><code>-&gt;&gt;</code> sync call · <code>--&gt;&gt;</code> dashed = async return/SSE event · <code>--x</code> rejected/failed</li>
+      <li><code>par … and …</code> = parallel · <code>loop</code> = repeats per item · <code>alt … else …</code> = branch</li>
+      <li>Step notes (<code>file:line</code>) reference the actual repo paths so you can jump to the code.</li>
+      <li><b>Actual</b> diagrams are paper-derived from a code-verified trace (Apr&ndash;May 2026); <b>Wanted</b> reflects the changes you selected from the per-flow picker.</li>
+    </ul>
+  </div>
+
+  <footer>
+    Hand-crafted from ARCHITECTURE.md. Update this file when ARCHITECTURE.md changes substantially.
+  </footer>
+</main>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif',
+      primaryColor: '#faf8f4',
+      primaryBorderColor: '#8b5a3c',
+      primaryTextColor: '#2d2a26',
+      lineColor: '#6e685e',
+      secondaryColor: '#f3e7d8',
+      tertiaryColor: '#ffffff',
+      noteBkgColor: '#fffaf2',
+      noteBorderColor: '#c9a779',
+      actorBkg: '#fffaf2',
+      actorBorder: '#8b5a3c',
+      actorTextColor: '#2d2a26',
+    },
+    sequence: {
+      diagramMarginX: 24,
+      diagramMarginY: 12,
+      actorMargin: 60,
+      width: 160,
+      height: 50,
+      boxMargin: 8,
+      noteMargin: 8,
+      messageMargin: 32,
+      mirrorActors: false,
+    },
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+  });
+
+  const D = {
+    context: { title: 'System Context (C4 Level 1)', tag: 'overview', description: 'Calculadora BMC sits in the middle: operators on one side, customers reach us via three indirect channels (WhatsApp, MercadoLibre, Shopify), and a driver PWA handles transportista. The system depends on 19 external services; bold paths are critical, dotted paths are optional/fallback.', mermaid: `flowchart LR
+    operator([BMC Operator])
+    customer([Customer])
+    driver([Driver / Transportista])
+    extai([External AI agents])
+
+    bmc[(Calculadora BMC<br/>SPA + API + workers)]
+
+    sheets[(Google Sheets)]
+    gcs[(Google Cloud Storage)]
+    drive[(Google Drive)]
+    pg[(PostgreSQL<br/>transportista · wa_* · identity)]
+
+    ml[MercadoLibre]
+    wa[WhatsApp Cloud API]
+    shop[Shopify Admin]
+    goauth[Google OAuth 2.0]
+
+    ai[Anthropic · OpenAI · Gemini · Grok]
+    aigw[Vercel AI Gateway]
+    smtp[Gmail SMTP]
+    gh[GitHub Actions<br/>CI + cron]
+
+    operator --> bmc
+    customer -.-> wa
+    customer -.-> ml
+    customer -.-> shop
+    driver --> bmc
+    extai --> bmc
+
+    bmc <--> sheets
+    bmc --> gcs
+    bmc --> drive
+    bmc <--> pg
+    bmc <-->|OAuth + webhook| ml
+    bmc <-->|REST + webhook| wa
+    bmc <-->|OAuth + webhook| shop
+    bmc -->|OIDC| goauth
+
+    bmc --> ai
+    bmc -.->|optional| aigw --> ai
+    bmc --> smtp
+    gh -->|deploy + smoke| bmc` },
+    containers: { title: 'Containers (C4 Level 2)', tag: 'overview', description: 'Two deployable units (Vite SPA on Vercel, Express API on Cloud Run). The Express container is monolithic by design: routes, in-process workers, and the calc loopback all share the same process. Background workers run as setInterval/setTimeout loops, not separate jobs.', mermaid: `flowchart TB
+    user([Browser / Mobile / Driver PWA])
+
+    subgraph vercel[Vercel hosting]
+        spa[React 18 + Vite SPA<br/>routes: /calculadora · /hub/wa · /hub/ml<br/>/hub/canales · /hub/admin · /conductor<br/>/inspector · /fichas · /mi-espacio]
+    end
+
+    subgraph cr[Google Cloud Run · panelin-calc · us-central1]
+        subgraph api[Express 5 API · :3001]
+            routes[~24 route files<br/>/calc · /api/agent/* · /api/wa/*<br/>/api/transportista/* · /auth/* · /webhooks/*]
+            workers[In-process workers<br/>· transportistaOutboxWorker<br/>· waEnricherWorker<br/>· waSlaWorker<br/>· waFollowupsWorker<br/>· WA 5-min auto-flush<br/>· waConv GC hourly]
+            loop[Calc loopback client<br/>127.0.0.1:3001/calc/*<br/>used by agent tools]
+            routes -. uses .- loop
+            workers -. same process .- routes
+        end
+    end
+
+    subgraph stores[Stateful stores]
+        sheets[(Google Sheets)]
+        pg[(PostgreSQL)]
+        gcs[(GCS)]
+        drive[(Drive folder)]
+        tok[(Encrypted token store)]
+        kb[(SQLite KB)]
+        jsonl[(Local JSONL)]
+    end
+
+    subgraph ext[External services]
+        ai[AI providers]
+        aigw[Vercel AI Gateway]
+        ml[MercadoLibre]
+        wa[WhatsApp Cloud API]
+        shop[Shopify Admin]
+        smtp[Gmail SMTP]
+        goauth[Google OAuth]
+    end
+
+    user --> spa
+    spa -->|fetch · SSE| api
+    api --> sheets
+    api --> pg
+    api --> gcs
+    api --> drive
+    api --> tok
+    api --> kb
+    api --> jsonl
+    api --> ai
+    api -.->|optional| aigw --> ai
+    api <-->|webhooks · OAuth| ml
+    api <-->|webhooks · REST| wa
+    api <-->|webhooks · OAuth| shop
+    api --> smtp
+    api -->|OIDC| goauth` },
+
+    '4.1': {
+      title: '4.1 Quote creation → PDF',
+      tag: 'critical',
+      description: 'Operator clicks "PDF Cliente". The SPA builds the print-ready HTML, POSTs it to /api/pdf/generate, server-side Playwright renders a vectorial A4, and the browser downloads the blob. Today there is a client-side html2pdf raster fallback if the server fails — wanted version removes it and streams progress instead.',
+      variants: {
+        actual: {
+          note: 'Sync HTML build → async server render → blob download. No external service touched; Chromium is bundled via @sparticuz/chromium. If server fails, falls back to html2pdf.js (raster) silently.',
+          mermaid: `sequenceDiagram
+    autonumber
+    actor U as Operator
+    participant SPA as React SPA<br/>PanelinCalculadoraV3
+    participant PG as pdfGenerator.js
+    participant API as Express<br/>POST /api/pdf/generate
+    participant CR as Playwright + Chromium
+
+    U->>SPA: click "PDF Cliente"
+    Note over SPA: handleClientePdf()<br/>PanelinCalculadoraV3_backup.jsx:3629
+    SPA->>SPA: buildClientePdfHtml (memoized)
+    SPA->>PG: htmlToPdfBlob(html, filename)
+    PG->>API: POST {html, filename}<br/>pdfGenerator.js:14
+    API->>CR: launch + setContent + emulate "print"<br/>pdf.js:67-108
+    CR-->>API: PDF buffer A4 vectorial<br/>pdf.js:110
+    API-->>PG: blob (HTTP 200)
+    alt server unavailable / chromium fails
+        PG->>PG: html2pdf.js fallback (raster, hidden iframe)<br/>pdfGenerator.js:37-72
+    end
+    PG-->>SPA: PDF Blob
+    SPA->>U: createObjectURL → "a.download" click → revoke<br/>file saved as BMC-YYYY-{ref}-{client}.pdf`
+        },
+        wanted: {
+          note: 'SSE progress events. Upload to GCS, return signed URL. Auto-persist quote to CRM. Per-PDF audit log in Postgres with content hash. No client-side fallback — hard fail on error.',
+          mermaid: `sequenceDiagram
+    autonumber
+    actor U as Operator
+    participant SPA as React SPA
+    participant API as Express<br/>POST /api/pdf/generate (SSE)
+    participant CR as Playwright + Chromium
+    participant GCS as Google Cloud Storage
+    participant Sheets as Sheets · Master_Cotizaciones<br/>+ quote registry
+    participant Audit as Postgres · pdf_audit_log
+
+    U->>SPA: click "PDF Cliente"
+    SPA->>API: POST {html, filename, quoteCtx, userId}
+    API-->>SPA: event {step:"received"}
+    API->>CR: launch + setContent + emulate "print"
+    API-->>SPA: event {step:"rendering"}
+    CR-->>API: PDF buffer
+    API->>API: sha256(buffer) → hash
+    API->>GCS: upload bmc-cotizaciones/{quoteId}.pdf
+    GCS-->>API: signed URL
+    API-->>SPA: event {step:"uploaded"}
+    par persist
+        API->>Sheets: write Master_Cotizaciones row
+        API->>Audit: INSERT (userId, ts, hash, gcsPath, quoteId)
+    end
+    API-->>SPA: event {step:"ready", url}
+    SPA->>U: open url → browser downloads PDF
+    Note over SPA,API: NO client-side html2pdf fallback —<br/>hard error toast if any step fails`
+        }
+      }
+    },
+
+    '4.2': {
+      title: '4.2 Agent chat — SSE → tools → calc loopback',
+      tag: 'critical',
+      description: 'The most behavior-rich flow. Operator sends a message, server opens SSE, LLM streams text and may emit a tool_use that triggers a calc loopback (so the agent uses the same /calc endpoint the UI uses). Wanted version makes Vercel AI Gateway the primary path and adds Postgres persistence + telemetry.',
+      variants: {
+        actual: {
+          note: 'Claude default; falls back grok→gemini→openai. Conversation history in localStorage + JSONL on disk. Tool telemetry only in pino logs. Calc loopback ensures one source of truth.',
+          mermaid: `sequenceDiagram
+    autonumber
+    actor U as Operator
+    participant UI as PanelinChatPanel<br/>+ useChat
+    participant API as Express<br/>POST /api/agent/chat (SSE)
+    participant Core as agentCore<br/>provider chain
+    participant Claude as Anthropic Claude
+    participant Tools as agentTools.executeTool
+    participant LB as Calc loopback<br/>127.0.0.1:3001
+
+    U->>UI: send message
+    UI->>API: POST {messages, calcState, aiProvider, conversationId}<br/>useChat.js:301
+    Note over API: rate-limit · CORS · dev-auth · budget<br/>agentChat.js:516-567
+    API->>API: KB retrieval · optional RAG (pgvector) ·<br/>buildSystemPrompt + summarizeHistory<br/>agentChat.js:697-786
+    API->>Core: pick provider<br/>(Claude default · fallback grok→gemini→openai)
+    Core->>Claude: anthropic.messages.stream(...)<br/>with AGENT_TOOLS + system + history
+    API-->>UI: open SSE
+    loop streaming
+        Claude-->>API: text_delta
+        API-->>UI: event {type:"text", delta}
+    end
+    Claude-->>API: content_block tool_use<br/>(calcular_cotizacion + input)
+    API-->>UI: event {type:"tool_call"}
+    API->>Tools: executeTool("calcular_cotizacion", input)<br/>agentChat.js:927
+    Tools->>LB: POST /calc/cotizar (loopback)<br/>agentTools.js:1084
+    LB-->>Tools: {ok, allItems, totales, ...}
+    Tools-->>API: summarized result
+    API-->>UI: event {type:"verified_quote", payload}
+    API->>Claude: feed tool result as user message<br/>agentChat.js:968
+    loop more streaming
+        Claude-->>API: text_delta
+        API-->>UI: event {type:"text", delta}
+    end
+    Claude-->>API: stop (no more tool_use)
+    API-->>UI: event {type:"done"}
+    Note over API: post-stream fire-and-forget:<br/>conversation log + autolearn extract`
+        },
+        wanted: {
+          note: 'AI Gateway primary; 4-SDK chain becomes fallback only. Postgres conv_turns / conv_checkpoints. Auto-summary every N turns. tool_telemetry row per tool call.',
+          mermaid: `sequenceDiagram
+    autonumber
+    actor U as Operator
+    participant UI as PanelinChatPanel
+    participant API as Express<br/>POST /api/agent/chat (SSE)
+    participant PG as Postgres<br/>conv_turns · conv_checkpoints · tool_telemetry
+    participant AIGW as Vercel AI Gateway (primary)
+    participant SDK as SDK fallback chain<br/>Claude→Grok→Gemini→OpenAI
+    participant Tools as agentTools
+    participant LB as Calc loopback
+
+    U->>UI: send message
+    UI->>API: POST {message, conversationId, calcState}
+    API->>PG: SELECT recent turns + latest checkpoint
+    PG-->>API: history + summary
+    API->>API: KB + RAG + buildSystemPrompt
+    alt AIGW healthy
+        API->>AIGW: routed call (Claude default)
+    else AIGW unavailable
+        API->>SDK: fallback chain (legacy behavior)
+    end
+    loop streaming
+        AIGW-->>API: text_delta
+        API-->>UI: event {type:"text"}
+    end
+    AIGW-->>API: tool_use (calcular_cotizacion)
+    API->>Tools: executeTool
+    Tools->>LB: POST /calc/cotizar
+    LB-->>Tools: result
+    Tools-->>API: summarized result
+    API->>PG: INSERT tool_telemetry<br/>(tool, args_hash, latency_ms, outcome)
+    API->>AIGW: feed tool result
+    loop more streaming
+        AIGW-->>API: text_delta
+    end
+    AIGW-->>API: stop
+    API-->>UI: event {type:"done"}
+    API->>PG: INSERT conv_turn (user + assistant)
+    alt turn_count % N == 0
+        API->>API: summarize last N turns
+        API->>PG: INSERT conv_checkpoint
+    end`
+        }
+      }
+    },
+
+    '4.3': {
+      title: '4.3 WA inbound → 5-min flush → CRM / autolearn',
+      tag: 'critical',
+      description: 'Two intertwined flows sharing in-memory Map state. The webhook is idempotent and responds 200 before processing. Every 60s a ticker scans for 5-min-inactive conversations and fires the flush pipeline. Actual has two sub-diagrams (webhook, flush); wanted is one unified outbox-based redesign.',
+      variants: {
+        actual: {
+          subTabs: [
+            { id: 'a', label: '(a) Inbound webhook' },
+            { id: 'b', label: '(b) 5-min flush' }
+          ],
+          a: {
+            note: 'Meta posts webhook → HMAC verify (or skipped with warn if no secret) → 200 OK before processing → fan-out to status updates + text messages. INSERTs are idempotent on msg_id.',
+            mermaid: `sequenceDiagram
+    autonumber
+    participant Meta as Meta<br/>WhatsApp Cloud API
+    participant API as Express<br/>POST /webhooks/whatsapp
+    participant Sig as whatsappSignature
+    participant Map as waConversations<br/>(in-memory Map)
+    participant PG as Postgres<br/>wa_messages + wa_conversations
+
+    Meta->>API: POST webhook (raw body)<br/>index.js:751
+    API->>Sig: verify HMAC sha256
+    alt invalid signature
+        Sig--xAPI: ok:false → 401
+    else no app secret (skipped, warn)
+        Sig-->>API: ok:true skipped
+    else verified
+        Sig-->>API: ok:true
+    end
+    API-->>Meta: 200 OK (before processing)<br/>index.js:773
+    par statuses fan-out
+        loop each status
+            API->>PG: UPDATE wa_messages SET status WHERE rank(old)<rank(new)<br/>index.js:802
+        end
+    and messages fan-out
+        loop each text msg
+            API->>Map: set/update {chatId, messages[], lastUpdate}<br/>index.js:841
+            API->>PG: INSERT wa_conversations ON CONFLICT UPDATE
+            API->>PG: INSERT wa_messages ON CONFLICT (msg_id) DO NOTHING<br/>idempotent on retries
+            API->>PG: UPDATE last_msg_in_at
+            alt text contains 🚀
+                API->>API: processWaConversation (rocket bypass)<br/>index.js:895
+            end
+        end
+    end`
+          },
+          b: {
+            note: '60s ticker → if idle ≥ 5min, fire-and-forget processWaConversation → loopback parse → Sheets writes → AI suggestion via callAgentOnce → autolearn extract via setImmediate.',
+            mermaid: `sequenceDiagram
+    autonumber
+    participant Tick as setInterval(60s)<br/>index.js:741
+    participant Map as waConversations
+    participant Proc as processWaConversation
+    participant Parse as /api/crm/parse-conversation<br/>(loopback)
+    participant AI as AI gateway / providers
+    participant Sheets as Google Sheets
+    participant Core as callAgentOnce<br/>(channel:"wa")
+    participant KB as autoLearnExtractor → KB
+
+    Tick->>Map: scan entries
+    alt now-lastUpdate ≥ 5min AND messages>0
+        Tick->>Proc: processWaConversation (fire-and-forget)
+        Proc->>Parse: POST {dialogo}<br/>index.js:605
+        Parse->>AI: provider chain (OpenAI → Claude)
+        AI-->>Parse: parsed.data
+        Parse-->>Proc: {cliente, telefono, resumen_pedido, urgencia, ...}
+        Proc->>Sheets: append 'Form responses 1' A:P<br/>index.js:635
+        Proc->>Sheets: write CRM_Operativo B:K · R:T · V:W<br/>index.js:658-679
+        Proc->>Core: callAgentOnce(waMessages, channel:"wa")
+        Core-->>Proc: {text, provider}
+        Proc->>Sheets: write CRM_Operativo!AF:AG (respuesta + provider)
+        Note over Proc,KB: setImmediate fire-and-forget
+        Proc->>KB: extractLearnablePairs (Claude haiku)<br/>filter conf ≥ 0.70 · dedup vs KB
+        KB-->>Proc: pairs[]
+        Proc->>KB: addTrainingEntry (status: active if conf≥0.92 else pending)
+        Proc->>Sheets: write tail defaults AH:AK
+        Proc->>Map: delete(chatId)
+    end`
+          }
+        },
+        wanted: {
+          note: 'HMAC mandatory. WA_INACTIVITY_MS configurable, default 180_000 (3 min). Outbox table instead of fire-and-forget. AI suggestion mirrored into wa_messages so cockpit shows the full thread.',
+          mermaid: `sequenceDiagram
+    autonumber
+    participant Meta
+    participant API as Express<br/>POST /webhooks/whatsapp
+    participant Sig as whatsappSignature (mandatory)
+    participant Map as waConversations
+    participant PG as Postgres<br/>wa_* + wa_outbox_crm
+    participant Worker as waCrmOutboxWorker (new)
+    participant Parse as parse-conversation (loopback)
+    participant Sheets
+    participant Core as callAgentOnce (channel:"wa")
+    participant KB
+
+    Meta->>API: POST webhook (raw body)
+    API->>Sig: verify HMAC sha256
+    alt no secret OR invalid (no skip path in prod)
+        Sig--xAPI: reject
+        API-->>Meta: 401
+    else verified
+        Sig-->>API: ok
+    end
+    API-->>Meta: 200 OK
+    par
+        API->>PG: UPDATE wa_messages status (existing)
+    and
+        API->>Map: update conv
+        API->>PG: INSERT wa_messages (direction='in')
+    end
+    Note over Map: ticker @ WA_INACTIVITY_MS (default 180_000)<br/>scans for idle ≥ window
+    Map->>PG: INSERT wa_outbox_crm (chatId, dialogo, attempt=0)
+    Map->>Map: delete(chatId)
+    Worker->>PG: SELECT FOR UPDATE SKIP LOCKED (up to 20)
+    Worker->>Parse: POST {dialogo}
+    Parse-->>Worker: parsed.data
+    Worker->>Sheets: write Form responses 1 + CRM_Operativo
+    Worker->>Core: callAgentOnce(channel:"wa")
+    Core-->>Worker: {text, provider}
+    Worker->>Sheets: write CRM_Operativo!AF:AG
+    Worker->>PG: INSERT wa_messages (direction='out_suggested', text)
+    Worker->>KB: extractLearnablePairs → addTrainingEntry
+    alt success
+        Worker->>PG: DELETE wa_outbox_crm row
+    else failure
+        Worker->>PG: UPDATE attempt+=1, next_retry_at=now()+backoff(attempt)
+        Note over Worker,PG: after max attempts (12) → status='failed'
+    end`
+        }
+      }
+    },
+
+    '4.4': {
+      title: '4.4 ML webhook → CRM sync → auto-answer',
+      tag: 'critical',
+      description: 'ML POSTs webhook (HMAC-enforced via PR #106). Server responds 200 immediately, fire-and-forget syncs UNANSWERED questions to Sheets, then if auto-mode is on generates AI answers and posts back to ML. Orders topic is logged to a ring buffer only. Wanted version adds outbox + orders processing.',
+      variants: {
+        actual: {
+          note: 'HMAC verification IS enforced (PR #106 / 9685ef5) via mlSignature.js with 5-min replay window; skip-with-warn if ML_CLIENT_SECRET unset. Auto-mode flag in server/.ml-automode.json (lost on Cloud Run cold start unless in GCS).',
+          mermaid: `sequenceDiagram
+    autonumber
+    participant ML as MercadoLibre
+    participant API as Express<br/>POST /webhooks/ml
+    participant Sig as mlSignature<br/>(PR #106)
+    participant Sync as ml-crm-sync<br/>syncUnansweredQuestions
+    participant MLApi as ML REST API
+    participant Sheets as Google Sheets<br/>CRM_Operativo
+    participant Auto as mlAutoAnswer<br/>autoAnswerPipeline
+    participant Core as agentCore<br/>callAgentOnce (channel:"ml")
+
+    ML->>API: POST webhook (topic, body)<br/>index.js:473
+    API->>Sig: verifyMLSignature(clientSecret, x-signature,<br/>dataId, x-request-id)<br/>index.js:476-485
+    alt invalid HMAC (and secret set)
+        Sig--xAPI: ok:false → 401
+    else ML_CLIENT_SECRET unset (skipped, warn)
+        Sig-->>API: ok:true skipped
+    else verified
+        Sig-->>API: ok:true
+    end
+    alt WEBHOOK_VERIFY_TOKEN mismatch
+        API--xML: 401 reject
+    end
+    API->>API: log to ring buffer (max 250)<br/>index.js:512
+    API-->>ML: 200 OK (before processing)<br/>index.js:573
+    alt topic == "questions"
+        API->>Sync: syncUnansweredQuestions (fire-and-forget)
+        Sync->>MLApi: GET /users/me + /questions/search (UNANSWERED, limit 50)
+        loop each question
+            Sync->>MLApi: GET /users/{uid} + /items/{item_id}
+        end
+        Sync->>Sheets: read Observaciones, dedup by Q-id regex
+        loop each new question
+            Sync->>Sheets: write CRM_Operativo B-AK (Canal=ML, Categoría, Estado, AF=template suggestion)
+        end
+        alt autoMode.fullAuto == true
+            API->>Auto: autoAnswerPipeline(rows)
+            loop each row
+                Auto->>Core: callAgentOnce(consulta, channel:"ml")<br/>(max 350 chars · no markdown · Saludos BMC!)
+                Core-->>Auto: {text, provider}
+                Auto->>Sheets: write CRM_Operativo!AF (respuestaSugerida)
+                Auto->>MLApi: POST /answers {question_id, text}<br/>(Bearer access_token)
+                Auto->>Sheets: stamp AJ (enviadoEl)
+            end
+        else autoMode off
+            Note over API,Sheets: rows queued for manual reply<br/>(/hub/ml or /hub/canales)
+        end
+    else topic == "orders"
+        Note over API: ring buffer only · no downstream processing
+    end`
+        },
+        wanted: {
+          note: 'HMAC already enforced (PR #106). Remaining deltas: new ml-orders-sync handler, auto-mode flag in Postgres per seller, outbox worker for answer posting with backoff and dead-letter. Optional hardening: refuse-start in prod if ML_CLIENT_SECRET unset (no skip path).',
+          mermaid: `sequenceDiagram
+    autonumber
+    participant ML
+    participant API as Express<br/>POST /webhooks/ml
+    participant Sig as mlSignature (enforced)
+    participant PG as Postgres<br/>ml_outbox_answers · ml_auto_mode
+    participant Sync as ml-crm-sync
+    participant Orders as ml-orders-sync (new)
+    participant MLApi
+    participant Sheets
+    participant Worker as mlAnswerOutboxWorker (new)
+    participant Core as callAgentOnce (channel:"ml")
+
+    ML->>API: POST webhook
+    API->>Sig: HMAC verify (mandatory)
+    alt invalid signature
+        Sig--xAPI: reject
+        API-->>ML: 401
+    end
+    API-->>ML: 200 OK
+    alt topic == "questions"
+        API->>Sync: syncUnansweredQuestions
+        Sync->>Sheets: write CRM rows
+        API->>PG: SELECT ml_auto_mode WHERE seller_id=X
+        alt fullAuto == true
+            API->>PG: INSERT ml_outbox_answers (rows)
+        end
+    else topic == "orders"
+        API->>Orders: handleOrder(orderId)
+        Orders->>MLApi: GET /orders/{id}
+        Orders->>Sheets: write fulfillment row
+        Orders->>PG: optional Transportista trip creation
+    end
+    Worker->>PG: SELECT FOR UPDATE SKIP LOCKED outbox (attempt<6, next_retry_at<=now)
+    Worker->>Core: callAgentOnce(channel:"ml")
+    Core-->>Worker: {text, provider}
+    Worker->>Sheets: write CRM_Operativo!AF
+    Worker->>MLApi: POST /answers
+    alt success
+        Worker->>Sheets: stamp AJ
+        Worker->>PG: DELETE outbox row
+    else failure
+        Worker->>PG: UPDATE attempt+=1, next_retry_at=now()+backoff(attempt)
+        Note over Worker,PG: after max attempts → status='failed' (dead-letter)
+    end`
+        }
+      }
+    }
+  };
+
+  let currentView = 'context';
+  let currentCmp = 'side';
+  let waSubTab = 'a';
+
+  const $content = document.getElementById('content');
+  const $cmpControls = document.getElementById('comparison-controls');
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function diagramHtml(src, idPrefix) {
+    const id = idPrefix + '-' + Math.random().toString(36).slice(2, 8);
+    return `<pre class="mermaid" id="${id}">${escapeHtml(src)}</pre>`;
+  }
+
+  function renderOverview(key) {
+    const d = D[key];
+    $cmpControls.style.display = 'none';
+    $content.innerHTML = `
+      <div class="panel">
+        <h2>${d.title}<span class="panel-tag actual">${d.tag}</span></h2>
+        <div class="description">${d.description}</div>
+        ${diagramHtml(d.mermaid, key)}
+      </div>
+    `;
+    runMermaid();
+  }
+
+  function renderFlow(key) {
+    const d = D[key];
+    $cmpControls.style.display = '';
+    const cmp = currentCmp;
+    const v = d.variants;
+    const actualHasSubTabs = !!v.actual.subTabs;
+
+    const actualDiagram = actualHasSubTabs ? v.actual[waSubTab] : v.actual;
+    const subTabsHtml = actualHasSubTabs ? `
+      <div class="sub-tabs">
+        ${v.actual.subTabs.map(t => `<button data-sub="${t.id}" class="${t.id === waSubTab ? 'active' : ''}">${t.label}</button>`).join('')}
+      </div>` : '';
+
+    const actualBlock = `
+      <section>
+        <h3>Actual <span class="panel-tag actual">in production</span></h3>
+        ${subTabsHtml}
+        <p class="note">${actualDiagram.note}</p>
+        ${diagramHtml(actualDiagram.mermaid, key + '-actual')}
+      </section>
+    `;
+
+    const wantedBlock = `
+      <section>
+        <h3>Wanted <span class="panel-tag wanted">target</span></h3>
+        <p class="note">${v.wanted.note}</p>
+        ${diagramHtml(v.wanted.mermaid, key + '-wanted')}
+      </section>
+    `;
+
+    let body;
+    if (cmp === 'side') {
+      body = `<div class="split cols-2">${actualBlock}${wantedBlock}</div>`;
+    } else if (cmp === 'actual') {
+      body = `<div class="split">${actualBlock}</div>`;
+    } else {
+      body = `<div class="split">${wantedBlock}</div>`;
+    }
+
+    $content.innerHTML = `
+      <div class="panel">
+        <h2>${d.title}<span class="panel-tag critical">${d.tag}</span></h2>
+        <div class="description">${d.description}</div>
+        ${body}
+      </div>
+    `;
+
+    if (actualHasSubTabs && (cmp === 'side' || cmp === 'actual')) {
+      document.querySelectorAll('.sub-tabs button').forEach(b => {
+        b.addEventListener('click', () => {
+          waSubTab = b.dataset.sub;
+          render();
+        });
+      });
+    }
+
+    runMermaid();
+  }
+
+  function render() {
+    if (currentView === 'context' || currentView === 'containers') {
+      renderOverview(currentView);
+    } else {
+      renderFlow(currentView);
+    }
+    document.querySelectorAll('.view-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.view === currentView);
+    });
+    document.querySelectorAll('.cmp-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.cmp === currentCmp);
+    });
+  }
+
+  function runMermaid() {
+    const nodes = document.querySelectorAll('.mermaid');
+    mermaid.run({ nodes }).catch(err => console.error('mermaid render failed', err));
+  }
+
+  document.querySelectorAll('.view-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      currentView = b.dataset.view;
+      if (currentView === '4.3') waSubTab = 'a';
+      render();
+    });
+  });
+  document.querySelectorAll('.cmp-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      currentCmp = b.dataset.cmp;
+      render();
+    });
+  });
+
+  render();
+</script>
+
+</body>
+</html>
