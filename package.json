@@ -192,7 +192,6 @@
     "@react-three/fiber": "^8.17.10",
     "@sparticuz/chromium": "^147.0.2",
     "ai": "^6.0.176",
-    "canvas": "^3.2.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
