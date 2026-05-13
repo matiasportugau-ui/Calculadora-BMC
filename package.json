@@ -232,7 +232,6 @@
     "nodemailer": "^8.0.5",
     "picomatch": "^4.0.4",
     "playwright": "^1.59.1",
-    "promptfoo": "^0.121.11",
     "vite": "^7.0.0",
     "vite-plugin-pwa": "^1.2.0",
     "xlsx": "^0.18.5"
