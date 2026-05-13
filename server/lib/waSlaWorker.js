@@ -83,7 +83,6 @@ function _utcOffsetMin(tz, date) {
   }
 }
 
-const _DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 /**
  * Compute elapsed hours between `sinceMs` and now(), counting only time within
@@ -96,16 +95,26 @@ const _DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
  * @param {number|string|Date} since  Start timestamp
  * @param {object|null} bh  business-hours config from SettingsSchema.sla.businessHours
  *   { tz: string, mon:[h0,h1]|null, tue:..., wed:..., thu:..., fri:..., sat:..., sun:... }
- * @returns {number}  effective hours elapsed
+ * @returns {number}  effective hours elapsed (≥ 0)
  */
 export function effectiveHoursSince(since, bh) {
   const nowMs = Date.now();
   const sinceMs = new Date(since).getTime();
-  if (!bh || !Number.isFinite(sinceMs) || sinceMs >= nowMs) {
-    return Number.isFinite(sinceMs) ? (nowMs - sinceMs) / 3_600_000 : 0;
+  if (!Number.isFinite(sinceMs)) return 0;
+  // Clamp future timestamps to 0.
+  if (sinceMs >= nowMs) return 0;
+
+  if (!bh) return (nowMs - sinceMs) / 3_600_000;
+
+  // Validate the timezone once before the loop to avoid repeated throws
+  // on an invalid IANA key. Fall back to raw wall-clock hours if invalid.
+  const tz = bh.tz || "America/Montevideo";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format(new Date());
+  } catch {
+    return (nowMs - sinceMs) / 3_600_000;
   }
 
-  const tz = bh.tz || "America/Montevideo";
   let totalMs = 0;
   let cursor = sinceMs;
   let guard = 0; // safety: at most ~400 iterations ≈ ~13 months; truncates silently for pathological inputs

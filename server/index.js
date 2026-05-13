@@ -790,11 +790,31 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
           statusMeta.wa_errors = statusUpdate.errors;
         }
         try {
+          // Prevent status regression (e.g. don't move from 'read' back to 'delivered').
+          // WhatsApp delivers statuses out-of-order and retries on failures.
+          // Rank: sent=1 < delivered=2 < read=3 < failed=4
           await waPoolForStatus.query(
             `update wa_messages
                 set status = $1,
                     meta = coalesce(meta, '{}'::jsonb) || $2::jsonb
-              where msg_id = $3`,
+              where msg_id = $3
+                and (
+                  case status
+                    when 'sent'      then 1
+                    when 'delivered' then 2
+                    when 'read'      then 3
+                    when 'failed'    then 4
+                    else 0
+                  end
+                ) < (
+                  case $1
+                    when 'sent'      then 1
+                    when 'delivered' then 2
+                    when 'read'      then 3
+                    when 'failed'    then 4
+                    else 0
+                  end
+                )`,
             [newStatus, JSON.stringify(statusMeta), String(msgId)],
           );
         } catch (e) {

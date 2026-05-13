@@ -155,8 +155,9 @@ export default function createWaRouter(config, logger) {
         const opId = String(req.headers["x-operator-id"] || "").slice(0, 64).trim();
         req.waOperatorId = opId || null;
         // Deprecation: shared token is legacy. Migrate operators to JWT.
+        // Sunset uses IMF-fixdate per RFC 8594 / RFC 7231.
         res.setHeader("Deprecation", "true");
-        res.setHeader("Sunset", "2027-01-01");
+        res.setHeader("Sunset", "Thu, 01 Jan 2027 00:00:00 GMT");
         log.warn?.({ ip: req.ip, path: req.path }, "[waAuth] legacy shared-token used — migrate to operator JWT");
         return next();
       }
@@ -165,7 +166,7 @@ export default function createWaRouter(config, logger) {
         req.waOperatorId = null;
         // Deprecation: shared token is legacy. Migrate operators to JWT.
         res.setHeader("Deprecation", "true");
-        res.setHeader("Sunset", "2027-01-01");
+        res.setHeader("Sunset", "Thu, 01 Jan 2027 00:00:00 GMT");
         log.warn?.({ ip: req.ip, path: req.path }, "[waAuth] legacy x-api-key used — migrate to operator JWT");
         return next();
       }
