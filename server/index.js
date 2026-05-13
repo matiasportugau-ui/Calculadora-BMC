@@ -590,6 +590,9 @@ app.get("/webhooks/whatsapp", (req, res) => {
 });
 
 // POST — mensajes entrantes
+// Note: rate-limiting is intentionally omitted on this endpoint. Meta's Cloud API
+// retries on 5xx; an over-aggressive limiter would cause webhook delivery failures.
+// Unauthorized requests are blocked by HMAC signature verification above.
 // ── Procesar conversación WA completa → CRM + Form responses ──
 async function processWaConversation(chatId, conv) {
   const dialogo = conv.messages
@@ -772,6 +775,61 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   const entry = body?.entry?.[0];
   const changes = entry?.changes?.[0];
   const value = changes?.value;
+
+  // ── Delivery status updates (delivered / read / failed) ──────────────────
+  // WhatsApp sends `statuses` in the same payload as messages.
+  // Wire status updates into wa_messages.status for the cockpit.
+  if (value?.statuses?.length) {
+    const waPoolForStatus = getWaPool(config.databaseUrl);
+    if (waPoolForStatus) {
+      const VALID_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
+      for (const statusUpdate of value.statuses) {
+        const msgId = statusUpdate.id;
+        const newStatus = statusUpdate.status;
+        if (!msgId || !newStatus || !VALID_STATUSES.has(newStatus)) continue;
+        const statusMeta = {
+          status_ts: statusUpdate.timestamp
+            ? new Date(Number(statusUpdate.timestamp) * 1000).toISOString()
+            : new Date().toISOString(),
+        };
+        if (newStatus === "failed" && statusUpdate.errors) {
+          statusMeta.wa_errors = statusUpdate.errors;
+        }
+        try {
+          // Prevent status regression (e.g. don't move from 'read' back to 'delivered').
+          // WhatsApp delivers statuses out-of-order and retries on failures.
+          // Rank: sent=1 < delivered=2 < read=3 < failed=4
+          await waPoolForStatus.query(
+            `update wa_messages
+                set status = $1,
+                    meta = coalesce(meta, '{}'::jsonb) || $2::jsonb
+              where msg_id = $3
+                and (
+                  case status
+                    when 'sent'      then 1
+                    when 'delivered' then 2
+                    when 'read'      then 3
+                    when 'failed'    then 4
+                    else 0
+                  end
+                ) < (
+                  case $1
+                    when 'sent'      then 1
+                    when 'delivered' then 2
+                    when 'read'      then 3
+                    when 'failed'    then 4
+                    else 0
+                  end
+                )`,
+            [newStatus, JSON.stringify(statusMeta), String(msgId)],
+          );
+        } catch (e) {
+          logger.warn({ err: e?.message, msg_id: msgId, status: newStatus }, "WA status-update DB write failed");
+        }
+      }
+    }
+  }
+
   if (!value?.messages) return;
 
   for (const msg of value.messages) {

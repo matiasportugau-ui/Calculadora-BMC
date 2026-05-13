@@ -64,7 +64,7 @@ function validMsg(extra = {}) {
 {
   const r = validateIngestMessage(validMsg());
   assert("happy path is valid", r.valid, r.valid, true);
-  assert("normalized phone is digits only", r.normalized?.phone === "5491111111111", r.normalized?.phone, "5491111111111");
+  assert("normalized phone is E.164 format", r.normalized?.phone === "+5491111111111", r.normalized?.phone, "+5491111111111");
   assert("normalized contact_name preserved", r.normalized?.contact_name === "Cliente", r.normalized?.contact_name, "Cliente");
   assert("normalized direction kept", r.normalized?.direction === "in", r.normalized?.direction, "in");
   assert("source defaults to wa_web", r.normalized?.source === "wa_web", r.normalized?.source, "wa_web");
@@ -146,10 +146,10 @@ function validMsg(extra = {}) {
     phone: "+54 9 11 1111-1111",
   });
   assert(
-    "phone with formatting is stripped to digits",
-    r.normalized?.phone === "5491111111111",
+    "phone with formatting is stripped to E.164",
+    r.normalized?.phone === "+5491111111111",
     r.normalized?.phone,
-    "5491111111111",
+    "+5491111111111",
   );
 }
 
