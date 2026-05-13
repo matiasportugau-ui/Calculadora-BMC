@@ -9,6 +9,8 @@ import {
   FolderOpen, Cloud, CloudOff,
 } from "lucide-react";
 
+import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
+
 const C = {
   bg: "#F5F5F7", surface: "#FFFFFF", surfaceAlt: "#FAFAFA",
   primary: "#0071E3", primarySoft: "#E8F1FB",
@@ -56,6 +58,8 @@ export default function GoogleDrivePanel({
   currentQuotationCode,
   lastSaveResult,
   provisionalQuotationCode,
+  pdfLayout,
+  onPdfLayoutChange,
 }) {
   const listRef = useRef(null);
 
@@ -212,6 +216,37 @@ export default function GoogleDrivePanel({
               }}>
                 Abrir carpeta <ExternalLink size={10} />
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* Plantilla PDF (misma que PDF Cliente y subida a Drive) */}
+        {isAuthenticated && typeof pdfLayout === "string" && typeof onPdfLayoutChange === "function" && (
+          <div style={{ padding: "12px 20px 0", borderBottom: `1px solid ${C.border}` }}>
+            <label htmlFor="bmc-drive-pdf-layout" style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.tp, marginBottom: 6 }}>
+              Plantilla del PDF en Drive
+            </label>
+            <select
+              id="bmc-drive-pdf-layout"
+              value={pdfLayout}
+              onChange={(e) => onPdfLayoutChange(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1.5px solid ${C.border}`,
+                background: C.surface,
+                color: C.tp,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              {LAYOUT_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+            <div style={{ fontSize: 11, color: C.ts, marginTop: 6, lineHeight: 1.35 }}>
+              Coincide con <strong>PDF Cliente</strong> y con la opción “Diseño PDF” en la calculadora.
             </div>
           </div>
         )}

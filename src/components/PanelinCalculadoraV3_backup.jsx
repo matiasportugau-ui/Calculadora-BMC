@@ -92,6 +92,7 @@ import {
   isAuthenticated as gdriveIsAuth, setAuthChangeCallback, getCachedUser, isDriveConfigured,
   saveQuotation, listQuotations, loadProjectFromFolder, deleteQuotation,
 } from "../utils/googleDrive.js";
+import { LAYOUT_OPTIONS } from "../pdf-templates/index.js";
 import GoogleDrivePanel from "./GoogleDrivePanel.jsx";
 import PlanUploadModal from "./PlanUploadModal.jsx";
 import PlanInlineDropZone from "./PlanInlineDropZone.jsx";
@@ -540,12 +541,9 @@ function MobileBottomBar({
               onChange={e => onPdfLayoutChange(e.target.value)}
               style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13 }}
             >
-              <option value="bmc-pdf">BMC PDF — Blueprint Técnico</option>
-              <option value="soft-modern">E — Soft Modern</option>
-              <option value="executive-dark">A — Executive Dark</option>
-              <option value="blueprint">B — Blueprint</option>
-              <option value="minimalist">C — Minimalist</option>
-              <option value="construction-bold">D — Construction Bold</option>
+              {LAYOUT_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
             </select>
           </label>
           <button type="button" onClick={() => run(onClientePdf)} style={{ ...sheetBtn, background: C.primary, color: "#fff" }}><Download size={18} />PDF Cliente</button>
@@ -2383,7 +2381,7 @@ export default function PanelinCalculadoraV3() {
   });
   const [devAuthToken, setDevAuthToken] = useState(() => {
     if (typeof window === "undefined") return "";
-    return sessionStorage.getItem("panelin-dev-token") || "";
+    return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
   const [pendingQuote, setPendingQuote] = useState(null);
   const undoStackRef = useRef([]);
@@ -2569,18 +2567,18 @@ export default function PanelinCalculadoraV3() {
       if (typeof window !== "undefined") sessionStorage.setItem("panelin-dev-mode", "0");
       return;
     }
-    let token = devAuthToken;
-    if (!token && typeof window !== "undefined") {
-      token = window.prompt("API_AUTH_TOKEN para activar Developer Mode:") || "";
+    let token = String(devAuthToken || "").trim();
+    if (!token && !chat.relaxDevAuth && typeof window !== "undefined") {
+      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
     }
-    if (!token) return;
+    if (!chat.relaxDevAuth && !token) return;
     setDevAuthToken(token);
     setDevMode(true);
     if (typeof window !== "undefined") {
       sessionStorage.setItem("panelin-dev-token", token);
       sessionStorage.setItem("panelin-dev-mode", "1");
     }
-  }, [devMode, devAuthToken]);
+  }, [devMode, devAuthToken, chat.relaxDevAuth]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -3593,43 +3591,46 @@ export default function PanelinCalculadoraV3() {
     }
   }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfPlantaResumenPage]);
 
+  /** HTML for cliente PDF and Google Drive — same pipeline as “PDF Cliente” (plantilla + vista técnica). */
+  const buildClientePdfHtml = useCallback(async () => {
+    const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
+    const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
+    const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
+    const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
+    const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
+    const appendix = buildPdfAppendixPayload({
+      scenario, scenarioDef: scenarioDef_, vis: vis_,
+      techo, pared, camara, results, grandTotal,
+      kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
+      kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
+      kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
+      kpiFij: results?.fijaciones?.puntosFijacion ?? null,
+      PANELS_TECHO, PANELS_PARED,
+    });
+    const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
+    const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
+    if (pdfLayout) {
+      const { renderPdfLayout, buildQuotationModel } = await import("../pdf-templates/index.js");
+      const q = buildQuotationModel({
+        client: proyecto, project: proyecto, scenario,
+        panel: panelInfo, groups: groupsMapped,
+        totals: grandTotal, appendix, snapshotImages,
+      });
+      return renderPdfLayout(pdfLayout, q);
+    }
+    return generateClientVisualHTML({
+      client: proyecto, project: proyecto, scenario,
+      panel: panelInfo, groups: groupsMapped,
+      totals: grandTotal, appendix, snapshotImages,
+      includePlantaResumenPage: false,
+    });
+  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, pdfLayout]);
+
   const handleClientePdf = useCallback(async () => {
     if (!groups.length) return;
     showToast("Generando PDF…");
     try {
-      const svgEl = document.querySelector('[data-bmc-capture="roof-plan-2d"]');
-      const { serializeRoofPlanSvgToString } = await import("../utils/captureDomToPng.js");
-      const roofPlan2dSvg = serializeRoofPlanSvgToString(svgEl);
-      const scenarioDef_ = SCENARIOS_DEF.find(s => s.id === scenario);
-      const vis_ = scenarioDef_?.visibility ?? SCENARIOS_DEF[0].visibility;
-      const appendix = buildPdfAppendixPayload({
-        scenario, scenarioDef: scenarioDef_, vis: vis_,
-        techo, pared, camara, results, grandTotal,
-        kpiArea: results?.paneles?.areaTotal ?? results?.paneles?.areaNeta ?? null,
-        kpiPaneles: results?.paneles?.cantPaneles ?? results?.paredResult?.paneles?.cantPaneles ?? null,
-        kpiApoyos: results?.autoportancia?.apoyos ?? results?.paneles?.numEsqExt ?? null,
-        kpiFij: results?.fijaciones?.puntosFijacion ?? null,
-        PANELS_TECHO, PANELS_PARED,
-      });
-      const snapshotImages = roofPlan2dSvg ? { roofPlan2dSvg } : {};
-      const groupsMapped = groups.map(g => ({ title: g.title, items: g.items }));
-      let html;
-      if (pdfLayout) {
-        const { renderPdfLayout, buildQuotationModel } = await import("../pdf-templates/index.js");
-        const q = buildQuotationModel({
-          client: proyecto, project: proyecto, scenario,
-          panel: panelInfo, groups: groupsMapped,
-          totals: grandTotal, appendix, snapshotImages,
-        });
-        html = await renderPdfLayout(pdfLayout, q);
-      } else {
-        html = generateClientVisualHTML({
-          client: proyecto, project: proyecto, scenario,
-          panel: panelInfo, groups: groupsMapped,
-          totals: grandTotal, appendix, snapshotImages,
-          includePlantaResumenPage: false,
-        });
-      }
+      const html = await buildClientePdfHtml();
       const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const resolvedCode =
@@ -3642,7 +3643,7 @@ export default function PanelinCalculadoraV3() {
     } catch (err) {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
-  }, [groups, scenario, results, panelInfo, proyecto, techo, pared, camara, grandTotal, showToast, pdfLayout, currentBudgetCode]);
+  }, [groups.length, buildClientePdfHtml, showToast, currentBudgetCode, proyecto]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -4229,21 +4230,7 @@ export default function PanelinCalculadoraV3() {
     setDriveError(null);
     setDriveLastSave(null);
     try {
-      const dimensions = buildPrintDimensions();
-      const html = generatePrintHTML({
-        client: proyecto, project: proyecto, scenario,
-        panel: panelInfo,
-        autoportancia: results?.autoportancia || results?.techoResult?.autoportancia,
-        groups: groups.map(g => ({ title: g.title, items: g.items, subtotal: g.items.reduce((s, i) => s + (i.total || 0), 0) })),
-        totals: grandTotal,
-        warnings: results?.warnings || [],
-        dimensions,
-        descarte: results?.paneles?.descarte,
-        listaPrecios,
-        quotationId: currentBudgetCode || undefined,
-        showSKU: false,
-        showUnitPrices: true,
-      });
+      const html = await buildClientePdfHtml();
       const { htmlToPdfBlob } = await import("../utils/pdfGenerator.js");
       const pdfBlob = await htmlToPdfBlob(html);
       const projectData = serializeProject({
@@ -4267,7 +4254,7 @@ export default function PanelinCalculadoraV3() {
     } finally {
       setDriveSaving(false);
     }
-  }, [groups, proyecto, scenario, panelInfo, results, grandTotal, listaPrecios, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast, handleDriveRefresh, buildPrintDimensions]);
+  }, [groups, proyecto, currentBudgetCode, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, techoAnchoModo, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter, showToast, handleDriveRefresh, buildClientePdfHtml]);
 
   const handleDriveLoad = useCallback(async (folderId) => {
     setDriveLoading(true);
@@ -6751,13 +6738,11 @@ export default function PanelinCalculadoraV3() {
                 id="bmc-pdf-layout"
                 value={pdfLayout}
                 onChange={e => { const v = e.target.value; setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
-                style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 260 }}
+                style={{ padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, background: C.surface, color: C.tp, fontSize: 13, cursor: "pointer", flex: 1, maxWidth: 320 }}
               >
-                <option value="soft-modern">E — Soft Modern</option>
-                <option value="executive-dark">A — Executive Dark</option>
-                <option value="blueprint">B — Blueprint</option>
-                <option value="minimalist">C — Minimalist</option>
-                <option value="construction-bold">D — Construction Bold</option>
+                {LAYOUT_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>{o.label}</option>
+                ))}
               </select>
             </div>
           )}
@@ -6944,6 +6929,8 @@ export default function PanelinCalculadoraV3() {
         onRefresh={handleDriveRefresh}
         currentQuotationCode={currentBudgetCode}
         lastSaveResult={driveLastSave}
+        pdfLayout={pdfLayout}
+        onPdfLayoutChange={(v) => { setPdfLayout(v); localStorage.setItem("bmc.pdfLayout", v); }}
         provisionalQuotationCode={
           !currentBudgetCode ||
           String(currentBudgetCode || "").includes("-TEMP")

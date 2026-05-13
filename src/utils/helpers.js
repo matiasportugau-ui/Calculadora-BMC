@@ -305,10 +305,8 @@ function buildBomTable(data) {
       const cantDisplay = typeof item.cant === "number" ? (item.cant % 1 === 0 ? item.cant : item.cant.toFixed(2)) : item.cant;
       tbody += `<tr style="background:${bg}">`;
       const largoHint = item.largoBarra ? ` <span style="color:#6E6E73;font-size:8pt">(${item.largoBarra}m c/u)</span>` : "";
-      const panelDetail = item.cantPaneles
-        ? `<div style="color:#6E6E73;font-size:8pt;margin-top:1px">${item.cantPaneles} paneles${item.largoPanel ? ` × ${item.largoPanel}m largo` : ""}</div>`
-        : "";
-      tbody += `<td style="padding:5px 8px">${esc(item.label)}${largoHint}${panelDetail}</td>`;
+      // m² paneles: cant./largo ya van en `label` via bomToGroups; no second line (plain-text copy used to glue "...m" + "4 paneles").
+      tbody += `<td style="padding:5px 8px">${esc(item.label)}${largoHint}</td>`;
       if (showSKU) tbody += `<td style="text-align:center;color:#6E6E73;padding:5px 8px;font-size:8.5pt">${esc(item.sku || "—")}</td>`;
       tbody += `<td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums">${cantDisplay}</td>`;
       tbody += `<td style="text-align:center;padding:5px 8px">${esc(item.unidad)}</td>`;
