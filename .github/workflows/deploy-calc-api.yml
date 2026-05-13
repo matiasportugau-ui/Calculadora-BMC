@@ -130,6 +130,7 @@ jobs:
           IMAGE_NAME="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/cloud-run-repo/panelin-calc"
           docker build \
             -f server/Dockerfile \
+            --build-arg GIT_SHA=${{ steps.sha.outputs.sha }} \
             -t "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}" \
             .
           docker push "${IMAGE_NAME}:${{ steps.sha.outputs.sha }}"

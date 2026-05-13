@@ -14,6 +14,9 @@ LABEL maintainer="BMC Uruguay / METALOG SAS"
 LABEL description="Panelin Calculator API for GPT Actions"
 WORKDIR /app
 
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 # Chromium + dependencies for server-side PDF via puppeteer-core
 RUN apk add --no-cache \
     chromium \

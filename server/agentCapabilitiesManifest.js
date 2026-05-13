@@ -3,7 +3,17 @@
  * Served at GET /capabilities; static snapshot: docs/api/AGENT-CAPABILITIES.json
  * Regenerate snapshot: npm run capabilities:snapshot
  */
+import { createRequire } from "node:module";
 import { GPT_ACTIONS } from "./gptActions.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
+
+const BUILD_INFO = Object.freeze({
+  gitSha: process.env.GIT_SHA || null,
+  version: pkg.version || null,
+  deployedAt: process.env.DEPLOYED_AT || null,
+});
 
 /** BMC Finanzas dashboard routes (mount /api). Keep in sync with server/routes/bmcDashboard.js */
 const DASHBOARD_ROUTES = [
@@ -102,6 +112,7 @@ export function buildAgentCapabilitiesManifest(config) {
     description:
       "Single index for AI agents: Calculator GPT Actions + BMC Dashboard API + UI entry points.",
     public_base_url: base,
+    build: BUILD_INFO,
     calculator,
     dashboard,
     ui,
