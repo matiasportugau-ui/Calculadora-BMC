@@ -584,6 +584,9 @@ app.get("/webhooks/whatsapp", (req, res) => {
 });
 
 // POST — mensajes entrantes
+// Note: rate-limiting is intentionally omitted on this endpoint. Meta's Cloud API
+// retries on 5xx; an over-aggressive limiter would cause webhook delivery failures.
+// Unauthorized requests are blocked by HMAC signature verification above.
 // ── Procesar conversación WA completa → CRM + Form responses ──
 async function processWaConversation(chatId, conv) {
   const dialogo = conv.messages

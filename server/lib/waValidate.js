@@ -24,7 +24,10 @@ export function normalizePhoneE164(raw) {
   const digits = s.replace(/\D/g, "");
   if (!digits) return digits;
 
-  // Strip leading international dialing prefix "00"
+  // Strip leading international dialing prefix "00" (ITU-T E.164 / most of the world).
+  // North America uses "011", but WA Cloud API numbers never arrive with a dialing prefix —
+  // they're already in national-significant or country-code form. This handles
+  // the rare cases where numbers come from external systems that prepend "00".
   const clean = digits.startsWith("00") ? digits.slice(2) : digits;
 
   // If it already had '+', or cleaned digits look like a full international number (≥10 digits)

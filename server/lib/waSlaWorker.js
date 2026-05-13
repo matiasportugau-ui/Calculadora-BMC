@@ -51,6 +51,10 @@ export function localDayStartUtcMs(epochMs, tz) {
  * Returns the UTC offset of `tz` at `date` in minutes.
  * local_time = UTC + offsetMin  (e.g. UTC-3 → -180)
  *
+ * Note: Uruguay has not observed DST since March 2015 (UTC-3 year-round), so the
+ * America/Montevideo fallback is accurate permanently. For other timezones, Intl
+ * is used; the fallback only activates if Intl throws (very old runtimes or invalid tz).
+ *
  * @param {string} tz
  * @param {Date} date
  * @returns {number}
@@ -104,7 +108,7 @@ export function effectiveHoursSince(since, bh) {
   const tz = bh.tz || "America/Montevideo";
   let totalMs = 0;
   let cursor = sinceMs;
-  let guard = 0; // safety: at most ~400 iterations ≈ ~13 months
+  let guard = 0; // safety: at most ~400 iterations ≈ ~13 months; truncates silently for pathological inputs
 
   while (cursor < nowMs && ++guard <= 400) {
     const dayStart = localDayStartUtcMs(cursor, tz);
@@ -136,6 +140,9 @@ export function effectiveHoursSince(since, bh) {
 
   return totalMs / 3_600_000;
 }
+
+// Export guard constant so callers can detect truncation in tests.
+export const EFFECTIVE_HOURS_MAX_DAYS = 400;
 
 export function startWaSlaWorker({ logger, pool }) {
   const log = logger || { info() {}, warn() {}, error() {} };
