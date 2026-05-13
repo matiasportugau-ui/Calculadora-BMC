@@ -7,6 +7,36 @@ const ALLOWED_TYPES = new Set(["text", "image", "audio", "doc", "video", "sticke
 const ALLOWED_SOURCES = new Set(["wa_web", "cloud_api", "manual"]);
 
 /**
+ * Normaliza un número de teléfono a formato E.164.
+ *
+ * Reglas (conservadoras para no romper números válidos):
+ *  - Strip caracteres no-dígito excepto '+' inicial
+ *  - Si la cadena original empezaba con '+', o los dígitos resultantes son >= 10, agrega '+'
+ *  - '00XXXX' (marcado internacional alternativo) → '+XXXX'
+ *  - Limita a 33 chars ('+' + 32 dígitos máx.)
+ *
+ * @param {string} raw
+ * @returns {string}
+ */
+export function normalizePhoneE164(raw) {
+  const s = String(raw).trim();
+  const hasPlus = s.startsWith("+");
+  const digits = s.replace(/\D/g, "");
+  if (!digits) return digits;
+
+  // Strip leading international dialing prefix "00"
+  const clean = digits.startsWith("00") ? digits.slice(2) : digits;
+
+  // If it already had '+', or cleaned digits look like a full international number (≥10 digits)
+  if (hasPlus || clean.length >= 10) {
+    return ("+" + clean).slice(0, 33);
+  }
+
+  // Short local number — no country prefix can be reliably inferred here; return digits only.
+  return clean.slice(0, 32);
+}
+
+/**
  * Devuelve { valid: boolean, errors: string[], normalized?: NormalizedMessage }
  *
  * @param {any} raw
@@ -58,7 +88,7 @@ export function validateIngestMessage(raw, opts = {}) {
     (raw.from && typeof raw.from === "object" && raw.from.name ? String(raw.from.name) : null) ||
     (raw.contact_name ? String(raw.contact_name) : null);
 
-  const phoneNormalized = phone ? phone.replace(/\D/g, "").slice(0, 32) : null;
+  const phoneNormalized = phone ? normalizePhoneE164(phone) : null;
 
   if (errors.length) return { valid: false, errors };
 

@@ -766,6 +766,41 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   const entry = body?.entry?.[0];
   const changes = entry?.changes?.[0];
   const value = changes?.value;
+
+  // ── Delivery status updates (delivered / read / failed) ──────────────────
+  // WhatsApp sends `statuses` in the same payload as messages.
+  // Wire status updates into wa_messages.status for the cockpit.
+  if (value?.statuses?.length) {
+    const waPoolForStatus = getWaPool(config.databaseUrl);
+    if (waPoolForStatus) {
+      const VALID_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
+      for (const statusUpdate of value.statuses) {
+        const msgId = statusUpdate.id;
+        const newStatus = statusUpdate.status;
+        if (!msgId || !newStatus || !VALID_STATUSES.has(newStatus)) continue;
+        const statusMeta = {
+          status_ts: statusUpdate.timestamp
+            ? new Date(Number(statusUpdate.timestamp) * 1000).toISOString()
+            : new Date().toISOString(),
+        };
+        if (newStatus === "failed" && statusUpdate.errors) {
+          statusMeta.wa_errors = statusUpdate.errors;
+        }
+        try {
+          await waPoolForStatus.query(
+            `update wa_messages
+                set status = $1,
+                    meta = coalesce(meta, '{}'::jsonb) || $2::jsonb
+              where msg_id = $3`,
+            [newStatus, JSON.stringify(statusMeta), String(msgId)],
+          );
+        } catch (e) {
+          logger.warn({ err: e?.message, msg_id: msgId, status: newStatus }, "WA status-update DB write failed");
+        }
+      }
+    }
+  }
+
   if (!value?.messages) return;
 
   for (const msg of value.messages) {
