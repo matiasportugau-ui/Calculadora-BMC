@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-09
+**Última actualización:** 2026-05-13
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-13 (Cloud Run boot fix — agentTraining analytics route):** [`server/routes/agentTraining.js`](../../server/routes/agentTraining.js) tenía un typo en la última ruta (`requireDevModeAuth` en vez de `requireDevModeAuthMiddleware`) que rompía la evaluación del módulo con `ReferenceError` antes de que Express pudiera levantar el puerto. En Cloud Run eso hacía fallar el arranque del contenedor durante el deploy aunque `npm run gate:local:full` siguiera verde. Se corrigió el middleware y se agregó [`tests/agentTrainingRoutes.test.js`](../../tests/agentTrainingRoutes.test.js), enlazado desde `npm run test:api`, para capturar futuros errores de carga del router antes del deploy.
 
 **2026-05-12 (Server hardening — ML cache key SHA-256 + parseCrmRowAtoAK `_meta`):** [`server/routes/mlSearch.js`](../../server/routes/mlSearch.js) ahora hashea el `cacheKey` con SHA-256 (`crypto.createHash`) para evitar colisiones cuando `q` contiene el separador `|`. [`server/lib/crmRowParse.js`](../../server/lib/crmRowParse.js) — `parseCrmRowAtoAK` retorna `_meta: { rowLength, truncated }` para que consumers críticos puedan detectar filas Sheets con menos columnas de las esperadas (antes los índices altos quedaban "" silenciosamente). Sin breaking changes — el shape público se mantiene, `_meta` es additive.
 

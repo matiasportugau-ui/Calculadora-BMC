@@ -426,7 +426,7 @@ router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuthMiddle
  *   - days=N (default 30, max 365)
  *   - include=kb,knowledge_events (comma-separated; default "kb")
  */
-router.get("/agent/training-kb/analytics", requireDevModeAuth, async (req, res) => {
+router.get("/agent/training-kb/analytics", requireDevModeAuthMiddleware, async (req, res) => {
   try {
     const daysBack = Math.max(1, Math.min(Number(req.query.days || 30), config.kbAnalyticsWindowMaxDays));
     const includeParam = String(req.query.include || "kb")
