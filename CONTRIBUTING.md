@@ -74,3 +74,33 @@ npm test
 ```
 
 Verificar manualmente con los 6 casos de prueba documentados en los motores de techo y pared.
+
+## Branch naming
+
+Usar el prefijo según el tipo de cambio:
+
+| Prefijo | Para |
+|---|---|
+| `feat/<área>-<descripción>` | Nueva funcionalidad |
+| `fix/<área>-<descripción>` | Bug fix |
+| `chore/<descripción>` | Mantenimiento (deps, CI, lint) |
+| `docs/<descripción>` | Solo documentación |
+| `refactor/<área>-<descripción>` | Refactor sin cambio funcional |
+| `prices/<fecha-o-fuente>` | Actualización de Matriz BROMYROS |
+
+Evitar:
+- Sufijos hexadecimales generados por agentes (`-XXXX`) sin contexto humano
+- Branches sin PR asociado dentro de 7 días → candidata a archivar
+- Duplicados del mismo trabajo (verificar con `git branch -r | grep <tema>` antes de crear)
+
+## Ritual de housekeeping mensual
+
+Primer viernes de cada mes, ~10 minutos:
+
+```bash
+bash scripts/branch-housekeeping-monthly.sh
+```
+
+Imprime tres listas accionables: mergeadas a borrar, stale >30 días sin PR, PRs con conflictos. Usar el output para decidir qué limpiar.
+
+Para limpiezas más grandes (>50 branches), usar la skill `bmc-branch-cleanup` que automatiza el triage con reglas de DELETE/ARCHIVE/REVIEW.
