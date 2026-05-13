@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { config } from "../config.js";
+import { requireDevModeAuthMiddleware } from "../lib/devModeAuth.js";
 import {
   loadConversations,
   loadConversationById,
@@ -14,18 +15,8 @@ const analysisCache = new Map();
 const ANALYSIS_TTL_MS = 10 * 60 * 1000;
 const ANALYSIS_CACHE_MAX = 200;
 
-function requireDevModeAuth(req, res, next) {
-  const token = config.apiAuthToken;
-  if (!token) return res.status(503).json({ ok: false, error: "API_AUTH_TOKEN not configured" });
-  const auth = String(req.headers.authorization || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-  if (bearer === token || xKey === token) return next();
-  return res.status(401).json({ ok: false, error: "Unauthorized" });
-}
-
 /** GET /api/agent/stats — lightweight daily usage KPIs (no AI call) */
-router.get("/agent/stats", requireDevModeAuth, (req, res) => {
+router.get("/agent/stats", requireDevModeAuthMiddleware, (req, res) => {
   const days = Math.max(1, Math.min(Number(req.query.days) || 1, 7));
   const result = loadConversations({ days, page: 1, limit: 1000 });
   const convs = result.items;
@@ -65,7 +56,7 @@ router.get("/agent/stats", requireDevModeAuth, (req, res) => {
 });
 
 /** GET /api/agent/conversations — paginated list of conversation resumes */
-router.get("/agent/conversations", requireDevModeAuth, (req, res) => {
+router.get("/agent/conversations", requireDevModeAuthMiddleware, (req, res) => {
   const days = Math.max(1, Math.min(Number(req.query.days) || 30, 90));
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
@@ -76,7 +67,7 @@ router.get("/agent/conversations", requireDevModeAuth, (req, res) => {
 });
 
 /** GET /api/agent/conversations/weekly-digest — MUST be declared before /:id */
-router.get("/agent/conversations/weekly-digest", requireDevModeAuth, async (req, res) => {
+router.get("/agent/conversations/weekly-digest", requireDevModeAuthMiddleware, async (req, res) => {
   const result = loadConversations({ days: 7, page: 1, limit: 500 });
   const convs = result.items;
 
@@ -121,7 +112,7 @@ router.get("/agent/conversations/weekly-digest", requireDevModeAuth, async (req,
 });
 
 /** POST /api/agent/conversations/analyze-batch — MUST be declared before /:id */
-router.post("/agent/conversations/analyze-batch", requireDevModeAuth, async (req, res) => {
+router.post("/agent/conversations/analyze-batch", requireDevModeAuthMiddleware, async (req, res) => {
   const days = Math.max(1, Math.min(Number(req.body?.days) || 7, 30));
   const rawHedges = Number(req.body?.minHedges);
   const minHedges = Number.isFinite(rawHedges) ? rawHedges : 2;
@@ -166,14 +157,14 @@ router.post("/agent/conversations/analyze-batch", requireDevModeAuth, async (req
 });
 
 /** GET /api/agent/conversations/:id — full conversation record */
-router.get("/agent/conversations/:id", requireDevModeAuth, (req, res) => {
+router.get("/agent/conversations/:id", requireDevModeAuthMiddleware, (req, res) => {
   const conv = loadConversationById(req.params.id);
   if (!conv) return res.status(404).json({ ok: false, error: "Conversation not found" });
   res.json({ ok: true, conversation: conv, resume: computeResume(conv) });
 });
 
 /** GET /api/agent/conversations/:id/analysis — AI-generated pros/cons (cached 10 min) */
-router.get("/agent/conversations/:id/analysis", requireDevModeAuth, async (req, res) => {
+router.get("/agent/conversations/:id/analysis", requireDevModeAuthMiddleware, async (req, res) => {
   const id = req.params.id;
 
   // Evict expired entries on read; enforce max size

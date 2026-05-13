@@ -68,6 +68,12 @@ const logger = pino({
   level: process.env.LOG_LEVEL || "info",
 });
 
+if (config.panelinRelaxDevAuth) {
+  logger.warn(
+    "PANELIN_RELAX_DEV_AUTH is enabled — Panelin developer endpoints skip API_AUTH_TOKEN checks. Do not use this on production APIs exposed to the public internet."
+  );
+}
+
 const app = express();
 app.disable("x-powered-by"); // hide Express signature (defense in depth)
 app.set("trust proxy", 1);   // honor X-Forwarded-* from Cloud Run / Vercel proxy

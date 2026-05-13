@@ -17,6 +17,7 @@ import rateLimit from "express-rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config.js";
+import { checkDevModeAuthorization } from "../lib/devModeAuth.js";
 import { buildSystemPrompt } from "../lib/chatPrompts.js";
 import {
   calcParedCompleto,
@@ -332,15 +333,6 @@ const devModeLimiter = rateLimit({
   message: { ok: false, error: "Demasiadas consultas en modo dev. Esperá un momento." },
 });
 
-function isDevAuthorized(req) {
-  if (!config.apiAuthToken) return { ok: false, status: 503, error: "API_AUTH_TOKEN not configured" };
-  const auth = String(req.headers.authorization || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-  if (bearer === config.apiAuthToken || xKey === config.apiAuthToken) return { ok: true };
-  return { ok: false, status: 401, error: "Unauthorized developer mode" };
-}
-
 function runCalcTecho(techo = {}) {
   const is2A = techo.tipoAguas === "dos_aguas";
   const zonas = Array.isArray(techo.zonas) && techo.zonas.length > 0
@@ -520,7 +512,7 @@ router.post("/agent/chat", async (req, res) => {
 
   // 0.1 — Rate limit: devMode users get higher quota if authorized
   if (devMode) {
-    const auth = isDevAuthorized(req);
+    const auth = checkDevModeAuthorization(req);
     if (!auth.ok) {
       return res.status(auth.status).json({ ok: false, error: auth.error });
     }

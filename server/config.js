@@ -40,6 +40,12 @@ export const config = {
   requestTimeoutMs: Number(process.env.ML_HTTP_TIMEOUT_MS || 15000),
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
   /**
+   * Development-only: skip API_AUTH_TOKEN checks on Panelin developer routes (chat devMode,
+   * training KB, prompt editor, conversation stats). Set `PANELIN_RELAX_DEV_AUTH=1` on trusted
+   * local/staging APIs only — never on a publicly reachable production Cloud Run service.
+   */
+  panelinRelaxDevAuth: /^(1|true|yes)$/i.test(String(process.env.PANELIN_RELAX_DEV_AUTH || "").trim()),
+  /**
    * Opcional — POST /api/crm/ingest-email: si está definido, el bridge IMAP puede usar solo este secreto
    * (además de API_AUTH_TOKEN). Ver docs/team/panelsim/EMAIL-ADMINISTRATOR.md
    */

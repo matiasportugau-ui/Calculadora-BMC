@@ -2381,7 +2381,7 @@ export default function PanelinCalculadoraV3() {
   });
   const [devAuthToken, setDevAuthToken] = useState(() => {
     if (typeof window === "undefined") return "";
-    return sessionStorage.getItem("panelin-dev-token") || "";
+    return String(sessionStorage.getItem("panelin-dev-token") || "").trim();
   });
   const [pendingQuote, setPendingQuote] = useState(null);
   const undoStackRef = useRef([]);
@@ -2567,18 +2567,18 @@ export default function PanelinCalculadoraV3() {
       if (typeof window !== "undefined") sessionStorage.setItem("panelin-dev-mode", "0");
       return;
     }
-    let token = devAuthToken;
-    if (!token && typeof window !== "undefined") {
-      token = window.prompt("API_AUTH_TOKEN para activar Developer Mode:") || "";
+    let token = String(devAuthToken || "").trim();
+    if (!token && !chat.relaxDevAuth && typeof window !== "undefined") {
+      token = String(window.prompt("Pegá API_AUTH_TOKEN del servidor API (Cloud Run), el mismo que en variables de entorno — sin comillas ni espacios:") || "").trim();
     }
-    if (!token) return;
+    if (!chat.relaxDevAuth && !token) return;
     setDevAuthToken(token);
     setDevMode(true);
     if (typeof window !== "undefined") {
       sessionStorage.setItem("panelin-dev-token", token);
       sessionStorage.setItem("panelin-dev-mode", "1");
     }
-  }, [devMode, devAuthToken]);
+  }, [devMode, devAuthToken, chat.relaxDevAuth]);
 
   useEffect(() => {
     const onKeyDown = (e) => {

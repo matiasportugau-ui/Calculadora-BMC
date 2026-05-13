@@ -5,7 +5,9 @@
 export function mapErrorMessage(err) {
   if (err?.name === "AbortError") return null; // intentional stop()
   const status = err?._status;
-  if (status === 401) return "Token de desarrollador inválido.";
+  if (status === 401) {
+    return "Token de desarrollador inválido. Tiene que ser el mismo valor que API_AUTH_TOKEN en la API (Cloud Run): sin comillas, espacios ni líneas al pegar. Si cambió el token en el servidor, actualizalo con Ctrl+Shift+D de nuevo.";
+  }
   if (status === 403) return "Origen no permitido para este servicio.";
   if (status === 429) return "Demasiadas consultas. Esperá un momento.";
   if (status === 503) return "Servicio de IA no disponible en este momento.";

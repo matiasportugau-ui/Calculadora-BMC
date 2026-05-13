@@ -98,6 +98,7 @@ export function buildAgentCapabilitiesManifest(config) {
   return {
     ok: true,
     schema_version: "1",
+    panelin_relax_dev_auth: Boolean(config.panelinRelaxDevAuth),
     description:
       "Single index for AI agents: Calculator GPT Actions + BMC Dashboard API + UI entry points.",
     public_base_url: base,

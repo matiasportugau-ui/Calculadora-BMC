@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { config } from "../config.js";
+import { requireDevModeAuthMiddleware } from "../lib/devModeAuth.js";
 import { isAiGatewayEnabled, generateTextViaGateway } from "../lib/aiGatewayClient.js";
 import {
   addTrainingEntry,
@@ -47,22 +48,7 @@ function validateSectionParam(req, res) {
   return section;
 }
 
-function requireDevModeAuth(req, res, next) {
-  const token = config.apiAuthToken;
-  if (!token) {
-    return res.status(503).json({
-      ok: false,
-      error: "API_AUTH_TOKEN not configured — developer mode disabled",
-    });
-  }
-  const auth = String(req.headers.authorization || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const xKey = String(req.headers["x-api-key"] || req.query?.key || "");
-  if (bearer === token || xKey === token) return next();
-  return res.status(401).json({ ok: false, error: "Unauthorized" });
-}
-
-router.post("/agent/train", requireDevModeAuth, (req, res) => {
+router.post("/agent/train", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const entry = addTrainingEntry(req.body || {});
     appendTrainingSessionEvent({ type: "train_entry_created", entryId: entry.id, category: entry.category });
@@ -72,7 +58,7 @@ router.post("/agent/train", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.put("/agent/train/:id", requireDevModeAuth, (req, res) => {
+router.put("/agent/train/:id", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const entry = updateTrainingEntry(req.params.id, req.body || {});
     appendTrainingSessionEvent({ type: "train_entry_updated", entryId: entry.id, category: entry.category });
@@ -83,7 +69,7 @@ router.put("/agent/train/:id", requireDevModeAuth, (req, res) => {
 });
 
 // Bulk routes MUST come before /:id to prevent Express matching "bulk" as an id param
-router.delete("/agent/train/bulk", requireDevModeAuth, (req, res) => {
+router.delete("/agent/train/bulk", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { ids } = req.body || {};
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
@@ -95,7 +81,7 @@ router.delete("/agent/train/bulk", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.patch("/agent/train/bulk", requireDevModeAuth, (req, res) => {
+router.patch("/agent/train/bulk", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { ids, patch } = req.body || {};
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ ok: false, error: "ids array required" });
@@ -107,7 +93,7 @@ router.patch("/agent/train/bulk", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.delete("/agent/train/:id", requireDevModeAuth, (req, res) => {
+router.delete("/agent/train/:id", requireDevModeAuthMiddleware, (req, res) => {
   try {
     deleteTrainingEntry(req.params.id);
     appendTrainingSessionEvent({ type: "train_entry_deleted", entryId: req.params.id });
@@ -117,26 +103,26 @@ router.delete("/agent/train/:id", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.get("/agent/training-kb", requireDevModeAuth, async (req, res) => {
+router.get("/agent/training-kb", requireDevModeAuthMiddleware, async (req, res) => {
   await ensureGcsInit(); // wait for GCS cold-start load before reading KB
   const entries = listTrainingEntries({ category: req.query.category });
   const stats = getTrainingStats();
   res.json({ ok: true, entries, stats, paths: getTrainingPaths() });
 });
 
-router.get("/agent/training-kb/match", requireDevModeAuth, (req, res) => {
+router.get("/agent/training-kb/match", requireDevModeAuthMiddleware, (req, res) => {
   const q = String(req.query.q || "").trim();
   const limit = Number(req.query.limit) || 5;
   const matches = findRelevantExamples(q, { limit: Math.max(1, Math.min(limit, 20)) });
   res.json({ ok: true, q, matches });
 });
 
-router.get("/agent/dev-config", requireDevModeAuth, (req, res) => {
+router.get("/agent/dev-config", requireDevModeAuthMiddleware, (req, res) => {
   const sections = loadPromptSections();
   res.json({ ok: true, sections });
 });
 
-router.post("/agent/dev-config", requireDevModeAuth, (req, res) => {
+router.post("/agent/dev-config", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { section, content } = req.body || {};
     const result = updatePromptSection(section, content);
@@ -147,26 +133,26 @@ router.post("/agent/dev-config", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.post("/agent/prompt-preview", requireDevModeAuth, (req, res) => {
+router.post("/agent/prompt-preview", requireDevModeAuthMiddleware, (req, res) => {
   const { calcState = {}, query = "" } = req.body || {};
   const matches = findRelevantExamples(String(query), { limit: 5 });
   const prompt = buildSystemPrompt(calcState, { trainingExamples: matches, devMode: true });
   res.json({ ok: true, prompt, matched: matches.length, matches });
 });
 
-router.post("/agent/training/log-event", requireDevModeAuth, (req, res) => {
+router.post("/agent/training/log-event", requireDevModeAuthMiddleware, (req, res) => {
   const filePath = appendTrainingSessionEvent(req.body || {});
   res.json({ ok: true, filePath });
 });
 
-router.get("/agent/dev-config/:section/history", requireDevModeAuth, (req, res) => {
+router.get("/agent/dev-config/:section/history", requireDevModeAuthMiddleware, (req, res) => {
   const section = validateSectionParam(req, res);
   if (!section) return;
   const history = loadPromptSectionHistory(section);
   res.json({ ok: true, section, versions: history });
 });
 
-router.post("/agent/dev-config/:section/revert", requireDevModeAuth, (req, res) => {
+router.post("/agent/dev-config/:section/revert", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const section = validateSectionParam(req, res);
     if (!section) return;
@@ -179,12 +165,12 @@ router.post("/agent/dev-config/:section/revert", requireDevModeAuth, (req, res) 
   }
 });
 
-router.post("/agent/knowledge/clear-cache", requireDevModeAuth, (req, res) => {
+router.post("/agent/knowledge/clear-cache", requireDevModeAuthMiddleware, (req, res) => {
   clearKnowledgeCache();
   res.json({ ok: true, message: "Knowledge docs cache cleared" });
 });
 
-router.get("/agent/training-kb/score-config", requireDevModeAuth, (req, res) => {
+router.get("/agent/training-kb/score-config", requireDevModeAuthMiddleware, (req, res) => {
   const config = loadScoringConfig();
   res.json({ ok: true, config, defaults: DEFAULT_SCORING_CONFIG });
 });
@@ -197,7 +183,7 @@ function parseScoreConfigNumber(value, defaultValue, fieldName) {
   return parsed;
 }
 
-router.post("/agent/training-kb/score-config", requireDevModeAuth, (req, res) => {
+router.post("/agent/training-kb/score-config", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { permanentBonus, questionMatchWeight, contextMatchWeight, answerMatchWeight } = req.body || {};
     const cfg = {
@@ -215,7 +201,7 @@ router.post("/agent/training-kb/score-config", requireDevModeAuth, (req, res) =>
 
 // ─── Auto-learn queue ────────────────────────────────────────────────────────
 
-router.post("/agent/autolearn", requireDevModeAuth, async (req, res) => {
+router.post("/agent/autolearn", requireDevModeAuthMiddleware, async (req, res) => {
   try {
     const { conversationId, turns: rawTurns } = req.body || {};
     let turns = rawTurns;
@@ -249,7 +235,7 @@ router.post("/agent/autolearn", requireDevModeAuth, async (req, res) => {
   }
 });
 
-router.get("/agent/autolearn/pending", requireDevModeAuth, (req, res) => {
+router.get("/agent/autolearn/pending", requireDevModeAuthMiddleware, (req, res) => {
   try {
     res.json({ ok: true, entries: listPendingEntries() });
   } catch (err) {
@@ -257,7 +243,7 @@ router.get("/agent/autolearn/pending", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.post("/agent/autolearn/:id/approve", requireDevModeAuth, (req, res) => {
+router.post("/agent/autolearn/:id/approve", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const entry = approveTrainingEntry(req.params.id);
     clearKnowledgeCache();
@@ -267,7 +253,7 @@ router.post("/agent/autolearn/:id/approve", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
+router.post("/agent/autolearn/:id/reject", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const entry = rejectTrainingEntry(req.params.id, req.body?.reason || "");
     res.json({ ok: true, entry });
@@ -278,7 +264,7 @@ router.post("/agent/autolearn/:id/reject", requireDevModeAuth, (req, res) => {
 
 // ─── Health panel ─────────────────────────────────────────────────────────────
 
-router.get("/agent/training-kb/health", requireDevModeAuth, (req, res) => {
+router.get("/agent/training-kb/health", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { stale, zeroRetrieval, mlGap } = getHealthEntries();
     res.json({ ok: true, stale, zeroRetrieval, mlGap });
@@ -288,7 +274,7 @@ router.get("/agent/training-kb/health", requireDevModeAuth, (req, res) => {
 });
 
 // Mark reviewed — resets reviewDueAt for next cycle
-router.post("/agent/training-kb/:id/mark-reviewed", requireDevModeAuth, (req, res) => {
+router.post("/agent/training-kb/:id/mark-reviewed", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const FRESHNESS_DAYS = { sales: 30, product: 90, conversational: 180, math: null };
     const all = listTrainingEntries();
@@ -305,7 +291,7 @@ router.post("/agent/training-kb/:id/mark-reviewed", requireDevModeAuth, (req, re
 
 // ─── Import with dedup ────────────────────────────────────────────────────────
 
-router.post("/agent/training-kb/import", requireDevModeAuth, (req, res) => {
+router.post("/agent/training-kb/import", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { entries } = req.body || {};
     if (!Array.isArray(entries) || entries.length === 0) {
@@ -349,7 +335,7 @@ router.post("/agent/training-kb/import", requireDevModeAuth, (req, res) => {
 
 // ─── Conflict detection ───────────────────────────────────────────────────────
 
-router.get("/agent/training-kb/conflicts", requireDevModeAuth, (req, res) => {
+router.get("/agent/training-kb/conflicts", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const pairs = findAllConflicts();
     res.json({ ok: true, count: pairs.length, pairs });
@@ -358,7 +344,7 @@ router.get("/agent/training-kb/conflicts", requireDevModeAuth, (req, res) => {
   }
 });
 
-router.post("/agent/training-kb/:id/resolve-conflict", requireDevModeAuth, (req, res) => {
+router.post("/agent/training-kb/:id/resolve-conflict", requireDevModeAuthMiddleware, (req, res) => {
   try {
     const { keepId, archiveId } = req.body || {};
     if (!keepId || !archiveId) return res.status(400).json({ ok: false, error: "keepId and archiveId required" });
@@ -373,7 +359,7 @@ router.post("/agent/training-kb/:id/resolve-conflict", requireDevModeAuth, (req,
 
 // ─── ML override batch generator ──────────────────────────────────────────────
 
-router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuth, async (req, res) => {
+router.post("/agent/training-kb/generate-ml-overrides", requireDevModeAuthMiddleware, async (req, res) => {
   // Two code paths sharing the same loop body:
   //   - F3.2: AI Gateway via generateTextViaGateway (preferred when configured)
   //   - Legacy: direct Anthropic SDK with config.anthropicApiKey
