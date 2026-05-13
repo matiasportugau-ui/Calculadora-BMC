@@ -5,8 +5,9 @@
  * per tool from a dev-panel tab without depending on log scraping.
  *
  * This is intentionally in-memory — Cloud Run cold-starts wipe it (24h
- * is plenty for the dev panel's purpose; long-term observability lives
- * in the structured pino logs we also emit).
+ * is plenty for the dev panel's purpose). Long-term observability is
+ * served by the structured `event: "agent_tool_call"` pino log emitted
+ * from executeTool in agentTools.js, captured by Cloud Logging via stdout.
  */
 
 const MAX_RECORDS = 1000;

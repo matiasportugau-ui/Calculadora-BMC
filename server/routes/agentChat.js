@@ -267,7 +267,7 @@ router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
         return res.status(401).json({ ok: false, error: `Tool "${name}" requiere autorización Bearer` });
       }
     }
-    const raw = await executeTool(name, input || {}, calcState || {});
+    const raw = await executeTool(name, input || {}, calcState || {}, { logger: req.log });
     let parsed;
     try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
     res.json({ ok: true, name, result: parsed });
@@ -935,7 +935,7 @@ router.post("/agent/chat", async (req, res) => {
               continue;
             }
             send({ type: "tool_call", tool: tc.name, input: toolInput });
-            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions });
+            const result = await executeTool(tc.name, toolInput, calcState, { emitAction, approvedActions, logger: req.log });
             req.log?.info({ tool: tc.name, input: toolInput }, "agent tool executed");
             toolResults.push({ type: "tool_result", tool_use_id: tc.id, content: result });
 

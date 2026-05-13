@@ -977,6 +977,13 @@ export async function executeTool(name, input, calcState = {}, opts = {}) {
   } finally {
     const latencyMs = Date.now() - t0;
     recordToolCall({ tool: name, ok, latencyMs, errorClass });
+    const logger = opts.logger;
+    if (logger?.info) {
+      logger.info(
+        { event: "agent_tool_call", tool: name, ok, latency_ms: latencyMs, error_class: errorClass },
+        "agent tool call",
+      );
+    }
   }
 
   return raw;
@@ -1339,8 +1346,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const { scenario, techo, pared, camara } = input || {};
       const baseInput = { scenario, techo, pared, camara };
       const [webRaw, ventaRaw] = await Promise.all([
-        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState),
-        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "venta" }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "web" }, calcState, opts),
+        executeTool("calcular_cotizacion", { ...baseInput, listaPrecios: "venta" }, calcState, opts),
       ]);
       const web = JSON.parse(webRaw);
       const venta = JSON.parse(ventaRaw);
@@ -1463,8 +1470,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (!scenario_a || !scenario_b) return JSON.stringify({ error: "scenario_a y scenario_b requeridos" });
       const baseInput = { listaPrecios, techo, pared, camara };
       const [aRaw, bRaw] = await Promise.all([
-        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_a }, calcState),
-        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_b }, calcState),
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_a }, calcState, opts),
+        executeTool("calcular_cotizacion", { ...baseInput, scenario: scenario_b }, calcState, opts),
       ]);
       const a = JSON.parse(aRaw);
       const b = JSON.parse(bRaw);
@@ -1573,8 +1580,8 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       const limite = Math.max(1, Math.min(50, Number(input?.limite || 10)));
 
       const [crmRaw, quotesRaw] = await Promise.all([
-        executeTool("buscar_cliente_crm", { query: cliente, limite }, calcState),
-        executeTool("listar_cotizaciones_recientes", { cliente, limite }, calcState),
+        executeTool("buscar_cliente_crm", { query: cliente, limite }, calcState, opts),
+        executeTool("listar_cotizaciones_recientes", { cliente, limite }, calcState, opts),
       ]);
       const crm = JSON.parse(crmRaw);
       const quotes = JSON.parse(quotesRaw);

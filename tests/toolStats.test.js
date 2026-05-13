@@ -103,6 +103,38 @@ group("AGENT_TOOLS not regressed by wrapper", () => {
   assert(AGENT_TOOLS.length === 30, `30 tools exported (got ${AGENT_TOOLS.length})`);
 });
 
+await group("executeTool emits structured agent_tool_call log", async () => {
+  // Verify the pino log emitted alongside recordToolCall in executeTool's finally.
+  // Picks get_calc_state because it's a pure no-deps tool that always succeeds.
+  _resetToolStatsForTests();
+  const calls = [];
+  const fakeLogger = { info: (obj, msg) => calls.push({ obj, msg }) };
+  await executeTool(
+    "get_calc_state",
+    {},
+    {},
+    { logger: fakeLogger },
+  );
+  assert(calls.length === 1, "exactly one info call");
+  assert(calls[0].obj?.event === "agent_tool_call", "event field is agent_tool_call");
+  assert(calls[0].obj?.tool === "get_calc_state", "tool field set");
+  assert(typeof calls[0].obj?.latency_ms === "number", "latency_ms is numeric");
+  assert(calls[0].obj?.ok === true, "ok is true for cheap success path");
+  assert(calls[0].msg === "agent tool call", "log msg is 'agent tool call'");
+});
+
+await group("executeTool no-op when opts.logger absent (backwards compat)", async () => {
+  // Ensure existing callers without opts.logger don't throw.
+  _resetToolStatsForTests();
+  let raw;
+  try {
+    raw = await executeTool("get_calc_state", {}, {}, {});
+  } catch (e) {
+    assert(false, `must not throw without logger: ${e.message}`);
+  }
+  assert(typeof raw === "string", "still returns the tool result");
+});
+
 console.log(`\n${"═".repeat(60)}`);
 console.log(`toolStats tests — passed: ${passed}, failed: ${failed}`);
 console.log("═".repeat(60));
