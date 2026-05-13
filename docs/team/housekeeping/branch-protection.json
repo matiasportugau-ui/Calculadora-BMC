@@ -1,22 +1,26 @@
 {
-  "_comment": "Branch protection config para origin/main. Aplicar con: gh api -X PUT repos/:owner/:repo/branches/main/protection --input docs/team/housekeeping/branch-protection.json",
-  "_warning": "Revisar contexts requeridos contra el workflow .github/workflows/ci.yml antes de aplicar.",
+  "_comment": "Branch protection config para origin/main. Refleja el estado deployado (verificable con: gh api repos/matiasportugau-ui/Calculadora-BMC/branches/main/protection). Aplicar/reaplicar con: gh api -X PUT repos/matiasportugau-ui/Calculadora-BMC/branches/main/protection --input docs/team/housekeeping/branch-protection.json",
+  "_verified": "2026-05-13 — names matcheados contra .github/workflows/ci.yml (Validate Calculations:13, Lint Check:41, Env drift:66)",
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "lint",
-      "test"
+      "Lint Check",
+      "Validate Calculations",
+      "Env drift"
     ]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": true,
+    "require_last_push_approval": false
   },
   "restrictions": null,
   "allow_force_pushes": false,
   "allow_deletions": false,
   "required_linear_history": false,
-  "allow_fork_syncing": true
+  "required_conversation_resolution": false,
+  "lock_branch": false,
+  "allow_fork_syncing": false
 }
