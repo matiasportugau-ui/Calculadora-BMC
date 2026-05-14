@@ -568,6 +568,82 @@ export function createWolfboardRouter(config) {
     return res.json({ ok: true, adminRow, crmRow, dryRun });
   });
 
+  // ── POST /row-create ──────────────────────────────────────────────────────
+  //
+  // Append a new row to Admin 2.0 for a manually-captured cotización (Step 4
+  // of the F1 plan / Gap 3c). Used by the "+ Nueva consulta" button in the
+  // toolbar for channels that don't auto-ingest: CL (cliente físico), LL
+  // (llamada), LO (local), FB / IG (residual).
+  //
+  // Body: { telefono, cliente, origen, zona, consulta }
+  //   - consulta (string, required, non-empty after trim)
+  //   - origen (string, optional — UI restricts to CL/LL/LO/FB/IG)
+  //   - telefono / cliente / zona (strings, optional — sanitized for Sheets)
+  //
+  // Generates a synthetic ID `MAN-<timestamp>` so the row can later be matched
+  // back to CRM_Operativo via the existing ID flow in `/sync`. Estado is set
+  // to "Pendiente" to enter the standard triage queue.
+  router.post("/row-create", async (req, res) => {
+    if (!requireAuth(config, req, res)) return;
+    const dryRun = config.wolfbDryRun;
+    const body = req.body || {};
+    const consulta = String(body.consulta ?? "").trim();
+    if (!consulta) {
+      return res.status(400).json({ ok: false, error: "consulta requerida (no vacía)" });
+    }
+
+    const adminSheetId = config.wolfbAdminSheetId;
+    const adminTab = config.wolfbAdminTab;
+    if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
+
+    let sheets;
+    try { sheets = await getSheetsClient(); }
+    catch (e) { return res.status(503).json({ ok: false, error: "Sheets auth error: " + e.message }); }
+
+    const id = `MAN-${Date.now()}`;
+    const now = new Date();
+    const fecha = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+
+    // Schema (A2:M): A=id, B=fecha, C=?, D=telefono, E=cliente, F=origen,
+    // G=?, H=zona, I=consulta, J=respuesta, K=link, L=estado, M=replay
+    const safeRow = [
+      id,
+      fecha,
+      "",
+      sanitizeCellValue(String(body.telefono ?? "")),
+      sanitizeCellValue(String(body.cliente ?? "")),
+      sanitizeCellValue(String(body.origen ?? "")),
+      "",
+      sanitizeCellValue(String(body.zona ?? "")),
+      sanitizeCellValue(consulta),
+      "",
+      "",
+      "Pendiente",
+      "",
+    ];
+
+    if (dryRun) {
+      return res.json({ ok: true, dryRun: true, id, fecha });
+    }
+
+    try {
+      const result = await sheets.spreadsheets.values.append({
+        spreadsheetId: adminSheetId,
+        range: `'${adminTab}'!A:M`,
+        valueInputOption: "USER_ENTERED",
+        insertDataOption: "INSERT_ROWS",
+        requestBody: { values: [safeRow] },
+      });
+      // Append result has updatedRange like "Admin 2.0!A42:M42" — extract rowNum
+      const updatedRange = String(result.data?.updates?.updatedRange || "");
+      const m = updatedRange.match(/![A-Z]+(\d+):/);
+      const adminRow = m ? Number(m[1]) : null;
+      return res.json({ ok: true, id, fecha, adminRow });
+    } catch (e) {
+      return res.status(503).json({ ok: false, error: "Error al crear fila: " + e.message });
+    }
+  });
+
   // ── POST /enviados ────────────────────────────────────────────────────────
   router.post("/enviados", async (req, res) => {
     if (!requireAuth(config, req, res)) return;

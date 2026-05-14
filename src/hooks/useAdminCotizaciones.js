@@ -337,6 +337,45 @@ export function useAdminCotizaciones() {
     return { ok: true, data: { respuesta, provider: data?.provider } };
   }, [token, showToast]);
 
+  /**
+   * Append a new manually-captured cotización row to Admin 2.0.
+   * Backed by `POST /api/wolfboard/row-create` (Step 4 of F1 / Gap 3c).
+   *
+   * `input` shape: `{ telefono, cliente, origen, zona, consulta }`. `consulta`
+   * must be non-empty after trim; others are optional. On success, the row is
+   * appended at the bottom with Estado="Pendiente" and ID="MAN-<timestamp>",
+   * then the table reloads.
+   *
+   * Returns `{ ok, data: { id, adminRow, fecha } | { error } }`.
+   */
+  const createRow = useCallback(async (input) => {
+    if (!token) return { ok: false, data: { error: "Falta el token (cockpit)." } };
+    const consulta = String(input?.consulta ?? "").trim();
+    if (!consulta) return { ok: false, data: { error: "Consulta requerida." } };
+    setBusyOp("create");
+    const body = {
+      telefono: input?.telefono ?? "",
+      cliente: input?.cliente ?? "",
+      origen: input?.origen ?? "",
+      zona: input?.zona ?? "",
+      consulta,
+    };
+    const { ok, status, data } = await apiFetch(token, "/api/wolfboard/row-create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setBusyOp(null);
+    if (!ok) {
+      showToast(data?.error || `Error al crear (HTTP ${status})`);
+      return { ok: false, data };
+    }
+    const dry = data?.dryRun ? " [dry-run]" : "";
+    showToast(`Nueva consulta creada${dry} · ID ${data?.id || "?"}${data?.adminRow ? ` · Fila ${data.adminRow}` : ""}`);
+    await load();
+    return { ok: true, data };
+  }, [token, load, showToast]);
+
   const exportCsvUrl = useCallback(() => {
     const base = getCalcApiBase().replace(/\/+$/, "");
     return `${base}/api/wolfboard/export?token=${encodeURIComponent(token)}&scope=${encodeURIComponent(scope)}`;
@@ -402,6 +441,7 @@ export function useAdminCotizaciones() {
     runSync,
     runBatch,
     requestSuggestion,
+    createRow,
     exportCsvUrl,
   };
 }

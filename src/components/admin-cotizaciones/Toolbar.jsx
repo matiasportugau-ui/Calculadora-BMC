@@ -12,6 +12,126 @@ const STATUS_OPTIONS = [
   { id: "atrasadas", label: "+14d" },
 ];
 
+const MANUAL_ORIGEN_OPTIONS = [
+  { id: "CL", label: "CL · Cliente físico" },
+  { id: "LL", label: "LL · Llamada" },
+  { id: "LO", label: "LO · Local / oficina" },
+  { id: "FB", label: "FB · Facebook" },
+  { id: "IG", label: "IG · Instagram" },
+];
+
+const EMPTY_NUEVA = { origen: "LL", cliente: "", telefono: "", zona: "", consulta: "" };
+
+function NuevaConsultaModal({ onClose, onConfirm, busy }) {
+  const [form, setForm] = useState(EMPTY_NUEVA);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const consultaTrim = String(form.consulta || "").trim();
+  const canSubmit = !busy && consultaTrim.length > 0;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    const { ok } = await onConfirm(form);
+    if (ok) onClose();
+  };
+
+  return (
+    <div className="adminCot__modal-backdrop" role="dialog" aria-modal="true" aria-label="Nueva consulta manual">
+      <div className="adminCot__modal">
+        <div className="adminCot__modal-header">
+          <strong>+ Nueva consulta manual</strong>
+          <button type="button" className="adminCot__btn adminCot__btn--ghost adminCot__btn--sm" onClick={onClose}>✕</button>
+        </div>
+        <div className="adminCot__modal-body">
+          <p style={{ margin: 0, fontSize: 12, color: "var(--ac-text-2)", lineHeight: 1.5 }}>
+            Para canales que no entran automáticamente al Admin 2.0 (in-person, llamadas, redes sociales).
+            La fila se agrega al final con Estado=<code>Pendiente</code> y un ID <code>MAN-…</code> para correlación.
+          </p>
+
+          <label className="adminCot__check" style={{ display: "block", marginBottom: 8 }}>
+            <span style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Origen</span>
+            <select
+              className="adminCot__input"
+              value={form.origen}
+              onChange={(e) => set("origen", e.target.value)}
+              disabled={busy}
+              style={{ width: "100%" }}
+            >
+              {MANUAL_ORIGEN_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="adminCot__check" style={{ display: "block", marginBottom: 8 }}>
+            <span style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Cliente</span>
+            <input
+              type="text"
+              className="adminCot__input"
+              value={form.cliente}
+              onChange={(e) => set("cliente", e.target.value)}
+              placeholder="Nombre o referencia"
+              disabled={busy}
+              style={{ width: "100%" }}
+            />
+          </label>
+
+          <label className="adminCot__check" style={{ display: "block", marginBottom: 8 }}>
+            <span style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Teléfono</span>
+            <input
+              type="tel"
+              className="adminCot__input"
+              value={form.telefono}
+              onChange={(e) => set("telefono", e.target.value)}
+              placeholder="099 123 456 · opcional"
+              disabled={busy}
+              style={{ width: "100%" }}
+            />
+          </label>
+
+          <label className="adminCot__check" style={{ display: "block", marginBottom: 8 }}>
+            <span style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Zona / dirección</span>
+            <input
+              type="text"
+              className="adminCot__input"
+              value={form.zona}
+              onChange={(e) => set("zona", e.target.value)}
+              placeholder="Maldonado · Pando · etc. · opcional"
+              disabled={busy}
+              style={{ width: "100%" }}
+            />
+          </label>
+
+          <label className="adminCot__check" style={{ display: "block" }}>
+            <span style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+              Consulta <span style={{ color: "var(--ac-error, #c33)" }}>*</span>
+            </span>
+            <textarea
+              className="adminCot__textarea"
+              value={form.consulta}
+              onChange={(e) => set("consulta", e.target.value)}
+              rows={4}
+              placeholder="Lo que pidió el cliente — ej: Isodec 100mm / 4p de 6m / completo + flete"
+              disabled={busy}
+            />
+          </label>
+        </div>
+        <div className="adminCot__modal-footer">
+          <button type="button" className="adminCot__btn" onClick={onClose} disabled={busy}>Cancelar</button>
+          <button
+            type="button"
+            className="adminCot__btn adminCot__btn--primary"
+            onClick={submit}
+            disabled={!canSubmit}
+            title={consultaTrim ? "Crear fila pendiente" : "Falta la consulta"}
+          >
+            {busy ? "Creando…" : "Crear pendiente"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Fully controlled — reads from `opts` and writes via `onChange`. This means
 // edits and the "Defaults del servidor" button persist immediately to
 // localStorage via the parent's updateBatchOpts/resetBatchOpts.
@@ -82,6 +202,7 @@ export default function Toolbar({
   onRefresh,
   onRunSync,
   onRunBatch,
+  onCreateRow,
   exportCsvHref,
   batchOpts,
   updateBatchOpts,
@@ -89,6 +210,7 @@ export default function Toolbar({
   onMarkSelectedEnviados,
 }) {
   const [batchOpen, setBatchOpen] = useState(false);
+  const [nuevaOpen, setNuevaOpen] = useState(false);
   return (
     <>
       <div className="adminCot__toolbar" role="toolbar" aria-label="Acciones globales">
@@ -136,6 +258,17 @@ export default function Toolbar({
         </div>
 
         <div style={{ display: "flex", gap: 8, marginLeft: "auto", flexWrap: "wrap" }}>
+          {onCreateRow && (
+            <button
+              type="button"
+              className="adminCot__btn"
+              onClick={() => setNuevaOpen(true)}
+              disabled={busyOp === "create"}
+              title="Cargar manualmente una consulta de llamada, in-person, o redes sociales"
+            >
+              + Nueva consulta
+            </button>
+          )}
           <span style={{ position: "relative", display: "inline-block" }}>
             <button
               type="button"
@@ -205,6 +338,14 @@ export default function Toolbar({
           onClose={() => setBatchOpen(false)}
           onConfirm={(opts) => onRunBatch(opts)}
           onResetDefaults={onResetBatchOpts}
+        />
+      )}
+
+      {nuevaOpen && onCreateRow && (
+        <NuevaConsultaModal
+          onClose={() => setNuevaOpen(false)}
+          onConfirm={(form) => onCreateRow(form)}
+          busy={busyOp === "create"}
         />
       )}
     </>
