@@ -15,7 +15,6 @@ export function useHelp(id) {
   if (!id) return null;
   const step = steps.get(id) || null;
   if (!step && import.meta.env.DEV && !isKnownAnchor(id)) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[useHelp] Unknown anchor id "${id}". ` +
         `Add it to HELP_ANCHORS in src/components/help/anchors.js or fix the typo at the call site.`,
@@ -31,9 +30,9 @@ export function useHelp(id) {
 export function useFirstTimeTipState(id) {
   const { dismissed, dismiss } = useHelpContext();
   if (id && import.meta.env.DEV && !isKnownAnchor(id)) {
-    // eslint-disable-next-line no-console
     console.warn(`[useFirstTimeTipState] Unknown anchor id "${id}".`);
   }
+
   return {
     dismissed: id ? dismissed.has(id) : false,
     dismiss: () => id && dismiss(id),

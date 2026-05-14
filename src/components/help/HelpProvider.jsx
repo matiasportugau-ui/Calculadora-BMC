@@ -120,7 +120,6 @@ export function HelpProvider({ children, source = FALLBACK_SOURCE }) {
   // assignment reuses the same FALLBACK_SOURCE module-scope const reference.
   useEffect(() => {
     if (import.meta.env.PROD && source === FALLBACK_SOURCE) {
-      // eslint-disable-next-line no-console
       console.warn(
         "[HelpProvider] PROD is using FALLBACK_SOURCE (6 seed steps). " +
           "Consumer likely forgot to import source.json — tutorial coverage will be minimal.",
