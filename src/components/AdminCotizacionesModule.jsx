@@ -13,6 +13,10 @@ import "./admin-cotizaciones/styles.css";
 import { HelpProvider } from "./help/HelpProvider.jsx";
 import Callout from "./help/Callout.jsx";
 import "./help/styles.css";
+// Build-time import — Vite inlines this JSON at build, so consumers never
+// hit FALLBACK_SOURCE in prod. The walkthrough script regenerates this file
+// on each run (drafts/03-walkthrough-strategy-proposal.md § B Alt-3).
+import walkthroughSource from "../../docs/walkthrough/admin-cot/source.json";
 
 function ModuleInner() {
   const { skin } = useSkin();
@@ -254,7 +258,7 @@ function ModuleInner() {
 export default function AdminCotizacionesModule() {
   return (
     <SkinProvider>
-      <HelpProvider>
+      <HelpProvider source={walkthroughSource}>
         <ModuleInner />
       </HelpProvider>
     </SkinProvider>
