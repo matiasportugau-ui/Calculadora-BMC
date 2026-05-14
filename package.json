@@ -184,7 +184,10 @@
     "credentials:registry:probe": "node scripts/credentials-master-registry.mjs --probe-local",
     "credentials:registry:encrypt": "node scripts/credentials-master-registry.mjs --encrypt",
     "credentials:registry:encrypt:only": "node scripts/credentials-master-registry.mjs --encrypt-only",
-    "credentials:registry:decrypt": "node scripts/credentials-master-registry.mjs --decrypt"
+    "credentials:registry:decrypt": "node scripts/credentials-master-registry.mjs --decrypt",
+    "test:playwright:admin-cot-suggest-ia": "node scripts/playwright-admin-cot-suggest-ia.mjs",
+    "test:playwright:admin-cot-suggested-badge": "node scripts/playwright-admin-cot-suggested-badge.mjs",
+    "test:playwright:admin-cot-wa-timeline": "node scripts/playwright-admin-cot-wa-timeline.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
