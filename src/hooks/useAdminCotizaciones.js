@@ -258,16 +258,45 @@ export function useAdminCotizaciones() {
   const saveRow = useCallback(async (adminRow, patch) => {
     if (!token) return { ok: false };
     setBusyOp("save");
-    const body = { adminRow, ...patch };
+    // Step 6 of F1 (Gap 4b): if the operator picked a Responsable in the
+    // drawer, PATCH it to CRM_Operativo. The Sheets column is wired by
+    // `bmcDashboard.js:879` (`ASIGNADO_A` → `Responsable`). Best-effort —
+    // failures here don't block the Admin write.
+    const { responsable, cotizacionId, ...adminPatch } = patch || {};
+    const body = { adminRow, ...adminPatch };
     const { ok, status, data } = await apiFetch(token, "/api/wolfboard/row", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!ok) {
+      setBusyOp(null);
+      showToast(data?.error || `Error al guardar (HTTP ${status})`);
+      return { ok: false, data };
+    }
+
+    let responsableNote = "";
+    if (responsable && cotizacionId) {
+      const patchRes = await apiFetch(token, `/api/cotizaciones/${encodeURIComponent(cotizacionId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ASIGNADO_A: responsable }),
+      });
+      if (patchRes.ok) {
+        responsableNote = ` · Resp=${responsable}`;
+      } else {
+        // Don't fail the whole save — Admin write already succeeded.
+        responsableNote = ` · Resp no persistió (CRM ${patchRes.status})`;
+      }
+    }
+
     setBusyOp(null);
-    if (!ok) { showToast(data?.error || `Error al guardar (HTTP ${status})`); return { ok: false, data }; }
     const dry = data.dryRun ? " [dry-run]" : "";
-    showToast(`Guardado${dry} · Fila ${data.adminRow}${data.crmRow ? ` · CRM ${data.crmRow}` : ""}`);
+    showToast(
+      `Guardado${dry} · Fila ${data.adminRow}` +
+      (data.crmRow ? ` · CRM ${data.crmRow}` : "") +
+      responsableNote
+    );
     await load();
     return { ok: true, data };
   }, [token, load, showToast]);
