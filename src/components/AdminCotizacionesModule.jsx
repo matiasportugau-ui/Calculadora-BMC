@@ -10,6 +10,9 @@ import QuoteCard from "./admin-cotizaciones/QuoteCard.jsx";
 import DetailDrawer from "./admin-cotizaciones/DetailDrawer.jsx";
 import CommandPalette from "./admin-cotizaciones/CommandPalette.jsx";
 import "./admin-cotizaciones/styles.css";
+import { HelpProvider } from "./help/HelpProvider.jsx";
+import Callout from "./help/Callout.jsx";
+import "./help/styles.css";
 
 function ModuleInner() {
   const { skin } = useSkin();
@@ -154,6 +157,7 @@ function ModuleInner() {
 
         {cot.token && (
           <>
+            <Callout id="drawer-regenerate-hint" variant="info" dismissible />
             <StatStrip stats={cot.stats} />
 
             <Toolbar
@@ -250,7 +254,9 @@ function ModuleInner() {
 export default function AdminCotizacionesModule() {
   return (
     <SkinProvider>
-      <ModuleInner />
+      <HelpProvider>
+        <ModuleInner />
+      </HelpProvider>
     </SkinProvider>
   );
 }
