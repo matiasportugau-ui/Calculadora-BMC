@@ -231,6 +231,7 @@ function ModuleInner() {
           onSave={onSaveDetail}
           onApprove={onApproveDetail}
           onMarkEnviado={onMarkEnviadoDetail}
+          onRequestSuggestion={cot.requestSuggestion}
           busyOp={cot.busyOp}
         />
       )}

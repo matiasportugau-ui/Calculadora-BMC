@@ -42,11 +42,23 @@ function setStoredToken(t) {
 
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, "");
-  const headers = { ...(options.headers || {}) };
+  const { timeoutMs = 45000, ...fetchOptions } = options;
+  const headers = { ...(fetchOptions.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${base}${path}`, { ...options, headers });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${base}${path}`, { ...fetchOptions, headers, signal: controller.signal });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    if (e.name === "AbortError") {
+      return { ok: false, status: 0, data: { error: `Request timed out after ${Math.round(timeoutMs / 1000)}s` } };
+    }
+    return { ok: false, status: 0, data: { error: e.message || "Network error" } };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -264,6 +276,48 @@ export function useAdminCotizaciones() {
     await load();
   }, [token, load, showToast, batchOpts]);
 
+  /**
+   * Per-row AI suggestion. Calls `/api/crm/suggest-response` (4-LLM fallback with
+   * KB + history injection — see `server/routes/bmcDashboard.js:2134`).
+   *
+   * Returns `{ ok, data: { respuesta, provider } | { error } }`. Does NOT persist
+   * the result — the caller (DetailDrawer) sets the textarea so the operator can
+   * edit before "Guardar".
+   *
+   * 60s timeout is wider than the default 45s because the LLM cascade (Claude
+   * Haiku → OpenAI 4o-mini → Grok-3 → Gemini 2.0) can stack on cold paths.
+   */
+  const requestSuggestion = useCallback(async (row) => {
+    if (!token) return { ok: false, data: { error: "Falta token (cockpit)." } };
+    if (!row?.consulta) return { ok: false, data: { error: "La fila no tiene consulta para sugerir." } };
+    setBusyOp("suggest");
+    const body = {
+      consulta: row.consulta,
+      origen: row.origen || row.canal || "",
+      cliente: row.cliente || "",
+      observaciones: row.zona || "",
+      itemId: row.id || "",
+    };
+    const { ok, status, data } = await apiFetch(token, "/api/crm/suggest-response", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      timeoutMs: 60000,
+    });
+    setBusyOp(null);
+    if (!ok) {
+      showToast(data?.error || `Error en sugerencia IA (HTTP ${status})`);
+      return { ok: false, data };
+    }
+    const respuesta = String(data?.respuesta || "").trim();
+    if (!respuesta) {
+      showToast("La IA no devolvió respuesta. Probá editar manualmente.");
+      return { ok: false, data: { error: "Empty response" } };
+    }
+    showToast(`Sugerencia generada · ${data?.provider || "IA"}`);
+    return { ok: true, data: { respuesta, provider: data?.provider } };
+  }, [token, showToast]);
+
   const exportCsvUrl = useCallback(() => {
     const base = getCalcApiBase().replace(/\/+$/, "");
     return `${base}/api/wolfboard/export?token=${encodeURIComponent(token)}&scope=${encodeURIComponent(scope)}`;
@@ -328,6 +382,7 @@ export function useAdminCotizaciones() {
     markEnviadoSeries,
     runSync,
     runBatch,
+    requestSuggestion,
     exportCsvUrl,
   };
 }
