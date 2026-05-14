@@ -28,6 +28,7 @@ import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { appendQuoteToCrm } from "../lib/crmAppend.js";
 import { resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
+import { deriveOutcome } from "../lib/wolfboardOutcome.js";
 import crypto from "node:crypto";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -39,34 +40,6 @@ const WHITE_BG = { red: 1.0, green: 1.0, blue: 1.0 };
 
 // Column J = index 9 (A=0)
 const COL_J = 9;
-
-// Admin 2.0 col L "Estado" → enum (read-time projection; Sheet stays SoT).
-// Decision: Alt-B from drafts/01-outcome-rbac-proposal.md (no GCS migration).
-const OUTCOME_MAP = {
-  "": null,
-  "enviado": "awaiting_reply",
-  "en espera": "awaiting_reply",
-  "esperando": "awaiting_reply",
-  "ok": "won",
-  "aprobado": "awaiting_reply",
-  "cerrado": "won",
-  "cerrado ok": "won",
-  "ganado": "won",
-  "perdido": "lost",
-  "abandonado": "lost",
-  "rechazado": "lost",
-};
-
-/**
- * Project Admin 2.0 col L "Estado" (free-form) → outcome enum.
- * Returns null for unknown / unset strings (consumer treats as "no clasificado").
- * @param {unknown} estadoRaw
- * @returns {"won"|"lost"|"awaiting_reply"|null}
- */
-export function deriveOutcome(estadoRaw) {
-  const k = String(estadoRaw || "").trim().toLowerCase();
-  return Object.prototype.hasOwnProperty.call(OUTCOME_MAP, k) ? OUTCOME_MAP[k] : null;
-}
 
 const QUOTE_SYSTEM_PROMPT = `Sos Panelin, el asistente experto de ventas de BMC Uruguay (METALOG SAS), empresa fabricante y distribuidora de paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
 
