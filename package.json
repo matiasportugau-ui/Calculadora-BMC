@@ -187,7 +187,8 @@
     "credentials:registry:decrypt": "node scripts/credentials-master-registry.mjs --decrypt",
     "test:playwright:admin-cot-suggest-ia": "node scripts/playwright-admin-cot-suggest-ia.mjs",
     "test:playwright:admin-cot-suggested-badge": "node scripts/playwright-admin-cot-suggested-badge.mjs",
-    "test:playwright:admin-cot-wa-timeline": "node scripts/playwright-admin-cot-wa-timeline.mjs"
+    "test:playwright:admin-cot-wa-timeline": "node scripts/playwright-admin-cot-wa-timeline.mjs",
+    "test:playwright:admin-cot-f1-completion": "node scripts/playwright-admin-cot-f1-completion.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
