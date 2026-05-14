@@ -164,16 +164,20 @@ export default function QuotesTable({
             )}
             {rows.map((row) => {
               const lvl = healthLevel(row.fecha, row.estado);
-              const isSel = selected.has(row.rowNum);
+              const isCrmOnly = row.source && row.source !== "admin";
+              const isSel = !isCrmOnly && selected.has(row.rowNum);
+              const rowKey = row.rowNum ?? `crm-${row.source || "x"}-${row.crmRow ?? row.id ?? "?"}`;
               return (
-                <tr key={row.rowNum} data-selected={isSel}>
+                <tr key={rowKey} data-selected={isSel} style={isCrmOnly ? { background: "var(--ac-surface-2, rgba(0,0,0,0.02))" } : undefined}>
                   <td>
-                    <input
-                      type="checkbox"
-                      checked={isSel}
-                      onChange={() => onToggleSelect(row.rowNum)}
-                      aria-label={`Seleccionar fila ${row.rowNum}`}
-                    />
+                    {!isCrmOnly && (
+                      <input
+                        type="checkbox"
+                        checked={isSel}
+                        onChange={() => onToggleSelect(row.rowNum)}
+                        aria-label={`Seleccionar fila ${row.rowNum}`}
+                      />
+                    )}
                   </td>
                   <td>
                     <span className="adminCot__health" data-level={lvl} aria-label={`Health ${lvl}`} />
@@ -182,6 +186,15 @@ export default function QuotesTable({
                     <span className="adminCot__truncate" style={{ maxWidth: 180, fontWeight: 600 }}>
                       {row.cliente || "—"}
                     </span>
+                    {isCrmOnly && (
+                      <span
+                        className="adminCot__pill"
+                        title={`Fila viene de CRM_Operativo (no del Admin 2.0). Las acciones de Enviado / Aprobar viven en el panel /hub/ml. Source: ${row.source}`}
+                        style={{ marginLeft: 6, background: "#f3e8ff", color: "#7c3aed", fontSize: 10 }}
+                      >
+                        CRM
+                      </span>
+                    )}
                   </td>
                   <td><CanalPill origen={row.origen} /></td>
                   <td style={{ color: "var(--ac-text-2)", whiteSpace: "nowrap" }}>{(row.fecha || "—").slice(0, 10)}</td>
@@ -204,6 +217,7 @@ export default function QuotesTable({
                         type="button"
                         className="adminCot__btn adminCot__btn--sm"
                         onClick={() => onEdit(row)}
+                        title={isCrmOnly ? "Abrir detalle (read-only para filas CRM)" : "Editar fila"}
                       >
                         Editar
                       </button>
@@ -211,17 +225,22 @@ export default function QuotesTable({
                         type="button"
                         className="adminCot__btn adminCot__btn--sm adminCot__btn--ghost"
                         onClick={() => onMarkEnviado(row)}
-                        title="Mover a Enviados (borra del Admin)"
+                        disabled={isCrmOnly}
+                        title={isCrmOnly
+                          ? "Esta fila vive en CRM_Operativo — usá el panel /hub/ml para marcar enviada"
+                          : "Mover a Enviados (borra del Admin)"}
                       >
                         ✓ Enviado
                       </button>
-                      <Kebab
-                        row={row}
-                        onApprove={onApprove}
-                        onOpenPdf={onOpenPdf}
-                        onOpenReplay={onOpenReplay}
-                        onOpenSheet={onOpenSheet}
-                      />
+                      {!isCrmOnly && (
+                        <Kebab
+                          row={row}
+                          onApprove={onApprove}
+                          onOpenPdf={onOpenPdf}
+                          onOpenReplay={onOpenReplay}
+                          onOpenSheet={onOpenSheet}
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>
