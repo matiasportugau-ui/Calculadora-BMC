@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
+import WaTimelineInline from "./WaTimelineInline.jsx";
 
-export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, busyOp }) {
+export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, busyOp, waToken, waApiBase }) {
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
   const [link, setLink] = useState(row?.link || "");
   const [replay, setReplay] = useState(row?.replaySnapshotUrl || "");
@@ -71,6 +72,17 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             <span className="adminCot__drawer-label">Consulta del cliente (I)</span>
             <p className="adminCot__drawer-readonly">{row.consulta || "(sin texto)"}</p>
           </div>
+
+          {String(row.origen || "").trim().toUpperCase() === "WA" && row.telefono && waToken && (
+            <div className="adminCot__drawer-section">
+              <details>
+                <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--ac-text)" }}>
+                  📱 Historial WhatsApp
+                </summary>
+                <WaTimelineInline phone={row.telefono} token={waToken} apiBase={waApiBase} />
+              </details>
+            </div>
+          )}
 
           <div className="adminCot__drawer-section">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
