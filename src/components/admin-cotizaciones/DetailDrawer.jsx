@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
 
 export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, busyOp }) {
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
@@ -24,6 +25,8 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
   const moving = busyOp === "enviado";
   const busy = Boolean(busyOp);
 
+  const suggestedCode = suggestOwner({ origen: row.origen, consulta: row.consulta });
+
   return (
     <div
       className="adminCot__drawer-backdrop"
@@ -35,6 +38,11 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
           <div>
             <div style={{ fontSize: 13, color: "var(--ac-text-2)" }}>Fila {row.rowNum} · {row.id || "sin ID"}</div>
             <strong style={{ fontSize: 16 }}>{row.cliente || "(sin nombre)"}</strong>
+            <div style={{ fontSize: 12, color: "var(--ac-text-2)", marginTop: 4 }}>
+              💡 Sugerido: <strong>{operatorLabel(suggestedCode)}</strong>{" "}
+              <span style={{ opacity: 0.6 }}>({suggestedCode})</span>{" "}
+              <span style={{ opacity: 0.6 }}>· podés sobrescribir al asignar</span>
+            </div>
           </div>
           <button
             type="button"
