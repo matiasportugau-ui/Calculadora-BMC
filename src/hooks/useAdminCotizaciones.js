@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
+// TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
+//   useToken          — load/save bmc_cockpit_token, autoLoad from /api/cockpit
+//   useBatchOpts      — persist batch flags in localStorage[bmc_admin_quote_batch_opts]
+//   useRowActions     — load/sync/save/approve/markEnviado bulk + per-row mutations
+// Keep this hook as composer until slices land in a follow-up PR.
+
 const TOKEN_KEY = "bmc_cockpit_token";
 const BATCH_OPTS_KEY = "bmc_admin_quote_batch_opts";
 // Hybrid RBAC soft hint — backend logs the role via resolveInternalServiceActor.
