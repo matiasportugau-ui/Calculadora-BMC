@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { SKINS, useSkin } from "./SkinProvider.jsx";
+import Tooltip from "../help/Tooltip.jsx";
+import FirstTimeTip from "../help/FirstTimeTip.jsx";
+import { HELP_ANCHORS } from "../help/anchors.js";
 
 export default function Topbar({ liveState = "ok", onOpenPalette, onChangeToken, onOpenLegacy }) {
   const { skin, setSkin } = useSkin();
@@ -27,26 +30,30 @@ export default function Topbar({ liveState = "ok", onOpenPalette, onChangeToken,
       </nav>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        <span
-          className="adminCot__live"
-          aria-live="polite"
-          aria-label={
-            liveState === "busy" ? "Procesando" :
-            liveState === "error" ? "Error" : "Conectado"
-          }
-        >
-          <span className="adminCot__live-dot" data-state={liveState} />
-          {liveState === "busy" ? "Procesando…" : liveState === "error" ? "Error" : "En vivo"}
-        </span>
+        <Tooltip id={HELP_ANCHORS.TOPBAR_LIVE}>
+          <span
+            className="adminCot__live"
+            aria-live="polite"
+            aria-label={
+              liveState === "busy" ? "Procesando" :
+              liveState === "error" ? "Error" : "Conectado"
+            }
+          >
+            <span className="adminCot__live-dot" data-state={liveState} />
+            {liveState === "busy" ? "Procesando…" : liveState === "error" ? "Error" : "En vivo"}
+          </span>
+        </Tooltip>
 
-        <button
-          type="button"
-          className="adminCot__kbd"
-          onClick={onOpenPalette}
-          title="Paleta de comandos (Cmd/Ctrl + K)"
-        >
-          ⌘K
-        </button>
+        <Tooltip id={HELP_ANCHORS.TOPBAR_CMDK}>
+          <button
+            type="button"
+            className="adminCot__kbd"
+            onClick={onOpenPalette}
+            title="Paleta de comandos (Cmd/Ctrl + K)"
+          >
+            ⌘K
+          </button>
+        </Tooltip>
 
         <div className="adminCot__menu" ref={menuRef}>
           <button
@@ -60,7 +67,8 @@ export default function Topbar({ liveState = "ok", onOpenPalette, onChangeToken,
             …
           </button>
           {menuOpen && (
-            <div className="adminCot__menu-list" role="menu">
+            <div className="adminCot__menu-list" role="menu" style={{ position: "relative" }}>
+              <FirstTimeTip id={HELP_ANCHORS.TOPBAR_SKIN_PICKER} placement="bottom" />
               <div className="adminCot__menu-section">Skin</div>
               {SKINS.map((s) => (
                 <button

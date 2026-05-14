@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import Tooltip from "../help/Tooltip.jsx";
+import HelpButton from "../help/HelpButton.jsx";
+import { HELP_ANCHORS } from "../help/anchors.js";
 
 export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, busyOp }) {
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
@@ -64,6 +67,7 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             <p className="adminCot__hint">
               Para regenerar la respuesta con IA, vaciá este campo (o dejá el ⚠) y corré &ldquo;Generar IA&rdquo; desde
               la barra superior — el batch reprocesa todas las filas pendientes (limitación actual del backend).
+              <HelpButton id={HELP_ANCHORS.DRAWER_REGENERATE_HINT} label="Más sobre regenerar" />
             </p>
           </div>
 
@@ -119,31 +123,36 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
         </div>
 
         <footer className="adminCot__drawer-footer">
-          <button
-            type="button"
-            className="adminCot__btn adminCot__btn--primary"
-            onClick={() => onSave(row.rowNum, { respuesta, link, replaySnapshotUrl: replay })}
-            disabled={busy}
-          >
-            {saving ? "Guardando…" : "Guardar"}
-          </button>
-          <button
-            type="button"
-            className="adminCot__btn adminCot__btn--success"
-            onClick={() => onApprove(row.rowNum)}
-            disabled={busy || row.estado === "Aprobado"}
-          >
-            {approving ? "Aprobando…" : row.estado === "Aprobado" ? "Aprobada ✓" : "Aprobar"}
-          </button>
-          <button
-            type="button"
-            className="adminCot__btn"
-            onClick={() => onMarkEnviado(row.rowNum)}
-            disabled={busy}
-            title="Mueve la fila a la pestaña Enviados y la borra del Admin."
-          >
-            {moving ? "Moviendo…" : "Marcar enviada"}
-          </button>
+          <Tooltip id={HELP_ANCHORS.DRAWER_SAVE_RESPONSE}>
+            <button
+              type="button"
+              className="adminCot__btn adminCot__btn--primary"
+              onClick={() => onSave(row.rowNum, { respuesta, link, replaySnapshotUrl: replay })}
+              disabled={busy}
+            >
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+          </Tooltip>
+          <Tooltip id={HELP_ANCHORS.DRAWER_APROBAR}>
+            <button
+              type="button"
+              className="adminCot__btn adminCot__btn--success"
+              onClick={() => onApprove(row.rowNum)}
+              disabled={busy || row.estado === "Aprobado"}
+            >
+              {approving ? "Aprobando…" : row.estado === "Aprobado" ? "Aprobada ✓" : "Aprobar"}
+            </button>
+          </Tooltip>
+          <Tooltip id={HELP_ANCHORS.DRAWER_MARCAR_ENVIADA}>
+            <button
+              type="button"
+              className="adminCot__btn"
+              onClick={() => onMarkEnviado(row.rowNum)}
+              disabled={busy}
+            >
+              {moving ? "Moviendo…" : "Marcar enviada"}
+            </button>
+          </Tooltip>
           <button
             type="button"
             className="adminCot__btn adminCot__btn--ghost"
