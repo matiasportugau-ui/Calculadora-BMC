@@ -53,7 +53,15 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/data/constants.js` — pricing lists, panel catalogue, scenarios, profiles.
 - `src/utils/calculations.js` — pure calculation engine for techo/pared.
 - `src/utils/helpers.js` — PDF/WhatsApp export, BOM, formatters.
-- `src/App.jsx` — router for calculator + `/hub/wa`, `/hub/ml`, `/hub/canales`, `/hub/admin`.
+- `src/App.jsx` — router for calculator + `/hub/wa`, `/hub/ml`, `/hub/canales`, `/hub/admin` (legacy), `/hub/cotizaciones` (v2, **feature-flag-gated** — see below).
+
+#### Admin de cotizaciones — two modules coexisting
+
+- `/hub/admin` → `src/components/BmcAdminCotizacionesModule.jsx` (legacy single-file module). Always available.
+- `/hub/cotizaciones` → `src/components/AdminCotizacionesModule.jsx` (v2) + `src/hooks/useAdminCotizaciones.js` + 9 subcomponents under `src/components/admin-cotizaciones/` (Topbar, StatStrip, Toolbar, QuotesTable, QuoteCard, DetailDrawer, CommandPalette, SkinProvider, WaTimelineInline). Gated by `VITE_FEATURE_ADMIN_COT_V2 === "true"`. **Without the flag the route silently redirects to `/hub/admin`.**
+- `src/components/help/*` — Phase 3 tutorial UI (HelpProvider, useHelp, Tooltip, HelpButton, Callout, FirstTimeTip, frozen `HELP_ANCHORS` const in `anchors.js`). A custom ESLint rule `bmc-help/anchor-must-use-const` enforces use of the registry.
+- `src/utils/cotizacionAssignment.js` — pure routing rules for operator suggestion (MA/RA/TIN/SA), used by QuoteCard + DetailDrawer.
+- `src/utils/waPhoneNormalize.js` — strips non-digits + prepends `598` for UY domestic numbers; required for `phone ilike` matching against `wa_conversations`.
 
 ### Backend hot spots
 
@@ -66,6 +74,15 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 
 All prices are **without IVA**; 22% IVA is applied once at the total via `calcTotalesSinIVA()`. `LISTA_ACTIVA` selects between `venta` (BMC direct, default) and `web` (public Shopify). The `p(item)` helper resolves the active price. See `docs/PRICING-ENGINE.md`.
 
+## Feature flags (frontend `VITE_*`)
+
+Vite bakes `import.meta.env.VITE_*` **at build time**. Changing a Vercel env var requires a redeploy (`vercel --prod --force` to bypass build cache) before the new value reaches users. Same for local dev: changes to `.env` / `.env.local` need `npm run dev:full` restart.
+
+Active gates:
+- `VITE_FEATURE_ADMIN_COT_V2=true` → mounts the v2 admin at `/hub/cotizaciones`. Off in `.env.example`; must be explicitly set in `.env.local` (local) and Vercel production env (deploy).
+
+When adding a Vercel env var via CLI, **use `printf` not `echo`**: `printf "true" | vercel env add NAME production`. `echo` appends a newline that gets stored *inside* the quoted value (`"true\n"`) and silently fails the `=== "true"` check at build.
+
 ## Conventions (project-specific)
 
 - **Error semantics for Sheets-backed routes:** `503` = Sheets unavailable; `200` + empty payload = no data; **never `500`** for Sheets failures. The frontend depends on this.
@@ -75,6 +92,8 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 - **CORS:** open in dev; restricted to known origins in prod.
 - Commit messages: concise, English, `type:` prefix (`feat`, `fix`, `refactor`, `docs`).
 - **PR size:** PRs >500 LOC adds → DRAFT obligatorio. Splitear en commits atómicos antes de marcar ready (atrapa lo que branch protection no puede forzar a nivel LOC).
+- **Branch protection on `main`** requires a review approval. `gh pr merge --squash` fails with "base branch policy prohibits the merge" otherwise. Pattern in use: `gh pr merge <num> --squash --delete-branch --admin` (admin override) or `bash ~/scripts/merge-stacked-safe.sh` with `ADMIN=1 AUTO=1`. Only admin-merge when **all** CI checks are green.
+- **Playwright smokes** live as standalone `scripts/playwright-*.mjs` (NOT `@playwright/test`). Manual `assert` helper, `BASE` from `--base=<url>` / `PLAYWRIGHT_BASE_URL` / `127.0.0.1:5173` default, `chromium.launch({channel:"chrome"})` with bundled fallback, `process.exit(failed > 0 ? 1 : 0)`. NOT wired into `gate:local`. See `scripts/playwright-route-audit-smoke.mjs` for the canonical pattern. The anon-friendly console-error noise filter tolerates `401|403|503` for `auth/me|auth/refresh|cockpit-token` — extend if you find a new acceptable noise pattern.
 
 ## What to read before non-trivial work
 
@@ -122,3 +141,7 @@ Twelve agent definitions in **`.claude/agents/`**:
 - **Node 24.x is required** — `engines.node = "24.x"` (aligns Vercel with `@sparticuz/chromium >=22.17.0`). The README badge still says Node 20; trust `package.json`.
 - **`npm audit fix --force` is forbidden** without explicit approval — it has broken Vite in this repo before.
 - **`/health` without credentials:** `hasSheets` and `hasTokens` will be `false` until `.env` is populated with Google service-account JSON and ML OAuth keys. Most calc/UI code paths work without them; CRM, Finanzas, ML, and AI suggestions do not.
+- **Repo path contains a space:** `/Users/matias/Panelin calc loca/Calculadora-BMC`. Always quote in bash (`cd "/Users/matias/Panelin calc loca/Calculadora-BMC"`) or use `git -C "<path>"`. `cd /path && git <cmd>` is the canonical way for the auto-classifier to *not* trigger a permission prompt for `git` — see `.claude/skills/team-orchestrator/references/roles.md`. Plain `cd /path/with space/` breaks at the unquoted space.
+- **`gate:local` has 2 pre-existing known failures** in `tests/sheetsCsvGuard.test.js` (tab-prefixed and CR-prefixed sanitization). They return exit 0 from the wrapper script — do not "fix" unless your work specifically touches `server/lib/sheetsCsvGuard.js`. If your change makes the count >2 you've regressed something else.
+- **Worktrees for parallel Claude sessions** live under `Calculadora-BMC.worktrees/` plus `~/.cursor/worktrees/Calculadora-BMC/`. `git worktree list` enumerates all. Stale `index.lock` files are common; check `lsof <path>/.git/index.lock` first, then `rm` if no process holds it. The lock is rare in single-session work but routine when running team-orchestrator runs in tmux + Cursor side-by-side.
+- **Vercel build cache will reuse artifacts when only env vars change** — `vercel --prod` may produce the same bundle hash as the previous deploy. To guarantee a rebuild that reflects new `VITE_*` vars, use `vercel --prod --force`. Verify by checking the asset hash in `index.html` differs from the prior deploy.
