@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
 
-export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, busyOp }) {
+export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, busyOp }) {
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
   const [link, setLink] = useState(row?.link || "");
   const [replay, setReplay] = useState(row?.replaySnapshotUrl || "");
+  const [lastProvider, setLastProvider] = useState("");
 
   useEffect(() => {
     setRespuesta(row?.respuesta || "");
     setLink(row?.link || "");
     setReplay(row?.replaySnapshotUrl || "");
+    setLastProvider("");
   }, [row]);
 
   useEffect(() => {
@@ -23,9 +25,19 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
   const saving = busyOp === "save";
   const approving = busyOp === "approve";
   const moving = busyOp === "enviado";
+  const suggesting = busyOp === "suggest";
   const busy = Boolean(busyOp);
 
   const suggestedCode = suggestOwner({ origen: row.origen, consulta: row.consulta });
+
+  const handleSuggest = async () => {
+    if (!onRequestSuggestion) return;
+    const { ok, data } = await onRequestSuggestion(row);
+    if (ok && data?.respuesta) {
+      setRespuesta(data.respuesta);
+      setLastProvider(data.provider || "");
+    }
+  };
 
   return (
     <div
@@ -61,7 +73,20 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
           </div>
 
           <div className="adminCot__drawer-section">
-            <span className="adminCot__drawer-label">Respuesta IA (J) — editable</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <span className="adminCot__drawer-label">Respuesta IA (J) — editable</span>
+              {onRequestSuggestion && (
+                <button
+                  type="button"
+                  className="adminCot__btn adminCot__btn--ghost adminCot__btn--sm"
+                  onClick={handleSuggest}
+                  disabled={busy || !row.consulta}
+                  title="Genera una respuesta IA solo para esta fila (4-LLM fallback con KB + historial)"
+                >
+                  {suggesting ? "Sugiriendo…" : "✦ Sugerir IA"}
+                </button>
+              )}
+            </div>
             <textarea
               className="adminCot__textarea"
               value={respuesta}
@@ -70,8 +95,9 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
               placeholder="Respuesta al cliente…"
             />
             <p className="adminCot__hint">
-              Para regenerar la respuesta con IA, vaciá este campo (o dejá el ⚠) y corré &ldquo;Generar IA&rdquo; desde
-              la barra superior — el batch reprocesa todas las filas pendientes (limitación actual del backend).
+              {lastProvider ? <>Generada por <strong>{lastProvider}</strong>. </> : null}
+              Click <strong>&ldquo;✦ Sugerir IA&rdquo;</strong> para regenerar solo esta fila (no toca las otras).
+              El batch IA de la barra superior sigue disponible para reprocesar todas las pendientes a la vez.
             </p>
           </div>
 
