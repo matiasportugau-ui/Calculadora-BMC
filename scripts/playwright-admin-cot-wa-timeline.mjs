@@ -106,13 +106,15 @@ async function main() {
       }
     }
 
-    // No critical JS errors. We expect /api/wa/* 503 if DATABASE_URL is unset, that's OK.
+    // Noise filter: tolerate the anonymous-session 4xx/5xx surface (auth/me 401,
+    // auth/refresh 403, cockpit-token 503) and 503 on /api/wa/* when
+    // DATABASE_URL is unset on Cloud Run.
     const noisy = jsErrors.filter((e) =>
       !e.includes("ResizeObserver") &&
       !e.includes("favicon") &&
       !e.includes("500") &&
-      !e.includes("503") &&
-      !e.includes("net::ERR_ABORTED")
+      !e.includes("net::ERR_ABORTED") &&
+      !/Failed to load resource:.*\b(401|403|503)\b/.test(e)
     );
     assert("no critical console errors", noisy.length === 0, noisy.slice(0, 3).join(" | "));
   } catch (e) {
