@@ -27,6 +27,7 @@ import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { appendQuoteToCrm } from "../lib/crmAppend.js";
+import { resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
 import crypto from "node:crypto";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -38,6 +39,34 @@ const WHITE_BG = { red: 1.0, green: 1.0, blue: 1.0 };
 
 // Column J = index 9 (A=0)
 const COL_J = 9;
+
+// Admin 2.0 col L "Estado" → enum (read-time projection; Sheet stays SoT).
+// Decision: Alt-B from drafts/01-outcome-rbac-proposal.md (no GCS migration).
+const OUTCOME_MAP = {
+  "": null,
+  "enviado": "awaiting_reply",
+  "en espera": "awaiting_reply",
+  "esperando": "awaiting_reply",
+  "ok": "won",
+  "aprobado": "awaiting_reply",
+  "cerrado": "won",
+  "cerrado ok": "won",
+  "ganado": "won",
+  "perdido": "lost",
+  "abandonado": "lost",
+  "rechazado": "lost",
+};
+
+/**
+ * Project Admin 2.0 col L "Estado" (free-form) → outcome enum.
+ * Returns null for unknown / unset strings (consumer treats as "no clasificado").
+ * @param {unknown} estadoRaw
+ * @returns {"won"|"lost"|"awaiting_reply"|null}
+ */
+export function deriveOutcome(estadoRaw) {
+  const k = String(estadoRaw || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(OUTCOME_MAP, k) ? OUTCOME_MAP[k] : null;
+}
 
 const QUOTE_SYSTEM_PROMPT = `Sos Panelin, el asistente experto de ventas de BMC Uruguay (METALOG SAS), empresa fabricante y distribuidora de paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
 
@@ -283,9 +312,32 @@ function requireAuth(config, req, res) {
   return true;
 }
 
+/**
+ * Soft role hint logger — Hybrid RBAC step 1 (per drafts/01-outcome-rbac-proposal.md).
+ * Logs the resolved role via pino (req.log) WITHOUT enforcement. Decision to add
+ * enforcement (roleMeetsMin checks) is gated on log data; not part of this commit.
+ * Called AFTER requireAuth passes — the actor token is already verified.
+ */
+function logRoleHint(req, config) {
+  if (!req.log) return; // pino-http may be absent in tests
+  const actor = resolveInternalServiceActor(req, config);
+  if (actor.ok) {
+    req.log.info(
+      {
+        role: actor.role,
+        route: req.path,
+        method: req.method,
+        roleSource: req.headers["x-panelin-role"] ? "header" : (process.env.PANELIN_SERVICE_DEFAULT_ROLE ? "env" : "default"),
+      },
+      "wolfboard role hint",
+    );
+  }
+}
+
 /** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
 function mapAdminSheetRow(row, idx, adminSheetId) {
   const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
+  const estado = String(row[11] ?? "").trim();
   return {
     rowNum: idx + 2,
     id: String(row[0] ?? "").trim(),
@@ -298,7 +350,8 @@ function mapAdminSheetRow(row, idx, adminSheetId) {
     consulta: String(row[8] ?? "").trim(),
     respuesta: String(row[9] ?? "").trim(),
     link: String(row[10] ?? "").trim(),
-    estado: String(row[11] ?? "").trim(),
+    estado,
+    outcome: deriveOutcome(estado),
     replaySnapshotUrl: String(row[12] ?? "").trim(),
     sheetUrl: sheetBase,
   };
@@ -339,6 +392,7 @@ export function createWolfboardRouter(config) {
   // ── GET /pendientes ───────────────────────────────────────────────────────
   router.get("/pendientes", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
@@ -377,6 +431,7 @@ export function createWolfboardRouter(config) {
   // ── POST /sync ────────────────────────────────────────────────────────────
   router.post("/sync", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
@@ -458,6 +513,7 @@ export function createWolfboardRouter(config) {
   // ── POST /row ─────────────────────────────────────────────────────────────
   router.post("/row", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
@@ -539,6 +595,7 @@ export function createWolfboardRouter(config) {
   // ── POST /enviados ────────────────────────────────────────────────────────
   router.post("/enviados", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
@@ -627,6 +684,7 @@ export function createWolfboardRouter(config) {
       req.headers.authorization = `Bearer ${tokenFromQuery}`;
     }
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
@@ -667,6 +725,7 @@ export function createWolfboardRouter(config) {
 
   router.post("/quote-batch", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
 
     const {
       force = false,
