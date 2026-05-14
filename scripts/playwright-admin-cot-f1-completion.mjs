@@ -96,8 +96,10 @@ async function main() {
       const haveNuevaConsulta = await toolbar.getByRole("button", { name: /Nueva consulta/i }).count() > 0;
       assert("Toolbar: + Nueva consulta button (PR #228, Gap 3c)", haveNuevaConsulta);
 
-      // StatStrip
-      const haveStatStrip = await page.locator(".adminCot__statstrip, [class*='statstrip' i]").count() > 0;
+      // StatStrip — section uses .adminCot__stats per src/components/admin-cotizaciones/StatStrip.jsx
+      const haveStatStrip =
+        (await page.locator(".adminCot__stats").count() > 0) ||
+        (await page.locator(".adminCot__stat-label").count() >= 1);
       assert("StatStrip rendered (4 KPI cards)", haveStatStrip);
     } else {
       console.log("  ⚠ Token panel mode — Toolbar + Table + Drawer assertions skipped (set API_AUTH_TOKEN for full coverage)");
