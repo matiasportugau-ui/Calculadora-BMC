@@ -89,3 +89,13 @@ El JSON es input para una PR futura que va a:
 3. Permitir override editorial del `helpText` desde un panel admin (i18n incluido)
 
 Por ahora **el JSON es el contrato** — si cambiás IDs acá hay que actualizarlos en Phase 2.
+
+## Re-runs (idempotency)
+
+Cada corrida **reemplaza** `source.json` y los PNGs cuyo `stepIdx` coincida — los PNGs de runs previos con índices mayores no se borran automáticamente. Si necesitás un reset total, borrá `screenshots/` antes de re-correr.
+
+## Troubleshooting
+
+- **Token autoload falla en headless** — el script inyecta `BMC_COCKPIT_TOKEN` en `localStorage["bmc_cockpit_token"]` antes del primer `goto`. Si el token expiró o no corriste el cockpit, dejá `BMC_COCKPIT_TOKEN` vacío y andá a dry mode (los pasos con backend salen como `skipped`).
+- **`page.goto` timeout > 5s** — el frontend `dev:full` no terminó de levantar. Esperá a ver `Vite … ready` en la otra terminal antes de correr `npm run walkthrough:admin-cot`. Para preview Vercel, asegurate que `PLAYWRIGHT_BASE_URL` apunta a un deploy ya terminado.
+- **CI corre dry y no falla pero el `source.json` queda chico** — el job de Lint corre el script sin token, así que los pasos `optional: true` salen `skipped` y no rompen el run. Si CI marca `failCount > 0`, hay un step non-optional roto: revisá el log inline (`status === "fail"` solo se levanta para steps non-optional).

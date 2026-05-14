@@ -1,6 +1,38 @@
 /* AdminCotizacionesModule v2 — scoped tokens + skin variants.
  * All selectors are scoped under [data-skin] inside the module wrapper to
  * avoid bleeding into the rest of the SPA.
+ *
+ * ─── Token reference (single source of truth) ────────────────────────────
+ *   --ac-bg          Page background under the module.
+ *   --ac-surface     Card/panel background (opaque).
+ *   --ac-surface-2   Subtle alternate surface (hover, alt rows, headers).
+ *   --ac-text        Primary text color.
+ *   --ac-text-2      Secondary text (labels, meta, captions).
+ *   --ac-text-3      Tertiary text (placeholders, disabled hints).
+ *   --ac-border      Default 1px hairline (cards, inputs, dividers).
+ *   --ac-border-2    Extra-faint divider (within a card / between rows).
+ *   --ac-accent      Primary interactive color (buttons, focus, links).
+ *   --ac-accent-fg   Text on top of --ac-accent.
+ *   --ac-success     Status: success / "won" outcome.
+ *   --ac-warn        Status: warning / pending action.
+ *   --ac-error       Status: error / "lost" or rejected outcome.
+ *   --ac-yellow      Status: cautious-warn (e.g. ≥14d sin enviar KPI).
+ *   --ac-blur        Backdrop-filter blur radius (px) for glass/vibrancy.
+ *   --ac-glass       Translucent overlay background (lighter glass).
+ *   --ac-glass-strong  Solid-leaning overlay (heavier glass; menus, modals).
+ *   --ac-shadow-1    Elevation 1 (cards at rest).
+ *   --ac-shadow-2    Elevation 2 (popovers, drawers, modals).
+ *   --ac-radius      Default corner radius (cards, inputs).
+ *   --ac-radius-sm   Small radius (chips, buttons, pills).
+ *   --ac-font        Body UI font stack.
+ *   --ac-font-mono   Monospaced font stack (tokens, ids, code).
+ *   --ac-font-display  Display/headline stack (defaults to --ac-font).
+ *
+ * To add a new skin:
+ *   1. Append { id, label } to SKINS in admin-cotizaciones/SkinProvider.jsx.
+ *   2. Add a `.adminCot[data-skin="<id>"] { --ac-* override... }` block below.
+ *      Only override the tokens that differ from the default block above.
+ *   3. Test all 5 skins via ⌘K palette → "skin <name>".
  */
 
 .adminCot {

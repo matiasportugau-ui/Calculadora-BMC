@@ -3,6 +3,7 @@ import globals from "globals";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import bmcHelp from "./eslint-rules/bmc-help.js";
 
 export default [
   { ignores: ["dist", "src/components/PanelinCalculadoraV3_backup.jsx"] },
@@ -28,6 +29,7 @@ export default [
       react,
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
+      "bmc-help": bmcHelp,
     },
     settings: {
       react: { version: "detect" },
@@ -44,6 +46,7 @@ export default [
         "warn",
         { allowConstantExport: true },
       ],
+      "bmc-help/anchor-must-use-const": "error",
     },
   },
   {

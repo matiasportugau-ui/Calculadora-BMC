@@ -1,5 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+/**
+ * Skin system for Admin Cot v2.
+ *
+ * Pattern: each skin sets `data-skin="<id>"` on the `.adminCot` wrapper, and
+ * `styles.css` overrides a subset of `--ac-*` CSS custom properties per skin.
+ * The token registry (with semantics for each variable) lives in the header
+ * comment block of `admin-cotizaciones/styles.css`.
+ *
+ * To add a new skin, append it to SKINS below and add a matching CSS block.
+ * See styles.css for the step-by-step contract.
+ */
+
 const STORAGE_KEY = "bmc_admin_cot_skin";
 const DEFAULT_SKIN = "macos";
 
