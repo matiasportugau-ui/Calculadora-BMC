@@ -1,4 +1,5 @@
 import { ageDays, healthLevel } from "../../hooks/useAdminCotizaciones.js";
+import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
 
 function ageLabel(fecha) {
   const d = ageDays(fecha);
@@ -9,6 +10,7 @@ function ageLabel(fecha) {
 
 export default function QuoteCard({ row, selected, onToggleSelect, onEdit, onMarkEnviado }) {
   const lvl = healthLevel(row.fecha, row.estado);
+  const suggested = suggestOwner({ origen: row.origen, consulta: row.consulta });
   return (
     <article className="adminCot__qcard" data-selected={selected}>
       <div className="adminCot__qcard-row">
@@ -27,6 +29,10 @@ export default function QuoteCard({ row, selected, onToggleSelect, onEdit, onMar
 
       <div className="adminCot__qcard-meta">
         {(row.fecha || "—").slice(0, 10)} · {ageLabel(row.fecha)} · Estado: <strong>{row.estado || "Pendiente"}</strong>
+        {" · "}
+        <span title={`Sugerencia automática: ${operatorLabel(suggested)} (${suggested}) · podés sobrescribir`}>
+          💡 {operatorLabel(suggested)}
+        </span>
       </div>
 
       <p style={{ margin: 0, fontSize: 13, color: "var(--ac-text)" }}>
