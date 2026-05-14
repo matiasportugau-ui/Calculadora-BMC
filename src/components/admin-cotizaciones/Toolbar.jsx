@@ -21,7 +21,7 @@ function BatchModal({ initial, onClose, onConfirm, onResetDefaults }) {
         <div className="adminCot__modal-body">
           <p style={{ margin: 0, fontSize: 12, color: "var(--ac-text-2)", lineHeight: 1.5 }}>
             <code>POST /api/wolfboard/quote-batch</code>. El servidor procesa todas las filas con consulta (I)
-            que aún no tengan respuesta en J (o que tengan ⚠ si activás "Forzar").
+            que aún no tengan respuesta en J (o que tengan ⚠ si activás &ldquo;Forzar&rdquo;).
           </p>
           <label className="adminCot__check">
             <input type="checkbox" checked={opts.force} onChange={(e) => set("force", e.target.checked)} />

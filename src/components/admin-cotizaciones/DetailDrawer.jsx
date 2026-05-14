@@ -62,8 +62,8 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
               placeholder="Respuesta al cliente…"
             />
             <p className="adminCot__hint">
-              Para regenerar la respuesta con IA, vaciá este campo (o dejá el ⚠) y corré "Generar IA" desde la
-              barra superior — el batch reprocesa todas las filas pendientes (limitación actual del backend).
+              Para regenerar la respuesta con IA, vaciá este campo (o dejá el ⚠) y corré &ldquo;Generar IA&rdquo; desde
+              la barra superior — el batch reprocesa todas las filas pendientes (limitación actual del backend).
             </p>
           </div>
 
