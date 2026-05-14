@@ -92,11 +92,13 @@ async function main() {
       }
     }
 
+    // Same anonymous-friendly filter as playwright-admin-cot-suggest-ia.mjs.
     const noisy = jsErrors.filter((e) =>
       !e.includes("ResizeObserver") &&
       !e.includes("favicon") &&
       !e.includes("500") &&
-      !e.includes("net::ERR_ABORTED")
+      !e.includes("net::ERR_ABORTED") &&
+      !/Failed to load resource:.*\b(401|403|503)\b/.test(e)
     );
     assert("no critical console errors", noisy.length === 0, noisy.slice(0, 3).join(" | "));
   } catch (e) {
