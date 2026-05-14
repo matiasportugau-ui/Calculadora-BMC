@@ -174,21 +174,78 @@ export function useAdminCotizaciones() {
     showToast("Token borrado.");
   }, [showToast]);
 
+  /**
+   * Map a CRM_Operativo row (from `/api/crm/cockpit/ml-queue`) into the same
+   * shape used by Admin 2.0 rows, so the table can render both side by side.
+   *
+   * Step 5 of F1 (Gap 3a). The ML pipeline already lands inbound questions
+   * in CRM_Operativo via the PANELSIM webhook; until those leads are also
+   * sync'd into Admin 2.0, they were invisible to operators working from
+   * `/hub/cotizaciones`. We surface them inline with a `source: "crm-ml"`
+   * tag so the UI can gate destructive actions (Admin-rowNum-only) and
+   * style them differently.
+   */
+  function mapCrmMlItemToRow(item) {
+    const p = item?.parsed || {};
+    return {
+      // No Admin sheet rowNum — synthetic key to satisfy React. Actions
+      // that require adminRow (save/approve/markEnviado) are disabled by
+      // the UI when source !== "admin".
+      rowNum: null,
+      source: "crm-ml",
+      crmRow: item?.row ?? null,
+      mlQuestionId: item?.questionId ?? "",
+      id: p.cotizacionId || p.id || `CRM-${item?.row ?? ""}`,
+      fecha: p.fecha || p.fechaCreacion || "",
+      telefono: p.telefono || "",
+      cliente: p.cliente || p.clienteNombre || "",
+      canal: p.origen || "ML",
+      origen: p.origen || "ML",
+      zona: p.direccion || p.zona || "",
+      consulta: p.consulta || p.notas || "",
+      respuesta: p.respuesta || p.respuestaSugerida || "",
+      link: p.linkPresupuesto || "",
+      estado: p.estado || "",
+      replaySnapshotUrl: "",
+      sheetUrl: "",
+    };
+  }
+
   const load = useCallback(async () => {
     if (!token) { setError("Falta el token (cockpit)."); return; }
     setLoading(true);
     setError("");
     const q = scope === "admin" ? "?scope=admin" : "?scope=consulta";
-    const { ok, status, data } = await apiFetch(token, `/api/wolfboard/pendientes${q}`);
+
+    // Fan out: Admin 2.0 rows (primary) + CRM ML queue (Step 5 / Gap 3a).
+    // ML queue is best-effort — a 503 or auth error there must NOT erase the
+    // Admin 2.0 rows (the historical contract of `load()`).
+    const [adminRes, mlRes] = await Promise.all([
+      apiFetch(token, `/api/wolfboard/pendientes${q}`),
+      apiFetch(token, `/api/crm/cockpit/ml-queue`).catch(() => ({ ok: false, status: 0, data: {} })),
+    ]);
     setLoading(false);
-    if (!ok) {
-      setError(data?.error || `HTTP ${status}`);
+
+    if (!adminRes.ok) {
+      setError(adminRes.data?.error || `HTTP ${adminRes.status}`);
       setRows([]);
       setSheetRowCount(null);
       return;
     }
-    setRows(Array.isArray(data.data) ? data.data : []);
-    setSheetRowCount(typeof data.sheetRowCount === "number" ? data.sheetRowCount : null);
+
+    const adminRows = (Array.isArray(adminRes.data.data) ? adminRes.data.data : [])
+      .map((r) => ({ ...r, source: "admin" }));
+    const mlRowsRaw = mlRes.ok && Array.isArray(mlRes.data?.items) ? mlRes.data.items : [];
+
+    // Dedupe: if an ML question already has an Admin row with matching ID,
+    // prefer the Admin row (it has rowNum + supports the standard actions).
+    const adminIds = new Set(adminRows.map((r) => String(r.id || "").trim()).filter(Boolean));
+    const mlRows = mlRowsRaw
+      .map(mapCrmMlItemToRow)
+      .filter((r) => !adminIds.has(String(r.id || "").trim()));
+
+    setRows([...adminRows, ...mlRows]);
+    setSheetRowCount(typeof adminRes.data.sheetRowCount === "number" ? adminRes.data.sheetRowCount : null);
     setSelected(new Set());
   }, [token, scope]);
 
@@ -201,16 +258,45 @@ export function useAdminCotizaciones() {
   const saveRow = useCallback(async (adminRow, patch) => {
     if (!token) return { ok: false };
     setBusyOp("save");
-    const body = { adminRow, ...patch };
+    // Step 6 of F1 (Gap 4b): if the operator picked a Responsable in the
+    // drawer, PATCH it to CRM_Operativo. The Sheets column is wired by
+    // `bmcDashboard.js:879` (`ASIGNADO_A` → `Responsable`). Best-effort —
+    // failures here don't block the Admin write.
+    const { responsable, cotizacionId, ...adminPatch } = patch || {};
+    const body = { adminRow, ...adminPatch };
     const { ok, status, data } = await apiFetch(token, "/api/wolfboard/row", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!ok) {
+      setBusyOp(null);
+      showToast(data?.error || `Error al guardar (HTTP ${status})`);
+      return { ok: false, data };
+    }
+
+    let responsableNote = "";
+    if (responsable && cotizacionId) {
+      const patchRes = await apiFetch(token, `/api/cotizaciones/${encodeURIComponent(cotizacionId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ASIGNADO_A: responsable }),
+      });
+      if (patchRes.ok) {
+        responsableNote = ` · Resp=${responsable}`;
+      } else {
+        // Don't fail the whole save — Admin write already succeeded.
+        responsableNote = ` · Resp no persistió (CRM ${patchRes.status})`;
+      }
+    }
+
     setBusyOp(null);
-    if (!ok) { showToast(data?.error || `Error al guardar (HTTP ${status})`); return { ok: false, data }; }
     const dry = data.dryRun ? " [dry-run]" : "";
-    showToast(`Guardado${dry} · Fila ${data.adminRow}${data.crmRow ? ` · CRM ${data.crmRow}` : ""}`);
+    showToast(
+      `Guardado${dry} · Fila ${data.adminRow}` +
+      (data.crmRow ? ` · CRM ${data.crmRow}` : "") +
+      responsableNote
+    );
     await load();
     return { ok: true, data };
   }, [token, load, showToast]);

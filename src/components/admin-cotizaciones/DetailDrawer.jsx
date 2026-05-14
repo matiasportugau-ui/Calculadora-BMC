@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-// F1 features (PRs #224, #225, #226)
-import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
+// F1 features (PRs #224, #225, #226, #229 — OPERATOR_CODES feeds the Responsable select)
+import { OPERATOR_CODES, operatorLabel, suggestOwner } from "../../utils/cotizacionAssignment.js";
 import WaTimelineInline from "./WaTimelineInline.jsx";
 // Phase 3 tutorial UI (PR #223 — Hybrid RBAC + Phase 3 wiring)
 import Tooltip from "../help/Tooltip.jsx";
@@ -12,12 +12,19 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
   const [link, setLink] = useState(row?.link || "");
   const [replay, setReplay] = useState(row?.replaySnapshotUrl || "");
   const [lastProvider, setLastProvider] = useState("");
+  const [responsable, setResponsable] = useState(() => {
+    if (row?.responsable) return row.responsable;
+    return suggestOwner({ origen: row?.origen, consulta: row?.consulta });
+  });
 
   useEffect(() => {
     setRespuesta(row?.respuesta || "");
     setLink(row?.link || "");
     setReplay(row?.replaySnapshotUrl || "");
     setLastProvider("");
+    setResponsable(
+      row?.responsable || suggestOwner({ origen: row?.origen, consulta: row?.consulta })
+    );
   }, [row]);
 
   useEffect(() => {
@@ -143,6 +150,31 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
           </div>
 
           <div className="adminCot__drawer-section">
+            <span className="adminCot__drawer-label">Responsable — CRM_Operativo col 11</span>
+            <select
+              className="adminCot__input"
+              value={responsable}
+              onChange={(e) => setResponsable(e.target.value)}
+              disabled={busy}
+              style={{ width: "100%", maxWidth: 280 }}
+              aria-label="Asignar responsable"
+            >
+              {OPERATOR_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {operatorLabel(code)} ({code})
+                </option>
+              ))}
+            </select>
+            <p className="adminCot__hint">
+              Default = sugerencia automática. Se persiste en{" "}
+              <code>CRM_Operativo.Responsable</code> al hacer Guardar
+              (PATCH <code>/api/cotizaciones/&lt;id&gt;</code>). Si la fila
+              no existe aún en CRM, el server devuelve 4xx y la respuesta
+              en Admin se guarda igual.
+            </p>
+          </div>
+
+          <div className="adminCot__drawer-section">
             <span className="adminCot__drawer-label">Replay JSON (M)</span>
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -175,7 +207,13 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
             <button
               type="button"
               className="adminCot__btn adminCot__btn--primary"
-              onClick={() => onSave(row.rowNum, { respuesta, link, replaySnapshotUrl: replay })}
+              onClick={() => onSave(row.rowNum, {
+                respuesta,
+                link,
+                replaySnapshotUrl: replay,
+                responsable,
+                cotizacionId: row.id,
+              })}
               disabled={busy}
             >
               {saving ? "Guardando…" : "Guardar"}
@@ -197,6 +235,7 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
               className="adminCot__btn"
               onClick={() => onMarkEnviado(row.rowNum)}
               disabled={busy}
+              title="Mueve la fila a la pestaña Enviados y la borra del Admin."
             >
               {moving ? "Moviendo…" : "Marcar enviada"}
             </button>
