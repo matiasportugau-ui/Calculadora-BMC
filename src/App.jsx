@@ -26,6 +26,7 @@ const BmcMlOperativoModule = lazy(() => import("./components/BmcMlOperativoModul
 const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.jsx"));
 const BmcCanalesUnificadosModule = lazy(() => import("./components/BmcCanalesUnificadosModule.jsx"));
 const BmcAdminCotizacionesModule = lazy(() => import("./components/BmcAdminCotizacionesModule.jsx"));
+const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacionesModule.jsx"));
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
@@ -129,9 +130,23 @@ export default function App() {
         <Route
           path="/hub/admin"
           element={
+            import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true"
+              ? <Navigate to="/hub/cotizaciones" replace />
+              : (
+                <Shell>
+                  <Suspense fallback={suspenseFallback}>
+                    <BmcAdminCotizacionesModule />
+                  </Suspense>
+                </Shell>
+              )
+          }
+        />
+        <Route
+          path="/hub/cotizaciones"
+          element={
             <Shell>
               <Suspense fallback={suspenseFallback}>
-                <BmcAdminCotizacionesModule />
+                <AdminCotizacionesModule />
               </Suspense>
             </Shell>
           }
