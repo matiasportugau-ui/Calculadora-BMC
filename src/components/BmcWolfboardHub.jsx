@@ -68,6 +68,9 @@ const cta = {
 };
 
 export default function BmcWolfboardHub() {
+  const adminFlagOn = import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true";
+  const adminTitle = adminFlagOn ? "Administrador de Cotizaciones" : "Admin · Consultas y Cotizaciones";
+  const adminPath = adminFlagOn ? "/hub/cotizaciones" : "/hub/admin";
   return (
     <div style={wrap}>
       <BmcModuleNav />
@@ -127,11 +130,11 @@ export default function BmcWolfboardHub() {
             </Link>
           </div>
           <div style={card}>
-            <h2 style={cardTitle}>Admin · Consultas y Cotizaciones</h2>
+            <h2 style={cardTitle}>{adminTitle}</h2>
             <p style={cardDesc}>
               Filas pendientes de Admin 2.0 ↔ CRM. Generá respuestas IA en lote, editá por fila y cerrá a Enviados.
             </p>
-            <Link to="/hub/admin" style={{ ...cta, background: "#1a3a5c" }}>
+            <Link to={adminPath} style={{ ...cta, background: "#1a3a5c" }}>
               Abrir Admin operativo
             </Link>
           </div>
