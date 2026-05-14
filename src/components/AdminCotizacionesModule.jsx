@@ -180,6 +180,7 @@ function ModuleInner() {
               onRefresh={cot.load}
               onRunSync={cot.runSync}
               onRunBatch={(opts) => cot.runBatch(opts)}
+              onCreateRow={cot.createRow}
               exportCsvHref={cot.exportCsvUrl()}
               batchOpts={cot.batchOpts}
               updateBatchOpts={cot.updateBatchOpts}
