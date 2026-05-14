@@ -111,3 +111,6 @@ tools/release-traceability/scripts/__pycache__/
 # Accessible Base — local Sheets snapshots (auto-generated, not versioned except manifest)
 .accessible-base/*.json
 !.accessible-base/manifest.json
+
+# Walkthrough — screenshots pesadas (el JSON sí se commitea)
+docs/walkthrough/**/screenshots/

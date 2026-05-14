@@ -54,6 +54,8 @@
     "test:ml-auto": "bash scripts/test-ml-auto-mode.sh",
     "test:ml-auto:prod": "bash scripts/test-ml-auto-mode.sh https://panelin-calc-q74zutv7dq-uc.a.run.app",
     "test:e2e:wizard": "node scripts/playwright-calculator-wizard.mjs",
+    "walkthrough:admin-cot": "node scripts/playwright-admin-cot-walkthrough.mjs",
+    "walkthrough:admin-cot:headed": "HEADED=1 node scripts/playwright-admin-cot-walkthrough.mjs",
     "test:browser:full": "node scripts/browser-test-suite.mjs",
     "test:browser:full:local": "node scripts/browser-test-suite.mjs --local",
     "smoke:browser": "node scripts/playwright-route-audit-smoke.mjs",
