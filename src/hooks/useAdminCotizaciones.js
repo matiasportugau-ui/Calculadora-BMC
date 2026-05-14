@@ -3,6 +3,10 @@ import { getCalcApiBase } from "../utils/calcApiBase.js";
 
 const TOKEN_KEY = "bmc_cockpit_token";
 const BATCH_OPTS_KEY = "bmc_admin_quote_batch_opts";
+// Hybrid RBAC soft hint — backend logs the role via resolveInternalServiceActor.
+// Valid values: "ventas" | "logistica" | "admin" | "director". Absent = no hint
+// sent → backend falls back to PANELIN_SERVICE_DEFAULT_ROLE env / "director".
+const PANELIN_ROLE_KEY = "bmc_panelin_role";
 
 const DEFAULT_BATCH_OPTS = {
   force: false,
@@ -40,10 +44,16 @@ function setStoredToken(t) {
   } catch { /* ignore */ }
 }
 
+function getStoredPanelinRole() {
+  try { return localStorage.getItem(PANELIN_ROLE_KEY) || ""; } catch { return ""; }
+}
+
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, "");
   const headers = { ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
+  const role = getStoredPanelinRole();
+  if (role) headers["X-Panelin-Role"] = role;
   const res = await fetch(`${base}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
