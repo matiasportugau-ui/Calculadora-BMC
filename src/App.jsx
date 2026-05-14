@@ -1,7 +1,7 @@
 // Versión completa: Google Drive, historial de presupuestos, responsive (v3.0 modular)
 // Canonical Calculadora component: PanelinCalculadoraV3_backup (see docs/bmc-dashboard-modernization/IA.md)
 import { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { getRouterBasename } from "./utils/routerBasename.js";
 import LegacyAppQueryRedirect from "./components/LegacyAppQueryRedirect.jsx";
 // BmcModuleNav stays eager — it renders inside <Shell> on every non-calc route,
@@ -81,6 +81,37 @@ function sendVitals(metric) {
   }
 }
 
+// `?legacy=1` bypasses the redirect so operators can still reach the old
+// module while the flag is on (transitional escape hatch wired from the
+// new module's topbar / palette).
+function AdminRoute() {
+  const [params] = useSearchParams();
+  const flagOn = import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true";
+  if (flagOn && params.get("legacy") !== "1") {
+    return <Navigate to="/hub/cotizaciones" replace />;
+  }
+  return (
+    <Shell>
+      <Suspense fallback={suspenseFallback}>
+        <BmcAdminCotizacionesModule />
+      </Suspense>
+    </Shell>
+  );
+}
+
+function CotizacionesRoute() {
+  if (import.meta.env.VITE_FEATURE_ADMIN_COT_V2 !== "true") {
+    return <Navigate to="/hub/admin" replace />;
+  }
+  return (
+    <Shell>
+      <Suspense fallback={suspenseFallback}>
+        <AdminCotizacionesModule />
+      </Suspense>
+    </Shell>
+  );
+}
+
 export default function App() {
   const basename = getRouterBasename();
 
@@ -127,30 +158,8 @@ export default function App() {
             </Shell>
           }
         />
-        <Route
-          path="/hub/admin"
-          element={
-            import.meta.env.VITE_FEATURE_ADMIN_COT_V2 === "true"
-              ? <Navigate to="/hub/cotizaciones" replace />
-              : (
-                <Shell>
-                  <Suspense fallback={suspenseFallback}>
-                    <BmcAdminCotizacionesModule />
-                  </Suspense>
-                </Shell>
-              )
-          }
-        />
-        <Route
-          path="/hub/cotizaciones"
-          element={
-            <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <AdminCotizacionesModule />
-              </Suspense>
-            </Shell>
-          }
-        />
+        <Route path="/hub/admin" element={<AdminRoute />} />
+        <Route path="/hub/cotizaciones" element={<CotizacionesRoute />} />
         <Route path="/hub/plan-import" element={<Suspense fallback={suspenseFallback}><BmcPlanImportModule /></Suspense>} />
         <Route path="/mi-espacio" element={<Shell><Suspense fallback={suspenseFallback}><MySpacePage /></Suspense></Shell>} />
         <Route path="/hub/agent-admin" element={<Suspense fallback={suspenseFallback}><AgentAdminModule /></Suspense>} />

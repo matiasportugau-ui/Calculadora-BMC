@@ -90,7 +90,7 @@ function ModuleInner() {
         liveState={liveState}
         onOpenPalette={() => setPaletteOpen(true)}
         onChangeToken={() => setTokenPanelOpen(true)}
-        onOpenLegacy={() => { window.location.assign("/hub/admin"); }}
+        onOpenLegacy={() => { window.location.assign("/hub/admin?legacy=1"); }}
       />
 
       <main className="adminCot__shell">
@@ -173,6 +173,7 @@ function ModuleInner() {
               onRunBatch={(opts) => cot.runBatch(opts)}
               exportCsvHref={cot.exportCsvUrl()}
               batchOpts={cot.batchOpts}
+              updateBatchOpts={cot.updateBatchOpts}
               onResetBatchOpts={cot.resetBatchOpts}
               onMarkSelectedEnviados={onMarkSelectedEnviados}
             />
@@ -238,7 +239,7 @@ function ModuleInner() {
         onRunSync={cot.runSync}
         onExport={() => window.open(cot.exportCsvUrl(), "_blank", "noopener,noreferrer")}
         onChangeToken={() => setTokenPanelOpen(true)}
-        onOpenLegacy={() => { window.location.assign("/hub/admin"); }}
+        onOpenLegacy={() => { window.location.assign("/hub/admin?legacy=1"); }}
       />
 
       {cot.toast && <div className="adminCot__toast" role="status">{cot.toast}</div>}

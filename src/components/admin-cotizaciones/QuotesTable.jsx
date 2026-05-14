@@ -1,5 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ageDays, healthLevel } from "../../hooks/useAdminCotizaciones.js";
+
+function SelectAllCheckbox({ allSelected, someSelected, onToggle }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !allSelected && someSelected;
+  }, [allSelected, someSelected]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      aria-label="Seleccionar todas"
+      aria-checked={allSelected ? "true" : (someSelected ? "mixed" : "false")}
+      checked={allSelected}
+      onChange={onToggle}
+    />
+  );
+}
 
 const CANAL_COLORS = {
   WA: ["#dcfce7", "#16a34a"],
@@ -111,6 +128,10 @@ export default function QuotesTable({
   emptyMessage,
 }) {
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.rowNum));
+  const someSelected = useMemo(
+    () => rows.some((r) => selected.has(r.rowNum)),
+    [rows, selected],
+  );
   return (
     <div className="adminCot__tablewrap">
       <div className="adminCot__tablescroll">
@@ -118,11 +139,10 @@ export default function QuotesTable({
           <thead>
             <tr>
               <th style={{ width: 36 }}>
-                <input
-                  type="checkbox"
-                  aria-label="Seleccionar todas"
-                  checked={allSelected}
-                  onChange={onToggleSelectAll}
+                <SelectAllCheckbox
+                  allSelected={allSelected}
+                  someSelected={someSelected}
+                  onToggle={onToggleSelectAll}
                 />
               </th>
               <th style={{ width: 18 }} aria-label="Estado de salud" />

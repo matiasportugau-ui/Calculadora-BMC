@@ -307,7 +307,10 @@ export function useAdminCotizaciones() {
       return next;
     }),
     toggleSelectAll: () => setSelected((prev) => {
-      if (prev.size > 0) return new Set();
+      // Only clear when *all* visible rows are selected; otherwise promote
+      // none/partial selection to all-of-current-view.
+      const allSelected = filtered.length > 0 && filtered.every((r) => prev.has(r.rowNum));
+      if (allSelected) return new Set();
       return new Set(filtered.map((r) => r.rowNum));
     }),
     clearSelection: () => setSelected(new Set()),

@@ -90,7 +90,7 @@ export default function Topbar({ liveState = "ok", onOpenPalette, onChangeToken,
                 className="adminCot__menu-item"
                 onClick={() => { setMenuOpen(false); onOpenLegacy?.(); }}
               >
-                Ir al módulo viejo (/hub/admin)
+                Ir al módulo viejo (/hub/admin?legacy=1)
               </button>
             </div>
           )}

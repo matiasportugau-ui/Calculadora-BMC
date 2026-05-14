@@ -8,9 +8,11 @@ const STATUS_OPTIONS = [
   { id: "atrasadas", label: "+14d" },
 ];
 
-function BatchModal({ initial, onClose, onConfirm, onResetDefaults }) {
-  const [opts, setOpts] = useState(initial);
-  const set = (k, v) => setOpts((p) => ({ ...p, [k]: v }));
+// Fully controlled — reads from `opts` and writes via `onChange`. This means
+// edits and the "Defaults del servidor" button persist immediately to
+// localStorage via the parent's updateBatchOpts/resetBatchOpts.
+function BatchModal({ opts, onChange, onClose, onConfirm, onResetDefaults }) {
+  const set = (k, v) => onChange({ ...opts, [k]: v });
   return (
     <div className="adminCot__modal-backdrop" role="dialog" aria-modal="true" aria-label="Generar IA en lote">
       <div className="adminCot__modal">
@@ -78,6 +80,7 @@ export default function Toolbar({
   onRunBatch,
   exportCsvHref,
   batchOpts,
+  updateBatchOpts,
   onResetBatchOpts,
   onMarkSelectedEnviados,
 }) {
@@ -185,7 +188,8 @@ export default function Toolbar({
 
       {batchOpen && (
         <BatchModal
-          initial={batchOpts}
+          opts={batchOpts}
+          onChange={updateBatchOpts}
           onClose={() => setBatchOpen(false)}
           onConfirm={(opts) => onRunBatch(opts)}
           onResetDefaults={onResetBatchOpts}

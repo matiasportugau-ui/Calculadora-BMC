@@ -17,7 +17,7 @@ export default function CommandPalette({
     { id: "sync", label: "Sincronizar a CRM", run: () => { onRunSync?.(); onClose(); } },
     { id: "export", label: "Exportar CSV", run: () => { onExport?.(); onClose(); } },
     { id: "token", label: "Cambiar token", run: () => { onChangeToken?.(); onClose(); } },
-    { id: "legacy", label: "Ir al módulo viejo (/hub/admin)", run: () => { onOpenLegacy?.(); onClose(); } },
+    { id: "legacy", label: "Ir al módulo viejo (/hub/admin?legacy=1)", run: () => { onOpenLegacy?.(); onClose(); } },
     ...SKINS.map((s) => ({
       id: `skin-${s.id}`,
       label: `Skin: ${s.label}`,
