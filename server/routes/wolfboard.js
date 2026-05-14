@@ -27,6 +27,8 @@ import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { appendQuoteToCrm } from "../lib/crmAppend.js";
+import { normalizePanelinRole, resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
+import { deriveOutcome } from "../lib/wolfboardOutcome.js";
 import crypto from "node:crypto";
 
 const SCOPE_WRITE = "https://www.googleapis.com/auth/spreadsheets";
@@ -283,9 +285,35 @@ function requireAuth(config, req, res) {
   return true;
 }
 
+/**
+ * Soft role hint logger — Hybrid RBAC step 1 (per drafts/01-outcome-rbac-proposal.md).
+ * Logs the resolved role via pino (req.log) WITHOUT enforcement. Decision to add
+ * enforcement (roleMeetsMin checks) is gated on log data; not part of this commit.
+ * Called AFTER requireAuth passes — the actor token is already verified.
+ */
+function logRoleHint(req, config) {
+  if (!req.log) return; // pino-http may be absent in tests
+  const actor = resolveInternalServiceActor(req, config);
+  if (!actor.ok) return;
+  // roleSource derived AFTER resolution so an invalid header (e.g. typo) that
+  // got ignored doesn't get mislabeled as "header" — we compare the effective
+  // role to what each source would have produced.
+  const headerRole = normalizePanelinRole(req.headers["x-panelin-role"]);
+  const envRole = normalizePanelinRole(process.env.PANELIN_SERVICE_DEFAULT_ROLE);
+  const roleSource =
+    headerRole && headerRole === actor.role ? "header" :
+    envRole && envRole === actor.role ? "env" :
+    "default";
+  req.log.info(
+    { role: actor.role, route: req.path, method: req.method, roleSource },
+    "wolfboard role hint",
+  );
+}
+
 /** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
 function mapAdminSheetRow(row, idx, adminSheetId) {
   const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
+  const estado = String(row[11] ?? "").trim();
   return {
     rowNum: idx + 2,
     id: String(row[0] ?? "").trim(),
@@ -298,7 +326,8 @@ function mapAdminSheetRow(row, idx, adminSheetId) {
     consulta: String(row[8] ?? "").trim(),
     respuesta: String(row[9] ?? "").trim(),
     link: String(row[10] ?? "").trim(),
-    estado: String(row[11] ?? "").trim(),
+    estado,
+    outcome: deriveOutcome(estado),
     replaySnapshotUrl: String(row[12] ?? "").trim(),
     sheetUrl: sheetBase,
   };
@@ -339,6 +368,7 @@ export function createWolfboardRouter(config) {
   // ── GET /pendientes ───────────────────────────────────────────────────────
   router.get("/pendientes", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
@@ -377,6 +407,7 @@ export function createWolfboardRouter(config) {
   // ── POST /sync ────────────────────────────────────────────────────────────
   router.post("/sync", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
@@ -458,6 +489,7 @@ export function createWolfboardRouter(config) {
   // ── POST /row ─────────────────────────────────────────────────────────────
   router.post("/row", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
@@ -539,6 +571,7 @@ export function createWolfboardRouter(config) {
   // ── POST /enviados ────────────────────────────────────────────────────────
   router.post("/enviados", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
     const { adminRow } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
@@ -627,6 +660,7 @@ export function createWolfboardRouter(config) {
       req.headers.authorization = `Bearer ${tokenFromQuery}`;
     }
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
     const adminSheetId = config.wolfbAdminSheetId;
     const adminTab = config.wolfbAdminTab;
     if (!adminSheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
@@ -667,6 +701,7 @@ export function createWolfboardRouter(config) {
 
   router.post("/quote-batch", async (req, res) => {
     if (!requireAuth(config, req, res)) return;
+    logRoleHint(req, config);
 
     const {
       force = false,

@@ -1,4 +1,8 @@
 import { useState } from "react";
+import Tooltip from "../help/Tooltip.jsx";
+import HelpButton from "../help/HelpButton.jsx";
+import FirstTimeTip from "../help/FirstTimeTip.jsx";
+import { HELP_ANCHORS } from "../help/anchors.js";
 
 const STATUS_OPTIONS = [
   { id: "todas", label: "Todas" },
@@ -114,6 +118,7 @@ export default function Toolbar({
           >
             Toda la planilla
           </button>
+          <HelpButton id={HELP_ANCHORS.TOOLBAR_SCOPE} label="Sobre el alcance" />
         </div>
 
         <div className="adminCot__pillgroup" role="group" aria-label="Estado">
@@ -131,22 +136,27 @@ export default function Toolbar({
         </div>
 
         <div style={{ display: "flex", gap: 8, marginLeft: "auto", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="adminCot__btn adminCot__btn--primary"
-            onClick={() => setBatchOpen(true)}
-            disabled={busyOp === "batch"}
-          >
-            ✦ Generar IA
-          </button>
-          <button
-            type="button"
-            className="adminCot__btn"
-            onClick={onRunSync}
-            disabled={busyOp === "sync"}
-          >
-            ↕ Sync CRM
-          </button>
+          <span style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              className="adminCot__btn adminCot__btn--primary"
+              onClick={() => setBatchOpen(true)}
+              disabled={busyOp === "batch"}
+            >
+              ✦ Generar IA
+            </button>
+            <FirstTimeTip id={HELP_ANCHORS.TOOLBAR_BATCH_GENERATE} placement="bottom" />
+          </span>
+          <Tooltip id={HELP_ANCHORS.TOOLBAR_SYNC_CRM}>
+            <button
+              type="button"
+              className="adminCot__btn"
+              onClick={onRunSync}
+              disabled={busyOp === "sync"}
+            >
+              ↕ Sync CRM
+            </button>
+          </Tooltip>
           <a
             href={exportCsvHref}
             target="_blank"
@@ -175,14 +185,16 @@ export default function Toolbar({
       {selectedCount > 0 && (
         <div className="adminCot__bulkbar" role="region" aria-label="Acciones de selección">
           <span>{selectedCount} seleccionada{selectedCount === 1 ? "" : "s"}</span>
-          <button
-            type="button"
-            className="adminCot__btn"
-            onClick={onMarkSelectedEnviados}
-            disabled={busyOp === "enviado-series"}
-          >
-            Marcar enviadas en serie
-          </button>
+          <Tooltip id={HELP_ANCHORS.TOOLBAR_BULK_MARK_ENVIADAS}>
+            <button
+              type="button"
+              className="adminCot__btn"
+              onClick={onMarkSelectedEnviados}
+              disabled={busyOp === "enviado-series"}
+            >
+              Marcar enviadas en serie
+            </button>
+          </Tooltip>
         </div>
       )}
 

@@ -114,6 +114,19 @@ export function HelpProvider({ children, source = FALLBACK_SOURCE }) {
   const steps = useMemo(() => buildStepsMap(source), [source]);
   const [dismissed, setDismissed] = useState(loadDismissed);
 
+  // Prod-fallback warn — if PROD is using the embedded fallback, the consumer
+  // forgot to pass `source` (or source.json import failed). Tutorial coverage
+  // will be the 6 seed steps only. Identity check is stable: default-prop
+  // assignment reuses the same FALLBACK_SOURCE module-scope const reference.
+  useEffect(() => {
+    if (import.meta.env.PROD && source === FALLBACK_SOURCE) {
+      console.warn(
+        "[HelpProvider] PROD is using FALLBACK_SOURCE (6 seed steps). " +
+          "Consumer likely forgot to import source.json — tutorial coverage will be minimal.",
+      );
+    }
+  }, [source]);
+
   // Re-sync if another tab updates dismissed list
   useEffect(() => {
     const onStorage = (e) => {

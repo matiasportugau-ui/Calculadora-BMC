@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
+// F1 features (PRs #224, #225, #226)
 import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
 import WaTimelineInline from "./WaTimelineInline.jsx";
+// Phase 3 tutorial UI (PR #223 — Hybrid RBAC + Phase 3 wiring)
+import Tooltip from "../help/Tooltip.jsx";
+import HelpButton from "../help/HelpButton.jsx";
+import { HELP_ANCHORS } from "../help/anchors.js";
 
 export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEnviado, onRequestSuggestion, busyOp, waToken, waApiBase }) {
   const [respuesta, setRespuesta] = useState(row?.respuesta || "");
@@ -110,6 +115,7 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
               {lastProvider ? <>Generada por <strong>{lastProvider}</strong>. </> : null}
               Click <strong>&ldquo;✦ Sugerir IA&rdquo;</strong> para regenerar solo esta fila (no toca las otras).
               El batch IA de la barra superior sigue disponible para reprocesar todas las pendientes a la vez.
+              <HelpButton id={HELP_ANCHORS.DRAWER_REGENERATE_HINT} label="Más sobre regenerar" />
             </p>
           </div>
 
@@ -165,31 +171,36 @@ export default function DetailDrawer({ row, onClose, onSave, onApprove, onMarkEn
         </div>
 
         <footer className="adminCot__drawer-footer">
-          <button
-            type="button"
-            className="adminCot__btn adminCot__btn--primary"
-            onClick={() => onSave(row.rowNum, { respuesta, link, replaySnapshotUrl: replay })}
-            disabled={busy}
-          >
-            {saving ? "Guardando…" : "Guardar"}
-          </button>
-          <button
-            type="button"
-            className="adminCot__btn adminCot__btn--success"
-            onClick={() => onApprove(row.rowNum)}
-            disabled={busy || row.estado === "Aprobado"}
-          >
-            {approving ? "Aprobando…" : row.estado === "Aprobado" ? "Aprobada ✓" : "Aprobar"}
-          </button>
-          <button
-            type="button"
-            className="adminCot__btn"
-            onClick={() => onMarkEnviado(row.rowNum)}
-            disabled={busy}
-            title="Mueve la fila a la pestaña Enviados y la borra del Admin."
-          >
-            {moving ? "Moviendo…" : "Marcar enviada"}
-          </button>
+          <Tooltip id={HELP_ANCHORS.DRAWER_SAVE_RESPONSE}>
+            <button
+              type="button"
+              className="adminCot__btn adminCot__btn--primary"
+              onClick={() => onSave(row.rowNum, { respuesta, link, replaySnapshotUrl: replay })}
+              disabled={busy}
+            >
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+          </Tooltip>
+          <Tooltip id={HELP_ANCHORS.DRAWER_APROBAR}>
+            <button
+              type="button"
+              className="adminCot__btn adminCot__btn--success"
+              onClick={() => onApprove(row.rowNum)}
+              disabled={busy || row.estado === "Aprobado"}
+            >
+              {approving ? "Aprobando…" : row.estado === "Aprobado" ? "Aprobada ✓" : "Aprobar"}
+            </button>
+          </Tooltip>
+          <Tooltip id={HELP_ANCHORS.DRAWER_MARCAR_ENVIADA}>
+            <button
+              type="button"
+              className="adminCot__btn"
+              onClick={() => onMarkEnviado(row.rowNum)}
+              disabled={busy}
+            >
+              {moving ? "Moviendo…" : "Marcar enviada"}
+            </button>
+          </Tooltip>
           <button
             type="button"
             className="adminCot__btn adminCot__btn--ghost"

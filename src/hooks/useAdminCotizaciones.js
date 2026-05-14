@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 
+// TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
+//   useToken          — load/save bmc_cockpit_token, autoLoad from /api/cockpit
+//   useBatchOpts      — persist batch flags in localStorage[bmc_admin_quote_batch_opts]
+//   useRowActions     — load/sync/save/approve/markEnviado bulk + per-row mutations
+// Keep this hook as composer until slices land in a follow-up PR.
+
 const TOKEN_KEY = "bmc_cockpit_token";
 const BATCH_OPTS_KEY = "bmc_admin_quote_batch_opts";
+// Hybrid RBAC soft hint — backend logs the role via resolveInternalServiceActor.
+// Valid values: "ventas" | "logistica" | "admin" | "director". Absent = no hint
+// sent → backend falls back to PANELIN_SERVICE_DEFAULT_ROLE env / "director".
+const PANELIN_ROLE_KEY = "bmc_panelin_role";
 
 const DEFAULT_BATCH_OPTS = {
   force: false,
@@ -40,11 +50,20 @@ function setStoredToken(t) {
   } catch { /* ignore */ }
 }
 
+function getStoredPanelinRole() {
+  try { return localStorage.getItem(PANELIN_ROLE_KEY) || ""; } catch { return ""; }
+}
+
 async function apiFetch(token, path, options = {}) {
   const base = getCalcApiBase().replace(/\/+$/, "");
   const { timeoutMs = 45000, ...fetchOptions } = options;
   const headers = { ...(fetchOptions.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
+  // Hybrid RBAC (from #223): server logs role for analytics; no enforcement yet.
+  const role = getStoredPanelinRole();
+  if (role) headers["X-Panelin-Role"] = role;
+  // AbortController wrapper (from #224): replaces silent hangs with a structured
+  // timeout error. Both intents are additive.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
