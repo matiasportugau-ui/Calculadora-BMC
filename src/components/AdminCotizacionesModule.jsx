@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdminCotizaciones } from "../hooks/useAdminCotizaciones.js";
+import { getCalcApiBase } from "../utils/calcApiBase.js";
 import CockpitTokenPanel from "./CockpitTokenPanel.jsx";
 import { SkinProvider, useSkin } from "./admin-cotizaciones/SkinProvider.jsx";
 import Topbar from "./admin-cotizaciones/Topbar.jsx";
@@ -233,6 +234,8 @@ function ModuleInner() {
           onMarkEnviado={onMarkEnviadoDetail}
           onRequestSuggestion={cot.requestSuggestion}
           busyOp={cot.busyOp}
+          waToken={cot.token}
+          waApiBase={getCalcApiBase()}
         />
       )}
 
