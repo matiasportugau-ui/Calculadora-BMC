@@ -47,7 +47,7 @@ assert(deriveOutcome(" perdido ") === "lost", "trims around 'perdido'");
 assert(deriveOutcome("") === null, "empty string → null");
 assert(deriveOutcome(null) === null, "null → null");
 assert(deriveOutcome(undefined) === null, "undefined → null");
-assert(deriveOutcome(0) === null, "0 (coerces to '0') → null");
+assert(deriveOutcome(0) === null, "0 (falsy → '' via `|| \"\"`) → null via empty sentinel");
 assert(deriveOutcome("   ") === null, "whitespace-only → null");
 
 // Unknown strings → null (no false positives)

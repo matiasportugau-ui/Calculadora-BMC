@@ -27,7 +27,7 @@ import { uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { buildWolfboardQuoteReplaySnapshot } from "../lib/wolfboardQuoteSnapshot.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import { appendQuoteToCrm } from "../lib/crmAppend.js";
-import { resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
+import { normalizePanelinRole, resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
 import { deriveOutcome } from "../lib/wolfboardOutcome.js";
 import crypto from "node:crypto";
 
@@ -294,17 +294,20 @@ function requireAuth(config, req, res) {
 function logRoleHint(req, config) {
   if (!req.log) return; // pino-http may be absent in tests
   const actor = resolveInternalServiceActor(req, config);
-  if (actor.ok) {
-    req.log.info(
-      {
-        role: actor.role,
-        route: req.path,
-        method: req.method,
-        roleSource: req.headers["x-panelin-role"] ? "header" : (process.env.PANELIN_SERVICE_DEFAULT_ROLE ? "env" : "default"),
-      },
-      "wolfboard role hint",
-    );
-  }
+  if (!actor.ok) return;
+  // roleSource derived AFTER resolution so an invalid header (e.g. typo) that
+  // got ignored doesn't get mislabeled as "header" — we compare the effective
+  // role to what each source would have produced.
+  const headerRole = normalizePanelinRole(req.headers["x-panelin-role"]);
+  const envRole = normalizePanelinRole(process.env.PANELIN_SERVICE_DEFAULT_ROLE);
+  const roleSource =
+    headerRole && headerRole === actor.role ? "header" :
+    envRole && envRole === actor.role ? "env" :
+    "default";
+  req.log.info(
+    { role: actor.role, route: req.path, method: req.method, roleSource },
+    "wolfboard role hint",
+  );
 }
 
 /** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */

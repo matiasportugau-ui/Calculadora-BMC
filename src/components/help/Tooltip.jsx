@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { cloneElement, isValidElement, useId, useState } from "react";
 import { useHelp } from "./useHelp.js";
 
 /**
@@ -7,8 +7,11 @@ import { useHelp } from "./useHelp.js";
  *   <Tooltip id={HELP_ANCHORS.KPI_STALE}><Stat ... /></Tooltip>
  *
  * Si el id no existe en source.json, renderiza solo `children` sin overhead.
- * `aria-describedby` se setea cuando el tooltip está abierto para que los
- * screen readers anuncien el helpText.short.
+ *
+ * a11y: `aria-describedby` se inyecta en el child interactivo (no en el
+ * wrapper), porque el foco aterriza ahí y el screen reader anuncia la
+ * descripción del elemento focused. Si el child ya tiene aria-describedby,
+ * se preserva (space-separated, per spec).
  */
 export default function Tooltip({ id, children, placement = "top" }) {
   const step = useHelp(id);
@@ -17,16 +20,23 @@ export default function Tooltip({ id, children, placement = "top" }) {
 
   if (!step?.helpText?.short) return children;
 
+  const child = isValidElement(children)
+    ? cloneElement(children, {
+        "aria-describedby": open
+          ? [children.props["aria-describedby"], tooltipId].filter(Boolean).join(" ")
+          : children.props["aria-describedby"],
+      })
+    : children;
+
   return (
     <span
       className="acHelp-tooltip-wrap"
-      aria-describedby={open ? tooltipId : undefined}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
     >
-      {children}
+      {child}
       {open && (
         <span id={tooltipId} role="tooltip" className="acHelp-tooltip" data-placement={placement}>
           {step.helpText.short}
