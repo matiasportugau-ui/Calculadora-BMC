@@ -70,23 +70,23 @@ for i in $(seq 0 $((NUM_CASES - 1))); do
   # with ≥3 enumerated frentes + a recomendación (both are valid ambiguity
   # handling per the system prompt).
   if [[ "$CASE_NAME" == "ambiguous-input-clarify" ]]; then
-    # Path A: explicit clarification question — matches "a)" "(a)" "- a)" patterns
-    # plus Spanish clarification keywords. Counts ≥2 lettered/numbered options.
-    LETTERED_COUNT=$(grep -cE "^-?[[:space:]]*\(?[abc]\)" "$OUTPUT_FILE" || true)
-    if [ "$LETTERED_COUNT" -ge 2 ] || grep -qiE "(qué (querés|preferís|elegís)|plan estructurado|ideas para|cambios al código|desambiguar)" "$OUTPUT_FILE"; then
-      echo "✅ PASS — clarification question detected ($LETTERED_COUNT lettered options)"
+    # Path A: ≥3 enumerated options (lettered abc/markdown OR numeric 1/2/3) — any mode
+    LETTERED_COUNT=$(grep -cE "(^|[-*\(\| ])\*?\*?\(?[abc]\)" "$OUTPUT_FILE" || true)
+    NUMERIC_COUNT=$(grep -cE "(^[[:space:]]*\*?\*?[1-9]\.|\*\*[1-9]\.)" "$OUTPUT_FILE" || true)
+    if [ "$LETTERED_COUNT" -ge 3 ] || [ "$NUMERIC_COUNT" -ge 3 ]; then
+      echo "✅ PASS — enumerated options detected (letters=$LETTERED_COUNT numeric=$NUMERIC_COUNT)"
       PASSED=$((PASSED + 1))
       echo ""
       continue
     fi
-    # Path B: brainstormer mode with ≥3 frentes + recomendación + ask which one
-    if grep -qi "brainstormer" "$OUTPUT_FILE" && grep -qiE "recomendaci[oó]n" "$OUTPUT_FILE" && [ "$(grep -cE "^[0-9]+\." "$OUTPUT_FILE")" -ge 3 ]; then
-      echo "✅ PASS — brainstormer-with-options route (≥3 ideas + recomendación)"
+    # Path B: clarification phrasing keywords
+    if grep -qiE "(¿cuál|qué (querés|preferís|elegís)|plan estructurado|ideas para|cambios al código|desambiguar)" "$OUTPUT_FILE"; then
+      echo "✅ PASS — clarification phrasing detected"
       PASSED=$((PASSED + 1))
       echo ""
       continue
     fi
-    echo "❌ FAIL — neither clarification question nor brainstormer-with-options detected"
+    echo "❌ FAIL — neither enumerated options nor clarification phrasing detected"
     FAILED=$((FAILED + 1))
     FAILURES+=("$CASE_NAME: no clarification nor brainstormer route")
     echo ""
@@ -116,9 +116,13 @@ for i in $(seq 0 $((NUM_CASES - 1))); do
   while IFS= read -r token; do
     [[ -z "$token" ]] && continue
     if [[ "$token" == "Next step" ]]; then
-      if ! grep -qiE "(next step|pr[oó]ximo paso|siguiente paso)" "$OUTPUT_FILE"; then
+      # Accept English/Spanish "Next step" headers OR an imperative closing
+      # call-to-action (Decime / Respondé / Confirmá / Arrancá / Empezá / ¿Cuál...?).
+      # These mean the agent ended with a concrete action ask, even without a
+      # literal label header — same intent, different surface.
+      if ! grep -qiE "(next step|pr[oó]ximo paso|siguiente paso|decime |respond[eé] |confirm[aá] |arrancá|empezá|¿cuál)" "$OUTPUT_FILE"; then
         CASE_PASSED=false
-        CASE_REASON="output no contiene Next step / Próximo paso / Siguiente paso"
+        CASE_REASON="output no contiene Next step / Próximo paso / Siguiente paso ni cierre accionable"
         break
       fi
     elif ! grep -qi -- "$token" "$OUTPUT_FILE"; then

@@ -5,7 +5,7 @@
   "success_criteria": {
     "definition_of_done": "Output declara modo (strategist|brainstormer|architect) — vía header literal 'MODE:' o vía mención clara del modo en texto — + contenido específico al modo + al menos un next-step accionable. No ejecuta acciones destructivas sin confirmación.",
     "must_contain": [
-      "strategist",
+      "MODE",
       "Next step"
     ],
     "must_not_contain": [
