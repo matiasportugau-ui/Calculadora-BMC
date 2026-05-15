@@ -62,6 +62,8 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/components/help/*` — Phase 3 tutorial UI (HelpProvider, useHelp, Tooltip, HelpButton, Callout, FirstTimeTip, frozen `HELP_ANCHORS` const in `anchors.js`). A custom ESLint rule `bmc-help/anchor-must-use-const` enforces use of the registry.
 - `src/utils/cotizacionAssignment.js` — pure routing rules for operator suggestion (MA/RA/TIN/SA), used by QuoteCard + DetailDrawer.
 - `src/utils/waPhoneNormalize.js` — strips non-digits + prepends `598` for UY domestic numbers; required for `phone ilike` matching against `wa_conversations`.
+- `server/lib/wolfboardOutcome.js` — `deriveOutcome(estadoRaw)` projects Admin 2.0 col L ("Estado", free-form Spanish strings) → stable enum `won|lost|awaiting_reply|null` at read-time. **Sheet stays as source-of-truth**; no GCS migration. Extend `OUTCOME_MAP` for new col-L strings; do not duplicate state into `quoteRegistry`.
+- `server/routes/wolfboard.js` Hybrid RBAC: `logRoleHint(req, config)` logs the resolved role via `resolveInternalServiceActor` after auth, **without enforcement**. UI sends `X-Panelin-Role` from `localStorage["bmc_panelin_role"]`. Do not add `roleMeetsMin` enforcement to wolfboard routes until logs prove the discrimination pays off (decision rationale in `docs/team/runs/2026-05-13-2343-autodisenio-pending-tasks-deep-audit/artifacts/drafts/01-outcome-rbac-proposal.md`).
 
 ### Backend hot spots
 
@@ -94,6 +96,7 @@ When adding a Vercel env var via CLI, **use `printf` not `echo`**: `printf "true
 - **PR size:** PRs >500 LOC adds → DRAFT obligatorio. Splitear en commits atómicos antes de marcar ready (atrapa lo que branch protection no puede forzar a nivel LOC).
 - **Branch protection on `main`** requires a review approval. `gh pr merge --squash` fails with "base branch policy prohibits the merge" otherwise. Pattern in use: `gh pr merge <num> --squash --delete-branch --admin` (admin override) or `bash ~/scripts/merge-stacked-safe.sh` with `ADMIN=1 AUTO=1`. Only admin-merge when **all** CI checks are green.
 - **Playwright smokes** live as standalone `scripts/playwright-*.mjs` (NOT `@playwright/test`). Manual `assert` helper, `BASE` from `--base=<url>` / `PLAYWRIGHT_BASE_URL` / `127.0.0.1:5173` default, `chromium.launch({channel:"chrome"})` with bundled fallback, `process.exit(failed > 0 ? 1 : 0)`. NOT wired into `gate:local`. See `scripts/playwright-route-audit-smoke.mjs` for the canonical pattern. The anon-friendly console-error noise filter tolerates `401|403|503` for `auth/me|auth/refresh|cockpit-token` — extend if you find a new acceptable noise pattern.
+- **Walkthrough subset** (`scripts/playwright-admin-cot-walkthrough.mjs`, run via `npm run walkthrough:admin-cot`) is special: it regenerates `docs/walkthrough/admin-cot/source.json` which `AdminCotizacionesModule.jsx` imports at **build time** and passes to `<HelpProvider source={...}>`. The seed 6-step placeholder ships with the repo; live runs overwrite with 24+ steps. Prod smoke pattern: `PLAYWRIGHT_BASE_URL=https://calculadora-bmc.vercel.app BMC_COCKPIT_TOKEN=... npm run walkthrough:admin-cot`. Commit the regenerated `source.json` to refresh the prod bundle.
 
 ## What to read before non-trivial work
 
@@ -107,7 +110,7 @@ When you finish a task that changes behavior, append a line under "Cambios recie
 ## Deployment
 
 - **Frontend:** Vercel — https://calculadora-bmc.vercel.app (config in `vercel.json`).
-- **API:** Google **Cloud Run** — service `panelin-calc`, region `us-central1`. Sheets credentials are mounted from Secret Manager (`./scripts/cloud-run-matriz-sheets-secret.sh`).
+- **API:** Google **Cloud Run** — service `panelin-calc`, region `us-central1`, **GCP project `chatbot-bmc-live`** (the service is named after the legacy project; the actual project is `chatbot-bmc-live`). Secret Manager in that project holds `API_AUTH_TOKEN` (cockpit), `ANTHROPIC_API_KEY`, `WHATSAPP_*`, `GOOGLE_SHEETS_CREDENTIALS`. Sheets credentials are mounted via `./scripts/cloud-run-matriz-sheets-secret.sh`. For prod Playwright smokes: `BMC_COCKPIT_TOKEN=$(gcloud secrets versions access latest --secret=API_AUTH_TOKEN --project=chatbot-bmc-live)`.
 - **CI:** `.github/workflows/ci.yml` runs lint, tests, build, env-drift, smoke (push to `main`), `channels_pipeline`, `voice_health`, `knowledge_antenna`.
 
 ## Agent ecosystem (Claude Code)
