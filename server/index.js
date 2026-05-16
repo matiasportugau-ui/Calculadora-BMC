@@ -31,6 +31,7 @@ import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
+import createTraktimeRouter from "./routes/traktime.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
@@ -917,6 +918,7 @@ app.use("/api", aiAnalyticsRouter);
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
+app.use(createTraktimeRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";

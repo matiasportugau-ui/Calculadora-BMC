@@ -33,6 +33,7 @@ const ALL_MODULES = [
   "agent-admin",
   "canales",
   "crm-personal",
+  "traktime",
 ];
 
 const ROLE_RANK = { superadmin: 4, admin: 3, operator: 2, comprador: 1 };

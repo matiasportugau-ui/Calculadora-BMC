@@ -30,6 +30,7 @@ const AdminCotizacionesModule = lazy(() => import("./components/AdminCotizacione
 const BmcPlanImportModule = lazy(() => import("./components/BmcPlanImportModule.jsx"));
 const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"));
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
+const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -162,6 +163,16 @@ export default function App() {
         <Route path="/hub/cotizaciones" element={<CotizacionesRoute />} />
         <Route path="/hub/plan-import" element={<Suspense fallback={suspenseFallback}><BmcPlanImportModule /></Suspense>} />
         <Route path="/mi-espacio" element={<Shell><Suspense fallback={suspenseFallback}><MySpacePage /></Suspense></Shell>} />
+        <Route
+          path="/hub/traktime/*"
+          element={
+            <Shell>
+              <Suspense fallback={suspenseFallback}>
+                <TraKtiMeModule />
+              </Suspense>
+            </Shell>
+          }
+        />
         <Route path="/hub/agent-admin" element={<Suspense fallback={suspenseFallback}><AgentAdminModule /></Suspense>} />
         <Route
           path="/"
