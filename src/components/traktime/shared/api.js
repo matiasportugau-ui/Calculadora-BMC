@@ -62,4 +62,18 @@ export const tkApi = {
     const q = new URLSearchParams(params).toString();
     return request("GET", `/api/traktime/reports/summary${q ? `?${q}` : ""}`);
   },
+  reportBillable: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request("GET", `/api/traktime/reports/billable${q ? `?${q}` : ""}`);
+  },
+  listInvoices: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request("GET", `/api/traktime/invoices${q ? `?${q}` : ""}`);
+  },
+  draftInvoice: (body) => request("POST", "/api/traktime/invoices/draft", body),
+  issueInvoice: (id) => request("POST", `/api/traktime/invoices/${id}/issue`),
+  markPaidInvoice: (id, paid = true) =>
+    request("POST", `/api/traktime/invoices/${id}/mark-paid`, { paid }),
+  voidInvoice: (id) => request("POST", `/api/traktime/invoices/${id}/void`),
+  mirrorNow: () => request("POST", "/api/traktime/admin/mirror-now"),
 };

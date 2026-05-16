@@ -16,6 +16,7 @@ import { getTraktimePool } from "../lib/traktimeDb.js";
 import { requireUser } from "../lib/identityAuth.js";
 import { tkAudit } from "../lib/traktimeAudit.js";
 import { runTraktimeMirror } from "../lib/traktimeMirrorWorker.js";
+import { renderAndUploadInvoice } from "../lib/traktimeInvoicePdf.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -507,6 +508,372 @@ export default function createTraktimeRouter(config, logger) {
       });
       const subtotal = +groups.reduce((s, g) => s + g.amount_usd, 0).toFixed(2);
       res.json({ ok: true, groups, subtotal_usd: subtotal });
+    }),
+  );
+
+  // ─── Invoices ─────────────────────────────────────────────────────────
+  router.get(
+    "/api/traktime/invoices",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const params = [];
+      let where = "1=1";
+      if (req.query.status) {
+        params.push(req.query.status);
+        where += ` and i.status = $${params.length}`;
+      }
+      if (req.query.client_id) {
+        params.push(req.query.client_id);
+        where += ` and i.client_id = $${params.length}`;
+      }
+      const { rows } = await pool.query(
+        `select i.*, c.name as client_name
+           from tk_invoices i join tk_clients c on c.client_id = i.client_id
+          where ${where}
+          order by coalesce(i.issue_date, i.created_at::date) desc, i.created_at desc
+          limit 200`,
+        params,
+      );
+      res.json({ ok: true, invoices: rows });
+    }),
+  );
+
+  router.post(
+    "/api/traktime/invoices/draft",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const client_id = trimOrNull(req.body?.client_id);
+      const period_from = trimOrNull(req.body?.period_from);
+      const period_to = trimOrNull(req.body?.period_to);
+      const project_ids = Array.isArray(req.body?.project_ids) ? req.body.project_ids : null;
+      if (!client_id || !period_from || !period_to) {
+        return res.status(400).json({
+          ok: false,
+          error: "client_id_period_from_period_to_required",
+        });
+      }
+
+      const dbClient = await pool.connect();
+      try {
+        await dbClient.query("begin");
+
+        // Pull billable, unbilled, stopped entries for the client + period.
+        const params = [client_id, period_from, period_to];
+        let filter = "";
+        if (project_ids?.length) {
+          params.push(project_ids);
+          filter = ` and e.project_id = any($${params.length}::uuid[])`;
+        }
+        const { rows: entries } = await dbClient.query(
+          `select e.entry_id, e.project_id, e.duration_seconds, e.started_at, e.description,
+                  p.name as project_name, p.color_hex, p.hourly_rate_usd, p.rounding_minutes
+             from tk_entries e
+             join tk_projects p on p.project_id = e.project_id
+            where p.client_id = $1
+              and e.started_at >= $2 and e.started_at < $3
+              and e.billable and e.invoice_line_id is null
+              and e.stopped_at is not null${filter}
+            order by e.started_at`,
+          params,
+        );
+        if (!entries.length) {
+          await dbClient.query("rollback");
+          return res.status(400).json({ ok: false, error: "no_billable_entries" });
+        }
+
+        // Group by project; round up to project rounding bucket.
+        const groups = new Map();
+        for (const e of entries) {
+          let g = groups.get(e.project_id);
+          if (!g) {
+            g = {
+              project_id: e.project_id,
+              project_name: e.project_name,
+              color_hex: e.color_hex,
+              hourly_rate_usd: Number(e.hourly_rate_usd),
+              rounding_minutes: Number(e.rounding_minutes),
+              raw_seconds: 0,
+              entry_ids: [],
+            };
+            groups.set(e.project_id, g);
+          }
+          g.raw_seconds += Number(e.duration_seconds || 0);
+          g.entry_ids.push(e.entry_id);
+        }
+        const lineRows = [];
+        let subtotal = 0;
+        for (const g of groups.values()) {
+          const bucket = Math.max(60, g.rounding_minutes * 60);
+          const rounded = Math.ceil(g.raw_seconds / bucket) * bucket;
+          const hours = +(rounded / 3600).toFixed(2);
+          const amount = +(hours * g.hourly_rate_usd).toFixed(2);
+          lineRows.push({ ...g, hours, amount });
+          subtotal += amount;
+        }
+        subtotal = +subtotal.toFixed(2);
+        const iva_rate = 0.22;
+        const iva = +(subtotal * iva_rate).toFixed(2);
+        const total = +(subtotal + iva).toFixed(2);
+
+        const { rows: invRows } = await dbClient.query(
+          `insert into tk_invoices
+             (client_id, status, period_from, period_to,
+              subtotal_usd, iva_rate, iva_usd, total_usd)
+           values ($1, 'draft', $2, $3, $4, $5, $6, $7)
+           returning *`,
+          [client_id, period_from, period_to, subtotal, iva_rate, iva, total],
+        );
+        const invoice = invRows[0];
+
+        for (const l of lineRows) {
+          const { rows: lineRowsIns } = await dbClient.query(
+            `insert into tk_invoice_lines
+               (invoice_id, project_id, description, hours, hourly_rate_usd, amount_usd)
+             values ($1, $2, $3, $4, $5, $6)
+             returning invoice_line_id`,
+            [
+              invoice.invoice_id,
+              l.project_id,
+              l.project_name,
+              l.hours,
+              l.hourly_rate_usd,
+              l.amount,
+            ],
+          );
+          const line_id = lineRowsIns[0].invoice_line_id;
+          await dbClient.query(
+            `update tk_entries set invoice_line_id = $1 where entry_id = any($2::uuid[])`,
+            [line_id, l.entry_ids],
+          );
+        }
+
+        await dbClient.query("commit");
+        await tkAudit(pool, {
+          action: "invoice.draft",
+          row_table: "tk_invoices",
+          row_id: invoice.invoice_id,
+          after: { ...invoice, entry_count: entries.length },
+          user_email: req.user.email,
+        }, log);
+        res.status(201).json({ ok: true, invoice, line_count: lineRows.length });
+      } catch (e) {
+        await dbClient.query("rollback").catch(() => {});
+        throw e;
+      } finally {
+        dbClient.release();
+      }
+    }),
+  );
+
+  router.post(
+    "/api/traktime/invoices/:id/issue",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const id = req.params.id;
+      const dbClient = await pool.connect();
+      try {
+        await dbClient.query("begin");
+
+        const { rows: invRows } = await dbClient.query(
+          `select * from tk_invoices where invoice_id = $1 for update`,
+          [id],
+        );
+        if (!invRows.length) {
+          await dbClient.query("rollback");
+          return res.status(404).json({ ok: false, error: "not_found" });
+        }
+        const invoice = invRows[0];
+        if (invoice.status !== "draft") {
+          await dbClient.query("rollback");
+          return res.status(409).json({ ok: false, error: "invoice_not_draft" });
+        }
+
+        // Mint number via UPSERT on tk_invoice_seq.
+        const year = new Date().getUTCFullYear();
+        const { rows: seqRows } = await dbClient.query(
+          `insert into tk_invoice_seq (year, last_seq, updated_at)
+             values ($1, 1, now())
+           on conflict (year) do update
+             set last_seq = tk_invoice_seq.last_seq + 1,
+                 updated_at = now()
+           returning last_seq`,
+          [year],
+        );
+        const seq = seqRows[0].last_seq;
+        const number = `TRK-${year}-${String(seq).padStart(4, "0")}`;
+        const today = new Date();
+        const due = new Date(today.getTime() + 30 * 24 * 3600 * 1000);
+
+        const { rows: updRows } = await dbClient.query(
+          `update tk_invoices
+              set status = 'issued', number = $1,
+                  issue_date = $2, due_date = $3,
+                  issued_by = $4, updated_at = now()
+            where invoice_id = $5
+            returning *`,
+          [
+            number,
+            today.toISOString().slice(0, 10),
+            due.toISOString().slice(0, 10),
+            req.user.email,
+            id,
+          ],
+        );
+        const issued = updRows[0];
+
+        const { rows: clientRows } = await dbClient.query(
+          `select * from tk_clients where client_id = $1`,
+          [issued.client_id],
+        );
+        const { rows: lineRows } = await dbClient.query(
+          `select l.*, p.color_hex
+             from tk_invoice_lines l join tk_projects p on p.project_id = l.project_id
+            where l.invoice_id = $1`,
+          [id],
+        );
+        const { rows: entryRows } = await dbClient.query(
+          `select e.entry_id, e.project_id, e.started_at, e.description, e.duration_seconds
+             from tk_entries e
+             join tk_invoice_lines l on l.invoice_line_id = e.invoice_line_id
+            where l.invoice_id = $1
+            order by e.started_at`,
+          [id],
+        );
+
+        await dbClient.query("commit");
+
+        const { url } = await renderAndUploadInvoice({
+          invoice: issued,
+          client: clientRows[0],
+          lines: lineRows.map((l) => ({
+            project_id: l.project_id,
+            description: l.description,
+            hours: l.hours,
+            hourly_rate_usd: l.hourly_rate_usd,
+            amount_usd: l.amount_usd,
+            color_hex: l.color_hex,
+          })),
+          entries: entryRows,
+          issuer: {
+            name: config.traktimeInvoiceIssuerName,
+            rut: config.traktimeInvoiceIssuerRut,
+            address: config.traktimeInvoiceIssuerAddress,
+          },
+          terms: "Pago a 30 dias via transferencia bancaria",
+          bucket: config.traktimeInvoiceGcsBucket,
+        });
+
+        if (url) {
+          await pool.query(
+            `update tk_invoices set pdf_url = $1, updated_at = now() where invoice_id = $2`,
+            [url, id],
+          );
+          issued.pdf_url = url;
+        }
+        await tkAudit(pool, {
+          action: "invoice.issue",
+          row_table: "tk_invoices",
+          row_id: id,
+          after: issued,
+          user_email: req.user.email,
+          meta: { pdf_rendered: !!url },
+        }, log);
+        res.json({ ok: true, invoice: issued, pdf_rendered: !!url });
+      } catch (e) {
+        await dbClient.query("rollback").catch(() => {});
+        throw e;
+      } finally {
+        dbClient.release();
+      }
+    }),
+  );
+
+  router.post(
+    "/api/traktime/invoices/:id/mark-paid",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const id = req.params.id;
+      const paid = req.body?.paid !== false; // default: mark paid
+      const { rows } = await pool.query(
+        `update tk_invoices
+            set status = case when $2 then 'paid' else 'issued' end,
+                paid_at = case when $2 then now() else null end,
+                updated_at = now()
+          where invoice_id = $1 and status in ('issued','paid')
+          returning *`,
+        [id, paid],
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: "not_found_or_not_issued" });
+      await tkAudit(pool, {
+        action: paid ? "invoice.mark_paid" : "invoice.unmark_paid",
+        row_table: "tk_invoices",
+        row_id: id,
+        after: rows[0],
+        user_email: req.user.email,
+      }, log);
+      res.json({ ok: true, invoice: rows[0] });
+    }),
+  );
+
+  router.post(
+    "/api/traktime/invoices/:id/void",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const id = req.params.id;
+      const dbClient = await pool.connect();
+      try {
+        await dbClient.query("begin");
+        const { rows } = await dbClient.query(
+          `update tk_invoices set status = 'void', voided_at = now(), updated_at = now()
+            where invoice_id = $1 and status <> 'void'
+            returning *`,
+          [id],
+        );
+        if (!rows.length) {
+          await dbClient.query("rollback");
+          return res.status(404).json({ ok: false, error: "not_found_or_already_void" });
+        }
+        // Release entry locks: any entry pinned to a line on this invoice can be re-billed.
+        await dbClient.query(
+          `update tk_entries set invoice_line_id = null, updated_at = now()
+             where invoice_line_id in (select invoice_line_id from tk_invoice_lines where invoice_id = $1)`,
+          [id],
+        );
+        await dbClient.query("commit");
+        await tkAudit(pool, {
+          action: "invoice.void",
+          row_table: "tk_invoices",
+          row_id: id,
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
+        res.json({ ok: true, invoice: rows[0] });
+      } catch (e) {
+        await dbClient.query("rollback").catch(() => {});
+        throw e;
+      } finally {
+        dbClient.release();
+      }
+    }),
+  );
+
+  router.get(
+    "/api/traktime/invoices/:id/pdf",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { rows } = await pool.query(
+        `select pdf_url from tk_invoices where invoice_id = $1`,
+        [req.params.id],
+      );
+      if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
+      if (!rows[0].pdf_url) return res.status(404).json({ ok: false, error: "pdf_not_rendered" });
+      res.redirect(rows[0].pdf_url);
     }),
   );
 

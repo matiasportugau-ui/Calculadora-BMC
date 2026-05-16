@@ -130,6 +130,44 @@ async function main() {
         `status=${r.status}`,
       );
     }
+
+    // ── Sprint 3 endpoints
+    {
+      const r = await requestJson(port, "GET", "/api/traktime/invoices");
+      assert("invoices GET → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
+    {
+      const r = await requestJson(port, "POST", "/api/traktime/invoices/draft", {
+        client_id: "00000000-0000-0000-0000-000000000000",
+        period_from: "2026-05-01",
+        period_to: "2026-05-31",
+      });
+      assert("invoices/draft → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
+    {
+      const r = await requestJson(
+        port,
+        "POST",
+        "/api/traktime/invoices/00000000-0000-0000-0000-000000000000/issue",
+      );
+      assert("invoices/:id/issue → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
+    {
+      const r = await requestJson(
+        port,
+        "POST",
+        "/api/traktime/invoices/00000000-0000-0000-0000-000000000000/mark-paid",
+      );
+      assert("invoices/:id/mark-paid → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
+    {
+      const r = await requestJson(
+        port,
+        "GET",
+        "/api/traktime/invoices/00000000-0000-0000-0000-000000000000/pdf",
+      );
+      assert("invoices/:id/pdf → 401 without bearer", r.status === 401, `status=${r.status}`);
+    }
   } finally {
     await new Promise((r) => server.close(r));
   }

@@ -4,6 +4,7 @@ import EntryList from "./Timer/EntryList.jsx";
 import ReportsView from "./Reports/ReportsView.jsx";
 import ClientsPanel from "./Clients/ClientsPanel.jsx";
 import ProjectsPanel from "./Projects/ProjectsPanel.jsx";
+import InvoicesPanel from "./Invoices/InvoicesPanel.jsx";
 import { tkApi } from "./shared/api.js";
 import { colors, fonts, page, tabBar, tabButton } from "./shared/styles.js";
 
@@ -82,7 +83,8 @@ export default function TraKtiMeModule() {
         )}
         {tab === "clients" && <ClientsPanel canEdit={me?.role === "admin"} />}
 
-        {tab === "invoices" && (
+        {tab === "invoices" && me?.role === "admin" && <InvoicesPanel />}
+        {tab === "invoices" && me?.role !== "admin" && (
           <div
             style={{
               padding: 48,
@@ -92,10 +94,7 @@ export default function TraKtiMeModule() {
               borderRadius: 12,
             }}
           >
-            <strong style={{ color: colors.text, display: "block", marginBottom: 8 }}>
-              Próximamente
-            </strong>
-            La facturación se completa en el Sprint 3 del plan TraKtiMe.
+            Solo los administradores pueden gestionar facturas.
           </div>
         )}
       </div>
