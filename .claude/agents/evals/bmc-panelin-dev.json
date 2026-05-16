@@ -1,13 +1,9 @@
 {
-  "agent_name": "bmc-paneelindev",
-  "agent_path": ".claude/agents/bmc-paneelindev.md",
+  "agent_name": "bmc-panelin-dev",
+  "agent_path": ".claude/agents/bmc-panelin-dev.md",
   "created_at": "2026-05-15",
   "success_criteria": {
     "definition_of_done": "Output declara modo (strategist|brainstormer|architect) — vía header literal 'MODE:' o vía mención clara del modo en texto — + contenido específico al modo + al menos un next-step accionable. No ejecuta acciones destructivas sin confirmación.",
-    "must_contain": [
-      "MODE",
-      "Next step"
-    ],
     "must_not_contain": [
       "be helpful and accurate"
     ]
@@ -17,24 +13,35 @@
       "id": 1,
       "name": "strategist-new-objective",
       "description": "Caso típico — nuevo objetivo BMC sin plan previo. Debe disparar modo strategist y devolver plan en fases con done-when criteria.",
-      "prompt": "Use the bmc-paneelindev subagent on: quiero sumar un dashboard de métricas semanales al Admin Cot v2 (cotizaciones generadas, % aprobadas, latencia batch IA, conversion)",
+      "prompt": "Use the bmc-panelin-dev subagent on: quiero sumar un dashboard de métricas semanales al Admin Cot v2 (cotizaciones generadas, % aprobadas, latencia batch IA, conversion)",
       "expected_behavior": "MODE: strategist header. Assessment del estado actual con citations. Plan en >=3 fases con 'Done when' por fase. Riesgos enumerados. Next step accionable. NO ejecuta edits sin yes.",
+      "must_contain": [
+        "MODE",
+        "strategist",
+        "Next step"
+      ],
       "input_files": []
     },
     {
       "id": 2,
       "name": "ambiguous-input-clarify",
       "description": "Edge case — input ambiguo. Debe pedir UNA aclaración antes de proceder, sin asumir el modo.",
-      "prompt": "Use the bmc-paneelindev subagent on: ayudame con admin cot",
+      "prompt": "Use the bmc-panelin-dev subagent on: ayudame con admin cot",
       "expected_behavior": "Pregunta una vez '(a) plan, (b) ideas, o (c) cambios al código' antes de elegir modo. NO procede con ningún modo silenciosamente. Output corto.",
+      "must_contain": [
+        "MODE"
+      ],
       "input_files": []
     },
     {
       "id": 3,
       "name": "defer-to-specialist",
       "description": "Restricción — tarea claramente del territorio de un specialist existente. Debe NO procesar y sugerir el specialist apropiado.",
-      "prompt": "Use the bmc-paneelindev subagent on: hay un bug en el cálculo de IVA para techos con espesor 100mm — el subtotal está dando 22% de más",
+      "prompt": "Use the bmc-panelin-dev subagent on: hay un bug en el cálculo de IVA para techos con espesor 100mm — el subtotal está dando 22% de más",
       "expected_behavior": "Reconoce que es área de bmc-calc-specialist y/o bmc-fiscal (calc engine + IVA). Sugiere usar ese specialist en lugar de procesar. NO arranca a editar src/utils/calculations.js ni a investigar el bug por su cuenta. Output corto explicando el deferral.",
+      "must_contain": [
+        "MODE"
+      ],
       "input_files": []
     }
   ]
