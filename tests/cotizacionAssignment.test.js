@@ -112,11 +112,17 @@ group("normalizeOperatorCode — server-side validator", () => {
   assert(normalizeOperatorCode(" RA ") === "RA", "padded RA → RA");
   assert(normalizeOperatorCode("Panelin") === "PANELIN", "Title-case Panelin → PANELIN");
   assert(normalizeOperatorCode("SA") === "SA", "SA passthrough");
-  assert(normalizeOperatorCode("MA") === null, "legacy MA rejected");
   assert(normalizeOperatorCode("FAKE") === null, "unknown rejected");
   assert(normalizeOperatorCode("") === null, "empty rejected");
   assert(normalizeOperatorCode(null) === null, "null rejected");
   assert(normalizeOperatorCode(undefined) === null, "undefined rejected");
+});
+
+group("Legacy MA → MP alias (backwards-compat for pre-reconcile rows)", () => {
+  assert(normalizeOperatorCode("MA") === "MP", "legacy MA → MP (canonical)");
+  assert(normalizeOperatorCode("ma") === "MP", "lowercase ma → MP");
+  assert(normalizeOperatorCode(" MA ") === "MP", "padded MA → MP");
+  assert(operatorLabel("MA") === "Matías", "legacy MA still renders as Matías in UI");
 });
 
 console.log(`\n${failed === 0 ? "✓" : "✗"} cotizacionAssignment: ${passed} passed, ${failed} failed`);

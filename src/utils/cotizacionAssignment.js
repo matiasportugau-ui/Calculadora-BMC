@@ -93,7 +93,9 @@ const OPERATOR_NAMES = Object.freeze({
 
 export function operatorLabel(code) {
   const k = String(code || "").trim().toUpperCase();
-  return OPERATOR_NAMES[k] || code || "—";
+  // Legacy alias — see normalizeOperatorCode comment.
+  const effective = LEGACY_CODE_ALIASES[k] || k;
+  return OPERATOR_NAMES[effective] || code || "—";
 }
 
 /**
@@ -103,14 +105,24 @@ export function operatorLabel(code) {
 export const OPERATOR_CODES = Object.freeze(["MP", "RA", "TIN", "SA", "PANELIN"]);
 
 /**
+ * Backwards-compat alias for codes shipped before the planilla reconciliation.
+ * `"MA"` was the previous identifier for Matías Portugau; the planilla canon is `"MP"`.
+ * Existing planilla rows written under the old code still hold `"MA"` — accept them
+ * on read/write to avoid 400s, but persist the canonical form so the row converges.
+ * Drop this map once a backfill confirms no live row holds `"MA"`.
+ */
+const LEGACY_CODE_ALIASES = Object.freeze({ MA: "MP" });
+
+/**
  * Normalize any operator string to the canonical code (UPPER + trim).
- * Returns the normalized value if valid, or `null` if unrecognized.
- * Used by the server before writing to the planilla.
+ * Returns the canonical code if valid (after applying legacy aliases),
+ * or `null` if unrecognized. Used by the server before writing to the planilla.
  *
  * @param {string|null|undefined} raw
  * @returns {"MP" | "RA" | "TIN" | "SA" | "PANELIN" | null}
  */
 export function normalizeOperatorCode(raw) {
   const k = String(raw || "").trim().toUpperCase();
-  return OPERATOR_CODES.includes(k) ? k : null;
+  const effective = LEGACY_CODE_ALIASES[k] || k;
+  return OPERATOR_CODES.includes(effective) ? effective : null;
 }
