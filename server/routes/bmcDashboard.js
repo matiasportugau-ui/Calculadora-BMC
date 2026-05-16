@@ -23,6 +23,7 @@ import { readPanelsimEmailSummary } from "../lib/panelsimSummaryReader.js";
 import { colIndexToLetter, colLetterToIndex } from "../lib/sheetColumnLetters.js";
 import { normalizeIsodecEpsVentaLocalCsvRows } from "../lib/matrizCsvNormalization.js";
 import { getCockpitTokenRequestBrowserOrigin } from "../lib/cockpitTokenOrigin.js";
+import { normalizeOperatorCode, OPERATOR_CODES } from "../../src/utils/cotizacionAssignment.js";
 import { syncUnansweredQuestions } from "../ml-crm-sync.js";
 import { createTokenStore } from "../tokenStore.js";
 import { createMercadoLibreClient } from "../mercadoLibreClient.js";
@@ -879,6 +880,21 @@ async function handleUpdateCotizacion(sheetId, id, body) {
     ASIGNADO_A: "Responsable",
     FECHA_ENTREGA: "Fecha próxima acción",
   };
+
+  // Validate + normalize Responsable against the planilla canon before write.
+  // Sheets Data Validation on CRM_Operativo!Parametros is case-sensitive, so
+  // we coerce to the canonical UPPER form (MP/RA/TIN/SA/PANELIN) and reject
+  // anything else with a 400 to avoid silent column rejection downstream.
+  if (body.ASIGNADO_A !== undefined && body.ASIGNADO_A !== "") {
+    const normalized = normalizeOperatorCode(body.ASIGNADO_A);
+    if (!normalized) {
+      throw new Error(
+        `Responsable inválido: "${body.ASIGNADO_A}". Códigos válidos: ${OPERATOR_CODES.join(", ")}`,
+      );
+    }
+    body.ASIGNADO_A = normalized;
+  }
+
   const updates = [];
   const oldValues = {};
 
