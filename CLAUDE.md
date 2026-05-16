@@ -53,7 +53,17 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/data/constants.js` — pricing lists, panel catalogue, scenarios, profiles.
 - `src/utils/calculations.js` — pure calculation engine for techo/pared.
 - `src/utils/helpers.js` — PDF/WhatsApp export, BOM, formatters.
-- `src/App.jsx` — router for calculator + `/hub/wa`, `/hub/ml`, `/hub/canales`, `/hub/admin`.
+- `src/App.jsx` — router for calculator + `/hub/wa`, `/hub/ml`, `/hub/canales`, `/hub/admin` (legacy), `/hub/cotizaciones` (v2, **feature-flag-gated** — see below).
+
+#### Admin de cotizaciones — two modules coexisting
+
+- `/hub/admin` → `src/components/BmcAdminCotizacionesModule.jsx` (legacy single-file module). Always available.
+- `/hub/cotizaciones` → `src/components/AdminCotizacionesModule.jsx` (v2) + `src/hooks/useAdminCotizaciones.js` + 9 subcomponents under `src/components/admin-cotizaciones/` (Topbar, StatStrip, Toolbar, QuotesTable, QuoteCard, DetailDrawer, CommandPalette, SkinProvider, WaTimelineInline). Gated by `VITE_FEATURE_ADMIN_COT_V2 === "true"`. **Without the flag the route silently redirects to `/hub/admin`.**
+- `src/components/help/*` — Phase 3 tutorial UI (HelpProvider, useHelp, Tooltip, HelpButton, Callout, FirstTimeTip, frozen `HELP_ANCHORS` const in `anchors.js`). A custom ESLint rule `bmc-help/anchor-must-use-const` enforces use of the registry.
+- `src/utils/cotizacionAssignment.js` — pure routing rules for operator suggestion (MA/RA/TIN/SA), used by QuoteCard + DetailDrawer.
+- `src/utils/waPhoneNormalize.js` — strips non-digits + prepends `598` for UY domestic numbers; required for `phone ilike` matching against `wa_conversations`.
+- `server/lib/wolfboardOutcome.js` — `deriveOutcome(estadoRaw)` projects Admin 2.0 col L ("Estado", free-form Spanish strings) → stable enum `won|lost|awaiting_reply|null` at read-time. **Sheet stays as source-of-truth**; no GCS migration. Extend `OUTCOME_MAP` for new col-L strings; do not duplicate state into `quoteRegistry`.
+- `server/routes/wolfboard.js` Hybrid RBAC: `logRoleHint(req, config)` logs the resolved role via `resolveInternalServiceActor` after auth, **without enforcement**. UI sends `X-Panelin-Role` from `localStorage["bmc_panelin_role"]`. Do not add `roleMeetsMin` enforcement to wolfboard routes until logs prove the discrimination pays off (decision rationale in `docs/team/runs/2026-05-13-2343-autodisenio-pending-tasks-deep-audit/artifacts/drafts/01-outcome-rbac-proposal.md`).
 
 ### Backend hot spots
 
@@ -66,6 +76,15 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 
 All prices are **without IVA**; 22% IVA is applied once at the total via `calcTotalesSinIVA()`. `LISTA_ACTIVA` selects between `venta` (BMC direct, default) and `web` (public Shopify). The `p(item)` helper resolves the active price. See `docs/PRICING-ENGINE.md`.
 
+## Feature flags (frontend `VITE_*`)
+
+Vite bakes `import.meta.env.VITE_*` **at build time**. Changing a Vercel env var requires a redeploy (`vercel --prod --force` to bypass build cache) before the new value reaches users. Same for local dev: changes to `.env` / `.env.local` need `npm run dev:full` restart.
+
+Active gates:
+- `VITE_FEATURE_ADMIN_COT_V2=true` → mounts the v2 admin at `/hub/cotizaciones`. Off in `.env.example`; must be explicitly set in `.env.local` (local) and Vercel production env (deploy).
+
+When adding a Vercel env var via CLI, **use `printf` not `echo`**: `printf "true" | vercel env add NAME production`. `echo` appends a newline that gets stored *inside* the quoted value (`"true\n"`) and silently fails the `=== "true"` check at build.
+
 ## Conventions (project-specific)
 
 - **Error semantics for Sheets-backed routes:** `503` = Sheets unavailable; `200` + empty payload = no data; **never `500`** for Sheets failures. The frontend depends on this.
@@ -75,6 +94,9 @@ All prices are **without IVA**; 22% IVA is applied once at the total via `calcTo
 - **CORS:** open in dev; restricted to known origins in prod.
 - Commit messages: concise, English, `type:` prefix (`feat`, `fix`, `refactor`, `docs`).
 - **PR size:** PRs >500 LOC adds → DRAFT obligatorio. Splitear en commits atómicos antes de marcar ready (atrapa lo que branch protection no puede forzar a nivel LOC).
+- **Branch protection on `main`** requires a review approval. `gh pr merge --squash` fails with "base branch policy prohibits the merge" otherwise. Pattern in use: `gh pr merge <num> --squash --delete-branch --admin` (admin override). Only admin-merge when **all** CI checks are green.
+- **Playwright smokes** live as standalone `scripts/playwright-*.mjs` (NOT `@playwright/test`). Manual `assert` helper, `process.exit(failed > 0 ? 1 : 0)`, NOT wired into `gate:local`. The admin-cot family (`scripts/playwright-admin-cot-{f1-completion,suggest-ia,suggested-badge,wa-timeline}.mjs`) is the canonical pattern: reads `PLAYWRIGHT_BASE_URL` (falls back to `127.0.0.1:5173`), `chromium.launch({channel:"chrome"})` with bundled fallback, anon-friendly console-error noise filter tolerating `401|403|503` for `auth/me|auth/refresh|cockpit-token`. The older `scripts/playwright-route-audit-smoke.mjs` is a simpler footprint (defaults to `http://localhost:5173`, `--base=<url>` flag only, allowlist limited to `auth/me|auth/refresh` 401s) — use it for minimal route-audit smokes, prefer the admin-cot template for new auth-aware smokes.
+- **Walkthrough subset** (`scripts/playwright-admin-cot-walkthrough.mjs`, run via `npm run walkthrough:admin-cot`) is special: it regenerates `docs/walkthrough/admin-cot/source.json` which `AdminCotizacionesModule.jsx` imports at **build time** and passes to `<HelpProvider source={...}>`. The seed 6-step placeholder ships with the repo; live runs overwrite with 24+ steps. Prod smoke pattern: `PLAYWRIGHT_BASE_URL=https://calculadora-bmc.vercel.app BMC_COCKPIT_TOKEN=... npm run walkthrough:admin-cot`. Commit the regenerated `source.json` to refresh the prod bundle.
 
 ## What to read before non-trivial work
 
@@ -88,7 +110,7 @@ When you finish a task that changes behavior, append a line under "Cambios recie
 ## Deployment
 
 - **Frontend:** Vercel — https://calculadora-bmc.vercel.app (config in `vercel.json`).
-- **API:** Google **Cloud Run** — service `panelin-calc`, region `us-central1`. Sheets credentials are mounted from Secret Manager (`./scripts/cloud-run-matriz-sheets-secret.sh`).
+- **API:** Google **Cloud Run** — service `panelin-calc`, region `us-central1`, **GCP project `chatbot-bmc-live`** (the service is named after the legacy project; the actual project is `chatbot-bmc-live`). Secret Manager in that project holds `API_AUTH_TOKEN` (cockpit), `ANTHROPIC_API_KEY`, `WHATSAPP_*`, `GOOGLE_SHEETS_CREDENTIALS`. Sheets credentials are mounted via `./scripts/cloud-run-matriz-sheets-secret.sh`. For prod Playwright smokes: `BMC_COCKPIT_TOKEN=$(gcloud secrets versions access latest --secret=API_AUTH_TOKEN --project=chatbot-bmc-live)`.
 - **CI:** `.github/workflows/ci.yml` runs lint, tests, build, env-drift, smoke (push to `main`), `channels_pipeline`, `voice_health`, `knowledge_antenna`.
 
 ## Agent ecosystem (Claude Code)
@@ -122,3 +144,6 @@ Twelve agent definitions in **`.claude/agents/`**:
 - **Node 24.x is required** — `engines.node = "24.x"` (aligns Vercel with `@sparticuz/chromium >=22.17.0`). The README badge still says Node 20; trust `package.json`.
 - **`npm audit fix --force` is forbidden** without explicit approval — it has broken Vite in this repo before.
 - **`/health` without credentials:** `hasSheets` and `hasTokens` will be `false` until `.env` is populated with Google service-account JSON and ML OAuth keys. Most calc/UI code paths work without them; CRM, Finanzas, ML, and AI suggestions do not.
+- **Repo paths with spaces:** if your local checkout sits at a path with spaces (common on macOS desktops), always quote in bash (`cd "/path with spaces/Calculadora-BMC"`) or use `git -C "<path>"`. Plain `cd /path/with space/` breaks at the unquoted space.
+- **Worktrees for parallel Claude sessions** live under `Calculadora-BMC.worktrees/` plus `~/.cursor/worktrees/Calculadora-BMC/`. `git worktree list` enumerates all. Stale `index.lock` files are common; check `lsof <path>/.git/index.lock` first, then `rm` if no process holds it. The lock is rare in single-session work but routine when running team-orchestrator runs in tmux + Cursor side-by-side.
+- **Vercel build cache will reuse artifacts when only env vars change** — `vercel --prod` may produce the same bundle hash as the previous deploy. To guarantee a rebuild that reflects new `VITE_*` vars, use `vercel --prod --force`. Verify by checking the asset hash in `index.html` differs from the prior deploy.
