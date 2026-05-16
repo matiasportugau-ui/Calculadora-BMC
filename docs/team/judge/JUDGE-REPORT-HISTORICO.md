@@ -137,7 +137,10 @@ Reporte promedio por agente a lo largo de la existencia del equipo. Se actualiza
 | 2026-03-24 | Full team run 53 — PANELSIM + ML OAuth + gate tooling + Calc KB | 20/21 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-24-run53.md](./JUDGE-REPORT-RUN-2026-03-24-run53.md) |
 | 2026-03-24 | Full team run 54 + Invocación PANELSIM | 20/21 (Judge N/A) | ~4.50 | [JUDGE-REPORT-RUN-2026-03-24-run54.md](./JUDGE-REPORT-RUN-2026-03-24-run54.md) |
 | 2026-03-27 | Full team run 55 (0→9, SIM-REV delta) | 20/21 (Judge N/A) | ~4.45 | [JUDGE-REPORT-RUN-2026-03-27-run55.md](./JUDGE-REPORT-RUN-2026-03-27-run55.md) |
+| 2026-05-16 | Delta 7 semanas run 56 (sin orquestación formal) | 9 roles con nota (Judge N/A) | ~3.89 | [JUDGE-REPORT-RUN-2026-05-16-run56.md](./JUDGE-REPORT-RUN-2026-05-16-run56.md) |
 
 ---
+
+**Promedio global Run 56 (2026-05-16):** ~3.89/5 (9 roles con nota; evaluación delta 7 semanas sin run orquestado; score refleja proceso y pendientes abiertos, no volumen de trabajo entregado).
 
 *Este archivo se actualiza automáticamente por el Juez tras cada evaluación.*
