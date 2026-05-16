@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import "../../src/styles/applied-ai.css";
 import "../../src/styles/bmc-mobile.css";
+import "../styles/applied-ai-overrides.css";
 
 import PanelinCalculadora from "../../src/components/PanelinCalculadoraV3_backup.jsx";
 
@@ -14,8 +15,10 @@ if (typeof window !== "undefined") {
 const container = document.getElementById("root");
 createRoot(container).render(
   <React.StrictMode>
-    <MemoryRouter initialEntries={["/"]}>
-      <PanelinCalculadora />
-    </MemoryRouter>
+    <div className="aa-shell">
+      <MemoryRouter initialEntries={["/"]}>
+        <PanelinCalculadora />
+      </MemoryRouter>
+    </div>
   </React.StrictMode>,
 );

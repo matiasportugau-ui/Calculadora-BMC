@@ -34,6 +34,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `npm run pre-deploy` | Pre-deploy checklist (health, contracts, env, open `- [ ]` count in `docs/team/PROJECT-STATE.md`). |
 | `npm run transportista:migrate` | Apply Postgres migrations under `transportista-cursor-package/migrations/`. |
 | `npm run wa:migrate` | Apply WA Cockpit Postgres migrations under `wa-package/migrations/`. |
+| `npm run build:artifact` | Build the standalone single-file Claude Artifact (`artifact/calculadora-bmc.html`). Bundles the canonical calculator with offline stubs replacing backend-coupled modules. |
+| `node scripts/smoke-artifact.mjs` | Headless-chromium smoke for the generated artifact (uses `/opt/pw-browsers/chromium_headless_shell-*` directly). |
 
 Running a single test: each file in `tests/` is a standalone Node script — run it directly, e.g. `node tests/validation.js` or `node tests/calcLoopbackClient.test.js`.
 
@@ -45,6 +47,7 @@ server/     Express 5 API — mounts /calc, /api/*, /auth/*, /webhooks/*
 tests/      Offline tests (CI) + live contract validator
 scripts/    Automation, smoke, snapshots, tooling
 docs/       Team docs, Sheets hub, procedures, panelsim/
+artifact/   Single-file Claude Artifact build (design env) — calculator + offline stubs
 ```
 
 ### Frontend hot spots
@@ -54,6 +57,15 @@ docs/       Team docs, Sheets hub, procedures, panelsim/
 - `src/utils/calculations.js` — pure calculation engine for techo/pared.
 - `src/utils/helpers.js` — PDF/WhatsApp export, BOM, formatters.
 - `src/App.jsx` — router for calculator + `/hub/wa`, `/hub/ml`, `/hub/canales`, `/hub/admin`.
+
+### Artifact (design environment)
+
+- `artifact/calculadora-bmc.html` — committed output, ~3 MB single-file Vite build for use as a Claude Artifact (`text/html`) inside claude.ai.
+- `artifact/entry/main.jsx` — mounts the canonical calculator under `<MemoryRouter>` with an `.aa-shell` wrapper; imports the base CSS and `artifact/styles/applied-ai-overrides.css`.
+- `artifact/stubs/` — offline drop-ins for backend-coupled modules (`useBmcAuth`, `AuthGateModal`, `useChat`, `googleDrive`, `pdfGenerator`). Each preserves the export surface of the real module so the calculator compiles unchanged.
+- `artifact/vite.artifact.config.js` — separate Vite config with regex aliases that swap the real modules for stubs at build time. Output bundled by `vite-plugin-singlefile`.
+- `scripts/build-artifact.mjs` — orchestrates the build and copies output to `artifact/calculadora-bmc.html` with a commit-SHA banner.
+- **Design-only overrides** go to `artifact/styles/` (not `src/styles/`) so prod is unchanged.
 
 ### Backend hot spots
 
@@ -122,3 +134,4 @@ Twelve agent definitions in **`.claude/agents/`**:
 - **Node 24.x is required** — `engines.node = "24.x"` (aligns Vercel with `@sparticuz/chromium >=22.17.0`). The README badge still says Node 20; trust `package.json`.
 - **`npm audit fix --force` is forbidden** without explicit approval — it has broken Vite in this repo before.
 - **`/health` without credentials:** `hasSheets` and `hasTokens` will be `false` until `.env` is populated with Google service-account JSON and ML OAuth keys. Most calc/UI code paths work without them; CRM, Finanzas, ML, and AI suggestions do not.
+- **`NODE_ENV=production` skips devDependencies.** In Claude Code on the web (and some CI sandboxes) the env arrives with `NODE_ENV=production`, so `npm install` silently omits `vite`, `@vitejs/plugin-react`, `eslint`, `playwright`, `vite-plugin-singlefile`, etc. — and `npm ls` will lie about it. Symptom: `npx vite` fetches a fresh major in a temp dir, builds fail with `Cannot find package '@vitejs/plugin-react'`. Fix: `NODE_ENV=development npm install` or `npm install --include=dev` once per fresh `node_modules`.

@@ -1,0 +1,121 @@
+/* Applied AI overrides — artifact only.
+   Re-skins the calculator's top bar + primary CTAs by hitting their inline
+   styles via attribute selectors. Uses tokens from src/styles/applied-ai.css.
+   Wrapped under .aa-shell (injected by artifact/entry/main.jsx) so the rules
+   never leak into the production app. */
+
+/* Subtle warm canvas so the header doesn't fight the new palette. */
+.aa-shell {
+  background: var(--aa-bg);
+  color: var(--aa-text);
+  font-family: var(--aa-font-sans);
+}
+
+/* ── Top bar (the sticky <div> that wraps "BMC Uruguay · Panelin vX.X.X") ── */
+.aa-shell div[style*="position: sticky"][style*="top: 0"] {
+  background: var(--aa-bg) !important;
+  color: var(--aa-text) !important;
+  border-bottom: 1px solid var(--aa-border) !important;
+  box-shadow: none !important;
+}
+
+/* Brand wordmark — promote to serif display. */
+.aa-shell div[style*="position: sticky"] > div:first-child > div:first-child {
+  font-family: var(--aa-font-serif) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--aa-text) !important;
+}
+
+/* Version badge + budget code chip — mute. */
+.aa-shell div[style*="position: sticky"] > div:first-child > div {
+  color: var(--aa-text-mute) !important;
+}
+
+/* Hub / Logística pill nav (small low-contrast text buttons). */
+.aa-shell div[style*="position: sticky"] button[style*="font-size: 11px"],
+.aa-shell div[style*="position: sticky"] button[style*="fontSize: 11"] {
+  background: transparent !important;
+  color: var(--aa-text-mute) !important;
+  border: 1px solid var(--aa-border) !important;
+  border-radius: var(--aa-radius-sm) !important;
+  letter-spacing: 0 !important;
+}
+.aa-shell div[style*="position: sticky"] button[style*="font-size: 11px"]:hover,
+.aa-shell div[style*="position: sticky"] button[style*="fontSize: 11"]:hover {
+  background: var(--aa-surface-2) !important;
+  color: var(--aa-text) !important;
+}
+
+/* Mode toggle (Vendedor / Cliente) — the small pill wrapper. */
+.aa-shell div[style*="position: sticky"] div[style*="rgba(255,255,255,0.1)"],
+.aa-shell div[style*="position: sticky"] div[style*="rgba(255, 255, 255, 0.1)"] {
+  background: var(--aa-surface-2) !important;
+  border-radius: var(--aa-radius-sm) !important;
+  padding: 3px !important;
+}
+/* Active pill button inside that toggle. */
+.aa-shell div[style*="position: sticky"] button[style*="rgba(255,255,255,0.25)"],
+.aa-shell div[style*="position: sticky"] button[style*="rgba(255, 255, 255, 0.25)"] {
+  background: var(--aa-surface) !important;
+  color: var(--aa-text) !important;
+  box-shadow: var(--aa-shadow) !important;
+  border-radius: 6px !important;
+}
+/* Inactive pill button. */
+.aa-shell div[style*="position: sticky"] div[style*="rgba(255,255,255,0.1)"] button[style*="background: transparent"],
+.aa-shell div[style*="position: sticky"] div[style*="rgba(255, 255, 255, 0.1)"] button[style*="background: transparent"] {
+  color: var(--aa-text-mute) !important;
+}
+
+/* All header buttons: warm neutral border, no white-on-navy. */
+.aa-shell div[style*="position: sticky"] button {
+  color: var(--aa-text) !important;
+  font-family: var(--aa-font-sans) !important;
+  transition: background 150ms ease-out, border-color 150ms ease-out !important;
+}
+.aa-shell div[style*="position: sticky"] button[style*="rgba(255,255,255,0.3)"],
+.aa-shell div[style*="position: sticky"] button[style*="rgba(255, 255, 255, 0.3)"] {
+  border: 1px solid var(--aa-border) !important;
+  background: transparent !important;
+}
+.aa-shell div[style*="position: sticky"] button[style*="rgba(255,255,255,0.3)"]:hover,
+.aa-shell div[style*="position: sticky"] button[style*="rgba(255, 255, 255, 0.3)"]:hover {
+  background: var(--aa-surface-2) !important;
+  border-color: var(--aa-text-mute) !important;
+}
+
+/* Primary CTA — anything with the legacy Apple-blue `#0071E3` fill becomes accent. */
+.aa-shell button[style*="#0071E3"],
+.aa-shell button[style*="rgb(0, 113, 227)"] {
+  background: var(--aa-accent) !important;
+  color: var(--aa-accent-ink) !important;
+  border: 1px solid var(--aa-accent) !important;
+  border-radius: var(--aa-radius-sm) !important;
+  font-weight: 500 !important;
+}
+.aa-shell button[style*="#0071E3"]:hover,
+.aa-shell button[style*="rgb(0, 113, 227)"]:hover {
+  filter: brightness(0.95);
+}
+
+/* Soft variant of the Apple-blue (background `#E8F1FB`) becomes warm tint. */
+.aa-shell button[style*="#E8F1FB"],
+.aa-shell button[style*="rgb(232, 241, 251)"] {
+  background: var(--aa-surface-2) !important;
+  color: var(--aa-accent) !important;
+  border: 1px solid var(--aa-border) !important;
+}
+
+/* Google-blue Drive button (background `#4285F4`) — keep but tone down. */
+.aa-shell button[style*="#4285F4"],
+.aa-shell button[style*="rgb(66, 133, 244)"] {
+  background: transparent !important;
+  color: var(--aa-text) !important;
+  border: 1px solid var(--aa-border) !important;
+  border-radius: var(--aa-radius-sm) !important;
+}
+.aa-shell button[style*="#4285F4"]:hover,
+.aa-shell button[style*="rgb(66, 133, 244)"]:hover {
+  background: var(--aa-surface-2) !important;
+}
