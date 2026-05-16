@@ -139,6 +139,17 @@ export const config = {
   transportistaDriverTokenTtlHours: Number(process.env.TRANSPORTISTA_DRIVER_TOKEN_TTL_HOURS || 24),
   transportistaOutboxIntervalMs: Number(process.env.TRANSPORTISTA_OUTBOX_INTERVAL_MS || 15000),
   transportistaStrictPod: bool(process.env.TRANSPORTISTA_STRICT_POD, false),
+  /** TraKtiMe — time tracking + invoicing. Reuses databaseUrl. */
+  traktimeSheetId: process.env.TRAKTIME_SHEET_ID || "",
+  traktimeMirrorTz: process.env.TRAKTIME_MIRROR_TZ || "America/Montevideo",
+  traktimeMirrorEnabled: bool(process.env.TRAKTIME_MIRROR_ENABLED, true),
+  traktimeInvoiceIssuerName:
+    process.env.TRAKTIME_INVOICE_ISSUER_NAME || "METALOG SAS — BMC Uruguay",
+  traktimeInvoiceIssuerRut: process.env.TRAKTIME_INVOICE_ISSUER_RUT || "21XXXXXXXXXX",
+  traktimeInvoiceIssuerAddress:
+    process.env.TRAKTIME_INVOICE_ISSUER_ADDRESS || "Direccion pendiente, Montevideo, Uruguay",
+  traktimeInvoiceGcsBucket:
+    process.env.TRAKTIME_INVOICE_GCS_BUCKET || process.env.GCS_QUOTES_BUCKET || "bmc-cotizaciones",
   /** WA Cockpit (F2 enricher) — flags */
   waEnricherEnabled: bool(process.env.WA_ENRICHER_ENABLED, false),
   waEnricherIntervalMs: Number(process.env.WA_ENRICHER_INTERVAL_MS || 8000),
