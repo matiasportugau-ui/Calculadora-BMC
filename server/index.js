@@ -53,6 +53,8 @@ import identityMeRouter from "./routes/identityMe.js";
 import quoteExportRouter from "./routes/quoteExport.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import { getTraktimePool } from "./lib/traktimeDb.js";
+import { startTraktimeMirrorWorker } from "./lib/traktimeMirrorWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -1061,6 +1063,7 @@ const transportistaPool = getTransportistaPool(config.databaseUrl);
 // Cleanups capturados en el listen callback. Inicializados a noop para que
 // el shutdown handler sea seguro aunque la señal llegue antes del listen.
 let stopTransportista = () => {};
+let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
@@ -1076,6 +1079,13 @@ const server = app.listen(config.port, async () => {
   );
   if (transportistaPool) {
     stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+  }
+  // TraKtiMe nightly Sheets mirror (no-op if TRAKTIME_SHEET_ID unset or disabled).
+  {
+    const traktimePool = getTraktimePool(config.databaseUrl);
+    if (traktimePool) {
+      stopTraktimeMirror = startTraktimeMirrorWorker({ config, logger, pool: traktimePool });
+    }
   }
   // WA Cockpit — F-A4: prime config (settings + flags + LISTEN/NOTIFY) y auth.
   // Se hace ANTES de los workers para que lean ya el cache caliente.
@@ -1128,6 +1138,7 @@ function shutdown(signal) {
   logger.info({ signal }, "shutdown signal received");
 
   try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
+  try { stopTraktimeMirror(); } catch (e) { logger.warn({ err: e?.message }, "stopTraktimeMirror failed"); }
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }

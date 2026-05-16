@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Timer from "./Timer/Timer.jsx";
 import EntryList from "./Timer/EntryList.jsx";
+import ReportsView from "./Reports/ReportsView.jsx";
+import ClientsPanel from "./Clients/ClientsPanel.jsx";
+import ProjectsPanel from "./Projects/ProjectsPanel.jsx";
 import { tkApi } from "./shared/api.js";
 import { colors, fonts, page, tabBar, tabButton } from "./shared/styles.js";
 
@@ -73,7 +76,13 @@ export default function TraKtiMeModule() {
           </div>
         )}
 
-        {tab !== "timer" && (
+        {tab === "reports" && <ReportsView />}
+        {tab === "projects" && (
+          <ProjectsPanel canEdit={me?.role === "admin"} onChange={reload} />
+        )}
+        {tab === "clients" && <ClientsPanel canEdit={me?.role === "admin"} />}
+
+        {tab === "invoices" && (
           <div
             style={{
               padding: 48,
@@ -86,7 +95,7 @@ export default function TraKtiMeModule() {
             <strong style={{ color: colors.text, display: "block", marginBottom: 8 }}>
               Próximamente
             </strong>
-            Esta pestaña se completa en los sprints 2 y 3 del plan TraKtiMe.
+            La facturación se completa en el Sprint 3 del plan TraKtiMe.
           </div>
         )}
       </div>

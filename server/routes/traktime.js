@@ -14,6 +14,8 @@
 import { Router } from "express";
 import { getTraktimePool } from "../lib/traktimeDb.js";
 import { requireUser } from "../lib/identityAuth.js";
+import { tkAudit } from "../lib/traktimeAudit.js";
+import { runTraktimeMirror } from "../lib/traktimeMirrorWorker.js";
 
 function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -128,6 +130,13 @@ export default function createTraktimeRouter(config, logger) {
          returning *`,
         [name, rut, email, address, notes],
       );
+      await tkAudit(pool, {
+        action: "client.create",
+        row_table: "tk_clients",
+        row_id: rows[0].client_id,
+        after: rows[0],
+        user_email: req.user.email,
+      }, log);
       res.status(201).json({ ok: true, client: rows[0] });
     }),
   );
@@ -158,6 +167,13 @@ export default function createTraktimeRouter(config, logger) {
         params,
       );
       if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
+      await tkAudit(pool, {
+        action: "client.update",
+        row_table: "tk_clients",
+        row_id: rows[0].client_id,
+        after: rows[0],
+        user_email: req.user.email,
+      }, log);
       res.json({ ok: true, client: rows[0] });
     }),
   );
@@ -209,6 +225,13 @@ export default function createTraktimeRouter(config, logger) {
            returning *`,
           [client_id, name, color_hex, billable_default, hourly_rate_usd, rounding_minutes],
         );
+        await tkAudit(pool, {
+          action: "project.create",
+          row_table: "tk_projects",
+          row_id: rows[0].project_id,
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
         res.status(201).json({ ok: true, project: rows[0] });
       } catch (e) {
         if (e.code === "23503") {
@@ -263,7 +286,248 @@ export default function createTraktimeRouter(config, logger) {
         params,
       );
       if (!rows.length) return res.status(404).json({ ok: false, error: "not_found" });
+      await tkAudit(pool, {
+        action: "project.update",
+        row_table: "tk_projects",
+        row_id: rows[0].project_id,
+        after: rows[0],
+        user_email: req.user.email,
+      }, log);
       res.json({ ok: true, project: rows[0] });
+    }),
+  );
+
+  // ─── Project members (admin) ─────────────────────────────────────────
+  router.get(
+    "/api/traktime/projects/:id/members",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { rows } = await pool.query(
+        `select project_id, user_id, role, added_at
+           from tk_project_members where project_id = $1
+          order by added_at`,
+        [req.params.id],
+      );
+      res.json({ ok: true, members: rows });
+    }),
+  );
+
+  router.post(
+    "/api/traktime/projects/:id/members",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const user_id = trimOrNull(req.body?.user_id);
+      const role = req.body?.role === "admin" ? "admin" : "member";
+      if (!user_id) return res.status(400).json({ ok: false, error: "user_id_required" });
+      try {
+        const { rows } = await pool.query(
+          `insert into tk_project_members (project_id, user_id, role)
+             values ($1, $2, $3)
+           on conflict (project_id, user_id) do update set role = excluded.role
+           returning *`,
+          [req.params.id, user_id, role],
+        );
+        await tkAudit(pool, {
+          action: "project.member.add",
+          row_table: "tk_project_members",
+          row_id: rows[0].project_id,
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
+        res.status(201).json({ ok: true, member: rows[0] });
+      } catch (e) {
+        if (e.code === "23503") {
+          return res.status(400).json({ ok: false, error: "project_not_found" });
+        }
+        throw e;
+      }
+    }),
+  );
+
+  router.delete(
+    "/api/traktime/projects/:id/members/:userId",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const { rowCount } = await pool.query(
+        `delete from tk_project_members where project_id = $1 and user_id = $2`,
+        [req.params.id, req.params.userId],
+      );
+      if (!rowCount) return res.status(404).json({ ok: false, error: "not_found" });
+      await tkAudit(pool, {
+        action: "project.member.remove",
+        row_table: "tk_project_members",
+        row_id: req.params.id,
+        meta: { user_id: req.params.userId },
+        user_email: req.user.email,
+      }, log);
+      res.json({ ok: true });
+    }),
+  );
+
+  // ─── Tasks ───────────────────────────────────────────────────────────
+  router.get(
+    "/api/traktime/tasks",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const project_id = req.query.project_id;
+      const params = [];
+      let where = "archived_at is null";
+      if (project_id) {
+        params.push(project_id);
+        where += ` and project_id = $${params.length}`;
+      }
+      const { rows } = await pool.query(
+        `select * from tk_tasks where ${where} order by lower(name)`,
+        params,
+      );
+      res.json({ ok: true, tasks: rows });
+    }),
+  );
+
+  router.post(
+    "/api/traktime/tasks",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const project_id = trimOrNull(req.body?.project_id);
+      const name = trimOrNull(req.body?.name);
+      if (!project_id || !name) {
+        return res.status(400).json({ ok: false, error: "project_id_and_name_required" });
+      }
+      try {
+        const { rows } = await pool.query(
+          `insert into tk_tasks (project_id, name) values ($1, $2) returning *`,
+          [project_id, name],
+        );
+        await tkAudit(pool, {
+          action: "task.create",
+          row_table: "tk_tasks",
+          row_id: rows[0].task_id,
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
+        res.status(201).json({ ok: true, task: rows[0] });
+      } catch (e) {
+        if (e.code === "23503") {
+          return res.status(400).json({ ok: false, error: "project_not_found" });
+        }
+        throw e;
+      }
+    }),
+  );
+
+  // ─── Tags ────────────────────────────────────────────────────────────
+  router.get(
+    "/api/traktime/tags",
+    requireUser(),
+    requireDb,
+    asyncHandler(async (_req, res) => {
+      const { rows } = await pool.query(`select * from tk_tags order by lower(name)`);
+      res.json({ ok: true, tags: rows });
+    }),
+  );
+
+  router.post(
+    "/api/traktime/tags",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const name = trimOrNull(req.body?.name);
+      if (!name) return res.status(400).json({ ok: false, error: "name_required" });
+      const color_hex = hexColor(req.body?.color_hex, "#8e8e93");
+      try {
+        const { rows } = await pool.query(
+          `insert into tk_tags (name, color_hex) values ($1, $2) returning *`,
+          [name, color_hex],
+        );
+        res.status(201).json({ ok: true, tag: rows[0] });
+      } catch (e) {
+        if (e.code === "23505") return res.status(409).json({ ok: false, error: "tag_exists" });
+        throw e;
+      }
+    }),
+  );
+
+  // ─── Reports: unbilled hours (rounding preview) ───────────────────────
+  router.get(
+    "/api/traktime/reports/billable",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      const params = [];
+      let where = "e.stopped_at is not null and e.billable and e.invoice_line_id is null";
+      if (req.query.client_id) {
+        params.push(req.query.client_id);
+        where += ` and p.client_id = $${params.length}`;
+      }
+      if (req.query.from) {
+        params.push(req.query.from);
+        where += ` and e.started_at >= $${params.length}`;
+      }
+      if (req.query.to) {
+        params.push(req.query.to);
+        where += ` and e.started_at < $${params.length}`;
+      }
+      const { rows } = await pool.query(
+        `select p.project_id, p.name as project_name, p.color_hex,
+                p.rounding_minutes, p.hourly_rate_usd, c.name as client_name,
+                coalesce(sum(e.duration_seconds), 0)::bigint as raw_seconds,
+                count(*)::int as entry_count
+           from tk_entries e
+           join tk_projects p on p.project_id = e.project_id
+           join tk_clients  c on c.client_id  = p.client_id
+          where ${where}
+          group by p.project_id, p.name, p.color_hex, p.rounding_minutes,
+                   p.hourly_rate_usd, c.name`,
+        params,
+      );
+      // Per-project round-up to nearest rounding_minutes.
+      const groups = rows.map((r) => {
+        const bucketSec = Math.max(60, Number(r.rounding_minutes || 15) * 60);
+        const rounded = Math.ceil(Number(r.raw_seconds || 0) / bucketSec) * bucketSec;
+        const hours = rounded / 3600;
+        const amount = +(hours * Number(r.hourly_rate_usd || 0)).toFixed(2);
+        return {
+          project_id: r.project_id,
+          project_name: r.project_name,
+          client_name: r.client_name,
+          color_hex: r.color_hex,
+          rounding_minutes: r.rounding_minutes,
+          hourly_rate_usd: Number(r.hourly_rate_usd),
+          entry_count: r.entry_count,
+          raw_seconds: Number(r.raw_seconds),
+          rounded_seconds: rounded,
+          rounded_hours: hours,
+          amount_usd: amount,
+        };
+      });
+      const subtotal = +groups.reduce((s, g) => s + g.amount_usd, 0).toFixed(2);
+      res.json({ ok: true, groups, subtotal_usd: subtotal });
+    }),
+  );
+
+  // ─── Admin: manual mirror trigger ─────────────────────────────────────
+  router.post(
+    "/api/traktime/admin/mirror-now",
+    requireUser({ role: "admin" }),
+    requireDb,
+    asyncHandler(async (req, res) => {
+      try {
+        const counts = await runTraktimeMirror({ config, logger: log, pool });
+        await tkAudit(pool, {
+          action: "mirror.manual",
+          meta: counts,
+          user_email: req.user.email,
+        }, log);
+        res.json({ ok: true, counts });
+      } catch (e) {
+        const status = e.status || 503;
+        res.status(status).json({ ok: false, error: e.message || "mirror_failed" });
+      }
     }),
   );
 
@@ -311,6 +575,13 @@ export default function createTraktimeRouter(config, logger) {
            returning *`,
           [req.user.id, project_id, task_id, description, tags],
         );
+        await tkAudit(pool, {
+          action: "timer.start",
+          row_table: "tk_entries",
+          row_id: rows[0].entry_id,
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
         res.status(201).json({ ok: true, entry: rows[0] });
       } catch (e) {
         if (e.code === "23505") {
@@ -336,6 +607,13 @@ export default function createTraktimeRouter(config, logger) {
         [req.user.id],
       );
       if (!rows.length) return res.status(404).json({ ok: false, error: "no_running_timer" });
+      await tkAudit(pool, {
+        action: "timer.stop",
+        row_table: "tk_entries",
+        row_id: rows[0].entry_id,
+        after: rows[0],
+        user_email: req.user.email,
+      }, log);
       res.json({ ok: true, entry: rows[0] });
     }),
   );
@@ -419,6 +697,13 @@ export default function createTraktimeRouter(config, logger) {
             tags,
           ],
         );
+        await tkAudit(pool, {
+          action: "entry.create",
+          row_table: "tk_entries",
+          row_id: rows[0].entry_id,
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
         res.status(201).json({ ok: true, entry: rows[0] });
       } catch (e) {
         if (e.code === "23503") {
@@ -478,6 +763,14 @@ export default function createTraktimeRouter(config, logger) {
           `update tk_entries set ${fields.join(", ")} where entry_id = $${i} returning *`,
           params,
         );
+        await tkAudit(pool, {
+          action: "entry.update",
+          row_table: "tk_entries",
+          row_id: id,
+          before: existing[0],
+          after: rows[0],
+          user_email: req.user.email,
+        }, log);
         res.json({ ok: true, entry: rows[0] });
       } catch (e) {
         if (e.code === "23503") {
@@ -507,6 +800,13 @@ export default function createTraktimeRouter(config, logger) {
         return res.status(409).json({ ok: false, error: "entry_locked_by_invoice" });
       }
       await pool.query(`delete from tk_entries where entry_id = $1`, [id]);
+      await tkAudit(pool, {
+        action: "entry.delete",
+        row_table: "tk_entries",
+        row_id: id,
+        before: existing[0],
+        user_email: req.user.email,
+      }, log);
       res.json({ ok: true });
     }),
   );

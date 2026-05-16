@@ -99,6 +99,37 @@ async function main() {
       const r = await requestJson(port, "POST", "/api/traktime/clients", { name: "X" });
       assert("clients POST → 401 without bearer", r.status === 401, `status=${r.status}`);
     }
+
+    // ── Sprint 2 endpoints
+    {
+      const r = await requestJson(port, "POST", "/api/traktime/admin/mirror-now");
+      assert(
+        "admin/mirror-now → 401 without bearer",
+        r.status === 401,
+        `status=${r.status}`,
+      );
+    }
+    {
+      const r = await requestJson(
+        port,
+        "POST",
+        "/api/traktime/projects/00000000-0000-0000-0000-000000000000/members",
+        { user_id: "00000000-0000-0000-0000-000000000000" },
+      );
+      assert(
+        "projects/:id/members POST → 401 without bearer",
+        r.status === 401,
+        `status=${r.status}`,
+      );
+    }
+    {
+      const r = await requestJson(port, "GET", "/api/traktime/reports/billable");
+      assert(
+        "reports/billable → 401 without bearer",
+        r.status === 401,
+        `status=${r.status}`,
+      );
+    }
   } finally {
     await new Promise((r) => server.close(r));
   }
