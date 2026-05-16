@@ -7,6 +7,7 @@ import {
   suggestOwner,
   operatorLabel,
   OPERATOR_CODES,
+  normalizeOperatorCode,
 } from "../src/utils/cotizacionAssignment.js";
 
 let passed = 0;
@@ -25,11 +26,11 @@ group("Cobranzas keyword wins regardless of channel → SA", () => {
   assert(suggestOwner({ origen: "LL", consulta: "Cuánto saldo me queda?" }) === "SA", "LL + saldo → SA");
 });
 
-group("Soporte / post-venta keywords → MA", () => {
-  assert(suggestOwner({ origen: "WA", consulta: "Tengo una queja con el último envío" }) === "MA", "queja → MA");
-  assert(suggestOwner({ origen: "EM", consulta: "Quiero hacer una devolución de los goteros" }) === "MA", "devolución → MA");
-  assert(suggestOwner({ origen: "WA", consulta: "Recibí mal el panel, está roto" }) === "MA", "roto → MA");
-  assert(suggestOwner({ origen: "CL", consulta: "Reclamo por garantía del panel" }) === "MA", "garantía → MA");
+group("Soporte / post-venta keywords → MP", () => {
+  assert(suggestOwner({ origen: "WA", consulta: "Tengo una queja con el último envío" }) === "MP", "queja → MP");
+  assert(suggestOwner({ origen: "EM", consulta: "Quiero hacer una devolución de los goteros" }) === "MP", "devolución → MP");
+  assert(suggestOwner({ origen: "WA", consulta: "Recibí mal el panel, está roto" }) === "MP", "roto → MP");
+  assert(suggestOwner({ origen: "CL", consulta: "Reclamo por garantía del panel" }) === "MP", "garantía → MP");
 });
 
 group("WA cotizaciones: short → TIN, long → RA", () => {
@@ -48,20 +49,20 @@ group("Cliente físico / Local → TIN (showroom)", () => {
   assert(suggestOwner({ origen: "LO", consulta: "Soy de la zona, vendrías a ver?" }) === "TIN", "LO → TIN");
 });
 
-group("Llamada → MA (default until anyone confirms)", () => {
-  assert(suggestOwner({ origen: "LL", consulta: "Necesito cotizar techo" }) === "MA", "LL → MA");
+group("Llamada → MP (default until anyone confirms)", () => {
+  assert(suggestOwner({ origen: "LL", consulta: "Necesito cotizar techo" }) === "MP", "LL → MP");
 });
 
-group("Residual channels FB / IG → MA", () => {
-  assert(suggestOwner({ origen: "FB", consulta: "Vi su post" }) === "MA", "FB → MA");
-  assert(suggestOwner({ origen: "IG", consulta: "DM por kit" }) === "MA", "IG → MA");
+group("Residual channels FB / IG → MP", () => {
+  assert(suggestOwner({ origen: "FB", consulta: "Vi su post" }) === "MP", "FB → MP");
+  assert(suggestOwner({ origen: "IG", consulta: "DM por kit" }) === "MP", "IG → MP");
 });
 
-group("Unknown / missing origen → MA", () => {
-  assert(suggestOwner({ origen: "", consulta: "loquesea" }) === "MA", "empty origen → MA");
-  assert(suggestOwner({ origen: "XYZ", consulta: "loquesea" }) === "MA", "unknown code → MA");
-  assert(suggestOwner({}) === "MA", "no args → MA");
-  assert(suggestOwner() === "MA", "undefined arg → MA");
+group("Unknown / missing origen → MP", () => {
+  assert(suggestOwner({ origen: "", consulta: "loquesea" }) === "MP", "empty origen → MP");
+  assert(suggestOwner({ origen: "XYZ", consulta: "loquesea" }) === "MP", "unknown code → MP");
+  assert(suggestOwner({}) === "MP", "no args → MP");
+  assert(suggestOwner() === "MP", "undefined arg → MP");
 });
 
 group("Always returns one of the known operator codes", () => {
@@ -80,11 +81,13 @@ group("Always returns one of the known operator codes", () => {
 });
 
 group("operatorLabel maps codes to first names", () => {
-  assert(operatorLabel("MA") === "Matías", "MA → Matías");
+  assert(operatorLabel("MP") === "Matías", "MP → Matías");
   assert(operatorLabel("RA") === "Ramiro", "RA → Ramiro");
   assert(operatorLabel("TIN") === "Martín", "TIN → Martín");
   assert(operatorLabel("SA") === "Sandra", "SA → Sandra");
-  assert(operatorLabel("ma") === "Matías", "lowercase normalized → Matías");
+  assert(operatorLabel("PANELIN") === "Panelin (AI)", "PANELIN → Panelin (AI)");
+  assert(operatorLabel("mp") === "Matías", "lowercase mp → Matías");
+  assert(operatorLabel("panelin") === "Panelin (AI)", "lowercase panelin → Panelin (AI)");
   assert(operatorLabel("UNKNOWN") === "UNKNOWN", "unknown code returns raw");
   assert(operatorLabel("") === "—", "empty → em dash");
   assert(operatorLabel(null) === "—", "null → em dash");
@@ -93,6 +96,27 @@ group("operatorLabel maps codes to first names", () => {
 group("Case insensitive origen", () => {
   assert(suggestOwner({ origen: "wa", consulta: "panel corto" }) === "TIN", "lowercase wa accepted");
   assert(suggestOwner({ origen: " EM ", consulta: "cotizar" }) === "RA", "spaces trimmed");
+});
+
+group("OPERATOR_CODES integrity (mirrors planilla canon)", () => {
+  const set = new Set(OPERATOR_CODES);
+  assert(set.size === OPERATOR_CODES.length, "no duplicates in OPERATOR_CODES");
+  assert(OPERATOR_CODES.every((c) => c === c.trim().toUpperCase()), "all codes trimmed UPPER");
+  assert(OPERATOR_CODES.length === 5, "5 codes total (MP, RA, TIN, SA, PANELIN)");
+  assert(OPERATOR_CODES.includes("PANELIN"), "PANELIN present for AI assignments");
+  assert(!OPERATOR_CODES.includes("MA"), "legacy MA removed (planilla canon is MP)");
+});
+
+group("normalizeOperatorCode — server-side validator", () => {
+  assert(normalizeOperatorCode("mp") === "MP", "lowercase mp → MP");
+  assert(normalizeOperatorCode(" RA ") === "RA", "padded RA → RA");
+  assert(normalizeOperatorCode("Panelin") === "PANELIN", "Title-case Panelin → PANELIN");
+  assert(normalizeOperatorCode("SA") === "SA", "SA passthrough");
+  assert(normalizeOperatorCode("MA") === null, "legacy MA rejected");
+  assert(normalizeOperatorCode("FAKE") === null, "unknown rejected");
+  assert(normalizeOperatorCode("") === null, "empty rejected");
+  assert(normalizeOperatorCode(null) === null, "null rejected");
+  assert(normalizeOperatorCode(undefined) === null, "undefined rejected");
 });
 
 console.log(`\n${failed === 0 ? "✓" : "✗"} cotizacionAssignment: ${passed} passed, ${failed} failed`);

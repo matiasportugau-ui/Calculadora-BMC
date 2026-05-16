@@ -1,12 +1,19 @@
 /**
  * Domain-specific routing rules for the BMC Admin&Ops team.
  *
- * The 4 operators (col `Asig.` in Admin 2.0 and `Responsable` in CRM_Operativo):
- *   - `MA`  = Matías Portugau (titular; cotizador; final approver for refunds/credits)
- *   - `RA`  = Ramiro Amaral (cotizador #2; owns ML + Email cotizaciones)
- *   - `TIN` = Martín Pérez ("Tincho"; dominant historical cotizador; showroom)
- *   - `SA`  = Sandra Arias (cobranzas / pagos; satellite — entra al admin sólo
- *            cuando ella misma atendió la llamada)
+ * Canonical codes come from the **planilla** CRM_Operativo!Parametros —
+ * see docs/google-sheets-module/MAPPER-PRECISO-PLANILLAS-CODIGO.md.
+ * The frontend mirrors the planilla casing so Google Sheets Data Validation
+ * accepts the value when PATCH writes to col `Responsable`.
+ *
+ * The 5 operators:
+ *   - `MP`      = Matías Portugau (titular; cotizador; final approver for refunds/credits)
+ *   - `RA`      = Ramiro Amaral (cotizador #2; owns ML + Email cotizaciones)
+ *   - `TIN`     = Martín Pérez ("Tincho"; dominant historical cotizador; showroom)
+ *   - `SA`      = Sandra Arias (cobranzas / pagos; satellite — entra al admin
+ *                sólo cuando ella misma atendió la llamada)
+ *   - `PANELIN` = Panelin (AI agent) — asignaciones automáticas cuando no hay
+ *                operador humano en el loop
  *
  * Rules below were inferred from the 2026-05-14 data analysis (n=353 cotizaciones)
  * and the team discovery interview. They are SOFT suggestions — the UI must always
@@ -27,11 +34,11 @@ const SOPORTE_RE =
 /**
  * Pure function: pick the suggested operator code for an Admin 2.0 row.
  *
- * Always returns one of `"MA" | "RA" | "TIN" | "SA"` — never null. Default fallback
- * is `"MA"` because Matías is the catch-all when no rule fires.
+ * Always returns one of `"MP" | "RA" | "TIN" | "SA" | "PANELIN"` — never null.
+ * Default fallback is `"MP"` because Matías is the catch-all when no rule fires.
  *
  * @param {{origen?: string, consulta?: string}} input
- * @returns {"MA" | "RA" | "TIN" | "SA"}
+ * @returns {"MP" | "RA" | "TIN" | "SA" | "PANELIN"}
  */
 export function suggestOwner({ origen = "", consulta = "" } = {}) {
   const o = String(origen).trim().toUpperCase();
@@ -41,7 +48,7 @@ export function suggestOwner({ origen = "", consulta = "" } = {}) {
   if (COBRANZAS_RE.test(c)) return "SA";
 
   // 2. Soporte / post-venta → Matías (he approves refunds, credits, garantías).
-  if (SOPORTE_RE.test(c)) return "MA";
+  if (SOPORTE_RE.test(c)) return "MP";
 
   // 3. Channel-based routing for cotizaciones nuevas.
   switch (o) {
@@ -62,13 +69,13 @@ export function suggestOwner({ origen = "", consulta = "" } = {}) {
       return "TIN";
     case "LL":
       // Llamada — quien atendió la carga; default Matías hasta que se confirme.
-      return "MA";
+      return "MP";
     case "FB":
     case "IG":
       // Redes sociales (residual <2% del volumen) — Matías hasta tener señal.
-      return "MA";
+      return "MP";
     default:
-      return "MA";
+      return "MP";
   }
 }
 
@@ -77,10 +84,11 @@ export function suggestOwner({ origen = "", consulta = "" } = {}) {
  * Falls back to the raw code if unknown.
  */
 const OPERATOR_NAMES = Object.freeze({
-  MA: "Matías",
+  MP: "Matías",
   RA: "Ramiro",
   TIN: "Martín",
   SA: "Sandra",
+  PANELIN: "Panelin (AI)",
 });
 
 export function operatorLabel(code) {
@@ -90,5 +98,19 @@ export function operatorLabel(code) {
 
 /**
  * Full list of valid operator codes — useful for `<select>` options or test tables.
+ * Casing matches CRM_Operativo!Parametros so server writes pass Sheets Data Validation.
  */
-export const OPERATOR_CODES = Object.freeze(["MA", "RA", "TIN", "SA"]);
+export const OPERATOR_CODES = Object.freeze(["MP", "RA", "TIN", "SA", "PANELIN"]);
+
+/**
+ * Normalize any operator string to the canonical code (UPPER + trim).
+ * Returns the normalized value if valid, or `null` if unrecognized.
+ * Used by the server before writing to the planilla.
+ *
+ * @param {string|null|undefined} raw
+ * @returns {"MP" | "RA" | "TIN" | "SA" | "PANELIN" | null}
+ */
+export function normalizeOperatorCode(raw) {
+  const k = String(raw || "").trim().toUpperCase();
+  return OPERATOR_CODES.includes(k) ? k : null;
+}
