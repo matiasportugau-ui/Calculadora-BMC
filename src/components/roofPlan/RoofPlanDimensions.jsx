@@ -475,8 +475,9 @@ export function VerificationBadge({ x, y, verification, svgTy }) {
     : `Diferencia: ${verification.delta?.panels ?? '?'} panel(es), área Δ${verification.delta?.area ?? '?'} m²`;
   return (
     <g data-bmc-layer={DIM_THEME.layers.verification} pointerEvents="none">
-      <circle cx={x} cy={y} r={r} fill={color} opacity={0.85} />
-      <title>{title}</title>
+      <circle cx={x} cy={y} r={r} fill={color} opacity={0.85} pointerEvents="auto">
+        <title>{title}</title>
+      </circle>
     </g>
   );
 }
