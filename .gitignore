@@ -6,6 +6,7 @@ node_modules/
 # Build
 dist/
 build/
+artifact-build/
 *.local
 
 # IDE — tracked: `.vscode/settings.json`, `.vscode/extensions.json` (team); rest local

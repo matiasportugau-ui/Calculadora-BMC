@@ -91,7 +91,9 @@
       "Bash(curl -s http://localhost:*)",
       "Bash(/usr/bin/curl -s *)",
       "Bash(curl -s https://calculadora-bmc.vercel.app*)",
-      "Bash(curl -s https://api.github.com/repos/matiasportugau-ui/Calculadora-BMC/*)"
+      "Bash(curl -s https://api.github.com/repos/matiasportugau-ui/Calculadora-BMC/*)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__github__pull_request_read"
     ]
   },
   "hooks": {
