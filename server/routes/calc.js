@@ -38,7 +38,7 @@ import { computePresupuestoLibreCatalogo, flattenPerfilesLibre } from "../../src
 import { config } from "../config.js";
 import { GPT_ACTIONS } from "../gptActions.js";
 import { uploadQuoteToGcs } from "../lib/gcsUpload.js";
-import { uploadQuoteToDrive } from "../lib/driveUpload.js";
+import { extractDriveFileId, uploadQuoteToDrive } from "../lib/driveUpload.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
   registerQuotation as registerQuotationStore,
@@ -593,6 +593,7 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
     ]);
     const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
     const driveUrl = driveRes.status === "fulfilled" ? driveRes.value : null;
+    const driveFileId = extractDriveFileId(driveUrl);
 
     await registerQuotation({
       pdfId,
@@ -631,7 +632,7 @@ router.post("/cotizar/pdf", requireUser({ optional: true }), async (req, res) =>
           pdfId,
           pdfUrl: gcsUrl || pdfUrl,
           gcsUri: gcsUrl || null,
-          driveFileId: driveUrl || null,
+          driveFileId,
           status: "completed",
           wizardStep: typeof req.body?.wizardStep === "number" ? req.body.wizardStep : null,
         });

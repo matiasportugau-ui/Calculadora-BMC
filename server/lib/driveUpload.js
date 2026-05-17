@@ -13,6 +13,7 @@ import { google } from "googleapis";
 import { Readable } from "node:stream";
 
 const SCOPE_DRIVE = "https://www.googleapis.com/auth/drive.file";
+const DRIVE_FILE_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 
 let _drivePromise = null;
 function getDriveClient() {
@@ -64,4 +65,29 @@ export async function uploadQuoteToDrive(html, filename, folderId) {
   });
 
   return createRes.data.webViewLink || null;
+}
+
+/**
+ * Extract a stable Drive file ID from either a raw ID or a webViewLink.
+ * `uploadQuoteToDrive()` intentionally returns the share URL for callers, but
+ * identity.quotes stores only `drive_file_id`, so persistence code must not
+ * pass the full URL through the ID allowlist.
+ */
+export function extractDriveFileId(value) {
+  if (value == null) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (DRIVE_FILE_ID_PATTERN.test(raw)) return raw;
+
+  try {
+    const url = new URL(raw);
+    if (url.hostname !== "drive.google.com") return null;
+    const byPath = /^\/file\/d\/([^/]+)/.exec(url.pathname);
+    if (byPath?.[1] && DRIVE_FILE_ID_PATTERN.test(byPath[1])) return byPath[1];
+    const byQuery = url.searchParams.get("id");
+    if (byQuery && DRIVE_FILE_ID_PATTERN.test(byQuery)) return byQuery;
+  } catch {
+    return null;
+  }
+  return null;
 }

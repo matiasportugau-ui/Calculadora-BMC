@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 
 const mod = await import("../server/lib/quoteStore.js");
 const { upsertQuote, listMyQuotes, getMyQuote, softDeleteQuote, claimAnonymousQuotes, __test__ } = mod;
+const { extractDriveFileId } = await import("../server/lib/driveUpload.js");
 
 function makeShim() {
   const tables = { quotes: [], quote_events: [] };
@@ -253,6 +254,23 @@ describe("upsertQuote — W-2 drive_file_id allowlist", () => {
       driveFileId: "1A2B3C-_xyzABC1234567890",
     });
     assert.ok(r.quote_id);
+  });
+});
+
+describe("Drive quote persistence helpers", () => {
+  it("extracts the Drive file id from a webViewLink before persistence", () => {
+    const id = "1A2B3C-_xyzABC1234567890";
+    assert.equal(
+      extractDriveFileId(`https://drive.google.com/file/d/${id}/view?usp=drivesdk`),
+      id,
+    );
+    assert.equal(extractDriveFileId(`https://drive.google.com/open?id=${id}`), id);
+    assert.equal(extractDriveFileId(id), id);
+  });
+
+  it("does not treat arbitrary URLs as Drive file ids", () => {
+    assert.equal(extractDriveFileId("https://evil.example/file/d/1A2B3C-_xyzABC1234567890/view"), null);
+    assert.equal(extractDriveFileId("https://drive.google.com/file/d/<svg>/view"), null);
   });
 });
 
