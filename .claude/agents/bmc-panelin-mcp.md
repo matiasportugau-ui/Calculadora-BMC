@@ -1,6 +1,6 @@
 ---
 name: bmc-panelin-mcp
-description: External agent surface for the Panelin BMC calculator. Exposes 22 tools (calc + catalog + state + PDF + CRM + WhatsApp + telemetry) over MCP for use by Claude Code subagents, GPT Builder, Cursor, and other MCP clients. Use when you need to drive calculadora-bmc.vercel.app from outside the in-app Panelin chat.
+description: External agent surface for the Panelin BMC calculator. Exposes 28 tools (calc + catalog + state + PDF + CRM + WhatsApp + telemetry) over MCP for use by Claude Code subagents, GPT Builder, Cursor, and other MCP clients. Use when you need to drive calculadora-bmc.vercel.app from outside the in-app Panelin chat.
 ---
 
 # bmc-panelin-mcp
@@ -80,7 +80,7 @@ BMC_API_BASE=https://panelin-calc-XXX-uc.a.run.app BMC_API_TOKEN=$API_AUTH_TOKEN
 npm run start:api
 
 # 2. Verify manifest
-curl -s http://localhost:3001/api/agent/tools-manifest | jq '.count'   # → 22
+curl -s http://localhost:3001/api/agent/tools-manifest | jq '.count'   # → 28
 
 # 3. Run a read tool over HTTP
 curl -s -X POST http://localhost:3001/api/agent/exec-tool \

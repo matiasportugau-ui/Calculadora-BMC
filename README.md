@@ -6,7 +6,7 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
-![Node](https://img.shields.io/badge/Node-20-339933?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/Node-24-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-UNLICENSED-red)
 
 <!-- AUTO-GENERATED-BLOCK: scripts/generate-readme-presentation.mjs -->
@@ -40,7 +40,7 @@ Genera cotizaciones de materiales en tiempo real para obras con paneles sandwich
 
 ## Inicio rápido
 
-**Requisitos:** Node.js 20+
+**Requisitos:** Node.js 24.x
 
 > En Linux, `npm install` / `npm ci` puede requerir `libasound2-dev` por la dependencia nativa de `easymidi`.
 

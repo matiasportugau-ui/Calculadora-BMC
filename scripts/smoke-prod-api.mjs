@@ -305,13 +305,13 @@ async function main() {
   }
   console.log("");
   if (criticalFail) {
-    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response", "GET /webhooks/whatsapp"].includes(r.path));
+    const bad = rows.filter((r) => !r.ok && ["/health", "GET /api/actualizar-precios-calculadora", "POST /api/crm/suggest-response", "GET /webhooks/whatsapp", "GET /api/wa/health"].includes(r.path));
     const hint = bad.length ? bad.map((r) => `${r.path} (${r.status})`).join("; ") : "ver checks ✗ arriba";
     console.log(`RESULTADO: FALLA — ${hint}.`);
     process.exit(1);
   }
   console.log(
-    "RESULTADO: OK — health, capabilities, MATRIZ CSV, WhatsApp webhook" +
+    "RESULTADO: OK — health, capabilities, MATRIZ CSV, WhatsApp webhook, WA Cockpit" +
       (skipSuggest ? " (suggest omitido)." : ", suggest-response."),
   );
   console.log("");

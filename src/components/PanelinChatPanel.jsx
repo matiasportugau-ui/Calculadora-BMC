@@ -433,9 +433,8 @@ export default function PanelinChatPanel({
       setInput((prev) => (prev ? `${prev.trimEnd()} ${trimmed}` : trimmed));
       setTimeout(() => textareaRef.current?.focus(), 0);
     },
-    onError: (msg) => {
-      // Surface error inline; the user can also see it in the mic-button title attribute
-      console.warn("[dictation]", msg);
+    onError: () => {
+      // useDictation already calls setError(msg); dictation.error surfaces in mic-button title.
     },
     language: "es",
   });

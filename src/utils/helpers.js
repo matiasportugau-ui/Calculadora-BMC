@@ -523,7 +523,7 @@ ${categoriasHTML}
 ${warnHTML ? `<h3 style="margin:12px 0 6px;color:#FF9500;font-size:11pt">ADVERTENCIAS</h3><ul style="font-size:9pt;margin:0;padding-left:20px;line-height:1.7">${warnHTML}</ul>` : ""}
 <div style="margin-top:16px;padding:10px 14px;background:#F0F0F0;border-radius:6px;font-size:8pt;color:#6E6E73;line-height:1.6">
   <b>Origen datos:</b> src/data/constants.js · Lista: ${listaPrecios === "venta" ? "BMC Directo (venta)" : "Web"}<br>
-  <b>Generado:</b> ${timestamp} · Calculadora BMC v3.1.0
+  <b>Generado:</b> ${timestamp} · Calculadora BMC v3.1.5
 </div>
 </body></html>`;
 }

@@ -8,7 +8,7 @@ const SCENARIO_LABELS = {
 };
 
 function fmtUSD(n) {
-  return `U$S ${Number(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `USD ${Number(n).toLocaleString("es-UY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function DimRow({ label, value }) {

@@ -273,7 +273,7 @@ router.post("/agent/exec-tool", execToolLimiter, async (req, res) => {
     res.json({ ok: true, name, result: parsed });
   } catch (err) {
     req.log?.error({ err }, "agent/exec-tool failed");
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: "Error interno al ejecutar el tool." });
   }
 });
 
