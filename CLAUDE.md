@@ -100,7 +100,7 @@ Twelve agent definitions in **`.claude/agents/`**:
 | `bmc-orchestrator` | Coordinates full team runs |
 | `bmc-calc-specialist` | Pricing, BOM, panel calculations |
 | `bmc-panelin-chat` | Chat UI, training KB, dev mode |
-| `bmc-panelin-mcp` | External MCP surface (22 tools: calc, catalog, state, PDF, CRM, WhatsApp, telemetry) |
+| `bmc-panelin-mcp` | External MCP surface (28 tools: calc, catalog, state, PDF, CRM, WhatsApp, telemetry) |
 | `bmc-api-contract` | API response drift detection |
 | `bmc-security` | OAuth, CORS, credential audits |
 | `bmc-deployment` | Vercel + Cloud Run deploy/rollback |
