@@ -102,6 +102,11 @@ export function BmcAuthProvider({ children }) {
         if (cancelled) return;
         if (me) {
           applyAuth({ ...me });
+          // GET /auth/me doesn't return accessToken, so fetch one if we don't have it.
+          if (!accessToken) {
+            const refreshed = await refreshAccess();
+            if (cancelled || !refreshed) return;
+          }
           return;
         }
         const refreshed = await refreshAccess();
