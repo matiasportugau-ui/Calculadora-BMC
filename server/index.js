@@ -42,6 +42,7 @@ import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import marketingRouter from "./routes/marketing.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
@@ -53,6 +54,7 @@ import identityMeRouter from "./routes/identityMe.js";
 import quoteExportRouter from "./routes/quoteExport.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
 import { getTraktimePool } from "./lib/traktimeDb.js";
 import { startTraktimeMirrorWorker } from "./lib/traktimeMirrorWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
@@ -957,6 +959,9 @@ app.use("/api/agent", createSuperAgentRouter(config));
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
+// Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
+// Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
+app.use("/api/marketing", marketingRouter);
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);
