@@ -1,7 +1,7 @@
 {
   "name": "calculadora-bmc",
   "version": "3.1.5",
-  "description": "Calculadora de cotizaci\u00f3n de paneles de aislamiento \u2014 BMC Uruguay (METALOG SAS)",
+  "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
   "private": true,
   "type": "module",
   "main": "src/components/PanelinCalculadoraV3.jsx",
@@ -201,7 +201,9 @@
     "@react-three/drei": "^9.114.3",
     "@react-three/fiber": "^8.17.10",
     "@sparticuz/chromium": "^147.0.2",
+    "@tanstack/react-query": "^5.100.10",
     "ai": "^6.0.176",
+    "cheerio": "^1.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
@@ -214,6 +216,7 @@
     "jszip": "^3.10.1",
     "lucide-react": "^0.263.1",
     "multer": "^2.1.1",
+    "node-cron": "^3.0.3",
     "openai": "^6.32.0",
     "otplib": "^13.4.0",
     "pg": "^8.13.1",
@@ -224,12 +227,10 @@
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.3",
+    "robots-parser": "^3.0.1",
     "three": "^0.169.0",
     "web-vitals": "^5.2.0",
-    "zod": "^4.4.3",
-    "cheerio": "^1.0.0",
-    "robots-parser": "^3.0.1",
-    "node-cron": "^3.0.3"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
