@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-05-14
+**Última actualización:** 2026-05-18
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -11,6 +11,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-05-18 (Market Intelligence v1 — PR #244 mergeado):** Módulo completo implementado y mergeado a `main`. Código extraído de sesión Managed Agent (`sesn_01TPkGGTQ4GW3RRGYcqYFTU5`) via extractor Python sobre events JSON. 38 archivos nuevos/modificados: 8 migraciones SQL idempotentes (schema `bmc_market_intel`, aislado de `bmc_price_monitor`), ETL pipeline con scraping responsable (robots.txt, rate limiting 1req/site/día, delta detection, deduplicación por dominio normalizado), mystery shopping queue (never-auto-approve), sistema de alertas 3 niveles (info/warning/critical, umbrales configurables via env, dedup por competitor+sku+level+UTC date), Express router `/api/marketing/*` (6 endpoints, `requireAuth` per-ruta), dashboard React `/hub/marketing` con 5 subcomponentes, 26 tests node --test (26/26 ✅). CI: Lint ✅, Validate Calculations ✅, Env drift ✅ (se agregaron 5 vars a `.env.example`), Vercel + Cloud Run deployan ✅. **Pendiente operador:** correr `DATABASE_URL=<prod_url> npm run migrate:market-intel` — `DATABASE_URL` sigue sin estar en Cloud Run (mismo gap que traktime y WA Cockpit). Para todos los módulos que dependen de Postgres: provision la DB y setear `DATABASE_URL` en Cloud Run via `gcloud run services update panelin-calc --set-env-vars DATABASE_URL=<url>`.
 
 **2026-05-16 (TraKtiMe — módulo completo Sprint 1→2→3, PR #242):** Implementación end-to-end del módulo de gestión de tiempo y facturación TraKtiMe para METALOG SAS / BMC Uruguay. **Sprint 1 MVP:** 10 migraciones SQL (`traktime-package/migrations/000–010`), runner `scripts/run-traktime-migrations.mjs`, pool singleton `server/lib/traktimeDb.js`, router factory `server/routes/traktime.js` (~35 endpoints), `"traktime"` agregado a `ALL_MODULES` en `identityAuth.js`, ruta React lazy `/hub/traktime/*` en `App.jsx`, link en `BmcModuleNav.jsx`, test de contrato offline `tests/traktime-contract.test.js` (13 asserts). **Sprint 2 team mode + mirror:** `server/lib/traktimeMirrorWorker.js` (cron 03:00 UY, 5 tabs Sheets con scratch+rename + append-only audit watermark), `server/lib/traktimeAudit.js` (never-throws audit helper), endpoints admin `/api/traktime/admin/mirror-now` + `/api/traktime/projects/:id/members`, member scoping en entries/reports, `server/config.js` con vars `TRAKTIME_*`. **Sprint 3 invoicing + PDF:** migraciones `007–009` (invoices, lines, seq), numeración `TRK-YYYY-NNNN` vía `tk_invoice_seq` UPSERT, `server/lib/traktimeInvoicePdf.js` (HTML→Chromium→GCS, max 1 concurrente), template `src/pdf-templates/traktimeInvoice.html` en español, `InvoicesPanel.jsx` con Builder + filtro de estado. Todos los CI checks verdes (Lint ✅, Validate Calculations ✅, Env drift ✅). **Pendiente por el operador:** correr `npm run traktime:migrate` contra DB real, configurar `TRAKTIME_SHEET_ID` y `TRAKTIME_INVOICE_ISSUER_ADDRESS`.
 
