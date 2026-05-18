@@ -1,7 +1,7 @@
 {
   "name": "calculadora-bmc",
   "version": "3.1.5",
-  "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
+  "description": "Calculadora de cotizaci\u00f3n de paneles de aislamiento \u2014 BMC Uruguay (METALOG SAS)",
   "private": true,
   "type": "module",
   "main": "src/components/PanelinCalculadoraV3.jsx",
@@ -189,7 +189,10 @@
     "test:playwright:admin-cot-suggest-ia": "node scripts/playwright-admin-cot-suggest-ia.mjs",
     "test:playwright:admin-cot-suggested-badge": "node scripts/playwright-admin-cot-suggested-badge.mjs",
     "test:playwright:admin-cot-wa-timeline": "node scripts/playwright-admin-cot-wa-timeline.mjs",
-    "test:playwright:admin-cot-f1-completion": "node scripts/playwright-admin-cot-f1-completion.mjs"
+    "test:playwright:admin-cot-f1-completion": "node scripts/playwright-admin-cot-f1-completion.mjs",
+    "test:market-intel": "node --test tests/market-intel/*.test.js",
+    "migrate:market-intel": "node server/migrations/market-intel/run-migrations.js",
+    "etl:run": "node -e \"require(\"./server/lib/marketIntel/scheduler\")\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
@@ -223,7 +226,10 @@
     "react-router-dom": "^6.30.3",
     "three": "^0.169.0",
     "web-vitals": "^5.2.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "cheerio": "^1.0.0",
+    "robots-parser": "^3.0.1",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
