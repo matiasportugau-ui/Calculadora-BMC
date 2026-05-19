@@ -5,7 +5,8 @@ import ReportsView from "./Reports/ReportsView.jsx";
 import ClientsPanel from "./Clients/ClientsPanel.jsx";
 import ProjectsPanel from "./Projects/ProjectsPanel.jsx";
 import InvoicesPanel from "./Invoices/InvoicesPanel.jsx";
-import { tkApi } from "./shared/api.js";
+import { tkApi, setApiToken } from "./shared/api.js";
+import { useBmcAuth } from "../../hooks/useBmcAuth.js";
 import { colors, fonts, page, tabBar, tabButton } from "./shared/styles.js";
 
 const TABS = [
@@ -17,6 +18,7 @@ const TABS = [
 ];
 
 export default function TraKtiMeModule() {
+  const auth = useBmcAuth();
   const [tab, setTab] = useState("timer");
   const [me, setMe] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -35,8 +37,11 @@ export default function TraKtiMeModule() {
   }, []);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    if (auth.accessToken) {
+      setApiToken(auth.accessToken);
+      reload();
+    }
+  }, [auth.accessToken, reload]);
 
   const bumpEntries = () => setRefreshKey((k) => k + 1);
 

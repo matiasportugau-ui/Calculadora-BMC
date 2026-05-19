@@ -1,8 +1,14 @@
 import { getCalcApiBase } from "../../../utils/calcApiBase.js";
 
+let injectedToken = null;
+
+function setApiToken(token) {
+  injectedToken = token;
+}
+
 function authHeader() {
   try {
-    const token =
+    const token = injectedToken ||
       (typeof window !== "undefined" && window.localStorage?.getItem("bmc_access_jwt")) || "";
     return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
@@ -77,3 +83,5 @@ export const tkApi = {
   voidInvoice: (id) => request("POST", `/api/traktime/invoices/${id}/void`),
   mirrorNow: () => request("POST", "/api/traktime/admin/mirror-now"),
 };
+
+export { setApiToken };

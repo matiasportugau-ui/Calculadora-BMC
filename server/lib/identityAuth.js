@@ -33,6 +33,7 @@ const ALL_MODULES = [
   "agent-admin",
   "canales",
   "crm-personal",
+  "tareas",
   "traktime",
 ];
 

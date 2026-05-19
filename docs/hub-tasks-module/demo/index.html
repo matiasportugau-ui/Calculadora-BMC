@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tareas (Tasks) Module — Phase 0 Interactive Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 2rem;
+    }
+    .demo-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 2rem;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #222;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 0.95rem;
+    }
+    .workflow-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    .panel {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .panel h2 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: #222;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 0.5rem;
+    }
+    .scenario {
+      margin-bottom: 1.5rem;
+    }
+    .scenario h3 {
+      font-size: 0.95rem;
+      color: #007bff;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    .scenario p {
+      font-size: 0.9rem;
+      color: #555;
+      line-height: 1.5;
+      margin-bottom: 0.5rem;
+    }
+    .timeline {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #f9f9f9;
+      border-left: 3px solid #28a745;
+      border-radius: 4px;
+    }
+    .timeline-item {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0.8rem;
+      font-size: 0.85rem;
+    }
+    .timeline-time {
+      min-width: 60px;
+      font-weight: 600;
+      color: #007bff;
+    }
+    .timeline-desc {
+      color: #555;
+      flex: 1;
+    }
+    .conflict-box {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .conflict-box strong {
+      color: #856404;
+    }
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+    .btn-success:hover {
+      background: #1e7e34;
+    }
+    .btn-warning {
+      background: #ffc107;
+      color: #333;
+    }
+    .btn-warning:hover {
+      background: #e0a800;
+    }
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    .state-display {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .state-key {
+      color: #007bff;
+      font-weight: 600;
+    }
+    .state-value {
+      color: #28a745;
+    }
+    .offline-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #28a745;
+      margin-right: 0.5rem;
+    }
+    .offline-indicator.offline {
+      background: #dc3545;
+    }
+    .queue-item {
+      background: #e7f3ff;
+      border-left: 3px solid #007bff;
+      padding: 0.75rem;
+      margin: 0.5rem 0;
+      border-radius: 2px;
+      font-size: 0.85rem;
+    }
+    .queue-item.error {
+      background: #ffe7e7;
+      border-left-color: #dc3545;
+    }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <header>
+      <h1>🗂️ Tareas (Tasks) Module — Phase 0 Interactive Demo</h1>
+      <p class="subtitle">Demonstrates sync workflow, conflict resolution, offline queue, and rate-limiting behavior</p>
+    </header>
+
+    <!-- Sync Workflow Demo -->
+    <div class="workflow-grid">
+      <div class="panel">
+        <h2>📊 Sync Workflow</h2>
+        <div class="scenario">
+          <h3>Scenario: Scheduled Sync Cycle</h3>
+          <p>Cloud Scheduler triggers POST /sync/google-tasks/pull every 60 seconds. System fetches changes from Google Tasks API and syncs into HUB database.</p>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <span class="timeline-time">T+0s</span>
+            <span class="timeline-desc">Cloud Scheduler fires → POST /sync/google-tasks/pull with HMAC-SHA256 signature</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+1s</span>
+            <span class="timeline-desc">Load active oauth_tokens (revoked_at IS NULL)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+2s</span>
+            <span class="timeline-desc">For each user: decrypt access_token (pgp_sym_decrypt)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+3s</span>
+            <span class="timeline-desc">Query Google Tasks API (GET /tasks/v1/users/@me/lists) with updatedMin</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+4s</span>
+            <span class="timeline-desc">Upsert into tasks.task_lists + tasks.tasks (ON CONFLICT DO UPDATE)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+5s</span>
+            <span class="timeline-desc">Detect conflicts: is_deleted=true but Google version active</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+6s</span>
+            <span class="timeline-desc">Insert into tasks.sync_conflicts, notify UI (TanStack Query invalidation)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">T+7s</span>
+            <span class="timeline-desc">Log cycle: tasks.sync_log(event_type='sync_completed', cycle_id)</span>
+          </div>
+        </div>
+        <div class="button-group">
+          <button class="btn-primary" onclick="simulateSyncCycle()">▶ Simulate Sync Cycle</button>
+          <button class="btn-warning" onclick="simulateRateLimit()">⚠️ Trigger 429 Rate Limit</button>
+        </div>
+        <div class="state-display" id="sync-state">
+          <div><span class="state-key">cycle_id:</span> <span class="state-value">pending</span></div>
+          <div><span class="state-key">status:</span> <span class="state-value">idle</span></div>
+          <div><span class="state-key">items_synced:</span> <span class="state-value">0</span></div>
+          <div><span class="state-key">conflicts_detected:</span> <span class="state-value">0</span></div>
+        </div>
+      </div>
+
+      <!-- Conflict Resolution Demo -->
+      <div class="panel">
+        <h2>⚔️ Conflict Resolution</h2>
+        <div class="scenario">
+          <h3>Scenario: Soft-Delete Mismatch</h3>
+          <p>User deletes task in HUB (soft-delete: is_deleted=true), but task was updated in Google Tasks before sync caught it. System creates conflict record with 7-day TTL.</p>
+        </div>
+        <div class="conflict-box">
+          <strong>Conflict ID:</strong> conflict_1234567<br>
+          <strong>Type:</strong> soft_delete_mismatch<br>
+          <strong>Task:</strong> "Review Q2 Budget"<br>
+          <strong>HUB Version:</strong> status=deleted, updated_at=2026-05-18T14:30Z<br>
+          <strong>Google Version:</strong> status=needsAction, due=2026-05-25, updated_at=2026-05-18T15:00Z<br>
+          <strong>Created:</strong> 2026-05-18T15:05Z<br>
+          <strong>Expires:</strong> 2026-05-25T15:05Z (7 days)
+        </div>
+        <div class="scenario" style="margin-top: 1.5rem;">
+          <h3>Resolution Options</h3>
+          <p>Operator chooses one resolution strategy:</p>
+        </div>
+        <div class="button-group">
+          <button class="btn-success" onclick="resolveConflict('take_hub')">✓ Trust Hub (Restore Delete)</button>
+          <button class="btn-warning" onclick="resolveConflict('take_google')">↻ Trust Google (Keep Active)</button>
+          <button class="btn-primary" onclick="resolveConflict('manual')">⚙️ Manual Merge</button>
+        </div>
+        <div class="state-display" id="conflict-state">
+          <div><span class="state-key">conflicts_open:</span> <span class="state-value">1</span></div>
+          <div><span class="state-key">selected_resolution:</span> <span class="state-value">none</span></div>
+          <div><span class="state-key">last_resolved:</span> <span class="state-value">never</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offline Queue & Rate Limiting -->
+    <div class="workflow-grid">
+      <div class="panel">
+        <h2>📦 Offline Queue (IndexedDB)</h2>
+        <div class="scenario">
+          <h3>Scenario: Network Interrupted</h3>
+          <p>User creates 3 tasks while offline. React Query queues mutations in IndexedDB. When connection returns, mutations retry with exponential backoff (base 2s, max 120s, 7 retries).</p>
+        </div>
+        <div style="margin: 1rem 0;">
+          <span class="offline-indicator" id="connection-status"></span>
+          <span id="connection-text">Online</span>
+        </div>
+        <div class="button-group">
+          <button class="btn-primary" onclick="addOfflineTask()">➕ Add Task (Offline)</button>
+          <button class="btn-success" onclick="toggleConnection()">🔗 Toggle Connection</button>
+          <button class="btn-danger" onclick="clearQueue()">🗑️ Clear Queue</button>
+        </div>
+        <div class="state-display" id="queue-state">
+          <div style="color: #999; font-style: italic;">Queue is empty</div>
+        </div>
+      </div>
+
+      <!-- Rate Limiting Demo -->
+      <div class="panel">
+        <h2>⏱️ Rate Limiting (1 req/min)</h2>
+        <div class="scenario">
+          <h3>Scenario: Manual Sync Trigger</h3>
+          <p>POST /sync/google-tasks/pull is rate-limited to 1 request per minute per user. Exceeding the limit returns 429 Too Many Requests with retry-after header.</p>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <span class="timeline-time">Retry 1</span>
+            <span class="timeline-desc">Wait 2s (base 2^0)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">Retry 2</span>
+            <span class="timeline-desc">Wait 4s (2^1)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">Retry 3</span>
+            <span class="timeline-desc">Wait 8s (2^2)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="timeline-time">Retry N</span>
+            <span class="timeline-desc">Wait min(120s, 2^n) — max 120s backoff, 7 total retries</span>
+          </div>
+        </div>
+        <div class="button-group">
+          <button class="btn-primary" onclick="triggerManualSync()">▶ Trigger Manual Sync</button>
+          <button class="btn-warning" onclick="showBackoffChart()">📈 Show Backoff Chart</button>
+        </div>
+        <div class="state-display" id="ratelimit-state">
+          <div><span class="state-key">last_sync:</span> <span class="state-value">never</span></div>
+          <div><span class="state-key">seconds_until_next:</span> <span class="state-value">0</span></div>
+          <div><span class="state-key">retry_attempt:</span> <span class="state-value">0 / 7</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Architecture Notes -->
+    <div class="panel" style="margin-top: 2rem;">
+      <h2>🏗️ Architecture Notes</h2>
+      <ul style="margin-left: 1.5rem; line-height: 1.8; color: #555;">
+        <li><strong>Bidirectional Sync:</strong> Cloud Scheduler polls every 60s (no native webhooks in Tasks API v1)</li>
+        <li><strong>Pagination:</strong> nextPageToken for large task lists (&gt;100 items per list)</li>
+        <li><strong>Encryption:</strong> pgp_sym_encrypt for OAuth tokens in transit and at-rest</li>
+        <li><strong>Conflict TTL:</strong> 7-day expiry on sync_conflicts; operator must resolve before expiry</li>
+        <li><strong>RLS Enforcement:</strong> Service-role queries (Cloud Scheduler, API) bypass RLS; user queries enforce user_id = current_user_id</li>
+        <li><strong>TanStack Query:</strong> staleTime=60s, gcTime=5min; invalidation on mutation success triggers fresh fetch</li>
+        <li><strong>Offline Resilience:</strong> IndexedDB queue persists pending mutations across browser restarts</li>
+        <li><strong>Token Refresh:</strong> 401 from Google Tasks API triggers refresh_token flow; revokes token if refresh fails</li>
+      </ul>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background: #28a745;"></div>
+        <span>Success / Online</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #ffc107;"></div>
+        <span>Pending / Backoff</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #dc3545;"></div>
+        <span>Error / Offline</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #007bff;"></div>
+        <span>Info / In Progress</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let state = {
+      isOnline: true,
+      queue: [],
+      lastSyncTime: null,
+      rateLimitResetTime: 0,
+    };
+
+    function updateStateDisplay() {
+      const syncEl = document.getElementById('sync-state');
+      syncEl.innerHTML = `
+        <div><span class="state-key">cycle_id:</span> <span class="state-value">cycle_${Date.now().toString(36)}</span></div>
+        <div><span class="state-key">status:</span> <span class="state-value">completed</span></div>
+        <div><span class="state-key">items_synced:</span> <span class="state-value">${Math.floor(Math.random() * 10) + 1}</span></div>
+        <div><span class="state-key">conflicts_detected:</span> <span class="state-value">${Math.floor(Math.random() * 3)}</span></div>
+        <div><span class="state-key">sync_log_id:</span> <span class="state-value">log_${Date.now().toString(36)}</span></div>
+      `;
+    }
+
+    function simulateSyncCycle() {
+      updateStateDisplay();
+      state.lastSyncTime = new Date();
+      const nextReset = new Date(Date.now() + 60000);
+      document.getElementById('ratelimit-state').innerHTML = `
+        <div><span class="state-key">last_sync:</span> <span class="state-value">${state.lastSyncTime.toLocaleTimeString()}</span></div>
+        <div><span class="state-key">next_sync:</span> <span class="state-value">${nextReset.toLocaleTimeString()}</span></div>
+        <div><span class="state-key">status:</span> <span class="state-value">✓ synced</span></div>
+      `;
+    }
+
+    function simulateRateLimit() {
+      alert('⚠️ 429 Too Many Requests\n\nRate limit exceeded: 1 sync per minute\n\nStarting exponential backoff:\n• Retry 1: wait 2s\n• Retry 2: wait 4s\n• Retry 3: wait 8s\n• ...\n• Retry 7: wait 120s max\n\nManual sync available again at: ' + new Date(Date.now() + 60000).toLocaleTimeString());
+    }
+
+    function resolveConflict(resolution) {
+      const resolutionText = {
+        take_hub: 'Trust Hub (Restore Delete)',
+        take_google: 'Trust Google (Keep Active)',
+        manual: 'Manual Merge',
+      };
+      alert(`✓ Conflict resolved\n\nResolution: ${resolutionText[resolution]}\nConflict will be removed from sync_conflicts table.\nTanStack Query will invalidate task lists + sync status.`);
+      document.getElementById('conflict-state').innerHTML = `
+        <div><span class="state-key">conflicts_open:</span> <span class="state-value">0</span></div>
+        <div><span class="state-key">last_resolved:</span> <span class="state-value">${new Date().toLocaleTimeString()}</span></div>
+        <div><span class="state-key">resolution_type:</span> <span class="state-value">${resolution}</span></div>
+      `;
+    }
+
+    function addOfflineTask() {
+      if (!state.isOnline) {
+        const task = { id: `task_${Date.now()}`, title: 'Offline Task ' + (state.queue.length + 1), status: 'pending' };
+        state.queue.push(task);
+        updateQueueDisplay();
+      } else {
+        alert('Currently online. Disable connection first.');
+      }
+    }
+
+    function toggleConnection() {
+      state.isOnline = !state.isOnline;
+      const indicator = document.getElementById('connection-status');
+      const text = document.getElementById('connection-text');
+      if (state.isOnline) {
+        indicator.classList.remove('offline');
+        text.textContent = 'Online — Queue flushing...';
+        setTimeout(() => {
+          state.queue = [];
+          updateQueueDisplay();
+          text.textContent = 'Online';
+        }, 1000);
+      } else {
+        indicator.classList.add('offline');
+        text.textContent = 'Offline — Mutations queued in IndexedDB';
+      }
+    }
+
+    function clearQueue() {
+      state.queue = [];
+      updateQueueDisplay();
+    }
+
+    function updateQueueDisplay() {
+      const el = document.getElementById('queue-state');
+      if (state.queue.length === 0) {
+        el.innerHTML = '<div style="color: #999; font-style: italic;">Queue is empty</div>';
+      } else {
+        el.innerHTML = state.queue.map(task => `
+          <div class="queue-item">
+            <strong>${task.title}</strong> — Status: ${task.status}
+          </div>
+        `).join('');
+      }
+    }
+
+    function triggerManualSync() {
+      const now = Date.now();
+      if (now < state.rateLimitResetTime) {
+        const secondsLeft = Math.ceil((state.rateLimitResetTime - now) / 1000);
+        alert(`⏱️ Rate limit active\n\nTry again in ${secondsLeft} seconds`);
+      } else {
+        simulateSyncCycle();
+        state.rateLimitResetTime = Date.now() + 60000;
+      }
+    }
+
+    function showBackoffChart() {
+      let msg = 'Exponential Backoff Schedule\n\n';
+      for (let i = 0; i < 7; i++) {
+        const wait = Math.min(Math.pow(2, i + 1), 120);
+        msg += `Retry ${i + 1}: wait ${wait}s\n`;
+      }
+      alert(msg);
+    }
+
+    // Initialize
+    document.getElementById('connection-status').classList.remove('offline');
+  </script>
+</body>
+</html>

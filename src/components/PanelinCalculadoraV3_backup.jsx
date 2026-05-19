@@ -45,6 +45,7 @@ import {
   fmtPrice, generatePrintHTML, generateInternalHTML, buildWhatsAppText,
   createPreviewUrl, revokePreviewUrl,
 } from "../utils/helpers.js";
+import { buildGlobalPdfFileName } from "../utils/quotationNaming.js";
 import {
   saveBudget, getAllLogs, deleteBudget, clearAllLogs,
   exportLogsAsJSON, exportSingleBudget,
@@ -3457,6 +3458,8 @@ export default function PanelinCalculadoraV3() {
   // before the budget-log block; keeping the original declaration at ~L4075 caused a
   // TDZ ReferenceError "Cannot access 'currentBudgetCode' before initialization").
   const [currentBudgetCode, setCurrentBudgetCode] = useState(null);
+  const [globalCounter, setGlobalCounter] = useState(null);
+  const [showQuoteConfirm, setShowQuoteConfirm] = useState(false);
 
   const fleteCostoNum = useMemo(() => {
     const t = String(fleteCosto ?? "").trim().replace(",", ".");
@@ -3644,6 +3647,27 @@ export default function PanelinCalculadoraV3() {
       showToast("Error al generar PDF: " + (err?.message || err));
     }
   }, [groups.length, buildClientePdfHtml, showToast, currentBudgetCode, proyecto]);
+
+  const handleConfirmQuote = useCallback(async () => {
+    showToast("Obteniendo número de cotización…");
+    try {
+      const res = await fetch("/api/quotes/counter/next", { method: "POST" });
+      if (!res.ok) throw new Error("counter_failed");
+      const { counter, code } = await res.json();
+      setGlobalCounter(counter);
+      setCurrentBudgetCode(code);
+      const fname = buildGlobalPdfFileName(counter, proyecto);
+      showToast("Generando PDF…");
+      const html = await buildClientePdfHtml();
+      const { htmlToPdfBlob, downloadPdfBlob } = await import("../utils/pdfGenerator.js");
+      const blob = await htmlToPdfBlob(html, fname);
+      downloadPdfBlob(blob, fname);
+      setShowQuoteConfirm(false);
+      showToast(`PDF descargado: ${fname}`);
+    } catch (err) {
+      showToast("Error: " + (err?.message || err));
+    }
+  }, [proyecto, buildClientePdfHtml, showToast]);
 
   const handleCopyWA = () => {
     const txt = buildWhatsAppText({
@@ -4373,6 +4397,14 @@ export default function PanelinCalculadoraV3() {
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   }, [groups, grandTotal, scenario, listaPrecios, proyecto, panelInfo, techo, pared, camara, flete, overrides, excludedItems, categoriasActivas, libreAcc, librePanelLines, librePerfilQty, libreFijQty, libreSellQty, libreExtra, librePerfilFilter]);
 
+  // ── Fetch global counter on mount ──
+  useEffect(() => {
+    fetch("/api/quotes/counter")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.ok) setGlobalCounter(data.counter); })
+      .catch(() => {});
+  }, []);
+
   // ── Manual save ──
   const handleManualSave = useCallback(() => {
     if (!groups.length) return;
@@ -4450,6 +4482,11 @@ export default function PanelinCalculadoraV3() {
           )}
           {currentBudgetCode && (
             <div style={{ fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.15)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.04em", ...TN }}>{currentBudgetCode}</div>
+          )}
+          {globalCounter !== null && (
+            <div style={{ fontSize: 11, fontWeight: 500, background: "rgba(255,255,255,0.12)", padding: "3px 10px", borderRadius: 6, letterSpacing: "0.03em", ...TN }}>
+              Cotizaciones: {String(globalCounter).padStart(4, "0")}
+            </div>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", width: isCompactLayout ? "100%" : "auto" }}>
@@ -4564,7 +4601,7 @@ export default function PanelinCalculadoraV3() {
                     onClick={() => { setShowLogPanel(true); fetchGptQuotations(); setMobileHeaderMenuOpen(false); }}
                     style={{ position: "relative", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
                   >
-                    <Archive size={14} color="#555" />Presupuestos
+                    <Archive size={14} color="#555" />Borradores
                     {(logEntries.length + gptQuotations.length) > 0 ? (
                       <span style={{ marginLeft: "auto", background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
                     ) : null}
@@ -4633,10 +4670,12 @@ export default function PanelinCalculadoraV3() {
             </div>
           ) : (
             <>
+              {import.meta.env.VITE_FEATURE_ROLE_TOGGLE === "true" && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>
                 <button onClick={() => { setModoVendedor(true); setTecho({ ...TECHO_INITIAL_VENDEDOR }); setWizardStep(0); setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: modoVendedor ? 600 : 400 }}>Vendedor</button>
                 <button onClick={() => { setModoVendedor(false); if (!listaPrecios) setLP(getListaDefault()); }} style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: !modoVendedor ? "rgba(255,255,255,0.25)" : "transparent", color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: !modoVendedor ? 600 : 400 }}>Cliente</button>
               </div>
+              )}
               <div ref={toolsMenuRef} style={{ position: "relative" }}>
                 <button
                   type="button"
@@ -4703,7 +4742,7 @@ export default function PanelinCalculadoraV3() {
           {!isPhone ? (
             <>
               <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                <Archive size={14} />Presupuestos
+                <Archive size={14} />Borradores
                 {(logEntries.length + gptQuotations.length) > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
                 )}
@@ -5727,7 +5766,10 @@ export default function PanelinCalculadoraV3() {
                     {isPhone ? (
                       <>
                         {!canNext && (
-                          <span style={{ fontSize: 14, color: C.success, fontWeight: 700, textAlign: "center" }}>✓ Cotización lista</span>
+                          <button type="button" onClick={() => setShowQuoteConfirm(true)}
+                            style={{ fontSize: 14, color: "#fff", fontWeight: 700, background: C.success, border: "none", borderRadius: 10, padding: "10px 20px", cursor: "pointer" }}>
+                            ✓ Cotización lista
+                          </button>
                         )}
                         {canNext && !isValid && (
                           <span style={{ fontSize: 12, color: C.warning, textAlign: "center", lineHeight: 1.35 }}>Completá este paso para avanzar</span>
@@ -5749,7 +5791,10 @@ export default function PanelinCalculadoraV3() {
                             Siguiente
                           </button>
                         ) : (
-                          <span style={{ fontSize: 14, color: C.success, fontWeight: 700 }}>✓ Cotización lista</span>
+                          <button type="button" onClick={() => setShowQuoteConfirm(true)}
+                            style={{ fontSize: 14, color: "#fff", fontWeight: 700, background: C.success, border: "none", borderRadius: 10, padding: "12px 24px", cursor: "pointer" }}>
+                            ✓ Cotización lista
+                          </button>
                         )}
                       </>
                     )}
@@ -6945,7 +6990,7 @@ export default function PanelinCalculadoraV3() {
             {/* Drawer header */}
             <div style={{ padding: "20px 24px", background: C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>Presupuestos guardados</div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>Borradores guardados</div>
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{logEntries.length} registros</div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -7033,6 +7078,49 @@ export default function PanelinCalculadoraV3() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {showQuoteConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+          zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: C.surface, borderRadius: 16, padding: 32,
+            maxWidth: 480, width: "90%", boxShadow: "0 8px 40px rgba(0,0,0,0.25)", fontFamily: FONT }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: C.tp }}>
+              Confirmar cotización
+            </div>
+            {/* Customer details */}
+            <div style={{ fontSize: 13, color: C.tp, marginBottom: 16, lineHeight: 1.7 }}>
+              <div><b>Cliente:</b> {proyecto.razonSocial || proyecto.nombre || "—"}</div>
+              {proyecto.rut && <div><b>RUT:</b> {proyecto.rut}</div>}
+              {proyecto.telefono && <div><b>Tel:</b> {proyecto.telefono}</div>}
+              {proyecto.direccion && <div><b>Dir:</b> {proyecto.direccion}</div>}
+            </div>
+            {/* Totals */}
+            <div style={{ fontSize: 13, color: C.tp, marginBottom: 16, lineHeight: 1.7 }}>
+              <div><b>Total (con IVA):</b> USD {grandTotal.totalFinal?.toFixed(2)}</div>
+            </div>
+            {/* Filename preview */}
+            <div style={{ fontSize: 11, fontFamily: "monospace",
+              background: C.border, borderRadius: 6, padding: "8px 12px",
+              color: C.ts, marginBottom: 20 }}>
+              {buildGlobalPdfFileName((globalCounter ?? 0) + 1, proyecto)}
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button type="button" onClick={() => setShowQuoteConfirm(false)}
+                style={{ flex: 1, padding: "12px 0", borderRadius: 10,
+                  border: `1px solid ${C.border}`, background: C.surface,
+                  fontSize: 14, cursor: "pointer", color: C.tp, fontFamily: FONT }}>
+                Cancelar
+              </button>
+              <button type="button" onClick={handleConfirmQuote}
+                style={{ flex: 2, padding: "12px 0", borderRadius: 10,
+                  border: "none", background: C.success,
+                  color: "#fff", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer", fontFamily: FONT }}>
+                Confirmar y descargar PDF
+              </button>
             </div>
           </div>
         </div>

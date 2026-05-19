@@ -71,3 +71,36 @@ export function isLegacyFlatQuotationFolder(name) {
   const n = String(name || "");
   return n.startsWith("BMC-") && n.includes(" — ");
 }
+
+/** ddmmyy en America/Montevideo — e.g. "200526" para 20 de mayo 2026 */
+export function montevideoDdmmyy(d = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Montevideo",
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const pick = (t) => parts.find((p) => p.type === t)?.value || "00";
+  return `${pick("day")}${pick("month")}${pick("year")}`;
+}
+
+/** Extrae ciudad: último segmento separado por coma, si no hay usa primera palabra */
+export function extractCityFromDireccion(direccion) {
+  const s = String(direccion || "").trim();
+  if (!s) return "";
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts[parts.length - 1];
+  return s.split(/\s+/)[0] || "";
+}
+
+/** Construye nuevo formato PDF: 0022BMC-200526-Arcor SA-Montevideo.pdf */
+export function buildGlobalPdfFileName(counter, proyecto, date = new Date()) {
+  const seq = String(counter).padStart(4, "0");
+  const ddmmyy = montevideoDdmmyy(date);
+  const name = sanitizeFileSegment(
+    String(proyecto?.razonSocial || proyecto?.nombre || "proyecto").trim(),
+    40
+  );
+  const city = sanitizeFileSegment(extractCityFromDireccion(proyecto?.direccion), 30);
+  return `${seq}BMC-${ddmmyy}-${name}${city ? `-${city}` : ""}.pdf`;
+}

@@ -41,6 +41,9 @@ export default defineConfig({
             options: {
               cacheName: 'shopify-images',
               expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 3600 },
+              // Cross-origin <img> fetches are no-cors → responses are opaque (status 0).
+              // Without this, Workbox CacheFirst rejects them and surfaces ERR_FAILED.
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {
