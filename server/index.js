@@ -53,6 +53,9 @@ import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
 import identityMeRouter from "./routes/identityMe.js";
 import quoteExportRouter from "./routes/quoteExport.js";
+import tasksRouter from "./routes/tasks.js";
+import tasksOAuthRouter from "./routes/tasksOAuth.js";
+import tasksSyncRouter from "./routes/tasksSync.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
 import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
@@ -977,6 +980,13 @@ app.use("/api", createQuotesRouter(config));
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
 app.use(createShopifyRouter(config, logger));
+// Tareas (Google Tasks bidirectional mirror) — Phase 0 stubs return 501
+// CRUD under /api/tasks/* (Bearer JWT via requireUser inside router)
+app.use("/api/tasks", tasksRouter);
+// OAuth PKCE flow for Google Tasks scope — /auth/tasks/{init,callback,revoke}
+app.use("/auth/tasks", tasksOAuthRouter);
+// Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
+app.use("/sync", tasksSyncRouter);
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
 const isDev = config.appEnv === "development";
