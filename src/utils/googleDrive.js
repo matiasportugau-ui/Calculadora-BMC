@@ -27,6 +27,11 @@ const GIS_SCRIPT_SELECTOR = 'script[data-gis-client="1"]';
 // current single-popup client-side model; for stricter security move the
 // token to an httpOnly cookie issued by the /api/auth/google endpoint.
 const STORAGE_KEY = "bmc.gdrive.identity";
+// Separate from STORAGE_KEY because the identity blob is cleared on token
+// expiry (1h) but consent should persist across token expiries — once the
+// user grants Drive access, Google can refresh access tokens silently
+// (prompt: "") as long as the Google session is still alive on their browser.
+const CONSENT_KEY = "bmc.gdrive.consented";
 
 let _tokenClient = null;
 let _tokenClientId = null;
@@ -52,12 +57,17 @@ function persistIdentity() {
         user: _user,
       }),
     );
+    // Consent flag persisted SEPARATELY so it survives token expiry sweeps.
+    if (_hasConsented) localStorage.setItem(CONSENT_KEY, "1");
   } catch { /* quota / unavailable */ }
 }
 
 function clearIdentity() {
   if (typeof localStorage === "undefined") return;
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* unavailable */ }
+  // Intentionally do NOT remove CONSENT_KEY here — token expiry should not
+  // re-trigger a consent popup. Only signOut() (explicit revocation) clears
+  // the consent flag.
 }
 
 // Hydrate token + identity from localStorage at module load so reloads stay
@@ -78,6 +88,12 @@ function clearIdentity() {
   } catch {
     clearIdentity();
   }
+  // Restore consent flag independently of token rehydration so the next
+  // signIn() can use prompt: "" (silent refresh) instead of prompt: "consent"
+  // (full popup) even after the access token has long expired.
+  try {
+    if (localStorage.getItem(CONSENT_KEY) === "1") _hasConsented = true;
+  } catch { /* ignore */ }
 })();
 
 /**
@@ -348,6 +364,11 @@ export function signOut() {
   _hasConsented = false;
   _user = null;
   clearIdentity();
+  // Explicit signOut DOES clear the consent flag (revocation == user
+  // affirmatively logging out). The next sign-in will show consent again.
+  try {
+    if (typeof localStorage !== "undefined") localStorage.removeItem(CONSENT_KEY);
+  } catch { /* ignore */ }
   notifyAuth();
 }
 
