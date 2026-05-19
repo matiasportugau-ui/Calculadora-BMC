@@ -107,7 +107,7 @@ router.post(
         duration_ms: typeof data.duration === "number" ? Math.round(data.duration * 1000) : null,
       });
     } catch (err) {
-      req.log?.error({ err: err.message }, "transcribe failed");
+      req.log?.error({ err }, "transcribe failed");
       return res.status(500).json({ ok: false, error: "Error interno al transcribir." });
     }
   }
