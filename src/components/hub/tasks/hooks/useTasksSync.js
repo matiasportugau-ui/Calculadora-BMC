@@ -9,8 +9,6 @@
 // Phase 1: Implement sync status queries, polling interval, Cloud Tasks job monitoring.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Query: Sync Status
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,8 +78,6 @@ export function useSyncStatus() {
  * }
  */
 export function useTriggerSync() {
-  const queryClient = useQueryClient();
-
   // TODO Phase 1:
   // return useMutation({
   //   mutationFn: async (force = false) => {
@@ -198,7 +194,6 @@ export function useSyncConflicts() {
  * }
  */
 export function useResolveConflict() {
-  const queryClient = useQueryClient();
 
   // TODO Phase 1:
   // return useMutation({
