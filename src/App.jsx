@@ -21,6 +21,7 @@ const SpecManagementSandbox = lazy(() => import("./components/SpecManagementSand
 const BidPresentation = lazy(() => import("./components/BidPresentation.jsx"));
 const CalcLogicInspector = lazy(() => import("./components/CalcLogicInspector.jsx"));
 const FichasPreview = lazy(() => import("./components/FichasPreview.jsx"));
+const PdfPreview = lazy(() => import("./components/PdfPreview.jsx"));
 const BmcWolfboardHub = lazy(() => import("./components/BmcWolfboardHub.jsx"));
 const BmcMlOperativoModule = lazy(() => import("./components/BmcMlOperativoModule.jsx"));
 const BmcWaModuleWithTabs = lazy(() => import("./components/BmcWaModuleWithTabs.jsx"));
@@ -251,6 +252,14 @@ export default function App() {
           element={
             <Suspense fallback={suspenseFallback}>
               <FichasPreview />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/preview/pdf"
+          element={
+            <Suspense fallback={suspenseFallback}>
+              <PdfPreview />
             </Suspense>
           }
         />
