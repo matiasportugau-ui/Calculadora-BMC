@@ -108,7 +108,7 @@ router.post(
       });
     } catch (err) {
       req.log?.error({ err: err.message }, "transcribe failed");
-      return res.status(500).json({ ok: false, error: "Transcribe failed" });
+      return res.status(500).json({ ok: false, error: "Error interno al transcribir." });
     }
   }
 );
