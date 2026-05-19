@@ -195,7 +195,7 @@ export const FIJACIONES = {
   anclaje_isoroof_gris:      { label: 'Anclaje Isoroof GRISES (torn. punta mecha + arand. trap.)', venta: 1.31, web: 1.60, costo: 0.44, unidad: "unid" },
   anclaje_chapa_bc18:        { label: 'Pac. anclaje chapas BC-18 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.37, unidad: "unid" },
   anclaje_chapa_bc35:        { label: 'Pac. anclaje chapas BC-35 (torn. mecha + arand. Vulca + caballete)', venta: 0.98, web: 1.20, costo: 0.40, unidad: "unid" },
-  anclaje_kit_u_platea:     { label: 'Kin anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 0.89, web: 1.09, costo: 0.25, unidad: "unid" },
+  anclaje_kit_u_platea:     { label: 'Kit anclaje U-Platea (taco expans. + arand. + tuerca + varilla 1/8 6 mm)', venta: 0.89, web: 1.09, costo: 0.25, unidad: "unid" },
   // ── Tornillos hex./exagonales (presupuesto libre; c/IVA ÷1,22) ──
   tornillo_exagonal_12_34:     { label: 'Tornillo exagonal 12 × 3/4"', venta: 0.082, web: 0.098, costo: 0.041, unidad: "unid" },
   tornillo_exagonal_12_1_pm:    { label: 'Tornillo exagonal 12 × 1" punta mecha', venta: 0.207, web: 0.254, costo: 0.052, unidad: "unid" },
