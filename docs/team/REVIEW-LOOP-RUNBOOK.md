@@ -79,7 +79,7 @@ npm run lint
 npm test
 ```
 
-If either fails → `git checkout -- .` (or `git revert`), mark **REVERTED** in the log. **Never** use `--no-verify`, `--force`, or `--amend` to push past a failure.
+If either fails → revert **only the files the round touched** with `git checkout -- <file1> <file2> ...` (or `git revert <sha>` if already committed). **Never** use `git checkout -- .` (wipes unrelated work-in-progress), `--no-verify`, `--force`, or `--amend` to push past a failure. Mark **REVERTED** in the log.
 
 ### 6. Commit
 
