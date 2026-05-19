@@ -24,10 +24,14 @@ export default function AuthGateModal() {
   useEffect(() => {
     // eslint-disable-next-line no-unused-vars
     function onGate(_e) {
-      // Auth gate disabled app-wide — never block. Immediately resume any
-      // wizard flow that was awaiting the gate to close.
-      setOpen(false);
-      window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-disabled" } }));
+      if (isAuthenticated) {
+        // Auto-resume any wizard waiting; user is already authed.
+        window.dispatchEvent(new CustomEvent("bmc-wizard-next", { detail: { source: "auth-gate-already-auth" } }));
+      } else {
+        // Anonymous: open the modal so user can sign in.
+        // handleLogin() emits bmc-wizard-next on successful sign-in.
+        setOpen(true);
+      }
     }
     window.addEventListener("bmc-auth-gate-required", onGate);
     return () => window.removeEventListener("bmc-auth-gate-required", onGate);

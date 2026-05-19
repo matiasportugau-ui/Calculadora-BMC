@@ -31,6 +31,8 @@ import createMlEtlRunRouter from "./routes/mlEtlRun.js";
 import teamAssistRouter from "./routes/teamAssist.js";
 import createTransportistaRouter from "./routes/transportista.js";
 import createWaRouter from "./routes/wa.js";
+import createTraktimeRouter from "./routes/traktime.js";
+import { createQuotesRouter } from "./routes/quotes.js";
 import * as waConfigModule from "./lib/waConfig.js";
 const { primeWaConfig, getFlag: getWaFlag } = waConfigModule;
 import { initWaOperatorAuth } from "./lib/waOperatorAuth.js";
@@ -41,6 +43,7 @@ import { initWaWebhooks } from "./lib/waWebhooks.js";
 import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import marketingRouter from "./routes/marketing.js";
 import { createSuperAgentRouter } from "./routes/superAgent.js";
 import createPanelinInternalRouter from "./routes/panelinInternal.js";
 import aiAnalyticsRouter from "./routes/aiAnalytics.js";
@@ -50,8 +53,14 @@ import authGoogleRouter from "./routes/authGoogle.js";
 import authMfaRouter, { initAuthMfa } from "./routes/authMfa.js";
 import identityMeRouter from "./routes/identityMe.js";
 import quoteExportRouter from "./routes/quoteExport.js";
+import tasksRouter from "./routes/tasks.js";
+import tasksOAuthRouter from "./routes/tasksOAuth.js";
+import tasksSyncRouter from "./routes/tasksSync.js";
 import { getTransportistaPool } from "./lib/transportistaDb.js";
 import { startTransportistaOutboxWorker } from "./lib/transportistaOutboxWorker.js";
+import "./lib/marketIntel/scheduler.js"; // registers daily ETL cron at 03:00 UTC
+import { getTraktimePool } from "./lib/traktimeDb.js";
+import { startTraktimeMirrorWorker } from "./lib/traktimeMirrorWorker.js";
 import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
@@ -917,6 +926,7 @@ app.use("/api", aiAnalyticsRouter);
 app.use("/api", createFollowupsRouter());
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createWaRouter(config, logger));
+app.use(createTraktimeRouter(config, logger));
 // Diagnostic endpoint (dev only) — must be before createBmcDashboardRouter catch-all
 {
   const _isDev = config.appEnv === "development";
@@ -953,6 +963,9 @@ app.use("/api/agent", createSuperAgentRouter(config));
 app.use("/api/internal/panelin", createPanelinInternalRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
+// Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
+// Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
+app.use("/api/marketing", marketingRouter);
 // PDF generation (Playwright/Chromium server-side — vectorial quality)
 app.use("/api/pdf", createPdfRouter());
 app.use("/api", deepResearchRouter);
@@ -961,10 +974,19 @@ app.use("/api", planInterpretRouter);
 app.use(createMlSearchRouter({ ml, config, logger }));
 // Price monitor ETL trigger / status — Bearer API_AUTH_TOKEN
 app.use(createMlEtlRunRouter({ config, logger }));
+// Quote counter (atomic global counter, annual reset)
+app.use("/api", createQuotesRouter(config));
 // BMC Finanzas dashboard: API under /api, static UI at /finanzas
 app.use("/api", createBmcDashboardRouter(config));
 // Shopify integration v4 (questions/quotes – Mercado Libre replacement)
 app.use(createShopifyRouter(config, logger));
+// Tareas (Google Tasks bidirectional mirror) — Phase 0 stubs return 501
+// CRUD under /api/tasks/* (Bearer JWT via requireUser inside router)
+app.use("/api/tasks", tasksRouter);
+// OAuth PKCE flow for Google Tasks scope — /auth/tasks/{init,callback,revoke}
+app.use("/auth/tasks", tasksOAuthRouter);
+// Cloud Scheduler sync target (HMAC-verified) — /sync/google-tasks/pull
+app.use("/sync", tasksSyncRouter);
 
 const dashboardDir = path.join(__dirname, "../docs/bmc-dashboard-modernization/dashboard");
 const isDev = config.appEnv === "development";
@@ -1059,6 +1081,7 @@ const transportistaPool = getTransportistaPool(config.databaseUrl);
 // Cleanups capturados en el listen callback. Inicializados a noop para que
 // el shutdown handler sea seguro aunque la señal llegue antes del listen.
 let stopTransportista = () => {};
+let stopTraktimeMirror = () => {};
 let stopWaEnricher = () => {};
 let stopWaSla = () => {};
 let stopWaFollowups = () => {};
@@ -1074,6 +1097,13 @@ const server = app.listen(config.port, async () => {
   );
   if (transportistaPool) {
     stopTransportista = startTransportistaOutboxWorker({ config, logger, pool: transportistaPool });
+  }
+  // TraKtiMe nightly Sheets mirror (no-op if TRAKTIME_SHEET_ID unset or disabled).
+  {
+    const traktimePool = getTraktimePool(config.databaseUrl);
+    if (traktimePool) {
+      stopTraktimeMirror = startTraktimeMirrorWorker({ config, logger, pool: traktimePool });
+    }
   }
   // WA Cockpit — F-A4: prime config (settings + flags + LISTEN/NOTIFY) y auth.
   // Se hace ANTES de los workers para que lean ya el cache caliente.
@@ -1126,6 +1156,7 @@ function shutdown(signal) {
   logger.info({ signal }, "shutdown signal received");
 
   try { stopTransportista(); } catch (e) { logger.warn({ err: e?.message }, "stopTransportista failed"); }
+  try { stopTraktimeMirror(); } catch (e) { logger.warn({ err: e?.message }, "stopTraktimeMirror failed"); }
   try { stopWaEnricher(); } catch (e) { logger.warn({ err: e?.message }, "stopWaEnricher failed"); }
   try { stopWaSla(); } catch (e) { logger.warn({ err: e?.message }, "stopWaSla failed"); }
   try { stopWaFollowups(); } catch (e) { logger.warn({ err: e?.message }, "stopWaFollowups failed"); }

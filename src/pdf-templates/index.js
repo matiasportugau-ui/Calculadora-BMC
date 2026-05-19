@@ -104,9 +104,10 @@ export function buildQuotationModel(data) {
     client: {
       nombre: clienteSrc?.nombre,
       razonSocial: clienteSrc?.razonSocial || clienteSrc?.nombre,
+      rut: clienteSrc?.rut,
       direccion: clienteSrc?.direccion,
       telefono: clienteSrc?.telefono,
-      nombreRefCliente: clienteSrc?.nombreContacto,
+      nombreRefCliente: clienteSrc?.nombreRefCliente,
     },
     globalBorders: appendix?.globalBorders,
     panelAu: appendix?.panelAu ?? au,
