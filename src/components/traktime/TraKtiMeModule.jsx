@@ -25,12 +25,6 @@ export default function TraKtiMeModule() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (auth.accessToken) {
-      setApiToken(auth.accessToken);
-    }
-  }, [auth.accessToken]);
-
   const reload = useCallback(async () => {
     try {
       const r = await tkApi.me();
@@ -43,10 +37,11 @@ export default function TraKtiMeModule() {
   }, []);
 
   useEffect(() => {
-    if (auth.status === "authenticated") {
+    if (auth.accessToken) {
+      setApiToken(auth.accessToken);
       reload();
     }
-  }, [reload, auth.status]);
+  }, [auth.accessToken, reload]);
 
   const bumpEntries = () => setRefreshKey((k) => k + 1);
 

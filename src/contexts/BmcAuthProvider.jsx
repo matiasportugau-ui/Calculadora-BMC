@@ -101,12 +101,14 @@ export function BmcAuthProvider({ children }) {
         const me = await fetchMeAndGrants(accessToken);
         if (cancelled) return;
         if (me) {
-          applyAuth({ ...me });
-          // GET /auth/me doesn't return accessToken, so fetch one if we don't have it.
           if (!accessToken) {
+            // Fetch token before applying auth so status="authenticated" and
+            // accessToken are set atomically, preventing a race in consumers.
             const refreshed = await refreshAccess();
-            if (cancelled || !refreshed) return;
+            if (cancelled) return;
+            if (refreshed) return;
           }
+          applyAuth({ ...me });
           return;
         }
         const refreshed = await refreshAccess();
