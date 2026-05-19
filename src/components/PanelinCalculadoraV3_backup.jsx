@@ -4601,7 +4601,7 @@ export default function PanelinCalculadoraV3() {
                     onClick={() => { setShowLogPanel(true); fetchGptQuotations(); setMobileHeaderMenuOpen(false); }}
                     style={{ position: "relative", width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid #f0f0f5", background: "transparent", color: "#1d1d1f", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
                   >
-                    <Archive size={14} color="#555" />Presupuestos
+                    <Archive size={14} color="#555" />Borradores
                     {(logEntries.length + gptQuotations.length) > 0 ? (
                       <span style={{ marginLeft: "auto", background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
                     ) : null}
@@ -4742,7 +4742,7 @@ export default function PanelinCalculadoraV3() {
           {!isPhone ? (
             <>
               <button onClick={() => { setShowLogPanel(true); fetchGptQuotations(); }} style={{ position: "relative", padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-                <Archive size={14} />Presupuestos
+                <Archive size={14} />Borradores
                 {(logEntries.length + gptQuotations.length) > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, background: C.primary, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", ...TN }}>{logEntries.length + gptQuotations.length}</span>
                 )}
@@ -6990,7 +6990,7 @@ export default function PanelinCalculadoraV3() {
             {/* Drawer header */}
             <div style={{ padding: "20px 24px", background: C.brand, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800 }}>Presupuestos guardados</div>
+                <div style={{ fontSize: 18, fontWeight: 800 }}>Borradores guardados</div>
                 <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{logEntries.length} registros</div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
