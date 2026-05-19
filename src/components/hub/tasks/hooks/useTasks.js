@@ -1,311 +1,204 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // src/components/hub/tasks/hooks/useTasks.js — TanStack Query hooks for Tasks
 // ───────────────────────────────────────────────────────────────────────────
-// Exposes fetching and mutation hooks for task lists and individual tasks.
-// Implements TanStack Query v5 with 60s staleTime and 5min gcTime.
-// Queries hit /api/tasks/* endpoints (managed by server/routes/tasks.js).
+// Real implementation against /api/tasks/* endpoints.
+// Auth: pulls accessToken from BmcAuthProvider context.
 //
-// Phase 0: Hook scaffolds with interface definitions.
-// Phase 1: Implement query clients, mutations, error handling, offline queue via IndexedDB.
+// WRITE endpoints currently return 503 from the backend (sync not configured).
+// Mutations catch this and surface a structured error so the UI can display
+// "Conectá Google Tasks para crear/editar tareas" instead of a generic failure.
+// Once OAuth/sync are provisioned, the same mutations start working without
+// any client-side code change.
+//
+// Query keys:
+//   ["tasks", "lists"]                              — all lists for user
+//   ["tasks", "lists", listId]                      — one list metadata
+//   ["tasks", "lists", listId, "tasks", afterId]    — tasks page in a list
+//   ["tasks", "lists", listId, "tasks", "single", taskId] — single task
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useBmcAuthContext } from "../../../../contexts/bmcAuthContext.js";
+
+const STALE_TIME_MS = 60_000; // 60s — sync cycle period
+const GC_TIME_MS = 5 * 60_000; // 5min
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fetch helper: attaches Bearer token + parses 503 specially
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function apiFetch(url, accessToken, init = {}) {
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      ...(init.headers || {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 503) {
+    const err = new Error(body.message || body.error || "service_unavailable");
+    err.code = body.error || "service_unavailable";
+    err.status = 503;
+    err.unavailable = true;
+    throw err;
+  }
+  if (!res.ok) {
+    const err = new Error(body.error || res.statusText);
+    err.code = body.error || "http_error";
+    err.status = res.status;
+    throw err;
+  }
+  return body;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Query Hooks
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Fetch user's task lists from /api/tasks/lists
- * TODO Phase 1: Implement query with staleTime=60s, gcTime=5min
- * @returns { data: { ok, lists, nextPageToken }, isLoading, error }
+ * Fetch user's task lists from /api/tasks/lists.
+ * @returns { data: { ok, lists: [] }, isLoading, error, refetch }
  */
 export function useTaskLists() {
-  // TODO Phase 1:
-  // return useQuery({
-  //   queryKey: ["tasks", "lists"],
-  //   queryFn: async () => {
-  //     const res = await fetch("/api/tasks/lists", {
-  //       headers: { Authorization: `Bearer ${getToken()}` },
-  //     });
-  //     if (!res.ok) throw new Error(`Fetch failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   staleTime: 60000, // 60s
-  //   gcTime: 5 * 60000, // 5min
-  // });
-
-  return {
-    data: { ok: false, lists: [], nextPageToken: null },
-    isLoading: true,
-    error: new Error("Phase 1: useTaskLists not implemented"),
-  };
+  const { accessToken } = useBmcAuthContext();
+  return useQuery({
+    queryKey: ["tasks", "lists"],
+    queryFn: () => apiFetch("/api/tasks/lists", accessToken),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!accessToken,
+  });
 }
 
 /**
  * Fetch single task list metadata from /api/tasks/lists/:id
- * TODO Phase 1: Implement query with staleTime=60s, gcTime=5min
- * @param {string} listId - Task list UUID
- * @returns { data: { ok, list }, isLoading, error }
+ * @param {string} listId — Task list UUID
  */
 export function useTaskList(listId) {
-  // TODO Phase 1:
-  // return useQuery({
-  //   queryKey: ["tasks", "lists", listId],
-  //   queryFn: async () => {
-  //     const res = await fetch(`/api/tasks/lists/${listId}`, {
-  //       headers: { Authorization: `Bearer ${getToken()}` },
-  //     });
-  //     if (!res.ok) throw new Error(`Fetch failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   staleTime: 60000,
-  //   gcTime: 5 * 60000,
-  //   enabled: !!listId,
-  // });
-
-  return {
-    data: { ok: false, list: null },
-    isLoading: true,
-    error: new Error("Phase 1: useTaskList not implemented"),
-  };
+  const { accessToken } = useBmcAuthContext();
+  return useQuery({
+    queryKey: ["tasks", "lists", listId],
+    queryFn: () => apiFetch(`/api/tasks/lists/${listId}`, accessToken),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!accessToken && !!listId,
+  });
 }
 
 /**
- * Fetch tasks in a list from /api/tasks/lists/:id/tasks with pagination
- * TODO Phase 1: Implement query with staleTime=60s, gcTime=5min, nextPageToken
- * @param {string} listId - Task list UUID
- * @param {string} pageToken - Optional pagination token
- * @returns { data: { ok, tasks, nextPageToken }, isLoading, error }
+ * Fetch tasks in a list with keyset pagination.
+ * @param {string} listId — Task list UUID
+ * @param {string|null} afterId — Pagination cursor (last task id from previous page)
  */
-export function useTasks(listId, pageToken = null) {
-  // TODO Phase 1:
-  // return useQuery({
-  //   queryKey: ["tasks", "lists", listId, "tasks", pageToken],
-  //   queryFn: async () => {
-  //     const url = new URL(`/api/tasks/lists/${listId}/tasks`, location.origin);
-  //     if (pageToken) url.searchParams.set("pageToken", pageToken);
-  //     const res = await fetch(url.toString(), {
-  //       headers: { Authorization: `Bearer ${getToken()}` },
-  //     });
-  //     if (!res.ok) throw new Error(`Fetch failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   staleTime: 60000,
-  //   gcTime: 5 * 60000,
-  //   enabled: !!listId,
-  // });
-
-  return {
-    data: { ok: false, tasks: [], nextPageToken: null },
-    isLoading: true,
-    error: new Error("Phase 1: useTasks not implemented"),
-  };
+export function useTasks(listId, afterId = null) {
+  const { accessToken } = useBmcAuthContext();
+  return useQuery({
+    queryKey: ["tasks", "lists", listId, "tasks", afterId],
+    queryFn: () => {
+      const u = new URL(`/api/tasks/lists/${listId}/tasks`, window.location.origin);
+      if (afterId) u.searchParams.set("afterId", afterId);
+      return apiFetch(u.pathname + u.search, accessToken);
+    },
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!accessToken && !!listId,
+  });
 }
 
 /**
  * Fetch single task from /api/tasks/lists/:id/tasks/:taskId
- * TODO Phase 1: Implement query with staleTime=60s, gcTime=5min
- * @param {string} listId - Task list UUID
- * @param {string} taskId - Task UUID
- * @returns { data: { ok, task }, isLoading, error }
  */
 export function useTask(listId, taskId) {
-  // TODO Phase 1:
-  // return useQuery({
-  //   queryKey: ["tasks", "lists", listId, "tasks", taskId],
-  //   queryFn: async () => {
-  //     const res = await fetch(`/api/tasks/lists/${listId}/tasks/${taskId}`, {
-  //       headers: { Authorization: `Bearer ${getToken()}` },
-  //     });
-  //     if (!res.ok) throw new Error(`Fetch failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   staleTime: 60000,
-  //   gcTime: 5 * 60000,
-  //   enabled: !!listId && !!taskId,
-  // });
-
-  return {
-    data: { ok: false, task: null },
-    isLoading: true,
-    error: new Error("Phase 1: useTask not implemented"),
-  };
+  const { accessToken } = useBmcAuthContext();
+  return useQuery({
+    queryKey: ["tasks", "lists", listId, "tasks", "single", taskId],
+    queryFn: () =>
+      apiFetch(`/api/tasks/lists/${listId}/tasks/${taskId}`, accessToken),
+    staleTime: STALE_TIME_MS,
+    gcTime: GC_TIME_MS,
+    enabled: !!accessToken && !!listId && !!taskId,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mutation Hooks
+// Mutation Hooks (all currently return 503 from backend until sync configured)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Create task list via POST /api/tasks/lists
- * TODO Phase 1: Implement mutation with optimistic UI + IndexedDB offline queue
- * @returns { mutate, isPending, error }
- */
+/** Create task list via POST /api/tasks/lists. Body: { title, description? } */
 export function useCreateTaskList() {
+  const { accessToken } = useBmcAuthContext();
   const queryClient = useQueryClient();
-
-  // TODO Phase 1:
-  // return useMutation({
-  //   mutationFn: async ({ title, description }) => {
-  //     const res = await fetch("/api/tasks/lists", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${getToken()}`,
-  //       },
-  //       body: JSON.stringify({ title, description }),
-  //     });
-  //     if (!res.ok) throw new Error(`Create failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   onSuccess: (data) => {
-  //     queryClient.invalidateQueries({ queryKey: ["tasks", "lists"] });
-  //   },
-  // });
-
-  return {
-    mutate: () => console.error("Phase 1: useCreateTaskList not implemented"),
-    isPending: false,
-    error: null,
-  };
+  return useMutation({
+    mutationFn: ({ title, description }) =>
+      apiFetch("/api/tasks/lists", accessToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks", "lists"] }),
+  });
 }
 
-/**
- * Delete task list via DELETE /api/tasks/lists/:id
- * TODO Phase 1: Implement mutation with soft-delete propagation
- * @returns { mutate, isPending, error }
- */
+/** Delete task list via DELETE /api/tasks/lists/:id (soft-delete) */
 export function useDeleteTaskList() {
+  const { accessToken } = useBmcAuthContext();
   const queryClient = useQueryClient();
-
-  // TODO Phase 1:
-  // return useMutation({
-  //   mutationFn: async (listId) => {
-  //     const res = await fetch(`/api/tasks/lists/${listId}`, {
-  //       method: "DELETE",
-  //       headers: { Authorization: `Bearer ${getToken()}` },
-  //     });
-  //     if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["tasks", "lists"] });
-  //   },
-  // });
-
-  return {
-    mutate: () => console.error("Phase 1: useDeleteTaskList not implemented"),
-    isPending: false,
-    error: null,
-  };
+  return useMutation({
+    mutationFn: (listId) =>
+      apiFetch(`/api/tasks/lists/${listId}`, accessToken, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks", "lists"] }),
+  });
 }
 
-/**
- * Create task via POST /api/tasks/lists/:id/tasks
- * TODO Phase 1: Implement mutation with optimistic UI, retry via IndexedDB queue
- * @returns { mutate, isPending, error }
- */
+/** Create task in list. Body: { title, notes?, due?, parent_id? } */
 export function useCreateTask(listId) {
+  const { accessToken } = useBmcAuthContext();
   const queryClient = useQueryClient();
-
-  // TODO Phase 1:
-  // return useMutation({
-  //   mutationFn: async ({ title, notes, due, parent }) => {
-  //     const res = await fetch(`/api/tasks/lists/${listId}/tasks`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${getToken()}`,
-  //       },
-  //       body: JSON.stringify({ title, notes, due, parent }),
-  //     });
-  //     if (!res.ok) throw new Error(`Create failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["tasks", "lists", listId, "tasks"],
-  //     });
-  //   },
-  // });
-
-  return {
-    mutate: () => console.error("Phase 1: useCreateTask not implemented"),
-    isPending: false,
-    error: null,
-  };
+  return useMutation({
+    mutationFn: ({ title, notes, due, parent_id }) =>
+      apiFetch(`/api/tasks/lists/${listId}/tasks`, accessToken, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, notes, due, parent_id }),
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tasks", "lists", listId, "tasks"] }),
+  });
 }
 
-/**
- * Update task via PATCH /api/tasks/lists/:id/tasks/:taskId
- * TODO Phase 1: Implement mutation with conflict detection
- * @returns { mutate, isPending, error }
- */
+/** Update task. Body: any subset of { title, notes, due, status, parent_id } */
 export function useUpdateTask(listId, taskId) {
+  const { accessToken } = useBmcAuthContext();
   const queryClient = useQueryClient();
-
-  // TODO Phase 1:
-  // return useMutation({
-  //   mutationFn: async ({ title, notes, due, status }) => {
-  //     const res = await fetch(`/api/tasks/lists/${listId}/tasks/${taskId}`, {
-  //       method: "PATCH",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${getToken()}`,
-  //       },
-  //       body: JSON.stringify({ title, notes, due, status }),
-  //     });
-  //     if (!res.ok) throw new Error(`Update failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["tasks", "lists", listId, "tasks", taskId],
-  //     });
-  //   },
-  // });
-
-  return {
-    mutate: () => console.error("Phase 1: useUpdateTask not implemented"),
-    isPending: false,
-    error: null,
-  };
+  return useMutation({
+    mutationFn: (patch) =>
+      apiFetch(`/api/tasks/lists/${listId}/tasks/${taskId}`, accessToken, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", "lists", listId, "tasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", "lists", listId, "tasks", "single", taskId],
+      });
+    },
+  });
 }
 
-/**
- * Delete task via DELETE /api/tasks/lists/:id/tasks/:taskId
- * TODO Phase 1: Implement soft-delete mutation
- * @returns { mutate, isPending, error }
- */
+/** Soft-delete a task */
 export function useDeleteTask(listId, taskId) {
+  const { accessToken } = useBmcAuthContext();
   const queryClient = useQueryClient();
-
-  // TODO Phase 1:
-  // return useMutation({
-  //   mutationFn: async () => {
-  //     const res = await fetch(`/api/tasks/lists/${listId}/tasks/${taskId}`, {
-  //       method: "DELETE",
-  //       headers: { Authorization: `Bearer ${getToken()}` },
-  //     });
-  //     if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`);
-  //     return res.json();
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["tasks", "lists", listId, "tasks"],
-  //     });
-  //   },
-  // });
-
-  return {
-    mutate: () => console.error("Phase 1: useDeleteTask not implemented"),
-    isPending: false,
-    error: null,
-  };
+  return useMutation({
+    mutationFn: () =>
+      apiFetch(`/api/tasks/lists/${listId}/tasks/${taskId}`, accessToken, {
+        method: "DELETE",
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["tasks", "lists", listId, "tasks"] }),
+  });
 }
-
-// TODO Phase 1: Implement helper function to extract JWT from sessionStorage/localStorage
-// function getToken() {
-//   return sessionStorage.getItem("jwt_token") || localStorage.getItem("jwt_token");
-// }
