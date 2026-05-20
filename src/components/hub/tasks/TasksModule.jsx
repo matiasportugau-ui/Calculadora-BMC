@@ -16,12 +16,40 @@ import {
   useTaskList,
   useTasks,
 } from "./hooks/useTasks.js";
+import { useBmcAuth } from "../../../hooks/useBmcAuth.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Empty / error / unavailable states (reused across panels)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function EmptyConnectCTA() {
+function EmptyConnectCTA({ accessToken }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  async function startConnect() {
+    if (!accessToken) {
+      setErr("Iniciá sesión antes de conectar Google Tasks.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/auth/tasks/init", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) {
+        setErr(data?.message || data?.error || `init_failed (${res.status})`);
+        setBusy(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      setErr(e?.message || "network_error");
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={panel("center")}>
       <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>
@@ -31,12 +59,19 @@ function EmptyConnectCTA() {
         Necesitamos autorizar el acceso a tus listas y tareas. Esto solo se
         hace una vez.
       </p>
-      <a
-        href="/auth/tasks/init"
-        style={primaryBtn}
+      <button
+        type="button"
+        onClick={startConnect}
+        disabled={busy}
+        style={{ ...primaryBtn, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer", border: "none" }}
       >
-        🔗 Conectar Google Tasks
-      </a>
+        {busy ? "Redirigiendo…" : "🔗 Conectar Google Tasks"}
+      </button>
+      {err ? (
+        <p style={{ ...muted, color: "#b91c1c", marginTop: "0.75rem" }}>
+          {err}
+        </p>
+      ) : null}
       <p style={{ ...muted, marginTop: "1.5rem", fontSize: "0.75rem" }}>
         Estado actual: configuración pendiente del operador (ver
         <code style={code}> docs/hub-tasks-module/PHASE-1-INFRASTRUCTURE.md</code>).
@@ -190,6 +225,7 @@ function TaskListDetail({ listId }) {
 export default function TasksModule() {
   const [selectedListId, setSelectedListId] = useState(null);
   const { data, isLoading } = useTaskLists();
+  const { accessToken } = useBmcAuth();
   const hasLists = !isLoading && (data?.lists?.length || 0) > 0;
 
   return (
@@ -200,7 +236,7 @@ export default function TasksModule() {
       </p>
 
       {!isLoading && !hasLists ? (
-        <EmptyConnectCTA />
+        <EmptyConnectCTA accessToken={accessToken} />
       ) : (
         <div
           style={{
