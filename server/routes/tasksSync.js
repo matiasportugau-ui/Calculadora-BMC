@@ -1,86 +1,370 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// server/routes/tasksSync.js — Tareas (Tasks) sync polling endpoint
+// server/routes/tasksSync.js — Cloud Scheduler bidirectional sync handler
 // ───────────────────────────────────────────────────────────────────────────
-// Cloud Scheduler target for bidirectional sync (Google → HUB).
-// Triggered via POST /sync/google-tasks/pull every 60s (Cloud Scheduler cron).
-// Request must include HMAC-256 signature (header: X-Sync-Signature) to prevent
-// unauthorized invocation.
+// POST /sync/google-tasks/pull is invoked every 60s by Cloud Scheduler. The
+// scheduler sends the SYNC_HMAC_SECRET value as the static X-Sync-Signature
+// header (NOT a body signature — see docs/hub-tasks-module/OPERATOR-CHECKLIST.md
+// Step 3.3). Verification is a constant-time equality check.
 //
-// Flow:
-//   1) Verify HMAC signature against SYNC_HMAC_SECRET
-//   2) For each user with active oauth_tokens:
-//      a) Query Google Tasks API with updatedMin (RFC 3339) + nextPageToken
-//      b) Upsert into tasks.task_lists + tasks.tasks
-//      c) Detect conflicts (soft-delete vs Google active version)
-//      d) Log sync cycle in tasks.sync_log
-//   3) Return { ok: true, jobId, cycleId, itemsSynced, conflicts }
-//
-// Phase 0: Stub only (no business logic).
-// Phase 1: Implement polling, conflict detection, and sync_log recording.
+// For each user with an active oauth_tokens row:
+//   1. Decrypt access_token via SQL pgp_sym_decrypt (key stays in env, not JS).
+//   2. GET /users/@me/lists + /lists/{id}/tasks?updatedMin=ISO&showDeleted=true.
+//   3. Upsert lists + tasks; detect soft-delete-vs-Google-active conflicts.
+//   4. Audit each cycle in tasks.sync_log; conflicts in tasks.sync_conflicts.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import express from "express";
-import { createHmac } from "crypto";
+import crypto from "crypto";
 import { config } from "../config.js";
+import { getTasksPool } from "../lib/tasksDb.js";
 
 const router = express.Router();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: Verify HMAC signature
-// ─────────────────────────────────────────────────────────────────────────────
-function verifyHmacSignature(signature, expectedSecret) {
-  const hmac = createHmac("sha256", expectedSecret || "");
-  const computed = hmac.digest("hex");
-  // TODO Phase 1: Compare-constant-time verification (not ==)
-  return computed === signature;
+const TASKS_LISTS_URL = "https://www.googleapis.com/tasks/v1/users/@me/lists";
+const TASKS_BY_LIST_URL = (listId) =>
+  `https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(listId)}/tasks`;
+const EPOCH_ISO = "1970-01-01T00:00:00.000Z";
+
+function maskUserId(id) {
+  if (!id || typeof id !== "string") return "***";
+  return "***" + id.slice(-4);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /sync/google-tasks/pull
-// Cloud Scheduler cron endpoint (requires HMAC verification)
+// Constant-time HMAC verification.
+// Cloud Scheduler ships SYNC_HMAC_SECRET as the raw header value, so this is
+// a constant-time equality of two buffers, NOT a recomputed signature.
+// ─────────────────────────────────────────────────────────────────────────────
+function verifyHmacSignature(incoming, secret) {
+  if (!incoming || !secret) return false;
+  const a = Buffer.from(String(incoming));
+  const b = Buffer.from(String(secret));
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-user sync. Resolves to { itemsSynced, conflicts, listsTouched } or
+// throws (which is caught by the outer loop so other users still run).
+// ─────────────────────────────────────────────────────────────────────────────
+async function syncUser({ pool, userId, encryptedAccessToken, cycleId }) {
+  // Decrypt via SQL — key never touches JS.
+  const decRow = await pool.query(
+    `SELECT pgp_sym_decrypt($1::bytea, $2)::text AS token`,
+    [encryptedAccessToken, config.supabasePgpEncryptKey],
+  );
+  const accessToken = decRow.rows[0]?.token;
+  if (!accessToken) {
+    throw new Error("decrypt_returned_empty");
+  }
+
+  const authHeader = { Authorization: `Bearer ${accessToken}` };
+
+  // 1) Fetch the user's task lists.
+  const listsRes = await fetch(TASKS_LISTS_URL, { headers: authHeader });
+
+  if (listsRes.status === 401) {
+    // Token rejected → mark revoked so we don't keep hammering Google.
+    await pool.query(
+      `UPDATE tasks.oauth_tokens
+          SET revoked_at = now(), updated_at = now()
+        WHERE user_id = $1`,
+      [userId],
+    );
+    await pool
+      .query(
+        `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
+         VALUES ($1, $2, 'token_revoked', $3::jsonb, 401)`,
+        [userId, cycleId, JSON.stringify({ reason: "google_401" })],
+      )
+      .catch(() => {});
+    return { itemsSynced: 0, conflicts: 0, listsTouched: 0, skipped: true };
+  }
+
+  if (listsRes.status === 429) {
+    await pool
+      .query(
+        `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
+         VALUES ($1, $2, 'rate_limit_hit', $3::jsonb, 429)`,
+        [userId, cycleId, JSON.stringify({ endpoint: "lists" })],
+      )
+      .catch(() => {});
+    return { itemsSynced: 0, conflicts: 0, listsTouched: 0, throttled: true };
+  }
+
+  if (!listsRes.ok) {
+    throw new Error(`lists_http_${listsRes.status}`);
+  }
+
+  const listsJson = await listsRes.json();
+  const googleLists = Array.isArray(listsJson.items) ? listsJson.items : [];
+
+  let itemsSynced = 0;
+  let conflicts = 0;
+
+  for (const gl of googleLists) {
+    if (!gl?.id || !gl?.title) continue;
+
+    // Upsert the list and capture its internal UUID + last synced_at.
+    const listUpsert = await pool.query(
+      `INSERT INTO tasks.task_lists (user_id, google_id, title, synced_at)
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT (google_id) DO UPDATE
+         SET title = EXCLUDED.title, synced_at = now()
+       RETURNING id, synced_at`,
+      [userId, gl.id, gl.title],
+    );
+    const internalListId = listUpsert.rows[0].id;
+    const lastSyncedAt = listUpsert.rows[0].synced_at;
+    const updatedMin = lastSyncedAt
+      ? new Date(lastSyncedAt).toISOString()
+      : EPOCH_ISO;
+
+    // 2) Fetch tasks for this list, paginated. updatedMin trims the payload.
+    let pageToken;
+    do {
+      const params = new URLSearchParams({
+        updatedMin,
+        showDeleted: "true",
+        showCompleted: "true",
+        showHidden: "true",
+        maxResults: "100",
+      });
+      if (pageToken) params.set("pageToken", pageToken);
+      const tasksRes = await fetch(
+        `${TASKS_BY_LIST_URL(gl.id)}?${params.toString()}`,
+        { headers: authHeader },
+      );
+
+      if (tasksRes.status === 429) {
+        await pool
+          .query(
+            `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details, http_status_code)
+             VALUES ($1, $2, 'rate_limit_hit', $3::jsonb, 429)`,
+            [
+              userId,
+              cycleId,
+              JSON.stringify({ endpoint: "tasks", listId: gl.id }),
+            ],
+          )
+          .catch(() => {});
+        break;
+      }
+      if (!tasksRes.ok) {
+        throw new Error(`tasks_http_${tasksRes.status}`);
+      }
+      const tasksJson = await tasksRes.json();
+      const googleTasks = Array.isArray(tasksJson.items) ? tasksJson.items : [];
+
+      for (const gt of googleTasks) {
+        if (!gt?.id || !gt?.title) continue;
+
+        const googleStatus =
+          gt.status === "completed" ? "completed" : "needsAction";
+        const googleDeleted = !!gt.deleted;
+
+        // Look up local row (regardless of soft-delete state) to detect conflicts.
+        const localRow = await pool.query(
+          `SELECT id, is_deleted, status, title, notes, due
+             FROM tasks.tasks
+            WHERE list_id = $1 AND google_id = $2
+            LIMIT 1`,
+          [internalListId, gt.id],
+        );
+
+        if (
+          localRow.rows.length &&
+          localRow.rows[0].is_deleted === true &&
+          !googleDeleted
+        ) {
+          // Conflict: HUB has soft-deleted but Google still shows it active.
+          await pool
+            .query(
+              `INSERT INTO tasks.sync_conflicts
+                 (task_id, list_id, user_id, conflict_type, hub_version, google_version)
+               VALUES ($1, $2, $3, 'soft_delete_mismatch', $4::jsonb, $5::jsonb)`,
+              [
+                localRow.rows[0].id,
+                internalListId,
+                userId,
+                JSON.stringify({
+                  title: localRow.rows[0].title,
+                  notes: localRow.rows[0].notes,
+                  due: localRow.rows[0].due,
+                  status: localRow.rows[0].status,
+                  is_deleted: true,
+                }),
+                JSON.stringify({
+                  title: gt.title,
+                  notes: gt.notes || null,
+                  due: gt.due ? gt.due.slice(0, 10) : null,
+                  status: googleStatus,
+                  is_deleted: false,
+                }),
+              ],
+            )
+            .catch(() => {});
+
+          await pool
+            .query(
+              `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details)
+               VALUES ($1, $2, 'conflict_detected', $3::jsonb)`,
+              [
+                userId,
+                cycleId,
+                JSON.stringify({
+                  task_id: localRow.rows[0].id,
+                  conflict_type: "soft_delete_mismatch",
+                }),
+              ],
+            )
+            .catch(() => {});
+
+          conflicts += 1;
+          continue;
+        }
+
+        // Upsert via the partial-unique index (list_id, google_id) WHERE NOT is_deleted.
+        await pool.query(
+          `INSERT INTO tasks.tasks
+             (list_id, user_id, google_id, title, notes, due, status, is_deleted, updated_at, synced_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+           ON CONFLICT (list_id, google_id) WHERE NOT is_deleted
+           DO UPDATE SET
+             title = EXCLUDED.title,
+             notes = EXCLUDED.notes,
+             due = EXCLUDED.due,
+             status = EXCLUDED.status,
+             is_deleted = EXCLUDED.is_deleted,
+             updated_at = now(),
+             synced_at = now()`,
+          [
+            internalListId,
+            userId,
+            gt.id,
+            gt.title,
+            gt.notes || null,
+            gt.due ? gt.due.slice(0, 10) : null,
+            googleStatus,
+            googleDeleted,
+          ],
+        );
+        itemsSynced += 1;
+      }
+
+      pageToken = tasksJson.nextPageToken || null;
+    } while (pageToken);
+  }
+
+  return { itemsSynced, conflicts, listsTouched: googleLists.length };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /google-tasks/pull — Cloud Scheduler entrypoint (HMAC-gated).
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/google-tasks/pull", async (req, res) => {
   const signature = req.headers["x-sync-signature"];
-  const syncSecret = config.syncHmacSecret || process.env.SYNC_HMAC_SECRET;
-
-  // Verify HMAC signature
-  if (!verifyHmacSignature(signature, syncSecret)) {
+  if (!verifyHmacSignature(signature, config.syncHmacSecret)) {
     return res.status(403).json({
       ok: false,
       error: "invalid_signature",
-      message: "HMAC signature verification failed",
     });
   }
 
-  // TODO Phase 1:
-  //   1) Generate unique cycleId (UUID or Job ID from Cloud Scheduler request)
-  //   2) Query tasks.oauth_tokens WHERE revoked_at IS NULL (active tokens)
-  //   3) For each user:
-  //      a) Decrypt access_token (pgp_sym_decrypt)
-  //      b) Query Google Tasks API (GET /tasks/v1/users/@me/lists)
-  //      c) For each list: GET /tasks/v1/lists/{listId}/tasks?updatedMin=RFC3339&pageToken=X
-  //      d) Upsert tasks.task_lists + tasks.tasks (ON CONFLICT ... DO UPDATE)
-  //      e) Detect conflicts: tasks with is_deleted=true but Google version active
-  //      f) Insert into tasks.sync_conflicts for human resolution
-  //      g) Log: tasks.sync_log(event_type='sync_completed', user_id, cycle_id)
-  //   4) Handle errors:
-  //      - 401: Trigger token refresh; if refresh fails, mark token revoked
-  //      - 429: Exponential backoff (log, skip this user, retry in next cron window)
-  //      - 500-503: Log, skip, continue to next user
-  //   5) Return aggregate summary
+  if (!config.supabasePgpEncryptKey) {
+    return res
+      .status(503)
+      .json({ ok: false, error: "pgp_key_not_configured" });
+  }
+  const pool = getTasksPool(config.databaseUrl);
+  if (!pool) {
+    return res.status(503).json({ ok: false, error: "db_not_configured" });
+  }
 
-  const jobId = req.headers["x-goog-cloud-tasks-taskname"] || "local-test";
-  const cycleId = req.body?.cycleId || jobId;
+  const cycleId = crypto.randomUUID();
+  const startedAt = new Date().toISOString();
 
-  res.json({
+  let usersProcessed = 0;
+  let usersFailed = 0;
+  let totalItems = 0;
+  let totalConflicts = 0;
+
+  let tokenRows;
+  try {
+    tokenRows = await pool.query(
+      `SELECT user_id, access_token_encrypted
+         FROM tasks.oauth_tokens
+        WHERE revoked_at IS NULL`,
+    );
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      cycleId,
+      error: "tokens_query_failed",
+      message: err.message,
+    });
+  }
+
+  for (const row of tokenRows.rows) {
+    try {
+      const result = await syncUser({
+        pool,
+        userId: row.user_id,
+        encryptedAccessToken: row.access_token_encrypted,
+        cycleId,
+      });
+      totalItems += result.itemsSynced;
+      totalConflicts += result.conflicts;
+      usersProcessed += 1;
+
+      if (!result.skipped && !result.throttled) {
+        await pool
+          .query(
+            `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details)
+             VALUES ($1, $2, 'sync_completed', $3::jsonb)`,
+            [
+              row.user_id,
+              cycleId,
+              JSON.stringify({
+                items_synced: result.itemsSynced,
+                conflicts: result.conflicts,
+                lists_touched: result.listsTouched,
+              }),
+            ],
+          )
+          .catch(() => {});
+      }
+    } catch (err) {
+      usersFailed += 1;
+      await pool
+        .query(
+          `INSERT INTO tasks.sync_log (user_id, cycle_id, event_type, details)
+           VALUES ($1, $2, 'sync_failed', $3::jsonb)`,
+          [
+            row.user_id,
+            cycleId,
+            JSON.stringify({
+              error: String(err?.message || err).slice(0, 500),
+              user_id_mask: maskUserId(row.user_id),
+            }),
+          ],
+        )
+        .catch(() => {});
+    }
+  }
+
+  return res.json({
     ok: true,
-    jobId,
     cycleId,
-    status: "not_implemented",
-    message: "Phase 1: Sync polling to be implemented",
-    itemsSynced: 0,
-    conflicts: 0,
-    startedAt: new Date().toISOString(),
+    startedAt,
+    finishedAt: new Date().toISOString(),
+    users: { processed: usersProcessed, failed: usersFailed },
+    itemsSynced: totalItems,
+    conflicts: totalConflicts,
   });
 });
 
