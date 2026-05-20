@@ -12,6 +12,14 @@ import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
 import AuthHeader from "./components/auth/AuthHeader.jsx";
 import RequireGrant from "./components/auth/RequireGrant.jsx";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },
+    mutations: { retry: 0 },
+  },
+});
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -127,6 +135,7 @@ export default function App() {
   }, []);
 
   return (
+    <QueryClientProvider client={queryClient}>
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <BmcAuthProvider>
       <LegacyAppQueryRedirect />
@@ -353,5 +362,6 @@ export default function App() {
       </Routes>
       </BmcAuthProvider>
     </BrowserRouter>
+    </QueryClientProvider>
   );
 }
