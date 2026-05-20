@@ -305,6 +305,16 @@ export async function verifyGoogleAndUpsert({
       [u.user_id],
     );
 
+    // Default module grants for every signed-in user: calc (write) so they can
+    // immediately use the quotation flow, tareas (read) so the Hub Tareas
+    // module is reachable. ON CONFLICT preserves any admin-tuned grants.
+    await tx.query(
+      `insert into identity.module_grants (user_id, module, level)
+       values ($1, 'calc', 'write'), ($1, 'tareas', 'read')
+       on conflict (user_id, module) do nothing`,
+      [u.user_id],
+    );
+
     mfaRequired = !!u.mfa_required;
 
     // MFA gate: when mfa_required=true, do NOT create a session here — return

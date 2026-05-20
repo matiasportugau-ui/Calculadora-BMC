@@ -173,8 +173,8 @@ SERVICE_URL="https://panelin-calc.run.app"  # Replace if different
 SYNC_HMAC=$(gcloud secrets versions access latest --secret SYNC_HMAC_SECRET --project chatbot-bmc-live)
 LOCATION="us-central1"
 
-# Create the cron job
-gcloud scheduler jobs create app-engine tasks-sync-60s \
+# Create the cron job (NOTE: Cloud Run HTTP targets use 'http', not 'app-engine')
+gcloud scheduler jobs create http tasks-sync-60s \
   --project chatbot-bmc-live \
   --location ${LOCATION} \
   --schedule "* * * * *" \

@@ -11,6 +11,7 @@ import { onLCP, onINP, onCLS } from "web-vitals";
 import { BmcAuthProvider } from "./contexts/BmcAuthProvider.jsx";
 import AuthGateModal from "./components/auth/AuthGateModal.jsx";
 import AuthHeader from "./components/auth/AuthHeader.jsx";
+import RequireGrant from "./components/auth/RequireGrant.jsx";
 
 // Code-split per route. Users landing on / (calculator, the main entry) don't
 // pay for the /hub/* module bundles until they navigate there.
@@ -33,6 +34,7 @@ const AgentAdminModule = lazy(() => import("./components/AgentAdminModule.jsx"))
 const MySpacePage = lazy(() => import("./components/MySpacePage.jsx"));
 const TraKtiMeModule = lazy(() => import("./components/traktime/TraKtiMeModule.jsx"));
 const MarketingHubModule = lazy(() => import("./components/MarketingHubModule.jsx"));
+const TasksModule = lazy(() => import("./components/hub/tasks/TasksModule.jsx"));
 
 const suspenseFallback = (
   <div
@@ -130,14 +132,25 @@ export default function App() {
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <Routes>
-        <Route path="/hub" element={<Suspense fallback={suspenseFallback}><BmcWolfboardHub /></Suspense>} />
+        <Route
+          path="/hub"
+          element={
+            <RequireGrant>
+              <Suspense fallback={suspenseFallback}>
+                <BmcWolfboardHub />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
         <Route
           path="/hub/ml"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcMlOperativoModule />
-              </Suspense>
+              <RequireGrant module="ml" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcMlOperativoModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
@@ -145,9 +158,11 @@ export default function App() {
           path="/hub/wa"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcWaModuleWithTabs />
-              </Suspense>
+              <RequireGrant module="wa" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcWaModuleWithTabs />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
@@ -155,28 +170,98 @@ export default function App() {
           path="/hub/canales"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <BmcCanalesUnificadosModule />
-              </Suspense>
+              <RequireGrant module="canales" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <BmcCanalesUnificadosModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
-        <Route path="/hub/admin" element={<AdminRoute />} />
-        <Route path="/hub/cotizaciones" element={<CotizacionesRoute />} />
-        <Route path="/hub/plan-import" element={<Suspense fallback={suspenseFallback}><BmcPlanImportModule /></Suspense>} />
-        <Route path="/mi-espacio" element={<Shell><Suspense fallback={suspenseFallback}><MySpacePage /></Suspense></Shell>} />
+        <Route
+          path="/hub/tareas"
+          element={
+            <Shell>
+              <RequireGrant module="tareas" minLevel="read">
+                <Suspense fallback={suspenseFallback}>
+                  <TasksModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
+        <Route
+          path="/hub/admin"
+          element={
+            <RequireGrant role="admin">
+              <AdminRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/cotizaciones"
+          element={
+            <RequireGrant role="admin">
+              <CotizacionesRoute />
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/plan-import"
+          element={
+            <RequireGrant module="plan-import" minLevel="read">
+              <Suspense fallback={suspenseFallback}>
+                <BmcPlanImportModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/mi-espacio"
+          element={
+            <Shell>
+              <RequireGrant>
+                <Suspense fallback={suspenseFallback}>
+                  <MySpacePage />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
         <Route
           path="/hub/traktime/*"
           element={
             <Shell>
-              <Suspense fallback={suspenseFallback}>
-                <TraKtiMeModule />
-              </Suspense>
+              <RequireGrant>
+                <Suspense fallback={suspenseFallback}>
+                  <TraKtiMeModule />
+                </Suspense>
+              </RequireGrant>
             </Shell>
           }
         />
-        <Route path="/hub/agent-admin" element={<Suspense fallback={suspenseFallback}><AgentAdminModule /></Suspense>} />
-        <Route path="/hub/marketing" element={<Shell><Suspense fallback={suspenseFallback}><MarketingHubModule /></Suspense></Shell>} />
+        <Route
+          path="/hub/agent-admin"
+          element={
+            <RequireGrant role="admin">
+              <Suspense fallback={suspenseFallback}>
+                <AgentAdminModule />
+              </Suspense>
+            </RequireGrant>
+          }
+        />
+        <Route
+          path="/hub/marketing"
+          element={
+            <Shell>
+              <RequireGrant role="admin">
+                <Suspense fallback={suspenseFallback}>
+                  <MarketingHubModule />
+                </Suspense>
+              </RequireGrant>
+            </Shell>
+          }
+        />
         <Route
           path="/"
           element={
