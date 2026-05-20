@@ -132,6 +132,13 @@ export const config = {
    * (Top-20 run 2026-05-11 #L10: doc ampliado para reflejar el doble uso.)
    */
   databaseUrl: process.env.DATABASE_URL || "",
+  /** Google Tasks OAuth 2.0 client (separate from identity.authGoogle login OAuth) */
+  googleTasksClientId: process.env.GOOGLE_TASKS_CLIENT_ID || "",
+  googleTasksClientSecret: process.env.GOOGLE_TASKS_CLIENT_SECRET || "",
+  /** PGP symmetric key used by pgp_sym_encrypt/decrypt in tasks.oauth_tokens */
+  supabasePgpEncryptKey: process.env.SUPABASE_PGP_ENCRYPT_KEY || "",
+  /** Static HMAC secret sent as X-Sync-Signature header by Cloud Scheduler */
+  syncHmacSecret: process.env.SYNC_HMAC_SECRET || "",
   /** Meta App Secret — HMAC para POST /webhooks/whatsapp (recomendado prod) */
   whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || "",
   /** Bucket GCS para evidencias firmadas (opcional) */
