@@ -19,7 +19,20 @@ import { getTasksPool } from "../lib/tasksDb.js";
 
 const router = express.Router();
 
-const REDIRECT_URI = "https://panelin-calc.run.app/auth/tasks/callback";
+// Redirect URI Google sends the user to after consent. Must EXACTLY match
+// what's configured in the OAuth client's "Authorized redirect URIs" list.
+//
+// Default targets the Vercel SPA domain — vercel.json rewrites /auth/*
+// to Cloud Run, so the request lands in this same Express app. Cleaner
+// for the user (one consistent domain throughout the flow) and stable
+// across Cloud Run revisions (the *.run.app URL hash changes per region/
+// project; the Vercel domain doesn't).
+//
+// Override via GOOGLE_TASKS_REDIRECT_URI env var if you need to point at
+// the Cloud Run URL directly (e.g., for local dev with ngrok).
+const REDIRECT_URI =
+  process.env.GOOGLE_TASKS_REDIRECT_URI ||
+  `${(config.frontendBaseUrl || "https://calculadora-bmc.vercel.app").replace(/\/$/, "")}/auth/tasks/callback`;
 const TASKS_SCOPE = "https://www.googleapis.com/auth/tasks";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
