@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useBmcAuth } from "../hooks/useBmcAuth.js";
 import { requestAuthGate } from "./auth/AuthGateModal.jsx";
+import HistorialTab from "./me/HistorialTab.jsx";
 
 const ApiBase = (() => {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) {
@@ -83,6 +84,7 @@ export default function MySpacePage() {
           ["cotizaciones", "Mis cotizaciones"],
           ["bandeja", "Bandeja"],
           ["mensajes", "Mensajes"],
+          ["historial", "Historial"],
           ["tareas", "Tareas"],
           ["solicitudes", "Solicitudes"],
           ["preferencias", "Preferencias"],
@@ -100,6 +102,7 @@ export default function MySpacePage() {
       {tab === "cotizaciones" ? <QuotesTab token={auth.accessToken} /> : null}
       {tab === "bandeja" ? <InboxTab token={auth.accessToken} /> : null}
       {tab === "mensajes" ? <MessagesTab token={auth.accessToken} userId={auth.user?.id} /> : null}
+      {tab === "historial" ? <HistorialTab /> : null}
       {tab === "tareas" ? <TareasSummaryTab token={auth.accessToken} /> : null}
       {tab === "solicitudes" ? <RequestsTab token={auth.accessToken} /> : null}
       {tab === "preferencias" ? <PrefsTab user={auth.user} /> : null}
@@ -317,21 +320,27 @@ function PrefsTab({ user }) {
 // ─── KPI Strip ────────────────────────────────────────────────────────
 
 function KpiStrip({ token, onClickTab }) {
-  const [counts, setCounts] = useState({ quotes: null, unread: null, messages: null, pending: null });
+  const [counts, setCounts] = useState({ quotes: null, unread: null, messages: null, pending: null, eventsToday: null });
   useEffect(() => {
     let cancelled = false;
+    const startOfDayIso = (() => {
+      const d = new Date();
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+    })();
     Promise.all([
       api("/api/me/quotes?limit=1", { token }).catch(() => null),
       api("/api/me/notifications?unread=true&limit=200", { token }).catch(() => null),
       api("/api/me/threads", { token }).catch(() => null),
       api("/api/me/access-requests", { token }).catch(() => null),
-    ]).then(([q, n, t, ar]) => {
+      api(`/api/me/activity?from=${encodeURIComponent(startOfDayIso)}&limit=200`, { token }).catch(() => null),
+    ]).then(([q, n, t, ar, act]) => {
       if (cancelled) return;
       setCounts({
         quotes: q?.items?.length ?? null,
         unread: n?.items?.length ?? null,
         messages: (t?.items || []).reduce((sum, it) => sum + (Number(it.unread_count) || 0), 0),
         pending: (ar?.items || []).filter((r) => r.status === "pending").length,
+        eventsToday: act?.items?.length ?? null,
       });
     });
     return () => { cancelled = true; };
@@ -340,13 +349,14 @@ function KpiStrip({ token, onClickTab }) {
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+      gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
       gap: 10,
       marginBottom: 16,
     }}>
       <KpiCard label="Cotizaciones" value={counts.quotes ?? "—"} onClick={() => onClickTab("cotizaciones")} />
       <KpiCard label="Inbox sin leer" value={counts.unread ?? "—"} variant={counts.unread > 0 ? "warn" : ""} onClick={() => onClickTab("bandeja")} />
       <KpiCard label="Mensajes sin leer" value={counts.messages ?? "—"} variant={counts.messages > 0 ? "accent" : ""} onClick={() => onClickTab("mensajes")} />
+      <KpiCard label="Eventos hoy" value={counts.eventsToday ?? "—"} variant={counts.eventsToday > 0 ? "accent" : ""} onClick={() => onClickTab("historial")} />
       <KpiCard label="Solicitudes pendientes" value={counts.pending ?? "—"} onClick={() => onClickTab("solicitudes")} />
     </div>
   );
