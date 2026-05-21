@@ -288,6 +288,13 @@ router.post("/google-tasks/pull", async (req, res) => {
   const cycleId = crypto.randomUUID();
   const startedAt = new Date().toISOString();
 
+  // Housekeeping: drop expired oauth_state rows. PKCE flows that the user
+  // abandoned (closed Google consent screen) leave 5-min-TTL rows here;
+  // since this cron fires every 60s, it sweeps them within one TTL window.
+  await pool
+    .query(`DELETE FROM tasks.oauth_state WHERE expires_at < now()`)
+    .catch(() => {});
+
   let usersProcessed = 0;
   let usersFailed = 0;
   let totalItems = 0;
