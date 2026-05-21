@@ -54,26 +54,40 @@ async function getAccessToken(pool, userId) {
 }
 
 // Generic Google Tasks API caller. Surfaces 401 / 4xx / 5xx as
-// GoogleTasksError so the route can map to user-facing HTTP.
-async function call({ token, method, url, body }) {
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (res.status === 204) return null; // DELETE success
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new GoogleTasksError(
-      `google_tasks_http_${res.status}`,
-      res.status,
-      json,
-    );
+// GoogleTasksError so the route can map to user-facing HTTP. A 30s
+// AbortController fires google_timeout (504) before Cloud Run's 300s
+// request timeout, so a hung Google upstream doesn't tie up the worker.
+async function call({ token, method, url, body, timeoutMs = 30000 }) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method,
+      signal: ctrl.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 204) return null; // DELETE success
+    const json = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new GoogleTasksError(
+        `google_tasks_http_${res.status}`,
+        res.status,
+        json,
+      );
+    }
+    return json;
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new GoogleTasksError("google_timeout", 504, null);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return json;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────

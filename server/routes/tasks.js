@@ -177,6 +177,9 @@ router.get("/lists/:id/tasks/:taskId", async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function handleGoogleError(err, res) {
+  if (err?.status === 504 || err?.message === "google_timeout") {
+    return res.status(504).json({ ok: false, error: "google_timeout" });
+  }
   if (err?.status === 401) {
     return res.status(401).json({ ok: false, error: "google_token_revoked" });
   }
